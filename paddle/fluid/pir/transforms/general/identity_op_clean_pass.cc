@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
@@ -43,7 +44,7 @@ class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
                 {"bias_after_scale", pat.Attr("bias_after_scale")}});
     scale_op({&pat.Tensor("x"), &full_op()}, {&pat.Tensor("scale_out")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Attr<float>("value") == 1.0 &&
               match_ctx.Attr<float>("bias") == 0.0);
     });
@@ -128,7 +129,11 @@ class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd_op.cast")(pat.Tensor("arg0"));
-    pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto ret_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("ret"));
+      auto arg0_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("arg0"));
+      return ret_dtype == arg0_dtype;
+    });
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
@@ -144,7 +149,7 @@ class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
     combine({&pat.Tensor("x")}, {&pat.Tensor("combine_out")});
     pat.Tensor("out") = pat.Op(paddle::dialect::ConcatOp::name())(
         pat.Tensor("combine_out"), pat.Tensor("axis"));
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto combine_out = match_ctx.Tensor("combine_out");
       return combine_out.type().isa<pir::VectorType>() &&
              combine_out.type().dyn_cast<pir::VectorType>().size() == 1;
@@ -164,7 +169,7 @@ class RemoveRedundantCastPattern : public paddle::drr::DrrPatternBase {
         "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
     pat.Tensor("ret") = pat.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &cast1_out_type = match_ctx.Attr<phi::DataType>("dtype1");
       return cast1_out_type != phi::DataType::INT64 &&
              cast1_out_type != phi::DataType::INT32 &&
@@ -182,12 +187,21 @@ class DeleteDropoutOpPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
+    const auto &full_orig_op = pat.Op(paddle::dialect::FullOp::name(),
+                                      {
+                                          {"dtype", pat.Attr("dtype")},
+                                          {"place", pat.Attr("place")},
+                                          {"shape", pat.Attr("shape")},
+                                          {"value", pat.Attr("value")},
+                                      });
+    full_orig_op({}, {&pat.Tensor("p")});
     const auto &dropout_op =
         pat.Op("pd_op.dropout",
                {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mode")}});
-    dropout_op({&pat.Tensor("dropout_in"), &pat.Tensor("none")},
-               {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    dropout_op(
+        {&pat.Tensor("dropout_in"), &pat.Tensor("none"), &pat.Tensor("p")},
+        {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto is_test = match_ctx.Attr<bool>("is_test");
       auto mode = match_ctx.Attr<std::string>("mode");
       return is_test && mode == "upscale_in_train";
@@ -203,13 +217,23 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
-    const auto &dropout_op = pat.Op("pd_op.dropout",
-                                    {{"p", pat.Attr("p")},
-                                     {"is_test", pat.Attr("is_test")},
-                                     {"mode", pat.Attr("mode")}});
-    dropout_op({&pat.Tensor("dropout_in"), &pat.Tensor("none")},
-               {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    const auto &full_orig_op = pat.Op(paddle::dialect::FullOp::name(),
+                                      {
+                                          {"dtype", pat.Attr("dtype")},
+                                          {"place", pat.Attr("place")},
+                                          {"shape", pat.Attr("shape")},
+                                          {"value", pat.Attr("value")},
+                                      });
+    full_orig_op({}, {&pat.Tensor("p")});
+
+    const auto &dropout_op =
+        pat.Op("pd_op.dropout",
+               {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mode")}});
+    dropout_op(
+        {&pat.Tensor("dropout_in"), &pat.Tensor("none"), &pat.Tensor("p")},
+        {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
+
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto is_test = match_ctx.Attr<bool>("is_test");
       auto mode = match_ctx.Attr<std::string>("mode");
       return is_test && mode != "upscale_in_train";
@@ -219,7 +243,7 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
 
     const auto &res_scale_input = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return 1.f - match_ctx.Attr<float>("p");
+          return 1.f - match_ctx.Attr<float>("value");
         });
 
     const auto &full_op_res = res.Op(

@@ -31,11 +31,15 @@ class DecompProgram {
   DecompProgram(pir::Program* program,
                 const std::vector<pir::Value>& src_vars,
                 const std::set<std::string>& blacklist,
-                const std::set<std::string>& whitelist)
+                const std::set<std::string>& whitelist,
+                int start_index,
+                int end_index)
       : program_(program),
         src_vars_(src_vars),
         blacklist_(blacklist),
-        whitelist_(whitelist) {}
+        whitelist_(whitelist),
+        start_index_(start_index),
+        end_index_(end_index) {}
 
   void decomp_program();
   void decomp_block(pir::Block* block,
@@ -68,12 +72,17 @@ class DecompProgram {
   std::vector<pir::Value> get_dst_vars();
 
  private:
+  std::vector<pir::Operation*> parse_block_ops(pir::Block* block);
+
   pir::Program* program_;
   std::vector<pir::Value> src_vars_;
   std::vector<pir::Value> dst_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;
   std::set<std::string> decomposed_prog_ops_set_;
+  // Used to slice ops for global block.
+  int start_index_{0};
+  int end_index_{-1};
 };
 
 bool has_decomp_rule(const pir::Operation& op);

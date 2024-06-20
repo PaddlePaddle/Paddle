@@ -48,6 +48,21 @@ void SliceKernel(const Context& ctx,
   auto in_dims = input.dims();
   auto out_dims = out->dims();
   auto slice_dims = out_dims;
+  bool is_same = true;
+  if (in_dims.size() == out_dims.size()) {
+    for (int i = 0; i < in_dims.size(); i++) {
+      if (in_dims[i] != out_dims[i]) {
+        is_same = false;
+        break;
+      } else {
+        continue;
+      }
+    }
+    if (is_same) {
+      phi::Copy<Context>(ctx, input, ctx.GetPlace(), false, out);
+      return;
+    }
+  }
 
   // 2.1 Infer output dims
   for (size_t i = 0; i < axes.size(); ++i) {
@@ -118,7 +133,11 @@ PD_REGISTER_KERNEL(slice,
                    ALL_LAYOUT,
                    phi::SliceKernel,
                    float,
-                   int,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int32_t,
                    int64_t) {}

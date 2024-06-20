@@ -582,8 +582,13 @@ void HardSwishKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(relu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReluKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(silu,
                    XPU,
                    ALL_LAYOUT,

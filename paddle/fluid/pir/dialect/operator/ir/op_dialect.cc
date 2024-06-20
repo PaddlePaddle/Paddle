@@ -14,10 +14,12 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -36,13 +38,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     const auto shape_data_list = [&] {
       symbol::TensorListShapeOrDataDimExprs shape_data_list;
       for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -53,14 +54,14 @@ struct CombineOpInferSymbolicShapeInterfaceModel
                 "DenseTensorType."));
 
         shape_data_list.emplace_back(
-            shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
+            infer_context->GetShapeOrDataForValue(op->operand_source(i))
                 .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
       }
       return shape_data_list;
     }();
 
     symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
-    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 
@@ -71,7 +72,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
 struct ConstantOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     PADDLE_ENFORCE_NOT_NULL(
         op->result(0).type().dyn_cast<DenseTensorType>(),
         phi::errors::InvalidArgument(
@@ -88,7 +89,7 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
       return dims;
     }();
 
-    shape_analysis->SetShapeOrDataForValue(
+    infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(out_dims)});
@@ -103,7 +104,7 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
 struct ParameterOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     pir::Value res0 = op->result(0);
 
     std::vector<int64_t> dims =
@@ -114,7 +115,7 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     for (int64_t dim : dims) {
       symbol::DimExpr dim_expr;
       if (dim == -1) {
-        symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+        symbol::DimExpr res_dim_expr(infer_context->GetNextSymName());
         dim_expr = res_dim_expr;
       } else {
         symbol::DimExpr res_dim_expr(dim);
@@ -126,7 +127,7 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(sym_shape)};
 
-    shape_analysis->SetShapeOrDataForValue(res0, shape_data);
+    infer_context->SetShapeOrDataForValue(res0, shape_data);
 
     return true;
   }
@@ -138,7 +139,7 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
 struct SetParameterOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     return true;
   }
 
@@ -149,10 +150,10 @@ struct SetParameterOpInferSymbolicShapeInterfaceModel
 struct ShadowOutputOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     pir::Value operand_source = op->operand_source(0);
     auto input_shapeordata =
-        shape_analysis->GetShapeOrDataForValue(operand_source);
+        infer_context->GetShapeOrDataForValue(operand_source);
 
     symbol::ShapeOrDataDimExprs shape_data = input_shapeordata;
     pir::shape::SetShapeAttrForOp(op, shape_data);
@@ -167,15 +168,17 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
 struct SliceOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     const auto index =
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
-    const auto output_value =
-        (op->operand(0).type().dyn_cast<pir::VectorType>())[index]
-            .dyn_cast<pir::Value>();
-
-    shape_analysis->SetShapeOrDataForValue(
-        op->result(0), shape_analysis->GetShapeOrDataForValue(output_value));
+    const auto& input_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
+        input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    const symbol::TensorShapeOrDataDimExprs& output_shape =
+        data_shape_list[index];
+    infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
 
     return true;
   }
@@ -187,9 +190,9 @@ struct SliceOpInferSymbolicShapeInterfaceModel
 struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     const auto& shape_data_list =
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0))
+        infer_context->GetShapeOrDataForValue(op->operand_source(0))
             .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
     for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
@@ -199,7 +202,7 @@ struct SplitOpInferSymbolicShapeInterfaceModel
           paddle::platform::errors::InvalidArgument(
               "Currently InferSymbolicShape of SplitOp only support "
               "input without value."));
-      shape_analysis->SetShapeOrDataForValue(
+      infer_context->SetShapeOrDataForValue(
           op->result(rst_idx),
           symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
     }
@@ -213,7 +216,7 @@ struct SplitOpInferSymbolicShapeInterfaceModel
 struct YieldOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     // Since YieldOp has no output, just return true
     return true;
   }
@@ -235,6 +238,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       LayoutTransformationInterface,
+                       LayoutTransformationInterface::Model<pir::CombineOp>>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
   info.AttachInterface(
@@ -281,6 +287,15 @@ void PrintTypeImpl(pir::Type type, std::ostream& os) {
   } else if (auto tensor_array_type = type.dyn_cast<DenseTensorArrayType>()) {
     os << "tensor_array<";
     tensor_array_type.dtype().Print(os);
+    os << ">";
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    os << "sparsecootensor<";
+    for (auto d : common::vectorize(sparse_coo_tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    sparse_coo_tensor_type.dtype().Print(os);
     os << ">";
   }
 }
@@ -368,6 +383,11 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
 
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.cc"  // NOLINT
+      >();
+
 #ifdef PADDLE_WITH_DNNL
   RegisterOps<
 #define GET_OP_LIST
@@ -407,7 +427,7 @@ pir::Attribute OperatorDialect::ParseAttribute(
 }
 
 pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
-  if (op->isa<IfOp>() || op->isa<WhileOp>()) {
+  if (op->isa<IfOp>() || op->isa<WhileOp>() || op->isa<PyLayerOp>()) {
     return PrintOperationImpl;
   }
   return nullptr;
@@ -420,7 +440,9 @@ class IdManager {
     return instance;
   }
 
-  ~IdManager() {
+  IdManager() : ids_() {}
+
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -444,7 +466,9 @@ class AttributeManager {
     return instance;
   }
 
-  ~AttributeManager() {
+  AttributeManager() : char_pointers_(), pointers_size_() {}
+
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];
@@ -706,8 +730,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     // Construct custom grad op inputs
     int input_index = 0;
     int vec_input_index = 0;
-    for (size_t i = 0; i < bwd_inputs_name.size(); ++i) {
-      const auto& bwd_input_name = bwd_inputs_name.at(i);
+    for (const auto& bwd_input_name : bwd_inputs_name) {
       const auto input_location = GetInputLocation(bwd_input_name);
       std::vector<pir::Value> input_values;
       if (input_location.first == 0) {
@@ -762,8 +785,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     }
     argument.AddInputs(argument_inputs);
     // Construct custom grad op attr
-    for (size_t i = 0; i < fwd_attrs_name.size(); ++i) {
-      const auto& fwd_attr = fwd_attrs_name.at(i);
+    for (const auto& fwd_attr : fwd_attrs_name) {
       std::vector<std::string> attr_name_and_type =
           paddle::ParseAttrStr(fwd_attr);
       auto fwd_attr_name = attr_name_and_type[0];
@@ -791,8 +813,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     size_t all_values_num = 0;
     // output name -> value num (that output should hold)
     std::unordered_map<std::string, size_t> output_name2value_num;
-    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
-      const auto& bwd_output_name = bwd_outputs_name.at(i);
+    for (const auto& bwd_output_name : bwd_outputs_name) {
       const auto& bwd_input =
           paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
 
@@ -833,8 +854,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             output_dtypes.size()));
     // Construct custom grad op outputs
     size_t value_index = 0;
-    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
-      const auto& bwd_output_name = bwd_outputs_name.at(i);
+    for (const auto& bwd_output_name : bwd_outputs_name) {
       auto value_num = output_name2value_num[bwd_output_name];
       if (value_num == 0) {
         // Optional value condition
@@ -914,9 +934,9 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       size_t input_index =
           std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
       for (size_t i = 0; i < input_index; ++i) {
-        for (size_t j = 0; j < bwd_outputs_name.size(); j++) {
+        for (const auto& bwd_output_name : bwd_outputs_name) {
           const auto& fwd_input_name_tmp = paddle::framework::detail::NoGrad(
-              bwd_outputs_name[j], is_double_grad_op);
+              bwd_output_name, is_double_grad_op);
           if (fwd_input_name_tmp == fwd_inputs_name[i]) {
             // find forward input that need calculate gradient
             gradient_vec_index++;
@@ -1039,8 +1059,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)

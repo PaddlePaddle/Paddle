@@ -755,7 +755,7 @@ def max_unpool1d(
         x (Tensor): The input tensor of unpooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"`,
                           where `N` is batch size, `C` is the number of channels, `L` is
-                          the length of the feature. The data type is float32 or float64.
+                          the length of the feature. The data type is float32, float64 or int64.
         indices (Tensor): The indices given out by maxpooling1d which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` ,
                           where `N` is batch size, `C` is the number of channels, `L` is
@@ -813,6 +813,8 @@ def max_unpool1d(
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+    if output_size is not None:
+        output_size = output_size[:2] + [1] + output_size[2:]
     output_size = _unpool_output_size(
         x, kernel_size, stride, padding, output_size
     )
@@ -863,12 +865,12 @@ def max_unpool2d(
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"`,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
-                          feature. The data type if float32 or float64.
+                          feature. The data type is float32, float64 or int64.
         indices (Tensor): The indices given out by maxpooling2d which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` ,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
-                          feature. The data type if float32 or float64.
+                          feature. The data type is float32 or float64.
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
@@ -1011,7 +1013,7 @@ def max_unpool3d(
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"`,
                           where `N` is batch size, `C` is the number of channels, `D` is
                           the depth of the feature, `H` is the height of the feature,
-                          and `W` is the width of the feature. The data type is float32 or float64.
+                          and `W` is the width of the feature. The data type is float32, float64 or int64.
         indices (Tensor): The indices given out by maxpooling3d which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` ,
                           where `N` is batch size, `C` is the number of channels, `D` is
@@ -2341,3 +2343,260 @@ def fractional_max_pool3d(
         )
 
         return (pool_out, mask) if return_mask else pool_out
+
+
+def lp_pool1d(
+    x,
+    norm_type,
+    kernel_size,
+    stride=None,
+    padding=0,
+    ceil_mode=False,
+    data_format="NCL",
+    name=None,
+):
+    """
+    This API implements power-average pooling 1d operation.
+    See more details in :ref:`api_paddle_nn_LPPool1d` .
+
+    Args:
+        x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
+                          shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
+                          `L` is the length of the feature. The data type is float16, float32 or float64.
+        norm_type (int|float): The number the power operation.
+        kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
+            it must contain two integers, (kernel_size_Height, kernel_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        stride (int|list|tuple): The stride size. If it is a tuple or list,
+            it must contain two integers, (stride_Height, stride_Width).
+            Otherwise, the stride size will be a square of an int.
+        padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
+            1. A string in ['valid', 'same'].
+            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCL"`,
+            `"NLC"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`. Default:`"NCL"`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+    Returns:
+        Tensor: The output tensor of pooling result. The data type is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> data = paddle.uniform([1, 3, 32], paddle.float32)
+            >>> LPPool1D = nn.LPPool1D(norm_type=3, kernel_size=2, stride=2, padding=0)
+            >>> pool_out = LPPool1D(data)
+            >>> print(pool_out.shape)
+            [1, 3, 16]
+    """
+    # NCL to NCHW
+    ori_data_format = data_format
+    if data_format == "NCL":
+        data_format = "NCHW"
+        axis = 2
+    else:
+        data_format = "NHWC"
+        axis = 1
+
+    if not in_dynamic_mode():
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'lp_pool1d'
+        )
+    _check_input(x, 3)
+    x = unsqueeze(x, [axis])
+    kernel_size = convert_to_list(kernel_size, 1, 'kernel_size')
+    kernel_size = [1] + kernel_size
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = convert_to_list(stride, 1, 'pool_stride')
+        stride = [1] + stride
+
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
+
+    channel_last = _channel_last(ori_data_format, 1)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 1, channel_last=channel_last, ceil_mode=ceil_mode
+    )
+
+    # use 2d to implement 1d should expand padding in advance.
+    padding = _expand_low_nd_padding(padding)
+
+    if in_dynamic_or_pir_mode():
+        output = _C_ops.lp_pool2d(
+            x,
+            kernel_size,
+            stride,
+            padding,
+            ceil_mode,
+            True,
+            data_format,
+            'lp',
+            False,
+            False,
+            padding_algorithm,
+            norm_type,
+        )
+        return squeeze(output, [axis])
+
+    else:
+        op_type = 'lp_pool2d'
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={"x": x},
+            outputs={"out": pool_out},
+            attrs={
+                "pooling_type": "lp",
+                "kernel_size": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "ceil_mode": ceil_mode,
+                "exclusive": True,
+                "data_format": data_format,
+                "norm_type": norm_type,
+            },
+        )
+        return squeeze(pool_out, [axis])
+
+
+def lp_pool2d(
+    x,
+    norm_type,
+    kernel_size,
+    stride=None,
+    padding=0,
+    ceil_mode=False,
+    data_format="NCHW",
+    name=None,
+):
+    """
+    This API implements power-average pooling 2d operation.
+    See more details in :ref:`api_paddle_nn_LPPool2d` .
+
+    Args:
+        x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
+                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
+                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
+                          `H` is the height of the feature, and `W` is the width of the
+                          feature. The data type if float32 or float64.
+        norm_type (int|float): The number the power operation.
+        kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
+            it must contain two integers, (kernel_size_Height, kernel_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        stride (int|list|tuple): The stride size. If it is a tuple or list,
+            it must contain two integers, (stride_Height, stride_Width).
+            Otherwise, the stride size will be a square of an int.
+        padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
+            1. A string in ['valid', 'same'].
+            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
+        data_format (string, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`. Default: "NCHW".
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Tensor: The output tensor of pooling result. The data type is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> # lp pool2d
+            >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
+            >>> out = F.lp_pool2d(x,
+            ...                   norm_type=2,
+            ...                   kernel_size=2,
+            ...                   stride=2, padding=0)
+            >>> print(out.shape)
+            [1, 3, 16, 16]
+    """
+
+    _check_input(x, 4)
+    if norm_type == 0:
+        raise ValueError("`norm_type` cannot be 0.")
+
+    norm_type = float(norm_type)
+    kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = convert_to_list(stride, 2, 'pool_stride')
+
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
+
+    channel_last = _channel_last(data_format, 2)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 2, channel_last, ceil_mode=ceil_mode
+    )
+
+    if in_dynamic_or_pir_mode():
+        output = _C_ops.lp_pool2d(
+            x,
+            kernel_size,
+            stride,
+            padding,
+            ceil_mode,
+            True,
+            data_format,
+            'lp',
+            False,
+            False,
+            padding_algorithm,
+            norm_type,
+        )
+        return output
+    else:
+        op_type = 'lp_pool2d'
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'lp_pool2d'
+        )
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={"x": x},
+            outputs={"out": pool_out},
+            attrs={
+                "pooling_type": "lp",
+                "kernel_size": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "ceil_mode": ceil_mode,
+                "exclusive": True,
+                "data_format": data_format,
+                "norm_type": norm_type,
+            },
+        )
+
+        return pool_out

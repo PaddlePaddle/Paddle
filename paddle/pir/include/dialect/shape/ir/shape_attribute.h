@@ -28,6 +28,8 @@ class IR_API SymbolAttribute : public Attribute {
 
   symbol::ShapeOrDataDimExprs data() const;
 
+  static std::string name() { return "a_symbol"; }
+
   static SymbolAttribute get(IrContext* ctx,
                              const symbol::ShapeOrDataDimExprs& value);
 

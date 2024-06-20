@@ -147,7 +147,7 @@ class FusedMatmulElementwiseAddFusePattern
         as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
               : add(pat.Tensor("residual"), pat.Tensor("Out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto none_tensor = match_ctx.Tensor("none");
       if (none_tensor.impl() != nullptr) {
         return false;

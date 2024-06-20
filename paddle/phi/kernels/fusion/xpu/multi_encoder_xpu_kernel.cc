@@ -73,15 +73,27 @@ void MultiEncoderXPUKernel(
                                     ? nullptr
                                     : max_seq_len.get_ptr()->data<int>();
   int batch_size = x.dims()[0];
-  int seq_len = x.dims()[1];
+  int seq_len = 1;
+  int head_dim;
+  if (x.dims().size() == 2) {
+    head_dim = x.dims()[1];
+  } else if (x.dims().size() == 3) {
+    seq_len = x.dims()[1];
+    head_dim = x.dims()[2];
+  } else {
+    PADDLE_ENFORCE(
+        false,
+        phi::errors::PreconditionNotMet(
+            "x.dims().size() MUST be 2 or 3, but get [%d].", x.dims().size()));
+  }
   DDim out_dims;
   if (seq_lod_data) {
     batch_size = seq_lod.get_ptr()->numel() - 1;
     seq_len = max_seq_len_data[0];
   }
-  out_dims = {batch_size, seq_len, x.dims()[2]};
+  out_dims = {batch_size, seq_len, head_dim};
   if (slice_idx != -1) {
-    out_dims = {batch_size, x.dims()[2]};
+    out_dims = {batch_size, head_dim};
   }
   out->Resize(out_dims);
   out_fp16->Resize(out_dims);

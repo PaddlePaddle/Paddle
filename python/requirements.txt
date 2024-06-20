@@ -1,8 +1,9 @@
 httpx
-numpy>=1.13, <2.0
+numpy>=1.13
 protobuf>=3.20.2 
 Pillow
 decorator
 astor
 opt_einsum==3.3.0
 networkx
+typing_extensions

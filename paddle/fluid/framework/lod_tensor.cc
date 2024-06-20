@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
@@ -520,5 +519,4 @@ void MergeLoDTensor(phi::DenseTensor *target,
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

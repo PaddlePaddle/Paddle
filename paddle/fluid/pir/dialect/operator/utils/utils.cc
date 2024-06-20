@@ -45,9 +45,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSyncCommStream_Op::name(),
     DistributedPushSparseOp::name(),
     FtrlOp::name(),
-    FusedElemwiseAddActivationOp::name(),
-    FusedElemwiseAddActivationGradOp::name(),
-    FusedTokenPruneOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -58,6 +55,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
+    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
@@ -66,39 +64,23 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSplitOp::name(),
     PushDenseOp::name(),
     SeedOp::name(),
-    ShareDataOp::name(),
+    ShareData_Op::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
-    TdmSamplerOp::name(),
-    RankAttentionOp::name(),
-    RankAttentionGradOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    MatchMatrixTensorOp::name(),
-    MatchMatrixTensorGradOp::name(),
-    PartialConcatOp::name(),
-    PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
-    PartialSumOp::name(),
-    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-    QuantizeLinearOp::name(),
-    QuantizeLinear_Op::name(),
-    DequantizeLinearOp::name(),
-    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
-    paddle::onednn::dialect::QuantizeOp::name(),
-    paddle::onednn::dialect::RequantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
-    paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
@@ -106,9 +88,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMinOp::name(),
     CReduceProdOp::name(),
     CScatterOp::name(),
+    PullBoxSparseOp::name(),
+    PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
-    PartialRecvOp::name()};
+    PartialRecvOp::name(),
+    SendAndRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -337,6 +322,12 @@ phi::DataType GetValueDataType(const pir::Type& type) {
   } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCooTensorType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCsrTensorType>().dtype());
   } else if (type.isa<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<DenseTensorArrayType>().dtype());
@@ -348,6 +339,8 @@ phi::DataType GetValueDataType(const pir::Type& type) {
       return phi::DataType::UNDEFINED;
     }
   } else {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "Not support op type %s in ConvertOpTypeToKernelType.", type));
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "
                                  "DenseTensorType and SelectedRowsType."));

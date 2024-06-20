@@ -240,7 +240,14 @@ def gen_op_vjp_str(
             )
             build_attr_str += op_attribute_list[idx] + ", "
     build_args_str += build_attr_str
-    op_phi_name_format = op_info.op_yaml_item['name']
+    if op_info.is_sparse_op:
+        if op_info.op_phi_name[0].endswith('_'):
+            op_phi_name_suffix = 'sp_'
+        else:
+            op_phi_name_suffix = '_sp'
+    else:
+        op_phi_name_suffix = ''
+    op_phi_name_format = op_info.op_yaml_item['name'] + op_phi_name_suffix
     call_vjp_code = OP_VJP_CALL_VJP_TEMPLATE.format(
         op_phi_name=op_phi_name_format,
         inputs_list=build_args_str,
@@ -252,7 +259,6 @@ def gen_op_vjp_str(
         outputs_size=len(op_info.output_name_list),
         out_grads_size=grad_idx + 1,
     )
-
     str = OP_VJP_DEFINE_TEMPLATE.format(
         check_param=check_param,
         op_class_name=op_class_name,

@@ -15,9 +15,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 /**
  * case 1:
@@ -77,7 +77,7 @@ void ConcatCase1(DeviceContext* context) {
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
+  phi::funcs::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 0, &out);
 
   // check the dim of input_a, input_b
@@ -182,7 +182,7 @@ void ConcatCase2(DeviceContext* context) {
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
+  phi::funcs::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 1, &out);
 
   // check the dim of input_a, input_b
@@ -291,7 +291,7 @@ void ConcatCase3(DeviceContext* context) {
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
+  phi::funcs::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 2, &out);
 
   // check the dim of input_a, input_b
@@ -402,7 +402,7 @@ void ConcatCase4(DeviceContext* context) {
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
+  phi::funcs::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 1, &out);
   context->Wait();
 

@@ -1615,6 +1615,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   }
 
   for (int i = 0; i < total_device; ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
     sync_stream(resource_->remote_stream(i, num));
     if (h_left[i] == -1) {
       continue;

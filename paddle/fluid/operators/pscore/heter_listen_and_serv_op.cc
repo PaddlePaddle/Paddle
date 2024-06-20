@@ -123,9 +123,9 @@ void RunServer(
 }
 
 void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
-                                   const platform::Place &dev_place) const {
+                                   const phi::Place &dev_place) const {
   // Mark this as PS that it should decide profiling by listening from trainer.
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);

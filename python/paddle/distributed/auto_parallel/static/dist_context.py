@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 
-from paddle.distributed.passes import PassContext
+from paddle.distributed.passes.pass_base import PassContext
 from paddle.framework import IrGraph, core, set_flags
 
 from ..process_mesh import ProcessMesh

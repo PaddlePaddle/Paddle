@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
 
@@ -28,7 +29,12 @@ void ReduceAsGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         DenseTensor* x_grad) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
-  bool reduce_all = recompute_reduce_all(x, reduce_dim);
+  dev_ctx.Alloc(x_grad, x.dtype());
+
+  if (reduce_dim.size() == 0) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
   auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dim) {
     update_dims[i] = 1;
@@ -38,7 +44,6 @@ void ReduceAsGradKernel(const Context& dev_ctx,
   new_out_grad.ShareDataWith(out_grad);
   new_out_grad.Resize(common::make_ddim(update_dims));
 
-  dev_ctx.Alloc(x_grad, x.dtype());
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::ReduceGrad<phi::kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
@@ -63,6 +68,8 @@ PD_REGISTER_KERNEL(reduce_as_grad,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {
+                   int8_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

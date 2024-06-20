@@ -62,7 +62,8 @@ static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
   }
 }
 
-GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
+GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+    : bwd_out_meta_(), bwd_in_meta_(), gradient_hooks_() {
   VLOG(7) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
@@ -435,6 +436,32 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetDistAttr(dist_attr);
       meta.SetDistTensorGlobalDims(dist_tensor->dims());
       SetIsRunAutoParallel(true);
+    } else if (phi::SparseCsrTensor::classof(fwd_in.impl().get())) {
+      phi::SparseCsrTensor* sparse_tensor =
+          static_cast<phi::SparseCsrTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(
+          dense_tensor.dtype(),
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
+    } else if (phi::SparseCooTensor::classof(fwd_in.impl().get())) {
+      phi::SparseCooTensor* sparse_tensor =
+          static_cast<phi::SparseCooTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(
+          dense_tensor.dtype(),
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "

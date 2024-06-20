@@ -30,6 +30,8 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    float mean,
                                    float std,
                                    int seed,
+                                   float a,
+                                   float b,
                                    DataType dtype,
                                    DenseTensor* out) {
   auto tensor = out;
@@ -38,7 +40,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                          1.0);
-  TruncatedNormal<T> truncated_normal(mean, std);
+  TruncatedNormal<T> truncated_normal(mean, std, a, b);
   int64_t size = tensor->numel();
 
   std::shared_ptr<std::mt19937_64> engine;

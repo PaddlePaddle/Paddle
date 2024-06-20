@@ -542,8 +542,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
     def test_floordiv_different_dtype(self):
-        a_np = np.full(self.shape, 10, np.int64)
-        b_np = np.full(self.shape, 2, np.int32)
+        a_np = np.full(self.shape, 10, np.float32)
+        b_np = np.full(self.shape, 2, np.float16)
         with base.dygraph.guard():
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)

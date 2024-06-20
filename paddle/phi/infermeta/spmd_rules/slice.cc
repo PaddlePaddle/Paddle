@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -175,7 +174,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::vector<int64_t> out_dims_mapping = output.dist_attr().dims_mapping();
-  axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
@@ -258,8 +257,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
         [output_axis_to_input_axis_mapping[i]] = i;
   }
   std::vector<int64_t> mapped_axes;
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (const auto& axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     if (reverse_output_axis_to_input_axis_mapping.count(axis) > 0) {
       mapped_axes.push_back(reverse_output_axis_to_input_axis_mapping[axis]);
     }
@@ -303,10 +302,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(
-      std::make_pair(out_axes, out_dist_attr.dims_mapping()));
-  axes_sharding_info.emplace_back(
-      std::make_pair(input_axes, input_dist_attr.dims_mapping()));
+  axes_sharding_info.emplace_back(out_axes, out_dist_attr.dims_mapping());
+  axes_sharding_info.emplace_back(input_axes, input_dist_attr.dims_mapping());
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -381,5 +378,4 @@ SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
   return SliceGradInferBase(input, out_grad, axes_bridge, {});
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

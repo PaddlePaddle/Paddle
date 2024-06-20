@@ -16,6 +16,8 @@
 
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/reduce_grad.h"
 
 namespace phi {
@@ -27,15 +29,13 @@ void ReduceAsGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         DenseTensor* x_grad) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
-  bool reduce_all = recompute_reduce_all(x, reduce_dim);
-  ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
-                                                            x,
-                                                            paddle::none,
-                                                            out_grad,
-                                                            reduce_dim,
-                                                            false,
-                                                            reduce_all,
-                                                            x_grad);
+  if (reduce_dim.size() != 0) {
+    ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(
+        dev_ctx, x, paddle::none, out_grad, reduce_dim, false, false, x_grad);
+  } else {
+    dev_ctx.template Alloc<T>(x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  }
 }
 
 }  // namespace phi
@@ -53,6 +53,8 @@ PD_REGISTER_KERNEL(reduce_as_grad,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {
+                   int8_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

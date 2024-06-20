@@ -241,10 +241,9 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   // tensor's dims mapping the same as output tensor's dims mapping.
   // step2.1 merge dims mappings of output, mean, variance.
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
-  axes_sharding_info.emplace_back(std::make_pair(mean_axes, mean_dims_mapping));
-  axes_sharding_info.emplace_back(
-      std::make_pair(variance_axes, variance_dims_mapping));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
+  axes_sharding_info.emplace_back(mean_axes, mean_dims_mapping);
+  axes_sharding_info.emplace_back(variance_axes, variance_dims_mapping);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -384,12 +383,38 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
     std::string align_annotation;
     std::tie(annotations, align_annotation) =
         BuildLayerNormGradEinsum(x_shape.size(), begin_norm_axis);
-    AlignDimsSharding(
-        &dist_attrs, shapes, annotations, {}, align_annotation, false);
+
+    // Sharding Propagation
+    std::vector<std::pair<std::string, std::vector<int64_t>>>
+        axes_sharding_info;
+    auto x_dims_mapping = dist_attrs[0].dims_mapping();
+    auto out_grad_dims_mapping = dist_attrs[3].dims_mapping();
+    std::fill(
+        x_dims_mapping.begin() + begin_norm_axis, x_dims_mapping.end(), -1);
+    std::fill(out_grad_dims_mapping.begin() + begin_norm_axis,
+              out_grad_dims_mapping.end(),
+              -1);
+    axes_sharding_info.emplace_back(annotations[0], x_dims_mapping);
+    axes_sharding_info.emplace_back(annotations[1],
+                                    dist_attrs[1].dims_mapping());
+    axes_sharding_info.emplace_back(annotations[2],
+                                    dist_attrs[2].dims_mapping());
+    axes_sharding_info.emplace_back(annotations[3], out_grad_dims_mapping);
+    std::unordered_map<std::string, int64_t> axis_to_dim_map =
+        ShardingMergeForTensors(axes_sharding_info);
+
     x_dist_attr = std::move(dist_attrs[0]);
+    x_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[0], axis_to_dim_map));
     mean_dist_attr = std::move(dist_attrs[1]);
+    mean_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[1], axis_to_dim_map));
     variance_dist_attr = std::move(dist_attrs[2]);
+    variance_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[2], axis_to_dim_map));
     out_grad_dist_attr = std::move(dist_attrs[3]);
+    out_grad_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[3], axis_to_dim_map));
   } else {
     x_dist_attr = GetReplicatedDistAttr(dist_attrs[0]);
     mean_dist_attr = GetReplicatedDistAttr(dist_attrs[1]);

@@ -23,7 +23,7 @@ using cinn::dialect::ir::details::OpLoweringGroup;
 using cinn::dialect::ir::details::OpLoweringGroupPtr;
 
 bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = common::Overloaded{
       [](std::int64_t dim_expr) { return false; },
       [](const std::string& dim_expr) { return false; },
       [](const symbol::Negative<symbol::DimExpr>& dim_expr) { return true; },
@@ -62,7 +62,7 @@ void VisitEachDimExprFromTensorShapeOrData(
 template <typename DoEachT>
 void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
                       const DoEachT& DoEach) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = common::Overloaded{
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
       },
@@ -84,9 +84,6 @@ CollectSubstituteDimExprMap(
   std::unordered_set<std::string> base_dim_expr_set;
 
   VisitEachInputValue(group, [&](::pir::Value value) {
-    if (!shape_analysis.HasShapeOrDataForValue(value)) {
-      return;
-    }
     auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
     VisitEachDimExpr(shape_or_data, [&](const symbol::DimExpr& dim_expr) {
       if (IsComplicatedDimExpr(dim_expr) &&
@@ -146,11 +143,11 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
 }
 
 void InferSymbolicShapeForOperation(
-    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   auto infer_symbolic_shape_interface =
       op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
   if (infer_symbolic_shape_interface) {
-    infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+    infer_symbolic_shape_interface.InferSymbolicShape(infer_context);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
@@ -164,8 +161,7 @@ GetGroupValue2Shape(const OpLoweringGroupPtr& group,
   for (auto op : group->ops()) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
-      if (operand && value2shape.find(operand) == value2shape.end() &&
-          shape_analysis.HasShapeOrDataForValue(operand)) {
+      if (operand && value2shape.find(operand) == value2shape.end()) {
         VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
         value2shape.insert(
             {operand, shape_analysis.GetShapeOrDataForValue(operand)});
@@ -173,8 +169,7 @@ GetGroupValue2Shape(const OpLoweringGroupPtr& group,
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
-      if (result && value2shape.find(result) == value2shape.end() &&
-          shape_analysis.HasShapeOrDataForValue(result)) {
+      if (result && value2shape.find(result) == value2shape.end()) {
         VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
         value2shape.insert(
             {result, shape_analysis.GetShapeOrDataForValue(result)});
@@ -212,11 +207,9 @@ CreateGroupShapeOrDataExprs(
 
   // process the result values of each op.
   for (auto* op : group->ops()) {
-    InferSymbolicShapeForOperation(op, &local_shape_analysis);
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
-      if (result && !value2shape.count(result) &&
-          local_shape_analysis.HasShapeOrDataForValue(result)) {
+      if (result && !value2shape.count(result)) {
         VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
         value2shape.insert(
             {result, local_shape_analysis.GetShapeOrDataForValue(result)});

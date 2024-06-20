@@ -20,6 +20,8 @@ import os
 import re
 from typing import Tuple
 
+import paddle
+
 from .prune import _PRUNE_FUNC
 
 __SUPPORTED_RECOMPUTE_GRANULARITY__ = ["full", "full_attn", "core_attn"]
@@ -1066,7 +1068,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                         prefix + str(cfg[arg]) if prefix else cfg[arg]
                     )
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + "_"
@@ -1105,7 +1110,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                         prefix + str(cfg[arg]) if prefix else cfg[arg]
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + cfg["log_dir_name"]
@@ -1155,7 +1163,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 else:
                     cmd_cfg[keys[-1]] = rr_values
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + cfg["log_dir_name"]
@@ -1196,7 +1207,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 else:
                     cmd_cfg[keys[-1]] = rr_values
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + cfg["log_dir_name"]
@@ -1410,7 +1424,11 @@ def read_metric_log(
         re_metric_pattern = (
             target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
-        re_out_of_memory_pattern = r"Out of memory error on"
+        re_out_of_memory_pattern = (
+            r"Out of memory error on"
+            if paddle.device.is_compiled_with_cuda()
+            else r"out of memory"
+        )
         out_of_memory_flag = 0
         metric_list = []
         lines = f.readlines()
@@ -1547,6 +1565,33 @@ def read_memory_log(path, file) -> Tuple[float, bool]:
                 memory_used.append(int(mem_used))
                 utilization_gpu.append(int(util_gpu))
     return max(memory_used), False
+
+
+def read_completed(path):
+    """
+    check if training is completed
+    return:
+        True: completed
+        False: not completed
+    """
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if not file.startswith("workerlog"):
+                continue
+            target_file = path + "/" + file
+            if not os.path.exists(target_file):
+                return False
+            with open(target_file, "r") as f:
+                # read file
+                re_completed_pattern = r"Training completed."
+                lines = f.readlines()
+                for line in lines:
+                    completed = re.findall(
+                        re_completed_pattern, line, re.IGNORECASE
+                    )
+                    if completed:
+                        return True
+    return False
 
 
 def read_log(

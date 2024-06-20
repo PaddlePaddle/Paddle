@@ -45,6 +45,8 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
+datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
+
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
@@ -70,6 +72,21 @@ np_type_to_paddle_type = {
     np.int8: DataType.INT8,
     np.complex64: DataType.COMPLEX64,
     np.complex128: DataType.COMPLEX128,
+}
+
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
+    DataType.BOOL: 'bool',
+    DataType.FLOAT16: 'float16',
+    DataType.BFLOAT16: 'uint16',
+    DataType.FLOAT32: 'float32',
+    DataType.FLOAT64: 'float64',
+    DataType.INT8: 'int8',
+    DataType.INT16: 'int16',
+    DataType.INT32: 'int32',
+    DataType.INT64: 'int64',
+    DataType.UINT8: 'uint8',
+    DataType.COMPLEX64: 'complex64',
+    DataType.COMPLEX128: 'complex128',
 }
 
 
@@ -300,12 +317,44 @@ def create_parameter(
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
 
+    is_dist = False
+    if (
+        'placements' in kwargs
+        and kwargs['placements']
+        and 'process_mesh' in kwargs
+        and kwargs['process_mesh']
+    ):
+        is_dist = True
+
+    def to_dist(value):
+        import paddle
+        import paddle.distributed as dist
+
+        process_mesh = kwargs['process_mesh']
+        dim_map, partial_status = dist.auto_parallel.placement_type.to_dim_map(
+            kwargs['placements'], len(shape)
+        )
+        dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            process_mesh, dim_map, partial_status
+        )
+        dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            value.type(), dist_attr
+        )
+        value.set_type(dist_type)
+        op_dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+            process_mesh, [], [dist_attr]
+        )
+        value.get_defining_op().dist_attr = op_dist_attr
+
     with program_guard(startup_program):
         initializer = kwargs['initializer']
         init_result = initializer(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
+        if is_dist:
+            to_dist(init_result)
+
         set_parameter(init_result, value_name)
 
     main_program.set_parameters_from(startup_program)
@@ -313,6 +362,9 @@ def create_parameter(
         reset_insertion_point_to_start()
         param = parameter(value_name)
         param.persistable = True
+
+        if is_dist:
+            to_dist(param)
 
     param.trainable = kwargs.get('trainable', True)
     param.stop_gradient = not param.trainable
@@ -402,9 +454,14 @@ def _convert_into_value(tensor):
     )
 
     if isinstance(tensor, paddle.Tensor):
-        return _global_parameter_recorder.get(
+        value = _global_parameter_recorder.get(
             paddle.pir.core.default_main_program(), tensor
         )
+        NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
+        if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+            value.persistable = False
+        return value
+
     return tensor
 
 

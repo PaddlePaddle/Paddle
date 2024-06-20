@@ -361,9 +361,11 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
       target);
   std::vector<ir::LoweredFunc> result = lower_instance();
   for (auto& res : result) {
-    if (target == cinn::common::DefaultNVGPUTarget()) {
-      res->device_api = ir::DeviceAPI::GPU;
-    }
+    target.arch.Match(
+        [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {});
   }
   return result;
 }
@@ -406,9 +408,11 @@ ir::LoweredFunc Lower(const std::string& name,
           break;
         }
       }
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        res->device_api = ir::DeviceAPI::GPU;
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
     }
     if (b) {
       b->AddFunction(res);
@@ -459,10 +463,11 @@ std::vector<ir::LoweredFunc> LowerVec(const std::string& name,
           break;
         }
       }
-
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        res->device_api = ir::DeviceAPI::GPU;
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
     }
     if (b) {
       b->AddFunction(res);

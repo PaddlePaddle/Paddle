@@ -13,14 +13,14 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/feed_hook.h"
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
@@ -32,12 +32,18 @@ COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_api);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
-    : place_(place), plan_(plan), scope_(scope) {
+    : place_(place),
+      plan_(plan),
+      interpretercores_(),
+      scope_(scope),
+      micro_batch_scopes_(),
+      fetch_var_names_(),
+      fetch_list_(),
+      vec_force_events_to_wait_() {
   int64_t micro_batch_num = plan_.MicroBatchNum();
   vec_force_events_to_wait_.resize(micro_batch_num);
   for (int64_t i = 0; i < micro_batch_num; ++i) {
@@ -59,6 +65,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     std::shared_ptr<::pir::Program> ir_program = nullptr;
     if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {  // NOLINT
       ir_program = plan_.IrProgram(job_type);
+      RunFeedHooks(*ir_program, *scope);
     } else {
       // NOTE (liuchenghao): std::make_shared will duplicate ProgramDesc object,
       // maybe std::make_unique is better?
@@ -296,5 +303,4 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
   return copy_desc;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

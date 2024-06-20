@@ -41,8 +41,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
@@ -126,6 +125,9 @@ static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
   std::unordered_set<std::string> inner_outputs;
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
+      if (op_desc->Type() == "transpose2_grad" && n.first == "XShape") {
+        continue;
+      }
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
         if (inner_outputs.count(var_name) == 0) {
@@ -361,7 +363,7 @@ void ProgramTranslator::TranslateIfOperation(
   // NOTE(zhangbo): If program has if_grad_op and if_grad_op sub_block use some
   // value defined in if_op, we should insert tuple_push_op into if_op sub_block
   // and tuple_pop_op into if_grad_op sub_block.
-  if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+  if (!for_bwd && !push_pop_var_names_[op].empty()) {
     pir::Operation* create_stack_op = pir::Operation::Create(
         {},
         {},
@@ -386,7 +388,7 @@ void ProgramTranslator::TranslateIfOperation(
     auto* true_block_context = translation_ctx->CreateInnerContext();
 
     // insert tuple_pop op to if_grad
-    if (for_bwd && push_pop_var_names_[op].size() != 0) {
+    if (for_bwd && !push_pop_var_names_[op].empty()) {
       pir::Operation* tuple_pop_op = pir::Operation::Create(
           {cond_to_stack_value_[cond_grad_to_cond_[op]][1]},
           {},
@@ -407,7 +409,7 @@ void ProgramTranslator::TranslateIfOperation(
                    &true_region.front());
 
     // insert tuple_push op to true block before yield op
-    if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+    if (!for_bwd && !push_pop_var_names_[op].empty()) {
       std::vector<pir::Value> local_values;
       local_values.push_back(cond_to_stack_value_[op][0]);
       for (auto& var_name : push_pop_var_names_[op]) {
@@ -646,7 +648,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
-    if ((*op_desc)->Type() == "data") {
+    if ((*op_desc)->Type() == "data" || (*op_desc)->Type() == "feed") {
       continue;
     }
 
@@ -821,5 +823,4 @@ ProgramTranslator::VarDesc2Value() {
   return var_desc_2_value;
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

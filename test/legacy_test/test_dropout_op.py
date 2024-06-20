@@ -1537,7 +1537,9 @@ class PrimNet(paddle.nn.Layer):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 @param.parameterized_class(
@@ -1753,9 +1755,11 @@ class TestCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     y = paddle.assign(input_)
@@ -2103,9 +2107,11 @@ class TestPirCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     output = paddle.nn.functional.dropout(

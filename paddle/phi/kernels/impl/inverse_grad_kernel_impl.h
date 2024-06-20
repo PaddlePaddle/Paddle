@@ -18,6 +18,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
@@ -37,15 +38,35 @@ void InverseGradKernel(const Context& dev_ctx,
     tmp_out.Resize(out.dims());
     dev_ctx.template Alloc<T>(&tmp_out);
 
-    auto mat_dim_a0 =
-        phi::funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
-    auto mat_dim_b0 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
-    blas.MatMul(out_grad, mat_dim_a0, out, mat_dim_b0, T(1), &tmp_out, T(0));
+    if (IsComplexType(out.dtype())) {
+      DenseTensor out_conj;
+      out_conj.Resize(out.dims());
+      dev_ctx.template Alloc<T>(&out_conj);
 
-    auto mat_dim_a1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
-    auto mat_dim_b1 =
-        phi::funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
-    blas.MatMul(out, mat_dim_a1, tmp_out, mat_dim_b1, T(-1), in_grad, T(0));
+      phi::ConjKernel<T, Context>(dev_ctx, out, &out_conj);
+
+      auto mat_dim_a0 =
+          phi::funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
+      auto mat_dim_b0 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      blas.MatMul(
+          out_grad, mat_dim_a0, out_conj, mat_dim_b0, T(1), &tmp_out, T(0));
+
+      auto mat_dim_a1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      auto mat_dim_b1 =
+          phi::funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
+      blas.MatMul(
+          out_conj, mat_dim_a1, tmp_out, mat_dim_b1, T(-1), in_grad, T(0));
+    } else {
+      auto mat_dim_a0 =
+          phi::funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);
+      auto mat_dim_b0 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      blas.MatMul(out_grad, mat_dim_a0, out, mat_dim_b0, T(1), &tmp_out, T(0));
+
+      auto mat_dim_a1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
+      auto mat_dim_b1 =
+          phi::funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
+      blas.MatMul(out, mat_dim_a1, tmp_out, mat_dim_b1, T(-1), in_grad, T(0));
+    }
   }
 }
 

@@ -225,26 +225,22 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
 
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
-    auto bn_param_type = framework::proto::VarType::FP32;
+    auto bn_param_type = phi::DataType::FLOAT32;
     PADDLE_ENFORCE_EQ(
         bn_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("Scale1")->dtype()),
+        ctx.Input<phi::DenseTensor>("Scale1")->dtype(),
         phi::errors::InvalidArgument("Scale input should be of float type"));
     PADDLE_ENFORCE_EQ(
         bn_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("Bias1")->dtype()),
+        ctx.Input<phi::DenseTensor>("Bias1")->dtype(),
         phi::errors::InvalidArgument("Bias input should be of float type"));
     PADDLE_ENFORCE_EQ(
         bn_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("Scale2")->dtype()),
+        ctx.Input<phi::DenseTensor>("Scale2")->dtype(),
         phi::errors::InvalidArgument("Scale input should be of float type"));
     PADDLE_ENFORCE_EQ(
         bn_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("Bias2")->dtype()),
+        ctx.Input<phi::DenseTensor>("Bias2")->dtype(),
         phi::errors::InvalidArgument("Bias input should be of float type"));
 
     return phi::KernelKey(input_data_type, ctx.GetPlace());

@@ -15,11 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/common/float16.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // Shape of bitmask
-static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
+static phi::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
   int64_t nhw = std::accumulate(out_shape.begin(),
                                 out_shape.end(),
@@ -128,7 +127,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     if (1 == bn_param_shape.size()) {
       bn_param_shape = {1, 1, 1, bn_param_shape[0]};
     }
-    framework::DDim bn_param_dims = common::make_ddim(bn_param_shape);
+    phi::DDim bn_param_dims = common::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4,
@@ -206,17 +205,15 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
-    auto bn_param_type = framework::proto::VarType::FP32;
+    auto bn_param_type = phi::DataType::FLOAT32;
 
     PADDLE_ENFORCE_EQ(
         bn_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("ScaleX")->dtype()),
+        ctx.Input<phi::DenseTensor>("ScaleX")->dtype(),
         phi::errors::InvalidArgument("Scale input should be of float type"));
     PADDLE_ENFORCE_EQ(
         bn_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("BiasX")->dtype()),
+        ctx.Input<phi::DenseTensor>("BiasX")->dtype(),
         phi::errors::InvalidArgument("Bias input should be of float type"));
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -452,8 +449,7 @@ class ResNetUnitOpInferVarType
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(resnet_unit,

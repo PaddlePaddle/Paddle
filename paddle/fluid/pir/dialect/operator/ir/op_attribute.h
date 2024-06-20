@@ -23,6 +23,9 @@
 
 namespace paddle {
 namespace dialect {
+// __force_backend__ in ["gpu","gpudnn","cpu",""]
+inline const char kForceBackendAttr[] = "__force_backend__";
+
 class IntArrayAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
@@ -113,6 +116,7 @@ class DataLayoutAttribute : public pir::Attribute {
 
   static DataLayoutAttribute Parse(pir::IrParser &parser);  // NOLINT
   phi::DataLayout data() const;
+  static std::string name() { return "a_layout"; }
 };
 
 }  // namespace dialect

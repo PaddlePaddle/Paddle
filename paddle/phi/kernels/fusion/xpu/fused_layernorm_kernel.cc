@@ -63,6 +63,11 @@ void FusedLayerNormKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<float>(&residual_alpha_tmp);
   dev_ctx.template Alloc<T>(&residual_alpha_ptr);
+  r = baidu::xpu::api::constant(xpu_ctx->x_context(),
+                                reinterpret_cast<XPUType*>(out->data<T>()),
+                                out->numel(),
+                                static_cast<XPUType>(0.f));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   r = baidu::xpu::api::constant(xpu_ctx->x_context(),
                                 residual_alpha_tmp.data<float>(),

@@ -71,7 +71,7 @@ class ReshapeTransposeMatmulFusePattern : public paddle::drr::DrrPatternBase {
              {&pat.Tensor("Out")});
     }
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
       auto perm = match_ctx.Attr<std::vector<int>>("perm");
       if (shape.size() < 2 || shape.size() > 4) return false;
@@ -209,7 +209,7 @@ class ReshapeTransposeFusedMatmulFusePattern
              {&pat.Tensor("Out")});
     }
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
       auto perm = match_ctx.Attr<std::vector<int>>("perm");
       if (shape.size() < 2 || shape.size() > 4) return false;
@@ -219,7 +219,7 @@ class ReshapeTransposeFusedMatmulFusePattern
       return true;
     });
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (as_x_) {
         if (!(match_ctx.Attr<std::vector<int>>("fused_reshape_x").empty()))
           return false;

@@ -26,19 +26,24 @@ class IR_API DistTypeInterface
  public:
   struct Concept {
     /// Defined these methods with the interface.
-    explicit Concept(pir::Type (*local_type)(pir::Type),
-                     ProcessMeshAttribute (*process_mesh_attr)(pir::Type),
-                     TensorDistAttribute (*tensor_dist_attr)(pir::Type),
-                     pir::Type (*copy_with_new_mesh)(pir::Type,
-                                                     ProcessMeshAttribute mesh))
+    explicit Concept(
+        pir::Type (*local_type)(pir::Type),
+        ProcessMeshAttribute (*process_mesh_attr)(pir::Type),
+        TensorDistAttribute (*tensor_dist_attr)(pir::Type),
+        pir::Type (*copy_with_new_mesh)(pir::Type, ProcessMeshAttribute mesh),
+        pir::Type (*copy_with_new_dist_attr)(pir::Type,
+                                             TensorDistAttribute dist_attr))
         : local_type(local_type),
           process_mesh_attr(process_mesh_attr),
           tensor_dist_attr(tensor_dist_attr),
-          copy_with_new_mesh(copy_with_new_mesh) {}
+          copy_with_new_mesh(copy_with_new_mesh),
+          copy_with_new_dist_attr(copy_with_new_dist_attr) {}
     pir::Type (*local_type)(pir::Type);
     ProcessMeshAttribute (*process_mesh_attr)(pir::Type);
     TensorDistAttribute (*tensor_dist_attr)(pir::Type);
     pir::Type (*copy_with_new_mesh)(pir::Type, ProcessMeshAttribute mesh);
+    pir::Type (*copy_with_new_dist_attr)(pir::Type,
+                                         TensorDistAttribute dist_attr);
   };
 
   template <class ConcreteType>
@@ -58,11 +63,16 @@ class IR_API DistTypeInterface
       return pir::cast<ConcreteType>(type).CopyWithNewMesh(mesh);
     }
 
+    static Type CopyWithNewDistAttr(Type type, TensorDistAttribute dist_attr) {
+      return pir::cast<ConcreteType>(type).CopyWithNewDistAttr(dist_attr);
+    }
+
     Model()
         : Concept(local_type,
                   process_mesh_attr,
                   tensor_dist_attr,
-                  CopyWithNewMesh) {}
+                  CopyWithNewMesh,
+                  CopyWithNewDistAttr) {}
   };
 
   DistTypeInterface(pir::Type type, Concept *impl)
@@ -80,6 +90,11 @@ class IR_API DistTypeInterface
 
   DistTypeInterface CopyWithNewMesh(ProcessMeshAttribute mesh) {
     return DistTypeInterface(impl_->copy_with_new_mesh(*this, mesh), impl_);
+  }
+
+  DistTypeInterface CopyWithNewDistAttr(TensorDistAttribute dist_attr) {
+    return DistTypeInterface(impl_->copy_with_new_dist_attr(*this, dist_attr),
+                             impl_);
   }
 
  private:

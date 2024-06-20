@@ -556,6 +556,113 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    def call_view3(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [10, 100, -1])
+        np_out = x_np.reshape(10, 100, 20)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view4(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.uint8)
+        np_out = x_np.view(np.uint8)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    # dim4 -> dim2
+    def call_view5(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [1000, -1])
+        np_out = x_np.reshape(1000, 20)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    # dim4 -> dim1
+    def call_view6(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [-1])
+        np_out = x_np.reshape(20000)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    # dim4 -> dim5
+    def call_view7(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [10, 10, 10, 10, -1])
+        np_out = x_np.reshape(10, 10, 10, 10, 2)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
     def call_view_as(self):
         x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -618,6 +725,11 @@ class TestStride(unittest.TestCase):
         self.call_as_strided()
         self.call_view()
         self.call_view2()
+        self.call_view3()
+        self.call_view4()
+        self.call_view5()
+        self.call_view6()
+        self.call_view7()
         self.call_view_as()
         self.call_unfold()
 

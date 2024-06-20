@@ -50,9 +50,13 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -136,6 +140,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
       AddNOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -147,6 +152,10 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
 std::vector<pir::Type> AddNOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
   VLOG(4) << "Start infermeta AddNOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
                     1,
@@ -190,14 +199,36 @@ std::vector<pir::Type> AddNOp::InferMeta(
   phi::AddNInferMeta(meta_x, &meta_out, phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
-  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      pir::IrContext::Instance(),
-      TransToIrDataType(dense_out.dtype()),
-      dense_out.dims(),
-      dense_out.layout(),
-      dense_out.lod(),
-      dense_out.offset());
-  argument_outputs.push_back(out_dense_tensor_type);
+  pir::Type out_type = CvtToDenseTensorType(dense_out);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // Auto Parallel condition
+  if (AllInputAreDist(input_values)) {
+    ProcessMeshAttribute op_mesh =
+        x[0].dyn_cast<DistDenseTensorType>().process_mesh_attr();
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;
+    auto dist_meta_x = CvtToDistMetaTensor(x);
+    auto spmd_info =
+        phi::distributed::VariadicReplicatedInferSpmdDynamic(dist_meta_x);
+    PADDLE_ENFORCE_EQ(
+        spmd_info.first.size(),
+        1u,
+        common::errors::Unavailable(
+            "Size of spmd_info.first for op[pd_op.add_n]is unexpected."));
+    for (auto &arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
+    }
+    auto dist_attr_output = CreateReplicatedDistAttr(out_type, op_mesh);
+
+    dist_result_attrs.push_back(dist_attr_output);
+    argument_outputs.push_back(CvtToPirDistType(out_type, dist_attr_output));
+
+    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
+  argument_outputs.push_back(out_type);
   return argument_outputs;
 }
 
@@ -673,7 +704,7 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -928,7 +959,7 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    4,
+                    4UL,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 4 but got %d.",
                         input_values.size()));
@@ -1370,7 +1401,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta CreateArrayOp";
 
@@ -1396,7 +1427,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   return argument_outputs;
 }
 
-const char *CreateArrayLikeOp::attributes_name[1] = {"val"};
+const char *CreateArrayLikeOp::attributes_name[1] = {"val"};  // NOLINT
 
 OpInfoTuple CreateArrayLikeOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -2018,7 +2049,8 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   return argument_outputs;
 }
 
-const char *ArrayToTensorOp::attributes_name[2] = {"axis", "use_stack"};
+const char *ArrayToTensorOp::attributes_name[2] = {"axis",
+                                                   "use_stack"};  //  NOLINT
 
 OpInfoTuple ArrayToTensorOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -2138,7 +2170,7 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayToTensorOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -2210,7 +2242,8 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   return argument_outputs;
 }
 
-const char *TensorToArrayOp::attributes_name[2] = {"axis", "use_stack"};
+const char *TensorToArrayOp::attributes_name[2] = {"axis",
+                                                   "use_stack"};  // NOLINT
 
 OpInfoTuple TensorToArrayOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -2338,7 +2371,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta TensorToArrayOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -3153,20 +3186,12 @@ void ExpandOp::Build(pir::Builder &builder,
 }
 
 bool ExpandOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &x_shape_or_data = shape_analysis->GetShapeOrDataForValue(x());
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(x());
   const auto &expand_shape_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(shape());
+      infer_context->GetShapeOrDataForValue(shape());
 
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
@@ -3210,7 +3235,7 @@ bool ExpandOp::InferSymbolicShape(
     }
   }
 
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       out(),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
@@ -3524,7 +3549,7 @@ std::vector<pir::Type> IncrementOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta IncrementOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -3586,10 +3611,10 @@ phi::DataType IncrementOp::GetKernelTypeForVar(
 }
 
 bool IncrementOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x());
-  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+      infer_context->GetShapeOrDataForValue(x());
+  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
   return true;
 }
 
@@ -3729,7 +3754,7 @@ std::vector<pir::Type> Increment_Op::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta Increment_Op";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -3791,10 +3816,10 @@ phi::DataType Increment_Op::GetKernelTypeForVar(
 }
 
 bool Increment_Op::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x());
-  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+      infer_context->GetShapeOrDataForValue(x());
+  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
   return true;
 }
 
@@ -3841,6 +3866,7 @@ void AssignOut_Op::Build(pir::Builder &builder,
   std::vector<pir::Type> argument_outputs =
       AssignOut_Op::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   constexpr char kStopGradientAttrName[] = "stop_gradient";
   auto stop_gradient0 =
       argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
@@ -3945,9 +3971,40 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // Auto Parallel condition
+  if (auto dist_type = input_values[1].type().dyn_cast<DistTypeInterface>()) {
+    ProcessMeshAttribute op_mesh = dist_type.process_mesh_attr();
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs{
+        dist_type.tensor_dist_attr(),
+        dist_type.tensor_dist_attr(),
+    },
+        dist_result_attrs{dist_type.tensor_dist_attr()};
+    argument_outputs.push_back(dist_type);
+    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
   argument_outputs.push_back(out_dense_tensor_type);
 
   return argument_outputs;
+}
+
+bool AssignOut_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(operand_source(0));
+  const auto &inplace_output_shape =
+      infer_context->GetShapeOrDataForValue(operand_source(1));
+  infer_context->SetShapeOrDataForValue(result(0), x_shape);
+  CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
+  for (size_t i = 0; i < x_shape.shape().size(); ++i) {
+    infer_context->AddEqualCstr(x_shape.shape()[i],
+                                inplace_output_shape.shape()[i]);
+  }
+  return true;
 }
 
 phi::DataType AssignOut_Op::GetKernelTypeForVar(
@@ -4002,7 +4059,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::ElementwiseInferMeta);
+  auto fn = PD_INFER_META(phi::ShapeBroadcastInferMeta);
   fn(infer_meta);
 }
 
@@ -4059,7 +4116,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  phi::ShapeBroadcastInferMeta(meta_x, meta_y, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -4077,17 +4134,15 @@ namespace {
 
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
-  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
-  } else if (lhs.isa<std::int64_t>()) {
-    return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
-  } else if (rhs.isa<std::int64_t>()) {
-    return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
-  } else if (lhs == rhs) {
+  if (lhs == rhs) {
+    return lhs;
+  } else if (lhs == 1) {
+    return rhs;
+  } else if (rhs == 1) {
     return lhs;
   } else {
-    return symbol::Broadcast<symbol::DimExpr>{
-        symbol::List<symbol::DimExpr>{lhs, rhs}};
+    return symbol::SimplifyDimExpr(symbol::Broadcast<symbol::DimExpr>{
+        symbol::List<symbol::DimExpr>{lhs, rhs}});
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
@@ -4119,18 +4174,11 @@ std::vector<symbol::DimExpr> ComputeBroadcastShape(
 }
 
 bool ShapeBroadcastOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
-
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(x),
-                    0,
-                    phi::errors::InvalidArgument("Value x does not exist."));
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(y),
-                    0,
-                    phi::errors::InvalidArgument("Value y does not exist."));
-  const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
-  const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
+  const auto &x_data_shape = infer_context->GetShapeOrDataForValue(x);
+  const auto &y_data_shape = infer_context->GetShapeOrDataForValue(y);
   PADDLE_ENFORCE_EQ(x_data_shape.data().has_value(),
                     true,
                     phi::errors::InvalidArgument(
@@ -4151,7 +4199,7 @@ bool ShapeBroadcastOp::InferSymbolicShape(
 
   symbol::ShapeOrDataDimExprs output_data_shape{
       symbol::TensorShapeOrDataDimExprs(shape, output_data)};
-  shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
+  infer_context->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }
 
@@ -4411,7 +4459,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayPopOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -4481,8 +4529,7 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

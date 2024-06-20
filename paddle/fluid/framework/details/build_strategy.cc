@@ -28,9 +28,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 PD_DECLARE_bool(use_cinn);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
@@ -60,7 +58,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This is a trick to support 0D-Tensor for CINN. This pass will be
       // removed in the near future.
-      AppendPass("cinn_zero_tensor_trick_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
     }
 #endif
@@ -503,9 +500,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   return graph;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
 
 USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
@@ -537,10 +532,6 @@ USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);
 USE_PASS(fuse_adamw_op_pass);
-#endif
-#ifdef PADDLE_WITH_CINN
-USE_PASS(cinn_zero_tensor_trick_pass);
-USE_PASS(build_cinn_pass);
 #endif
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_feedforward_pass);

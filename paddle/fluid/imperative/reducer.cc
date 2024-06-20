@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
@@ -74,7 +74,7 @@ static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
     const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents) {
-  operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+  phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor_;
   concat_functor_(context,
                   dense_tensors_,
                   0,
@@ -102,7 +102,7 @@ static void SplitTensorsForAllReduce(
     phi::funcs::StridedMemcpyWithAxis0<T, DeviceContext>(
         context, *in, shape_refer, &outs);
   } else {
-    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 }
@@ -179,8 +179,7 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     outs.emplace_back(&tensor);
     shape_refer.emplace_back(&tensor);
   }
-  operators::math::SplitFunctor<platform::XPUDeviceContext, float>
-      split_functor_;
+  phi::funcs::SplitFunctor<platform::XPUDeviceContext, float> split_functor_;
   split_functor_(context, *in, shape_refer, 0, &outs);
 }
 
@@ -323,10 +322,19 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  bool find_unused_vars)
     : vars_(vars),
       group_indices_(group_indices),
+      groups_(),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
+      variable_locators_(),
+      rebuild_vars_(),
+      rebuild_var_indices_(),
       group_size_limits_(group_size_limits),
-      find_unused_vars_each_step_(find_unused_vars) {
+      node_deps_(),
+      var_index_map_(),
+      unused_vars_(),
+      find_unused_vars_each_step_(find_unused_vars),
+      vars_marked_ready_(),
+      local_used_vars_() {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();

@@ -26,7 +26,11 @@ public:
         pat.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
     // 4. Define Constrain
-    pat.RequireEqual(pat("tmp").dtype(), pat.Tensor("ret").dtype());
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto ret_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("ret"));
+      auto arg0_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("tmp"));
+      return ret_dtype == arg0_dtype;
+    });
 
     // 5. Define ResultPattern
     auto res = pat.ResultPattern();
@@ -39,9 +43,9 @@ public:
 
 DRR PASS contains the following three parts:
 + `Source Pattern`：used to describe the target subgraph to be matched in Program
-+  `Constrains`：used to specify constraints for SourcePattern matching(nonessential)
++  `Constraints`：used to specify constraints for SourcePattern matching(nonessential)
 + `Result Pattern`：Used to describe the subgraph that needs to be replaced by
-Developers only need to define `SourcePattern`, `Constrains` and `ResultPattern` to implement a complete PASS.
+Developers only need to define `SourcePattern`, `Constraints` and `ResultPattern` to implement a complete PASS.
 
 **Note:**
 1. **DRR only supports matching and replacing the closed SourcePattern and ResultPattern (except for the Pattern input and output Tensor, all internal Tensors cannot be used by the Pattern external Op). If the defined Pattern is not closed in the Program, the matching will fail.**
@@ -82,24 +86,12 @@ Developers only need to define `SourcePattern`, `Constrains` and `ResultPattern`
 		<td> attr_name: The name of the attribute, which needs to be unique within SourcePattern </td>
 	</tr>
 	<tr>
-		<td><pre> void RequireEqual(
-        const TensorShape& first,
-        const TensorShape& second)</pre></td>
-		<td> Requires the TensorShape of the two Tensors in SourcePattern to be the same</td>
-		<td> first: first TensorShape <br> second : second TensorShape</td>
-	</tr>
 		<tr>
-		<td><pre> void RequireEqual(
-        const TensorDataType& first,
-        const TensorDataType& second)</pre></td>
-		<td> The data types of the two Tensors in SourcePattern are required to be the same</td>
-		<td> first: DataType of the first Tensor <br> second : DataType of the second Tensor</td>
-	</tr>
 	<tr>
-		<td> <pre>void RequireNativeCall(
-        const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
+		<td> <pre>void AddConstraint(
+        const std::function&lt;bool(const MatchContext&)&gt;& constraint_fn)</pre></td>
 		<td> Define a constraint in SourcePattern. You can use this interface and lambda expressions to implement custom constraints on SourcePattern.</td>
-		<td> custom_fn: Customized constraint functions</td>
+		<td> constraint_fn: Customized constraint functions</td>
 	</tr>
 	<tr>
 		<td rowspan="5"> ResultPattern</td>
@@ -130,30 +122,6 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 	<tr>
 		<td> <pre>drr::Tensor& InputNoneTensor()</pre></td>
 		<td> When the input Tensor of an Op is optional and not needed, InputNoneTensor needs to be used to occupy the place.</td>
-		<td> / </td>
-	</tr>
-	<tr>
-		<td rowspan="2"> TensorShape</td>
-		<td><pre>explicit TensorShape(
-        const std::string& tensor_name) </pre></td>
-		<td> Abstract the class that describes the shape of Tensor </td>
-		<td> tensor_name: The name of the Tensor being described </td>
-	</tr>
-	<tr>
-		<td><pre> const std::string& tensor_name() const</pre></td>
-		<td> Obtain the name of Tensor </td>
-		<td>  / </td>
-	</tr>
-	<tr>
-		<td rowspan="2"> TensorDataType</td>
-		<td><pre>explicit TensorDataType(
-        const std::string& tensor_name)</pre></td>
-		<td> An abstract class that describes the data types of elements in Tensor </td>
-		<td> tensor_name: The name of the Tensor being described </td>
-	</tr>
-	<tr>
-		<td><pre> const std::string& tensor_name() const</pre></td>
-		<td> Obtain the name of Tensor </td>
 		<td> / </td>
 	</tr>
 	<tr>

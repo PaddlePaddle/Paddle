@@ -51,7 +51,7 @@ class CSplitOp : public framework::OperatorWithKernel {
                                      rank,
                                      nranks));
 
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
         dim[dim.size() - 1] % nranks,
         0,

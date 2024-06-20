@@ -26,7 +26,9 @@ from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     flash_attention_with_sparse_mask,
+    flash_attn_qkvpacked,
     flash_attn_unpadded,
+    flash_attn_varlen_qkvpacked,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -954,6 +956,423 @@ class TestFlashAttenionWithSparseMaskBF16APITest(
         self.dtype = 'bfloat16'
         self.dropout = 0.0
         self.causal = True
+
+
+class TestFlashAttentionVarlenQKVPackedGQA(TestFlashAttentionGQA):
+    def gen_unpadded_data(self, dtype):
+        seq_len_q = np.random.randint(
+            low=1, high=self.seq_len, size=[self.batch_size]
+        )
+        seq_len_k = seq_len_q
+        cu_seqlen_q = paddle.to_tensor(
+            [0] + np.cumsum(seq_len_q).tolist(), dtype=paddle.int32
+        )
+        cu_seqlen_k = cu_seqlen_q
+
+        qs, ks, vs = [], [], []
+        for i in range(self.batch_size):
+            tmp_q = (
+                paddle.randn(
+                    [seq_len_q[i] * self.num_head * self.head_dim], dtype=dtype
+                )
+                / 1e2
+            )
+            tmp_k = (
+                paddle.randn(
+                    [
+                        seq_len_k[i]
+                        * self.num_head
+                        * self.head_dim
+                        // self.num_group
+                    ],
+                    dtype=dtype,
+                )
+                / 1e2
+            )
+            tmp_v = (
+                paddle.randn(
+                    [
+                        seq_len_k[i]
+                        * self.num_head
+                        * self.head_dim
+                        // self.num_group
+                    ],
+                    dtype=dtype,
+                )
+                / 1e2
+            )
+            qs.append(tmp_q)
+            ks.append(tmp_k)
+            vs.append(tmp_v)
+
+        q = paddle.concat(qs, axis=0).reshape(
+            [-1, self.num_head, self.head_dim]
+        )
+        k = paddle.concat(ks, axis=0).reshape(
+            [-1, self.num_head // self.num_group, self.head_dim]
+        )
+        v = paddle.concat(vs, axis=0).reshape(
+            [-1, self.num_head // self.num_group, self.head_dim]
+        )
+        return q, k, v, cu_seqlen_q, cu_seqlen_k
+
+    def calc_qkvpackedfa(
+        self, q, k, v, cu_seqlen_q, cu_seqlen_k, out_grad, causal, varlen_padded
+    ):
+        q, k, v = self.clone_tensor([q, k, v])
+        scale = self.head_dim ** (-0.5)
+        if varlen_padded:
+            tq = q.reshape(
+                [
+                    self.batch_size * self.seq_len,
+                    self.num_group,
+                    self.num_head // self.num_group,
+                    self.head_dim,
+                ]
+            )
+            tk = k.reshape(
+                [
+                    self.batch_size * self.seq_len,
+                    self.num_head // self.num_group,
+                    self.head_dim,
+                ]
+            )
+            tv = v.reshape(
+                [
+                    self.batch_size * self.seq_len,
+                    self.num_head // self.num_group,
+                    self.head_dim,
+                ]
+            )
+            kv = paddle.stack([tk, tv], axis=1)
+            qkv = paddle.concat([tq, kv], axis=1)
+            out = flash_attn_varlen_qkvpacked(
+                qkv,
+                cu_seqlens_q=cu_seqlen_q,
+                cu_seqlens_k=cu_seqlen_k,
+                max_seqlen_q=self.seq_len,
+                max_seqlen_k=self.seq_len,
+                scale=scale,
+                causal=causal,
+                varlen_padded=varlen_padded,
+            )
+            out_grad = out_grad.reshape(out[0].shape)
+        else:
+            tq = q.reshape(
+                [
+                    0,
+                    self.num_group,
+                    self.num_head // self.num_group,
+                    self.head_dim,
+                ]
+            )
+            kv = paddle.stack([k, v], axis=1)
+            qkv = paddle.concat([tq, kv], axis=1)
+            out = flash_attn_varlen_qkvpacked(
+                qkv,
+                cu_seqlens_q=cu_seqlen_q,
+                cu_seqlens_k=cu_seqlen_k,
+                max_seqlen_q=self.seq_len,
+                max_seqlen_k=self.seq_len,
+                scale=scale,
+                causal=causal,
+                varlen_padded=varlen_padded,
+            )
+        out = out[0]
+        grads = paddle.grad(outputs=out, inputs=qkv, grad_outputs=out_grad)
+        qkvgrad = grads[0]
+        out = out.reshape(q.shape)
+        qgrad = qkvgrad[:, :-2].reshape(q.shape)
+        kgrad = qkvgrad[:, -2].reshape(k.shape)
+        vgrad = qkvgrad[:, -1].reshape(v.shape)
+        if varlen_padded:
+            out = self.unpad(out, cu_seqlen_q)
+            qgrad = self.unpad(qgrad, cu_seqlen_q)
+            kgrad = self.unpad(kgrad, cu_seqlen_k)
+            vgrad = self.unpad(vgrad, cu_seqlen_k)
+        return self.convert_dtype([out, qgrad, kgrad, vgrad])
+
+    def test_main(self):
+        for causal in [False, True]:
+            for varlen_padded in [False, True]:
+                (
+                    q,
+                    k,
+                    v,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    out_grad,
+                ) = self.gen_test_data(self.dtype, True)
+                if varlen_padded:
+                    q_pad, _ = self.pad(q, cu_seqlen_q, self.seq_len)
+                    k_pad, _ = self.pad(k, cu_seqlen_k, self.seq_len)
+                    v_pad, _ = self.pad(v, cu_seqlen_k, self.seq_len)
+                    out_grad_pad, _ = self.pad(
+                        out_grad, cu_seqlen_q, self.seq_len
+                    )
+                else:
+                    q_pad = q
+                    k_pad = k
+                    v_pad = v
+                    out_grad_pad = out_grad
+                fa_out = self.calc_qkvpackedfa(
+                    q_pad,
+                    k_pad,
+                    v_pad,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    out_grad_pad,
+                    causal,
+                    varlen_padded,
+                )
+                # if varlen_padded:
+                #     cu_seqlen_q = None
+                #     cu_seqlen_k = None
+                raw_out = self.calc_raw_attn(
+                    q,
+                    k,
+                    v,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    out_grad,
+                    causal,
+                    True,
+                )
+                assert len(fa_out) == len(raw_out)
+                for t1, t2 in zip(fa_out, raw_out):
+                    np.testing.assert_allclose(t1, t2, atol=1e-2, rtol=1e-2)
+
+
+class TestFlashAttentionVarlenQKVPackedGQA2(
+    TestFlashAttentionVarlenQKVPackedGQA
+):
+    def setUp(self):
+        self.batch_size = 2
+        self.num_head = 16
+        self.seq_len = 2048
+        self.head_dim = 128
+        self.num_group = 4
+        self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionVarlenQKVPacked(TestFlashAttentionVarlenQKVPackedGQA):
+    def setUp(self):
+        self.batch_size = 3
+        self.num_head = 7
+        self.seq_len = 563
+        self.head_dim = 64
+        self.num_group = 1
+        self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionQKVPackedGQA(TestFlashAttentionGQA):
+    def calc_qkvpackedfa(self, q, k, v, out_grad, causal):
+        # q, k, v = self.clone_tensor([q, k, v])
+        tq = q.reshape(
+            [
+                self.batch_size,
+                self.seq_len,
+                self.num_group,
+                self.num_head // self.num_group,
+                self.head_dim,
+            ],
+        )
+        kv = paddle.stack([k, v], axis=2)
+        qkv = paddle.concat([tq, kv], axis=2)
+        (qkv,) = self.clone_tensor([qkv])
+        out = flash_attn_qkvpacked(qkv, causal=causal)
+        out = out[0]
+        out.backward(out_grad)
+        qkvgrad = qkv.grad
+        qgrad = qkvgrad[:, :, :-2].reshape(q.shape)
+        kgrad = qkvgrad[:, :, -2].reshape(k.shape)
+        vgrad = qkvgrad[:, :, -1].reshape(v.shape)
+        return self.convert_dtype([out, qgrad, kgrad, vgrad])
+
+    def test_main(self):
+        for causal in [False, True]:
+            (
+                q,
+                k,
+                v,
+                cu_seqlen_q,
+                cu_seqlen_k,
+                out_grad,
+            ) = self.gen_test_data(self.dtype, False)
+            fa_out = self.calc_qkvpackedfa(q, k, v, out_grad, causal)
+            raw_out = self.calc_raw_attn(
+                q,
+                k,
+                v,
+                cu_seqlen_q,
+                cu_seqlen_k,
+                out_grad,
+                causal,
+                False,
+            )
+            assert len(fa_out) == len(raw_out)
+            for t1, t2 in zip(fa_out, raw_out):
+                np.testing.assert_allclose(t1, t2, atol=1e-2, rtol=1e-2)
+
+
+class TestFlashAttentionQKVPackedGQA2(TestFlashAttentionQKVPackedGQA):
+    def setUp(self):
+        self.batch_size = 2
+        self.num_head = 16
+        self.seq_len = 2048
+        self.head_dim = 128
+        self.num_group = 4
+        self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionQKVPacked(TestFlashAttentionQKVPackedGQA):
+    def setUp(self):
+        self.batch_size = 3
+        self.num_head = 7
+        self.seq_len = 563
+        self.head_dim = 64
+        self.num_group = 1
+        self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionVarlenQKVPackedGQADeter(
+    TestFlashAttentionVarlenQKVPackedGQA
+):
+    def test_main(self):
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+        for causal in [False, True]:
+            for varlen_padded in [False, True]:
+                (
+                    q,
+                    k,
+                    v,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    out_grad,
+                ) = self.gen_test_data(self.dtype, True)
+                if varlen_padded:
+                    q_pad, _ = self.pad(q, cu_seqlen_q, self.seq_len)
+                    k_pad, _ = self.pad(k, cu_seqlen_k, self.seq_len)
+                    v_pad, _ = self.pad(v, cu_seqlen_k, self.seq_len)
+                    out_grad_pad, _ = self.pad(
+                        out_grad, cu_seqlen_q, self.seq_len
+                    )
+                else:
+                    q_pad = q
+                    k_pad = k
+                    v_pad = v
+                    out_grad_pad = out_grad
+                fa_out = self.calc_qkvpackedfa(
+                    q_pad,
+                    k_pad,
+                    v_pad,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    out_grad_pad,
+                    causal,
+                    varlen_padded,
+                )
+                # cu_seqlen_q = None
+                # cu_seqlen_k = None
+                raw_out = self.calc_fa(
+                    q,
+                    k,
+                    v,
+                    cu_seqlen_q,
+                    cu_seqlen_k,
+                    out_grad,
+                    causal,
+                    True,
+                )
+                assert len(fa_out) == len(raw_out)
+                i = 0
+                for t1, t2 in zip(fa_out, raw_out):
+                    np.testing.assert_array_equal(
+                        t1,
+                        t2,
+                        err_msg=f"Tensor{i} causal={causal} varlen_padded={varlen_padded}",
+                    )
+                    i += 1
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
+
+
+# can't bit-match dk,dv now when num_group more than 2, since the sum kernel is different and sum sequence not defined
+# class TestFlashAttentionVarlenQKVPackedGQADeter2(
+#     TestFlashAttentionVarlenQKVPackedGQADeter
+# ):
+#     def setUp(self):
+#         self.batch_size = 2
+#         self.num_head = 16
+#         self.seq_len = 2048
+#         self.head_dim = 128
+#         self.num_group = 4
+#         self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionVarlenQKVPackedDeter(
+    TestFlashAttentionVarlenQKVPackedGQADeter
+):
+    def setUp(self):
+        self.batch_size = 3
+        self.num_head = 7
+        self.seq_len = 563
+        self.head_dim = 64
+        self.num_group = 1
+        self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionQKVPackedGQADeter(TestFlashAttentionQKVPackedGQA):
+    def test_main(self):
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+        for causal in [False, True]:
+            (
+                q,
+                k,
+                v,
+                cu_seqlen_q,
+                cu_seqlen_k,
+                out_grad,
+            ) = self.gen_test_data(self.dtype, False)
+            fa_out = self.calc_qkvpackedfa(q, k, v, out_grad, causal)
+            raw_out = self.calc_fa(
+                q,
+                k,
+                v,
+                cu_seqlen_q,
+                cu_seqlen_k,
+                out_grad,
+                causal,
+                False,
+            )
+            assert len(fa_out) == len(raw_out)
+            i = 0
+            for t1, t2 in zip(fa_out, raw_out):
+                np.testing.assert_array_equal(
+                    t1, t2, err_msg=f"Tensor{i} error, causal={causal}"
+                )
+                i += 1
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
+
+
+# can't bit-match dk,dv now when num_group more than 2, since the sum kernel is different and sum sequence not defined
+# class TestFlashAttentionQKVPackedDeter2(TestFlashAttentionQKVPackedGQADeter):
+#     def setUp(self):
+#         self.batch_size = 2
+#         self.num_head = 16
+#         self.seq_len = 2048
+#         self.head_dim = 128
+#         self.num_group = 4
+#         self.dtype = 'bfloat16'
+
+
+class TestFlashAttentionQKVPackedDeter(TestFlashAttentionQKVPackedGQADeter):
+    def setUp(self):
+        self.batch_size = 3
+        self.num_head = 7
+        self.seq_len = 563
+        self.head_dim = 64
+        self.num_group = 1
+        self.dtype = 'bfloat16'
 
 
 if __name__ == '__main__':

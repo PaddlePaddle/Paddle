@@ -104,8 +104,8 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    framework::DDim x_dims = x->dims();
-    framework::DDim out_dims(x_dims);
+    phi::DDim x_dims = x->dims();
+    phi::DDim out_dims(x_dims);
     phi::DenseTensor temp;
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
 
@@ -113,17 +113,16 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       if (root_id == comm_ctx->GetRank()) {
         comm_ctx->Broadcast(
             const_cast<phi::DenseTensor*>(x), *x, root_id, stream);
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(&temp));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(&temp));
       } else {
         comm_ctx->Broadcast(&temp, temp, root_id, stream);
       }
     } else {
       if (root_id == comm->rank()) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
             numel,
             dtype,
@@ -131,13 +130,12 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
             comm->comm(),
             stream));
 
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(&temp));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(&temp));
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             out_ptr, numel, dtype, root_id, comm->comm(), stream));
       }
     }

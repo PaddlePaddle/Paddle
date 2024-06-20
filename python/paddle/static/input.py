@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
 
 import paddle
+from paddle._typing import DTypeLike, ShapeLike
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
 from paddle.base.framework import (
@@ -41,7 +44,12 @@ def evaluate_flag(val) -> bool:
 
 
 @static_only
-def data(name, shape, dtype=None, lod_level=0):
+def data(
+    name: str,
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    lod_level: int = 0,
+) -> paddle.Tensor:
     """
 
     This function creates a variable on the global block. The global variable
@@ -51,17 +59,17 @@ def data(name, shape, dtype=None, lod_level=0):
     will get from the global dtype by `paddle.get_default_dtype()`.
 
     Args:
-       name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-           for more details.
-       shape (list|tuple): List|Tuple of integers declaring the shape. You can
-           set None or -1 at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as None or -1.
-       dtype (np.dtype|str, optional): The type of the data. Supported
-           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-           uint8. Default: None. When `dtype` is not set, the dtype will get
-           from the global dtype by `paddle.get_default_dtype()`.
-       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. Default: 0.
+        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
+        shape (list|tuple): List|Tuple of integers declaring the shape. You can
+            set None or -1 at a dimension to indicate the dimension can be of any
+            size. For example, it is useful to set changeable batch size as None or -1.
+        dtype (np.dtype|str, optional): The type of the data. Supported
+            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+            uint8. Default: None. When `dtype` is not set, the dtype will get
+            from the global dtype by `paddle.get_default_dtype()`.
+        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+            don't have to set this value. Default: 0.
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -103,9 +111,9 @@ def data(name, shape, dtype=None, lod_level=0):
             >>> print(out)
             [array([[[2.],
                     [2.]],
-                [[2.],
+                   [[2.],
                     [2.]],
-                [[2.],
+                   [[2.],
                     [2.]]], dtype=float32)]
 
     """
@@ -251,7 +259,7 @@ class InputSpec:
                 InputSpec(shape=(2, 2), dtype=paddle.float32, name=x, stop_gradient=False)
 
         """
-        if isinstance(tensor, (Variable, core.eager.Tensor)):
+        if isinstance(tensor, (Variable, core.eager.Tensor, paddle.pir.Value)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(

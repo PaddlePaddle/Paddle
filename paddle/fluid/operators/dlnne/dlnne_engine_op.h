@@ -396,7 +396,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
  protected:
   void RunDlnneOnCreateEngine(const framework::Scope &scope,
-                              const platform::Place &dev_place) const {
+                              const phi::Place &dev_place) const {
     PADDLE_ENFORCE_EQ(
         input_names_.empty(),
         false,
@@ -652,7 +652,7 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
   void RunNativeImpl(const framework::Scope &scope,
-                     const platform::Place &dev_place) const {
+                     const phi::Place &dev_place) const {
     VLOG(4) << "RunNativeImpl";
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
@@ -663,7 +663,7 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
   void RunCalibration(const framework::Scope &scope,
-                      const platform::Place &dev_place) const {
+                      const phi::Place &dev_place) const {
     std::unordered_map<std::string, void *> calib_data_map;
     std::unordered_map<std::string, std::vector<int64_t>> calib_data_shape_map;
     std::unordered_map<std::string, std::string> calib_data_type_map;
@@ -736,7 +736,7 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     VLOG(4) << "calibration_mode_: " << calibration_mode_;
     if (calibration_mode_ == true) {
       VLOG(4) << "RunCalibration";

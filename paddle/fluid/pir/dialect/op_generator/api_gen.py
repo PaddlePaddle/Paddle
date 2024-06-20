@@ -101,7 +101,7 @@ API_INNER_CODE_TEMPLATE = """
 
 AMP_LOGIC_TEMPLATE = """
     if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
-        VLOG(5) << "Check and Prepare For AMP";
+        VLOG(5) << "Check and Prepare For AMP: {op_name}";
         auto op_name = phi::TransToFluidOpName("{op_name}");
         paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize> amp_values_vector = {{ {no_optional_inputs} }};
         {optional_inputs}
@@ -114,7 +114,7 @@ AMP_LOGIC_TEMPLATE = """
     }}
 """
 
-AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) amp_values_vector.push_back({vec_optional_input});
+AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) {{ amp_values_vector.push_back({vec_optional_input}); }}
 """
 
 AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::imperative::{cast_func}("{input}", {input}, amp_dst_dtype, op_name);
@@ -222,40 +222,38 @@ class CodeGen:
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
-
-        op_yaml_items = []
+        op_info_items = []
         for yaml_file in op_yaml_files:
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
-                op_yaml_items = op_yaml_items + ops
 
-        op_info_items = []
-        for op in op_yaml_items:
-            op_compat_item = op_compat_parser.get_compat(op['name'])
-            if (
-                op_compat_item is None
-                and op['name'].endswith(('_grad', '_grad_'))
-                and 'forward' in op
-            ):
-                op_compat_item = op_compat_parser.get_compat(
-                    op['forward']['name']
+            for op in ops:
+                op_compat_item = op_compat_parser.get_compat(op['name'])
+                if (
+                    op_compat_item is None
+                    and op['name'].endswith(('_grad', '_grad_'))
+                    and 'forward' in op
+                ):
+                    op_compat_item = op_compat_parser.get_compat(
+                        op['forward']['name']
+                    )
+
+                if (
+                    op_compat_item is not None
+                    and op_compat_item['op'] == "pow"
+                    and 'scalar' in op_compat_item
+                ):
+                    op_compat_item = op_compat_item.pop('scalar')
+                if 'support_tensor' in op.keys() and op['support_tensor']:
+                    (
+                        scalar_item,
+                        int_array_item,
+                    ) = op_compat_parser.parse_support_tensor(op)
+                    op_compat_item['scalar'] = scalar_item
+                    op_compat_item['int_array'] = int_array_item
+                op_info_items.append(
+                    OpInfoParser(op, op_compat_item, yaml_file)
                 )
-
-            if (
-                op_compat_item is not None
-                and op_compat_item['op'] == "pow"
-                and 'scalar' in op_compat_item
-            ):
-                op_compat_item = op_compat_item.pop('scalar')
-            if 'support_tensor' in op.keys() and op['support_tensor']:
-                (
-                    scalar_item,
-                    int_array_item,
-                ) = op_compat_parser.parse_support_tensor(op)
-                op_compat_item['scalar'] = scalar_item
-                op_compat_item['int_array'] = int_array_item
-
-            op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
     def _need_skip(self, op_info, op_name):
@@ -383,6 +381,8 @@ class CodeGen:
     def _gen_one_declare(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
+        if op_info.is_sparse_op:
+            op_name += "sp_" if op_name[-1] == "_" else "_sp"
         return API_DECLARE_TEMPLATE.format(
             ret_type=self._gen_ret_type(op_info),
             api_name=op_name,
@@ -546,7 +546,10 @@ class CodeGen:
     def _gen_compute_op(
         self, op_info, op_name, in_combine_op_list, is_mutable_attr
     ):
-        op_class_name = to_pascal_case(op_name) + 'Op'
+        if op_info.is_sparse_op:
+            op_class_name = to_pascal_case(op_name) + 'SpOp'
+        else:
+            op_class_name = to_pascal_case(op_name) + 'Op'
         op_inst_name = op_name + '_op'
         return (
             COMPUTE_OP_TEMPLATE.format(
@@ -662,6 +665,8 @@ class CodeGen:
             return 'VLOG(5) << " No AMP for grad apis. ";'
         if op_name.endswith('_') or op_name == 'cast':
             return f'VLOG(5) << "No AMP for {op_name} because it is a inplace or cast api.";'
+        if op_info.is_sparse_op:
+            op_name += "sp_" if op_name[-1] == "_" else "_sp"
         return AMP_LOGIC_TEMPLATE.format(
             op_name=op_name,
             no_optional_inputs=self._gen_amp_no_optional_inputs(op_info),
@@ -785,7 +790,6 @@ class CodeGen:
         dispatch_kernel = None
         if op_info.kernel_map and 'dispatch' in op_info.kernel_map:
             dispatch_kernel = op_info.kernel_map['dispatch']
-
         if dispatch_kernel and len(dispatch_kernel.keys()) > 1:
             api_inner_code = ''
             for kernel_name in dispatch_kernel.keys():
@@ -814,12 +818,28 @@ class CodeGen:
                             cond_list.append(
                                 f'{name}.type().isa<paddle::dialect::SelectedRowsType>()'
                             )
-
+                    elif type == 'sparse_coo':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name} || {name}->type().isa<paddle::dialect::SparseCooTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}.type().isa<paddle::dialect::SparseCooTensorType>()'
+                            )
+                    elif type == 'sparse_csr':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name} || {name}->type().isa<paddle::dialect::SparseCsrTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}.type().isa<paddle::dialect::SparseCsrTensorType>()'
+                            )
                 ret_type = self._gen_ret_type(op_info)
                 in_combine, in_combine_op_list = self._gen_in_combine(
                     op_info, is_mutable_attr, is_vector_mutable_attr
                 )
-
                 if op_name.endswith('_') and not kernel_name.endswith('_'):
                     kernel_name = kernel_name + '_'
                 compute_op, op_inst_name = self._gen_compute_op(
@@ -831,7 +851,6 @@ class CodeGen:
                 out_split, ret_list = self._gen_out_split_and_ret_list(
                     op_info, op_inst_name
                 )
-
                 if_inner_code = API_INNER_CODE_TEMPLATE.format(
                     amp_logic=self._gen_amp_logic(
                         op_info, op_name, is_mutable_attr
@@ -851,7 +870,6 @@ class CodeGen:
                     out_split=out_split,
                     return_result=self._gen_return_result(ret_list),
                 )
-
                 if_inner_code = if_inner_code.split('\n')
                 if_inner_code = '\n'.join(
                     ['    ' + code for code in if_inner_code]
@@ -860,7 +878,8 @@ class CodeGen:
                 api_inner_code += OP_DISPATCH_TEMPLATE.format(
                     cond=' && '.join(cond_list), inner_code=if_inner_code
                 )
-
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
             api_inner_code += OP_DISPATCH_ERROR_TEMPLATE.format(op_name=op_name)
             ret = API_IMPL_TEMPLATE.format(
                 ret_type=ret_type,
@@ -910,7 +929,8 @@ class CodeGen:
                 out_split=out_split,
                 return_result=self._gen_return_result(ret_list),
             )
-
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
             ret = API_IMPL_TEMPLATE.format(
                 ret_type=ret_type,
                 api_name=op_name,
@@ -964,7 +984,6 @@ class CodeGen:
         if os.path.exists(cpp_file_path):
             os.remove(cpp_file_path)
         op_info_items = self._parse_yaml(op_yaml_files, op_compat_yaml_file)
-
         self._gen_h_file(op_info_items, namespaces, h_file_path)
         self._gen_cpp_file(op_info_items, namespaces, cpp_file_path)
         try:

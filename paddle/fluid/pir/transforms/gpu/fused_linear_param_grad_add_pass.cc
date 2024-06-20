@@ -52,7 +52,7 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
       auto weight_grad_dims =
@@ -109,7 +109,7 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
       auto weight_grad_dims =
@@ -184,7 +184,7 @@ class FusedMatmulReshapeMatmulAddPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("dweight_inplace") =
         add_(pat.Tensor("dweight"), pat.Tensor("w_grad"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
       auto w_grad_dims = pir::GetShapeFromValue(match_ctx.Tensor("w_grad"));
@@ -231,7 +231,7 @@ class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto weight_grad_dims =
           pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
       auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
@@ -275,7 +275,7 @@ class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_out") =
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto weight_grad_dims =
           pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
       auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
@@ -331,7 +331,7 @@ class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("dweight_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto weight_grad_dims =
           pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
       auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
@@ -389,7 +389,7 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("dweight_out") =
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto weight_grad_dims =
           pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
       auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
@@ -416,7 +416,6 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
   }
 };
-
 class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
  public:
   FusedLinearParamGradAddPass()

@@ -42,8 +42,7 @@
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info) {
@@ -155,8 +154,7 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 
   auto& op_attributes = op->attributes();
 
-  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
-       0) &&
+  if ((op->dialect()->name() == paddle::dialect::KernelDialect::name()) &&
       (op_attributes.count("kernel_key") > 0)) {
     auto kernel_key = op_attributes.at("kernel_key")
                           .dyn_cast<dialect::KernelAttribute>()
@@ -195,18 +193,6 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   }
 
   return OpFuncType::kGpuAsync;
-}
-
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
-  std::vector<pir::Value> vec_res;
-
-  if (block && !block->empty() && block->back().isa<pir::YieldOp>()) {
-    auto& op = block->back();
-    for (size_t i = 0; i < op.num_operands(); ++i) {
-      vec_res.emplace_back(op.operand_source(i));
-    }
-  }
-  return vec_res;
 }
 
 void GetInputIds(pir::Operation* op,
@@ -420,27 +406,4 @@ bool GetCondData(const phi::DenseTensor& cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-void CopyBranchOutput(const std::vector<std::string>& var_names,
-                      const std::vector<Variable*>& output_vars,
-                      Scope* inner_scope) {
-  for (size_t i = 0; i < var_names.size(); ++i) {
-    auto* inner_var = inner_scope->GetVar(var_names[i]);
-
-    if (inner_var->IsType<phi::DenseTensor>()) {
-      output_vars[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          inner_var->Get<phi::DenseTensor>());
-
-    } else if (inner_var->IsType<phi::TensorArray>()) {
-      const auto& inner_array = inner_var->Get<phi::TensorArray>();
-      auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
-      // output_array->clear();
-      *output_array = inner_array;
-    } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
-    }
-  }
-}
-
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

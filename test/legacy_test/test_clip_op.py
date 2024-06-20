@@ -27,11 +27,13 @@ class TestClipOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
         self.python_api = paddle.clip
+        self.public_python_api = paddle.clip
 
         self.inputs = {}
         self.initTestCase()
 
         self.op_type = "clip"
+        self.prim_op_type = "comp"
         self.attrs = {}
         self.attrs['min'] = self.min
         self.attrs['max'] = self.max
@@ -56,7 +58,9 @@ class TestClipOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+        self.check_output(
+            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
     def test_check_grad_normal(self):
@@ -166,11 +170,13 @@ class TestClipBF16Op(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
         self.python_api = paddle.clip
+        self.public_python_api = paddle.clip
 
         self.inputs = {}
         self.initTestCase()
 
         self.op_type = "clip"
+        self.prim_op_type = "comp"
         self.attrs = {}
         self.attrs['min'] = self.min
         self.attrs['max'] = self.max
@@ -195,7 +201,9 @@ class TestClipBF16Op(OpTest):
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
-            self.check_output_with_place(place, check_pir=True)
+            self.check_output_with_place(
+                place, check_pir=True, check_prim_pir=True
+            )
             paddle.disable_static()
 
     def test_check_grad_normal(self):

@@ -65,10 +65,6 @@ class IfInstruction : public InstructionBase {
 
   PirInterpreter* false_branch_inter_ = nullptr;
 
-  std::vector<std::string> true_branch_outputs_;
-
-  std::vector<std::string> false_branch_outputs_;
-
   // TODO(zhangbo): Currently, only the output of IfOp is included. In the
   // future, need to consider how to support IfGradOp using IfOp value.
   std::vector<std::string> true_skip_gc_names_;

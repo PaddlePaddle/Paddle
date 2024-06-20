@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-sys.path.append("../deprecated/sequence")
+sys.path.append("../sequence")
 from test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,

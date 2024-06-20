@@ -16,7 +16,6 @@
 #include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     isinf,

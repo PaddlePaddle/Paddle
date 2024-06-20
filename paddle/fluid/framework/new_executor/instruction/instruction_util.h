@@ -43,8 +43,6 @@ platform::DeviceContext* ParseDeviceContext(
 OpFuncType AnalyseOpFuncType(::pir::Operation* op,
                              const platform::Place& place);
 
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block);
-
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids);
@@ -66,10 +64,6 @@ void InsertInplacedExternalInputsToOuts(
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
 bool GetCondData(const phi::DenseTensor& cond);
-
-void CopyBranchOutput(const std::vector<std::string>& var_names,
-                      const std::vector<Variable*>& output_vars,
-                      Scope* inner_scope);
 
 }  // namespace framework
 }  // namespace paddle

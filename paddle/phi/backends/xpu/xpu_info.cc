@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
 
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
 #include "paddle/common/flags.h"
@@ -202,6 +204,13 @@ XPUVersion get_xpu_version(int dev_id) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
     return XPU3;
   }
+}
+
+void set_xpu_debug_level(int level) {
+  auto* dev_ctx =
+      paddle::experimental::GetDeviceContextByBackend(phi::Backend::XPU);
+  auto* xpu_ctx = static_cast<const phi::XPUContext*>(dev_ctx);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_ctx->x_context()->set_debug_level(level));
 }
 
 int get_xpu_max_ptr_size(int dev_id) {

@@ -19,9 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 TEST(OpConverter, ConvertBlock) {
   framework::ProgramDesc prog;
@@ -68,8 +66,6 @@ TEST(OpConverter, ConvertBlock) {
       *block->Proto(), {"conv2d-Y"}, scope, engine_.get() /*TensorRTEngine*/);
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 USE_TRT_CONVERTER(conv2d)

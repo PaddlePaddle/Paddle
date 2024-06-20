@@ -58,7 +58,7 @@ class MemcpyFunctor {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CPU) {
-      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
+      framework::TensorCopySync(lod_tensor, phi::CPUPlace(), &out_tensor);
 
 #ifdef PADDLE_WTIH_CUSTOM_DEVICE
     } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {

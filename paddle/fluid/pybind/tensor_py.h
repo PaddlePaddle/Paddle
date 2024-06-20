@@ -31,10 +31,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -45,6 +45,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/fp8_e4m3fn.h"
+#include "paddle/fluid/platform/fp8_e5m2.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/pstring.h"
@@ -65,6 +67,8 @@ constexpr int NPY_FLOAT16_ = 23;
 constexpr int NPY_UINT16_ = 4;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
+constexpr int NPY_FLOAT8_E4M3FN_ = 24;
+constexpr int NPY_FLOAT8_E5M2_ = 25;
 
 template <typename T, typename S>
 struct casting_complex_to_non_complex {
@@ -213,6 +217,34 @@ struct npy_format_descriptor<paddle::platform::complex<double>> {
   static constexpr auto name = _("complext128");
 };
 
+template <>
+struct npy_format_descriptor<paddle::platform::float8_e4m3fn> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E4M3FN_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+
+  static std::string format() {
+    // Note: "E4M3FN" represents float8_e4m3fn.
+    return "E4M3FN";
+  }
+  static constexpr auto name = _("float8_e4m3fn");
+};
+
+template <>
+struct npy_format_descriptor<paddle::platform::float8_e5m2> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E5M2_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+
+  static std::string format() {
+    // Note: "E5M2" represents float8_e5m2.
+    return "E5M2";
+  }
+  static constexpr auto name = _("float8_e5m2");
+};
+
 }  // namespace detail
 }  // namespace pybind11
 
@@ -272,6 +304,8 @@ DECLARE_VALID_DTYPE_TO_PY_ARRAY(int16_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float8_e4m3fn);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float8_e5m2);
 
 inline std::string TensorDTypeToPyDTypeStr(
     framework::proto::VarType::Type type) {
@@ -721,7 +755,7 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
       output_offset += in_stride[axis];
     }
   } else {
-    paddle::operators::math::ConcatFunctor<phi::CPUContext, T> concat_functor;
+    phi::funcs::ConcatFunctor<phi::CPUContext, T> concat_functor;
     concat_functor(ctx, ins, static_cast<int>(axis), out);
   }
 }

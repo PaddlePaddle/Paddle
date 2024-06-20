@@ -93,7 +93,7 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
     if (act_type_ == paddle::dialect::GeluOp::name()) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto result_gelu = match_ctx.Attr<bool>("approximate");
         if (result_gelu) return false;
         return true;
@@ -177,7 +177,7 @@ class MatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto result_gelu = match_ctx.Attr<bool>("approximate");
       if (!result_gelu) return false;
       return true;
@@ -345,14 +345,14 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto act_type = match_ctx.Attr<std::string>("fuse_activation");
       if (act_type != "") return false;
       return true;
     });
 
     if (act_type_ == paddle::dialect::GeluOp::name()) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto result_gelu = match_ctx.Attr<bool>("approximate");
         if (result_gelu) return false;
         return true;
@@ -455,13 +455,13 @@ class FusedMatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto act_type = match_ctx.Attr<std::string>("fuse_activation");
       if (act_type != "") return false;
       return true;
     });
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto result_gelu = match_ctx.Attr<bool>("approximate");
       if (!result_gelu) return false;
       return true;
@@ -557,7 +557,7 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("act_out") =
         act(pat.Tensor("Out"), pat.Tensor("min"), pat.Tensor("max"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto act_type = match_ctx.Attr<std::string>("fuse_activation");
       if (act_type != "") return false;
       return true;

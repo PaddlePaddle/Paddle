@@ -42,13 +42,7 @@ if(WITH_GPU OR WITH_ROCM)
     nv_test(
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc
-      DEPS generated_op
-           depthwise_conv
-           tensor
-           op_registry
-           device_context
-           phi
-           common)
+      DEPS generated_op tensor op_registry device_context phi common)
     paddle_test(test_cudnn_bn_add_relu SRCS cudnn_bn_add_relu_test.cc)
   endif()
 endif()

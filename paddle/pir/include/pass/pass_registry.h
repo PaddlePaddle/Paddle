@@ -25,7 +25,7 @@ namespace pir {
 
 using PassCreator = std::function<std::unique_ptr<Pass>()>;
 
-class PassRegistry {
+class IR_API PassRegistry {
  public:
   static PassRegistry &Instance();
 
@@ -57,7 +57,7 @@ class PassRegistry {
 };
 
 template <typename PassType>
-class PassRegistrar {
+class IR_API PassRegistrar {
  public:
   // In our design, various kinds of passes,
   // have their corresponding registry and registrar. The action of
@@ -87,7 +87,7 @@ class PassRegistrar {
       "REGISTER_IR_PASS must be called in global namespace"); \
   static ::pir::PassRegistrar<pass_class>                     \
       __pir_pass_registrar_##pass_type##__(#pass_type);       \
-  int TouchPirPassRegistrar_##pass_type() {                   \
+  IR_API int TouchPirPassRegistrar_##pass_type() {            \
     __pir_pass_registrar_##pass_type##__.Touch();             \
     return 0;                                                 \
   }                                                           \

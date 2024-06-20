@@ -19,7 +19,6 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -239,14 +238,13 @@ TEST(operation_dist_attr_test, base) {
   auto out_tensor_dist_attr =
       TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
 
-  auto operand_dist_attrs =
-      std::vector<TensorDistAttribute>{x_tensor_dist_attr, y_tensor_dist_attr};
-  auto result_dist_attrs =
-      std::vector<TensorDistAttribute>{out_tensor_dist_attr};
+  auto operand_attrs =
+      std::vector<pir::Attribute>{x_tensor_dist_attr, y_tensor_dist_attr};
+  auto result_attrs = std::vector<pir::Attribute>{out_tensor_dist_attr};
   auto op_attr = OperationDistAttribute::get(
-      ctx, process_mesh, operand_dist_attrs, result_dist_attrs);
-  auto op_attr_1 = OperationDistAttribute::get(
-      ctx, mesh_attr, operand_dist_attrs, result_dist_attrs);
+      ctx, process_mesh, operand_attrs, result_attrs);
+  auto op_attr_1 =
+      OperationDistAttribute::get(ctx, mesh_attr, operand_attrs, result_attrs);
 
   // construct another OperationDistAttribute.
   std::vector<std::string> dim_names_2 = {"x", "s"};
@@ -260,26 +258,25 @@ TEST(operation_dist_attr_test, base) {
   auto out_tensor_dist_attr_2 =
       TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
 
-  auto operand_dist_attrs_2 = std::vector<TensorDistAttribute>{
-      x_tensor_dist_attr_2, y_tensor_dist_attr_2};
-  auto result_dist_attrs_2 =
-      std::vector<TensorDistAttribute>{out_tensor_dist_attr_2};
+  auto operand_attrs_2 =
+      std::vector<pir::Attribute>{x_tensor_dist_attr_2, y_tensor_dist_attr_2};
+  auto result_attrs_2 = std::vector<pir::Attribute>{out_tensor_dist_attr_2};
   auto op_attr_2 = OperationDistAttribute::get(
-      ctx, mesh_attr_2, operand_dist_attrs_2, result_dist_attrs_2);
+      ctx, mesh_attr_2, operand_attrs_2, result_attrs_2);
 
   // check
   EXPECT_EQ(op_attr, op_attr_1);
   EXPECT_NE(op_attr, op_attr_2);
   EXPECT_EQ(op_attr.process_mesh_attr(), mesh_attr);
   EXPECT_EQ(op_attr.process_mesh_attr().process_mesh(), process_mesh);
-  EXPECT_EQ(op_attr.operand_dist_attrs(), operand_dist_attrs);
-  EXPECT_EQ(op_attr.operand_dist_attr(0), operand_dist_attrs.at(0));
-  EXPECT_EQ(op_attr.operand_dist_attr(1), operand_dist_attrs.at(1));
-  EXPECT_EQ(op_attr.num_operand_dist_attrs(), (uint32_t)2);
+  EXPECT_EQ(op_attr.operands(), operand_attrs);
+  EXPECT_EQ(op_attr.operand(0), operand_attrs.at(0));
+  EXPECT_EQ(op_attr.operand(1), operand_attrs.at(1));
+  EXPECT_EQ(op_attr.num_operands(), (uint32_t)2);
 
-  EXPECT_EQ(op_attr.result_dist_attrs(), result_dist_attrs);
-  EXPECT_EQ(op_attr.result_dist_attr(0), result_dist_attrs.at(0));
-  EXPECT_EQ(op_attr.num_result_dist_attrs(), (uint32_t)1);
+  EXPECT_EQ(op_attr.results(), result_attrs);
+  EXPECT_EQ(op_attr.result(0), result_attrs.at(0));
+  EXPECT_EQ(op_attr.num_results(), (uint32_t)1);
 }
 
 TEST(shard_tensor_op_replicate_test, base) {
@@ -325,13 +322,13 @@ TEST(shard_tensor_op_replicate_test, base) {
   EXPECT_EQ(op_out_type.dims_mapping(), dims_mapping);
   EXPECT_EQ(op_out_type.partial_dims().size(), (size_t)0);
 
-  EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_operand_dist_attrs(),
-            (uint32_t)0);
+  EXPECT_EQ(
+      shard_op.attribute<OperationDistAttribute>("op_dist_attr").num_operands(),
+      (uint32_t)0);
 
-  EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
-            (uint32_t)1);
+  EXPECT_EQ(
+      shard_op.attribute<OperationDistAttribute>("op_dist_attr").num_results(),
+      (uint32_t)1);
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
             mesh_attr);
@@ -359,14 +356,17 @@ TEST(shard_tensor_op_replicate_test, base) {
   EXPECT_EQ(dst_op_out_type.partial_dims().size(), (size_t)0);
 
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_operand_dist_attrs(),
+                .num_operands(),
             (uint32_t)1);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
+                .num_results(),
             (uint32_t)1);
+  phi::distributed::ProcessMesh flatten_process_mesh(
+      {6}, process_ids, {"merged"});
+  auto flatten_mesh_attr = ProcessMeshAttribute::get(ctx, flatten_process_mesh);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
-            mesh_attr);
+            flatten_mesh_attr);
 }
 
 TEST(shard_tensor_op_shard_row_test, base) {
@@ -411,12 +411,12 @@ TEST(shard_tensor_op_shard_row_test, base) {
   EXPECT_EQ(op_out_type.dims_mapping(), dims_mapping);
   EXPECT_EQ(op_out_type.partial_dims().size(), (size_t)0);
 
-  EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_operand_dist_attrs(),
-            (uint32_t)0);
-  EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
-            (uint32_t)1);
+  EXPECT_EQ(
+      shard_op.attribute<OperationDistAttribute>("op_dist_attr").num_operands(),
+      (uint32_t)0);
+  EXPECT_EQ(
+      shard_op.attribute<OperationDistAttribute>("op_dist_attr").num_results(),
+      (uint32_t)1);
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
             mesh_attr);
@@ -442,14 +442,17 @@ TEST(shard_tensor_op_shard_row_test, base) {
   EXPECT_EQ(dst_op_out_type.partial_dims().size(), (size_t)0);
 
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_operand_dist_attrs(),
+                .num_operands(),
             (uint32_t)1);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
+                .num_results(),
             (uint32_t)1);
+  phi::distributed::ProcessMesh flatten_process_mesh(
+      {6}, process_ids, {"merged"});
+  auto flatten_mesh_attr = ProcessMeshAttribute::get(ctx, flatten_process_mesh);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
-            mesh_attr);
+            flatten_mesh_attr);
 }
 
 TEST(shard_tensor_op_shard_col_test, base) {
@@ -494,12 +497,12 @@ TEST(shard_tensor_op_shard_col_test, base) {
   EXPECT_EQ(op_out_type.dims_mapping(), dims_mapping);
   EXPECT_EQ(op_out_type.partial_dims().size(), (size_t)0);
 
-  EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_operand_dist_attrs(),
-            (uint32_t)0);
-  EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
-            (uint32_t)1);
+  EXPECT_EQ(
+      shard_op.attribute<OperationDistAttribute>("op_dist_attr").num_operands(),
+      (uint32_t)0);
+  EXPECT_EQ(
+      shard_op.attribute<OperationDistAttribute>("op_dist_attr").num_results(),
+      (uint32_t)1);
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
             mesh_attr);
@@ -525,10 +528,10 @@ TEST(shard_tensor_op_shard_col_test, base) {
   EXPECT_EQ(dst_op_out_type.partial_dims().size(), (size_t)0);
 
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_operand_dist_attrs(),
+                .num_operands(),
             (uint32_t)1);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
+                .num_results(),
             (uint32_t)1);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
@@ -580,36 +583,9 @@ TEST(mix_to_dist_pass_test, base) {
       builder.Build<paddle::dialect::ShardTensorOp>(y_data_op.result(0),
                                                     y_attr_map);
   EXPECT_EQ(x_shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
+                .num_results(),
             (uint32_t)1);
   EXPECT_EQ(y_shard_op.attribute<OperationDistAttribute>("op_dist_attr")
-                .num_result_dist_attrs(),
+                .num_results(),
             (uint32_t)1);
-
-  // Apply Pass
-  std::cout << "IR before MixToDist Pass = " << program << std::endl;
-  std::shared_ptr<pir::Program> new_program =
-      paddle::dialect::MixToDistPass(&program);
-  std::cout << "IR before MixToDist Pass = " << new_program << std::endl;
-  pir::Block* new_block = new_program->block();
-  EXPECT_EQ(2, static_cast<int>(new_block->num_ops()));
-  std::vector<pir::Operation*> ops;
-  for (auto& op : *new_block) {
-    ops.push_back(&op);
-  }
-
-  EXPECT_EQ(true, ops[0]->result(0).type().isa<DistDenseTensorType>());
-  EXPECT_EQ(
-      phi::make_ddim(x_shape),
-      ops[0]->result(0).type().dyn_cast<DistDenseTensorType>().global_ddim());
-  EXPECT_EQ(
-      phi::make_ddim(x_local_shape),
-      ops[0]->result(0).type().dyn_cast<DistDenseTensorType>().local_ddim());
-  EXPECT_EQ(true, ops[1]->result(0).type().isa<DistDenseTensorType>());
-  EXPECT_EQ(
-      phi::make_ddim(y_shape),
-      ops[1]->result(0).type().dyn_cast<DistDenseTensorType>().global_ddim());
-  EXPECT_EQ(
-      phi::make_ddim(y_local_shape),
-      ops[1]->result(0).type().dyn_cast<DistDenseTensorType>().local_ddim());
 }

@@ -436,84 +436,6 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastGrad(
       "operators. Please Use Decomposer Program Pass."));
 }
 
-std::shared_ptr<OpStrategy> StrategyForIsClose(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<shape_t> &output_shapes,
-    const Target &target) {
-  float rtol = 1e-05f, atol = 1e-08f;
-  bool equal_nan = false;
-  int axis = -1;
-
-  if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
-  }
-  if (attrs.attr_store.count("rtol")) {
-    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
-  }
-  if (attrs.attr_store.count("atol")) {
-    atol = absl::get<float>(attrs.attr_store.at("atol"));
-  }
-  if (attrs.attr_store.count("equal_nan")) {
-    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
-  }
-
-  framework::CINNCompute isclose_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of isclose compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
-        int input_size = pack_args.size();
-
-        // the last pack argument is the output tensor name
-        std::string tensor_name = pack_args.back().operator std::string();
-        --input_size;
-        CHECK_EQ(input_size, 2)
-            << "The input number of isclose should be 2, but here "
-            << input_size << "! Please check.";
-
-        // the input tensor are in front
-        Expr x_expr = pack_args[0];
-        CHECK(x_expr.as_tensor());
-        auto x_tensor = x_expr.as_tensor_ref();
-
-        Expr y_expr = pack_args[1];
-        CHECK(y_expr.as_tensor());
-        auto y_tensor = y_expr.as_tensor_ref();
-
-        auto out = pe::IsClose(
-            x_tensor, y_tensor, axis, rtol, atol, equal_nan, tensor_name);
-
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(isclose_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
-                    "strategy.assertisclose",
-                    1);
-
-  return strategy;
-}
-
-std::vector<Type> InferDtypeForIsClose(const std::vector<Type> &inputs_type,
-                                       const framework::AttrMapType &attrs) {
-  int input_size = inputs_type.size();
-  CHECK_EQ(input_size, 2UL)
-      << "The input number of isclose should be a multiple of 2, but here "
-      << input_size << "! Please check.";
-  CHECK(inputs_type[0].is_float())
-      << "The op \"isclose\" only support float point dtype now, but here "
-      << inputs_type[0];
-  CHECK(inputs_type[0] == inputs_type[1])
-      << "The two inputs dtype sof isclose should be equal, but here x:"
-      << inputs_type[0] << " != y:" << inputs_type[1] << "! Please check.";
-
-  return {Bool()};
-}
-
 StrategyForBinary(elementwise_add, Add);
 StrategyForBinary(atan2, Atan2);
 StrategyForBinary(elementwise_mul, Multiply);
@@ -643,24 +565,6 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))
 #endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(isclose)
-      .describe(
-          "This operator checks if all x and y satisfy the condition: |x - y| "
-          "<= atol + rtol * |y|")
-      .set_num_inputs(2)
-      .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForIsClose)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForIsClose))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcast))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
       .set_support_level(4);

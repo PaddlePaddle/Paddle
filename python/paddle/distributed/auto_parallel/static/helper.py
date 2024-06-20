@@ -70,7 +70,7 @@ class ProxyLayer(Layer):
     @paddle.jit.not_to_static
     def append_loss_to_shadow_output(self, mode):
         name = paddle.utils.unique_name.generate('loss')
-        paddle._pir_ops.set_persistable_value(self._loss_vars[mode], name)
+        paddle._C_ops.set_persistable_value(self._loss_vars[mode], name)
         self._loss_names[mode] = name
 
     def _train(self, inputs, labels):

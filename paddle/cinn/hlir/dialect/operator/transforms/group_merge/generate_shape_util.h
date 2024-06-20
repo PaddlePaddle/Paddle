@@ -31,8 +31,6 @@ namespace cinn::dialect {
 struct ShapeOrDataDimExprsAccessor {
   std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>
       GetShapeOrDataDimExprs;
-  std::function<void(pir::Value, const symbol::ShapeOrDataDimExprs&)>
-      SetShapeOrDataDimExprs;
 };
 
 // Returns true if at least one GenerateShapeOp rewrote.

@@ -20,6 +20,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
+    test_legacy_and_pir,
     test_legacy_and_pt_and_pir,
 )
 
@@ -178,7 +179,7 @@ def for_iter_var_list(x):
     # 2. iter list[var]
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     for x in a:
-        y = y + x
+        y = y + x.astype('int32')
     return y
 
 
@@ -195,7 +196,7 @@ def for_enumerate_var_list(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     for i, x in enumerate(a):
         y = y + i
-        z = z + x
+        z = z + x.astype('int32')
     return y, z
 
 
@@ -244,7 +245,7 @@ def for_tuple_as_enumerate_iter(x_array):
     a_result = paddle.zeros([5])
 
     for t in enumerate(x_list):
-        a_result += t[1]
+        a_result += t[1].astype('float32')
 
     return a_result
 
@@ -554,7 +555,6 @@ class TestForZip(Dy2StTestBase):
 
     @test_legacy_and_pt_and_pir
     def test_for_zip_error(self):
-        # TODO(pir-save-load): enable PIR test after support PIR save load
         with self.assertRaises(RuntimeError):
             model_path = os.path.join(self.temp_dir.name, 'for_zip_error')
             paddle.jit.save(
@@ -568,8 +568,8 @@ class TestForZip(Dy2StTestBase):
                 model_path,
             )
 
+    @test_legacy_and_pir
     def test_for_zip(self):
-        # TODO(pir-save-load): enable PIR test after support PIR save load
         model_path = os.path.join(self.temp_dir.name, 'for_zip')
         paddle.jit.save(
             paddle.jit.to_static(

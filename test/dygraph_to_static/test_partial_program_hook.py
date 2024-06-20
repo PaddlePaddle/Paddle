@@ -49,12 +49,15 @@ class TestPirPartiaProgramLayerHook(Dy2StTestBase):
 
     @test_ast_only
     def test_before_append_backward(self):
-        self.assertIsNone(self._hook.before_append_backward(None, None))
+        self.assertEqual(
+            self._hook.before_append_backward(None, None), (None, None)
+        )
 
     @test_ast_only
     def test_after_append_backward(self):
-        self.assertIsNone(
-            self._hook.after_append_backward(None, None, None, None, 0, 0)
+        self.assertEqual(
+            self._hook.after_append_backward(None, None, None, None, 0, 0),
+            (None, 0, None),
         )
 
     @test_ast_only

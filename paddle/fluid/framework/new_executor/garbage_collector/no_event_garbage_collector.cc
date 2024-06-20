@@ -17,8 +17,8 @@
 namespace paddle {
 namespace framework {
 
-InterpreterCoreNoEventGarbageCollector::
-    InterpreterCoreNoEventGarbageCollector() {
+InterpreterCoreNoEventGarbageCollector::InterpreterCoreNoEventGarbageCollector()
+    : queue_(nullptr), ctxs_() {
   WorkQueueOptions options(/*name*/ "NoEventGarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
@@ -64,6 +64,33 @@ void InterpreterCoreNoEventGarbageCollector::Add(
             ->MoveMemoryHolder(),
         ctx);
     var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        ctx);
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_indices()
+            ->MoveMemoryHolder(),
+        ctx);
+    var->GetMutable<phi::SparseCooTensor>()->mutable_values()->clear();
+    var->GetMutable<phi::SparseCooTensor>()->mutable_indices()->clear();
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_cols()
+            ->MoveMemoryHolder(),
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_crows()
+            ->MoveMemoryHolder(),
+        ctx);
+    var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()->clear();
+    var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()->clear();
+    var->GetMutable<phi::SparseCsrTensor>()->mutable_values()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {

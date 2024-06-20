@@ -61,6 +61,8 @@ limitations under the License. */
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
 #endif
 
 COMMON_DECLARE_int32(paddle_num_threads);
@@ -340,7 +342,7 @@ void DisableSignalHandler() {
 #ifndef _WIN32
   for (const auto &SignalErrorString : SignalErrorStrings) {
     int signal_number = SignalErrorString.signal_number;
-    struct sigaction sig_action;
+    struct sigaction sig_action = {};
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
@@ -475,6 +477,34 @@ void InitMemoryMethod() {
     };
     memory_method->get_new_cuda_event = [](int device_id) {
       return paddle::platform::CudaEventResourcePool::Instance().New(device_id);
+    };
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+    // TODO(ZibinGuo): Use phi methods later.
+    memory_method->get_allocator =
+        [](int device_id, XPUStream stream) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::XPUPlace(device_id), stream)
+          .get();
+    };
+    memory_method->get_host_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_zero_allocator = [](int device_id) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::XPUPlace(device_id))
+          .get();
+    };
+    memory_method->get_host_zero_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get();
+    };
+    // XPUs do not have the concept of pinned memory,
+    // so the get_pinned_allocator function is not set.
+    memory_method->get_new_xpu_event = [](int device_id) {
+      return paddle::platform::XpuEventResourcePool::Instance().New(device_id);
     };
 #endif
 

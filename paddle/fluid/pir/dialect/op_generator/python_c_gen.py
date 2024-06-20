@@ -111,7 +111,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
 INPUT_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
-        auto {name} = {cast_func}({name}_obj, "{api_name}", {index});"""
+        auto {name} = {cast_func}({name}_obj, "{api_name}", {index}, {dispensable});"""
 
 NO_MUTABLE_ATTR_CAST_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
@@ -203,6 +203,7 @@ TYPE_TO_FUNC_MAP = {
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
+    "phi::Place": "CastPyArg2Place",
     "Place": "CastPyArg2Place",
     "phi::DataType": "CastPyArg2DataTypeDirectly",
 }
@@ -240,7 +241,18 @@ class PythonCCodeGen(CodeGen):
                 # is wrong, so temporarily skip the automatic generation of these APIs
                 if self._need_skip(op_info, op_name):
                     continue
-                declare_str += self._gen_one_declare(op_name)
+                sparse_op_name_suffix = "_sp" if op_info.is_sparse_op else ''
+                sparse_op_inplace_name_suffix = (
+                    "sp_" if op_info.is_sparse_op else ''
+                )
+                if op_name[-1] == "_":
+                    declare_str += self._gen_one_declare(
+                        op_name + sparse_op_inplace_name_suffix
+                    )
+                else:
+                    declare_str += self._gen_one_declare(
+                        op_name + sparse_op_name_suffix
+                    )
 
         body = declare_str
         for namespace in reversed(namespaces):
@@ -263,14 +275,20 @@ class PythonCCodeGen(CodeGen):
                     if VECTOR_TYPE in type
                     else 'CastPyArg2OptionalValue'
                 )
+                dispensable = "true"
             else:
                 cast_func = (
                     'CastPyArg2VectorOfValue'
                     if VECTOR_TYPE in type
                     else 'CastPyArg2Value'
                 )
+                dispensable = "false"
             ret += INPUT_TEMPLATE.format(
-                name=name, index=i, cast_func=cast_func, api_name=op_name
+                name=name,
+                index=i,
+                cast_func=cast_func,
+                api_name=op_name,
+                dispensable=dispensable,
             )
         return ret
 
@@ -461,7 +479,18 @@ class PythonCCodeGen(CodeGen):
                 # is wrong, so temporarily skip the automatic generation of these APIs
                 if self._need_skip(op_info, op_name):
                     continue
-                impl_str += self._gen_one_impl(op_info, op_name)
+                sparse_op_name_suffix = "_sp" if op_info.is_sparse_op else ''
+                sparse_op_inplace_name_suffix = (
+                    "sp_" if op_info.is_sparse_op else ''
+                )
+                if op_name[-1] == "_":
+                    impl_str += self._gen_one_impl(
+                        op_info, op_name + sparse_op_inplace_name_suffix
+                    )
+                else:
+                    impl_str += self._gen_one_impl(
+                        op_info, op_name + sparse_op_name_suffix
+                    )
         body = impl_str
         for namespace in reversed(namespaces):
             body = NAMESPACE_TEMPLATE.format(namespace=namespace, body=body)

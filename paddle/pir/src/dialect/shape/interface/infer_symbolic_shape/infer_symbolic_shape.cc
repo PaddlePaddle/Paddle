@@ -18,7 +18,7 @@
 // cinn operators.
 
 // Add `interfaces : pir::InferSymbolicShapeInterface` in relative
-// yaml file to conresponding op.
+// yaml file to corresponding op.
 
 // Since necessary checks have been done in the Op's `InferMeta` and `VeriySig`,
 // no more repetitive work here.
@@ -26,8 +26,8 @@
 namespace pir {
 
 bool InferSymbolicShapeInterface::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return impl_->infer_symbolic_shapes(operation(), shape_analysis);
+    pir::InferSymbolicShapeContext *infer_context) {
+  return impl_->infer_symbolic_shapes(operation(), infer_context);
 }
 
 }  // namespace pir

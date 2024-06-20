@@ -15,6 +15,7 @@
 import fcntl
 import inspect
 import os
+import unittest
 
 import numpy as np
 
@@ -106,6 +107,16 @@ class XPUOpTestWrapper:
         return base_class, classes
 
 
+def get_version_str(xpu_version):
+    if xpu_version == core.XPUVersion.XPU1:
+        return "xpu1"
+    if xpu_version == core.XPUVersion.XPU2:
+        return "xpu2"
+    if xpu_version == core.XPUVersion.XPU3:
+        return "xpu3"
+    raise ValueError("unknown xpu version, not 1, 2, or 3")
+
+
 def get_op_white_list():
     op_white_list = xpu_test_op_white_list
     if os.getenv('XPU_TEST_OP_WHITE_LIST') is not None:
@@ -117,19 +128,25 @@ def get_op_white_list():
 
 def get_type_white_list():
     xpu_version = core.get_xpu_device_version(0)
-    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    version_str = get_version_str(xpu_version)
     xpu1_type_white_list = []
     xpu2_type_white_list = []
+    xpu3_type_white_list = []
     for device_type in xpu_test_device_type_white_list:
         device, t_type = device_type.split("_")
         if "xpu1" == device:
             xpu1_type_white_list.append(t_type)
-        else:
+        elif "xpu2" == device:
             xpu2_type_white_list.append(t_type)
+        elif "xpu3" == device:
+            xpu3_type_white_list.append(t_type)
+    if version_str == "xpu1":
+        type_white_list = xpu1_type_white_list
+    elif version_str == "xpu2":
+        type_white_list = xpu2_type_white_list
+    elif version_str == "xpu3":
+        type_white_list = xpu3_type_white_list
 
-    type_white_list = (
-        xpu1_type_white_list if version_str == "xpu1" else xpu2_type_white_list
-    )
     if os.getenv('XPU_TEST_TYPE_WHITE_LIST') is not None:
         type_white_list.extend(
             os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(',')
@@ -167,7 +184,7 @@ def get_device_op_type_white_list():
 def make_xpu_op_list(xpu_version):
     ops = []
     raw_op_list = core.get_xpu_device_op_list(xpu_version)
-    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    version_str = get_version_str(xpu_version)
     op_white_list = get_op_white_list()
     type_white_list = get_type_white_list()
     op_type_white_list = get_op_type_white_list()
@@ -308,9 +325,20 @@ def create_test_class(
         record_op_test(op_name + '_grad', test_type)
 
 
+def check_run_big_shape_test():
+    def wrapper(cls):
+        run_big_shape_test_flag = os.environ.get("FLAGS_xpu_big_shape_test")
+        return unittest.skipIf(
+            not (run_big_shape_test_flag and run_big_shape_test_flag == "true"),
+            "skip big shape test.",
+        )(cls)
+
+    return wrapper
+
+
 def get_test_cover_info():
     xpu_version = core.get_xpu_device_version(0)
-    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    version_str = get_version_str(xpu_version)
     xpu_op_list = make_xpu_op_list(xpu_version)
     xpu_op_covered = []
 

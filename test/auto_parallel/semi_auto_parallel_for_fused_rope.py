@@ -61,10 +61,10 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         dist_q = dist.shard_tensor(q, self._mesh, dist.Shard(0))
         dist_q.stop_gradient = False
         dist_out_q, _, _ = fused_rotary_position_embedding(
-            q=dist_q, use_neox_rotary_style=False
+            q=dist_q, use_neox_rotary_style=True
         )
         out_q, _, _ = fused_rotary_position_embedding(
-            q, use_neox_rotary_style=False
+            q, use_neox_rotary_style=True
         )
         self.check_tensor_eq(out_q, dist_out_q)
         self.check_placements(dist_out_q, [dist.Shard(0)])
@@ -85,10 +85,10 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         dist_q.stop_gradient = False
 
         dist_out_q, _, _ = fused_rotary_position_embedding(
-            q=dist_q, use_neox_rotary_style=False, time_major=True
+            q=dist_q, use_neox_rotary_style=True, time_major=True
         )
         out_q, _, _ = fused_rotary_position_embedding(
-            q, use_neox_rotary_style=False, time_major=True
+            q, use_neox_rotary_style=True, time_major=True
         )
         self.check_tensor_eq(out_q, dist_out_q)
         # NOTE: fused_rope have not supported shard on seq_len, so reshard to dist.Replicate

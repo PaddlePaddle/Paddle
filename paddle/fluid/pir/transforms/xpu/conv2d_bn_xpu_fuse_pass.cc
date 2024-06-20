@@ -11,10 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/pir/transforms/xpu/conv2d_bn_xpu_fuse_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+
+#include "paddle/phi/backends/xpu/xpu_info.h"
+
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -22,12 +26,11 @@ namespace {
 
 class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
  private:
-  int max_ptr_size_;
   bool bn_inplace_;
 
  public:
-  explicit Conv2dBnFusePattern(int max_ptr_size, bool bn_inplace)
-      : max_ptr_size_(max_ptr_size), bn_inplace_(bn_inplace) {}
+  explicit Conv2dBnFusePattern(bool bn_inplace) : bn_inplace_(bn_inplace) {}
+
   std::string name() const override { return "Conv2dBnFusePattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -60,7 +63,7 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
         &pat.Tensor("saved_mean"),
         &pat.Tensor("saved_variance"),
         &pat.Tensor("reserve_space")});
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       std::vector<int64_t> conv_input_shape =
           pir::GetShapeFromValue(match_ctx.Tensor("input"));
       auto paddings_size = match_ctx.Attr<std::vector<int>>("paddings");
@@ -107,8 +110,10 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
     const auto &expand_1_shape =
         res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx)
                             -> std::vector<int64_t> {
-          return {static_cast<int64_t>(max_ptr_size_)};
+          return {static_cast<int64_t>(
+              phi::backends::xpu::get_xpu_max_ptr_size(-1))};
         });
+
     // paddings
     const auto &paddings_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
@@ -207,12 +212,9 @@ class Conv2dBnFuseXpuPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    auto max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     bool bn_inplace = true;
-    ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(
-        context, max_ptr_size, bn_inplace));
-    ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(
-        context, max_ptr_size, !bn_inplace));
+    ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(context, bn_inplace));
+    ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(context, !bn_inplace));
     return ps;
   }
 };
@@ -220,6 +222,7 @@ class Conv2dBnFuseXpuPass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
+
 std::unique_ptr<Pass> CreateConv2dBnFuseXpuPass() {
   return std::make_unique<Conv2dBnFuseXpuPass>();
 }

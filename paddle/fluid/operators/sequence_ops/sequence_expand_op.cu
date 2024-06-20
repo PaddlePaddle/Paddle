@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -123,7 +124,7 @@ static int ExpandByMemoryCopy(const phi::GPUContext& context,
         }
         for (int j = 0; j < repeat_num; j++) {
           for (int k = 0; k < x_seq_len; k++) {
-            memory::Copy(
+            phi::memory_utils::Copy(
                 gpu_place,
                 out_data + (out_start + j * x_seq_len + k) * x_item_length,
                 gpu_place,

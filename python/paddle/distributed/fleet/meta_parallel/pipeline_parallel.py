@@ -457,7 +457,11 @@ class PipelineParallel(MetaParallelBase):
             self._records = []
 
     def forward_backward_pipeline(
-        self, data, scaler=None, static_scheduler=False
+        self,
+        data,
+        scaler=None,
+        static_scheduler=False,
+        return_micro_batch_loss=False,
     ):
         # use the 1f1b scheduling strategy.
         # this strategy is inspired by:
@@ -616,7 +620,7 @@ class PipelineParallel(MetaParallelBase):
             ), "comm buffers should be created"
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_and_split_grads()
+                    buffer.scale_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -625,7 +629,7 @@ class PipelineParallel(MetaParallelBase):
             self.timers("allreduce_shared_weight_gradients").stop()
             self.timers("broadcast_final_loss").start()
         with paddle.amp.auto_cast(enable=False):
-            train_loss = self._broadcast_final_loss()
+            train_loss = self._broadcast_final_loss(return_micro_batch_loss)
         if self._enable_timer:
             self.timers("broadcast_final_loss").stop()
 
@@ -691,7 +695,13 @@ class PipelineParallel(MetaParallelBase):
         return micro_dataset
 
     def train_batch(
-        self, data, optimizer, lr_scheduler=None, scaler=None, loss_fn_idx=0
+        self,
+        data,
+        optimizer,
+        lr_scheduler=None,
+        scaler=None,
+        loss_fn_idx=0,
+        return_micro_batch_loss=False,
     ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
 
@@ -703,7 +713,9 @@ class PipelineParallel(MetaParallelBase):
         self.loss_fn_idx = loss_fn_idx
 
         # 1f1b scheduler for pipeline parallel
-        train_loss = self.forward_backward_pipeline(data, scaler)
+        train_loss = self.forward_backward_pipeline(
+            data, scaler, return_micro_batch_loss=return_micro_batch_loss
+        )
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
@@ -823,10 +835,8 @@ class PipelineParallel(MetaParallelBase):
                             self.total_loss = []
                         # when self.total_loss length is less than idx, append a new tensor
                         if len(self.total_loss) <= idx:
-                            self.total_loss.append(
-                                paddle.zeros_like(loss_tensor)
-                            )
-                        self.total_loss[idx] += loss_tensor.detach()
+                            self.total_loss.append([])
+                        self.total_loss[idx].append(loss_tensor.detach())
 
                     if idx == self.loss_fn_idx:
                         backward_loss_tensor = loss_tensor
@@ -883,19 +893,28 @@ class PipelineParallel(MetaParallelBase):
         elif micro_batch_data is not None:
             assert isinstance(micro_batch_data, paddle.Tensor)
 
-    def _broadcast_final_loss(self):
+    def _broadcast_final_loss(self, return_micro_batch_loss=False):
         # Since the last backward run in interleave will set the virtual rank to 0,
         # here we need to check last stage ignoring virtual stage.
         if self.is_pipeline_last_stage(ignore_virtual=True):
             assert (
                 self.total_loss is not None
             ), "train_batch() in last stage should obtain valid loss"
-            losses = [
-                self.total_loss[idx].detach()
-                if not self._delay_scale_loss
-                else self.total_loss[idx] / self.accumulate_steps
-                for idx in range(len(self._layers._loss_fn))
-            ]
+            losses = []
+            for idx in range(len(self._layers._loss_fn)):
+                self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
+                if not return_micro_batch_loss:
+                    # TODO(shenliang03): it will use mean/sum to calculate loss
+                    tmp = paddle.zeros_like(self.total_loss[idx][0])
+                    for loss in self.total_loss[idx]:
+                        tmp += loss.detach()
+                    if not self._delay_scale_loss:
+                        losses.append(tmp)
+                    else:
+                        losses.append(tmp / self.accumulate_steps)
+                else:
+                    losses.append(self.total_loss[idx].detach())
+
             for idx in range(len(self._layers._loss_fn)):
                 is_fp32 = (
                     paddle.full([], 1, 'int64')
@@ -924,10 +943,14 @@ class PipelineParallel(MetaParallelBase):
                     sync_op=True,
                     group=self.pp_group,
                 )
+                if return_micro_batch_loss:
+                    loss_shape = [self.accumulate_steps]
+                else:
+                    loss_shape = [1]
                 losses.append(
-                    paddle.zeros(shape=[1], dtype="float32")
+                    paddle.zeros(shape=loss_shape, dtype="float32")
                     if is_fp32.item()
-                    else paddle.zeros(shape=[1], dtype="float16")
+                    else paddle.zeros(shape=loss_shape, dtype="float16")
                 )
                 paddle.distributed.broadcast(
                     losses[idx],
@@ -1151,7 +1174,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_and_split_grads()
+                    buffer.scale_grads()
 
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
@@ -1202,6 +1225,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         forward_only=False,
         compute_loss=True,
         static_scheduler=False,
+        return_micro_batch_loss=False,
     ):
         # use interleave scheduling strategy.
         # this strategy is inspired by:
@@ -1740,7 +1764,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss = self._broadcast_final_loss()
+                train_loss = self._broadcast_final_loss(return_micro_batch_loss)
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
@@ -1754,7 +1778,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
         return train_loss
 
     def train_batch(
-        self, data, optimizer, lr_scheduler=None, scaler=None, loss_fn_idx=0
+        self,
+        data,
+        optimizer,
+        lr_scheduler=None,
+        scaler=None,
+        loss_fn_idx=0,
+        return_micro_batch_loss=False,
     ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
 
@@ -1766,7 +1796,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.loss_fn_idx = loss_fn_idx
 
         # interleave scheduler for pipeline parallel
-        train_loss = self.forward_backward_pipeline(data, scaler)
+        train_loss = self.forward_backward_pipeline(
+            data, scaler, return_micro_batch_loss=return_micro_batch_loss
+        )
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
@@ -1854,10 +1886,15 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         for buffers in self._chunk_2_comm_buffers.values():
             for buffer in buffers:
-                buffer.scale_and_split_grads()
+                buffer.scale_grads()
 
     def forward_backward_pipeline(
-        self, data, scaler, forward_only=False, compute_loss=True
+        self,
+        data,
+        scaler,
+        forward_only=False,
+        compute_loss=True,
+        return_micro_batch_loss=False,
     ):
         if not compute_loss:
             assert (
@@ -2009,7 +2046,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss = self._broadcast_final_loss()
+                train_loss = self._broadcast_final_loss(return_micro_batch_loss)
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:

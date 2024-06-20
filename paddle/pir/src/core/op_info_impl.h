@@ -75,6 +75,8 @@ class OpInfoImpl {
     return idx < num_attributes_ ? p_attributes_[idx] : nullptr;
   }
 
+  std::vector<std::string> GetAttributesName() const;
+
  private:
   OpInfoImpl(std::set<InterfaceValue> &&interface_set,
              pir::Dialect *dialect,

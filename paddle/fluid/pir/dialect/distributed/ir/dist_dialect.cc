@@ -74,11 +74,15 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.process_mesh_attr().shape()) +
               "]";
+    os << ",process_ids:[" +
+              phi::distributed::auto_parallel::str_join(
+                  tensor_dist_attr.process_mesh_attr().process_ids()) +
+              "]";
     os << ",dims_mappings:[" +
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.dims_mapping()) +
               "]";
-    if (tensor_dist_attr.partial_status().size() > 0) {
+    if (!tensor_dist_attr.partial_status().empty()) {
       std::vector<std::string> partial_status_strs;
       for (auto &itr : tensor_dist_attr.partial_status()) {
         std::string s = "partial(" + std::to_string(itr.first) + "," +
@@ -98,73 +102,13 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
               phi::distributed::auto_parallel::str_join(
                   op_dist_attr.process_mesh_attr().process_ids()) +
               "]}";
-    auto num_operand_dist_attrs = op_dist_attr.num_operand_dist_attrs();
-    for (uint32_t i = 0; i < num_operand_dist_attrs; ++i) {
-      auto dist_attr = op_dist_attr.operand_dist_attr(i);
-      os << ",operand(" + std::to_string(i) + "):{";
-      if (!dist_attr) {
-        os << "null}";
-        continue;
-      }
-      if (dist_attr.process_mesh_attr() != op_dist_attr.process_mesh_attr()) {
-        os << "mesh_shape:[" +
-                  phi::distributed::auto_parallel::str_join(
-                      dist_attr.process_mesh_attr().shape()) +
-                  "],";
-      }
-      os << "dims_maping:[" +
-                phi::distributed::auto_parallel::str_join(
-                    dist_attr.dims_mapping()) +
-                "]";
-      if (dist_attr.partial_status().size() > 0) {
-        std::vector<std::string> partial_status_strs;
-        for (auto &itr : dist_attr.partial_status()) {
-          std::string s = "partial(" + std::to_string(itr.first) + "," +
-                          phi::ReduceTypeStrings[static_cast<int>(itr.second)] +
-                          ")";
-          partial_status_strs.emplace_back(s);
-        }
-        os << "," +
-                  phi::distributed::auto_parallel::str_join(
-                      partial_status_strs) +
-                  "}";
-      } else {
-        os << "}";
-      }
+    for (uint32_t i = 0; i < op_dist_attr.num_operands(); ++i) {
+      os << ",operand(" + std::to_string(i) + "):{" << op_dist_attr.operand(i)
+         << "}";
     }
-    auto num_result_dist_attrs = op_dist_attr.num_result_dist_attrs();
-    for (uint32_t i = 0; i < num_result_dist_attrs; ++i) {
-      auto dist_attr = op_dist_attr.result_dist_attr(i);
-      os << ",result(" + std::to_string(i) + "):{";
-      if (!dist_attr) {
-        os << "null}";
-        continue;
-      }
-      if (dist_attr.process_mesh_attr() != op_dist_attr.process_mesh_attr()) {
-        os << "mesh_shape:[" +
-                  phi::distributed::auto_parallel::str_join(
-                      dist_attr.process_mesh_attr().shape()) +
-                  "],";
-      }
-      os << "dims_maping:[" +
-                phi::distributed::auto_parallel::str_join(
-                    dist_attr.dims_mapping()) +
-                "]";
-      if (dist_attr.partial_status().size() > 0) {
-        std::vector<std::string> partial_status_strs;
-        for (auto &itr : dist_attr.partial_status()) {
-          std::string s = "partial(" + std::to_string(itr.first) + "," +
-                          phi::ReduceTypeStrings[static_cast<int>(itr.second)] +
-                          ")";
-          partial_status_strs.emplace_back(s);
-        }
-        os << "," +
-                  phi::distributed::auto_parallel::str_join(
-                      partial_status_strs) +
-                  "}";
-      } else {
-        os << "}";
-      }
+    for (uint32_t i = 0; i < op_dist_attr.num_results(); ++i) {
+      os << ",result(" + std::to_string(i) + "):{" << op_dist_attr.result(i)
+         << "}";
     }
     os << "}";
   } else {

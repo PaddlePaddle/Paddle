@@ -32,6 +32,7 @@ class TestSemiAutoParallelStaticPirDecorate(
         envs_list = test_base.gen_product_envs_list(
             {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
         )
+        # self._log_dir.name = "./log"
         for envs in envs_list:
             self.run_test_case(
                 "mlp_demo.py",

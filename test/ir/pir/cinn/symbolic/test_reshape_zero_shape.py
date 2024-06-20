@@ -25,7 +25,6 @@ os.environ['FLAGS_print_ir'] = '1'
 os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 
@@ -61,7 +60,7 @@ class TestReshapeZeroShape(unittest.TestCase):
         self.x.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 0)
+        utils.check_jit_kernel_number(static_fn, 1)
 
     def eval(self, use_cinn):
         net = ReshapeZeroShapeNet()

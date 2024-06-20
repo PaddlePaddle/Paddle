@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -127,7 +126,7 @@ SpmdInfo UnbindInferSpmdReverse(const DistMetaTensor& x,
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   for (int i = 0; i < nouts; i++) {
     std::vector<int64_t> out_dims_mapping = outs[i]->dist_attr().dims_mapping();
-    axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
+    axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
   }
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
@@ -171,6 +170,7 @@ SpmdInfo UnbindInferSpmdDynamic(const DistMetaTensor& x, int axis) {
   SpmdInfo ret;
   ret.first = tmp.first;
   std::vector<TensorDistAttr> out_dist_attrs;
+  out_dist_attrs.reserve(tmp.second.size());
   for (const auto& out : tmp.second) {
     out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
   }
@@ -178,5 +178,4 @@ SpmdInfo UnbindInferSpmdDynamic(const DistMetaTensor& x, int axis) {
   return ret;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

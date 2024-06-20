@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -270,8 +269,6 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
     operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
         program, 0, global_block_ops);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-        program, 0, global_block_ops);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         program, 0, global_block_ops);
   }
 

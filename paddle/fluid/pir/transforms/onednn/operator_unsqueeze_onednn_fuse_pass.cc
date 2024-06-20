@@ -92,7 +92,7 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
     if (fusable_ops_ == paddle::onednn::dialect::FusedTransposeOp::name() ||
         fusable_ops_ ==
             paddle::onednn::dialect::FusedElementwiseMulOp::name()) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto fused_unsqueeze2_axes =
             match_ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
         if (fused_unsqueeze2_axes.size() > 0) {

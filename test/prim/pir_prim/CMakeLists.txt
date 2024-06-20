@@ -4,6 +4,7 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_prim_custom_vjp
     test_prim_jit
     test_pir_prim_flags
+    test_pir_prim_flags_v2
     test_sink_decomp
     test_prim_skip_dynamic
     test_prim_dynamic
@@ -11,7 +12,9 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_auto_recompute
     test_auto_recompute_dy2static
     test_prim_sub_graph_dynamic_shape
-    test_decompose_control_flow)
+    test_prim_sub_graph_backward_dynamic_shape
+    test_decompose_control_flow
+    test_decomp_whole_program)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(
@@ -23,6 +26,15 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     FLAGS_enable_pir_api=true
     FLAGS_prim_enable_dynamic=true)
 endforeach()
+
+py_test_modules(
+  test_pir_prim_flags_v3
+  MODULES
+  test_pir_prim_flags_v3
+  ENVS
+  GLOG_v=1
+  FLAGS_enable_pir_api=true
+  FLAGS_prim_vjp_skip_default_ops=0)
 
 set_tests_properties(test_auto_recompute PROPERTIES TIMEOUT 40)
 set_tests_properties(test_auto_recompute_dy2static PROPERTIES TIMEOUT 40)
@@ -42,6 +54,7 @@ if(WITH_CINN)
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true
+      FLAGS_prim_vjp_skip_default_ops=false
       FLAGS_cinn_bucket_compile=True
       FLAGS_pir_apply_shape_optimization_pass=1)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=CINN")

@@ -21,6 +21,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/pir/fusion_info.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::hlir::framework {
 
@@ -40,6 +41,7 @@ class BackendResource final {
 
   void* GetHostFuncPtr() const;
   void* GetInferFuncPtr() const;
+  void* GetCX86HostFuncPtr() const;
   const std::map<int, CINNKernelInfo::ArgDimIdx>& GetIntArgsMap() const {
     return int_args_map_;
   }
@@ -68,7 +70,10 @@ class CompilationResult final {
   }
 
   pir::CINNKernelInfo GetKernelInfo() {
-    // TODO(Aurelius84): add ENFORCE_NOT_NULL
+    PADDLE_ENFORCE_NOT_NULL(backend_resource_,
+                            ::common::errors::PreconditionNotMet(
+                                "Found backend_resource_ is nullptr, please "
+                                "call SetBackendResource first."));
     return backend_resource_->GenerateKernelInfo();
   }
 

@@ -26,6 +26,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -46,7 +47,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.set_dtype()
             self.set_value()
             self.set_shape()
-            self.data = np.ones(self.shape).astype(self.dtype)
+            dtype = self.dtype
+            if self.dtype == "bfloat16":
+                dtype = "float32"
+            self.data = np.ones(self.shape).astype(dtype)
             self.program = paddle.static.Program()
 
         def set_shape(self):
@@ -59,6 +63,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             if self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
 
         def _call_setitem(self, x):
             x[0, 0] = self.value
@@ -94,7 +100,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self._get_answer()
             static_out = self._run_static()
             dynamic_out = self._run_dynamic()
-
+            if self.dtype == "bfloat16":
+                self.data = convert_float_to_uint16(self.data)
             error_msg = (
                 "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
             )
@@ -219,6 +226,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
             else:
                 self.dtype = self.in_type
 
@@ -310,7 +319,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 1.2.3 step < 0
     class XPUTestSetValueItemSliceNegativeStep(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
+            if self.in_type in [np.float16, np.uint16]:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
@@ -378,6 +387,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
             else:
                 self.dtype = self.in_type
 
@@ -500,6 +511,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
             else:
                 self.dtype = self.in_type
 
@@ -608,7 +621,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 1.5 item is None
     class XPUTestSetValueItemNone1(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
+            if self.in_type in [np.float16, np.uint16]:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
@@ -961,7 +974,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 3. Test different shape of value
     class XPUTestSetValueValueShape1(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
+            if self.in_type in [np.float16, np.uint16]:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"

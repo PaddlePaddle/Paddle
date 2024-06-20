@@ -23,14 +23,17 @@ namespace pir {
 
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 
-void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
+void PassStopGradientsDefaultly(OperationArgument &argument,  // NOLINT
+                                bool forward_only_op) {
   VLOG(10) << "Builder construction stop gradient for OpResults.";
   bool stop_gradient = true;
-  for (auto value : argument.inputs) {
-    auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
-    if (attr && !attr.data()) {
-      stop_gradient = false;
-      break;
+  if (!forward_only_op) {
+    for (auto value : argument.inputs) {
+      auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
+      if (attr && !attr.data()) {
+        stop_gradient = false;
+        break;
+      }
     }
   }
   std::vector<pir::Attribute> outs_stop_gradient(
@@ -68,12 +71,12 @@ Program *ModuleOp::program() {
 Block &ModuleOp::block() {
   PADDLE_ENFORCE_GT(operation()->num_regions(),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The region size of ModuleOp must be equal to 1."));
   auto &region = (*this)->region(0);
   PADDLE_ENFORCE_EQ(region.size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The region size of ModuleOp must be equal to 1."));
   return region.front();
 }
@@ -98,10 +101,10 @@ void ModuleOp::Destroy() {
 void ModuleOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
-  PADDLE_ENFORCE_EQ(
-      num_operands(),
-      0u,
-      phi::errors::InvalidArgument("The size of inputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
 
   // Verify attributes:
   auto &attributes = this->attributes();
@@ -109,13 +112,14 @@ void ModuleOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       iter != attributes.end() && iter->second.isa<PointerAttribute>(),
       true,
-      phi::errors::InvalidArgument("Type of attribute: program is not right."));
+      common::errors::InvalidArgument(
+          "Type of attribute: program is not right."));
 
   // Verify outputs:
-  PADDLE_ENFORCE_EQ(
-      num_results(),
-      0u,
-      phi::errors::InvalidArgument("The size of inputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
 }
 
 const char *ParameterOp::attributes_name[attributes_num] = {  // NOLINT
@@ -144,10 +148,10 @@ std::string ParameterOp::param_name() const {
 void ParameterOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
-  PADDLE_ENFORCE_EQ(
-      num_operands(),
-      0u,
-      phi::errors::InvalidArgument("The size of inputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
 
   // Verify if attributes contain attribute name in attributes_name:
   auto &attributes = this->attributes();
@@ -155,14 +159,14 @@ void ParameterOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       iter != attributes.end() && iter->second.isa<StrAttribute>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Type of attribute: parameter_name is not right."));
 
   // Verify outputs type:
-  PADDLE_ENFORCE_EQ(
-      num_results(),
-      1u,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 }
 
 const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
@@ -179,10 +183,10 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
 void SetParameterOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
-  PADDLE_ENFORCE_EQ(
-      num_operands(),
-      1,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 
   // Verify attributes:
   auto &attributes = this->attributes();
@@ -190,14 +194,14 @@ void SetParameterOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       iter != attributes.end() && iter->second.isa<StrAttribute>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Type of attribute: parameter_name is not right."));
 
   // Verify outputs:
-  PADDLE_ENFORCE_EQ(
-      num_results(),
-      0u,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 0."));
 }
 
 const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
@@ -214,10 +218,10 @@ void ShadowOutputOp::Build(Builder &builder,             // NOLINT
 void ShadowOutputOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
   // Verify inputs:
-  PADDLE_ENFORCE_EQ(
-      num_operands(),
-      1,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 
   // Verify attributes:
   auto &attributes = this->attributes();
@@ -225,14 +229,14 @@ void ShadowOutputOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       iter != attributes.end() && iter->second.isa<StrAttribute>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Type of attribute: output_name is not right."));
 
   // Verify outputs:
-  PADDLE_ENFORCE_EQ(
-      num_results(),
-      0u,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 0."));
 }
 
 void CombineOp::Build(Builder &builder,
@@ -249,16 +253,16 @@ void CombineOp::Build(Builder &builder,
 
 void CombineOp::VerifySig() const {
   // outputs.size() == 1
-  PADDLE_ENFORCE_EQ(
-      num_results(),
-      1u,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 
   // output_type == Vector<Type>
   auto output_type = (*this)->result(0).type().dyn_cast<VectorType>();
   PADDLE_ENFORCE_NOT_NULL(
       output_type,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The type of outputs[0] must be equal to VectorType."));
 
   // inputs.size() == outputs[0].size()
@@ -266,7 +270,7 @@ void CombineOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       output_type.size(),
       input_num,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size %d of output must be equal to size %d of inputs.",
           output_type.size(),
           input_num));
@@ -277,12 +281,12 @@ void CombineOp::VerifySig() const {
     PADDLE_ENFORCE_EQ(
         output_type[i],
         type,
-        phi::errors::InvalidArgument("The type %s of outputs[0][%d] must be "
-                                     "equal to type %s of inputs[%d].",
-                                     output_type[i],
-                                     i,
-                                     type,
-                                     i));
+        common::errors::InvalidArgument("The type %s of outputs[0][%d] must be "
+                                        "equal to type %s of inputs[%d].",
+                                        output_type[i],
+                                        i,
+                                        type,
+                                        i));
   }
 }
 
@@ -309,7 +313,7 @@ void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
     if (defining_op && defining_op->isa<CombineOp>()) {
       PADDLE_ENFORCE_EQ(defining_op->HasAttribute(kStopGradientAttrName),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required CombineOp must have attribute %s",
                             kStopGradientAttrName));
       auto attrs = defining_op->attribute(kStopGradientAttrName)
@@ -332,7 +336,7 @@ void SliceOp::RefreshStopGradients() {
     if (defining_op && defining_op->isa<CombineOp>()) {
       PADDLE_ENFORCE_EQ(defining_op->HasAttribute(kStopGradientAttrName),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required CombineOp must have attribute %s",
                             kStopGradientAttrName));
       auto attr = defining_op->attribute(kStopGradientAttrName)
@@ -348,17 +352,16 @@ void SliceOp::RefreshStopGradients() {
 void SliceOp::VerifySig() const {
   // inputs.size() == 1
   auto input_size = num_operands();
-  PADDLE_ENFORCE_EQ(
-      input_size,
-      1,
-      phi::errors::InvalidArgument("The size %d of inputs must be equal to 1.",
-                                   input_size));
+  PADDLE_ENFORCE_EQ(input_size,
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 1."));
 
   // inputs[0].type == Vector<Type>
   auto input_type = (*this)->operand(0).type().dyn_cast<pir::VectorType>();
   PADDLE_ENFORCE_NOT_NULL(
       input_type,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The type %s of inputs[0] must be equal to VectorType.", input_type));
 
   auto output_size = num_results();
@@ -366,32 +369,32 @@ void SliceOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       output_size,
       1,
-      phi::errors::InvalidArgument("The size %d of outputs must be equal to 1.",
-                                   output_size));
+      common::errors::InvalidArgument(
+          "The size %d of outputs must be equal to 1.", output_size));
 
   // attributes contains index: Int32
   auto &attributes = this->attributes();
   PADDLE_ENFORCE_NE(
       attributes.count("index"),
       0,
-      phi::errors::InvalidArgument("The attributes must contains index."));
+      common::errors::InvalidArgument("The attributes must contains index."));
   const pir::Attribute &attr = attributes.at("index");
   PADDLE_ENFORCE_EQ(
       attr.isa<pir::Int32Attribute>(),
       true,
-      phi::errors::InvalidArgument("The attribute index must be INT32."));
+      common::errors::InvalidArgument("The attribute index must be INT32."));
   auto index = attr.dyn_cast<pir::Int32Attribute>().data();
 
   // index >= 0 and < inputs[0].size()
   PADDLE_ENFORCE_GE(
       index,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The index %d must be greater or equal than 0.", index));
   PADDLE_ENFORCE_LT(
       static_cast<size_t>(index),
       input_type.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The index %d must be less or equal than size %d of inputs[0].",
           index,
           input_type.size()));
@@ -401,7 +404,7 @@ void SliceOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       input_type[index],
       output_type,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The type %s of inputs[%d] must be equal to type %s of outputs[0].",
           input_type[index],
           index,
@@ -429,7 +432,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       PADDLE_ENFORCE_EQ(
           argument.output_types.size(),
           defining_op->num_operands(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Required SplitOp.output.size() == CombineOp.input.size(), "
               "but received %d != %d",
               argument.output_types.size(),
@@ -473,7 +476,7 @@ void SplitOp::RefreshStopGradients() {
       PADDLE_ENFORCE_EQ(
           (*this)->num_results(),
           defining_op->num_operands(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Required SplitOp.output.size() == CombineOp.input.size(), "
               "but received %d != %d",
               (*this)->num_results(),
@@ -516,16 +519,16 @@ void SplitOp::RefreshStopGradients() {
 
 void SplitOp::VerifySig() const {
   // inputs.size() == 1
-  PADDLE_ENFORCE_EQ(
-      num_operands(),
-      1u,
-      phi::errors::InvalidArgument("The size of inputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 1."));
 
   // input_type == Vector<Type>
   auto input_type = (*this)->operand(0).type().dyn_cast<VectorType>();
   PADDLE_ENFORCE_NOT_NULL(
       input_type,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The type of inputs[0] must be equal to VectorType."));
 
   // inputs[0].size() == outputs.size()
@@ -533,7 +536,7 @@ void SplitOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       input_type.size(),
       output_num,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size %d of output must be equal to size %d of inputs.",
           output_num,
           input_type.size()));
@@ -553,17 +556,18 @@ void ConstantOp::Build(Builder &builder,
 }
 
 void ConstantOp::VerifySig() const {
-  PADDLE_ENFORCE_EQ(
-      num_operands(),
-      0,
-      phi::errors::InvalidArgument("The size of inputs must be equal to 0."));
-  PADDLE_ENFORCE_EQ(
-      num_results(),
-      1,
-      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
-  PADDLE_ENFORCE_GT(attributes().count("value"),
+  PADDLE_ENFORCE_EQ(num_operands(),
                     0,
-                    phi::errors::InvalidArgument("must has value attribute"));
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_GT(
+      attributes().count("value"),
+      0,
+      common::errors::InvalidArgument("must has value attribute"));
 }
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
@@ -573,7 +577,7 @@ void ConstantTensorOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       value().isa<pir::TensorNameAttribute>(),
       true,
-      phi::errors::InvalidArgument("Type of value must be str attribute"));
+      common::errors::InvalidArgument("Type of value must be str attribute"));
 }
 
 ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {

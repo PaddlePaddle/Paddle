@@ -33,6 +33,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -186,17 +187,21 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 
+std::vector<ir::Var> GetAllIterVars(const ir::Expr& expr) {
+  ir::Expr compute_schedule_block_realize =
+      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
+          .GetSingle(expr);
+
+  const std::vector<Expr>& all_iter_expr =
+      compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
+          ->iter_values;
+  return ComposeUtils::ExprVec2VarVec(all_iter_expr);
+}
+
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   auto GetUnorderedAllIterVars = [](const ReduceOp& op) {
-    ir::Expr compute_schedule_block_realize =
-        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-         ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
-            .GetSingle(_GetRootExpr(op));
-
-    const std::vector<Expr>& all_iter_expr =
-        compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
-            ->iter_values;
-    return ComposeUtils::ExprVec2VarVec(all_iter_expr);
+    return GetAllIterVars(_GetRootExpr(op));
   };
 
   // Iter Vars not appearing in outer_iter_vars are pushed into
@@ -250,8 +255,8 @@ ir::Expr CreateReduceExpr(
     const ir::Tensor& new_write_tensor,
     const ir::Tensor& origin_write_tensor) {
   VLOG(4) << "CreateReduceExpr Start.";
-  const std::vector<ir::Expr> indice_expr =
-      std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
+  const std::vector<ir::Expr> indice_expr(output_iters.begin(),
+                                          output_iters.end());
   auto new_init_tensor = ir::Tensor(new_write_tensor->name + "__reduce_init",
                                     new_write_tensor->type(),
                                     new_write_tensor->shape,
@@ -333,8 +338,6 @@ ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
   return std::visit(Visitor(new_compute_body), fusible_op);
 }
 
-bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
-
 int GetTensorCounter() {
   static int counter = 1;
   return counter++;
@@ -358,13 +361,16 @@ std::vector<FusibleOp> TransformReduceLoopRange(
 
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
     VLOG(4) << "Create New Tensor Start";
-    ir::Tensor result = ir::Tensor(
-        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
-        downstream_load_tensor->type(),
+    const auto shape =
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->shape,
                                        fake_reduce_iter_idx)
-            : downstream_output_tensor->shape,
+            : downstream_output_tensor->shape;
+    ir::Tensor result = ir::Tensor(
+        downstream_load_tensor->name + "_loopalign_" +
+            std::to_string(GetTensorCounter()),
+        downstream_load_tensor->type(),
+        shape,
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->domain,
                                        fake_reduce_iter_idx)
@@ -502,6 +508,7 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
   VLOG(4) << "DebugPrint Op Origin: ";
+  VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
   ir::Expr trivial_compute_body =
@@ -559,32 +566,51 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
   return std::make_pair(result_trivial, result_reduce);
 }
 
+std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildFors;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      FindFather;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      IsFor;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsNotInit;
+  const auto& all_father_fors =
+      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
+       FindFather(expr) * IsFor)(expr);
+  std::vector<ir::Var> vars;
+  for (const auto& for_expr : all_father_fors) {
+    vars.push_back(for_expr.As<ir::For>()->loop_var);
+  }
+  VLOG(4) << "GetAllForIters : " << expr
+          << "\n var is : " << utils::Join(vars, ",");
+  return vars;
+}
+
 }  // namespace trivial_fusion_detail
 
 std::vector<ir::Expr> OperationFusion(
-    const std::vector<::pir::Operation*>& original_ops,
-    const std::vector<ir::Expr>& op_compute_bodies) {
-  CHECK(FLAGS_group_schedule_tiling_first)
-      << "TrivialFusion must be used with tiling first, set "
-         "FLAGS_group_schedule_tiling_first=1";
-  const auto& ops = trivial_fusion_detail::FilterVector(
-      original_ops, [](const ::pir::Operation* op) {
-        if (op->name() == "cinn_op.generate_shape") {
-          return false;
-        }
-        return true;
-      });
-
+    const std::vector<::pir::Operation*>& ops,
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::vector<::pir::Value>& outputs) {
+  PADDLE_ENFORCE_EQ(FLAGS_group_schedule_tiling_first,
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "TrivialFusion must be used with tiling first, set "
+                        "FLAGS_group_schedule_tiling_first=1"));
   std::vector<cinn::fusion::BackendContent> contents;
   for (int i = 0; i < ops.size(); i++) {
     contents.emplace_back(ops[i], op_compute_bodies[i]);
-    // contents.emplace_back(ops[i]);
   }
   const auto& fusion_nodes =
-      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents);
+      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents, outputs);
 
-  CHECK(fusion_nodes.size() == 1)
-      << "Only support one fusion node in backend now.";
+  PADDLE_ENFORCE_EQ(fusion_nodes.size(),
+                    1,
+                    ::common::errors::Unimplemented(
+                        "Only support one fusion node in backend now."));
 
   const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
   VLOG(4) << "Fusion Result: output size is " << output.size();
@@ -596,6 +622,8 @@ std::vector<ir::Expr> OperationFusion(
 
 FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
+  using trivial_fusion_detail::AppendBound;
+  using trivial_fusion_detail::GetAllForIters;
   using trivial_fusion_detail::ReduceOp;
   using trivial_fusion_detail::ComposeUtils::ConcatVector;
   using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
@@ -613,7 +641,7 @@ FusionGroupInfo GetFusionGroupInfo(
       ReduceOp op = ReduceOp(body);
       if (group_info.reduce_var_name.empty()) {
         std::vector<ir::Var> all_iters =
-            ConcatVector(GetOutputIters(op), GetReduceIters(op));
+            AppendBound(GetAllForIters(body), body);
         std::transform(all_iters.begin(),
                        all_iters.end(),
                        std::back_inserter(group_info.loop_ranges),
@@ -626,7 +654,8 @@ FusionGroupInfo GetFusionGroupInfo(
                            return (int64_t)-1;
                          }
                        });
-        std::vector<ir::Var> reduce_iters = GetReduceIters(op);
+        std::vector<ir::Var> reduce_iters = fusion::FilterVector(
+            all_iters, [](const ir::Var& var) { return var->is_reduce_axis; });
         for (int64_t i = all_iters.size() - reduce_iters.size();
              i < all_iters.size();
              i++) {

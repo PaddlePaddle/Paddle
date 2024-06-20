@@ -87,11 +87,11 @@ class TestTensorApplyAPI(unittest.TestCase):
             return y
 
         with paddle.jit.api.sot_mode_guard(False):
-            jit_g = paddle.jit.to_static(fn)
+            jit_g = paddle.jit.to_static(fn, full_graph=True)
             out_legacy_ir = jit_g(self.x, self.function)
             with paddle.pir_utils.IrGuard():
                 paddle.disable_static()
-                jit_g = paddle.jit.to_static(fn)
+                jit_g = paddle.jit.to_static(fn, full_graph=True)
                 out_pir = jit_g(self.x, self.function)
         np.testing.assert_allclose(
             self.function(self.x).numpy(), out_legacy_ir.numpy(), rtol=1e-05

@@ -19,6 +19,9 @@ import unittest
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
+    apply_mix2dist_pass,
+)
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
 from test_to_static_pir_program import (
@@ -53,9 +56,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
         engine = dist_model._engine
         engine._build("train")
         dist_program = engine._fwd_main_progs["train"]
-        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            dist_program
-        )
+        apply_mix2dist_pass(dist_program)
         loss = dist_program.get_output_value_by_name(engine._loss_names[0])
         with paddle.static.program_guard(dist_program):
             params_grads = paddle.autograd.ir_backward.append_backward(loss)

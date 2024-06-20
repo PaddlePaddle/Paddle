@@ -110,7 +110,7 @@ class OpCreatorCodeGen:
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
         op_yaml_items = []
-
+        op_info_items = []
         if dialect_name == "onednn_op":
             with open(ops_onednn_extra_yaml_file, "r") as f:
                 ops_onednn_extra = yaml.safe_load(f)
@@ -131,24 +131,35 @@ class OpCreatorCodeGen:
                     for op in ops:
                         if op['name'] in ops_onednn_extra_set:
                             onednn_ops.append(op)
+
                     op_yaml_items = op_yaml_items + onednn_ops
+                    for op in op_yaml_items:
+                        op_compat_item = op_compat_parser.get_compat(op['name'])
+                        if (
+                            op_compat_item is not None
+                            and op_compat_item['op'] == "pow"
+                            and 'scalar' in op_compat_item
+                        ):
+                            op_compat_item = op_compat_item.pop('scalar')
+                        op_info_items.append(
+                            OpInfoParser(op, op_compat_item, yaml_file)
+                        )
 
         else:
             for yaml_file in op_yaml_files:
                 with open(yaml_file, "r") as f:
                     ops = yaml.safe_load(f)
-                    op_yaml_items = op_yaml_items + ops
-
-        op_info_items = []
-        for op in op_yaml_items:
-            op_compat_item = op_compat_parser.get_compat(op['name'])
-            if (
-                op_compat_item is not None
-                and op_compat_item['op'] == "pow"
-                and 'scalar' in op_compat_item
-            ):
-                op_compat_item = op_compat_item.pop('scalar')
-            op_info_items.append(OpInfoParser(op, op_compat_item))
+                    for op in ops:
+                        op_compat_item = op_compat_parser.get_compat(op['name'])
+                        if (
+                            op_compat_item is not None
+                            and op_compat_item['op'] == "pow"
+                            and 'scalar' in op_compat_item
+                        ):
+                            op_compat_item = op_compat_item.pop('scalar')
+                        op_info_items.append(
+                            OpInfoParser(op, op_compat_item, yaml_file)
+                        )
         return op_info_items
 
     def gen_cpp_file_code(self, cpp_file_path):

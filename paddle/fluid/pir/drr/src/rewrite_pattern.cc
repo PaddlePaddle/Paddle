@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 #include <queue>
+#include <utility>
 
 #include "glog/vlog_is_on.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -33,7 +34,7 @@ DrrRewritePattern::DrrRewritePattern(
     const DrrPatternContext& drr_context,
     pir::IrContext* context,
     pir::PatternBenefit benefit,
-    const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
+    std::shared_ptr<const DrrPatternBase> drr_pattern_owner)
     : pir::RewritePattern(
           (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,
@@ -42,8 +43,9 @@ DrrRewritePattern::DrrRewritePattern(
       pattern_name_(pattern_name),
       source_pattern_graph_(drr_context.source_pattern_graph()),
       constraints_(drr_context.constraints()),
+      post_processes_(drr_context.post_processes()),
       result_pattern_graph_(drr_context.result_pattern_graph()),
-      drr_pattern_owner_(drr_pattern_owner) {
+      drr_pattern_owner_(std::move(drr_pattern_owner)) {
   PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
                     true,
                     phi::errors::InvalidArgument(
@@ -64,6 +66,10 @@ bool DrrRewritePattern::MatchAndRewrite(
       std::make_shared<MatchContextImpl>();
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
+    MatchContext match_context{src_match_ctx};
+    for (const auto& post_process : post_processes_) {
+      post_process(match_context);
+    }
     PatternGraphRewrite(*src_match_ctx, rewriter);
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
@@ -76,8 +82,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
   const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-      bind_map =
-          FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+      bind_map = FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
   if (bind_map.empty()) {
     return false;
   }
@@ -110,7 +115,7 @@ bool DrrRewritePattern::PatternGraphMatch(
                        return std::make_pair(drr_op, ir_op);
                      });
       if (MatchFromOutputToInput(
-              output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
+              output_op_map, *source_pattern_graph_, match_ctx)) {
         *source_pattern_match_ctx = *match_ctx;
         return true;
       }
@@ -266,13 +271,13 @@ bool DrrRewritePattern::MatchFromOutputToInput(
   std::queue<pir::Operation*> ir_q;
   // Initialize DRR matched queue.
   const auto& InitDrrQueue = [&]() -> void {
-    for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
-      VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
-              << it->second << ") in source_pattern_graph ";
-      drr_q.push(it->first);
-      drr_visited.insert(it->first);
-      ir_q.push(it->second);
-      ir_visited.insert(it->second);
+    for (const auto& [first, second] : output_op_map) {
+      VLOG(6) << "match (" << first->name() << " @" << first << " : @" << second
+              << ") in source_pattern_graph ";
+      drr_q.push(first);
+      drr_visited.insert(first);
+      ir_q.push(second);
+      ir_visited.insert(second);
     }
   };
   // Check whether DrrNode and Operation have the same Operands and Results
@@ -351,7 +356,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       break;
     }
     // Step 1: Bind Operation of current op to match_ctx.
-    source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
+    if (!source_pattern_match_ctx->BindIrOperation(drr_node, ir_node)) {
+      matched = false;
+      break;
+    }
 
     // Step 2: Bind input_tensor of current op to match_ctx.
     const auto& drr_input_tensors = drr_node->inputs();
@@ -386,7 +394,7 @@ bool DrrRewritePattern::MatchFromOutputToInput(
           ir_input_values[i].use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
-                << i << "] { " << drr_node->outputs().size()
+                << i << "] { " << drr_input_tensors[i]->consumers().size()
                 << " } != consumers of pir intput[" << i << "] { "
                 << ir_input_values[i].use_count() << " }.";
         break;
@@ -490,8 +498,9 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
 
     // set insert point
-    size_t max_input_op_index = 0UL;
-    pir::Operation* max_index_op = nullptr;
+    // 1. get result pattern max-idx of input op
+    size_t max_res_idx = 0UL;
+    pir::Operation* max_res_idx_op = nullptr;
     for (const Tensor* input : op_call.inputs()) {
       if (input->is_none()) {
         continue;
@@ -501,18 +510,16 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         pir::Operation* ir_input_op = ir_val.defining_op();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
           // do nothing
-        } else if (max_input_op_index <
-                   op_2_temp_program_index.at(ir_input_op)) {
-          max_input_op_index = op_2_temp_program_index.at(ir_input_op);
-          max_index_op = ir_input_op;
-        } else if (max_input_op_index ==
-                   op_2_temp_program_index.at(ir_input_op)) {
-          const auto& ops_vec = temp_program[max_input_op_index];
+        } else if (max_res_idx < op_2_temp_program_index.at(ir_input_op)) {
+          max_res_idx = op_2_temp_program_index.at(ir_input_op);
+          max_res_idx_op = ir_input_op;
+        } else if (max_res_idx == op_2_temp_program_index.at(ir_input_op)) {
+          const auto& ops_vec = temp_program[max_res_idx];
           for (auto it = ops_vec.begin(); it != ops_vec.end(); it++) {
-            if (*it == max_index_op) {
+            if (*it == max_res_idx_op) {
               break;
             } else if (*it == ir_input_op) {
-              max_index_op = ir_input_op;
+              max_res_idx_op = ir_input_op;
               break;
             } else {
               // do nothing
@@ -523,25 +530,29 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         }
       }
     }
-    if (max_input_op_index == 0UL) {
-      VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      pir::Operation* source_pattern_first_op = src_match_ctx.IrOperation(
-          source_pattern_graph.owned_op_call()[0].get());
-      max_input_op_index = op_2_temp_program_index[source_pattern_first_op];
-      rewriter.set_insertion_point(source_pattern_first_op);
+
+    // 2. get source pattern min-idx op
+    pir::Operation* min_src_idx_op = src_match_ctx.IrOperation(
+        source_pattern_graph.owned_op_call()[0].get());
+    size_t min_src_idx = op_2_temp_program_index[min_src_idx_op];
+    for (const auto& src_owned_op_call : source_pattern_graph.owned_op_call()) {
+      pir::Operation* src_owned_op =
+          src_match_ctx.IrOperation(src_owned_op_call.get());
+      size_t src_owned_op_idx = op_2_temp_program_index[src_owned_op];
+      if (min_src_idx > src_owned_op_idx) {
+        min_src_idx = src_owned_op_idx;
+        min_src_idx_op = src_owned_op;
+      }
+    }
+
+    // 3. insert new op at point max(max_res_idx+1, min_src_idx)
+    if (min_src_idx > max_res_idx) {
+      rewriter.set_insertion_point(min_src_idx_op);
     } else {
-      rewriter.SetInsertionPointAfter(max_index_op);
+      rewriter.SetInsertionPointAfter(max_res_idx_op);
     }
 
-    pir::Operation* new_op =
-        CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
-
-    size_t new_max_input_op_index = max_input_op_index + 1;
-    op_2_temp_program_index[new_op] = new_max_input_op_index;
-    if (new_max_input_op_index >= temp_program.size()) {
-      temp_program.push_back({});
-    }
-    temp_program[new_max_input_op_index].push_back(new_op);
+    CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
   });
 
   return res_match_ctx;

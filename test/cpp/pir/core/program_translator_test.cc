@@ -278,7 +278,7 @@ TEST(OperatorDialectTest, WhileOpProgram) {
               EXPECT_TRUE(op2.isa<paddle::dialect::LessThanOp>());
             }
             if (body_body_id == 3 || body_body_id == 4) {
-              EXPECT_TRUE(op2.isa<paddle::dialect::AssignOp>());
+              EXPECT_TRUE(op2.isa<paddle::dialect::AssignOut_Op>());
             }
             if (body_body_id == 5) {
               EXPECT_TRUE(op2.isa<pir::YieldOp>());
@@ -290,7 +290,7 @@ TEST(OperatorDialectTest, WhileOpProgram) {
           EXPECT_TRUE(op1.isa<paddle::dialect::LessThanOp>());
         }
         if (body_id == 5 || body_id == 6) {
-          EXPECT_TRUE(op1.isa<paddle::dialect::AssignOp>());
+          EXPECT_TRUE(op1.isa<paddle::dialect::AssignOut_Op>());
         }
         if (body_id == 7) {
           EXPECT_TRUE(op1.isa<pir::YieldOp>());

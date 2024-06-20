@@ -45,8 +45,7 @@ PD_DECLARE_int32(rpc_get_thread_num);
 PD_DECLARE_int32(rpc_prefetch_thread_num);
 #endif
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = pybind11;
 
@@ -306,5 +305,4 @@ static void RegisterGlobalVarGetterSetter() {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

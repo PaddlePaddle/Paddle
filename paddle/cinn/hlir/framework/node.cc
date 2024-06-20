@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/cinn/hlir/framework/node.h"
-
 #include <algorithm>
 
 #include "paddle/cinn/common/context.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -68,6 +68,8 @@ struct PyBindNodeAttrVisitor {
   VISIT_ELEMENTS(double)
   VISIT_ELEMENTS(bool)
   VISIT_ELEMENTS(std::string)
+  VISIT_ELEMENTS(symbol::DimExpr)
+  VISIT_ELEMENTS(cinn::dialect::SymbolBinding)
 };
 
 }  // namespace
@@ -89,8 +91,12 @@ std::ostream& operator<<(std::ostream& os, const NodeAttr& node_attr) {
 bool edge_index_compare(
     const cinn::common::Shared<cinn::common::GraphEdge>& a,
     const cinn::common::Shared<cinn::common::GraphEdge>& b) {
-  CHECK_NOTNULL(a.get());
-  CHECK_NOTNULL(b.get());
+  PADDLE_ENFORCE_NOT_NULL(
+      a.get(),
+      phi::errors::InvalidArgument("The input edge should not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      b.get(),
+      phi::errors::InvalidArgument("The input edge should not be nullptr."));
   return a->index() < b->index();
 }
 
@@ -99,9 +105,13 @@ Node::inlinks_in_order() const {
   std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& in_edge : this->inlinks()) {
     ordered_links.push_back(in_edge);
-    CHECK_GE(in_edge->index(), 0)
-        << "The index of a node's inlinks should be >= 0! Now index is: "
-        << in_edge->index() << ". Please check.";
+    PADDLE_ENFORCE_GE(
+        in_edge->index(),
+        0,
+        phi::errors::InvalidArgument(
+            "The index of a node's inlinks should be >= 0! Now index is: %d. "
+            "Please check.",
+            in_edge->index()));
   }
   std::sort(ordered_links.begin(), ordered_links.end(), edge_index_compare);
   return ordered_links;
@@ -112,9 +122,13 @@ Node::outlinks_in_order() const {
   std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& out_edge : this->outlinks()) {
     ordered_links.push_back(out_edge);
-    CHECK_GE(out_edge->index(), 0)
-        << "The index of a node's outlinks should be >= 0! Now index is: "
-        << out_edge->index() << ". Please check.";
+    PADDLE_ENFORCE_GE(
+        out_edge->index(),
+        0,
+        phi::errors::InvalidArgument(
+            "The index of a node's outlinks should be >= 0! Now index is: %d. "
+            "Please check.",
+            out_edge->index()));
   }
   std::sort(ordered_links.begin(), ordered_links.end(), edge_index_compare);
   return ordered_links;

@@ -27,6 +27,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -51,7 +52,10 @@ std::unordered_map<T, U> MakeMap(const std::vector<T>& keys,
                                  const std::vector<U>& values) {
   std::unordered_map<T, U> result = std::unordered_map<T, U>();
 
-  CHECK(keys.size() == values.size());
+  PADDLE_ENFORCE_EQ(keys.size(),
+                    values.size(),
+                    ::common::errors::InvalidArgument(
+                        "Required keys shall have same size with values."));
   for (int i = 0; i < keys.size(); i++) {
     result[keys[i]] = values[i];
   }
@@ -74,6 +78,7 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   void Visit(const ir::Load* load, Expr* op) override;
   void Visit(const ir::Store* store, Expr* op) override;
   void Visit(const ir::Reduce* reduce, Expr* op) override;
+  void Visit(const ir::For* for_node, Expr* op) override;
 
  private:
   ir::Expr source_;
@@ -128,7 +133,7 @@ template <typename Teller>
 ExprSetFinder Collector(Teller t, std::string name = "") {
   return ExprSetFinder(
       [=](const ir::Expr& x) -> ExprSet {
-        const auto& rs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(x, t);
+        const auto& rs = cinn::ir::ir_utils::CollectIRNodesInOrder(x, t);
         return std::vector(rs.begin(), rs.end());
       },
       name);
@@ -165,6 +170,8 @@ extern ExprSetFinder IsFor;
 extern ExprSetFinder ChildScheduleBlocks;
 
 extern ExprSetFinder ChildScheduleBlockRealizes;
+
+extern ExprSetFinder ChildRootScheduleBlockRealizes;
 
 extern ExprSetFinder For2Min;
 
@@ -225,6 +232,14 @@ std::vector<ir::Var> CreateInnerBlockVars(
 
 ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
                                      const std::vector<ir::Var>& dest_vars);
+
+ExprTransformer ReplaceVarTransformer(const std::vector<ir::Var>& target_vars,
+                                      const std::vector<ir::Expr>& dest_exprs);
+
+// insert after followed_finder. only support For and ScheduleBlockRealizer
+ExprTransformer UnsqueezeForTransformer(
+    const ExprSetFinderUtils::ExprSetFinder& followed_finder,
+    const ir::Var& to_append_var);
 
 ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
 

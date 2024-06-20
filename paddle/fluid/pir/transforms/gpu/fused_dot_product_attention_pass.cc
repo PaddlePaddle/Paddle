@@ -86,26 +86,25 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-          if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+      if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-          bool qk_matmul_transpose_x =
-              match_ctx.Attr<bool>("qk_matmul_transpose_x");
-          bool qk_matmul_transpose_y =
-              match_ctx.Attr<bool>("qk_matmul_transpose_y");
-          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+      bool qk_matmul_transpose_x =
+          match_ctx.Attr<bool>("qk_matmul_transpose_x");
+      bool qk_matmul_transpose_y =
+          match_ctx.Attr<bool>("qk_matmul_transpose_y");
+      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-          bool context_matmul_transpose_x =
-              match_ctx.Attr<bool>("context_matmul_transpose_x");
-          bool context_matmul_transpose_y =
-              match_ctx.Attr<bool>("context_matmul_transpose_y");
-          if (context_matmul_transpose_x || context_matmul_transpose_y)
-            return false;
+      bool context_matmul_transpose_x =
+          match_ctx.Attr<bool>("context_matmul_transpose_x");
+      bool context_matmul_transpose_y =
+          match_ctx.Attr<bool>("context_matmul_transpose_y");
+      if (context_matmul_transpose_x || context_matmul_transpose_y)
+        return false;
 
-          return true;
-        });
+      return true;
+    });
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
@@ -239,26 +238,25 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
                      {&src.Tensor("k_grad")});
 
     // Constraints
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-          if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+      if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-          bool qk_matmul_transpose_x =
-              match_ctx.Attr<bool>("qk_matmul_transpose_x");
-          bool qk_matmul_transpose_y =
-              match_ctx.Attr<bool>("qk_matmul_transpose_y");
-          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+      bool qk_matmul_transpose_x =
+          match_ctx.Attr<bool>("qk_matmul_transpose_x");
+      bool qk_matmul_transpose_y =
+          match_ctx.Attr<bool>("qk_matmul_transpose_y");
+      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-          bool context_matmul_transpose_x =
-              match_ctx.Attr<bool>("context_matmul_transpose_x");
-          bool context_matmul_transpose_y =
-              match_ctx.Attr<bool>("context_matmul_transpose_y");
-          if (context_matmul_transpose_x || context_matmul_transpose_y)
-            return false;
+      bool context_matmul_transpose_x =
+          match_ctx.Attr<bool>("context_matmul_transpose_x");
+      bool context_matmul_transpose_y =
+          match_ctx.Attr<bool>("context_matmul_transpose_y");
+      if (context_matmul_transpose_x || context_matmul_transpose_y)
+        return false;
 
-          return true;
-        });
+      return true;
+    });
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
@@ -372,26 +370,25 @@ class FusedDotProductAttentionWithDropoutPattern
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-          if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+      if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-          bool qk_matmul_transpose_x =
-              match_ctx.Attr<bool>("qk_matmul_transpose_x");
-          bool qk_matmul_transpose_y =
-              match_ctx.Attr<bool>("qk_matmul_transpose_y");
-          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+      bool qk_matmul_transpose_x =
+          match_ctx.Attr<bool>("qk_matmul_transpose_x");
+      bool qk_matmul_transpose_y =
+          match_ctx.Attr<bool>("qk_matmul_transpose_y");
+      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-          bool context_matmul_transpose_x =
-              match_ctx.Attr<bool>("context_matmul_transpose_x");
-          bool context_matmul_transpose_y =
-              match_ctx.Attr<bool>("context_matmul_transpose_y");
-          if (context_matmul_transpose_x || context_matmul_transpose_y)
-            return false;
+      bool context_matmul_transpose_x =
+          match_ctx.Attr<bool>("context_matmul_transpose_x");
+      bool context_matmul_transpose_y =
+          match_ctx.Attr<bool>("context_matmul_transpose_y");
+      if (context_matmul_transpose_x || context_matmul_transpose_y)
+        return false;
 
-          return true;
-        });
+      return true;
+    });
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
@@ -540,26 +537,25 @@ class FusedDotProductAttentionGradWithDropoutPattern
                      {&src.Tensor("k_grad")});
 
     // Constraints
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-          if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+      if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-          bool qk_matmul_transpose_x =
-              match_ctx.Attr<bool>("qk_matmul_transpose_x");
-          bool qk_matmul_transpose_y =
-              match_ctx.Attr<bool>("qk_matmul_transpose_y");
-          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+      bool qk_matmul_transpose_x =
+          match_ctx.Attr<bool>("qk_matmul_transpose_x");
+      bool qk_matmul_transpose_y =
+          match_ctx.Attr<bool>("qk_matmul_transpose_y");
+      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-          bool context_matmul_transpose_x =
-              match_ctx.Attr<bool>("context_matmul_transpose_x");
-          bool context_matmul_transpose_y =
-              match_ctx.Attr<bool>("context_matmul_transpose_y");
-          if (context_matmul_transpose_x || context_matmul_transpose_y)
-            return false;
+      bool context_matmul_transpose_x =
+          match_ctx.Attr<bool>("context_matmul_transpose_x");
+      bool context_matmul_transpose_y =
+          match_ctx.Attr<bool>("context_matmul_transpose_y");
+      if (context_matmul_transpose_x || context_matmul_transpose_y)
+        return false;
 
-          return true;
-        });
+      return true;
+    });
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();

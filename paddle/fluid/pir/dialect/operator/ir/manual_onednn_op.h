@@ -75,7 +75,7 @@ class ExpandOp : public pir::Op<ExpandOp,
       const phi::DataType& tensor_dtype,
       const phi::DataType& expected_kernel_dtype);
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis* shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context);
 
   pir::Value x() { return operand_source(0); }
   pir::Value shape() { return operand_source(1); }

@@ -190,7 +190,6 @@ class TestLlamaInference(unittest.TestCase):
         paddle.set_flags(
             {
                 "FLAGS_prim_forward_blacklist": "pd_op.embedding;pd_op.softmax",
-                "FLAGS_enable_cinn_compile_cache": False,
             }
         )
         cinn_out = self.eval(use_cinn=True)

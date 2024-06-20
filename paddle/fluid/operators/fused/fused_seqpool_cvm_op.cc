@@ -46,7 +46,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     auto ins_dims = ctx->GetInputsDim("X");
     const int cvm_offset = ctx->Attrs().Get<int>("cvm_offset");
     const size_t num_inputs = ins_dims.size();
-    std::vector<framework::DDim> outs_dims;
+    std::vector<phi::DDim> outs_dims;
     outs_dims.resize(num_inputs);
     bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
 

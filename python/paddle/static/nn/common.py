@@ -32,7 +32,6 @@ from paddle.base.framework import (
     program_guard,
     static_only,
 )
-from paddle.base.layers.layer_function_generator import templatedoc
 from paddle.base.param_attr import ParamAttr
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.common_ops_import import (
@@ -665,7 +664,6 @@ def data_norm(
     return helper.append_activation(data_norm_out)
 
 
-@templatedoc()
 def group_norm(
     input,
     groups,
@@ -3117,7 +3115,6 @@ class PyFuncRegistry:
 
 
 @static_only
-@templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
     This is used to register customized Python OP to Paddle. The design
@@ -3334,23 +3331,57 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     return out
 
 
-@templatedoc()
 def row_conv(input, future_context_size, param_attr=None, act=None):
-    """
+    r"""
     :api_attr: Static Graph
 
-    ${comment}
+    The row convolution is called lookahead convolution. It was
+    introduced in the following paper for DeepSpeech2:
+    http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+
+    The main motivation is that a bidirectional RNN, useful in DeepSpeech
+    like speech models, learns representation for a sequence by performing a
+    forward and a backward pass through the entire sequence. However, unlike
+    unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
+    and low-latency setting. The lookahead convolution incorporates information
+    from future subsequences in a computationally efficient manner to improve
+    unidirectional recurrent neural networks. The row convolution is
+    different from the 1D sequence convolution, and is computed as follows:
+
+    Given an input sequence :math:`X` of length :math:`t` and input dimension :math:`D`,
+    and a filter (:math:`W`) of size :math:`context \times D`,
+    the output sequence is convolved as:
+
+    .. math::
+
+        Out_{i} = \sum_{j=i}^{i + context - 1} X_{j} \cdot W_{j-i}
+
+
+    In the above equation:
+
+    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
+
+    * :math:`context`: Future context size.
+
+    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
+
+    * :math:`W_{j-i}`: The (j-i)-th row of parameters with shape [1, D].
+
+    More details about row_conv please refer to
+    the design document
+    https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
     Args:
-        input (${x_type}): ${x_comment}.
+        input (Tensor): The input is a Tensor, the shape of Tensor input has shape
+            (B x T x N), B is batch size.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
             name, initializer etc.
-        act (str): Non-linear activation to be applied to output variable.
+        act (str): Non-linear activation to be applied to output Tensor.
 
     Returns:
-        ${out_comment}.
+        Tensor: The output is a Tensor, which has same type and same shape as input.
 
     Examples:
 
@@ -3521,7 +3552,6 @@ py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
 
 
-@templatedoc()
 def layer_norm(
     input,
     scale=True,

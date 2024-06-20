@@ -84,7 +84,7 @@ using phi::memory_utils::Copy;
 TEST(GetPlaceFromPtr, GPU) {
   using paddle::GetPlaceFromPtr;
 
-  std::array<float, 6> cpu_data;
+  std::array<float, 6> cpu_data = {};
   auto cpu_data_place = GetPlaceFromPtr(cpu_data.data());
   ASSERT_EQ(cpu_data_place, phi::CPUPlace());
   std::cout << "cpu_data_place: " << cpu_data_place << std::endl;
@@ -137,7 +137,7 @@ TEST(from_blob, GPU) {
 
   // 3.2 check tensor values
   auto* gpu_tensor_data = gpu_tensor.template data<float>();
-  std::array<float, 6> gpu_tensor_data_cpu;
+  std::array<float, 6> gpu_tensor_data_cpu = {};
   Copy(phi::CPUPlace(),
        gpu_tensor_data_cpu.data(),
        gpu0,
@@ -155,7 +155,7 @@ TEST(from_blob, GPU) {
   // 3.4 test other API
   auto gpu_tensor_pow = paddle::experimental::pow(gpu_tensor, 2);
   auto* gpu_tensor_pow_data = gpu_tensor_pow.template data<float>();
-  std::array<float, 6> gpu_tensor_pow_data_cpu;
+  std::array<float, 6> gpu_tensor_pow_data_cpu = {};
   Copy(phi::CPUPlace(),
        gpu_tensor_pow_data_cpu.data(),
        gpu0,

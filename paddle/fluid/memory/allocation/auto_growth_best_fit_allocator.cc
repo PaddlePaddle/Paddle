@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <mutex>  // NOLINT
+#include <utility>
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/platform/flags.h"
@@ -41,17 +42,15 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
 PADDLE_DEFINE_EXPORTED_READONLY_bool(print_allocator_trace_info,
                                      false,
                                      "print trace memory info");
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
-    const std::shared_ptr<Allocator> &underlying_allocator,
+    std::shared_ptr<Allocator> underlying_allocator,
     size_t alignment,
     size_t chunk_size,
     bool allow_free_idle_chunk,
     int extra_padding_size)
-    : underlying_allocator_(underlying_allocator),
+    : underlying_allocator_(std::move(underlying_allocator)),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk),
@@ -225,6 +224,4 @@ void AutoGrowthBestFitAllocator::Trace() const {
           << " curr_chunks_num:" << chunks_.size();
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

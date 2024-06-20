@@ -26,7 +26,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.framework import use_pir_api
 from paddle.static import InputSpec
 
 SEED = 2020
@@ -199,14 +198,12 @@ class TestSetValueWithLayerAndSave(Dy2StTestBase):
                 LayerWithSetValue(input_dim=10, hidden=1)
             )
             x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
-            # TODO(pir-save-load): Fix this after we support save/load in PIR
-            if not use_pir_api():
-                paddle.jit.save(
-                    layer=model,
-                    path=self.model_path,
-                    input_spec=[x],
-                    output_spec=None,
-                )
+            paddle.jit.save(
+                layer=model,
+                path=self.model_path,
+                input_spec=[x],
+                output_spec=None,
+            )
 
 
 class TestSliceSupplementSpecialCase(Dy2StTestBase):

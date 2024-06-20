@@ -142,7 +142,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
 
 def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     """
-    Make a blocking RPC call to run function ``fn`` on worker ``to``.
+    Make a blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
 
     Args:
         to (str): name of the destination worker.
@@ -182,7 +182,7 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
 
 def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     """
-    Make a non-blocking RPC call to run function ``fn`` on worker ``to``.
+    Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
 
     Args:
         to (str): name of the destination worker.

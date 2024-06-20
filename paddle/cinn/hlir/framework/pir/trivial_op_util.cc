@@ -29,6 +29,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -55,7 +56,7 @@ std::vector<ir::Expr> VarVec2ExprVec(const std::vector<ir::Var>& in) {
 std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
                                             const ir::Tensor& tensor) {
   VLOG(4) << "GetEachTensorLoadExpr: " << tensor;
-  std::set<Expr> load_exprs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
+  std::vector<Expr> load_exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
       body, [&tensor](const Expr* expr) {
         return expr->As<ir::Load>() && expr->As<ir::Load>()->is_addr_tensor() &&
                expr->As<ir::Load>()->tensor.as_tensor_ref()->name ==
@@ -64,7 +65,7 @@ std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
   for (auto& t : load_exprs) {
     VLOG(4) << "GetEachTensorLoadExpr Found: " << t << " " << t.ptr();
   }
-  return std::vector(load_exprs.begin(), load_exprs.end());
+  return load_exprs;
 }
 
 MappingTargetExprToDestExprMutator::MappingTargetExprToDestExprMutator(
@@ -82,6 +83,16 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Load* load, Expr* op) {
     IRMutator::Visit(load, op);
   }
 }
+
+void MappingTargetExprToDestExprMutator::Visit(const ir::For* for_node,
+                                               Expr* op) {
+  if (for_node == source_.ptr()) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(for_node, op);
+  }
+}
+
 void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
                                                Expr* op) {
   if (store == source_.ptr()) {
@@ -90,6 +101,7 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
     IRMutator::Visit(store, op);
   }
 }
+
 void MappingTargetExprToDestExprMutator::Visit(const ir::Reduce* reduce,
                                                Expr* op) {
   if (reduce == source_.ptr()) {
@@ -126,10 +138,12 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
   VLOG(4) << "Replace From : " << cinn::utils::Join(replaced, " ");
   VLOG(4) << "Replace To   : " << cinn::utils::Join(candidates, " ");
 
-  CHECK_EQ(replaced.size(), candidates.size())
-      << "In ReplaceExpr, the size of Vars to be replaced must be equal to "
-         "the "
-         "size of cadidate Exprs! Please check.";
+  PADDLE_ENFORCE_EQ(
+      replaced.size(),
+      candidates.size(),
+      ::common::errors::InvalidArgument(
+          "In ReplaceExpr, the size of Vars to be replaced must be equal to "
+          "the size of cadidate Exprs! Please check."));
   auto copyed_source = ir::ir_utils::IRCopy(source);
   if (replaced.empty()) return copyed_source;
   std::map<Var, Expr, ir::CompVar> replacing_map;
@@ -193,7 +207,7 @@ ExprSetFinder ExprSetFinder::operator*(ExprSetFinder x) const {
     std::vector<ir::Expr> res;
     for (const auto& r : rs) {
       const auto& x_res = x.f_(r);
-      res.insert(res.begin(), x_res.begin(), x_res.end());
+      res.insert(res.end(), x_res.begin(), x_res.end());
     }
     return res;
   };
@@ -243,6 +257,15 @@ ExprSetFinder ScheduleBlockRealizeNotRoot = FilterMaker(
     },
     "ScheduleBlockRealizeNotRoot");
 
+ExprSetFinder ScheduleBlockRealizeIsRoot = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("root") != std::string::npos);
+    },
+    "ScheduleBlockRealizeIsRoot");
+
 ExprSetFinder ScheduleBlockRealizeIsNotInit = FilterMaker(
     [](const ir::Expr& e) -> bool {
       return (e.As<ir::ScheduleBlockRealize>() &&
@@ -274,6 +297,12 @@ ExprSetFinder ChildScheduleBlockRealizes =
         "ChildScheduleBlockRealizes") *
     ScheduleBlockRealizeNotRoot;
 
+ExprSetFinder ChildRootScheduleBlockRealizes =
+    Collector(
+        [](const ir::Expr* e) { return e->As<ir::ScheduleBlockRealize>(); },
+        "ChildScheduleBlockRealizes") *
+    ScheduleBlockRealizeIsRoot;
+
 ExprSetFinder IsForIterVar(const ir::Var& var) {
   return FilterMaker(
       [var = var](const ir::Expr& e) -> bool {
@@ -301,7 +330,7 @@ ExprSetFinder ChildTensorLoads = Collector(
 
 ExprSetFinder ChildTensorStores = Collector(
     [](const ir::Expr* e) {
-      return e->As<ir::Load>() && e->As<ir::Store>()->is_addr_tensor();
+      return e->As<ir::Store>() && e->As<ir::Store>()->is_addr_tensor();
     },
     "ChildTensorStores");
 
@@ -321,8 +350,10 @@ ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [&](const auto& child) -> ExprSet {
     ExprSetFinder find_child =
         Collector([child](const ir::Expr* e) { return *e == child; });
-    const auto& father_collector = Collector(
-        [&](const ir::Expr* current) { return !find_child(*current).empty(); });
+    const auto& father_collector = Collector([&](const ir::Expr* current) {
+      auto res = (*current != child) && !find_child(*current).empty();
+      return res;
+    });
     return father_collector(root);
   };
   return ExprSetFinder(f, "FindFather");
@@ -370,6 +401,35 @@ ExprTransformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
   return ExprTransformer(f);
 }
 
+ExprTransformer UnsqueezeForTransformer(
+    const ExprSetFinderUtils::ExprSetFinder& followed_finder,
+    const ir::Var& to_append_var) {
+  const auto& suqueeze_for_func = [&](const ir::Expr& e) -> ir::Expr {
+    auto copied_e = ir::ir_utils::IRCopy(e);
+    ir::Expr followed_expr = followed_finder.GetSingle(copied_e);
+    // (ExprSetFinderUtils::ChildFors *
+    // ExprSetFinderUtils::IsForIterVar(following_for_iter_var)).GetSingle(copied_e);
+    VLOG(6) << "UnsqueezeForTransformer: for insert after " << followed_expr;
+    if (followed_expr.As<ir::For>()) {
+      followed_expr.As<ir::For>()->body = ir::Block::Make({WrapForTransformer(
+          to_append_var)(followed_expr.As<ir::For>()->body)});
+    } else if (followed_expr.As<ir::ScheduleBlockRealize>()) {
+      const auto& schedule_block = followed_expr.As<ir::ScheduleBlockRealize>()
+                                       ->schedule_block.As<ir::ScheduleBlock>();
+      schedule_block->body =
+          WrapForTransformer(to_append_var)(schedule_block->body);
+    } else {
+      PADDLE_THROW(
+          "UnsqueezeForTransformer: only support insert after a (For / "
+          "ScheduleBlockRealizer): %s",
+          followed_expr);
+    }
+    VLOG(6) << "UnsqueezeForTransformer: After changed: " << copied_e;
+    return copied_e;
+  };
+  return ExprTransformer(suqueeze_for_func);
+}
+
 ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
                                             const ir::Expr& dst_load) {
   const auto& f = [&](const ir::Expr& e) -> ir::Expr {
@@ -389,10 +449,10 @@ void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst) {
 
 ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
                                      const std::vector<ir::Expr>& indices) {
-  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+  const auto& MakeStoreNode = [=](const ir::Expr& e) -> ir::Expr {
     return ir::Store::Make(tensor, e, indices);
   };
-  return ExprTransformer(f);
+  return ExprTransformer(MakeStoreNode);
 }
 
 std::vector<ir::Var> CreateInnerBlockVars(
@@ -417,14 +477,32 @@ ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
   return ExprTransformer(f);
 }
 
+ExprTransformer ReplaceVarTransformer(const std::vector<ir::Var>& target_vars,
+                                      const std::vector<ir::Expr>& dest_expr) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    return ComposeUtils::CopyedReplaceExpr(e, target_vars, dest_expr);
+  };
+  return ExprTransformer(f);
+}
+
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
+  return lhs.type().is_bool() || rhs.type().is_bool();
+}
+
 ExprTransformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
                                     const ir::Tensor& tensor,
                                     const std::vector<ir::Expr>& axis_exprs) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     switch (reduce_type) {
       case ir::Reduce::kSum:
+        if (IsReduceBool(tensor(axis_exprs), e)) {
+          return ir::Store::Make(tensor, tensor(axis_exprs) || e, axis_exprs);
+        }
         return ir::Store::Make(tensor, tensor(axis_exprs) + e, axis_exprs);
       case ir::Reduce::kMul:
+        if (IsReduceBool(tensor(axis_exprs), e)) {
+          return ir::Store::Make(tensor, tensor(axis_exprs) && e, axis_exprs);
+        }
         return ir::Store::Make(tensor, tensor(axis_exprs) * e, axis_exprs);
       case ir::Reduce::kMax:
         return ir::Store::Make(

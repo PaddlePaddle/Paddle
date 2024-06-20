@@ -71,13 +71,13 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
       // should ExecutionContext for calc stream.
       auto stream = ctx.cuda_device_context().stream();
       ncclRedOp_t nccl_red_type = ncclSum;
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
-                                                                  recvbuff,
-                                                                  numel,
-                                                                  dtype,
-                                                                  nccl_red_type,
-                                                                  comm->comm(),
-                                                                  stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(sendbuff,
+                                                             recvbuff,
+                                                             numel,
+                                                             dtype,
+                                                             nccl_red_type,
+                                                             comm->comm(),
+                                                             stream));
       platform::GpuStreamSync(stream);
       VLOG(3) << "old NCCLCommContext has rid " << rid;
     }

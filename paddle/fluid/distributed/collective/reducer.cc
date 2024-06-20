@@ -162,7 +162,7 @@ struct ConcatTensorsForAllReduce {
   void operator()(const DeviceContext &context,
                   const std::vector<phi::DenseTensor> &dense_tensors_,
                   Tensor *p_dense_contents) {
-    operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+    phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor_;
     concat_functor_(
         context,
         dense_tensors_,
@@ -191,7 +191,7 @@ struct SplitTensorsForAllReduce {
       shape_refer.emplace_back(&tensor);
     }
 
-    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 };
@@ -492,6 +492,12 @@ EagerReducer::EagerReducer(
       is_sparse_gradient_(is_sparse_gradient),
       process_group_(process_group),
       group_size_limits_(group_size_limits),
+      groups_(),
+      variable_locators_(),
+      vars_marked_ready_(),
+      local_used_vars_(),
+      unused_vars_(),
+      gradnode_index_map_(),
       find_unused_vars_each_step_(find_unused_parameters) {
   VLOG(3) << "Start construct the Reducer ...";
 

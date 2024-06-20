@@ -107,14 +107,14 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->ReduceScatter(out, *in, ncclSum, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
-          send_buff,
-          recv_buff,
-          recv_numel,
-          static_cast<ncclDataType_t>(dtype),
-          ncclSum,
-          comm->comm(),
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclReduceScatter(send_buff,
+                                          recv_buff,
+                                          recv_numel,
+                                          static_cast<ncclDataType_t>(dtype),
+                                          ncclSum,
+                                          comm->comm(),
+                                          stream));
     }
 #else
     PADDLE_THROW(phi::errors::PreconditionNotMet(

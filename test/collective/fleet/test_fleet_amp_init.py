@@ -85,7 +85,7 @@ class TestFleetAMPInit(unittest.TestCase):
         step = 1
         for i in range(step):
             cost_val = exe.run(
-                program=main_program, feed=gen_data(), fetch_list=[cost.name]
+                program=main_program, feed=gen_data(), fetch_list=[cost]
             )
 
     def test_fleet_amp_meta_optimizer_init(self):
@@ -135,7 +135,7 @@ class TestFleetAMPInit(unittest.TestCase):
         step = 3
         for i in range(step):
             cost_val = exe.run(
-                program=main_program, feed=gen_data(), fetch_list=[cost.name]
+                program=main_program, feed=gen_data(), fetch_list=[cost]
             )
             print(cost_val)
 

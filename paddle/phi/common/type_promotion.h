@@ -43,7 +43,8 @@ inline int DataTypeToNum(const DataType& dtype) {
     case DataType::BFLOAT16:
       return 11;
     default:
-      PD_THROW("Invalid enum data type for type promote `", dtype, "`.");
+      PADDLE_THROW(phi::errors::InvalidType(
+          "Invalid enum data type for type promote %s.", dtype));
   }
 }
 
@@ -82,9 +83,38 @@ inline static DataType promoteTypes(DataType x, DataType y) {
   return _promoteTypesLookup[DataTypeToNum(x)][DataTypeToNum(y)];
 }
 
-static inline bool is_support_float(DataType dtype) {
+inline bool is_support_float(DataType dtype) {
   if (dtype == DataType::FLOAT16 || dtype == DataType::FLOAT32 ||
       dtype == DataType::FLOAT64 || dtype == DataType::BFLOAT16) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+inline bool is_support_complex(DataType dtype) {
+  if (dtype == DataType::COMPLEX64 || dtype == DataType::COMPLEX128) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// only T+S support int type promotion
+inline bool is_support_int(DataType dtype) {
+  if (dtype == DataType::UINT8 || dtype == DataType::INT8 ||
+      dtype == DataType::INT16 || dtype == DataType::INT32 ||
+      dtype == DataType::INT64) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
+  if ((is_support_int(x) && is_support_int(y)) ||
+      (is_support_float(x) && is_support_float(y)) ||
+      (is_support_complex(x) && is_support_complex(y))) {
     return true;
   } else {
     return false;
@@ -94,19 +124,45 @@ static inline bool is_support_float(DataType dtype) {
 inline phi::DataType GetPromoteDtype(const std::string& op_name,
                                      const DataType x,
                                      const DataType y) {
-  // future will deal this by different rule
-  if (op_name == "greater_than") {
-    // bool logic
-    return DataType::BOOL;
-  } else {
-    return phi::promoteTypes(x, y);
+  if (op_name == "divide" || op_name == "divide_") {
+    // only T+S can run into this branch
+    if (is_support_int(x) && is_support_int(y)) {
+      return DataType::FLOAT32;
+    }
   }
+  return phi::promoteTypes(x, y);
 }
 
-inline bool NeedTypePromotion(const DataType x, const DataType y) {
-  // Tensor + Tensor only support type promotion for float type
-  if ((x != y) && is_support_float(x) && is_support_float(y)) {
-    return true;
+inline bool NeedTypePromotion(const std::string& op_name,
+                              const DataType x,
+                              const DataType y) {
+  // Tensor + Tensor type promotion only support calculations between
+  // floating-point numbers and between complex and real numbers.
+  if (x != y) {
+// TODO(Xi Zhao): we got special case for add now, should remove it in furture.
+#ifdef PADDLE_WITH_CUDA
+    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
+        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_XPU)
+    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
+        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
+      return false;
+    }
+#endif
+
+    if ((is_support_float(x) && is_support_float(y)) ||
+        (is_support_complex(x) || is_support_complex(y))) {
+      return true;
+    } else {
+      PADDLE_THROW(phi::errors::InvalidType(
+          "Type promotion only support calculations between floating-point "
+          "numbers and between complex and real numbers. But got different "
+          "data type x: %s, y: %s.",
+          x,
+          y));
+    }
   } else {
     return false;
   }

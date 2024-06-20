@@ -118,6 +118,29 @@ class TestHistogramOpError(unittest.TestCase):
             self.run_network(net_func)
 
     @test_with_pir_api
+    def test_input_range_error(self):
+        """Test range of input is out of bound"""
+
+        def net_func():
+            input_value = paddle.to_tensor(
+                [
+                    -7095538316670326452,
+                    -6102192280439741006,
+                    2040176985344715288,
+                    -6276983991026997920,
+                    -6570715756420355710,
+                    -5998045007776667296,
+                    -6763099356862306438,
+                    3166073479842736625,
+                ],
+                dtype=paddle.int64,
+            )
+            paddle.histogram(input=input_value, bins=1, min=0, max=0)
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
+
+    @test_with_pir_api
     def test_type_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.

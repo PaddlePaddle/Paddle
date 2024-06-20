@@ -118,23 +118,26 @@ inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
   }
 }
 
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_dim_exprs);
+
 std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);
 
 bool ReduceInferDim(pir::Operation *op,
-                    pir::ShapeConstraintIRAnalysis *shape_analysis,
+                    pir::InferSymbolicShapeContext *infer_context,
                     const std::vector<int64_t> &axis,
                     bool keep_dim,
                     bool reduce_all);
 
 void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    pir::InferSymbolicShapeContext *infer_context,
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
     int axis);
 
 void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    pir::InferSymbolicShapeContext *infer_context,
     const std::vector<pir::Value> &values,
     int axis);
 

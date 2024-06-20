@@ -116,6 +116,28 @@ class DygraphShardingOptimizer:
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
+        self._broadcast_overlap = False
+        self._forward_pre_hook_remove_helper = []
+
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            assert (
+                not self.comm_overlap
+            ), "comm overlap not support when use xpu cdnn_cluster parallel."
+
+        try:
+            # The fp32 params such as layer_norm_0.w_0 will be at the end of param_list.
+            # Have to sort the params to make sure all params are in the forward using order.
+            self._broadcast_order_params = sorted(
+                self._parameter_list,
+                key=lambda x: int(x.name.split('.')[0].split('_')[-1]),
+            )
+
+        except ValueError:
+            self._broadcast_order_params = None
+
         if not self.tensor_fusion and not self.comm_overlap:
             local_params = self._rank2params[self._sharding_rank]
             self._set_inner_opt_attr('_parameter_list', local_params)
@@ -298,6 +320,14 @@ class DygraphShardingOptimizer:
             for buffer in self._comm_buffers:
                 buffer.scale_grads()
             return
+
+        # sync here to guarantee cdnn_cluster parallel correct.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            paddle.device.synchronize()
+
         with framework.no_grad():
             for param in parameter_list:
                 g_var = self._get_param_grad(param)
@@ -318,6 +348,13 @@ class DygraphShardingOptimizer:
                         sync_op=True,
                     )
 
+    def _forward_pre_hook_function(self, tasks):
+        def __impl__(x, y):
+            for task in tasks:
+                task.wait()
+
+        return __impl__
+
     def _sharding_sync_parameters(self):
         """
         Synchronize parameter across sharding group efficiently.
@@ -334,27 +371,57 @@ class DygraphShardingOptimizer:
             sharding_group_ranks = self._hcg.get_sharding_parallel_group().ranks
 
             broadcast_tasks = []
-            for rank, params in valid_rank_to_params.items():
-                # Compute the global source rank only once per each rank's set of parameters
-                src_rank = sharding_group_ranks[rank]
+            if self._broadcast_overlap:
+                param2task = {}
 
-                for param in params:
-                    # NOTE: We should check if the parameter is trainable, because some parameters
-                    # (e.g., freeze the parameters for training) are not trainable and should
-                    # not be broadcasted.
-                    g_var = self._get_param_grad(param)
-                    if g_var is not None:
+                group = self._hcg.get_sharding_parallel_group()
+                for param in self._broadcast_order_params:
+                    if param.trainable:
                         task = paddle.distributed.broadcast(
-                            param,
-                            src=src_rank,
-                            group=self._hcg.get_sharding_parallel_group(),
+                            tensor=param,
+                            src=group.ranks[self._param2rank[param.name]],
+                            group=group,
                             sync_op=False,
                         )
-                        broadcast_tasks.append(task)
+                        assert param.name not in param2task
+                        param2task[param.name] = task
 
-            # Wait for all async broadcast tasks to complete
-            for task in broadcast_tasks:
-                task.wait()
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers()) == 0:
+                        # Register forward pre hood for leaf layers. This will get the best performance.
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task[param.name])
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
+                        )
+
+            else:
+                for rank, params in valid_rank_to_params.items():
+                    # Compute the global source rank only once per each rank's set of parameters
+                    src_rank = sharding_group_ranks[rank]
+
+                    for param in params:
+                        # NOTE: We should check if the parameter is trainable, because some parameters
+                        # (e.g., freeze the parameters for training) are not trainable and should
+                        # not be broadcasted.
+                        g_var = self._get_param_grad(param)
+                        if g_var is not None:
+                            task = paddle.distributed.broadcast(
+                                param,
+                                src=src_rank,
+                                group=self._hcg.get_sharding_parallel_group(),
+                                sync_op=False,
+                            )
+                            broadcast_tasks.append(task)
+
+                # Wait for all async broadcast tasks to complete
+                for task in broadcast_tasks:
+                    task.wait()
 
     def _update_trainable(self):
         """
@@ -384,10 +451,33 @@ class DygraphShardingOptimizer:
 
         return result
 
+    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
+        self._broadcast_overlap = broadcast_overlap
+        if self._broadcast_overlap:
+            assert (
+                layers is not None
+            ), "To Enable Stage1 Optimizer Broadcast Overlap Forward, layers cannot be None"
+            self._layers = layers
+            warnings.warn(
+                r"Setting overlap broadcast implies that `paddle.device.cuda.synchronize()` must be manually invoked before calling `paddle.save()` and prior to inference"
+            )
+
+            if self._broadcast_order_params is None:
+                warnings.warn(
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    "overlap broadcast may harm the performance."
+                )
+                self._broadcast_order_params = self._parameter_list
+
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
+        if self._broadcast_overlap:
+            # Clear the pre forward hook in the optimizer step.
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
 
         target_param_list = (
             self._origin_parameter_list
@@ -544,10 +634,19 @@ class DygraphShardingOptimizerV2:
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
+
         self._comm_buffer_list.sort(key=lambda x: x._dst)
 
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
+
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            assert (
+                not self.comm_overlap
+            ), "comm overlap not support when use xpu cdnn_cluster parallel."
 
         # Ensure acc_steps is greater than 0 when comm_overlap is used
         if self.comm_overlap:
@@ -572,6 +671,16 @@ class DygraphShardingOptimizerV2:
         # Register reduce overlap hook if comm_overlap is used without pp_overlap
         if not self.pp_overlap and self.comm_overlap:
             self.register_reduce_overlap_hook(use_comm=True)
+
+        self._all_gather_overlap_forward = False
+        self._forward_pre_hook_remove_helper = []
+
+    def _set_all_gather_overlap_forward(
+        self, all_gather_overlap_forward, layers
+    ):
+        self._all_gather_overlap_forward = all_gather_overlap_forward
+        if self._all_gather_overlap_forward:
+            self._layers = layers
 
     def register_reduce_overlap_hook(self, use_comm):
         # Register backward hooks for each parameter in the buffer
@@ -654,6 +763,14 @@ class DygraphShardingOptimizerV2:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
+
+        # sync here to guarantee cdnn_cluster parallel correct.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            paddle.device.synchronize()
+
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
                 if self.pp_release_grads and comm_buffer.grad_storage is None:
@@ -665,6 +782,13 @@ class DygraphShardingOptimizerV2:
 
                 comm_buffer.scale_grads()
 
+    def _forward_pre_hook_function(self, tasks):
+        def __impl__(x, y):
+            for task in tasks:
+                task.wait()
+
+        return __impl__
+
     def _sharding_sync_parameters(self):
         """
         sync parameter across sharding group
@@ -672,8 +796,27 @@ class DygraphShardingOptimizerV2:
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            if self._all_gather_overlap_forward:
+                param2task = {}
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params(sync=False, param2task=param2task)
+
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers()) == 0:
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task[param.name])
+
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
+                        )
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     def _update_trainable(self):
         """
@@ -701,6 +844,7 @@ class DygraphShardingOptimizerV2:
         copy_attr("optimize_attr")
         copy_attr("do_model_average")
         copy_attr("need_clip")
+        copy_attr("no_sync")
 
         self._slice_params[param.name] = slice_param
         return slice_param
@@ -735,6 +879,13 @@ class DygraphShardingOptimizerV2:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
         # hack for pp comm overlap
+
+        if self._all_gather_overlap_forward:
+            # Clear the pre forward hook in the optimizer step.
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
+
         self._collect_comm_buffers()
         self._assign_slice_grad()
 

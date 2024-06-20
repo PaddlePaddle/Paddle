@@ -217,11 +217,17 @@ std::vector<ir::Expr> LowerTensorGroup::GenerateFunctionBody(
           tensor->buffer.defined() &&
           (tensor->buffer->memory_type == ir::MemoryType::GPUShared ||
            tensor->buffer->memory_type == ir::MemoryType::GPULocal);
-      if (target_ == cinn::common::DefaultNVGPUTarget() && !gpu_local) {
-        result.push_back(bodies.size() == 1 ? bodies[0]
-                                            : ir::Block::Make(bodies));
-        bodies.clear();
-      }
+      target_.arch.Match(
+          [&](common::NVGPUArch) {
+            if (!gpu_local) {
+              result.push_back(bodies.size() == 1 ? bodies[0]
+                                                  : ir::Block::Make(bodies));
+              bodies.clear();
+            }
+          },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
     }
   }
 

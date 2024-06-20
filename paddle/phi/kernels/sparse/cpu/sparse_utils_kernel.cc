@@ -262,9 +262,9 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          DenseTensor* out) {
   const auto non_zero_num = x.nnz();
-  const auto dense_dims = x.dims();
-  const auto indices = x.indices();
-  const auto values = x.values();
+  const auto& dense_dims = x.dims();
+  const auto& indices = x.indices();
+  const auto& values = x.values();
   const auto indices_dims = common::vectorize<int>(indices.dims());
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
@@ -328,7 +328,9 @@ PD_REGISTER_KERNEL(dense_to_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(csr_to_coo,
                    CPU,
@@ -342,7 +344,9 @@ PD_REGISTER_KERNEL(csr_to_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(coo_to_csr,
                    CPU,
@@ -356,7 +360,9 @@ PD_REGISTER_KERNEL(coo_to_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(dense_to_csr,
                    CPU,
@@ -369,7 +375,9 @@ PD_REGISTER_KERNEL(dense_to_csr,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(coo_to_dense,
                    CPU,
@@ -383,7 +391,9 @@ PD_REGISTER_KERNEL(coo_to_dense,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(csr_to_dense,
                    CPU,
@@ -397,7 +407,9 @@ PD_REGISTER_KERNEL(csr_to_dense,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(values_coo,
                    CPU,
@@ -411,7 +423,9 @@ PD_REGISTER_KERNEL(values_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -442,7 +456,9 @@ PD_REGISTER_KERNEL(values_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
@@ -456,4 +472,6 @@ PD_REGISTER_KERNEL(sparse_coo_tensor,
                    uint8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

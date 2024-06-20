@@ -315,13 +315,13 @@ __device__ __forceinline__ void rotate_half(phi::Array<const T*, 3> ins_data,
   T store[VecSize];
   using VecType = phi::AlignedVector<T, VecSize>;
   constexpr int kVectorsPerThread = VecSize / 2;
-  int stride_r = head_dim / 2;
+  int64_t stride_r = head_dim / 2;
 #pragma unroll
   for (int iter = 0; iter < 3; iter++) {
     if (iter >= num_inputs) break;
     // get value_index and rotate_half_index
-    int index_v = index;
-    int index_r =
+    int64_t index_v = index;
+    int64_t index_r =
         (index % head_dim) < stride_r ? (index + stride_r) : (index - stride_r);
     MPType sign_r = (index % head_dim) < stride_r ? static_cast<MPType>(-1)
                                                   : static_cast<MPType>(1);

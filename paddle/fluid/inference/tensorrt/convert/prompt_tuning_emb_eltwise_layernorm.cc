@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/prompt_tuning_emb_layernorm_varseqlen_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
@@ -118,10 +116,8 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
                           static_cast<int32_t>(emb_sizes[i]));
     }
 
-    nvinfer1::PluginFieldCollection* plugin_ptr =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_ptr) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+        new nvinfer1::PluginFieldCollection);
     plugin_ptr->nbFields = static_cast<int>(fields.size());
     plugin_ptr->fields = fields.data();
 
@@ -134,7 +130,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto creator = GetPluginRegistry()->getPluginCreator(
         "PromptTuningEmbLayerNormVarlenPluginDynamic", "1");
     auto plugin_obj = creator->createPlugin(
-        "PromptTuningEmbLayerNormVarlenPluginDynamic", plugin_ptr);
+        "PromptTuningEmbLayerNormVarlenPluginDynamic", plugin_ptr.get());
 
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -143,7 +139,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
         ("PromptTuningEmbLayerNormVarlenPluginDynamicV1(Output: " +
          op_desc.Output("Out")[0] + ")")
             .c_str());
-    free(plugin_ptr);
+    plugin_ptr.reset();
     if (enable_int8) {
       float out_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -170,9 +166,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(prompt_tuning_emb_eltwise_layernorm,
                           PromptTuningEmbEltwiseLayerNormOpConverter);

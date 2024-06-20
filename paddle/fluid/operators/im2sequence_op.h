@@ -52,7 +52,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       phi::DenseTensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
-          *img_real_size, platform::CPUPlace(), &cpu_shape_tensor);
+          *img_real_size, phi::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> img_real_h;
       std::vector<int> img_real_w;
       std::vector<int> output_height;

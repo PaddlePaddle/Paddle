@@ -13,16 +13,18 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
+PD_DECLARE_int64(cinn_compile_thread_num);
 
 namespace cinn::hlir::framework {
-
 class CompilationContextMapper {
  public:
   CompilationContextMapper(const Target& target,
@@ -52,6 +54,16 @@ class CompilationContextMapper {
   bool is_finalized_{false};
 };
 
+static size_t GetThreadNum(size_t task_size) {
+  size_t thread_size = task_size;
+  if (!FLAGS_enable_cinn_compile_cache) {
+    thread_size = 1;
+  } else if (FLAGS_cinn_compile_thread_num > 0) {
+    thread_size = FLAGS_cinn_compile_thread_num;
+  }
+  return thread_size;
+}
+
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
   CompilationContextMapper ctx_mapper(target_, groups);
@@ -59,13 +71,21 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
   const size_t task_size = group_compilation_contexts.size();
-  const size_t thread_size = FLAGS_enable_cinn_compile_cache ? task_size : 1;
+  const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
-          << groups.size();
+          << groups.size() << " and compiles with " << thread_size;
+  cinn::ir::InitScheduleConfig();
   if (task_size > 0) {
+    // See
+    // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
+    // for details.
+    const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
+      runtime::SetArchDevice(target_, device_id);
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
+      // Triggering llvm compilation in thread
+      compilation_results[index]->GetKernelInfo();
     };
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),
@@ -89,6 +109,8 @@ void CompilationContextMapper::Construct(
 
   for (size_t i = 0; i < groups.size(); ++i) {
     fusion_infos_.emplace_back(*groups[i]);
+    VLOG(5) << "Construct FusionInfo: " << fusion_infos_[i]
+            << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
     if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
@@ -137,10 +159,8 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
-    const auto& int_args_map =
-        compilation_results_[i]->GetBackendResource()->GetIntArgsMap();
     VLOG(5) << "Insert new compiled result into cache, fusion_info: "
-            << fusion_info << ", int_args_map: " << int_args_map;
+            << fusion_info;
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }

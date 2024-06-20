@@ -169,16 +169,13 @@ paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
                                  double other,
                                  std::string op_type) {
   paddle::Tensor ret;
+  // scale_ad_func need sclar and bias with float type.
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_ad_func(
-        self_tensor, phi::Scalar(1.0), static_cast<float>(other), true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
   } else if (op_type == "sub") {
-    ret = scale_ad_func(
-        self_tensor, phi::Scalar(1.0), static_cast<float>(-other), true);
-
+    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), -other, true);
   } else if (op_type == "rsub") {
-    ret = scale_ad_func(
-        self_tensor, phi::Scalar(-1.0), static_cast<float>(other), true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
@@ -188,6 +185,42 @@ paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
   }
 
   return ret;
+}
+
+void TypePromotionForZeroDimTensor(std::string func,
+                                   paddle::Tensor& self_tensor,  // NOLINT
+                                   paddle::Tensor& other_tensor  // NOLINT
+) {
+  if ((self_tensor.shape().size() == 0 || other_tensor.shape().size() == 0) &&
+      self_tensor.dtype() != other_tensor.dtype()) {
+    VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+            << self_tensor.dtype() << " y: " << other_tensor.dtype();
+
+    phi::DataType promote_type;
+    // different major types or both 0-d tensor follow with T+T rule.
+    if (!is_common_dtype_for_scalar(self_tensor.dtype(),
+                                    other_tensor.dtype()) ||
+        (self_tensor.shape().size() == 0 && other_tensor.shape().size() == 0)) {
+      promote_type =
+          GetPromoteDtype(func, self_tensor.dtype(), other_tensor.dtype());
+    } else {
+      // common major types follow with tensor: int32(tensor) + int64(scalar)
+      // = int32
+      if (self_tensor.shape().size() == 0) {
+        promote_type = other_tensor.dtype();
+      } else {
+        promote_type = self_tensor.dtype();
+      }
+    }
+    if (self_tensor.dtype() != promote_type) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, promote_type);
+    }
+    if (other_tensor.dtype() != promote_type) {
+      eager_gil_scoped_release guard;
+      other_tensor = cast_ad_func(other_tensor, promote_type);
+    }
+  }
 }
 
 static PyObject* tensor__add__method(TensorObject* self,
@@ -211,39 +244,57 @@ static PyObject* tensor__add__method(TensorObject* self,
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    double other = 0.0;
     if (PyFloat_Check(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__add__", 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__add__", 0);
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
 
+    double other = CastPyArg2Double(other_obj, "__add__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "add");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
+
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor("add", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -263,39 +314,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var, float type promotion
-  // mv to add_ad_func
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
-    // note: only op_type in _supported_promote_complex_types_ should promote
-    // dtype
-    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-              framework::TransToProtoVarType(lhs_dtype),
-              framework::TransToProtoVarType(rhs_dtype)));
-      if (lhs_dtype != promote_dtype) {
-        // cast
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, promote_dtype);
-      }
-      if (rhs_dtype != promote_dtype) {
-        eager_gil_scoped_release guard;
-        other_tensor = cast_ad_func(other_tensor, promote_dtype);
-      }
-    } else {
-      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                 "dtype is "
-              << lhs_dtype << ", but right dtype is " << rhs_dtype
-              << ", the right dtype will convert to " << lhs_dtype;
-      eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-    }
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling add_ad_func in tensor__add__method";
 
   {
@@ -329,39 +348,58 @@ static PyObject* tensor__sub__method(TensorObject* self,
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    double other = 0.0;
     if (PyFloat_Check(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__sub__", 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__sub__", 0);
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
+
+    double other = CastPyArg2Double(other_obj, "__sub__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "sub");
     }
 
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "subtract", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -381,37 +419,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var, float type promotion
-  // mv to subtract_ad_func
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
-    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-              framework::TransToProtoVarType(lhs_dtype),
-              framework::TransToProtoVarType(rhs_dtype)));
-      if (lhs_dtype != promote_dtype) {
-        // cast
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, promote_dtype);
-      }
-      if (rhs_dtype != promote_dtype) {
-        eager_gil_scoped_release guard;
-        other_tensor = cast_ad_func(other_tensor, promote_dtype);
-      }
-    } else {
-      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                 "dtype is "
-              << lhs_dtype << ", but right dtype is " << rhs_dtype
-              << ", the right dtype will convert to " << lhs_dtype;
-      eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-    }
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
   {
     eager_gil_scoped_release guard;
@@ -444,38 +452,57 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    double other = 0.0;
     if (PyFloat_Check(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__rsub__", 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__rsub__", 0);
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
+
+    double other = CastPyArg2Double(other_obj, "__rsub__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "rsub");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    auto& self_tensor_ref = self->tensor;
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
+
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto self_tensor_ref = self->tensor;
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "subtract", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -495,37 +522,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var, float type promotion
-  // mv to subtract_ad_func
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
-    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-              framework::TransToProtoVarType(lhs_dtype),
-              framework::TransToProtoVarType(rhs_dtype)));
-      if (lhs_dtype != promote_dtype) {
-        // cast
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, promote_dtype);
-      }
-      if (rhs_dtype != promote_dtype) {
-        eager_gil_scoped_release guard;
-        other_tensor = cast_ad_func(other_tensor, promote_dtype);
-      }
-    } else {
-      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                 "dtype is "
-              << lhs_dtype << ", but right dtype is " << rhs_dtype
-              << ", the right dtype will convert to " << lhs_dtype;
-      eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-    }
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
   {
     eager_gil_scoped_release guard;
@@ -559,22 +556,30 @@ static PyObject* tensor__mul__method(TensorObject* self,
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    double other = 0.0;
     if (PyFloat_Check(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__mul__", 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__mul__", 0);
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
+
+    double other = CastPyArg2Double(other_obj, "__mul__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "mul");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -582,17 +587,29 @@ static PyObject* tensor__mul__method(TensorObject* self,
   // if one of the input is numpy or scalar, no need to do inplace cast.
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "multiply", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -618,39 +635,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var, float type promotion
-  // mv to multiply_ad_func
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
-    // note: only op_type in _supported_promote_complex_types_ should promote
-    // dtype
-    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-              framework::TransToProtoVarType(lhs_dtype),
-              framework::TransToProtoVarType(rhs_dtype)));
-      if (lhs_dtype != promote_dtype) {
-        // cast
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, promote_dtype);
-      }
-      if (rhs_dtype != promote_dtype) {
-        eager_gil_scoped_release guard;
-        other_tensor = cast_ad_func(other_tensor, promote_dtype);
-      }
-    } else {
-      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                 "dtype is "
-              << lhs_dtype << ", but right dtype is " << rhs_dtype
-              << ", the right dtype will convert to " << lhs_dtype;
-      eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-    }
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling multiply_ad_func in tensor__mul__method";
   {
     eager_gil_scoped_release guard;
@@ -685,38 +670,50 @@ static PyObject* tensor__div__method(TensorObject* self,
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    double other = 0.0;
-    if (PyFloat_Check(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__div__", 0);
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__div__", 0);
-    }
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
         _supported_int_dtype_.end()) {
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
+
+    double other = CastPyArg2Double(other_obj, "__div__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "div");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor("divide", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -740,45 +737,15 @@ static PyObject* tensor__div__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    // note: only op_type in _supported_promote_complex_types_ should promote
-    // dtype
-    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-              framework::TransToProtoVarType(lhs_dtype),
-              framework::TransToProtoVarType(rhs_dtype)));
-      if (lhs_dtype != promote_dtype) {
-        // cast
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, promote_dtype);
-      }
-      if (rhs_dtype != promote_dtype) {
-        eager_gil_scoped_release guard;
-        other_tensor = cast_ad_func(other_tensor, promote_dtype);
-      }
-    } else {
-      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                 "dtype is "
-              << lhs_dtype << ", but right dtype is " << rhs_dtype
-              << ", the right dtype will convert to " << lhs_dtype;
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to divide_ad_func
+  if (self_tensor.dtype() == other_tensor.dtype()) {
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
       eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
     }
-  }
-  if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-      _supported_int_dtype_.end()) {
-    eager_gil_scoped_release guard;
-    self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  }
-  if (_supported_int_dtype_.find(other_tensor.dtype()) !=
-      _supported_int_dtype_.end()) {
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
   }
 
   // 4. calculation
@@ -814,48 +781,46 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_div function for __rdiv__ and __rtruediv__
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    if (PyFloat_Check(other_obj)) {  // NOLINT
-      other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
-      has_other_double = true;
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {  // NOLINT
-      other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
-      has_other_double = true;
-    }
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
         _supported_int_dtype_.end()) {
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
+
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                place);
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor("divide", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -879,45 +844,15 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    // note: only op_type in _supported_promote_complex_types_ should promote
-    // dtype
-    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
-          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-              framework::TransToProtoVarType(lhs_dtype),
-              framework::TransToProtoVarType(rhs_dtype)));
-      if (lhs_dtype != promote_dtype) {
-        // cast
-        eager_gil_scoped_release guard;
-        self_tensor = cast_ad_func(self_tensor, promote_dtype);
-      }
-      if (rhs_dtype != promote_dtype) {
-        eager_gil_scoped_release guard;
-        other_tensor = cast_ad_func(other_tensor, promote_dtype);
-      }
-    } else {
-      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                 "dtype is "
-              << lhs_dtype << ", but right dtype is " << rhs_dtype
-              << ", the right dtype will convert to " << lhs_dtype;
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to divide_ad_func
+  if (self_tensor.dtype() == other_tensor.dtype()) {
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
       eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
     }
-  }
-  if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-      _supported_int_dtype_.end()) {
-    eager_gil_scoped_release guard;
-    self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  }
-  if (_supported_int_dtype_.find(other_tensor.dtype()) !=
-      _supported_int_dtype_.end()) {
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
   }
 
   // 4. calculation
@@ -951,48 +886,52 @@ static PyObject* tensor__gt__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __gt__ now
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__gt__", 0);
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__gt__", 0);
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                place);
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "greater_than", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1016,19 +955,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling greater_than_ad_func in tensor__gt__method";
   {
     eager_gil_scoped_release guard;
@@ -1060,48 +987,52 @@ static PyObject* tensor__ge__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __ge__ now
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__ge__", 0);
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__ge__", 0);
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                place);
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "greater_equal", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1125,19 +1056,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling greater_equal_ad_func in tensor__ge__method";
   {
     eager_gil_scoped_release guard;
@@ -1170,48 +1089,52 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_mod function for __mod__ now
-  float other_double = 0.0f;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "remainder", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1235,19 +1158,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The  dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling remainder_ad_func in tensor__mod__method";
   {
     eager_gil_scoped_release guard;
@@ -1320,7 +1231,8 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1404,48 +1316,52 @@ static PyObject* tensor__lt__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
-  float other_double = 0.0f;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "less_than", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1469,19 +1385,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // // 3. calculation
   VLOG(6) << "Calling less_than_ad_func in tensor__lt__method";
   {
     eager_gil_scoped_release guard;
@@ -1513,48 +1417,52 @@ static PyObject* tensor__le__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
-  float other_double = 0.0f;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "less_equal", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1578,19 +1486,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling less_equal_ad_func in tensor__le__method";
   {
     eager_gil_scoped_release guard;
@@ -1623,48 +1519,52 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   // 1. scalar exists cases or not
   // there is no scalar case for floordiv, but alse need to cast self_tensor
   // in need.
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "floor_divide", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1686,22 +1586,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    // note: only op_type in _supported_promote_complex_types_ should promote
-    // dtype, floordiv is not in _supported_promote_complex_types_, will not do
-    // promote dtype
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling floor_divide_ad_func in tensor__floordiv__method";
   {
     eager_gil_scoped_release guard;
@@ -1735,38 +1620,56 @@ static PyObject* tensor__pow__method(TensorObject* self,
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    double other = 0.0;
     if (PyFloat_Check(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__pow__", 0);
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = CastPyArg2Double(other_obj, "__pow__", 0);
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
+    double other = CastPyArg2Double(other_obj, "__pow__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "pow");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "elementwise_pow", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1788,19 +1691,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling elementwise_pow_ad_func in tensor__pow__method";
   {
     eager_gil_scoped_release guard;
@@ -1832,50 +1723,54 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases or not
-  // there is no scalar case for rpow, but alse need to cast self_tensor in
+  // there is no scalar case for rpow, but also need to cast self_tensor in
   // need.
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "elementwise_pow", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1899,19 +1794,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling elementwise_pow_ad_func in tensor__rpow__method";
   {
     eager_gil_scoped_release guard;
@@ -1943,48 +1826,52 @@ static PyObject* tensor__ne__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __ne__ now
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__ne__", 0);
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__ne__", 0);
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor(
+        "not_equal", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1996,8 +1883,10 @@ static PyObject* tensor__ne__method(TensorObject* self,
             full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
-        other_tensor =
-            full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
+        other_tensor = full_ad_func(self_tensor.shape(),
+                                    value,
+                                    self_tensor.dtype(),
+                                    self_tensor.place());
       }
     }
     const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -2006,19 +1895,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling not_equal_ad_func in tensor__ne__method";
   {
     eager_gil_scoped_release guard;
@@ -2050,48 +1927,51 @@ static PyObject* tensor__eq__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __eq__ now
-  double other_double = 0.0;
-  bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__eq__", 0);
-      has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__eq__", 0);
-      has_other_double = true;
+    } else if (PyCheckInteger(other_obj) &&
+               self_tensor.dtype() == DataType::BOOL) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+    }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  if (has_other_double) {
-    eager_gil_scoped_release guard;
-    other_tensor = full_ad_func(self_tensor.shape(),
-                                phi::Scalar(other_double),
-                                self_tensor.dtype(),
-                                self_tensor.place());
+  if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-  } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    TypePromotionForZeroDimTensor("equal", self_tensor_ref, other_tensor_ref);
+
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -2103,8 +1983,10 @@ static PyObject* tensor__eq__method(TensorObject* self,
             full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
-        other_tensor =
-            full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
+        other_tensor = full_ad_func(self_tensor.shape(),
+                                    value,
+                                    self_tensor.dtype(),
+                                    self_tensor.place());
       }
     }
     const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -2113,19 +1995,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
-    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-               "dtype is "
-            << lhs_dtype << ", but right dtype is " << rhs_dtype
-            << ", the right dtype will convert to " << lhs_dtype;
-    eager_gil_scoped_release guard;
-    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  }
-
-  // 4. calculation
+  // 3. calculation
   VLOG(6) << "Calling equal_ad_func in tensor__eq__method";
   {
     eager_gil_scoped_release guard;

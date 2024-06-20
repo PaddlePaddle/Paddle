@@ -259,73 +259,73 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         if (data_format == "NCHW") {
           // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
-          target.arch.Visit(adt::match{
-              [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-              [&](common::X86Arch) {
-                if (groups == 1 && !use_onednn) {
-                  out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                           B.as_tensor_ref(),
-                                           padding[0],
-                                           padding[1],
-                                           stride[0],
-                                           stride[1],
-                                           dilation[0],
-                                           dilation[1],
-                                           key,
-                                           tensor_name,
-                                           target);
-                } else {
+          target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                            [&](common::X86Arch) {
+                              if (groups == 1 && !use_onednn) {
+                                out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                         B.as_tensor_ref(),
+                                                         padding[0],
+                                                         padding[1],
+                                                         stride[0],
+                                                         stride[1],
+                                                         dilation[0],
+                                                         dilation[1],
+                                                         key,
+                                                         tensor_name,
+                                                         target);
+                              } else {
 #ifdef CINN_WITH_DNNL
-                  out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
-                                               B.as_tensor_ref(),
-                                               padding[0],
-                                               padding[1],
-                                               stride[0],
-                                               stride[1],
-                                               dilation[0],
-                                               dilation[1],
-                                               tensor_name);
+                                out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
+                                                             B.as_tensor_ref(),
+                                                             padding[0],
+                                                             padding[1],
+                                                             stride[0],
+                                                             stride[1],
+                                                             dilation[0],
+                                                             dilation[1],
+                                                             tensor_name);
 #else
-                  out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                           B.as_tensor_ref(),
-                                           padding[0],
-                                           padding[1],
-                                           stride[0],
-                                           stride[1],
-                                           dilation[0],
-                                           dilation[1],
-                                           key,
-                                           tensor_name);
+                                out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                         B.as_tensor_ref(),
+                                                         padding[0],
+                                                         padding[1],
+                                                         stride[0],
+                                                         stride[1],
+                                                         dilation[0],
+                                                         dilation[1],
+                                                         key,
+                                                         tensor_name);
 #endif
-                }
-              },
-              [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-              [&](common::NVGPUArch) {
-                if (conv_type == "forward") {
-                  out = pe::Conv2d_NCHW(A.as_tensor_ref(),
-                                        B.as_tensor_ref(),
-                                        padding[0],
-                                        padding[1],
-                                        stride[0],
-                                        stride[1],
-                                        dilation[0],
-                                        dilation[1],
-                                        tensor_name);
-                  out.push_back(B.as_tensor_ref());
-                } else {
+                              }
+                            },
+                            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                            [&](common::NVGPUArch) {
+                              if (conv_type == "forward") {
+                                out = pe::Conv2d_NCHW(A.as_tensor_ref(),
+                                                      B.as_tensor_ref(),
+                                                      padding[0],
+                                                      padding[1],
+                                                      stride[0],
+                                                      stride[1],
+                                                      dilation[0],
+                                                      dilation[1],
+                                                      tensor_name);
+                                out.push_back(B.as_tensor_ref());
+                              } else {
 #ifdef CINN_WITH_CUDNN
-                  // as backward_data and backward_filter is not support now, we
-                  // built a fake op to instead. as the runtime use cudnn to
-                  // compute the conv2d, so this fake op is not been called.
-                  // When cinn support backward_filter/backward_data code gen,
-                  // this code is to be removed.
-                  out = pe::Identity(A.as_tensor_ref());
-                  out.push_back(A.as_tensor_ref());
-                  out.push_back(B.as_tensor_ref());
+                                // as backward_data and backward_filter is not
+                                // support now, we built a fake op to instead.
+                                // as the runtime use cudnn to compute the
+                                // conv2d, so this fake op is not been called.
+                                // When cinn support
+                                // backward_filter/backward_data code gen, this
+                                // code is to be removed.
+                                out = pe::Identity(A.as_tensor_ref());
+                                out.push_back(A.as_tensor_ref());
+                                out.push_back(B.as_tensor_ref());
 #endif
-                }
-              },
-          });
+                              }
+                            });
         } else if (data_format == "NHWC") {
           // A is input: [N, H, W, C], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
@@ -373,7 +373,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
+    target.arch.Match(
         [&](common::UnknownArch) {
           PADDLE_THROW(phi::errors::InvalidArgument(
               "This target [%s] is not supported yet.", target));
@@ -394,7 +394,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           // gen, this code is to be removed.
           if (conv_type != "forward") {
             CHECK_EQ(vec_ast.size(), 1);
-            pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
             std::vector<CINNValue> res{
                 CINNValue(ir_sch.GetModule().GetExprs().at(0))};
             *ret = CINNValuePack{res};
@@ -413,8 +413,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           } else {
             CINN_NOT_IMPLEMENTED
           }
-        },
-    });
+        });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -910,32 +909,30 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
-      target.arch.Visit(adt::match{
-          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-          [&](common::X86Arch) {
-            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                     B.as_tensor_ref(),
-                                     padding[0],
-                                     padding[1],
-                                     stride[0],
-                                     stride[1],
-                                     dilation[0],
-                                     dilation[1],
-                                     key,
-                                     tensor_name,
-                                     target);
-          },
-          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-          [&](common::NVGPUArch) {
-            out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
-                                            B.as_tensor_ref(),
-                                            padding[0],
-                                            padding[1],
-                                            stride[0],
-                                            stride[1],
-                                            tensor_name);
-          },
-      });
+      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                        [&](common::X86Arch) {
+                          out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                   B.as_tensor_ref(),
+                                                   padding[0],
+                                                   padding[1],
+                                                   stride[0],
+                                                   stride[1],
+                                                   dilation[0],
+                                                   dilation[1],
+                                                   key,
+                                                   tensor_name,
+                                                   target);
+                        },
+                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                        [&](common::NVGPUArch) {
+                          out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
+                                                          B.as_tensor_ref(),
+                                                          padding[0],
+                                                          padding[1],
+                                                          stride[0],
+                                                          stride[1],
+                                                          tensor_name);
+                        });
     } else if (data_format == "NHWC") {
       out = pe::Depthwise_Conv2d_NHWC(A.as_tensor_ref(),
                                       B.as_tensor_ref(),
@@ -982,14 +979,12 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
         ir::ModuleExpr mod_expr(vec_ast);
         ir::IRSchedule ir_sch(mod_expr);
         ir_sch.MergeExprs();
-        target.arch.Visit(adt::match{
-            [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::NVGPUArch) {
-              pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-            },
-        });
+        target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                          [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+                          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                          [&](common::NVGPUArch) {
+                            pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
+                          });
         std::vector<cinn::common::CINNValue> res{
             cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
         *ret = cinn::common::CINNValuePack{res};
@@ -1298,25 +1293,23 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
-          // Do nothing.
-        },
-        [&](common::ARMArch) {
-          // Do nothing.
-        },
-        [&](common::NVGPUArch) {
-          CHECK(!vec_tensor.empty());
-          Expr Out = vec_tensor[0];
-          CHECK(Out.as_tensor());
-          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Split(loops[1], {-1, 2});
-          loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
+                        // Do nothing.
+                      },
+                      [&](common::ARMArch) {
+                        // Do nothing.
+                      },
+                      [&](common::NVGPUArch) {
+                        CHECK(!vec_tensor.empty());
+                        Expr Out = vec_tensor[0];
+                        CHECK(Out.as_tensor());
+                        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Split(loops[1], {-1, 2});
+                        loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Bind(loops[0], "blockIdx.x");
+                        ir_sch.Bind(loops[1], "threadIdx.x");
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1530,12 +1523,12 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) { pe::IRGlobalPoolScheduleGPU(ir_sch, target); },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) {
+                        pe::IRGlobalPoolScheduleGPU(ir_sch, target);
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1610,14 +1603,12 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       auto block_input_pad = ir_sch.GetBlock(input_pad_name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {},
-        [&](common::ARMArch) {},
-        [&](common::NVGPUArch) {
-          pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {},
+                      [&](common::ARMArch) {},
+                      [&](common::NVGPUArch) {
+                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1625,23 +1616,21 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   auto strategy = std::make_shared<framework::OpStrategy>();
 
   bool use_warp_reduce = false;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { use_warp_reduce = false; },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) {
-        if (global_pooling && data_format == "NCHW") {
-          // TODO(hp03): 32 may not be the exact number, try also 16 or 8 or
-          // other number
-          //      we choose 32 to make sure all the threads in a warp has work
-          //      to do,
-          if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >=
-              32) {
-            use_warp_reduce = true;
-          }
-        }
-      },
-  });
+  target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::X86Arch) { use_warp_reduce = false; },
+                    [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::NVGPUArch) {
+                      if (global_pooling && data_format == "NCHW") {
+                        // TODO(hp03): 32 may not be the exact number, try also
+                        // 16 or 8 or other number
+                        //      we choose 32 to make sure all the threads in a
+                        //      warp has work to do,
+                        if ((A_tensor->shape[2].as_int32() *
+                             A_tensor->shape[3].as_int32()) >= 32) {
+                          use_warp_reduce = true;
+                        }
+                      }
+                    });
   strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
   if (use_warp_reduce) {
     strategy->AddImpl(global_pool2d_compute,
@@ -1853,21 +1842,19 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { /*nothing*/ },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) {
-          CHECK(!vec_tensor.empty());
-          Expr Out = vec_tensor[0];
-          CHECK(Out.as_tensor());
-          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Split(loops[1], {-1, 2});
-          loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) { /*nothing*/ },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) {
+                        CHECK(!vec_tensor.empty());
+                        Expr Out = vec_tensor[0];
+                        CHECK(Out.as_tensor());
+                        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Split(loops[1], {-1, 2});
+                        loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Bind(loops[0], "blockIdx.x");
+                        ir_sch.Bind(loops[1], "threadIdx.x");
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -2059,7 +2046,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
+    target.arch.Match(
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::X86Arch) {
           pe::IRSoftmaxScheduleCPU(ir_sch, axis);
@@ -2093,8 +2080,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
-        },
-    });
+        });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2250,6 +2236,70 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
                     GetInjectiveScheduleFunc(output_shapes, target, false),
                     "strategy.select.x86",
                     1);
+  return strategy;
+}
+
+std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute select_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of select compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      3U,
+                      ::common::errors::InvalidArgument(
+                          "at least three input tensor for select compute."));
+    Expr condition = pack_args[0];
+    Expr true_value = pack_args[1];
+    Expr false_value = pack_args[2];
+    PADDLE_ENFORCE_NE(condition.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The condation arg's type should be Tensor."));
+    PADDLE_ENFORCE_NE(true_value.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The true_value arg's type should be Tensor."));
+    PADDLE_ENFORCE_NE(false_value.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The false_value arg's type should be Tensor."));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      4U,
+                      ::common::errors::InvalidArgument(
+                          "The size of inputs must be equal to 4."));
+    PADDLE_ENFORCE_EQ(pack_args[3].is_string(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The name arg's type should be string."));
+    std::string tensor_name = pack_args[3].operator std::string();
+
+    auto out = pe::Select(condition.as_tensor_ref(),
+                          true_value.as_tensor_ref(),
+                          false_value.as_tensor_ref(),
+                          tensor_name);
+    auto stages = CreateStages({condition.as_tensor_ref(),
+                                true_value.as_tensor_ref(),
+                                false_value.as_tensor_ref(),
+                                out});
+    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  PADDLE_ENFORCE_NE(out_type.size(),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "Out_type of select op is empty! Please check."));
+  strategy->AddImpl(
+      select_compute, lang::PackedFunc(), "strategy.select.x86", 1);
   return strategy;
 }
 
@@ -2674,6 +2724,8 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSelect)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForSelectSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForSelect))
       .set_attr("inferdtype",

@@ -13,13 +13,19 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/paddle/pb/block_desc.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::frontend::paddle::pb {
 
 template <>
 framework_proto::VarDesc* BlockDesc::GetVar<framework_proto::VarDesc>(
     int32_t idx) {
-  CHECK_LT(idx, VarsSize()) << "idx >= vars.size()";
+  PADDLE_ENFORCE_LT(
+      idx,
+      VarsSize(),
+      phi::errors::InvalidArgument(
+          "The value of idx and vars.size() is incorrect."
+          "Expected idx < vars.size(), but receive idx >= vars.size()."));
   return desc_->mutable_vars(idx);
 }
 
@@ -31,7 +37,12 @@ framework_proto::VarDesc* BlockDesc::AddVar<framework_proto::VarDesc>() {
 template <>
 framework_proto::OpDesc* BlockDesc::GetOp<framework_proto::OpDesc>(
     int32_t idx) {
-  CHECK_LT(idx, OpsSize()) << "idx >= ops.size()";
+  PADDLE_ENFORCE_LT(
+      idx,
+      OpsSize(),
+      phi::errors::InvalidArgument(
+          "The value of idx and ops.size() is incorrect."
+          "Expected idx < ops.size(), but receive idx >= ops.size()."));
   return desc_->mutable_ops(idx);
 }
 

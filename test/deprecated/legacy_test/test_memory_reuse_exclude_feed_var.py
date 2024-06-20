@@ -53,7 +53,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         feed_dict = [{image.name: image_tensor}]
 
         for _ in range(self.iteration):
-            exe.run(compiled_prog, feed=feed_dict, fetch_list=[loss.name])
+            exe.run(compiled_prog, feed=feed_dict, fetch_list=[loss])
             np.testing.assert_array_equal(np.array(image_tensor), np_image)
 
     def test_main(self):

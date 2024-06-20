@@ -24,10 +24,14 @@ from test_infer_sym_shape_utils import (
 
 import paddle
 import paddle.nn.functional as F
+from paddle.framework import core
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
 from utils import apply_to_static
+
+# NOTE(SigureMo): Disable the CSE optimization to avoid op number change.
+paddle.set_flags({"FLAGS_enable_cse_in_dy2st": False})
 
 
 class ArgMaxMinNet(paddle.nn.Layer):
@@ -302,8 +306,8 @@ class DiagonalOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                'shape[3, Min(2, 2)], data[NULL]',
-                'shape[2, Min(3, 2)], data[NULL]',
+                'shape[3, 2], data[NULL]',
+                'shape[2, 2], data[NULL]',
                 'shape[S2, Min(S0, S1)], data[NULL]',
                 'shape[S0, Min(S2, S1)], data[NULL]',
                 'shape[S0, S3], data[NULL]',
@@ -635,9 +639,9 @@ class SplitOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 6, 5)]
         self.expected = [
-            'shape[S0, S1, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, Add(S1, -1), S2], data[NULL]',
+            'shape[S0, 6, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 5, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
             'shape[S0, 6, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
@@ -807,6 +811,8 @@ class UnbindOpInferSymbolicShapeTest(TestBase):
         ]
 
     def test_eval_symbolic(self):
+        core._set_prim_forward_blacklist("pd_op.unbind")
+
         net = UnbindNet()
 
         for i in range(len(self.cases)):

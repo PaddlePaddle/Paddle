@@ -29,6 +29,7 @@
 - maximum
 - minimum
 - prod
+- cumprod
 - roll
 - scatter
 - scatter_nd_add
@@ -37,6 +38,7 @@
 - pad
 - sqrt
 - cumsum
+- cumprod
 - put_along_axis
 - sin
 - cos
@@ -46,3 +48,4 @@
 - erf
 - tanh
 - sign
+- sigmoid

@@ -136,6 +136,7 @@ pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(delete_repeated_ops_pass inference)
 pass_library(fused_continuous_same_ops_pass inference)
 pass_library(sigmoid_elementmul_fuse_pass inference)
+pass_library(sparse_conv_optim_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
@@ -325,11 +326,16 @@ if(WITH_XPU)
   pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(sine_pos_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(pad2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(quant_dequant_xpu_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(roformer_relative_pos_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(spatial_transformer_resblock_xpu_fuse_pass inference DIR xpu
                DEPS ${XPU_PASS_DEPS})
+  pass_library(weight_only_linear_xpu_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(block_multihead_attention_xpu_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

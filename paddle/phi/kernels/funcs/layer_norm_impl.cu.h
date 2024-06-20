@@ -32,6 +32,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
 namespace funcs {
@@ -351,20 +352,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
   }
 }
 #endif
-
-template <typename T>
-inline HOSTDEVICE T roundWithTiesToEven(T x) {
-  T xLower = floor(x);
-  T xUpper = ceil(x);
-  // x is in interval [xl,xu]. Choose closest of two bounds, breaking ties to
-  // even.
-  T dLower = x - xLower;
-  T dUpper = xUpper - x;
-  return static_cast<T>(
-      (dLower == dUpper ? fmod(xLower, 2.0F) == 0.0F : dLower < dUpper)
-          ? xLower
-          : xUpper);
-}
 
 template <typename T>
 __forceinline__ __device__ int8_t quant_helper(const T input,

@@ -23,6 +23,7 @@ namespace pir {
 #define BASE_CODE "base_code"
 #define MAGIC "magic"
 #define PIRVERSION "version"
+#define TRAINABLE "trainable"
 #define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
@@ -41,7 +42,8 @@ void WriteModule(const pir::Program& program,
   // write base code
   Json total;
 
-  total[BASE_CODE] = {{MAGIC, PIR}, {PIRVERSION, pir_version}};
+  total[BASE_CODE] = {
+      {MAGIC, PIR}, {PIRVERSION, pir_version}, {TRAINABLE, trainable}};
 
   ProgramWriter writer(pir_version, trainable);
   // write program
@@ -63,7 +65,7 @@ void WriteModule(const pir::Program& program,
   fout.close();
 }
 
-void ReadModule(const std::string& file_path,
+bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 const uint64_t& pir_version) {
   std::ifstream f(file_path);
@@ -83,6 +85,12 @@ void ReadModule(const std::string& file_path,
 
   ProgramReader reader(pir_version);
   reader.RecoverProgram(&(data[PROGRAM]), program);
+
+  if (data[BASE_CODE].contains(TRAINABLE)) {
+    return data[BASE_CODE][TRAINABLE].get<bool>();
+  } else {
+    return false;
+  }
 }
 
 }  // namespace pir

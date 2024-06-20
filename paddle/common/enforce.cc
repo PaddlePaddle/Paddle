@@ -95,7 +95,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
   static constexpr int TRACE_STACK_LIMIT = 100;
 
-  std::array<void*, TRACE_STACK_LIMIT> call_stack;
+  std::array<void*, TRACE_STACK_LIMIT> call_stack = {};
   auto size = backtrace(call_stack.data(), TRACE_STACK_LIMIT);
   auto symbols = backtrace_symbols(call_stack.data(), size);
   Dl_info info;
@@ -110,7 +110,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
       auto demangled = common::demangle(info.dli_sname);
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
-      if (path.substr(path.length() - 3).compare(".so") == 0) {
+      if (path.substr(path.length() - 3) == ".so") {
         sout << paddle::string::Sprintf(
             "%-3d %s\n", idx++, SimplifyDemangleStr(demangled));
       }

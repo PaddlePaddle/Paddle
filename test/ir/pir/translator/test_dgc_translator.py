@@ -19,6 +19,8 @@ import test_op_translator
 import paddle
 from paddle.base.layer_helper import LayerHelper
 
+paddle.pir_utils._switch_to_old_ir_()
+
 
 class TestDgcOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):

@@ -33,7 +33,7 @@ void SliceStridedKernel(const Context& ctx,
                         DenseTensor* out) {
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
-  auto in_dims = input.dims();
+  const auto& in_dims = input.dims();
 
   auto new_axes = axes;
   for (auto& item : new_axes) {

@@ -18,13 +18,13 @@
 #pragma once
 
 #include <absl/types/variant.h>
-
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
@@ -65,6 +65,8 @@ struct Cast : public ExprNode<Cast> {
 
   Expr& v() { return operand(0); }
   const Expr& v() const { return operand(0); }
+
+  void replace(Expr old_op, Expr new_op);
 
   void Verify() const override;
 
@@ -123,6 +125,7 @@ struct Div : public BinaryOpNode<Div> {
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
+
   static const IrNodeTy _node_type_ = IrNodeTy::Div;
 };
 
@@ -357,6 +360,8 @@ struct Call : public ExprNode<Call> {
 
   void Verify() const override;
 
+  void replace(Expr old_op, Expr new_op);
+
   inline size_t total_args_count() const {
     return read_args.size() + write_args.size();
   }
@@ -476,7 +481,7 @@ struct Reduce : public ExprNode<Reduce> {
                    Expr body,
                    const std::vector<Var>& reduce_axis);
 
-  Type type() const override { return body.type().ElementOf(); }
+  Type type() const override;
 
   std::vector<Expr*> expr_fields() override;
   std::vector<const Expr*> expr_fields() const override;
@@ -500,8 +505,13 @@ struct Select : public ExprNode<Select> {
         condition(condition),
         true_value(true_value),
         false_value(false_value) {
-    CHECK_EQ(true_value.type(), false_value.type());
+    PADDLE_ENFORCE_EQ(
+        true_value.type(),
+        false_value.type(),
+        phi::errors::InvalidArgument(
+            "The type of true_value and false_value should be the same."));
     CHECK(condition.type().is_bool());
+    type_ = true_value.type();
   }
 
   static Expr Make(Expr condition, Expr true_value, Expr false_value) {
@@ -509,10 +519,7 @@ struct Select : public ExprNode<Select> {
     return Expr(node);
   }
 
-  Type type() const override {
-    CHECK_EQ(true_value.type(), false_value.type());
-    return true_value.type();
-  }
+  Type type() const override;
 
   void Verify() const override;
 
@@ -523,6 +530,7 @@ struct Select : public ExprNode<Select> {
     return {&condition, &true_value, &false_value};
   }
 
+  void replace(Expr old_op, Expr new_op);
   static const IrNodeTy _node_type_ = IrNodeTy::Select;
 };
 
@@ -553,6 +561,8 @@ struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
 
   Type type() const override;
 
+  void convert_int32_to_int64() override;
+
   static const IrNodeTy _node_type_ = IrNodeTy::Load;
 };
 
@@ -572,7 +582,10 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
 
   const std::string& name() const;
 
+  void replace(Expr old_op, Expr new_op);
+
   Type type() const override;
+
   Expr index() const;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Store;
@@ -639,7 +652,10 @@ struct IfThenElse : public ExprNode<IfThenElse> {
   void Verify() const override {
     CHECK(condition.defined());
     CHECK(true_case.defined());
-    CHECK_EQ(condition.type(), type_of<bool>());
+    PADDLE_ENFORCE_EQ(
+        condition.type(),
+        type_of<bool>(),
+        phi::errors::InvalidArgument("condition should be a bool"));
   }
 
   std::vector<Expr*> expr_fields() override;
@@ -916,7 +932,10 @@ struct FracOp : public BinaryOpNode<FracOp> {
 
   double get_constant() const {
     CHECK(is_constant());
-    CHECK_NE(b().get_constant(), 0.f);
+    PADDLE_ENFORCE_NE(b().get_constant(),
+                      0.f,
+                      phi::errors::InvalidArgument(
+                          "The denominator of FracOp should not be 0"));
     return a().get_constant() / b().get_constant();
   }
 
@@ -932,7 +951,7 @@ struct Product : public ExprNode<Product> {
 
   using ExprNode<Product>::operand;
 
-  Type type() const override { return operands().front().type(); }
+  Type type() const override;
 
   void Verify() const override;
 
@@ -944,7 +963,7 @@ struct Sum : public ExprNode<Sum> {
 
   using ExprNode<Sum>::operand;
 
-  Type type() const override { return operands().front().type(); }
+  Type type() const override;
 
   void Verify() const override;
 
@@ -969,8 +988,11 @@ struct Block : public ExprNode<Block> {
 struct NoneReduceMethod {};
 struct WarpReduceMethod {};
 struct BlockReduceMethod {};
-using ReduceMethod =
-    std::variant<NoneReduceMethod, WarpReduceMethod, BlockReduceMethod>;
+struct DiscreteReduceMethod {};
+using ReduceMethod = std::variant<NoneReduceMethod,
+                                  WarpReduceMethod,
+                                  BlockReduceMethod,
+                                  DiscreteReduceMethod>;
 
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation

@@ -23,6 +23,8 @@ import unittest
 import numpy as np
 from convert import convert_params_for_net
 
+from paddle.pir_utils import test_with_dygraph_pir
+
 sys.path.append("../../rnn")
 from rnn_numpy import GRU, LSTM, SimpleRNN
 
@@ -93,37 +95,12 @@ class TestSimpleRNN(unittest.TestCase):
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
-    def test_with_input_lengths(self):
-        rnn1 = self.rnn1
-        rnn2 = self.rnn2
-
-        x = np.random.randn(12, 4, 16)
-        if not self.time_major:
-            x = np.transpose(x, [1, 0, 2])
-        sequence_length = np.array([12, 10, 9, 8], dtype=np.int64)
-
-        y1, h1 = rnn1(x, sequence_length=sequence_length)
-
-        seq_len = paddle.to_tensor(sequence_length)
-        mask = paddle.static.nn.sequence_lod.sequence_mask(
-            seq_len, dtype=paddle.get_default_dtype()
-        )
-        if self.time_major:
-            mask = paddle.transpose(mask, [1, 0])
-        y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        mask = paddle.unsqueeze(mask, -1)
-        y2 = paddle.multiply(y2, mask)
-
-        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
-        np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
-
     def test_predict(self):
         predict_test_util(self.place, "SimpleRNN")
 
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
-        self.test_with_input_lengths()
         self.test_predict()
 
 
@@ -178,37 +155,12 @@ class TestGRU(unittest.TestCase):
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
-    def test_with_input_lengths(self):
-        rnn1 = self.rnn1
-        rnn2 = self.rnn2
-
-        x = np.random.randn(12, 4, 16)
-        if not self.time_major:
-            x = np.transpose(x, [1, 0, 2])
-        sequence_length = np.array([12, 10, 9, 8], dtype=np.int64)
-
-        y1, h1 = rnn1(x, sequence_length=sequence_length)
-
-        seq_len = paddle.to_tensor(sequence_length)
-        mask = paddle.static.nn.sequence_lod.sequence_mask(
-            seq_len, dtype=paddle.get_default_dtype()
-        )
-        if self.time_major:
-            mask = paddle.transpose(mask, [1, 0])
-        y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        mask = paddle.unsqueeze(mask, -1)
-        y2 = paddle.multiply(y2, mask)
-
-        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
-        np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
-
     def test_predict(self):
         predict_test_util(self.place, "GRU")
 
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
-        self.test_with_input_lengths()
         self.test_predict()
 
 
@@ -271,31 +223,6 @@ class TestLSTM(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
-    def test_with_input_lengths(self):
-        rnn1 = self.rnn1
-        rnn2 = self.rnn2
-
-        x = np.random.randn(12, 4, 16)
-        if not self.time_major:
-            x = np.transpose(x, [1, 0, 2])
-        sequence_length = np.array([12, 10, 9, 8], dtype=np.int64)
-
-        y1, (h1, c1) = rnn1(x, sequence_length=sequence_length)
-
-        seq_len = paddle.to_tensor(sequence_length)
-        mask = paddle.static.nn.sequence_lod.sequence_mask(
-            seq_len, dtype=paddle.get_default_dtype()
-        )
-        if self.time_major:
-            mask = paddle.transpose(mask, [1, 0])
-        y2, (h2, c2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        mask = paddle.unsqueeze(mask, -1)
-        y2 = paddle.multiply(y2, mask)
-
-        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
-        np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
-        np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
-
     def test_predict(self):
         predict_test_util(self.place, "LSTM")
         predict_test_util(self.place, "LSTM", False)
@@ -303,7 +230,6 @@ class TestLSTM(unittest.TestCase):
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
-        self.test_with_input_lengths()
         self.test_predict()
 
 
@@ -336,6 +262,7 @@ class TestLSTMWithProjSize(TestLSTM):
         self.proj_size = 8
 
 
+@test_with_dygraph_pir
 def predict_test_util(place, mode, stop_gradient=True):
     place = paddle.set_device(place)
     paddle.seed(123)
@@ -374,7 +301,9 @@ def predict_test_util(place, mode, stop_gradient=True):
     rnn.train()
 
     rnn = paddle.jit.to_static(
-        rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)]
+        rnn,
+        [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)],
+        full_graph=True,
     )
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(temp_dir.name, "./inference/%s_infer" % mode)

@@ -41,7 +41,7 @@ struct XPUL3CacheBlock {
 
 class XPUL3Planner {
  public:
-  void RunAutotune(const std::vector<XPUL3CacheBlock*>& l3_block_dict,
+  bool RunAutotune(const std::vector<XPUL3CacheBlock*>& l3_block_dict,
                    size_t l3_size);
 
   std::vector<size_t>* plan() { return &plan_; }

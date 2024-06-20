@@ -48,8 +48,7 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
     bool* out_ptr = out->mutable_data<bool>(context.GetPlace());
     const T* x_ptr = x->data<T>();
     const T* y_ptr = y->data<T>();
-    auto& dev_ctx =
-        context.template device_context<paddle::platform::XPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::XPUContext>();
     phi::DenseTensor broadcast_x;
     phi::DenseTensor broadcast_y;
     bool need_broad_cast = false;
@@ -171,8 +170,7 @@ class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
       return;
     }
     out->mutable_data<bool>(context.GetPlace());
-    auto& dev_ctx =
-        context.template device_context<paddle::platform::XPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::XPUContext>();
     int ret = xpu::logical_not<bool>(
         dev_ctx.x_context(), x->data<T>(), out->data<T>(), x->numel());
     PADDLE_ENFORCE_EQ(

@@ -198,7 +198,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 batch_idx += 1
                 loss_val = exe.run(
                     program=paddle.static.default_main_program(),
-                    fetch_list=[self.avg_cost.name],
+                    fetch_list=[self.avg_cost],
                 )
                 loss_val = np.mean(loss_val)
                 message = f"TEST ---> batch_idx: {batch_idx} loss: {loss_val}\n"
@@ -231,7 +231,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 while True:
                     loss_val = exe.run(
                         program=base.default_main_program(),
-                        fetch_list=[self.avg_cost.name],
+                        fetch_list=[self.avg_cost],
                     )
                     loss_val = np.mean(loss_val)
                     # TODO(randomly fail)

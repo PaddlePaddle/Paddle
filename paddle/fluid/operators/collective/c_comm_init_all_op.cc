@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_comm_init_all_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CCommInitAllOp : public framework::OperatorWithKernel {
  public:
@@ -47,8 +46,7 @@ Initialize all collective communication context
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

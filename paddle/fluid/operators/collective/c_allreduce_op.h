@@ -148,7 +148,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
@@ -237,10 +237,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
       VLOG(3) << "old BKCLCommContext has rid " << rid;
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
-                   ->x_context()
-                   ->xpu_stream;
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 
     BKCLOp bkcl_red_type = BKCL_ADD;
@@ -295,7 +293,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
@@ -386,7 +384,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should not use global ctx for calc stream.
-      // auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      // auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
       stream = ctx.cuda_device_context().stream();
     }
@@ -427,13 +425,13 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
-                                                                  recvbuff,
-                                                                  numel,
-                                                                  dtype,
-                                                                  nccl_red_type,
-                                                                  comm->comm(),
-                                                                  stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(sendbuff,
+                                                             recvbuff,
+                                                             numel,
+                                                             dtype,
+                                                             nccl_red_type,
+                                                             comm->comm(),
+                                                             stream));
     }
 #else
     PADDLE_THROW(phi::errors::PreconditionNotMet(

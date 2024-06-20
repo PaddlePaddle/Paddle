@@ -42,13 +42,23 @@ Pass::~Pass() {
 
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
-detail::PassExecutionState& Pass::pass_state() {
+std::optional<detail::PassExecutionState>& Pass::pass_state() {
+  return pass_state_;
+}
+
+void Pass::SignalPassFailure() {
   PADDLE_ENFORCE_EQ(pass_state_.has_value(),
                     true,
                     phi::errors::InvalidArgument("pass state has no value"));
-  return *pass_state_;
+  pass_state_->pass_failed = true;
 }
 
+AnalysisManager Pass::analysis_manager() {
+  PADDLE_ENFORCE_EQ(pass_state_.has_value(),
+                    true,
+                    phi::errors::InvalidArgument("pass state has no value"));
+  return pass_state_->am;
+}
 //===----------------------------------------------------------------------===//
 // PatternRewritePass
 //===----------------------------------------------------------------------===//
@@ -155,7 +165,7 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
     if (instrumentor) instrumentor->RunAfterPass(pass, op);
   }
 
-  bool pass_failed = pass->pass_state().pass_failed;
+  bool pass_failed = pass->pass_state()->pass_failed;
 
   if (!pass_failed && verify) {
     bool verify_recursively = !dynamic_cast<PassAdaptor*>(pass);

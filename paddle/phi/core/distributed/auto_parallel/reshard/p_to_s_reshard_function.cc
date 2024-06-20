@@ -26,8 +26,7 @@
 #include "paddle/phi/kernels/split_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool PToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
@@ -64,7 +63,7 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
     std::swap(axis[0], axis[split_axis]);
     RESHARD_FUNCTOR(dev_ctx, Transpose, dtype, in, axis, &in_reduce_scatter);
   } else {
-    in_reduce_scatter.ShareDataWith(in);
+    in_reduce_scatter.ShareDataNoCheckWith(in);
   }
 
   DenseTensor out_reduce_scatter;
@@ -231,5 +230,4 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

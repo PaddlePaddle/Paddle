@@ -426,11 +426,11 @@ class GroupNorm(Layer):
             division by zero. Default: 1e-05.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             scale :math:`g`. If it is set to False, no scale will be added to the output units.
-            If it is set to None, the bias is initialized one. Default: None.
+            If it is set to None, the scale is initialized one. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             bias :math:`b`. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
+        data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -493,8 +493,10 @@ class GroupNorm(Layer):
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_format not in ['NCHW', 'NHWC']:
+        if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
             raise ValueError("unsupported data layout:" + data_format)
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
         self._data_format = data_format
 
         param_shape = [self._num_channels]

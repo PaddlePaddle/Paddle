@@ -81,7 +81,7 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("act_out") = activation(pat.Tensor("elementwise_out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (activation_name_ == "leaky_relu") {
         float negative_slope = match_ctx.Attr<float>("negative_slope");
         // leaky relu alpha is a positive number

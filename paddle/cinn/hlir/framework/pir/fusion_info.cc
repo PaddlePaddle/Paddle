@@ -16,11 +16,13 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework::pir {
 
 constexpr static char* kOpCallStack = "op_callstack";
+constexpr static char* kSymShapeStr = "sym_shape_str";
 
 std::size_t AttributeInfo::hash() const { return attr_.hash(); }
 
@@ -64,7 +66,8 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
       attributes.begin(), attributes.end());
   attr_infos_.reserve(attributes.size());
   for (const auto& [attr_name, attr_value] : order_attributes) {
-    if (!attr_value || attr_name == kOpCallStack) continue;
+    if (!attr_value || attr_name == kOpCallStack || attr_name == kSymShapeStr)
+      continue;
     attr_infos_.emplace_back(attr_name, attr_value);
   }
 }
@@ -90,6 +93,19 @@ std::ostream& operator<<(std::ostream& os, const OperationInfo& op_info) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const OpDepInfo& info) {
+  os << "dep_op_index: " << info.upstream_index_
+     << ", dep_op_hash: " << info.upstream_hash_;
+  return os;
+}
+
+std::size_t OpDepInfo::hash() const {
+  std::size_t seed = 1789;
+  hash_combine(seed, upstream_index_);
+  hash_combine(seed, upstream_hash_);
+  return seed;
+}
+
 std::size_t FusionOpInfo::hash() const {
   std::size_t seed = op_info_.hash();
   for (const auto& [value_index, op_info_hash] : inner_deps_) {
@@ -104,32 +120,38 @@ std::ostream& operator<<(std::ostream& os, const FusionOpInfo& info) {
   for (const auto& [value_index, op_info_hash] : info.inner_deps_) {
     os << " (" << value_index << ", " << op_info_hash << ")";
   }
-  os << "}";
+  os << "\n hash: " << info.hash() << "}";
   return os;
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
+  ParseOpInfos(group);
+  ParseInputDimExprs(group);
+}
+
+void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
   unique_fn_name_ = group.FuncName();
 
   const auto GetInnerUpstreamOps =
       [&](const ::pir::Operation* op) -> decltype(auto) {
-    std::unordered_map<size_t, size_t> upstream_ops_index_hash;
+    std::map<size_t, OpDepInfo> upstream_dep_infos;
     for (size_t i = 0; i < op->num_operands(); ++i) {
       const auto value = op->operand_source(i);
       if (!value || !value.defining_op()) continue;
       const auto* defining_op = value.defining_op();
       if (op_mapper.count(defining_op) == 0) continue;
-      PADDLE_ENFORCE_LT(op_mapper[defining_op],
+      const size_t dep_index = op_mapper[defining_op];
+      PADDLE_ENFORCE_LT(dep_index,
                         this->op_infos_.size(),
                         ::common::errors::OutOfRange(
                             "Required op_mapper[defining_op] < "
                             "op_infos_.size(), but received index %d",
-                            op_mapper[defining_op]));
-      upstream_ops_index_hash.emplace(
-          i, this->op_infos_[op_mapper[defining_op]].hash());
+                            dep_index));
+      upstream_dep_infos.emplace(
+          i, OpDepInfo(dep_index, this->op_infos_[dep_index].hash()));
     }
-    return upstream_ops_index_hash;
+    return upstream_dep_infos;
   };
 
   const auto sorted_ops = TopologySort(group);
@@ -140,13 +162,44 @@ FusionInfo::FusionInfo(const OpLoweringGroup& group) {
   }
 }
 
+void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
+  // NOTE(Aurelius84): [Why try get DimExpr from Group firstly? ]
+  // In case of BroadcastTree, we will clone many Groups containing same ops.
+  // But its input valus is defining outside and will have same DimExprs in
+  // global ShapeAnalysis, which leading hash conflict unexpected.
+  const auto TryGetDimExprsFromGroup = [&](const ::pir::Value& value) -> bool {
+    if (!group.HasShapeOrDataExprs(value)) return false;
+    input_dim_exprs_.push_back(group.GetShapeOrDataExprs(value));
+    return true;
+  };
+  // NOTE(Aurelius84): If we can't get DimExpr from Group, we will find them
+  // from global ShapeAnalysis.
+  const auto TryeGetDimExprsFromGlobal =
+      [&](const ::pir::Value& value) -> bool {
+    auto& shape_analysis =
+        ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
+    input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
+    return true;
+  };
+
+  for (const auto& value : group.GetInputOpValues()) {
+    if (group.IsBroadcastLeaf()) {
+      TryGetDimExprsFromGroup(value);
+    } else {
+      TryeGetDimExprsFromGlobal(value);
+    }
+  }
+}
+
 std::size_t FusionInfo::hash() const {
   if (cached_hash_value_ != 0U) {
     return cached_hash_value_;
   }
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
+  for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
+
   return seed;
 }
 
@@ -155,32 +208,15 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
   if (VLOG_IS_ON(5)) {
     os << "{\n";
     if (!FLAGS_enable_cinn_compile_cache)
-      os << "fn_name: " << fusion_info.unique_fn_name_;
+      os << "fn_name: " << fusion_info.unique_fn_name_ << ", ";
+    os << "input_dim_exprs: {";
+    for (const auto& dim_expr : fusion_info.input_dim_exprs_)
+      os << " " << dim_expr;
+    os << " }\n";
     for (const auto& op_info : fusion_info.op_infos_) os << op_info << "\n";
     os << "}\n";
   }
   return os;
-}
-
-std::size_t HashIntArgsMap(
-    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
-  std::size_t seed = 2153;
-  for (const auto& [input_idx, dim_idx] : int_args_map) {
-    hash_combine(seed, input_idx);
-    hash_combine(seed, dim_idx.arg_idx);
-    hash_combine(seed, dim_idx.dim_idx);
-  }
-  return seed;
-}
-std::ostream& operator<<(
-    std::ostream& os,
-    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
-  os << "int_args_map: {\n";
-  for (const auto& [input_idx, dim_idx] : int_args_map) {
-    os << "input_idx: " << input_idx << ":[ " << dim_idx.arg_idx << ", "
-       << dim_idx.dim_idx << " ]\n";
-  }
-  os << "}\n";
 }
 
 std::vector<const ::pir::Operation*> TopologySort(

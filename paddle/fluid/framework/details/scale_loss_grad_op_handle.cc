@@ -23,9 +23,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
                                              size_t num_dev,
                                              Scope *scope,
@@ -126,6 +124,4 @@ void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
 }
 
 std::string ScaleLossGradOpHandle::Name() const { return "ScaleLossGrad"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

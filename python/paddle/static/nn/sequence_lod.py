@@ -17,12 +17,10 @@ from paddle.base.core import VarDesc
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.framework import Variable, in_dygraph_mode
 from paddle.base.layer_helper import LayerHelper
-from paddle.base.layers.layer_function_generator import templatedoc
 
 __all__ = []
 
 
-@templatedoc()
 def sequence_conv(
     input,
     num_filters,

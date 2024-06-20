@@ -34,6 +34,7 @@
 #include "paddle/pir/include/core/value.h"
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_map_expr_enable_dynamic_shape);
@@ -102,7 +103,11 @@ bool HasDynamicShape(const ::pir::Value& tensor) {
   const auto& shape = hlir::framework::pir::CompatibleInfo::ValueShape(tensor);
   for (int dim : shape) {
     if (dim < 0) {
-      CHECK_EQ(dim, -1);
+      PADDLE_ENFORCE_EQ(
+          dim,
+          -1UL,
+          phi::errors::InvalidArgument(
+              "The dynamic shape dim should be -1, but got %d.", dim));
       return true;
     }
   }
@@ -242,7 +247,11 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 std::shared_ptr<KGroup> GenerateKGroups(
     const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  CHECK_EQ(igroups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      igroups.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of igroups should be 1, but got %d.", igroups.size()));
   return std::make_shared<KGroup>(group, igroups);
 }
 
@@ -315,7 +324,14 @@ TensorIteratorExpr4TensorT MakeGetterTensorIteratorExpr4Tensor(
 
 LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
     const LoopIterators& loop_iters, const LoopDescriptors& sd) {
-  CHECK_EQ(loop_iters->size(), sd->size());
+  PADDLE_ENFORCE_EQ(
+      loop_iters->size(),
+      sd->size(),
+      phi::errors::InvalidArgument(
+          "The size of loop iterators and loop descriptors should be equal, "
+          "but got loop iterators size = %d, loop descriptors size = %d.",
+          loop_iters->size(),
+          sd->size()));
   using Cache = std::unordered_map<Iterator, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
   for (std::size_t i = 0; i < loop_iters->size(); ++i) {
@@ -345,7 +361,11 @@ MapStmt<Stmt> MakeMapStmt(const MapIrList& map_irs) {
     const TreeMerger<Stmt>& tree_merger = MakeTreeMerger(map_ir);
     MergeTrees(tree_merger, &stmts, map_ir.op_stmts());
   }
-  CHECK_EQ(stmts->size(), 1);
+  PADDLE_ENFORCE_EQ(
+      stmts->size(),
+      1UL,
+      phi::errors::InvalidArgument("The size of stmts should be 1, but got %d.",
+                                   stmts->size()));
   CHECK(stmts->at(0).Has<MapStmt<Stmt>>());
   return stmts->at(0).Get<MapStmt<Stmt>>();
 }

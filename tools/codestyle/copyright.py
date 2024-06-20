@@ -48,7 +48,7 @@ def _generate_copyright(comment_mark):
 
 
 def _get_comment_mark(path):
-    lang_type = re.compile(r"\.(py|sh)$")
+    lang_type = re.compile(r"\.(py|pyi|sh)$")
     if lang_type.search(path) is not None:
         return "#"
 

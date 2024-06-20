@@ -14,14 +14,14 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
 
-#define OP_SAME_OPERANDS_AND_RESULT(name)                                   \
-  bool name##OpInferSymbolicShape(                                          \
-      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) { \
-    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =              \
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));      \
-    shape_analysis->SetShapeOrDataForValue(op->result(0),                   \
-                                           operand_shape_or_data);          \
-    return true;                                                            \
+#define OP_SAME_OPERANDS_AND_RESULT(name)                                  \
+  bool name##OpInferSymbolicShape(                                         \
+      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) { \
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =             \
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));      \
+    infer_context->SetShapeOrDataForValue(op->result(0),                   \
+                                          operand_shape_or_data);          \
+    return true;                                                           \
   }
 
 namespace paddle::dialect {
@@ -51,6 +51,8 @@ OP_SAME_OPERANDS_AND_RESULT(Cast)
 OP_SAME_OPERANDS_AND_RESULT(Cast_)
 OP_SAME_OPERANDS_AND_RESULT(Ceil)
 OP_SAME_OPERANDS_AND_RESULT(Ceil_)
+OP_SAME_OPERANDS_AND_RESULT(Clip)
+OP_SAME_OPERANDS_AND_RESULT(Clip_)
 OP_SAME_OPERANDS_AND_RESULT(Conj)
 OP_SAME_OPERANDS_AND_RESULT(Cos)
 OP_SAME_OPERANDS_AND_RESULT(Cos_)
@@ -100,9 +102,12 @@ OP_SAME_OPERANDS_AND_RESULT(Print)
 OP_SAME_OPERANDS_AND_RESULT(PutAlongAxis)
 OP_SAME_OPERANDS_AND_RESULT(PutAlongAxis_)
 OP_SAME_OPERANDS_AND_RESULT(Real)
+OP_SAME_OPERANDS_AND_RESULT(Reciprocal)
+OP_SAME_OPERANDS_AND_RESULT(Reciprocal_)
 OP_SAME_OPERANDS_AND_RESULT(Relu)
 OP_SAME_OPERANDS_AND_RESULT(Relu6)
 OP_SAME_OPERANDS_AND_RESULT(Relu_)
+OP_SAME_OPERANDS_AND_RESULT(Reverse)
 OP_SAME_OPERANDS_AND_RESULT(Roll)
 OP_SAME_OPERANDS_AND_RESULT(Round)
 OP_SAME_OPERANDS_AND_RESULT(Round_)
@@ -114,6 +119,7 @@ OP_SAME_OPERANDS_AND_RESULT(Scale_)
 OP_SAME_OPERANDS_AND_RESULT(ScatterNdAdd)
 OP_SAME_OPERANDS_AND_RESULT(Scatter)
 OP_SAME_OPERANDS_AND_RESULT(Scatter_)
+OP_SAME_OPERANDS_AND_RESULT(Select)
 OP_SAME_OPERANDS_AND_RESULT(Sign)
 OP_SAME_OPERANDS_AND_RESULT(Sin)
 OP_SAME_OPERANDS_AND_RESULT(Sin_)
@@ -131,19 +137,21 @@ OP_SAME_OPERANDS_AND_RESULT(Triu)
 OP_SAME_OPERANDS_AND_RESULT(Triu_)
 OP_SAME_OPERANDS_AND_RESULT(Trunc)
 OP_SAME_OPERANDS_AND_RESULT(Trunc_)
+OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
+OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+                               pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source);
+      infer_context->GetShapeOrDataForValue(operand_source);
   std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
 
   if (operand_shape_or_data.data()) {
     const std::vector<symbol::DimExpr> data = [&] {
       const symbol::DimExpr scale = [&]() -> symbol::DimExpr {
         if (op->num_operands() == 2) {
-          return shape_analysis->GetShapeOrDataForValue(op->operand_source(1))
+          return infer_context->GetShapeOrDataForValue(op->operand_source(1))
               .data()
               ->at(0);
         }
@@ -159,11 +167,10 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
       return data;
     }();
 
-    shape_analysis->SetShapeOrDataForValue(
+    infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
   } else {
-    shape_analysis->SetShapeOrDataForValue(op->result(0),
-                                           operand_shape_or_data);
+    infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   }
 
   return true;
@@ -171,8 +178,6 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
 
 }  // namespace paddle::dialect
 
-namespace cinn::dialect {
-using paddle::dialect::ScaleOpInferSymbolicShape;
-}
+namespace cinn::dialect {}  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT
