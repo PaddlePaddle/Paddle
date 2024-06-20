@@ -40,25 +40,39 @@ std::optional<int> GetArchDevice(const common::Target& target) {
 #else
         return std::nullopt;
 #endif
+      },
+      [&](common::HygonDCUArchHIP) -> std::optional<int> {
+        int device_id =
+            BackendAPI::get_backend(common::HygonDCUArchHIP{})->get_device();
+        return std::optional<int>{device_id};
       });
 }
 
 void SetArchDevice(const common::Target& target,
                    const std::optional<int>& device_id) {
-  target.arch.Match([&](common::UnknownArch) -> void {},
-                    [&](common::X86Arch) -> void {},
-                    [&](common::ARMArch) -> void {},
-                    [&](common::NVGPUArch) -> void {
+  target.arch.Match(
+      [&](common::UnknownArch) -> void {},
+      [&](common::X86Arch) -> void {},
+      [&](common::ARMArch) -> void {},
+      [&](common::NVGPUArch) -> void {
 #ifdef CINN_WITH_CUDA
-                      PADDLE_ENFORCE_EQ(
-                          device_id.has_value(),
+        PADDLE_ENFORCE_EQ(device_id.has_value(),
                           true,
                           ::common::errors::InvalidArgument(
                               "Required device_id should have value, but "
                               "received std::nullopt."));
-                      cudaSetDevice(device_id.value());
+        cudaSetDevice(device_id.value());
 #endif
-                    });
+      },
+      [&](common::HygonDCUArchHIP) -> void {
+        PADDLE_ENFORCE_EQ(device_id.has_value(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "Required device_id should have value, but "
+                              "received std::nullopt."));
+        BackendAPI::get_backend(common::HygonDCUArchHIP{})
+            ->set_device(device_id.value());
+      });
 }
 
 }  // namespace cinn::runtime

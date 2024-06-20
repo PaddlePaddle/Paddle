@@ -381,7 +381,7 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 }
 
 void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
-#if defined(CINN_WITH_HIP)
+#ifdef CINN_WITH_HIP
   // Do nothing;
 #else
   PADDLE_THROW(phi::errors::Fatal(
