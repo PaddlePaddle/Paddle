@@ -919,7 +919,7 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
     auto difference = x_cast - mean_;
     auto var_tmp1 = difference * difference;
     auto variance = mean_decomp<T>(var_tmp1, axis, true);
-    auto var_tmp3 = variance + full<T>(empty_shape, epsilon, variance.dtype());
+    auto var_tmp3 = variance + full<T>(variance.shape(), epsilon, variance.dtype());
     auto rsqrt_var = rsqrt<T>(var_tmp3);
     auto out = difference * rsqrt_var;
 
