@@ -134,6 +134,4 @@ PD_REGISTER_KERNEL(calc_reduced_attn_scores,
                    ALL_LAYOUT,
                    phi::CalcReducedAttnScoresKernel,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
-}
+                   phi::dtype::bfloat16) {}
