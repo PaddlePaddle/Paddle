@@ -24,6 +24,7 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     static_guard,
     test_default_and_pir,
+    test_pir_only,
 )
 from predictor_utils import PredictorTools
 
@@ -407,14 +408,16 @@ class ResNetHelper:
         return ret
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
         output = PredictorTools(
             self.model_save_dir,
-            self.model_filename,
+            model_filename,
             self.params_filename,
             [data],
         )
-        (out,) = output()
-        return out
 
 
 class TestResnet(Dy2StTestBase):
@@ -442,16 +445,16 @@ class TestResnet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-        if not use_pir_api():
-            predictor_pre = self.resnet_helper.predict_analysis_inference(image)
-            np.testing.assert_allclose(
-                predictor_pre,
-                st_pre,
-                rtol=1e-05,
-                err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
-            )
 
-    @test_default_and_pir
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
+        np.testing.assert_allclose(
+            predictor_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
+        )
+
+    @test_pir_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
