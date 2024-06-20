@@ -2640,6 +2640,7 @@ function parallel_fa_unit() {
     Running FA unit tests in parallel way ...
     ========================================
 EOF
+fi
 local parallel_list
 parallel_list="^test_weight_only_linear$|\
 ^test_block_multihead_attention$|\
