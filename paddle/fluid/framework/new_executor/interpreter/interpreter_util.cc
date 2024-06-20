@@ -29,7 +29,6 @@
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -54,9 +53,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
@@ -117,10 +114,9 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
                                EventsWaiter* waiter)
-    : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
-}
+    : host_num_thread_(host_num_threads),
+      queue_group_(CreateWorkQueueGroup(ConstructWorkQueueOptions(
+          host_num_threads, device_num_threads, waiter))) {}
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
@@ -604,8 +600,6 @@ void BuildOpFuncList(const platform::Place& place,
     operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-        main_program, block.ID(), ops_unique);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         main_program, block.ID(), ops_unique);
   }
 
@@ -1468,6 +1462,4 @@ const std::vector<std::string> GetInstructionCallStack(
   }
   return vec_str;
 }
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

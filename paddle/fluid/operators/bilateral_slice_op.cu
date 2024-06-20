@@ -13,7 +13,7 @@
 #include <string>
 
 #include "paddle/fluid/operators/bilateral_slice_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -169,8 +169,9 @@ class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
 
     int total_count = batch_size * h * w * output_dims[1];
 
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), total_count);
+    phi::backends::gpu::GpuLaunchConfig config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                                 total_count);
 
     BilateralSliceCudaForwardKernel<T>
         <<<config.block_per_grid,
@@ -502,8 +503,9 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
     grid_sizes.gw = gw;
     grid_sizes.input_chans = input_chans;
 
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), grid_count);
+    phi::backends::gpu::GpuLaunchConfig config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                                 grid_count);
 
     BilateralSliceCudaGridGradKernel<T>
         <<<config.block_per_grid,
@@ -518,8 +520,8 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
                                                  grid_count,
                                                  output_chans);
 
-    config =
-        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), guide_count);
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                                      guide_count);
 
     BilateralSliceCudaGuideGradKernel<T>
         <<<config.block_per_grid,
@@ -535,8 +537,8 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
                                                  guide_count,
                                                  output_chans);
 
-    config =
-        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), input_count);
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                                      input_count);
 
     BilateralSliceCudaInputGradKernel<T>
         <<<config.block_per_grid,

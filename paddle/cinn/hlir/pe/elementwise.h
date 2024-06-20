@@ -17,9 +17,11 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
 namespace hlir {
@@ -153,6 +155,12 @@ ir::Tensor Tril(const ir::Tensor& A,
                 const int diagonal,
                 const std::vector<ir::Dim>& out_shape,
                 const std::string& name = UniqName("T_Elementwise_Tril_out"));
+
+ir::Tensor GenerateShape(
+    const std::vector<ir::Tensor>& inputs,
+    const cinn::dialect::SymbolBindings& symbol_bindings,
+    const std::vector<symbol::DimExpr>& output_dim_exprs,
+    const std::string& name = UniqName("T_Generate_Shape_out"));
 
 // This operator checks if all x and y satisfy the condition: |x - y| <= atol +
 // rtol * |y|

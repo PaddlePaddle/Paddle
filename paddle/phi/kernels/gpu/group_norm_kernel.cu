@@ -123,6 +123,17 @@ inline __device__ void UpdateSum(const T* srcX, float* sum, float* sumSq) {
   *sumSq += src_data * src_data;
 }
 
+template <typename T, int THREADS_PER_CHANNEL>
+inline __device__ void UpdateSum(const T* srcX,
+                                 const T* srcR,
+                                 float* sum,
+                                 float* sumSq) {
+  float src_data = phi::__2float<T>(*srcX);
+  float srcy_data = phi::__2float<T>(*srcR);
+  *sum += src_data + srcy_data;
+  *sumSq += (src_data + srcy_data) * (src_data + srcy_data);
+}
+
 template <>
 inline __device__ void UpdateSum<__half, 2>(const __half* srcX,
                                             float* sum,
@@ -134,12 +145,41 @@ inline __device__ void UpdateSum<__half, 2>(const __half* srcX,
 }
 
 template <>
+inline __device__ void UpdateSum<__half, 2>(const __half* srcX,
+                                            const __half* srcR,
+                                            float* sum,
+                                            float* sumSq) {
+  __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
+  __half2 h2_r = *reinterpret_cast<__half2 const*>(srcR);
+  float2 f2 = __half22float2(h2);
+  float2 f2_r = __half22float2(h2_r);
+  *sum += f2.x + f2_r.x + f2.y + f2_r.y;
+  *sumSq +=
+      (f2.x + f2_r.x) * (f2.x + f2_r.x) + (f2.y + f2_r.y) * (f2.y + f2_r.y);
+}
+
+template <>
 inline __device__ void UpdateSum<phi::dtype::float16, 2>(
     const phi::dtype::float16* srcX, float* sum, float* sumSq) {
   __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
   float2 f2 = __half22float2(h2);
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
+}
+
+template <>
+inline __device__ void UpdateSum<phi::dtype::float16, 2>(
+    const phi::dtype::float16* srcX,
+    const phi::dtype::float16* srcR,
+    float* sum,
+    float* sumSq) {
+  __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
+  __half2 h2_r = *reinterpret_cast<__half2 const*>(srcR);
+  float2 f2 = __half22float2(h2);
+  float2 f2_r = __half22float2(h2_r);
+  *sum += f2.x + f2_r.x + f2.y + f2_r.y;
+  *sumSq +=
+      (f2.x + f2_r.x) * (f2.x + f2_r.x) + (f2.y + f2_r.y) * (f2.y + f2_r.y);
 }
 
 #ifdef PADDLE_CUDA_BF16
@@ -150,6 +190,21 @@ inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
   float2 f2 = phi::bfloat1622float2(h2);
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
+}
+
+template <>
+inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
+    const phi::dtype::bfloat16* srcX,
+    const phi::dtype::bfloat16* srcR,
+    float* sum,
+    float* sumSq) {
+  __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
+  __nv_bfloat162 h2_r = *reinterpret_cast<__nv_bfloat162 const*>(srcR);
+  float2 f2 = phi::bfloat1622float2(h2);
+  float2 f2_r = phi::bfloat1622float2(h2_r);
+  *sum += f2.x + f2_r.x + f2.y + f2_r.y;
+  *sumSq +=
+      (f2.x + f2_r.x) * (f2.x + f2_r.x) + (f2.y + f2_r.y) * (f2.y + f2_r.y);
 }
 #endif
 
@@ -177,7 +232,13 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
     int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
                      static_cast<int64_t>(dhwi) * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
-    UpdateSum<T, 1>(&params.srcX[offset], &sum, &sumSq);
+    if (params.srcR != nullptr) {
+      int64_t g_offset = params.y_same_with_x ? offset : ci;
+      UpdateSum<T, 1>(
+          &params.srcX[offset], &params.srcR[g_offset], &sum, &sumSq);
+    } else {
+      UpdateSum<T, 1>(&params.srcX[offset], &sum, &sumSq);
+    }
   }
 
   smem[threadIdx.x] = make_float2(sum, sumSq);
@@ -185,7 +246,6 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
   __syncthreads();
 
   float2 sums = smem[threadIdx.x];
-
   atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci],
             sums.x * params.invDHWC);
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + ci], sums.y);
@@ -209,7 +269,8 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   if (ci >= params.c || threadIdx.x * THREADS_PER_CHANNEL >= params.cPerBlock) {
     return;
   }
-  // The first activation loaded by that block.
+  int32_t gj = ci / params.cPerGroup;
+  int32_t cj = ci % params.cPerGroup;
   int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
   int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
@@ -223,13 +284,19 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
     int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
                      static_cast<int64_t>(dhwi) * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
-    UpdateSum<T, THREADS_PER_CHANNEL>(&params.srcX[offset], &sum, &sumSq);
+    if (params.srcR != nullptr) {
+      int64_t g_offset =
+          params.y_same_with_x ? offset : gj * params.cPerGroup + cj;
+      UpdateSum<T, THREADS_PER_CHANNEL>(
+          &params.srcX[offset], &params.srcR[g_offset], &sum, &sumSq);
+    } else {
+      UpdateSum<T, THREADS_PER_CHANNEL>(&params.srcX[offset], &sum, &sumSq);
+    }
   }
 
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi =
       ci / params.cPerGroup - blockIdx.x * params.cPerBlock / params.cPerGroup;
-  int32_t cj = ci % params.cPerGroup;
   int flag = (cj == 0 || threadIdx.x == 0) ? 1 : 0;
   GroupSums inp{flag, sum, sumSq};
   GroupSums out;
@@ -243,7 +310,6 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
 
   __syncthreads();
 
-  int32_t gj = ci / params.cPerGroup;
   if (cj == params.cPerGroup - THREADS_PER_CHANNEL ||
       threadIdx.x * THREADS_PER_CHANNEL ==
           params.cPerBlock - THREADS_PER_CHANNEL) {
@@ -351,7 +417,15 @@ inline __device__ void GroupNormCompute(int32_t dhwBegin,
   for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
-    const float src_data = phi::__2float<T>(params.srcX[offset]);
+    float src_data = phi::__2float<T>(params.srcX[offset]);
+    if (params.srcR != nullptr) {
+      auto gi = ci / params.cPerGroup;
+      auto gj = ci % params.cPerGroup;
+      int64_t g_offset =
+          params.y_same_with_x ? offset : gi * params.cPerGroup + gj;
+      src_data += phi::__2float<T>(params.srcR[g_offset]);
+      *reinterpret_cast<T*>(&params.eleOut[offset]) = phi::__2dst<T>(src_data);
+    }
     // Normalize the channels.
     float dst_data = (src_data - mean) * invStdDev;
     // Scale by gamma and add beta.
@@ -392,6 +466,18 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
     // Extract the two half values.
     float2 f2 = __half22float2(h2);
 
+    if (params.srcR != nullptr) {
+      auto gi = ci / params.cPerGroup;
+      auto gj = ci % params.cPerGroup;
+      int64_t g_offset =
+          params.y_same_with_x ? offset : gi * params.cPerGroup + gj;
+      __half2 r2 = *reinterpret_cast<__half2 const*>(&params.srcR[g_offset]);
+      float2 r_f2 = __half22float2(r2);
+      f2.x += r_f2.x;
+      f2.y += r_f2.y;
+      *reinterpret_cast<__half2*>(&params.eleOut[offset]) =
+          __float22half2_rn(f2);
+    }
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
     f2.y = (f2.y - mean) * invStdDev;
@@ -434,7 +520,18 @@ inline __device__ void GroupNormCompute<__half, 2>(
 
     // Extract the two half values.
     float2 f2 = __half22float2(h2);
-
+    if (params.srcR != nullptr) {
+      auto gi = ci / params.cPerGroup;
+      auto gj = ci % params.cPerGroup;
+      int64_t g_offset =
+          params.y_same_with_x ? offset : gi * params.cPerGroup + gj;
+      __half2 r2 = *reinterpret_cast<__half2 const*>(&params.srcR[g_offset]);
+      float2 r_f2 = __half22float2(r2);
+      f2.x += r_f2.x;
+      f2.y += r_f2.y;
+      *reinterpret_cast<__half2*>(&params.eleOut[offset]) =
+          __float22half2_rn(f2);
+    }
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
     f2.y = (f2.y - mean) * invStdDev;
@@ -480,6 +577,19 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     // Extract the two half values.
     float2 f2 = phi::bfloat1622float2(h2);
 
+    if (params.srcR != nullptr) {
+      auto gi = ci / params.cPerGroup;
+      auto gj = ci % params.cPerGroup;
+      int64_t g_offset =
+          params.y_same_with_x ? offset : gi * params.cPerGroup + gj;
+      __nv_bfloat162 r2 =
+          *reinterpret_cast<__nv_bfloat162 const*>(&params.srcR[g_offset]);
+      float2 r_f2 = phi::bfloat1622float2(r2);
+      f2.x += r_f2.x;
+      f2.y += r_f2.y;
+      *reinterpret_cast<__nv_bfloat162*>(&params.eleOut[offset]) =
+          phi::float22bfloat162_rn(f2);
+    }
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
     f2.y = (f2.y - mean) * invStdDev;
@@ -511,6 +621,7 @@ __global__ void groupNormNDHWCScaleKernel(
 
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi = ci / params.cPerGroup;
+  int32_t gj = ci % params.cPerGroup;
 
   if (ci >= params.c || gi >= params.groups) {
     return;
@@ -597,17 +708,24 @@ template class groupNormNDHWCScale<half>;
 template <typename T, typename Context>
 void GroupNormNDHWCKernel(const Context& dev_ctx,
                           const DenseTensor& x,
+                          const paddle::optional<DenseTensor>& residual,
                           const paddle::optional<DenseTensor>& scale,
                           const paddle::optional<DenseTensor>& bias,
                           float epsilon,
                           int groups,
                           const std::string& data_layout_str,
+                          const std::string& activation,
                           DenseTensor* y,
+                          DenseTensor* residual_out,
                           DenseTensor* mean,
                           DenseTensor* var) {
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  if (data_layout != DataLayout::kNHWC) {
+    PD_THROW("data_layout only supports NHWC and NDHWC");
+  }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   GroupNormNDHWCParams<T> params_;
-  params_.withSilu = false;
+  params_.withSilu = activation == "silu" ? true : false;
 
   const auto x_dims = x.dims();
   dev_ctx.template Alloc<T>(y);
@@ -639,6 +757,23 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
     params_.w = x_dims[3];
   }
 
+  const T* residual_data = nullptr;
+  const auto residual_ptr = residual.get_ptr();
+  T* residual_out_data = nullptr;
+  if (residual_ptr) {
+    dev_ctx.template Alloc<T>(residual_out);
+    residual_data = residual_ptr->data<T>();
+    residual_out_data = residual_out->data<T>();
+    const auto r_dims = residual_ptr->dims();
+    int32_t r_dim = 1;
+    for (size_t i = 0; i < r_dims.size(); i++) {
+      r_dim *= r_dims[i];
+    }
+    params_.y_same_with_x =
+        r_dim == params_.n * params_.c * params_.d * params_.h * params_.w
+            ? true
+            : false;
+  }
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
   auto* mean_data = mean->data<AccT>();
@@ -673,7 +808,10 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   }
   params_.srcX = reinterpret_cast<const T*>(x_data);
   params_.dst = reinterpret_cast<T*>(y_data);
-
+  if (residual_ptr) {
+    params_.srcR = reinterpret_cast<const T*>(residual_data);
+    params_.eleOut = reinterpret_cast<T*>(residual_out_data);
+  }
   params_.gamma = scale_data;
   params_.beta = bias_data;
   params_.dhw = params_.d * params_.h * params_.w;
@@ -1027,14 +1165,19 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* var) {
   using std::is_same;
   if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
+    const paddle::optional<DenseTensor>& residual =
+        paddle::optional<DenseTensor>(paddle::none);
     GroupNormNDHWCKernel<phi::dtype::float16, Context>(dev_ctx,
                                                        x,
+                                                       residual,
                                                        scale,
                                                        bias,
                                                        epsilon,
                                                        groups,
                                                        data_layout_str,
+                                                       "",
                                                        y,
+                                                       new DenseTensor(),
                                                        mean,
                                                        var);
     return;
@@ -1042,14 +1185,19 @@ void GroupNormKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_CUDA_BF16
   if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
+    const paddle::optional<DenseTensor>& residual =
+        paddle::optional<DenseTensor>(paddle::none);
     GroupNormNDHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
                                                         x,
+                                                        residual,
                                                         scale,
                                                         bias,
                                                         epsilon,
                                                         groups,
                                                         data_layout_str,
+                                                        "",
                                                         y,
+                                                        new DenseTensor(),
                                                         mean,
                                                         var);
     return;
@@ -1075,4 +1223,14 @@ PD_REGISTER_KERNEL(group_norm,
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
+}
+
+PD_REGISTER_KERNEL(add_group_norm_silu,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GroupNormNDHWCKernel,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
 }

@@ -48,7 +48,28 @@ namespace framework {
 
 // constructor
 template <typename T>
-DatasetImpl<T>::DatasetImpl() {
+DatasetImpl<T>::DatasetImpl()
+    : readers_(),
+      preload_readers_(),
+      input_channel_(),
+      input_pv_channel_(),
+      multi_pv_output_(),
+      multi_pv_consume_(),
+      multi_output_channel_(),
+      multi_consume_channel_(),
+      local_tables_(),
+      slots_shuffle_original_data_(),
+      pull_sparse_to_local_thread_num_(0),
+      filelist_(),
+      preload_threads_(),
+      current_phase_(),
+      consume_task_pool_(),
+      input_records_(),
+      use_slots_(),
+      gpu_graph_total_keys_(),
+      keys_vec_(),
+      ranks_vec_(),
+      keys2rank_tables_() {
   VLOG(3) << "DatasetImpl<T>::DatasetImpl() constructor";
   thread_num_ = 1;
   trainer_num_ = 1;
@@ -474,7 +495,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
   timeline.Start();
   if (gpu_graph_mode_) {
     VLOG(1) << "in gpu_graph_mode";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
     std::vector<std::future<void>> wait_futures;
     auto pool = GetReadThreadPool(thread_num_);
     for (size_t i = 0; i < readers_.size(); i++) {
@@ -711,7 +732,7 @@ void DatasetImpl<T>::LocalShuffle() {
 template <typename T>
 void DatasetImpl<T>::DumpWalkPath(std::string dump_path, size_t dump_rate) {
   VLOG(3) << "DatasetImpl<T>::DumpWalkPath() begin";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   std::vector<std::thread> dump_threads;
   if (gpu_graph_mode_) {
     for (int64_t i = 0; i < thread_num_; ++i) {
@@ -731,7 +752,7 @@ void DatasetImpl<T>::DumpWalkPath(std::string dump_path, size_t dump_rate) {
 template <typename T>
 void DatasetImpl<T>::DumpSampleNeighbors(std::string dump_path) {
   VLOG(1) << "DatasetImpl<T>::DumpSampleNeighbors() begin";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_HETERPS)
   std::vector<std::thread> dump_threads;
   if (gpu_graph_mode_) {
     for (int64_t i = 0; i < thread_num_; ++i) {
@@ -1194,7 +1215,7 @@ void DatasetImpl<T>::DestroyPreLoadReaders() {
 template <typename T>
 int64_t DatasetImpl<T>::GetMemoryDataSize() {
   if (gpu_graph_mode_) {
-    bool is_multi_node = 0, sage_mode = 0, gpu_graph_training = 1;
+    bool is_multi_node = false, sage_mode = false, gpu_graph_training = true;
     int64_t total_path_num = 0;
     for (int i = 0; i < thread_num_; i++) {
       is_multi_node = readers_[i]->GetMultiNodeMode();
@@ -1214,7 +1235,7 @@ int64_t DatasetImpl<T>::GetMemoryDataSize() {
 
 template <typename T>
 bool DatasetImpl<T>::GetEpochFinish() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_HETERPS)
   bool is_epoch_finish = true;
   if (gpu_graph_mode_) {
     for (int i = 0; i < thread_num_; i++) {
@@ -1229,7 +1250,7 @@ bool DatasetImpl<T>::GetEpochFinish() {
 
 template <typename T>
 void DatasetImpl<T>::ClearSampleState() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   for (size_t i = 0; i < readers_.size(); i++) {
     readers_[i]->ClearSampleState();
     readers_[i]->ResetPathNum();
@@ -1876,9 +1897,11 @@ void SlotRecordDataset::CreateReaders() {
             << ", will not create again";
     return;
   }
-  VLOG(3) << "data feed class name: " << data_feed_desc_.name();
+  VLOG(3) << "data feed class name: " << data_feed_desc_.name()
+          << "; gpu_graph_mode_:" << gpu_graph_mode_;
   for (int i = 0; i < thread_num_; ++i) {
     readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
+    readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
     readers_[i]->Init(data_feed_desc_);
     readers_[i]->SetThreadId(i);
     readers_[i]->SetThreadNum(thread_num_);
@@ -1892,8 +1915,10 @@ void SlotRecordDataset::CreateReaders() {
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
     readers_[i]->SetCurrentPhase(current_phase_);
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    readers_[i]->InitGraphResource();
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      readers_[i]->InitGraphResource();
+    }
 #endif
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
@@ -1996,7 +2021,7 @@ void SlotRecordDataset::PrepareTrain() {
 
 void SlotRecordDataset::DynamicAdjustBatchNum() {
   VLOG(3) << "dynamic adjust batch num of graph in multi node";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   if (gpu_graph_mode_) {
     bool sage_mode = 0;
     int thread_max_batch_num = 0;

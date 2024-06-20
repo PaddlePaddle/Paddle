@@ -23,7 +23,7 @@
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
@@ -37,10 +37,10 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   auto index_size = index.dims()[0];
 
   phi::DenseTensor index_cpu_copy;
-  if (!platform::is_cpu_place(index.place())) {
-    framework::TensorCopySync(index, platform::CPUPlace(), &index_cpu_copy);
+  if (!(index.place().GetType() == phi::AllocationType::CPU)) {
+    framework::TensorCopySync(index, phi::CPUPlace(), &index_cpu_copy);
   }
-  const IndexT* index_data = platform::is_cpu_place(index.place())
+  const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
   output->mutable_data<T>(context.GetPlace());

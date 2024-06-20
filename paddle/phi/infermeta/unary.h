@@ -68,6 +68,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
 
+void BipartiteMatchInferMeta(const MetaTensor& dist_mat,
+                             const std::string& match_type,
+                             float dist_threshold,
+                             MetaTensor* col_to_row_match_indices,
+                             MetaTensor* col_to_row_match_dist);
+
 void TensorToArrayInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             int axis,
@@ -225,6 +231,21 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
 
+void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                            int bit_length,
+                                            int round_type,
+                                            int quant_axis,
+                                            bool is_test,
+                                            MetaTensor* out,
+                                            MetaTensor* out_scale);
+
+void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                                      int bit_length,
+                                                      int round_type,
+                                                      int quant_axis,
+                                                      MetaTensor* out,
+                                                      MetaTensor* out_scale);
+
 void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  int bit_length,
                                  int round_type,
@@ -266,6 +287,11 @@ void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out);
+
+void Flatten2InferMeta(const MetaTensor& x,
+                       int axis,
+                       MetaTensor* out,
+                       MetaTensor* x_shape);
 
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
@@ -342,7 +368,7 @@ void KthvalueInferMeta(const MetaTensor& x,
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out);
@@ -614,6 +640,14 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  DataType out_dtype,
                                  MetaTensor* y);
 
+void SequencePoolInferMeta(const MetaTensor& x,
+                           bool is_test,
+                           const std::string& pooltype,
+                           float pad_value,
+                           MetaTensor* out,
+                           MetaTensor* max_index,
+                           MetaConfig config = MetaConfig());
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
@@ -760,6 +794,12 @@ void TopKInferMeta(const MetaTensor& x,
                    MetaTensor* indices,
                    MetaConfig config = MetaConfig());
 
+void TopkV1InferMeta(const MetaTensor& x,
+                     const Scalar& k_scalar,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaConfig config = MetaConfig());
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
@@ -817,6 +857,20 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
                                    int diag_step,
                                    float diag_val,
                                    MetaTensor* out);
+
+void UniformRandomBatchSizeLikeInferMeta(const MetaTensor& input,
+                                         const std::vector<int>& shape,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         float min,
+                                         float max,
+                                         int seed,
+                                         int diag_num,
+                                         int diag_step,
+                                         float diag_val,
+                                         DataType dtype,
+                                         MetaTensor* out,
+                                         MetaConfig config = MetaConfig());
 
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,

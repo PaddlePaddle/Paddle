@@ -61,17 +61,17 @@ class NCCLCommImpl : public NCCLComm {
   }
 
  private:
-  int ring_id_;
-  int nranks_;
-  int rank_;
-  ncclComm_t comm_;
-  std::unique_ptr<phi::GPUContext> dev_ctx_;
+  int ring_id_ = 0;
+  int nranks_ = 0;
+  int rank_ = 0;
+  ncclComm_t comm_ = nullptr;
+  std::unique_ptr<phi::GPUContext> dev_ctx_ = nullptr;
 
   // used for comm wait compute, compute_stream-->event-->comm_stream
-  std::shared_ptr<platform::CudaEventObject> compute_event_;
+  std::shared_ptr<platform::CudaEventObject> compute_event_ = nullptr;
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
-  std::shared_ptr<platform::CudaEventObject> comm_event_;
+  std::shared_ptr<platform::CudaEventObject> comm_event_ = nullptr;
 };
 
 NCCLCommContext& NCCLCommContext::Instance() {

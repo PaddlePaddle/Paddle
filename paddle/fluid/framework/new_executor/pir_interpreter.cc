@@ -58,6 +58,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/yield_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
@@ -69,6 +70,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -79,6 +81,7 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+#include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
@@ -88,8 +91,7 @@ COMMON_DECLARE_int32(low_precision_op_list);
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
       op_idx++, place_, &op, value_exe_info_.get()));
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
@@ -111,13 +113,47 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
                                const ::pir::Block* ir_block,
                                framework::Scope* scope,
                                const ExecutionConfig& execution_config)
-    : place_(place),
+    : is_build_(false),
+      static_build_(false),
+      is_shared_results_build_(false),
+      place_(place),
+      unfinished_op_number_(0),
       execution_config_(execution_config),
+      force_events_to_wait_(nullptr),
       var_scope_(scope),
       scope_(scope),
+      local_scope_(nullptr),
+      main_thread_blocker_(),
+      async_work_queue_(),
+      exception_holder_(),
+      exception_notifier_(nullptr),
+      completion_notifier_(nullptr),
+      gc_(nullptr),
+      last_live_ops_(),
+      dependency_count_(nullptr),
+      deps_(),
+      refs_(),
+      sync_op_num_(-1),
+      nccl_op_num_(-1),
+      onednn_op_num_(-1),
+      trace_execute_order_(),
+      pir_output_hookfuncs_(),
+      pir_input_hookfuncs_(),
+      ir_instruction_scheduling_priority_less(),
       ir_block_(ir_block),
+      sub_blocks_(),
+      vec_instruction_base_(),
+      value_exe_info_(nullptr),
+      var_ref_count_(),
+      ir_dependency_builder_(),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names),
+      parameter_var_names_(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      calculate_stream_timer_(
+          std::make_unique<phi::CalculateStreamTimer>(place)),
+#endif
+      last_calculate_instr_id_(0),
       enable_job_schedule_profiler_(false) {
   VLOG(2) << "PirInterpreter(): " << this << " on " << place_;
 
@@ -160,11 +196,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
-#endif
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::PirInterpreter(
@@ -174,14 +206,47 @@ PirInterpreter::PirInterpreter(
     framework::Scope* scope,
     std::shared_ptr<ValueExecutionInfo> value_exe_info,
     const ExecutionConfig& execution_config)
-    : place_(place),
+    : is_build_(false),
+      static_build_(false),
+      is_shared_results_build_(false),
+      place_(place),
+      unfinished_op_number_(0),
       execution_config_(execution_config),
+      force_events_to_wait_(nullptr),
       var_scope_(scope),
       scope_(scope),
+      local_scope_(nullptr),
+      main_thread_blocker_(),
+      async_work_queue_(),
+      exception_holder_(),
+      exception_notifier_(nullptr),
+      completion_notifier_(nullptr),
+      gc_(nullptr),
+      last_live_ops_(),
+      dependency_count_(nullptr),
+      deps_(),
+      refs_(),
+      sync_op_num_(-1),
+      nccl_op_num_(-1),
+      onednn_op_num_(-1),
+      trace_execute_order_(),
+      pir_output_hookfuncs_(),
+      pir_input_hookfuncs_(),
+      ir_instruction_scheduling_priority_less(),
       ir_block_(ir_block),
+      sub_blocks_(),
+      vec_instruction_base_(),
       value_exe_info_(value_exe_info),
+      var_ref_count_(),
+      ir_dependency_builder_(),
       ir_stream_analyzer_(place),
-      fetch_var_names_(fetch_var_names) {
+      fetch_var_names_(fetch_var_names),
+      parameter_var_names_(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      calculate_stream_timer_(nullptr),
+#endif
+      last_calculate_instr_id_(0),
+      enable_job_schedule_profiler_(false) {
   VLOG(2) << "PirInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -220,7 +285,7 @@ PirInterpreter::PirInterpreter(
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::~PirInterpreter() {
@@ -718,6 +783,8 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(TuplePushInstruction);
       } else if (op.isa<pir::TuplePopOp>()) {
         CREATE_INSTR(TuplePopInstruction);
+      } else if (op.isa<pir::YieldOp>()) {
+        CREATE_INSTR(YieldInstruction);
       } else {
         VLOG(6) << "skip process cf dialect op: " << op.name();
         continue;
@@ -1373,7 +1440,7 @@ paddle::framework::FetchList PirInterpreter::Run(
 
   FeedInput();
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
@@ -1408,12 +1475,6 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (switch_stream) {
-      BuildInstruction();
-      VLOG(4) << "Done BuildInstruction";
-    }
-#endif
     if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
@@ -1463,7 +1524,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   platform::RegisterModelLayout(ir_block_, place_);
 #endif
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
@@ -1499,12 +1560,6 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (switch_stream) {
-      BuildInstruction();
-      VLOG(4) << "Done BuildInstruction";
-    }
-#endif
     if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
@@ -1546,6 +1601,11 @@ void PirInterpreter::TraceRunImpl() {
 
   TraceRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done TraceRunInstructionList";
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
 }
 
 void PirInterpreter::MultiThreadRunImpl() {
@@ -1560,6 +1620,11 @@ void PirInterpreter::MultiThreadRunImpl() {
   async_work_queue_ = GetWorkQueue();
   MultiThreadRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done MultiThreadRunInstructionList";
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
 }
 
 void PirInterpreter::TraceRunInstructionList(
@@ -1825,6 +1890,9 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                 << "): context wait and get last error";
 #endif
       }
+      if (FLAGS_check_nan_inf) {
+        CheckTensorHasNanOrInf(instr_node, scope_, value_exe_info_.get());
+      }
       VLOG(2) << "\ndone: " << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
               << (instr_node->KernelType() == OpFuncType::kCpuSync
@@ -1965,5 +2033,4 @@ void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
       "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

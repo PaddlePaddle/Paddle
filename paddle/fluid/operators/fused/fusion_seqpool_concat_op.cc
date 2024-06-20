@@ -127,9 +127,9 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     } else if (pooltype == "SQRT") {
       attr.type = phi::jit::SeqPoolType::kSqrt;
     }
-    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                         platform::CPUPlace>::Cache()
-                       .At(attr);
+    auto seqpool =
+        phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, phi::CPUPlace>::Cache()
+            .At(attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {

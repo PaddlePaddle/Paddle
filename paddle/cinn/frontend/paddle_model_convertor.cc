@@ -13,19 +13,19 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/paddle_model_convertor.h"
-
 #include <glog/logging.h>
 
 #include <algorithm>
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
 #include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
 #include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_double(cinn_infer_model_version);
 
@@ -144,8 +144,10 @@ Program PaddleModelConvertor::LoadModel(
                         false,
                         target_);
   }
-  CHECK_EQ(program_desc.BlocksSize(), 1)
-      << "CINN can only support the model with a single block";
+  PADDLE_ENFORCE_EQ(program_desc.BlocksSize(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "CINN can only support the model with a single block"));
   auto* block_desc = program_desc.GetBlock<paddle::cpp::BlockDesc>(0);
 
   // Set feeds shape
@@ -199,6 +201,8 @@ void SetOpDescAttr(const std::string& attr_name,
     VISITOR_EXPAND(std::vector<int64_t>)
     VISITOR_EXPAND(std::vector<double>)
 #undef VISITOR_EXPAND
+    void operator()(const std::vector<symbol::DimExpr>& v) {}
+    void operator()(const cinn::dialect::SymbolBindings& v) {}
 
    private:
     paddle::cpp::OpDesc* op_desc_;

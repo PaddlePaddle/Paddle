@@ -45,9 +45,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSyncCommStream_Op::name(),
     DistributedPushSparseOp::name(),
     FtrlOp::name(),
-    FusedElemwiseAddActivationOp::name(),
-    FusedElemwiseAddActivationGradOp::name(),
-    FusedTokenPruneOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -58,6 +55,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
+    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
@@ -66,11 +64,9 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSplitOp::name(),
     PushDenseOp::name(),
     SeedOp::name(),
-    ShareDataOp::name(),
+    ShareData_Op::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
-    RankAttentionOp::name(),
-    RankAttentionGradOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
@@ -83,16 +79,10 @@ const std::unordered_set<std::string> LegacyOpList = {
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-    QuantizeLinearOp::name(),
-    QuantizeLinear_Op::name(),
-    DequantizeLinearOp::name(),
-    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
-    paddle::onednn::dialect::QuantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
-    paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
@@ -104,7 +94,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
-    PartialRecvOp::name()};
+    PartialRecvOp::name(),
+    SendAndRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,

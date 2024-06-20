@@ -110,8 +110,7 @@ def get_infermeta_inputs_str(
             continue
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
-            if op_input_optional_list[idx] == 'false':
-                infermeta_inputs_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
+            infermeta_inputs_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
@@ -169,8 +168,6 @@ def GenBuildOutputsPart2(
                                                       {name}.dims(),
                                                       {name}.non_zero_dims(),
                                                       {name}.data_layout(),
-                                                      {name}.non_zero_elements(),
-                                                      {name}.non_zero_indices(),
                                                       {name}.coalesced());
   VLOG(4) << "Builder construction  meta_{name}";
   paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
@@ -226,8 +223,6 @@ def GenBuildOutputsPart2(
                                                         {name}.dims(),
                                                         {name}.non_zero_dims(),
                                                         {name}.data_layout(),
-                                                        {name}.non_zero_elements(),
-                                                        {name}.non_zero_indices(),
                                                         {name}.coalesced());
     VLOG(4) << "Builder construction  meta_{name}";
     meta_{name} = paddle::dialect::IrMetaTensor(&ir_tensor_{name});
@@ -284,9 +279,7 @@ def GenBuildOutputsPart2(
     # In cudnn_lstm operator, the output weight_list_grad requires the use of optional input weight_list,
     # so "pir::VectorType {name}" outside the "if" block.
     CREATE_OPTIONAL_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_{name};
-  pir::VectorType {name};
   if ({name}_.impl() != nullptr) {{
-    {name} = {name}_.type().dyn_cast<pir::VectorType>();
     for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
         if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
           auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();
@@ -790,7 +783,7 @@ def GetAttributes(
 
 
 def GenDistBranch(args, op_info):
-    if not args.with_distributed or op_info.spmd_rule_func is None:
+    if not args.with_distributed:
         return ""
     TEMPLATE = """
   // Auto Parallel condition
@@ -846,8 +839,11 @@ def GenDistBranch(args, op_info):
                     attr_type = op_info.mutable_attribute_type_list[attr_index]
                     if attr_type[0] == "paddle::dialect::IntArrayAttribute":
                         infer_spmd_args_list[-1] = name + ".GetData()"
+    spmd_rule_func = op_info.spmd_rule_func
+    if spmd_rule_func is None:
+        spmd_rule_func = "VariadicReplicatedInferSpmdDynamic"
     TEMPLATE = """
-    auto spmd_info = InferSpmd({args});
+    auto spmd_info = phi::distributed::{spmd_func}({args});
     PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
         "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
@@ -855,6 +851,7 @@ def GenDistBranch(args, op_info):
     }}
 """
     dist_branch_str += TEMPLATE.format(
+        spmd_func=spmd_rule_func,
         args=', '.join(infer_spmd_args_list),
         input_size=len(op_info.input_name_list),
         op_name=op_info.class_name,
@@ -878,12 +875,21 @@ def GenDistBranch(args, op_info):
         )
 
     for idx, output_name in enumerate(op_info.output_name_list):
-        TEMPLATE = """
+        if op_info.spmd_rule_func is None:
+            TEMPLATE = """
+    auto dist_attr_{name} = CreateReplicatedDistAttr({name}_type, op_mesh);
+"""
+            dist_branch_str += TEMPLATE.format(name=output_name)
+        else:
+            TEMPLATE = """
     auto dist_attr_{name} = CvtToPirAttr(spmd_info.second[{idx}]);
+"""
+            dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
+        TEMPLATE = """
     dist_result_attrs.push_back(dist_attr_{name});
     argument_outputs.push_back(CvtToPirDistType({name}_type, dist_attr_{name}));
 """
-        dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
+        dist_branch_str += TEMPLATE.format(name=output_name)
     TEMPLATE = """
     attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
         ctx,
@@ -920,10 +926,17 @@ def gen_infermeta_func_str(args, op_info):
         inuse_infer_meta_args.append(f"{op_info.output_name_list[idx]}")
 
     spmd_params = []
-    if args.with_distributed and op_info.spmd_rule_func is not None:
-        spmd_params = op_info.input_name_list + op_info.attribute_name_list
-        if op_info.kernel_map is not None:
-            spmd_params = op_info.kernel_map['param']
+    if args.with_distributed:
+        if op_info.spmd_rule_func is not None:
+            spmd_params = op_info.input_name_list + op_info.attribute_name_list
+            if op_info.kernel_map is not None:
+                spmd_params = op_info.kernel_map['param']
+        else:
+            spmd_params = op_info.input_name_list
+        # TODO(GhostScreaming): specialized case for reshape_grad
+        # xshape is not kernel params, but inferspmd needs it.
+        if "reshape_grad" in op_info.kernel_map['func'][0]:
+            spmd_params = ["xshape"] + spmd_params
     op_info.spmd_params = spmd_params
 
     infermeta_inputs_str = get_infermeta_inputs_str(

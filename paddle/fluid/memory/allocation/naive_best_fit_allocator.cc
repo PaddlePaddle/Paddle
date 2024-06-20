@@ -216,7 +216,8 @@ size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class GPUBuddyAllocatorList {
  private:
-  GPUBuddyAllocatorList() : devices_(platform::GetSelectedDevices()) {
+  GPUBuddyAllocatorList()
+      : devices_(platform::GetSelectedDevices()), init_flags_(), allocators_() {
     auto gpu_num = devices_.size();
     allocators_.resize(gpu_num);
     init_flags_.reserve(gpu_num);

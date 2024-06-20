@@ -187,6 +187,10 @@ class ValueAccessor {
   virtual robin_hood::unordered_set<float>* GetSaveFilteredSlots() {
     return nullptr;
   }
+
+  virtual void SetDayId(int day_id) {}
+  virtual void UpdateTimeDecay(float* value, bool is_update_seen_day) {}
+
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() { return class ::field##_index(); }
 

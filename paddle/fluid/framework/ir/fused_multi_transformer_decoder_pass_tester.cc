@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
@@ -550,9 +548,7 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass,
               "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass"));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(fused_multi_transformer_decoder_pass);
 USE_PASS(fused_multi_transformer_decoder_fuse_qkv_pass);

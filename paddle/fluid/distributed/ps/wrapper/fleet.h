@@ -313,6 +313,7 @@ class FleetWrapper {
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
   void Revert();
   void CheckSavePrePatchDone();
+  void SetDate(const uint64_t table_id, const std::string& date);
 
   //********* for fl-coordinator
   void InitFlWorker(const std::vector<std::string>& host_list,

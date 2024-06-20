@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/beam_search.h"
+#include "paddle/phi/kernels/funcs/math/beam_search.h"
 
 namespace paddle {
 namespace operators {
@@ -57,7 +57,7 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
         phi::errors::NotFound(
             "Output(selected_scores) of BeamSearchOp is not found."));
 
-    math::BeamSearchFunctor<DeviceContext, T> alg;
+    phi::math::BeamSearchFunctor<DeviceContext, T> alg;
     alg(context.template device_context<DeviceContext>(),
         pre_ids,
         pre_scores,

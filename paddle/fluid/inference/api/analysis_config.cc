@@ -37,6 +37,10 @@
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
+#ifdef PADDLE_WITH_CINN
+COMMON_DECLARE_bool(use_cinn);
+#endif
+
 namespace paddle {
 struct MkldnnQuantizerConfig;
 
@@ -50,7 +54,7 @@ AnalysisConfig::AnalysisConfig() {
 }
 
 PassStrategy *AnalysisConfig::pass_builder() const {
-  if (!pass_builder_.get()) {
+  if (!pass_builder_) {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
       pass_builder_ = std::make_unique<GpuPassStrategy>();
@@ -1552,7 +1556,13 @@ void AnalysisConfig::EnableCINN() {
 #endif
 }
 
-bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
+bool AnalysisConfig::cinn_enabled() const {
+  bool is_enabled = use_cinn_;
+#ifdef PADDLE_WITH_CINN
+  is_enabled = is_enabled || FLAGS_use_cinn;
+#endif
+  return is_enabled;
+}
 
 void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
                                         bool custom_pass_only) {

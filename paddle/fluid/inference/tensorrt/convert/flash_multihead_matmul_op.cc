@@ -18,9 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class FlashMultiheadMatMulOpConverter : public OpConverter {
  public:
@@ -110,6 +108,17 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(weight_data),
                                static_cast<int32_t>(weight_t->numel())};
+#if IS_TRT_VERSION_GE(8600)
+      auto* fc_weight_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Constant, nvinfer1::Dims3(1, n, hidden_in), weight);
+      auto* fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               MatrixMultiply,
+                               *input,
+                               nvinfer1::MatrixOperation::kNONE,
+                               *fc_weight_layer->getOutput(0),
+                               nvinfer1::MatrixOperation::kTRANSPOSE);
+#else
       nvinfer1::Weights bias{};
       // add shuffle for FullyConnected layer
       std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
@@ -138,6 +147,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                       n,
                                       weight,
                                       bias);
+#endif
       fc_layer->setName(
           ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
       // add shuffle for fc layer
@@ -210,16 +220,12 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     auto creator = GetPluginRegistry()->getPluginCreator("fMHA_V2", "1");
     assert("fmha_v2 plugin creater must not be null" && creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
-    nvinfer1::PluginFieldCollection* plugin_collection =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collection) +
-                   fields.size() *
-                       sizeof(nvinfer1::PluginField)));  // remember to free
-
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+        new nvinfer1::PluginFieldCollection);
     plugin_collection->nbFields = static_cast<int>(fields.size());
     plugin_collection->fields = fields.data();
-    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection);
-    free(plugin_collection);
+    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection.get());
+    plugin_collection.reset();
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(reshape_before_mha_layer->getOutput(0));
     auto plugin_layer = engine_->network()->addPluginV2(
@@ -303,6 +309,20 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_tensor->numel())};
+#if IS_TRT_VERSION_GE(8600)
+        auto* qkv_fc_weight_layer =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 Constant,
+                                 nvinfer1::Dims3(1, hidden_out, hidden_out),
+                                 weight);
+        qkv_fc_layers[i] =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 MatrixMultiply,
+                                 *input,
+                                 nvinfer1::MatrixOperation::kNONE,
+                                 *qkv_fc_weight_layer->getOutput(0),
+                                 nvinfer1::MatrixOperation::kTRANSPOSE);
+#else
         nvinfer1::Weights bias{};
         qkv_fc_layers[i] =
             TRT_ENGINE_ADD_LAYER(engine_,
@@ -311,6 +331,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                  hidden_out,
                                  weight,
                                  bias);
+#endif
         qkv_fc_layers[i]->setName(("multihead_matmul_fc_" + std::to_string(i) +
                                    "_(Output: " + output_name + ")")
                                       .c_str());
@@ -507,9 +528,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(flash_multihead_matmul,
                           FlashMultiheadMatMulOpConverter);

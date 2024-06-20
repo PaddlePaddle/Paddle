@@ -13,18 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
+
+#include <utility>
 #include "paddle/common/enforce.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 IrSelectedRows::IrSelectedRows(phi::DataType dtype,
                                const phi::DDim& dims,
                                phi::DataLayout layout,
-                               const LoD& lod,
+                               LoD lod,
                                size_t offset)
-    : dims_(dims), dtype_(dtype), layout_(layout), lod_(lod), offset_(offset) {}
+    : dims_(dims),
+      dtype_(dtype),
+      layout_(layout),
+      lod_(std::move(lod)),
+      offset_(offset) {}
 
-IrSelectedRows::IrSelectedRows(const IrSelectedRows& other) {
+IrSelectedRows::IrSelectedRows(const IrSelectedRows& other)
+    : TensorBase(other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -41,7 +47,8 @@ IrSelectedRows& IrSelectedRows::operator=(const IrSelectedRows& other) {
   return *this;
 }
 
-IrSelectedRows& IrSelectedRows::operator=(IrSelectedRows&& other) noexcept {
+IrSelectedRows& IrSelectedRows::operator=(
+    IrSelectedRows&& other) noexcept {  // NOLINT
   dims_ = std::move(other.dims());
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -63,5 +70,4 @@ void* IrSelectedRows::AllocateFrom(phi::Allocator* allocator,
   IR_THROW("Don't use IrSelectedRows::AllocateFrom method.");
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

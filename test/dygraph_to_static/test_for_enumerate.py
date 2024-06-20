@@ -20,6 +20,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
+    test_legacy_and_pir,
     test_legacy_and_pt_and_pir,
 )
 
@@ -554,7 +555,6 @@ class TestForZip(Dy2StTestBase):
 
     @test_legacy_and_pt_and_pir
     def test_for_zip_error(self):
-        # TODO(pir-save-load): enable PIR test after support PIR save load
         with self.assertRaises(RuntimeError):
             model_path = os.path.join(self.temp_dir.name, 'for_zip_error')
             paddle.jit.save(
@@ -568,8 +568,8 @@ class TestForZip(Dy2StTestBase):
                 model_path,
             )
 
+    @test_legacy_and_pir
     def test_for_zip(self):
-        # TODO(pir-save-load): enable PIR test after support PIR save load
         model_path = os.path.join(self.temp_dir.name, 'for_zip')
         paddle.jit.save(
             paddle.jit.to_static(

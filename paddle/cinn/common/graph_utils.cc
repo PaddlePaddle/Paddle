@@ -23,7 +23,7 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/utils/dot_lang.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -98,7 +98,10 @@ Graph::topological_order() const {
     queue.pop_front();
 
     for (auto &edge : top_node->outlinks()) {
-      CHECK_EQ(edge->source(), top_node);
+      PADDLE_ENFORCE_EQ(edge->source(),
+                        top_node,
+                        phi::errors::InvalidArgument(
+                            "The edge's source is not equal to the top node."));
       edge_order.push_back(edge.get());
       auto *sink = edge->sink();
       if ((--indegree[sink->id()]) == 0) {
@@ -107,9 +110,10 @@ Graph::topological_order() const {
     }
   }
 
-  CHECK_EQ(node_order.size(), nodes().size())
-      << "circle detected in the schedule graph:\n\n"
-      << Visualize();
+  PADDLE_ENFORCE_EQ(node_order.size(),
+                    nodes().size(),
+                    phi::errors::InvalidArgument(
+                        "The node_order size is not equal to the nodes size."));
 
   return std::make_tuple(node_order, edge_order);
 }

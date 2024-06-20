@@ -43,7 +43,7 @@ def _send_in_static_mode(
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'send',
     )
 

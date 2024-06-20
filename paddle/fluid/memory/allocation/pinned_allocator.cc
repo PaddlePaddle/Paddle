@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 #ifdef PADDLE_WITH_HIP
@@ -49,6 +47,4 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
                            platform::TracerMemEventType::ReservedAllocate);
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
 }
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

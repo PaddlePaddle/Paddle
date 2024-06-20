@@ -82,7 +82,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.dims_mapping()) +
               "]";
-    if (tensor_dist_attr.partial_status().size() > 0) {
+    if (!tensor_dist_attr.partial_status().empty()) {
       std::vector<std::string> partial_status_strs;
       for (auto &itr : tensor_dist_attr.partial_status()) {
         std::string s = "partial(" + std::to_string(itr.first) + "," +

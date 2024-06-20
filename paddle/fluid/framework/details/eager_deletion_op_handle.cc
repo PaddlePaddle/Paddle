@@ -21,15 +21,11 @@
 #endif
 #include <algorithm>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
@@ -43,7 +39,8 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       scope_idx_(scope_idx),
       place_(place),
       var_infos_(vars.begin(), vars.end()),
-      gc_(gc) {
+      gc_(gc),
+      vars_() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
     dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
@@ -212,6 +209,4 @@ std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
   return var_names;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

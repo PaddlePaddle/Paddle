@@ -79,9 +79,34 @@ struct ReduceTreePlusTrivialPattern {
 };
 
 template <typename T>
-class UnsupportPattern {};
+struct StmtPattern;
+
 template <typename T>
-class HorizontalFusionPattern {};
+struct UnsupportPattern {};
+
+template <typename T>
+struct HorizontalFusionPattern {
+  struct PaddingStmtPattern {
+    StmtPattern<T> pattern;
+    std::vector<int> padding_pos;
+    PaddingStmtPattern(const StmtPattern<T>& pattern,
+                       const std::vector<int>& padding_pos)
+        : pattern(pattern), padding_pos(padding_pos) {}
+  };
+  explicit HorizontalFusionPattern(
+      const std::vector<PaddingStmtPattern>& patterns)
+      : padding_patterns_(patterns) {}
+  std::vector<PaddingStmtPattern> padding_patterns_;
+  std::vector<pir::Operation*> ops() const {
+    std::vector<pir::Operation*> result;
+    for (const auto& pattern : padding_patterns_) {
+      auto ops = GetOpsInPattern(pattern.pattern);
+      ExtendVector(&result, ops);
+    }
+    return result;
+  }
+  static std::string name() { return "HorizontalFusionPattern"; }
+};
 
 template <typename T>
 using StmtPatternBase = std::variant<TrivialPattern<T>,

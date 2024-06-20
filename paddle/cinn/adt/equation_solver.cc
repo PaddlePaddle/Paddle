@@ -24,6 +24,7 @@
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::adt {
 
@@ -182,10 +183,24 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   const auto& [in_msg_in_indexes, in_msg_out_indexes] =
       in_msg_indexes.value().tuple();
   std::unordered_map<Variable, Value> ret{{op_placeholder.value(), Ok{}}};
-  CHECK_EQ(out_msg_in_indexes.value()->size(),
-           in_msg_in_indexes.value()->size());
-  CHECK_EQ(out_msg_out_indexes.value()->size(),
-           in_msg_out_indexes.value()->size());
+  PADDLE_ENFORCE_EQ(
+      out_msg_in_indexes.value()->size() == in_msg_in_indexes.value()->size(),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of out_msg_in_indexes should be equal to the size of "
+          "in_msg_in_indexes, but got out_msg_in_indexes size = %d, "
+          "in_msg_in_indexes size = %d.",
+          out_msg_in_indexes.value()->size(),
+          in_msg_in_indexes.value()->size()));
+  PADDLE_ENFORCE_EQ(
+      out_msg_out_indexes.value()->size() == in_msg_out_indexes.value()->size(),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of out_msg_out_indexes should be equal to the size of "
+          "in_msg_out_indexes, but got out_msg_out_indexes size = %d, "
+          "in_msg_out_indexes size = %d.",
+          out_msg_out_indexes.value()->size(),
+          in_msg_out_indexes.value()->size()));
   for (std::size_t i = 0; i < out_msg_in_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_msg_in_indexes.value()->at(i));
     CHECK(ret.emplace(out_msg_in_indexes.value()->at(i), value).second);

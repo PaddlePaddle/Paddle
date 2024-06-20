@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
@@ -74,7 +73,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -158,10 +156,6 @@ limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/pybind/fleet_py.h"
-#endif
-
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -711,6 +705,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_share_buffer_with",
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
+              if (!src.meta().is_contiguous()) {
+                PADDLE_THROW(platform::errors::InvalidArgument(
+                    "Tensor is not contiguous, cannot call "
+                    "share_buffer_with on it."));
+              }
              auto *cuda_ipc_allocation =
                  dynamic_cast<memory::allocation::CudaIpcAllocation *>(
                      src.Holder().get());
@@ -1099,6 +1098,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return self;
            })
+      .def("_unsafe_set_skip_check_mesh",
+           &DistTensor::unsafe_set_skip_check_mesh)
       .def("_clear", &DistTensor::clear);
 #endif
 

@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .block_multihead_attention import block_multihead_attention
+from .blha_get_max_len import blha_get_max_len
+from .block_multihead_attention import (
+    block_multihead_attention,
+    block_multihead_attention_xpu,  # noqa: F401
+)
 from .fused_dot_product_attention import (
     fused_dot_product_attention,  # noqa: F401
 )
@@ -54,6 +58,7 @@ __all__ = [
     "fused_rms_norm",
     "fused_layer_norm",
     "masked_multihead_attention",
+    "blha_get_max_len",
     "block_multihead_attention",
     "swiglu",
 ]

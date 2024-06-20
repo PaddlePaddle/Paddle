@@ -841,10 +841,21 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        from ..transpiler.collective import SingleProcessMultiThread
+        attrs = pass_ctx._attrs
+        if attrs['use_gpu_graph'] == 0:
+            from ..transpiler.collective import MultiThread
+
+            t = MultiThread()
+            print("ps_transpile_pass use MultiThread for non_gpu_graph mode")
+        else:
+            from ..transpiler.collective import SingleProcessMultiThread
+
+            t = SingleProcessMultiThread()
+            print(
+                "ps_transpile_pass use SingleProcessMultiThread for gpu_graph mode"
+            )
 
         attrs = pass_ctx._attrs
-        t = SingleProcessMultiThread()
         env = get_dist_env()
         t.transpile(
             startup_program=startup_program,

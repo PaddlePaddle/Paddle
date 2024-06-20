@@ -112,7 +112,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 

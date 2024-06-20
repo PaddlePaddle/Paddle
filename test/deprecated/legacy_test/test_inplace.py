@@ -1921,5 +1921,97 @@ class TestDygraphTensorApplyInplace(unittest.TestCase):
         )
 
 
+class TestDygraphInplaceBernoulli(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+        self.set_np_compare_func()
+
+    def init_data(self):
+        self.shape = (100, 1000)
+        self.input_var_numpy = np.random.random(self.shape)
+        self.dtype = "float32"
+        self.p = 0.5
+
+    def set_np_compare_func(self):
+        self.np_compare = np.array_equal
+
+    def inplace_api_processing(self, var):
+        return paddle.bernoulli_(var, p=self.p)
+
+    def inplace_class_method_processing(self, var):
+        return var.bernoulli_(self.p)
+
+    def non_inplace_api_processing(self):
+        return paddle.bernoulli(paddle.full(self.shape, self.p))
+
+    def test_inplace_api(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        non_inplace_var = self.non_inplace_api_processing()
+        inplace_var = self.inplace_api_processing(var)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().mean(),
+            inplace_var.numpy().mean(),
+            atol=0.01,
+        )
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().var(), inplace_var.numpy().var(), atol=0.01
+        )
+
+    def test_inplace_api_backward(self):
+        var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        var_a.stop_gradient = False
+        var_b = var_a.clone()
+        expected_gradient = np.zeros(self.shape)
+        inplace_var = self.inplace_api_processing(var_b)
+        inplace_var.backward()
+        np.testing.assert_equal(
+            var_a.grad.numpy(),
+            expected_gradient,
+        )
+
+    def test_inplace_class_method(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        non_inplace_var = self.non_inplace_api_processing()
+        inplace_var = self.inplace_class_method_processing(var)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().mean(),
+            inplace_var.numpy().mean(),
+            atol=0.01,
+        )
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().var(), inplace_var.numpy().var(), atol=0.01
+        )
+
+    def test_inplace_class_method_backward(self):
+        var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        var_a.stop_gradient = False
+        var_b = var_a.clone()
+        expected_gradient = np.zeros(self.shape)
+        inplace_var = self.inplace_class_method_processing(var_b)
+        inplace_var.backward()
+        np.testing.assert_equal(
+            var_a.grad.numpy(),
+            expected_gradient,
+        )
+
+
+class TestDygraphInplaceBernoulli2(TestDygraphInplaceBernoulli):
+    def init_data(self):
+        self.shape = (100, 1000)
+        self.input_var_numpy = np.random.random(self.shape)
+        self.dtype = "float64"
+        self.p = 0.5
+
+
+class TestDygraphInplaceBernoulliError(unittest.TestCase):
+    def test_broadcast_error(self):
+        var = paddle.randn([3, 4])
+        p = paddle.randn([5])
+        with self.assertRaises(ValueError):
+            var.bernoulli_(p)
+
+
 if __name__ == '__main__':
     unittest.main()

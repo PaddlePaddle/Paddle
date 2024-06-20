@@ -124,7 +124,7 @@ inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
 inline phi::DataType GetPromoteDtype(const std::string& op_name,
                                      const DataType x,
                                      const DataType y) {
-  if (op_name == "divide") {
+  if (op_name == "divide" || op_name == "divide_") {
     // only T+S can run into this branch
     if (is_support_int(x) && is_support_int(y)) {
       return DataType::FLOAT32;
@@ -141,7 +141,12 @@ inline bool NeedTypePromotion(const std::string& op_name,
   if (x != y) {
 // TODO(Xi Zhao): we got special case for add now, should remove it in furture.
 #ifdef PADDLE_WITH_CUDA
-    if (op_name == "add" && x == DataType::FLOAT32 &&
+    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
+        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_XPU)
+    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
         (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
       return false;
     }

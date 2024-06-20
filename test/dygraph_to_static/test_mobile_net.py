@@ -30,6 +30,8 @@ import paddle
 from paddle import base
 from paddle.base.framework import unique_name
 from paddle.base.param_attr import ParamAttr
+from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
 
@@ -592,8 +594,7 @@ def train_mobilenet(args, to_static):
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
-                    # TODO(@xiongkun): open after save / load supported in pir.
-                    if to_static and not paddle.base.framework.use_pir_api():
+                    if to_static:
                         paddle.jit.save(net, args.model_save_prefix)
                     else:
                         paddle.save(
@@ -609,7 +610,10 @@ def predict_static(args, data):
     paddle.enable_static()
     exe = base.Executor(args.place)
     # load inference model
-
+    if use_pir_api():
+        model_filename = args.pir_model_filename
+    else:
+        model_filename = args.model_filename
     [
         inference_program,
         feed_target_names,
@@ -617,7 +621,7 @@ def predict_static(args, data):
     ] = paddle.static.io.load_inference_model(
         args.model_save_dir,
         executor=exe,
-        model_filename=args.model_filename,
+        model_filename=model_filename,
         params_filename=args.params_filename,
     )
 
@@ -685,6 +689,7 @@ class TestMobileNet(Dy2StTestBase):
         )
         self.args.model_filename = model_name + INFER_MODEL_SUFFIX
         self.args.params_filename = model_name + INFER_PARAMS_SUFFIX
+        self.args.pir_model_filename = model_name + PIR_INFER_MODEL_SUFFIX
         self.args.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, model_name + ".dygraph"
         )
@@ -717,7 +722,6 @@ class TestMobileNet(Dy2StTestBase):
         dy_pre = predict_dygraph(self.args, image)
         st_pre = predict_static(self.args, image)
         dy_jit_pre = predict_dygraph_jit(self.args, image)
-        predictor_pre = predict_analysis_inference(self.args, image)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -730,29 +734,27 @@ class TestMobileNet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-        np.testing.assert_allclose(
-            predictor_pre,
-            st_pre,
-            rtol=1e-05,
-            atol=1e-05,
-            err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
-        )
+        if not use_pir_api():
+            predictor_pre = predict_analysis_inference(self.args, image)
+            np.testing.assert_allclose(
+                predictor_pre,
+                st_pre,
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
+            )
 
     @test_legacy_and_pir
-    def test_mobile_net(self):
-        # MobileNet-V1
+    def test_mobile_net_v1(self):
         self.assert_same_loss("MobileNetV1")
+
+        self.assert_same_predict("MobileNetV1")
+
+    @test_legacy_and_pir
+    def test_mobile_net_v2(self):
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
-        # TODO(@xiongkun): open after save / load supported in pir.
-        if not paddle.base.framework.use_pir_api():
-            self.verify_predict()
-
-    def verify_predict(self):
-        # MobileNet-V1
-        self.assert_same_predict("MobileNetV1")
-        # MobileNet-V2
         self.assert_same_predict("MobileNetV2")
 
 

@@ -91,7 +91,7 @@ void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
   }
 
   std::string extern_func =
-      hlir::GetExternFuncName(cinn::common::DefaultNVGPUTarget(), dtype, name);
+      hlir::GetExternFuncName(cinn::common::DefaultDeviceTarget(), dtype, name);
   *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
 }
 

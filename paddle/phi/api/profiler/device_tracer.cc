@@ -317,7 +317,7 @@ void initCuptiCbidStr();
 
 class DeviceTracerImpl : public DeviceTracer {
  public:
-  DeviceTracerImpl() : enabled_(false) {
+  DeviceTracerImpl() : enabled_(false), start_ns_(0), end_ns_(0) {
 #ifdef PADDLE_WITH_CUPTI
     initCuptiCbidStr();
 #endif

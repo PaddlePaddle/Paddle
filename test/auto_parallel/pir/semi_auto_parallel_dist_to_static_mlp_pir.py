@@ -16,7 +16,7 @@ import os
 import random
 
 import numpy as np
-from mlp_demo import PPDemoNet
+from mlp_demo import DPDemoNet, PPDemoNet
 from test_to_static_pir_program import DemoNet
 
 import paddle
@@ -160,6 +160,47 @@ class TestSimpleNetForSemiAutoParallel:
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
         np.testing.assert_array_equal(dy_losses, dy2static_losses)
 
+    def test_dp_demo_net(self):
+        paddle.disable_static()
+        self.set_random_seed(self._seed)
+        data_loader = self.create_data_loader()
+
+        self.set_random_seed(self._seed)
+        dy_layer = DPDemoNet(self.mesh)
+        dy_opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=dy_layer.parameters()
+        )
+
+        paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
+        self.set_random_seed(self._seed)
+        dy2static_layer = DPDemoNet(self.mesh)
+        dy2static_opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=dy2static_layer.parameters()
+        )
+        dist_dataloader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self.mesh],
+            input_keys=["image", "label"],
+            shard_dims=['x'],
+        )
+        dy2static_losses, _ = self.run_dy2static(
+            dy2static_layer, dy2static_opt, dist_dataloader
+        )
+
+        dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
+        # Check the loss values. Different from dygraph mode, when
+        # the model is trained in dy2static mode, the loss values
+        # are not the average of the losses of all processes, so
+        # we should get the average loss first.
+        paddle.disable_static()
+        pd_partial_loss = paddle.to_tensor(dy2static_losses)
+        pd_loss_list = []
+        dist.all_gather(pd_loss_list, pd_partial_loss)
+        np_dy2static_loss_list = [loss.numpy() for loss in pd_loss_list]
+        np_dy2static_loss = np.array(np_dy2static_loss_list)
+        np_dy2static_loss = np.mean(np_dy2static_loss, axis=0)
+        np.testing.assert_array_equal(dy_losses, np_dy2static_loss)
+
     def test_pp_demo_net(self):
         paddle.disable_static()
         self.set_random_seed(self._seed)
@@ -194,6 +235,7 @@ class TestSimpleNetForSemiAutoParallel:
     def run_test_case(self):
         self.test_mp_demo_net()
         self.test_pp_demo_net()
+        self.test_dp_demo_net()
 
 
 if __name__ == '__main__':

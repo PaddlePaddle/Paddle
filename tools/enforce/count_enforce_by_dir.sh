@@ -15,10 +15,10 @@
 # limitations under the License.
 
 # This script is used to count detail PADDLE checks in the paddle/fluid directory,
-#   contains the number of PADDLE checks under each folder, the statistical data 
+#   contains the number of PADDLE checks under each folder, the statistical data
 #   does not include subdirectories, only covers all files under the current directory.
-#   
-#   The three columns of data are: total number, valid number, invalid number. 
+#
+#   The three columns of data are: total number, valid number, invalid number.
 #   The output format is easy to display as a markdown table.
 
 # Usage: bash count_enforce_by_dir.sh (run in tools directory)
@@ -70,8 +70,8 @@ function count_dir_independently(){
             enforce_count $1"/"$file dir_total_check_cnt dir_valid_check_cnt
             sub_dir_total_check_cnt=$(($sub_dir_total_check_cnt+$dir_total_check_cnt))
             sub_dir_valid_check_cnt=$(($sub_dir_valid_check_cnt+$dir_valid_check_cnt))
-            
-            count_dir_independently $1"/"$file $dir_total_check_cnt $dir_valid_check_cnt 
+
+            count_dir_independently $1"/"$file $dir_total_check_cnt $dir_valid_check_cnt
         fi
     done
     total_check_cnt=$(($2-$sub_dir_total_check_cnt))

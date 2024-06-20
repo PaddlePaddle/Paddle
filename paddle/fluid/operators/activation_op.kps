@@ -80,7 +80,6 @@ using CudaELUGradNegativeAlphaFunctor =
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 #ifdef PADDLE_WITH_XPU_KP
 REGISTER_OP_KERNEL(

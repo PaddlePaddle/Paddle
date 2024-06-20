@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static const char kNumRepeats[] = "num_repeats";  // NOLINT
 typedef std::unordered_map<std::string, std::vector<ir::Node*>> SSAVarList;
@@ -335,9 +333,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(multi_batch_merge_pass, paddle::framework::ir::BatchMergePass)
     .RequirePassAttr(paddle::framework::ir::kNumRepeats);

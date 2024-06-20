@@ -1001,7 +1001,9 @@ OperatorBase::OperatorBase(const std::string& type,
       outputs_(outputs),
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
-      info_(OpInfoMap::Instance().GetNullable(type)) {
+      info_(OpInfoMap::Instance().GetNullable(type)),
+      output_hookfuncs_(),
+      input_hookfuncs_() {
   // In dygraph mode, all the OperatorBase will be constructed by function:
   // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
   // Inputs, outputs and attrs will be set to empty map
@@ -1124,7 +1126,7 @@ OperatorWithKernel::OperatorWithKernel(const std::string& type,
                                        const VariableNameMap& inputs,
                                        const VariableNameMap& outputs,
                                        const AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : OperatorBase(type, inputs, outputs, attrs), impl_(nullptr) {}
 
 OperatorWithKernel::~OperatorWithKernel() = default;
 
@@ -1274,7 +1276,8 @@ struct OperatorWithKernel::CacheImpl {
       : kernel_ctx_(kernel_ctx),
         infer_shape_ctx_(infer_shape_ctx),
         tensors_(tensors),
-        not_allow_infer_shape_cache_(not_allow_infer_shape_cache) {}
+        not_allow_infer_shape_cache_(not_allow_infer_shape_cache),
+        last_ddims_() {}
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {

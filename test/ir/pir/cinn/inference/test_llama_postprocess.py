@@ -24,6 +24,9 @@ sys.path.append(dirname(dirname(__file__)))
 
 import utils
 
+# NOTE(SigureMo): Disable the CSE optimization to avoid op number change.
+paddle.set_flags({"FLAGS_enable_cse_in_dy2st": False})
+
 
 class LlamaPostProcess(nn.Layer):
     def __init__(self):
@@ -90,8 +93,8 @@ class TestLlamaPostProcess(unittest.TestCase):
         self.input_ids = paddle.randint(0, 512, [1, 32], dtype="int64")
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 8)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 8})
+        utils.check_jit_kernel_number(static_fn, 5)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 5})
 
     def eval(self, use_cinn):
         paddle.seed(2024)

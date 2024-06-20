@@ -193,13 +193,43 @@ IR_API std::ostream& operator<<(std::ostream&,
                                 const ShapeOrDataDimExprs& dim_expr);
 
 }  // namespace symbol
+
 namespace std {
+
+template <>
+struct hash<symbol::TensorShapeOrDataDimExprs> {
+  std::size_t operator()(const symbol::TensorShapeOrDataDimExprs& obj) const {
+    const auto hash_func = std::hash<std::vector<symbol::DimExpr>>();
+    std::size_t ret = hash_func(obj.shape());
+    ret = pir::detail::hash_combine(ret, obj.data().has_value());
+    if (obj.data().has_value()) {
+      ret = pir::detail::hash_combine(ret, hash_func(obj.data().value()));
+    }
+    return ret;
+  }
+};
+
+template <>
+struct hash<symbol::TensorListShapeOrDataDimExprs> {
+  std::size_t operator()(
+      const symbol::TensorListShapeOrDataDimExprs& obj) const {
+    const auto hash_func = std::hash<symbol::TensorShapeOrDataDimExprs>();
+    std::size_t ret = 0;
+    for (const auto& shape_or_data : obj) {
+      ret = pir::detail::hash_combine(ret, hash_func(shape_or_data));
+    }
+    return ret;
+  }
+};
+
 template <>
 struct hash<symbol::ShapeOrDataDimExprs> {
   std::size_t operator()(const symbol::ShapeOrDataDimExprs& obj) const {
-    std::ostringstream os;
-    os << obj;
-    return std::hash<std::string>()(os.str());
+    return obj.Match([](const auto& impl) {
+      using T = std::decay_t<decltype(impl)>;
+      return std::hash<T>()(impl);
+    });
   }
 };
+
 }  // namespace std

@@ -26,9 +26,7 @@ PADDLE_DEFINE_EXPORTED_bool(all_blocks_convert_trt,
                             false,
                             "Convert all blocks'Ops into TensorRT Ops");
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 Graph::Graph(const ProgramDesc &program)
     : Graph(
@@ -402,6 +400,4 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
 bool IsControlDepVar(const ir::Node &var) {
   return var.Name().find(ir::Node::kControlDepVarName) != std::string::npos;
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

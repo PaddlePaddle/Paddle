@@ -263,6 +263,8 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,
                                       int seed,
+                                      float a,
+                                      float b,
                                       DataType dtype,
                                       MetaTensor* out) {
   auto out_dims = common::make_ddim(shape);

@@ -25,7 +25,8 @@ namespace paddle {
 namespace distributed {
 
 ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node) {
+    : Interceptor(interceptor_id, node),
+      gen_step_to_scope_id_to_finish_flag_() {
   PrepareDeps();
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Compute(msg); });
 }

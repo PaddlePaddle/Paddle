@@ -14,12 +14,12 @@
 
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/compiled_program.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -82,29 +82,29 @@ static void AppendOp(BlockDesc *block,
 class ReferenceCountPassTestHelper {
  public:
   ReferenceCountPassTestHelper(const ProgramDesc &program, bool use_cuda)
-      : graph_(program) {
+      : graph_(program),
+        compiled_program_(nullptr),
+        mem_opt_var_infos_(),
+        last_live_ops_of_vars_() {
     details::BuildStrategy build_strategy;
     build_strategy.enable_inplace_ = false;
     build_strategy.memory_optimize_ = false;
     FLAGS_eager_delete_tensor_gb = -1;
 
-    details::ExecutionStrategy exec_strategy;
-    exec_strategy.use_device_ = use_cuda ? p::kCUDA : p::kCPU;
-
-    executor_ = std::make_unique<ParallelExecutor>(CreatePlaces(1, use_cuda),
-                                                   std::vector<std::string>(),
-                                                   "",
-                                                   &scope_,
-                                                   std::vector<Scope *>(),
-                                                   exec_strategy,
-                                                   build_strategy,
-                                                   &graph_);
+    compiled_program_ =
+        std::make_unique<CompiledProgram>(CreatePlaces(1, use_cuda),
+                                          std::vector<std::string>(),
+                                          "",
+                                          &scope_,
+                                          std::vector<Scope *>(),
+                                          build_strategy,
+                                          &graph_);
 
     auto ref_cnt_pass =
         ir::PassRegistry::Instance().Get("reference_count_pass");
     ref_cnt_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars_);
-    ref_cnt_pass->Apply(&const_cast<ir::Graph &>(executor_->Graph()));
+    ref_cnt_pass->Apply(&const_cast<ir::Graph &>(graph_));
   }
 
   bool IsLastLivedOps(const std::string &name,
@@ -139,7 +139,7 @@ class ReferenceCountPassTestHelper {
  private:
   ir::Graph graph_;
   Scope scope_;
-  std::unique_ptr<ParallelExecutor> executor_;
+  std::unique_ptr<CompiledProgram> compiled_program_;
 
   ir::MemOptVarInfoMapList mem_opt_var_infos_;
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars_;

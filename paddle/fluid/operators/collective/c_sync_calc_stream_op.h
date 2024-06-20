@@ -43,19 +43,19 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
     auto dev_ctx = static_cast<phi::GPUContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
 
     platform::GpuStreamSync(dev_ctx->stream());
 
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
 
     auto dev_ctx = static_cast<phi::XPUContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->Wait();
 #else
     PADDLE_THROW(phi::errors::PreconditionNotMet(

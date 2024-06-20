@@ -329,7 +329,6 @@ def train(layer, input_size=784, label_size=1):
     for data in train_loader():
         img, label = data
         label.stop_gradient = True
-
         cost = layer(img)
 
         loss = paddle.nn.functional.cross_entropy(
@@ -396,6 +395,8 @@ class TestJitSaveLoad(unittest.TestCase):
     @test_with_dygraph_pir
     def test_save_load(self):
         # train and save model
+        if not paddle.framework.use_pir_api():
+            return
         train_layer = self.train_and_save_model()
         # load model
         loaded_layer = paddle.jit.load(self.model_path)
@@ -470,7 +471,9 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
         net = LinearNetWithNestOut(8, 8)
         dy_outs = paddle.utils.flatten(net(x))
-        net = to_static(net, input_spec=[InputSpec([None, 8], name='x')])
+        net = to_static(
+            net, input_spec=[InputSpec([None, 8], name='x')], full_graph=True
+        )
 
         model_path = os.path.join(self.temp_dir.name, "net_with_nest_out/model")
         paddle.jit.save(net, model_path)
@@ -494,6 +497,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_output_same_order(self):
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
@@ -501,7 +505,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
 
         dy_output_dict = model(x)
 
-        st_model = paddle.jit.to_static(model)
+        st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
         paddle.jit.save(st_model, "./test_jit_save_load")
@@ -557,7 +561,7 @@ class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
 
         dy_output_dict = model(x)
 
-        st_model = paddle.jit.to_static(model)
+        st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
         paddle.jit.save(st_model, "./test_jit_save_load2")
@@ -1606,13 +1610,15 @@ class TestJitSaveCombineProperty(unittest.TestCase):
                 self.flag = paddle.ones([2], dtype="int32")
 
             @paddle.jit.to_static(
-                input_spec=[InputSpec([None, 4], dtype='float32')]
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
             )
             def log_softmax(self, input):
                 return paddle.nn.functional.log_softmax(input, axis=-1)
 
             @paddle.jit.to_static(
-                input_spec=[InputSpec([None, 4], dtype='float32')]
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
             )
             def forward(self, x):
                 out = self.fc1(x)
@@ -1621,7 +1627,8 @@ class TestJitSaveCombineProperty(unittest.TestCase):
                 return out
 
             @paddle.jit.to_static(
-                input_spec=[InputSpec([None, 4], dtype='float32')]
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
             )
             def infer(self, input):
                 out = self.fc2(input)
@@ -1707,6 +1714,7 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_save_without_running/model"
@@ -1783,7 +1791,6 @@ class LayerLoadFinetune(paddle.nn.Layer):
         return y
 
 
-'''
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1793,8 +1800,10 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    #@test_with_dygraph_pir
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
+        if not paddle.framework.use_pir_api():
+            return
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_finetune_load/model"
         )
@@ -1825,7 +1834,6 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
-'''
 
 
 # NOTE(weixin): When there are multiple test functions in an
@@ -1873,7 +1881,8 @@ class TestJitSaveLoadFunctionCase2(unittest.TestCase):
         @paddle.jit.to_static(
             input_spec=[
                 InputSpec(shape=[None, 6], dtype='float32', name='x'),
-            ]
+            ],
+            full_graph=True,
         )
         def fun(inputs):
             return paddle.nn.functional.relu(inputs)
@@ -1949,7 +1958,9 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
         origin = layer.anothor_forward(inps)
 
         func = paddle.jit.to_static(
-            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])]
+            layer.anothor_forward,
+            [paddle.static.InputSpec(shape=[-1, 5])],
+            full_graph=True,
         )
         path = os.path.join(
             self.temp_dir.name,
@@ -1980,7 +1991,9 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
             def forward(self, x):
                 return paddle.tanh(x)
 
-            @paddle.jit.to_static(input_spec=[InputSpec(shape=[-1, 5])])
+            @paddle.jit.to_static(
+                input_spec=[InputSpec(shape=[-1, 5])], full_graph=True
+            )
             def anothor_forward(self, x):
                 return self._linear(x)
 
@@ -2271,6 +2284,36 @@ class TestNotJitForward(unittest.TestCase):
             paddle.jit.load(path=path)
 
         shutil.rmtree(save_dir)
+
+
+class StridedBufferNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        buffer = paddle.to_tensor([1, 2, 3, 4, 5, 6]).astype('float32')
+        strided_buffer = buffer[::2]
+        self.register_buffer("strided_buffer", strided_buffer)
+
+    def forward(self, x):
+        return self.strided_buffer + x
+
+
+class TestStridedBuffer(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    @test_with_dygraph_pir
+    def test_strided_buffer(self):
+        layer = StridedBufferNet()
+        save_dir = os.path.join(self.temp_dir.name, "test_strided_buffer")
+        path = save_dir + "/model"
+        paddle.jit.save(layer=layer, path=path, input_spec=[InputSpec([2, 3])])
+
+        loaded_layer = paddle.jit.load(path)
+        x = paddle.to_tensor([1, 2, 3]).astype('float32')
+        np.testing.assert_allclose(layer(x).numpy(), loaded_layer(x).numpy())
 
 
 if __name__ == '__main__':

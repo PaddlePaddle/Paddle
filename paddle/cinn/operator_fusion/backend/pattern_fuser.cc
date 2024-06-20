@@ -34,8 +34,8 @@ StmtPattern<BackendStage> ConvertToStmtPattern(
              kind == hlir::framework::kBroadcast ||
              kind == hlir::framework::kInjective) {
     CHECK(content.expr.has_value());
-    return TrivialPattern<BackendStage>({content.op},
-                                        TrivialOp(content.expr.value()));
+    return TrivialPattern<BackendStage>(
+        {content.op}, content.op, TrivialOp(content.expr.value()));
   } else {
     CHECK(false);
     return UnsupportPattern<BackendStage>({content.op});
@@ -74,17 +74,7 @@ StmtPattern<BackendStage> MergePatternImpl(
   const auto& trivial_op =
       cinn::hlir::framework::pir::trivial_fusion_detail::TrivalxOther_Fusion(
           first.trivial_op, second.trivial_op);
-  return TrivialPattern<BackendStage>(ops, trivial_op);
-}
-
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const HorizontalFusionPattern<BackendStage>& first,
-    const HorizontalFusionPattern<BackendStage>& second) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
-                         GetOpsInPattern<BackendStage>(second));
-  return HorizontalFusionPattern<BackendStage>({first, second});
+  return TrivialPattern<BackendStage>(ops, second.sink(), trivial_op);
 }
 
 /// Start: Tmp Transform Operation for ReduceTree
@@ -141,53 +131,7 @@ std::vector<FusionOp> ReduceTreeTrivialTransformRecursive(
 }
 
 /// End: Tmp Transform Operation for reduce tree
-
-std::vector<FusionOp> GetFusionOpFromPattern(
-    const StmtPattern<BackendStage>& pattern);
-
-struct FusionOpGetter {
-  std::vector<FusionOp> operator()(
-      const TrivialPattern<BackendStage>& pattern) {
-    return {pattern.trivial_op};
-  }
-
-  std::vector<FusionOp> operator()(const ReducePattern<BackendStage>& pattern) {
-    return {pattern.reduce_op};
-  }
-
-  std::vector<FusionOp> operator()(
-      const ReduceTreePattern<BackendStage>& pattern) {
-    return ReduceTransformRecursive(pattern.GetRootPattern().reduce_op,
-                                    pattern);
-  }
-
-  std::vector<FusionOp> operator()(
-      const ReduceTreePlusTrivialPattern<BackendStage>& pattern) {
-    return ReduceTreeTrivialTransformRecursive(pattern.sink_trivial.trivial_op,
-                                               pattern);
-  }
-
-  std::vector<FusionOp> operator()(
-      const HorizontalFusionPattern<BackendStage>& pattern) {
-    std::vector<FusionOp> result;
-    for (const auto& sub_pattern : pattern.patterns_) {
-      result = ConcatVector(result, GetFusionOpFromPattern(sub_pattern));
-    }
-    return result;
-  }
-
-  std::vector<FusionOp> operator()(
-      const UnsupportPattern<BackendStage>& pattern) {
-    CHECK(false) << "Not Implemented.";
-  }
-};
-
-// tmp transform for reduce_tree and reduce_tree_trivial.
-std::vector<FusionOp> GetFusionOpFromPattern(
-    const StmtPattern<BackendStage>& pattern) {
-  return std::visit(FusionOpGetter(), pattern.variant());
-}
-
+///
 struct FusionOp2Expr {
   std::vector<ir::Expr> operator()(const TrivialOp& op) {
     return {op.GetFuncBody()};
@@ -199,13 +143,229 @@ struct FusionOp2Expr {
 };
 
 std::vector<ir::Expr> GetExprFromPattern(
-    const StmtPattern<BackendStage>& pattern) {
-  const auto& fusion_ops = GetFusionOpFromPattern(pattern);
-  std::vector<ir::Expr> results;
-  for (const auto& op : fusion_ops) {
-    results = ConcatVector(results, std::visit(FusionOp2Expr(), op));
+    const StmtPattern<BackendStage>& pattern);
+
+ir::Expr UnSqueezeExpr(const ir::Expr& expr,
+                       const std::vector<int> padding_vec) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::AppendBound;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::GetAllForIters;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildFors;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildRootScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      IsForIterVar;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::
+      ExprTransformerUtils::ReplaceVarTransformer;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::
+      ExprTransformerUtils::UnsqueezeForTransformer;
+  VLOG(4) << "UnSqueezeExpr: " << expr
+          << "\npadding vector: " << utils::Join(padding_vec, ", ");
+  const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
+  // get the all vars.
+  int counter = 0;
+  auto GenNextName = [&counter]() {
+    counter += 1;
+    return "expand_var_" + std::to_string(counter);
+  };
+  std::vector<ir::Var> vars;
+  int pointer = 0;
+  for (int i = 0; i < vars_in_expr.size() + padding_vec.size(); i++) {
+    if (std::find(padding_vec.begin(), padding_vec.end(), i) !=
+        padding_vec.end()) {
+      vars.emplace_back(Expr(0), Expr(1), GenNextName());
+    } else {
+      vars.push_back(vars_in_expr[pointer++]);
+    }
   }
-  return results;
+  // update the is_reduce of expand_var.
+  for (int i : padding_vec) {
+    if (i == 0) {
+      vars[i]->is_reduce_axis = false;
+    } else {
+      vars[i]->is_reduce_axis = vars[i - 1]->is_reduce_axis;
+    }
+  }
+
+  // sequencely unsqueeze the ir::Expr.
+  ir::Expr result = expr;
+  for (int i : padding_vec) {
+    if (i > 0) {
+      result = UnsqueezeForTransformer((ChildFors * IsForIterVar(vars[i - 1])),
+                                       vars[i])(result);
+    } else {
+      result = UnsqueezeForTransformer(ChildRootScheduleBlockRealizes,
+                                       vars[i])(result);
+    }
+  }
+  return result;
+}
+
+struct IrExprGetter {
+  std::vector<ir::Expr> operator()(
+      const TrivialPattern<BackendStage>& pattern) {
+    return FusionOp2Expr()(pattern.trivial_op);
+  }
+
+  std::vector<ir::Expr> operator()(const ReducePattern<BackendStage>& pattern) {
+    return FusionOp2Expr()(pattern.reduce_op);
+  }
+
+  std::vector<ir::Expr> operator()(
+      const ReduceTreePattern<BackendStage>& pattern) {
+    const auto& fusion_op =
+        ReduceTransformRecursive(pattern.GetRootPattern().reduce_op, pattern);
+    std::function<std::vector<ir::Expr>(const FusionOp& f)> func =
+        [](const FusionOp& op) { return std::visit(FusionOp2Expr(), op); };
+    return VectorFlatMap(fusion_op, func);
+  }
+
+  std::vector<ir::Expr> operator()(
+      const ReduceTreePlusTrivialPattern<BackendStage>& pattern) {
+    std::function<std::vector<ir::Expr>(const FusionOp& f)> func =
+        [](const FusionOp& op) { return std::visit(FusionOp2Expr(), op); };
+    const auto& fusion_ops = ReduceTreeTrivialTransformRecursive(
+        pattern.sink_trivial.trivial_op, pattern);
+    return VectorFlatMap(fusion_ops, func);
+  }
+
+  std::vector<ir::Expr> operator()(
+      const HorizontalFusionPattern<BackendStage>& pattern) {
+    std::vector<ir::Expr> result;
+    VLOG(4) << "Get Fusion Ops from HorizontalFusionPattern: "
+            << pattern.padding_patterns_.size();
+    for (const auto& sub_pattern : pattern.padding_patterns_) {
+      std::function<ir::Expr(ir::Expr)> func =
+          [&sub_pattern](const ir::Expr& expr) {
+            return UnSqueezeExpr(expr, sub_pattern.padding_pos);
+          };
+      result = ConcatVector(
+          result, MapVector(GetExprFromPattern(sub_pattern.pattern), func));
+    }
+    return result;
+  }
+
+  std::vector<ir::Expr> operator()(
+      const UnsupportPattern<BackendStage>& pattern) {
+    CHECK(false) << "Not Implemented.";
+  }
+};
+
+// tmp transform for reduce_tree and reduce_tree_trivial.
+std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildTensorStores;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsNotInit;
+  const auto& tensors =
+      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
+       ChildTensorStores)(op_expr);
+  std::function<ir::Tensor(ir::Expr)> func = [](const ir::Expr& expr) {
+    return expr.As<ir::Store>()->tensor.as_tensor_ref();
+  };
+  return MapVector(tensors, func);
+}
+
+std::vector<ir::Tensor> GetInputTensors(const ir::Expr& op_expr) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildTensorLoads;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsNotInit;
+  const auto& exprs =
+      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
+       ChildTensorLoads)(op_expr);
+  std::function<ir::Tensor(ir::Expr)> func = [](const ir::Expr& expr) {
+    return expr.As<ir::Load>()->tensor.as_tensor_ref();
+  };
+  const auto& inputs = MapVector(exprs, func);
+  const auto& outputs = GetOutputTensors(op_expr);
+  return FilterVector(inputs, [&outputs](const ir::Tensor& tensor) {
+    return std::find(outputs.begin(), outputs.end(), tensor) == outputs.end();
+  });
+}
+
+std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
+  // Topo Sort is important for CINN GroupSchedule.
+  std::map<ir::Tensor, std::vector<const ir::Expr*>> tensor2defining_op;
+  std::map<ir::Tensor, std::vector<const ir::Expr*>> tensor2used_op;
+  for (const auto& op : op_exprs) {
+    auto inputs = GetInputTensors(op);
+    auto outputs = GetOutputTensors(op);
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "Ir::Expr is: \n" << op;
+      VLOG(4) << "Inputs: ";
+      for (const auto& input : inputs) {
+        VLOG(4) << input->name;
+      }
+      VLOG(4) << "Outputs: ";
+      for (const auto& output : outputs) {
+        VLOG(4) << output->name;
+      }
+    }
+    for (const auto& input : inputs) {
+      tensor2used_op[input].push_back(&op);
+    }
+    for (const auto& output : outputs) {
+      tensor2defining_op[output].push_back(&op);
+    }
+  }
+
+  // Collect Downstreams
+  std::map<const ir::Expr*, std::vector<const ir::Expr*>> op2downstreams;
+  std::map<const ir::Expr*, int> degrees;
+  for (const auto& op : op_exprs) {
+    degrees[&op] = 0;
+  }
+  for (const auto& op : op_exprs) {
+    auto outputs = GetOutputTensors(op);
+    std::vector<const ir::Expr*> downstreams;
+    for (const auto& output : outputs) {
+      downstreams = ConcatVector(downstreams, tensor2used_op[output]);
+    }
+    for (const auto& downstream : downstreams) {
+      degrees[downstream]++;
+    }
+    op2downstreams[&op] = downstreams;
+  }
+
+  // Topo Sort
+  std::vector<const ir::Expr*> result;
+  std::queue<const ir::Expr*> q;
+  for (const auto& op : op_exprs) {
+    if (degrees[&op] == 0) {
+      q.push(&op);
+    }
+  }
+  while (!q.empty()) {
+    auto* cur = q.front();
+    VLOG(4) << "Topo Sort Visit Order is:" << GetOutputTensors(*cur)[0]->name;
+    q.pop();
+    result.push_back(cur);
+    for (const auto& downstream : op2downstreams[cur]) {
+      degrees[downstream]--;
+      if (degrees[downstream] == 0) {
+        q.push(downstream);
+      }
+    }
+  }
+  CHECK_EQ(result.size(), op_exprs.size());
+  std::vector<ir::Expr> sorted_result;
+  for (const auto& op : result) {
+    sorted_result.push_back(*op);
+  }
+  return sorted_result;
+}
+
+std::vector<ir::Expr> GetExprFromPattern(
+    const StmtPattern<BackendStage>& pattern) {
+  const auto& results = std::visit(IrExprGetter(), pattern.variant());
+  return TopoSort(results);
 }
 
 }  // namespace cinn::fusion

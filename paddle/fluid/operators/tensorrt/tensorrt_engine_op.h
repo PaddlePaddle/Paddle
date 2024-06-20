@@ -256,7 +256,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
  protected:
   void RunNativeImpl(const framework::Scope &scope,
-                     const platform::Place &dev_place) const {
+                     const phi::Place &dev_place) const {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
@@ -266,7 +266,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     if (calibration_mode_ == true) {
       RunCalibration(scope, dev_place);
       return;
@@ -297,8 +297,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto is_shape_tensor = true;
         if (trt_engine->engine()) {
           auto *engine = trt_engine->engine();
+#if IS_TRT_VERSION_GE(8600)
+          is_shape_tensor = engine->isShapeInferenceIO(name.c_str());
+#else
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+#endif
           if (!is_shape_tensor) {
             runtime_shape_tensor.erase(name);
             VLOG(4) << "trt engine runtime delete shape name(" << name
@@ -309,24 +313,23 @@ class TensorRTEngineOp : public framework::OperatorBase {
              t.dtype() == phi::DataType::INT64) &&
             is_shape_tensor) {
           std::vector<int> int32_host(t.numel());
-          paddle::platform::DeviceContextPool &pool =
-              paddle::platform::DeviceContextPool::Instance();
+          phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
 
-          if (platform::is_cpu_place(t.place())) {
+          if (t.place().GetType() == phi::AllocationType::CPU) {
             auto &int32_tensor = t;
             if (t.dtype() == phi::DataType::INT64) {
-              auto *cpu_ctx = pool.Get(platform::CPUPlace());
+              auto *cpu_ctx = pool.Get(phi::CPUPlace());
               int32_tensor = phi::funcs::TransDataType(
                   reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
                   t,
                   DataType::INT32);
             }
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     int32_host.data(),
-                                    platform::CPUPlace(),
+                                    phi::CPUPlace(),
                                     int32_tensor.data<int>(),
                                     int32_tensor.numel() * sizeof(int));
-          } else if (platform::is_gpu_place(t.place())) {
+          } else if (t.place().GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA)
             auto *dev_ctx = pool.Get(t.place());
             auto &int32_tensor = t;
@@ -336,7 +339,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                   t,
                   DataType::INT32);
             }
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     int32_host.data(),
                                     int32_tensor.place(),
                                     int32_tensor.data<int>(),
@@ -432,7 +435,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunCalibration(const framework::Scope &scope,
-                      const platform::Place &dev_place) const {
+                      const phi::Place &dev_place) const {
     // This process will builds a 32-bit trt engine, runs it on the calibration
     // set, and records a histogram for each
     // tensor of the distribution of activation values.
@@ -497,10 +500,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunTrt(const framework::Scope &scope,
-              const platform::Place &dev_place,
+              const phi::Place &dev_place,
               TensorRTEngine *engine) const {
     int runtime_batch = -1;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
     std::vector<std::string> output_maps =
@@ -518,6 +521,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
       binding_offset = engine->GetBindingsOffset();
     }
     // Bind input tensor to TRT.
+#if IS_TRT_VERSION_GE(8600)
+    std::unordered_map<std::string, int> tensor_index;
+    for (int i = 0; i < engine->engine()->getNbIOTensors(); ++i) {
+      auto tensor_name = engine->engine()->getIOTensorName(i);
+      tensor_index[std::string(tensor_name)] = i;
+    }
+#endif
     for (auto x : runtime_input_names_) {
       // NOTE(liuyuanle): It is a trick. If you need a [x], then you need
       // to use [x.substr(0, idx)].
@@ -548,7 +558,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               t.numel()));
 
       // check the input_tensor
-      if (!platform::is_gpu_place(t.place())) {
+      if (!(t.place().GetType() == phi::AllocationType::GPU)) {
         phi::DenseTensor out;
         phi::Copy(dev_ctx, t, dev_place, false, &out);
         t.ShareDataWith(out);
@@ -567,8 +577,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
       }
 
       // Get index of profile 0 first, then plus binding offset
+#if IS_TRT_VERSION_GE(8600)
+      const int bind_index =
+          tensor_index[std::string(x.c_str())] + binding_offset;
+#else
       const int bind_index =
           engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
+#endif
       PADDLE_ENFORCE_LT(
           bind_index,
           num_bindings,
@@ -616,11 +631,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
 #if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
-        if (engine->engine()->isShapeBinding(bind_index) &&
-            engine->engine()->bindingIsInput(bind_index)) {
+        if (engine->engine()->isShapeInferenceIO(x.c_str()) &&
+            engine->engine()->getTensorIOMode(x.c_str()) ==
+                nvinfer1::TensorIOMode::kINPUT) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     t.place(),
                                     t.data<int32_t>(),
@@ -637,7 +653,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     int32_tensor->place(),
                                     int32_tensor->data<int32_t>(),
@@ -657,7 +673,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     t.place(),
                                     t.data<int32_t>(),
@@ -674,7 +690,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     int32_tensor->place(),
                                     int32_tensor->data<int32_t>(),
@@ -690,8 +706,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
+#if IS_TRT_VERSION_GE(8600)
+      auto intrt_type = engine->engine()->getTensorDataType(x.c_str());
+#else
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
       auto intrt_type = engine->engine()->getBindingDataType(intrt_index);
+#endif
       PADDLE_ENFORCE_EQ(indata_type,
                         intrt_type,
                         phi::errors::InvalidArgument(
@@ -746,20 +766,31 @@ class TensorRTEngineOp : public framework::OperatorBase {
         Attr<std::vector<int>>("origin_output_rank");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
+#if IS_TRT_VERSION_GE(8600)
+      const int bind_index =
+          tensor_index[std::string(output_maps[output_index].c_str())] +
+          binding_offset;
+#else
       const int bind_index =
           engine->engine()->getBindingIndex(output_maps[output_index].c_str()) +
           binding_offset;
+#endif
       std::vector<int> ddim;
 
       if (!engine->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(8600)
+        auto dims =
+            engine->engine()->getTensorShape(output_maps[output_index].c_str());
+#else
         auto dims = engine->engine()->getBindingDimensions(bind_index);
+#endif
         ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
           ddim.push_back(dims.d[i]);
         }
       } else {
 #if IS_TRT_VERSION_GE(8500)
-        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto x_name = engine->engine()->getIOTensorName(bind_index);
         auto dims = trt_context->getTensorShape(x_name);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
@@ -801,7 +832,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "index = %d, number of bindings = %d.",
                             bind_index,
                             num_bindings));
+#if IS_TRT_VERSION_GE(8600)
+      auto trt_tensor_name = engine->engine()->getIOTensorName(bind_index);
+      auto trt_type = engine->engine()->getTensorDataType(trt_tensor_name);
+#else
       auto trt_type = engine->engine()->getBindingDataType(bind_index);
+#endif
       // get adr and set type
       VLOG(1) << "trt output [" << y << "] dtype is "
               << TRT2FluidDataType(trt_type);
@@ -881,7 +917,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,
-                            const platform::Place &dev_place) const {
+                            const phi::Place &dev_place) const {
     if (!trt_engine_) {
       TensorRTEngine::ConstructionParams params;
       params.max_batch_size = max_batch_size_;

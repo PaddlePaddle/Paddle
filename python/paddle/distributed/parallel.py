@@ -451,7 +451,9 @@ class DataParallel(layers.Layer):
             return False
 
         is_sparse_gradient = [
-            check_layer_sparse(sublayer) for sublayer, _ in layers_param
+            check_layer_sparse(sublayer)
+            for sublayer, param in layers_param
+            if not getattr(param, "no_sync", False)
         ]
 
         if in_dynamic_mode():

@@ -37,7 +37,7 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 
@@ -57,7 +57,7 @@ class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 

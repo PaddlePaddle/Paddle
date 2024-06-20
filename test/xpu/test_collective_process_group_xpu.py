@@ -21,6 +21,7 @@ from paddle import core
 
 
 class TestProcessGroup(TestMultipleXpus):
+    # TODO(lijin23): fix bugs in KL3 CI
     @unittest.skipIf(
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
         "run test when having at least 2 XPUs.",

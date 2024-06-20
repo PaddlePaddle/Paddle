@@ -109,7 +109,7 @@ function(inference_base_test_build TARGET)
     target_link_libraries(${TARGET} ${PYTHON_LIBRARIES})
   endif()
   if(WITH_SHARED_PHI)
-    target_link_libraries(${TARGET} $<TARGET_LINKER_FILE:phi>)
+    target_link_libraries(${TARGET} phi)
     add_dependencies(${TARGET} phi)
   endif()
   if(WITH_CINN)
@@ -177,6 +177,14 @@ set(IMG_CLS_RESNET_INSTALL_DIR
     "${INFERENCE_DEMO_INSTALL_DIR}/image_classification_resnet")
 set(IMG_CLS_RESNET_MODEL_DIR
     "${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model")
+
+if(NOT EXISTS
+   ${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model.tgz
+)
+  inference_download_and_uncompress_without_verify(
+    ${IMG_CLS_RESNET_INSTALL_DIR} ${INFERENCE_URL}
+    "image_classification_resnet.inference.model.tgz")
+endif()
 
 if(WITH_ONNXRUNTIME)
   set(MOBILENETV2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/MobileNetV2")

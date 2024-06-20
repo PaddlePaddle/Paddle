@@ -69,11 +69,11 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
   void LoadParamsFromBuffer(
       const framework::ExecutionContext &context,
-      const platform::Place &place,
+      const phi::Place &place,
       std::istream *buffer,
       bool load_as_fp16,
       const std::vector<std::string> &out_var_names) const {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto out_vars = context.MultiOutputVar("Out");
 

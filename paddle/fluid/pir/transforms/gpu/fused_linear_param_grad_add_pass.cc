@@ -416,7 +416,6 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
   }
 };
-
 class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
  public:
   FusedLinearParamGradAddPass()

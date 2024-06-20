@@ -53,6 +53,9 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
       for (auto &attr : runtime_info.extra_args_default_value) {
         attributes[attr.first] = attr.second;
       }
+      if (attributes.find("is_test") != attributes.end()) {
+        attributes["is_test"] = rewriter.bool_attr(true);
+      }
 
       pir::Operation *op_item_inner = rewriter.Build(op->operands_source(),
                                                      attributes,

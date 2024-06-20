@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -86,5 +85,4 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

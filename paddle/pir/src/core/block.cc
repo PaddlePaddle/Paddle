@@ -22,7 +22,7 @@
 #include "paddle/pir/include/core/region.h"
 
 namespace pir {
-Block::~Block() {
+Block::~Block() {  // NOLINT
   if (!use_empty()) {
     auto parent_op = GetParentOp();
     PADDLE_FATAL(

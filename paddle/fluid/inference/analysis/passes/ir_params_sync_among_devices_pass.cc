@@ -32,9 +32,7 @@ PD_DEFINE_bool(  // NOLINT
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
@@ -236,6 +234,4 @@ std::string IrParamsSyncAmongDevicesPass::repr() const {
   return "ir_params_sync_among_devices_pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

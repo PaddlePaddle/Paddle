@@ -3,9 +3,6 @@ add_subdirectory(benchmark)
 add_subdirectory(framework)
 add_subdirectory(platform)
 
-if(WITH_CINN)
-  add_subdirectory(cinn)
-endif()
 add_subdirectory(controlflow)
 
 if(WITH_DLNNE)
@@ -28,12 +25,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
-
-if(WITH_XPU)
-  paddle_test(beam_search_decode_op_xpu_test SRCS
-              beam_search_decode_op_xpu_test.cc)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
-endif()
 
 nv_test(
   test_common_infer_shape_functions

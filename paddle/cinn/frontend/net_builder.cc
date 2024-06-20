@@ -24,6 +24,7 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
@@ -106,8 +107,10 @@ Variable NetBuilder::BinaryOp(const std::string& op_type,
                               const Variable& lhs,
                               const Variable& rhs,
                               int axis) {
-  CHECK_EQ(lhs->type, rhs->type)
-      << "The inputs type of op " << op_type << " should be equal!";
+  PADDLE_ENFORCE_EQ(lhs->type == rhs->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The inputs type of op type should be equal!"));
   return CustomInstr(op_type, {lhs, rhs}, {{"axis", axis}}).front();
 }
 
@@ -127,8 +130,11 @@ Variable NetBuilder::Reduce(const std::string& op_type,
     if (keep_dim) {
       return Identity(x);
     } else {
-      CHECK_GE(x->shape.size(), dim.size())
-          << "The inputs rank should be greater than or equal to axes.";
+      PADDLE_ENFORCE_GE(
+          x->shape.size(),
+          dim.size(),
+          phi::errors::InvalidArgument(
+              "The inputs rank should be greater than or equal to axes."));
       int new_rank =
           x->shape.size() == dim.size() ? 1 : x->shape.size() - dim.size();
       std::vector<int> new_shape(new_rank, 1);
@@ -325,10 +331,14 @@ Variable NetBuilder::BroadcastTo(const Variable& operand,
     return BroadcastTo(operand, out_shape, {0});
   }
   auto y_shape_size = out_shape.size();
-  CHECK_LE(x_shape_size, y_shape_size)
-      << "The broadcast_p's input shape dimension should less than the "
-         "output's, "
-      << "but here (" << x_shape_size << " > " << y_shape_size << ").";
+  PADDLE_ENFORCE_LE(
+      x_shape_size,
+      y_shape_size,
+      phi::errors::InvalidArgument("The broadcast_p's input shape dimension "
+                                   "should less than the output's, "
+                                   "but here (%d > %d).",
+                                   x_shape_size,
+                                   y_shape_size));
 
   VLOG(4) << "Try broadcast " << operand->id << " from shape ("
           << cinn::utils::Join(operand->shape, ",") << ") to shape ("
@@ -359,12 +369,11 @@ Variable NetBuilder::BroadcastTo(const Variable& operand,
           break;
         }
       }
-      CHECK_NE(axis, -1) << "When we broadcast a 1-dimension shape, the number "
-                            "should contained in the out_shape. "
-                         << "We cannot broadcast from shape ("
-                         << cinn::utils::Join(operand->shape, ",")
-                         << ") to shape (" << cinn::utils::Join(out_shape, ",")
-                         << ")";
+      PADDLE_ENFORCE_NE(axis,
+                        -1UL,
+                        phi::errors::InvalidArgument(
+                            "When we broadcast a 1-dimension shape,"
+                            "the number should contained in the out_shape."));
     }
     broadcast_axes[0] = axis;
   }
@@ -452,8 +461,11 @@ Variable NetBuilder::Gather(const Variable& operand,
   if (axis < 0) {
     axis += static_cast<int>(x_ndim);
   }
-  CHECK_LT(axis, x_ndim) << "Axis must be in [" << -x_ndim << ", " << x_ndim - 1
-                         << ").";
+  PADDLE_ENFORCE_LT(axis,
+                    x_ndim,
+                    phi::errors::InvalidArgument(
+                        "Axis must be in [ %d - %d]", -x_ndim, x_ndim - 1));
+
   Variable transformed_index = index;
   // If we got 1-D Tensor, the first step is reshape, in order to keep
   // operand.rank == index.rank
@@ -700,8 +712,11 @@ std::vector<int> UpdatePool2dPaddings(const std::vector<int>& paddings,
   if (paddings.size() == 2) {
     new_paddings.insert(new_paddings.end(), paddings.begin(), paddings.end());
   }
-  CHECK_EQ(new_paddings.size(), 4)
-      << "Padding size must be 2 or 4, but got: " << paddings.size();
+  PADDLE_ENFORCE_EQ(
+      new_paddings.size(),
+      4UL,
+      phi::errors::InvalidArgument("Padding size must be 2 or 4, but got: %d",
+                                   paddings.size()));
   // Setting h/w_axis according to data_format
   int height_axis = -1;
   int width_axis = -1;
@@ -756,9 +771,10 @@ Variable NetBuilder::Pool2d(const Variable& a,
                             bool adaptive,
                             const std::string& padding_algorithm) {
   // Check input dim
-  CHECK_EQ(a->shape.size(), 4)
-      << "Input's dim must be 4, but " << a->id << "'s shape is ["
-      << cinn::utils::Join(a->shape, ", ") << "].";
+  PADDLE_ENFORCE_EQ(a->shape.size(),
+                    4UL,
+                    phi::errors::InvalidArgument(
+                        "Input's dim must be 4, but got: %d", a->shape.size()));
   // Transform pool_type
   std::string pool_type;
   std::transform(pooling_type.begin(),
@@ -772,15 +788,21 @@ Variable NetBuilder::Pool2d(const Variable& a,
   if (input_ksize.size() == 1) {
     input_ksize.insert(input_ksize.end(), ksize.begin(), ksize.end());
   }
-  CHECK_EQ(input_ksize.size(), 2)
-      << "Kernel_size length must be 1 or 2, but got: " << ksize.size();
+  PADDLE_ENFORCE_EQ(
+      input_ksize.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "Kernel_size length must be 1 or 2, but got: %d", ksize.size()));
   // Transform stride
   std::vector<int> new_strides{strides};
   if (new_strides.size() == 1) {
     new_strides.insert(new_strides.end(), strides.begin(), strides.end());
   }
-  CHECK_EQ(new_strides.size(), 2)
-      << "Stride length must be 1 or 2, but got: " << strides.size();
+  PADDLE_ENFORCE_EQ(
+      new_strides.size(),
+      2UL,
+      phi::errors::InvalidArgument("Stride length must be 1 or 2, but got: %d",
+                                   strides.size()));
   CHECK(new_strides[0] > 0 && new_strides[1] > 0)
       << "the value of kernel size for pool2d should greater than 0.";
   // Transform data_format
@@ -860,15 +882,21 @@ Variable NetBuilder::Pool2dGrad(const Variable& x,
   if (input_ksize.size() == 1) {
     input_ksize.insert(input_ksize.end(), ksize.begin(), ksize.end());
   }
-  CHECK_EQ(input_ksize.size(), 2)
-      << "Kernel_size length must be 1 or 2, but got: " << ksize.size();
+  PADDLE_ENFORCE_EQ(
+      input_ksize.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "Kernel_size length must be 1 or 2, but got: %d", ksize.size()));
   // Transform stride
   std::vector<int> new_strides{strides};
   if (new_strides.size() == 1) {
     new_strides.insert(new_strides.end(), strides.begin(), strides.end());
   }
-  CHECK_EQ(new_strides.size(), 2)
-      << "Stride length must be 1 or 2, but got: " << strides.size();
+  PADDLE_ENFORCE_EQ(
+      new_strides.size(),
+      2UL,
+      phi::errors::InvalidArgument("Stride length must be 1 or 2, but got: %d",
+                                   strides.size()));
   CHECK(new_strides[0] > 0 && new_strides[1] > 0)
       << "the value of kernel size for pool2d should greater than 0.";
   // Transform data_format
@@ -1076,8 +1104,11 @@ Variable NetBuilder::UniformRandom(const std::vector<int>& shape,
   if (diag_num > 0) {
     int numel =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    CHECK_GT(numel, (diag_num - 1) * (diag_step + 1))
-        << "(diag_num - 1) * (diag_step + 1) should smaller than numel!";
+    PADDLE_ENFORCE_GT(
+        numel,
+        (diag_num - 1) * (diag_step + 1),
+        phi::errors::InvalidArgument(
+            "(diag_num - 1) * (diag_step + 1) should smaller than numel!"));
     auto diag_index = Arange(0.0f,
                              static_cast<float>(diag_num * (diag_step + 1)),
                              static_cast<float>(diag_step + 1),
@@ -1097,8 +1128,10 @@ Variable NetBuilder::RandInt(const std::vector<int>& shape,
                              int max,
                              int seed,
                              const std::string& dtype) {
-  CHECK_GT(max, min) << "max: " << max << "should greater than"
-                     << "min: " << min;
+  PADDLE_ENFORCE_GT(
+      max,
+      min,
+      phi::errors::InvalidArgument("The %d should greater than %d!", max, min));
   auto randint_out =
       CustomInstr(
           "randint", {}, {{"shape", shape}, {"seed", seed}, {"dtype", dtype}})
@@ -1116,11 +1149,15 @@ Variable NetBuilder::Cholesky(const Variable& x, bool upper) {
   auto cholesky_out = CustomInstr("cholesky", {x}, {{"upper", upper}}).front();
   // Set upper/lower triangle of matrices to 0
   auto x_ndim = x->shape.size();
-  CHECK_GE(x_ndim, 2)
-      << "The input matrix x shape size should >= 2! Please check again.";
-  CHECK_EQ(x->shape[x_ndim - 1], x->shape[x_ndim - 2])
-      << "The input matrix x's last 2 dimensions must be the same! Please "
-         "check again.";
+  PADDLE_ENFORCE_GE(x_ndim,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The input matrix x shape size should >= 2!"));
+  PADDLE_ENFORCE_EQ(
+      x->shape[x_ndim - 1],
+      x->shape[x_ndim - 2],
+      phi::errors::InvalidArgument(
+          "The input matrix x's last 2 dimensions must be the same!"));
   int m = x->shape[x_ndim - 1];
   auto m_tensor = FillConstant({m * m}, m);
   auto index = Arange(0.0f, static_cast<float>(m * m), 1.0f, "int32");
@@ -1147,10 +1184,14 @@ Variable NetBuilder::TriangularSolve(const Variable& input1,
   {
     auto a_ndim = input1->shape.size();
     auto b_ndim = input2->shape.size();
-    CHECK_GE(a_ndim, 2)
-        << "The input matrix A shape size should >= 2! Please check again.";
-    CHECK_GE(b_ndim, 2)
-        << "The input matrix B shape size should >= 2! Please check again.";
+    PADDLE_ENFORCE_GE(a_ndim,
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The input matrix A shape size should >= 2!"));
+    PADDLE_ENFORCE_GE(b_ndim,
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The input matrix B shape size should >= 2!"));
     std::vector<int> input1_shape_cut(input1->shape.begin(),
                                       input1->shape.end() - 2);
     std::vector<int> input2_shape_cut(input2->shape.begin(),

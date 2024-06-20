@@ -104,7 +104,7 @@ template <typename T>
 struct Destroyer {
   void operator()(T* x) {
     if (x) {
-      x->destroy();
+      delete x;
     }
   }
 };

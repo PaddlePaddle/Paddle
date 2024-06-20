@@ -464,8 +464,7 @@ class FasterTokenizerOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::INT64,
-                          paddle::platform::CPUPlace());
+    return phi::KernelKey(framework::proto::VarType::INT64, phi::CPUPlace());
   }
 
   phi::KernelKey GetKernelTypeForVar(

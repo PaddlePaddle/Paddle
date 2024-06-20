@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/lowered_func.h"
-
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -21,6 +20,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
@@ -84,9 +84,11 @@ void _LoweredFunc_::CheckValid() const {
     in_count += arg.is_input();
     out_count += arg.is_output();
   }
-  CHECK_GT(out_count, 0)
-      << "At least one output argument is needed for a function\n"
-      << body;
+  PADDLE_ENFORCE_GT(
+      out_count,
+      0,
+      phi::errors::InvalidArgument(
+          "At least one output argument is needed for a function."));
 }
 
 std::vector<Expr*> _LoweredFunc_::expr_fields() { return {&body}; }
@@ -337,7 +339,10 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     // something like `_args[0]`
     Expr load_expr = Load::Make(
         pod_value_ptr, {cinn::common::make_const(static_cast<int32_t>(i))});
-    CHECK_EQ(load_expr.type(), type_of<cinn_pod_value_t>());
+    PADDLE_ENFORCE_EQ(load_expr.type(),
+                      type_of<cinn_pod_value_t>(),
+                      phi::errors::InvalidArgument(
+                          "The type of load_expr should be cinn_pod_value_t"));
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 
     Var _arg;
@@ -517,37 +522,55 @@ std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x) {
 
 void CudaAxisInfo::set_grid_dim(int offset, int64_t x) {
   valid_ = true;
-  CHECK_LT(offset, 3);
+  PADDLE_ENFORCE_LT(
+      offset,
+      3,
+      phi::errors::InvalidArgument("The offset should be less than 3."));
   grid_dims_[offset] = ir::Expr(x);
 }
 
 void CudaAxisInfo::set_block_dim(int offset, int64_t x) {
   valid_ = true;
-  CHECK_LT(offset, 3);
+  PADDLE_ENFORCE_LT(
+      offset,
+      3,
+      phi::errors::InvalidArgument("The offset should be less than 3."));
   block_dims_[offset] = ir::Expr(x);
 }
 
 void CudaAxisInfo::set_grid_dim(int offset, ir::Expr x) {
   valid_ = true;
-  CHECK_LT(offset, 3);
+  PADDLE_ENFORCE_LT(
+      offset,
+      3,
+      phi::errors::InvalidArgument("The offset should be less than 3."));
   grid_dims_[offset] = x;
 }
 
 void CudaAxisInfo::set_block_dim(int offset, ir::Expr x) {
   valid_ = true;
-  CHECK_LT(offset, 3);
+  PADDLE_ENFORCE_LT(
+      offset,
+      3,
+      phi::errors::InvalidArgument("The offset should be less than 3."));
   block_dims_[offset] = x;
 }
 
 ir::Expr CudaAxisInfo::grid_dim(int offset) const {
   CHECK(valid_);
-  CHECK_LT(offset, 3);
+  PADDLE_ENFORCE_LT(
+      offset,
+      3,
+      phi::errors::InvalidArgument("The offset should be less than 3."));
   return grid_dims_[offset];
 }
 
 ir::Expr CudaAxisInfo::block_dim(int offset) const {
   CHECK(valid_);
-  CHECK_LT(offset, 3);
+  PADDLE_ENFORCE_LT(
+      offset,
+      3,
+      phi::errors::InvalidArgument("The offset should be less than 3."));
   return block_dims_[offset];
 }
 

@@ -3117,11 +3117,11 @@ if __name__ == "__main__":
     forward_declaration_str = ""
     forward_definition_str = ""
 
-    # merge legacy_ops.yaml and ops.yaml, legacy_backward.yaml and backward.yaml
+    # merge dygraph_ops.yaml and ops.yaml, dygraph_backward.yaml and backward.yaml
     all_ops = []
     all_bw = []
     for api_yaml_path in api_yaml_paths:
-        if api_yaml_path.endswith("legacy_ops.yaml") or api_yaml_path.endswith(
+        if api_yaml_path.endswith("dygraph_ops.yaml") or api_yaml_path.endswith(
             "/ops.yaml"
         ):
             with open(api_yaml_path, 'r') as f:
@@ -3129,7 +3129,7 @@ if __name__ == "__main__":
 
     for bw_yaml_path in backward_yaml_paths:
         if bw_yaml_path.endswith(
-            "legacy_backward.yaml"
+            "dygraph_backward.yaml"
         ) or bw_yaml_path.endswith("/backward.yaml"):
             with open(bw_yaml_path, 'r') as f:
                 all_bw += yaml.safe_load(f)
@@ -3143,7 +3143,7 @@ if __name__ == "__main__":
         else:
             backward_yaml_path = None
 
-        if api_yaml_path.endswith('/legacy_ops.yaml'):
+        if api_yaml_path.endswith('/dygraph_ops.yaml'):
             continue
         if api_yaml_path.endswith('/ops.yaml'):
             generator = DygraphForwardAndNodesGenerator(

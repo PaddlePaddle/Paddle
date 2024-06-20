@@ -92,8 +92,13 @@ macro(safe_set_nvflag flag_name)
   check_c_compiler_flag(${flag_name} C_COMPILER_SUPPORT_FLAG_${safe_name})
   set(safe_name C_COMPILER_SUPPORT_FLAG_${safe_name})
   if(${safe_name})
-    set(SAFE_GPU_COMMON_FLAGS
-        "${SAFE_GPU_COMMON_FLAGS} -Xcompiler=\"${flag_name}\"")
+    if(WITH_ROCM)
+      set(SAFE_GPU_COMMON_FLAGS
+          "${SAFE_GPU_COMMON_FLAGS} -Xcompiler \"${flag_name}\"")
+    else()
+      set(SAFE_GPU_COMMON_FLAGS
+          "${SAFE_GPU_COMMON_FLAGS} -Xcompiler=\"${flag_name}\"")
+    endif()
   endif()
 endmacro()
 
@@ -279,6 +284,7 @@ endif()
 
 # Disable -Werror, otherwise the compile will fail for rocblas_gemm_ex
 if(WITH_ROCM)
+  string(REPLACE "-Werror" "-Wno-error" HIP_HIPCC_FLAGS ${HIP_HIPCC_FLAGS})
   string(REPLACE "-Werror" "-Wno-error" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()

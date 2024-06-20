@@ -49,7 +49,15 @@ IfInstruction::IfInstruction(size_t id,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place),
+      op_(op),
+      cond_name_("if_instruction"),
+      cond_var_(nullptr),
+      output_vars_(),
+      true_branch_inter_(nullptr),
+      false_branch_inter_(nullptr),
+      true_skip_gc_names_(),
+      false_skip_gc_names_() {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
       phi::errors::PreconditionNotMet("Cond instruction only support if op"));
@@ -143,11 +151,6 @@ IfInstruction::IfInstruction(size_t id,
                                           execution_config);
 
   std::set<std::string> true_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&true_branch_block)) {
-    true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
-  }
   // NOTE(zhangbo): According to the concept of control flow, child scopes
   // should not control the lifecycle of parent scope variables.
   for (auto value : true_outside_inputs) {
@@ -170,11 +173,6 @@ IfInstruction::IfInstruction(size_t id,
                          value_exec_info->NewChild(false_scope),
                          execution_config);
   std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&false_branch_block)) {
-    false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
-  }
   for (auto value : false_outside_inputs) {
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
@@ -189,12 +187,8 @@ IfInstruction::IfInstruction(size_t id,
 }
 
 IfInstruction::~IfInstruction() {
-  if (true_branch_inter_ != nullptr) {
-    delete true_branch_inter_;
-  }
-  if (false_branch_inter_ != nullptr) {
-    delete false_branch_inter_;
-  }
+  delete true_branch_inter_;
+  delete false_branch_inter_;
 }
 
 void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
@@ -245,8 +239,6 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(
-        true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
   } else {
 #ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
@@ -255,8 +247,6 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(
-        false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
   }
   // copy output
 }

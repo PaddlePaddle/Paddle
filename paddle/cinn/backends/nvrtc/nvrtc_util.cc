@@ -29,14 +29,41 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_string(cinn_nvcc_cmd_path);
+PD_DECLARE_string(nvidia_package_dir);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
 PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
 
 namespace cinn {
 namespace backends {
 namespace nvrtc {
+
+static bool TryLocatePath(const std::string& path) {
+  struct stat st;
+  return stat(path.c_str(), &st) == 0;
+}
+
+static std::vector<std::string> GetNvidiaAllIncludePath(
+    const std::string& nvidia_package_dir) {
+  std::vector<std::string> include_paths;
+  const std::string delimiter = "/";
+  // Expand this list if necessary.
+  const std::vector<std::string> sub_modules = {"cublas",
+                                                "cudnn",
+                                                "cufft",
+                                                "cusparse",
+                                                "cusolver",
+                                                "cuda_nvrtc",
+                                                "curand",
+                                                "cuda_runtime"};
+  for (auto& sub_module : sub_modules) {
+    std::string path =
+        nvidia_package_dir + delimiter + sub_module + delimiter + "include";
+    include_paths.push_back(path);
+  }
+  return include_paths;
+}
 
 std::string Compiler::operator()(const std::string& code,
                                  bool include_headers) {
@@ -65,13 +92,21 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
   if (cuda_path_env != nullptr) {
     cuda_include_path += cuda_path_env;
     cuda_include_path += delimiter + "include";
+    VLOG(4) << "FindCUDAIncludePaths from CUDA_PATH: " << cuda_include_path;
     return {cuda_include_path};
   }
 
 #if defined(__linux__)
-  struct stat st;
+  if (!FLAGS_nvidia_package_dir.empty() &&
+      TryLocatePath(FLAGS_nvidia_package_dir)) {
+    VLOG(4) << "FindCUDAIncludePaths from nvidia_package_dir: "
+            << FLAGS_nvidia_package_dir;
+    return GetNvidiaAllIncludePath(FLAGS_nvidia_package_dir);
+  }
+
   cuda_include_path = "/usr/local/cuda/include";
-  if (stat(cuda_include_path.c_str(), &st) == 0) {
+  if (TryLocatePath(cuda_include_path)) {
+    VLOG(4) << "FindCUDAIncludePaths from " << cuda_include_path;
     return {cuda_include_path};
   }
 #endif
@@ -123,6 +158,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     auto cinn_headers = FindCINNRuntimeIncludePaths();
     std::vector<std::string> include_paths;
     for (auto& header : cuda_headers) {
+      VLOG(5) << "add include-path: " << header;
       include_paths.push_back("--include-path=" + header);
     }
     for (auto& header : cinn_headers) {
@@ -151,7 +187,9 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log << "\nThe code is:\n" << code;
+    PADDLE_ENFORCE_EQ(compile_res,
+                      NVRTC_SUCCESS,
+                      phi::errors::Fatal("NVRTC compilation failed"));
   }
 
   size_t size;

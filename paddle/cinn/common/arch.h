@@ -17,6 +17,7 @@
 #include <functional>
 #include <ostream>
 #include <variant>
+#include "paddle/common/overloaded.h"
 
 namespace cinn {
 namespace common {
@@ -44,6 +45,8 @@ struct Arch final : public ArchBase {
   const ArchBase& variant() const {
     return static_cast<const ArchBase&>(*this);
   }
+
+  DEFINE_MATCH_METHOD();
 
   bool operator==(const auto& other) const {
     return this->index() == other.index();

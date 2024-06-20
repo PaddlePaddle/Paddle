@@ -67,7 +67,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_XPU_BKCL)
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     phi::DenseTensor temp_out;
-    framework::DDim temp_out_dims = x->dims();
+    phi::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.Resize(temp_out_dims);
     dev_ctx.template Alloc(&temp_out, x->dtype());

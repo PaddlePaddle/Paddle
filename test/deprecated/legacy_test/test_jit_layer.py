@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
+from paddle.pir_utils import test_with_dygraph_pir
 from paddle.static import InputSpec
 
 sys.path.append("../../dygraph_to_static")
@@ -82,6 +83,22 @@ class TestMultiLoad(unittest.TestCase):
         np.testing.assert_allclose(forward_out1, forward_out2[0], rtol=1e-05)
         np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
+    @test_with_dygraph_pir
+    def test_multi_jit_load(self):
+        x = paddle.full([2, 4], 2)
+        model = Net()
+        with enable_to_static_guard(False):
+            forward_out1 = model.forward(x)
+            infer_out1 = model.infer(x)
+        model_path = os.path.join(self.temp_dir.name, 'multi_program')
+        paddle.jit.save(model, model_path, combine_params=True)
+
+        jit_layer = paddle.jit.load(model_path)
+        forward_out2 = jit_layer.forward(x)
+        infer_out2 = jit_layer.infer(x)
+        np.testing.assert_allclose(forward_out1, forward_out2, rtol=1e-05)
+        np.testing.assert_allclose(infer_out1, infer_out2, rtol=1e-05)
+
 
 class SaveLinear(paddle.nn.Layer):
     def __init__(self):
@@ -115,6 +132,24 @@ class TestMKLOutput(unittest.TestCase):
             x = paddle.ones([498, 80])
             out = layer.forward(x)
             out = paddle.unsqueeze(out[0], 0)
+            np.testing.assert_equal(out.shape, [1, 498, 80])
+
+    @test_with_dygraph_pir
+    def test_mkl_jit_output(self):
+        with _dygraph_place_guard(place=paddle.CPUPlace()):
+            net = SaveLinear()
+            x = paddle.ones([498, 80])
+            orig_out = net.forward(x)
+            model_path = os.path.join(self.temp_dir.name, 'save_linear')
+            paddle.jit.save(net, model_path, combine_params=True)
+
+            layer = paddle.jit.load(model_path)
+
+            out = layer.forward(x)
+            np.testing.assert_equal(
+                np.mean(orig_out.numpy()), np.mean(out.numpy())
+            )
+            out = paddle.unsqueeze(out, 0)
             np.testing.assert_equal(out.shape, [1, 498, 80])
 
 

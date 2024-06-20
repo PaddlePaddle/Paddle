@@ -48,7 +48,7 @@ struct DataReader {
     return true;
   }
 
-  std::unique_ptr<std::ifstream> file;
+  std::unique_ptr<std::ifstream> file = nullptr;
 };
 
 void SetConfig(AnalysisConfig *cfg) {

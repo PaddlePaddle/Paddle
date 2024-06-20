@@ -55,6 +55,32 @@ class RemoveRedundantTransposePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class RemoveInvalidTransposePattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "RemoveInvalidTransposePattern"; }
+  uint32_t benefit() const override { return 1; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &transpose =
+        pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm")}});
+    pat.Tensor("ret") = transpose(pat.Tensor("arg_transpose"));
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
+      const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
+      std::vector<int> dst_vector(perm.size());
+      std::iota(dst_vector.begin(), dst_vector.end(), 0);
+      for (size_t i = 0; i < perm.size(); i++) {
+        if (perm[i] != dst_vector[i]) {
+          return false;
+        }
+      }
+      return true;
+    });
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+    res.Tensor("ret").Assign(res.Tensor("arg_transpose"));
+  }
+};
+
 class RemoveRedundantTransposePass : public pir::PatternRewritePass {
  public:
   RemoveRedundantTransposePass()
@@ -63,6 +89,7 @@ class RemoveRedundantTransposePass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<RemoveRedundantTransposePattern>(context));
+    ps.Add(paddle::drr::Create<RemoveInvalidTransposePattern>(context));
     return ps;
   }
 };

@@ -182,6 +182,59 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &index_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const auto &input_dim = input_shape.shape();
+  const auto &index_dim = index_shape.shape();
+  const auto &attributes = op->attributes();
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+  if (axis < 0) axis += input_shape.shape().size();
+  bool soft_label =
+      attributes.at("soft_label").dyn_cast<pir::BoolAttribute>().data();
+
+  PADDLE_ENFORCE(!soft_label || input_dim.size() == index_dim.size(),
+                 phi::errors::InvalidArgument(
+                     "The input and index should have the same rank when "
+                     "soft_label is true. But received input rank(%d) and "
+                     "index rank(%d)",
+                     input_dim.size(),
+                     index_dim.size()));
+
+  auto softmax_dim = index_dim;
+  auto out_dim = index_dim;
+
+  if (index_dim.size() == input_dim.size()) {
+    if (!soft_label) {
+      out_dim.erase(out_dim.begin() + axis);
+    } else {
+      out_dim[axis] = 1;
+    }
+    softmax_dim[axis] = input_dim[axis];
+  } else {
+    softmax_dim.insert(softmax_dim.begin() + axis, input_dim[axis]);
+    if (soft_label) {
+      out_dim.insert(out_dim.begin() + axis, 1);
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(softmax_dim));
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs(out_dim));
+
+  return true;
+}
+
+bool CrossEntropyWithSoftmax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CrossEntropyWithSoftmaxOpInferSymbolicShape(op, infer_context);
+}
+
 bool ConcatOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
@@ -221,7 +274,7 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
       SetShapeOrDataForAxis(axis);
     } else {
       pir::Value res = op->result(0);
-      infer_context->SetStaticShapeForValue(res);
+      infer_context->SetSymbolForValueByStaticShape(res);
       // update axis value
       auto res_shape = infer_context->GetShapeOrDataForValue(res);
       for (size_t i = 0; i < rank; ++i) {
@@ -572,9 +625,9 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs shape_data = [&] {
     std::vector<symbol::DimExpr> shape_dim_exprs;
     std::vector<symbol::DimExpr> data_dim_exprs;
-    for (size_t i = 0; i < shape_data_list.size(); ++i) {
-      if (shape_data_list[i].data().has_value() && axis == 0) {
-        data_dim_exprs.emplace_back(shape_data_list[i].data().value()[0]);
+    for (const auto &shape_data : shape_data_list) {
+      if (shape_data.data().has_value() && axis == 0) {
+        data_dim_exprs.emplace_back(shape_data.data().value()[0]);
       }
     }
 
@@ -589,7 +642,10 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
                              static_cast<std::int64_t>(shape_data_list.size()));
     }
-
+    if (data_dim_exprs.empty()) {
+      return symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(shape_dim_exprs));
+    }
     return symbol::ShapeOrDataDimExprs(
         symbol::TensorShapeOrDataDimExprs(shape_dim_exprs, data_dim_exprs));
   }();

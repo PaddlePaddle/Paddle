@@ -90,6 +90,10 @@ void tensor_check(const std::string& op_type,
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
+void InitWhiteListFormEnv();
+std::unordered_set<std::string>& op_type_nan_inf_white_list();
+std::unordered_map<std::string, std::vector<std::string>>&
+op_var_nan_inf_white_list();
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

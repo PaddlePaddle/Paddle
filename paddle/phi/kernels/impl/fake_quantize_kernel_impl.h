@@ -122,4 +122,111 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
+template <typename T, typename Context>
+void FakeChannelWiseQuantizeAbsMaxKernel(const Context &dev_ctx,
+                                         const DenseTensor &x,
+                                         int bit_length,
+                                         int round_type,
+                                         int quant_axis,
+                                         bool is_test,
+                                         DenseTensor *out,
+                                         DenseTensor *out_scale) {
+  dev_ctx.template Alloc<T>(out);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+
+  if (!is_test) {
+    T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
+    phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
+        dev_ctx, x, quant_axis, out_scale_data);
+  }
+  phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
+      dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
+}
+
+template <typename T, typename Context>
+void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
+                                                   const DenseTensor &x,
+                                                   int bit_length,
+                                                   int round_type,
+                                                   int quant_axis,
+                                                   DenseTensor *out,
+                                                   DenseTensor *out_scale) {
+  T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
+  dev_ctx.template Alloc<T>(out);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+
+  phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
+      dev_ctx, x, quant_axis, out_scale_data);
+
+  phi::funcs::ChannelClipFakeQuantDequantFunctor<Context, T>()(
+      dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
+}
+
+template <typename T, typename Context>
+void FakeQuantizeDequantizeMovingAverageAbsMaxKernel(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &in_scale,
+    const paddle::optional<DenseTensor> &in_accum,
+    const paddle::optional<DenseTensor> &in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    DenseTensor *out,
+    DenseTensor *out_scale,
+    DenseTensor *out_state,
+    DenseTensor *out_accum) {
+  dev_ctx.template Alloc<T>(out);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+
+  // testing
+  if (is_test) {
+    phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+        dev_ctx, x, in_scale, bin_cnt, round_type, out);
+    return;
+  }
+
+  // training
+
+  phi::DenseTensor tmp_scale;
+  tmp_scale.Resize(common::make_dim(1));
+  T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
+  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+      dev_ctx, x.data<T>(), x.numel(), cur_scale_data);
+
+  dev_ctx.template Alloc<T>(out_state);
+  dev_ctx.template Alloc<T>(out_accum);
+  dev_ctx.template Alloc<T>(out_scale);
+
+  phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                           in_accum.get(),
+                                                           in_state.get(),
+                                                           cur_scale_data,
+                                                           moving_rate,
+                                                           out_state,
+                                                           out_accum,
+                                                           out_scale);
+
+  phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+      dev_ctx, x, *out_scale, bin_cnt, round_type, out);
+}
+
+template <typename T, typename Context>
+void FakeQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
+                                        const DenseTensor &x,
+                                        int bit_length,
+                                        int round_type,
+                                        DenseTensor *out,
+                                        DenseTensor *out_scale) {
+  T *out_s = dev_ctx.template Alloc<T>(out_scale);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+  const T *in_data = x.data<T>();
+  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+      dev_ctx, in_data, x.numel(), out_s);
+
+  phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+      dev_ctx, x, *out_scale, bin_cnt, round_type, out);
+}
+
 }  // namespace phi

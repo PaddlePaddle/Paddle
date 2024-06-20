@@ -1,86 +1,70 @@
-set(PD_DIALECT_SOURCE_DIR
-    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir")
+set(PIR_DIALECT_BINARY_DIR
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir)
 
 # Generate pd_op_dialect files defining op using op_gen_file
-set(op_gen_parsed_yaml_file
+set(op_parse_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parse_op.py)
-
 set(op_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_gen.py)
 
-set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
+set(ops_yaml_dir ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml)
+set(parsed_op_dir ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml)
+
+set(op_compat_yaml_file ${ops_yaml_dir}/op_compat.yaml)
 
 # YAML files for defining operators
-set(op_fwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
-)
-set(op_bwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
-)
-set(fused_op_fwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
-)
-set(fused_op_bwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
-)
-set(pir_op_fwd_src_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
-set(pir_op_bwd_src_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
-set(pir_update_op_fwd_src_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
+set(op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
+set(op_bwd_yaml ${parsed_op_dir}/backward.parsed.yaml)
+set(fused_op_fwd_yaml ${parsed_op_dir}/fused_ops.parsed.yaml)
+set(fused_op_bwd_yaml ${parsed_op_dir}/fused_backward.parsed.yaml)
+set(pir_op_fwd_src_yaml ${ops_yaml_dir}/inconsistent/static_ops.yaml)
+set(pir_op_bwd_src_yaml ${ops_yaml_dir}/inconsistent/static_backward.yaml)
+set(pir_update_op_fwd_src_yaml ${ops_yaml_dir}/inconsistent/update_ops.yaml)
 
-set(parsed_op_dir
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
-set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
-set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
-set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
+set(pir_op_fwd_yaml ${parsed_op_dir}/inconsistent/static_ops.parsed.yaml)
+set(pir_op_bwd_yaml ${parsed_op_dir}/inconsistent/static_backward.parsed.yaml)
+set(pir_update_op_fwd_yaml ${parsed_op_dir}/inconsistent/update_ops.parsed.yaml)
 
 # SRC files for defining operators
 set(op_namespace paddle,dialect)
 set(dialect_name pd_op)
-set(op_header_file ${PD_DIALECT_SOURCE_DIR}/pd_op.h)
+set(op_header_file ${PIR_DIALECT_BINARY_DIR}/pd_op.h)
 set(op_header_file_tmp ${op_header_file}.tmp)
 
-set(op_info_file ${PD_DIALECT_SOURCE_DIR}/pd_op_info.cc)
+set(op_info_file ${PIR_DIALECT_BINARY_DIR}/pd_op_info.cc)
 set(op_info_file_tmp ${op_info_file}.tmp)
 
-set(op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_vjp.cc)
+set(op_vjp_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
-set(op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op.cc)
+set(op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op.cc)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
-set(bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_bwd.cc)
+set(bwd_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_bwd.cc)
 set(bwd_op_source_file_tmp ${bwd_op_source_file}.tmp)
 
-set(fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_fused.cc)
+set(fused_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_fused.cc)
 set(fused_op_source_file_tmp ${fused_op_source_file}.tmp)
 
-set(bwd_fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_fused_bwd.cc)
+set(bwd_fused_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_fused_bwd.cc)
 set(bwd_fused_op_source_file_tmp ${bwd_fused_op_source_file}.tmp)
 
-set(pir_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op.cc)
+set(pir_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_pir_op.cc)
 set(pir_op_source_file_tmp ${pir_op_source_file}.tmp)
 
-set(pir_bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op_bwd.cc)
+set(pir_bwd_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_pir_op_bwd.cc)
 set(pir_bwd_op_source_file_tmp ${pir_bwd_op_source_file}.tmp)
 
-set(pir_update_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op_update.cc)
+set(pir_update_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_pir_op_update.cc)
 set(pir_update_op_source_file_tmp ${pir_update_op_source_file}.tmp)
 
 # YAML files for defining sparse operators
-set(pir_op_fwd_sparse_src_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
-set(pir_op_bwd_sparse_src_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
-
 set(pir_op_fwd_sparse_yaml ${parsed_op_dir}/sparse_ops.parsed.yaml)
 set(pir_op_bfd_sparse_yaml ${parsed_op_dir}/sparse_backward.parsed.yaml)
 
 # SRC files for defining sparse operators
-set(sparse_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_sparse.cc)
-set(bwd_sparse_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_sparse_bwd.cc)
+set(sparse_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_sparse.cc)
+set(bwd_sparse_op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_sparse_bwd.cc)
 
 set(sparse_op_source_file_tmp ${sparse_op_source_file}.tmp)
 set(bwd_sparse_op_source_file_tmp ${bwd_sparse_op_source_file}.tmp)
@@ -95,37 +79,41 @@ set(op_src_files_tmp
 
 set(op_vjp_src_file_tmp ${op_vjp_source_file_tmp})
 
+set(op_cc_split_num 4)
+set(bwd_op_cc_split_num 2)
+
 # Auto code gen
 execute_process(
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
-  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+  COMMAND ${PYTHON_EXECUTABLE} ${op_parse_file} --op_yaml_path
           ${pir_op_fwd_src_yaml} --output_path ${pir_op_fwd_yaml}
-  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+  COMMAND ${PYTHON_EXECUTABLE} ${op_parse_file} --op_yaml_path
           ${pir_update_op_fwd_src_yaml} --output_path ${pir_update_op_fwd_yaml}
-  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pir_op_bwd_src_yaml} --output_path ${pir_op_bwd_yaml} --backward
-  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pir_op_fwd_sparse_src_yaml} --output_path ${pir_op_fwd_sparse_yaml}
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-    ${pir_op_bwd_sparse_src_yaml} --output_path ${pir_op_bfd_sparse_yaml}
-    --backward)
+  COMMAND ${PYTHON_EXECUTABLE} ${op_parse_file} --op_yaml_path
+          ${pir_op_bwd_src_yaml} --output_path ${pir_op_bwd_yaml} --backward)
 
 execute_process(
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${PIR_DIALECT_BINARY_DIR}
   COMMAND
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
     --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
-    --op_vjp_cc_file ${op_vjp_src_file_tmp} --with_distributed
-    ${WITH_DISTRIBUTE})
+    --op_vjp_cc_file ${op_vjp_src_file_tmp} --op_cc_split_num
+    ${op_cc_split_num} --bwd_op_cc_split_num ${bwd_op_cc_split_num}
+    --with_distributed ${WITH_DISTRIBUTE})
+
+set(split_op_source_files
+    ${PIR_DIALECT_BINARY_DIR}/pd_op1.cc ${PIR_DIALECT_BINARY_DIR}/pd_op2.cc
+    ${PIR_DIALECT_BINARY_DIR}/pd_op3.cc ${PIR_DIALECT_BINARY_DIR}/pd_op4.cc)
+set(split_bwd_op_source_files ${PIR_DIALECT_BINARY_DIR}/pd_op_bwd1.cc
+                              ${PIR_DIALECT_BINARY_DIR}/pd_op_bwd2.cc)
 
 set(generated_files_pd_op
     "${op_header_file}"
     "${op_info_file}"
-    "${op_source_file}"
+    "${split_op_source_files}"
+    "${split_bwd_op_source_files}"
     "${op_vjp_source_file}"
-    "${bwd_op_source_file}"
     "${fused_op_source_file}"
     "${bwd_fused_op_source_file}"
     "${pir_op_source_file}"
@@ -135,27 +123,26 @@ set(generated_files_pd_op
     "${bwd_sparse_op_source_file}")
 
 if(WITH_ONEDNN)
-  set(pir_op_onednn_yaml ${parsed_op_dir}/onednn.parsed.yaml)
+  set(pir_op_onednn_yaml
+      ${parsed_op_dir}/inconsistent/onednn_static.parsed.yaml)
 
-  set(pd_onednn_op_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/onednn.yaml)
+  set(pd_onednn_op_yaml_file ${ops_yaml_dir}/inconsistent/onednn_static.yaml)
 
   set(pd_ops_onednn_extra_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
-  )
+      ${ops_yaml_dir}/inconsistent/onednn_ops_extra.yaml)
 
-  set(op_onednn_info_file ${PD_DIALECT_SOURCE_DIR}/onednn_op_info.cc)
+  set(op_onednn_info_file ${PIR_DIALECT_BINARY_DIR}/onednn_op_info.cc)
   set(op_onednn_info_file_tmp ${op_onednn_info_file}.tmp)
 
   set(onednn_op_namespace paddle,onednn,dialect)
   set(onednn_dialect_name onednn_op)
-  set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.h)
-  set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.cc)
+  set(onednn_op_header_file ${PIR_DIALECT_BINARY_DIR}/onednn_op.h)
+  set(onednn_op_source_file ${PIR_DIALECT_BINARY_DIR}/onednn_op.cc)
   set(onednn_op_header_file_tmp ${onednn_op_header_file}.tmp)
   set(onednn_op_source_file_tmp ${onednn_op_source_file}.tmp)
 
   execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+    COMMAND ${PYTHON_EXECUTABLE} ${op_parse_file} --op_yaml_path
             ${pd_onednn_op_yaml_file} --output_path ${pir_op_onednn_yaml})
 
   execute_process(
@@ -176,8 +163,8 @@ set(api_gen_yaml_files
 )
 set(api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/api_gen.py)
-set(api_header_file ${PD_DIALECT_SOURCE_DIR}/pd_api.h)
-set(api_source_file ${PD_DIALECT_SOURCE_DIR}/pd_api.cc)
+set(api_header_file ${PIR_DIALECT_BINARY_DIR}/pd_api.h)
+set(api_source_file ${PIR_DIALECT_BINARY_DIR}/pd_api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
 
@@ -200,7 +187,7 @@ set(python_c_header_file_tmp ${python_c_header_file}.tmp)
 set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 
 set(trimmed_op_yaml_files
-    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
+    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml},${pir_op_fwd_sparse_yaml},${pir_op_bfd_sparse_yaml}
 )
 
 execute_process(
@@ -260,6 +247,7 @@ set(op_dialect_srcs
     ${op_dialect_srcs}
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/api_builder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/control_flow_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_pylayer_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_meta_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_selected_rows.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_sparse_tensor.cc
@@ -269,8 +257,8 @@ set(op_dialect_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_attribute.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_type.cc
     ${op_info_file}
-    ${op_source_file}
-    ${bwd_op_source_file}
+    ${split_op_source_files}
+    ${split_bwd_op_source_files}
     ${fused_op_source_file}
     ${bwd_fused_op_source_file}
     ${pir_op_source_file}
@@ -312,12 +300,16 @@ cc_library(
   DEPS ${op_dialect_deps})
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
-set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
+set(op_decomp_source_file ${PIR_DIALECT_BINARY_DIR}/op_decomp.cc)
+set(op_decomp_vjp_source_file ${PIR_DIALECT_BINARY_DIR}/op_decomp_vjp.cc)
+
 set(op_dialect_vjp_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp_vjp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
     ${op_decomp_source_file}
+    ${op_decomp_vjp_source_file}
     ${op_vjp_source_file}
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
 

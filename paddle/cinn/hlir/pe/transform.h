@@ -185,9 +185,9 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const std::string& output_name);
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
-                         const std::vector<int>& starts,
+                         const std::vector<Expr>& starts,
                          const std::vector<int>& axes,
-                         const std::vector<int>& strides,
+                         const std::vector<Expr>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
                          const std::string& output_name);

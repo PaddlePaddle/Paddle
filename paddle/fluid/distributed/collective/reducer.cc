@@ -492,6 +492,12 @@ EagerReducer::EagerReducer(
       is_sparse_gradient_(is_sparse_gradient),
       process_group_(process_group),
       group_size_limits_(group_size_limits),
+      groups_(),
+      variable_locators_(),
+      vars_marked_ready_(),
+      local_used_vars_(),
+      unused_vars_(),
+      gradnode_index_map_(),
       find_unused_vars_each_step_(find_unused_parameters) {
   VLOG(3) << "Start construct the Reducer ...";
 

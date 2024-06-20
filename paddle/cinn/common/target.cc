@@ -249,6 +249,12 @@ const Target &DefaultNVGPUTarget() {
   return target;
 }
 
+const Target &DefaultDeviceTarget() {
+#ifdef CINN_WITH_CUDA
+  return DefaultNVGPUTarget();
+#endif
+}
+
 int GetMaxThreads() {
   // cudaDeviceGetAttribute ( int* value, cudaDeviceAttr attr, int  device )
   int max_threads = 1;

@@ -96,9 +96,16 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                    : std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 2,
                                                   in_s_or_d.shape().end());
 
-  const std::vector<symbol::DimExpr> filter_data_dims =
-      std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
-                                   filter_s_or_d.shape().end());
+  const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
+    if (filter_s_or_d.shape().size() == 4 &&
+        filter_s_or_d.shape().at(1) == filter_s_or_d.shape().at(2)) {  // NHWC
+      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
+                                          filter_s_or_d.shape().end() - 1);
+    } else {
+      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                          filter_s_or_d.shape().end());
+    }
+  }();
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
@@ -339,6 +346,14 @@ bool GatherNdOpInferSymbolicShape(
   return true;
 }
 
+bool IndexSampleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool KronOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -389,11 +404,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> dims;
     const auto &x_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
+    dims = x_shape_or_data.shape();
     return dims;
   }();
 
@@ -402,11 +413,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> dims;
     const auto y_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    if (y_shape_or_data.data().has_value()) {
-      dims = y_shape_or_data.data().value();
-    } else {
-      dims = y_shape_or_data.shape();
-    }
+    dims = y_shape_or_data.shape();
     return dims;
   }();
 
@@ -492,6 +499,15 @@ bool SearchsortedOpInferSymbolicShape(
 }
 
 bool IscloseOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
+bool AccuracyCheckOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =

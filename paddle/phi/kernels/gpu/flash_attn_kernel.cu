@@ -56,7 +56,7 @@ void FlashAttnUnpaddedBaseKernel(
     DenseTensor* seed_offset,
     bool varlen_padded) {
 #ifdef PADDLE_WITH_FLASHATTN
-  ctx.template Alloc<T>(out);
+  if (!out->IsInitialized()) ctx.template Alloc<T>(out);
   if (varlen_padded) {
     std::vector<const DenseTensor*> inputs{};
     std::vector<DenseTensor*> outputs{out};
@@ -69,6 +69,21 @@ void FlashAttnUnpaddedBaseKernel(
   auto dims = q.dims();
   PADDLE_ENFORCE_EQ(
       dims.size(),
+      3,
+      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                   "[total_seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      k.dims().size(),
+      3,
+      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                   "[total_seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      v.dims().size(),
+      3,
+      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                   "[total_seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      out->dims().size(),
       3,
       phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
                                    "[total_seq_len, num_heads, head_dim]"));
@@ -314,7 +329,21 @@ void FlashAttnBaseKernel(
                     phi::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
-
+  PADDLE_ENFORCE_EQ(k.dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(v.dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(out->dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
@@ -360,8 +389,7 @@ void FlashAttnBaseKernel(
     VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
-
-  ctx.template Alloc<T>(out);
+  if (!out->IsInitialized()) ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
 

@@ -15,9 +15,9 @@
 # repo: PaddleDetection
 # model: configs^mask_rcnn^mask_rcnn_r101_vd_fpn_1x_coco_single_dy2st_train
 # api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.concat
-import unittest
+from base import *  # noqa: F403
 
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -40,8 +40,31 @@ class LayerCase(paddle.nn.Layer):
         return var_6, var_7, var_8, var_5, var_9
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.int64,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1,), dtype=paddle.int32, name=None, stop_gradient=True
+            ),
+            InputSpec(
+                shape=(-1,), dtype=paddle.int32, name=None, stop_gradient=True
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.int32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1,), dtype=paddle.float32, name=None, stop_gradient=True
+            ),
+        ]
         self.inputs = (
             paddle.randint(low=0, high=10, shape=[2, 1], dtype=paddle.int64),
             paddle.randint(low=0, high=10, shape=[1], dtype=paddle.int32),
@@ -51,33 +74,9 @@ class TestLayer(unittest.TestCase):
             ),
             paddle.rand(shape=[2], dtype=paddle.float32),
         )
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        # FIXME(Aurelius84): result is wrong
-        # for st, cinn in zip(
-        #     paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        # ):
-        #     np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        self.net = LayerCase
+        self.with_train = False
+        self.with_precision_compare = False
 
 
 if __name__ == '__main__':

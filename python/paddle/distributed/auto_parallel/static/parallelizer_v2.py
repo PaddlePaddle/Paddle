@@ -35,6 +35,7 @@ from .utils import (
 PIR_PASS = [
     'fused_gemm_epilogue_pass',
     'fused_linear_param_grad_add_pass',
+    'fuse_allreduce_split_to_reducescatter_pass',
     'fused_dropout_add_pass',
 ]
 
@@ -477,9 +478,12 @@ class Parallelizer:
             self._strategy.gradient_merge.avg = True
 
         # gradient_merge is then train-only optimization
+        grad_to_global_grad = {}
         if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
+            config["grad_to_global_grad"] = grad_to_global_grad
+            config["pipeline_mode"] = self._strategy.pipeline.schedule_mode
             if gradient_sync_after_accumulate:
                 config["params_grads"] = global_params_grads
                 config[
@@ -555,4 +559,6 @@ class Parallelizer:
                 "pp_stage": get_pp_stage(self._dist_context, rank),
                 "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
+                "split_backward": self._strategy.pipeline.split_backward,
+                "grad_to_global_grad": grad_to_global_grad,
             }

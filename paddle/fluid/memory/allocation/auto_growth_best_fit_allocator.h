@@ -29,12 +29,11 @@ namespace allocation {
 
 class AutoGrowthBestFitAllocator : public Allocator {
  public:
-  AutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator,
-      size_t alignment,
-      size_t chunk_size = 0,
-      bool allow_free_idle_chunk = true,
-      int extra_padding_size = 0);
+  AutoGrowthBestFitAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                             size_t alignment,
+                             size_t chunk_size = 0,
+                             bool allow_free_idle_chunk = true,
+                             int extra_padding_size = 0);
 
   bool IsAllocThreadSafe() const override { return true; }
 
