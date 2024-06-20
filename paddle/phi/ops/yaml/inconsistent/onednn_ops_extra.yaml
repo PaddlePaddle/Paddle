@@ -136,6 +136,7 @@
   extra_args : str mkldnn_data_type="float32"
 
 - op : gaussian
+  forward_only : True
 
 - op : gelu
   extra_args : str mkldnn_data_type="float32"
@@ -228,6 +229,7 @@
 
 - op : prior_box
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
+  forward_only : True
 
 - op : relu
 
@@ -253,6 +255,7 @@
 
 - op : shape
   extra_args : str mkldnn_data_type="float32"
+  forward_only : True
 
 - op : shuffle_channel
 

@@ -19,7 +19,6 @@ import warnings
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
-    ALLOW_NO_GRAD_OPS,
     State,
     ValueDict,
     ValueSet,
@@ -871,10 +870,9 @@ def append_backward_ops(
                         else:
                             state.op_to_opgrad[op] = []
                 else:
-                    if (
-                        not is_builtin_op(op)
-                        and op.name() not in ALLOW_NO_GRAD_OPS
-                    ):
+                    if not is_builtin_op(
+                        op
+                    ) and not paddle.core.is_forward_only(op):
                         raise ValueError(
                             f"op '{op.name()}' has no grad op, consider enable prim to decompose it."
                         )

@@ -368,6 +368,7 @@ def check_op_config(op_entry, op_name):
         'support_tensor',
         'traits',
         'interfaces',
+        'forward_only',
     )
     infer_meta_key_set = (
         'func',
@@ -615,6 +616,14 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         else:
             forward = None
         op["forward"] = forward
+
+    # forward_only
+    if "forward_only" in op_entry:
+        forward_only = op_entry["forward_only"]
+    else:
+        forward_only = False
+    op["forward_only"] = forward_only
+
     return op
 
 
