@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+import paddle
 from paddle import _C_ops
 
 from ...base.data_feeder import check_variable_and_dtype
@@ -22,7 +24,11 @@ from ...framework import in_dynamic_or_pir_mode
 __all__ = []
 
 
-def one_hot(x, num_classes, name=None):
+def one_hot(
+    x: paddle.Tensor,
+    num_classes: int,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
 
     The operator converts each id in the input `x` to an one-hot vector with a
@@ -70,7 +76,7 @@ def one_hot(x, num_classes, name=None):
            None by default.
 
     Returns:
-        Tensor: The one-hot representations of `x`. A Tensor with type float32.
+        Tensor, The one-hot representations of `x`. A Tensor with type float32.
 
     Examples:
         .. code-block:: python
@@ -117,7 +123,13 @@ def one_hot(x, num_classes, name=None):
         return one_hot_out
 
 
-def embedding(x, weight, padding_idx=None, sparse=False, name=None):
+def embedding(
+    x: paddle.Tensor,
+    weight: paddle.Tensor,
+    padding_idx: int | None = None,
+    sparse: bool = False,
+    name: str | None = None,
+) -> paddle.Tensor:
     r"""
     Used to lookup embeddings vector of ids provided by :attr:`x` .
 
@@ -157,7 +169,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             True because sparse update is faster. But some optimizers does not support sparse update,
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these cases, sparse must be False. Default: False.
-        padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
+        padding_idx(int|None, optional): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`weight.shape[0] + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
@@ -167,7 +179,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
            None by default.
 
     Returns:
-        Tensor: Embedding Tensor  mapped by x. The data type is the same as :attr:`weight`.
+        Tensor, Embedding Tensor  mapped by x. The data type is the same as :attr:`weight`.
 
     Examples:
 
