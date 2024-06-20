@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import NotRequired, Unpack
 
 import paddle
 from paddle import nn
@@ -25,6 +32,13 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 __all__ = []
+
+
+class _MobileNetV1Options(TypedDict):
+    scale: NotRequired[float]
+    num_classes: NotRequired[int]
+    with_pool: NotRequired[bool]
+
 
 model_urls = {
     'mobilenetv1_1.0': (
@@ -255,7 +269,9 @@ class MobileNetV1(nn.Layer):
         return x
 
 
-def _mobilenet(arch: str, pretrained: bool = False, **kwargs) -> MobileNetV1:
+def _mobilenet(
+    arch: str, pretrained: bool = False, **kwargs: Unpack[_MobileNetV1Options]
+) -> MobileNetV1:
     model = MobileNetV1(**kwargs)
     if pretrained:
         assert (
@@ -272,7 +288,9 @@ def _mobilenet(arch: str, pretrained: bool = False, **kwargs) -> MobileNetV1:
 
 
 def mobilenet_v1(
-    pretrained: bool = False, scale: float = 1.0, **kwargs
+    pretrained: bool = False,
+    scale: float = 1.0,
+    **kwargs: Unpack[_MobileNetV1Options],
 ) -> MobileNetV1:
     """MobileNetV1 from
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
