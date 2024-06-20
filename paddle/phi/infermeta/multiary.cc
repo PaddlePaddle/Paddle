@@ -5870,10 +5870,12 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   ids->set_dtype(DataType::INT64);
   out->set_dims(phi::make_ddim({bsz, 1}));
   out->set_dtype(x.dtype());
-  topk_ids->set_dims(phi::make_ddim({bsz, k}));
-  topk_ids->set_dtype(DataType::INT64);
-  topk_scores->set_dims(phi::make_ddim({bsz, k}));
-  topk_scores->set_dtype(x.dtype());
+  if (k > 0) {
+    topk_ids->set_dims(phi::make_ddim({bsz, k}));
+    topk_ids->set_dtype(DataType::INT64);
+    topk_scores->set_dims(phi::make_ddim({bsz, k}));
+    topk_scores->set_dtype(x.dtype());
+  }
 }
 
 }  // namespace phi
