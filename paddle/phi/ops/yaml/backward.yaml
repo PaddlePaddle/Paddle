@@ -61,6 +61,17 @@
     func : acosh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : add_position_encoding_grad
+  forward: add_position_encoding (Tensor x, float alpha = 1.0f, float beta = 1.0f) -> Tensor (out)
+  args: (Tensor x, Tensor out_grad, float alpha = 1.0f, float beta = 1.0f)
+  output: Tensor (x_grad)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: add_position_encoding_grad
+    data_type: out_grad
+
 - backward_op : addmm_grad
   forward : addmm (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha, float beta)
