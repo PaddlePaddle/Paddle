@@ -129,6 +129,49 @@ class TestPTQ(unittest.TestCase):
         self.assertIsNotNone(results)
         paddle.disable_static()
 
+    def test_convert_2times(self):
+        quant_model, ptq = self._get_model_for_ptq()
+
+        image = paddle.rand([1, 1, 32, 32], dtype="float32")
+        out = quant_model(image)
+        converted_model = ptq.convert(quant_model)
+        converted_model = ptq.convert(converted_model)
+        out = converted_model(image)
+        self.assertIsNotNone(out)
+
+        observer_count = self._count_layers(
+            converted_model, AbsmaxObserverLayer
+        )
+        quanter_count = self._count_layers(converted_model, LinearQuanter)
+        dequanter_count = self._count_layers(converted_model, LinearDequanter)
+        self.assertEqual(observer_count, 0)
+        self.assertEqual(dequanter_count, 14)
+        self.assertEqual(quanter_count, 9)
+
+        save_path = os.path.join(self.temp_dir.name, 'int8_infer')
+        paddle.jit.save(converted_model, save_path, [image])
+
+        paddle.enable_static()
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.load_inference_model(save_path, exe)
+        tensor_img = np.array(
+            np.random.random((1, 1, 32, 32)), dtype=np.float32
+        )
+        results = exe.run(
+            inference_program,
+            feed={feed_target_names[0]: tensor_img},
+            fetch_list=fetch_targets,
+        )
+        self.assertIsNotNone(results)
+        paddle.disable_static()
+
 
 if __name__ == '__main__':
     unittest.main()
