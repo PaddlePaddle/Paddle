@@ -265,7 +265,6 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
-
       },
       [&](common::HygonDCUArchHIP) -> std::string {
         PADDLE_THROW(phi::errors::Unimplemented(
