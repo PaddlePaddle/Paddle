@@ -124,6 +124,16 @@
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
   traits : pir::SideEffectTrait
 
+- op : add_position_encoding
+  args: (Tensor x, float alpha = 1.0f, float beta = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: AddPositionEncodingInferMeta
+  kernel:
+    func: add_position_encoding
+    data_type: x
+  backward: add_position_encoding_grad
+
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
   output : Tensor(out)
