@@ -319,8 +319,7 @@ class TestGRUBackward(unittest.TestCase):
                             rnn_in_data_grad = g
                         elif p.is_same(pre_h_data):
                             pre_h_data_grad = g
-                    print(rnn_in_data_grad)
-                    print(pre_h_data_grad)
+
                     self.fetch_list = [
                         st_out,
                         st_last_h,
