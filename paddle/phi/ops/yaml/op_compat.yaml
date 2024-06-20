@@ -134,6 +134,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : affine_channel
+  backward: affine_channel_grad
+  inputs:
+    {x : X, scale : Scale, bias : Bias}
+  outputs:
+    out : Out
+
 - op : affine_grid
   backward : affine_grid_grad
   inputs :

@@ -145,6 +145,16 @@
   inplace: (input -> out)
   backward : addmm_grad
 
+- op : affine_channel
+  args: (Tensor x, Tensor scale, Tensor bias, str data_layout = "AnyLayout")
+  output: Tensor (out)
+  infer_meta:
+    func: AffineChannelInferMeta
+  kernel:
+    func: affine_channel
+  backward: affine_channel_grad
+  inplace : (x -> out)
+
 - op : affine_grid
   args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
   output : Tensor(output)

@@ -82,6 +82,18 @@
   kernel :
     func : addmm_grad
 
+- backward_op : affine_channel_grad
+  forward: affine_channel (Tensor x, Tensor scale, Tensor bias, str data_layout = "AnyLayout") -> Tensor (out)
+  args: (Tensor x, Tensor scale, Tensor bias, Tensor out_grad, str data_layout = "AnyLayout")
+  output: Tensor (x_grad), Tensor (scale_grad), Tensor (bias_grad)
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [x, scale, bias]
+  kernel:
+    func: affine_channel_grad
+    data_type: out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : affine_grid_grad
   forward : affine_grid (Tensor input, IntArray output_shape={}, bool align_corners=true) -> Tensor(output)
   args : (Tensor input, Tensor output_grad, IntArray output_shape, bool align_corners=true)
