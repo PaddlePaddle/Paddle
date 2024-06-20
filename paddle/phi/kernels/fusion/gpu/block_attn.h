@@ -1631,11 +1631,11 @@ inline cudaError_t GetNumBlocks(Func func,
 
 template <typename T, int VecSize = 1>
 __global__ void cache_int8_kernel(
-    const T *__restrict__ qkv,  // [num_tokens, num_heads + 2 * gqa_group_size,
+    const T *__restrict__ qkv,  // [num_tokens, num_heads + 2 * kv_num_heads,
                                 // head_size]
-    uint8_t *__restrict__ key_cache,          // [num_blocks, gqa_group_size,
+    uint8_t *__restrict__ key_cache,          // [num_blocks, kv_num_heads,
                                               // block_size, head_size]
-    uint8_t *__restrict__ value_cache,        // [num_blocks, gqa_group_size,
+    uint8_t *__restrict__ value_cache,        // [num_blocks, kv_num_heads,
                                               // block_size, head_size]
     const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
     const int *__restrict__ padding_offsets,  // [num_tokens]
@@ -1715,11 +1715,11 @@ __global__ void cache_int8_kernel(
 
 template <typename T, int VecSize = 1>
 __global__ void cache_kernel(
-    const T *__restrict__ qkv,  // [num_tokens, num_heads + 2 * gqa_group_size,
-                                // head_size]
-    T *__restrict__ key_cache,  // [num_blocks, gqa_group_size, block_size,
-                                // head_size]
-    T *__restrict__ value_cache,  // [num_blocks, gqa_group_size, block_size,
+    const T *__restrict__ qkv,    // [num_tokens, num_heads + 2 * kv_num_heads,
+                                  // head_size]
+    T *__restrict__ key_cache,    // [num_blocks, kv_num_heads, block_size,
+                                  // head_size]
+    T *__restrict__ value_cache,  // [num_blocks, kv_num_heads, block_size,
                                   // head_size]
     const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
     const int *__restrict__ padding_offsets,  // [num_tokens]

@@ -376,11 +376,13 @@ py::object ParsePyArray(
   py::object numpy_value = py::object();
 
   if (kw_order_map["value"] <= args_num) {
-    numpy_value = py::object(
-        py::handle(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1)), true);
+    numpy_value = py::reinterpret_borrow<py::object>(
+        py::handle(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1)));
   } else {
     if (flag_kwargs && kws_map["value"] != nullptr) {
-      numpy_value = py::object(py::handle(kws_map["value"]), true);
+      numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(kws_map["value"]));
+
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The first expected arguments is {value: PyArray}, "
