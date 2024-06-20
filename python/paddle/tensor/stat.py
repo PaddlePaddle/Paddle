@@ -13,8 +13,9 @@
 # limitations under the License.
 
 # TODO: define statistical functions of a tensor
+from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
@@ -297,7 +298,7 @@ def nanmedian(
     keepdim: bool = False,
     mode: str = 'avg',
     name: str | None = None,
-) -> Union[Tensor, tuple[Tensor, Tensor]]:
+) -> Tensor | tuple[Tensor, Tensor]:
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -420,7 +421,7 @@ def median(
     keepdim: bool = False,
     mode: str = 'avg',
     name: str | None = None,
-) -> Union[Tensor, tuple[Tensor, Tensor]]:
+) -> Tensor | tuple[Tensor, Tensor]:
     """
     Compute the median along the specified axis.
 
