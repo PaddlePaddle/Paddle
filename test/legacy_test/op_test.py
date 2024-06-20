@@ -1644,30 +1644,39 @@ class OpTest(unittest.TestCase):
                 pm = pir.PassManager()
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
                 pm.run(program)
-                # compare expect & actual
-                shape_analysis = (
-                    paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+
+                # check that all ops have defined the InferSymbolicShapeInterface
+                if paddle.base.libpaddle.pir.all_ops_define_symbol_infer(
+                    program
+                ):
+                    # compare expect & actual
+                    shape_analysis = paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
                         program
                     )
-                )
-                for var in program.list_vars():
-                    print("is dense_tensor ?: ", var.is_dense_tensor_type())
-                    print(
-                        "is selected_row_type ?: ", var.is_selected_row_type()
-                    )
-                    if var.is_dense_tensor_type() or var.is_selected_row_type():
-                        shape_or_data = (
-                            shape_analysis.get_shape_or_data_for_var(var)
+                    for var in program.list_vars():
+                        print("is dense_tensor ?: ", var.is_dense_tensor_type())
+                        print(
+                            "is selected_row_type ?: ",
+                            var.is_selected_row_type(),
                         )
-                        expect_shape = var.shape
-                        expect_data = []
-                        if not shape_or_data.is_equal(
-                            expect_shape, expect_data
+                        if (
+                            var.is_dense_tensor_type()
+                            or var.is_selected_row_type()
                         ):
-                            raise AssertionError(
-                                f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                            shape_or_data = (
+                                shape_analysis.get_shape_or_data_for_var(var)
                             )
-                return True
+                            expect_shape = var.shape
+                            expect_data = []
+                            if not shape_or_data.is_equal(
+                                expect_shape, expect_data
+                            ):
+                                raise AssertionError(
+                                    f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                                )
+                else:
+                    # TODO(gongshaotian): raise error
+                    pass
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None

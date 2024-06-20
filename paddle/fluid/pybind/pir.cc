@@ -2602,6 +2602,21 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
         return pir::ShapeAnalysisManager::Instance().Get(program);
       },
       return_value_policy::reference);
+  m->def("all_ops_define_symbol_infer",
+         [](const pir::Program *program) -> bool {
+           // check that all ops have defined the InferSymbolicShapeInterface
+           bool flag = true;
+           for (pir::Operation &op : *(program->block())) {
+             pir::InferSymbolicShapeInterface infer_interface =
+                 op.dyn_cast<pir::InferSymbolicShapeInterface>();
+             if (!infer_interface) {
+               LOG(ERROR) << "The op: " << op.name()
+                          << " does not implement InferSymbolicShapeInterface.";
+               flag = false;
+             }
+           }
+           return flag;
+         });
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>
