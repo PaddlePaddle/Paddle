@@ -173,7 +173,11 @@ target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
 add_dependencies(cinnapi python)
-target_link_libraries(cinnapi "-Wl,-undefined,dynamic_lookup")
+if(LINUX)
+  target_link_libraries(cinnapi "-Wl,--unresolved-symbols=ignore-all")
+elseif(APPLE)
+  target_link_libraries(cinnapi "-Wl,-undefined,dynamic_lookup")
+endif()
 
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
