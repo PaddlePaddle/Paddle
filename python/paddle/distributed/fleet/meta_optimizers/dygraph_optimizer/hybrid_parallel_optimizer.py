@@ -266,6 +266,9 @@ class HybridParallelOptimizer:
                 if split_param
                 else DygraphShardingOptimizer
             )
+            optimizer._parameter_list = list(
+                filter(lambda p: p.trainable, optimizer._parameter_list)
+            )
             optimizer = ShardingOptimizer(optimizer, hcg)
         self._inner_opt = optimizer
         self._strategy = strategy
