@@ -154,12 +154,12 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
                              common::ARMArch>) {},
             [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-              bindNvHygon();
+              setNvHygon();
 #endif
             },
             [&](common::HygonDCUArchHIP arch) {
 #ifdef CINN_WITH_HIP
-              bindNvHygon();
+              setNvHygon();
 #endif
             });
         bool keep_buffer = temp_buffer;
