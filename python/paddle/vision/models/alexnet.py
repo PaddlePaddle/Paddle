@@ -15,6 +15,12 @@
 from __future__ import annotations
 
 import math
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import NotRequired, Unpack
 
 import paddle
 import paddle.nn.functional as F
@@ -33,6 +39,13 @@ model_urls = {
 }
 
 __all__ = []
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+
+class _AlexNetOptions(TypedDict):
+    num_classes: NotRequired[int]
 
 
 class ConvPoolLayer(nn.Layer):
@@ -63,7 +76,7 @@ class ConvPoolLayer(nn.Layer):
         )
         self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
 
-    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, inputs: Tensor) -> Tensor:
         x = self._conv(inputs)
         if self.relu is not None:
             x = self.relu(x)
@@ -150,7 +163,7 @@ class AlexNet(nn.Layer):
                 bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
             )
 
-    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, inputs: Tensor) -> Tensor:
         x = self._conv1(inputs)
         x = self._conv2(x)
         x = self._conv3(x)
@@ -172,7 +185,9 @@ class AlexNet(nn.Layer):
         return x
 
 
-def _alexnet(arch: str, pretrained: bool, **kwargs) -> AlexNet:
+def _alexnet(
+    arch: str, pretrained: bool, **kwargs: Unpack[_AlexNetOptions]
+) -> AlexNet:
     model = AlexNet(**kwargs)
 
     if pretrained:
@@ -189,7 +204,9 @@ def _alexnet(arch: str, pretrained: bool, **kwargs) -> AlexNet:
     return model
 
 
-def alexnet(pretrained: bool = False, **kwargs) -> AlexNet:
+def alexnet(
+    pretrained: bool = False, **kwargs: Unpack[_AlexNetOptions]
+) -> AlexNet:
     """AlexNet model from
     `"ImageNet Classification with Deep Convolutional Neural Networks"
     <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
