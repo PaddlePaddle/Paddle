@@ -70,19 +70,27 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
   return attr_data;
 }
 
-enum class PdTransAttrType { kIntArray };
+enum class TransAttrType { IntArray, Int32, Int64, Float, Bool };
 using OpAttrTypeMap = const std::unordered_map<
     std::string,
-    const std::unordered_map<std::string, PdTransAttrType>>;
+    const std::unordered_map<std::string, TransAttrType>>;
 
 static OpAttrTypeMap OP_TRANS_ATTRTYPES_MAP = {
-    {"reduce_max", {{"axis", PdTransAttrType::kIntArray}}},
-    {"reduce_min", {{"axis", PdTransAttrType::kIntArray}}},
-    {"reduce_sum", {{"axis", PdTransAttrType::kIntArray}}},
-    {"reduce_prod", {{"axis", PdTransAttrType::kIntArray}}},
+    {"reduce_max", {{"axis", TransAttrType::IntArray}}},
+    {"reduce_min", {{"axis", TransAttrType::IntArray}}},
+    {"reduce_sum", {{"axis", TransAttrType::IntArray}}},
+    {"reduce_prod", {{"axis", TransAttrType::IntArray}}},
+    {"gather", {{"axis", TransAttrType::Int32}}},
+    {"isclose",
+     {{"atol", TransAttrType::Float},
+      {"rtol", TransAttrType::Float},
+      {"equal_nan", TransAttrType::Bool}}},
+    {"scale",
+     {{"scale", TransAttrType::Float},
+      {"bias", TransAttrType::Float},
+      {"bias_after_scale", TransAttrType::Bool}}},
     {"slice",
-     {{"starts", PdTransAttrType::kIntArray},
-      {"ends", PdTransAttrType::kIntArray}}},
+     {{"starts", TransAttrType::IntArray}, {"ends", TransAttrType::IntArray}}},
 };
 
 pir::AttributeMap TransformAttributes(::pir::Operation* op) {
@@ -91,19 +99,30 @@ pir::AttributeMap TransformAttributes(::pir::Operation* op) {
     return attrs;
   }
   const auto& trans_attrtypes = OP_TRANS_ATTRTYPES_MAP.at(op->name());
-  for (const auto& attrtype : trans_attrtypes) {
-    auto attr_name = attrtype.first;
-    auto attr_type = attrtype.second;
-    if (attr_type == PdTransAttrType::kIntArray) {
+  for (const auto& trans_attrtype : trans_attrtypes) {
+    auto attr_name = trans_attrtype.first;
+    auto attr_type = trans_attrtype.second;
+    if (attr_type == TransAttrType::IntArray) {
       auto attr = ArrayAttributeToIntArrayAttribute(
           attrs.at(attr_name).dyn_cast<::pir::ArrayAttribute>());
       attrs[attr_name] = attr;
+    } else if (attr_type == TransAttrType::Int32) {
+      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::Int32Attribute>();
+    } else if (attr_type == TransAttrType::Int64) {
+      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::Int64Attribute>();
+    } else if (attr_type == TransAttrType::Float) {
+      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::FloatAttribute>();
+    } else if (attr_type == TransAttrType::Bool) {
+      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::BoolAttribute>();
+    } else {
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Unsupported attribute type in TransformAttributes"));
     }
   }
   return attrs;
 }
 
-template <typename TARGET_OP, std::size_t INPUT_NUM = 1>
+template <typename TARGET_OP, std::size_t INPUT_NUM>
 ::pir::Operation* ConvertCinnOp(::pir::Operation* op,
                                 ::pir::IrMapping& ir_mapping,        // NOLINT
                                 ::pir::PatternRewriter& rewriter) {  // NOLINT
@@ -174,37 +193,6 @@ template <typename TARGET_OP, std::size_t INPUT_NUM = 1>
   return new_op;
 }
 
-::pir::Operation* ConvertScaleOp(::pir::Operation* op,
-                                 ::pir::IrMapping& ir_mapping,        // NOLINT
-                                 ::pir::PatternRewriter& rewriter) {  // NOLINT
-  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  const auto& attrs = op->attributes();
-
-  float scale = attrs.at("scale").dyn_cast<::pir::FloatAttribute>().data();
-  float bias = attrs.at("bias").dyn_cast<pir::FloatAttribute>().data();
-  bool bias_after_scale =
-      attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data();
-  auto pd_op = rewriter.Build<paddle::dialect::ScaleOp>(
-      ir_mapping.Lookup(op->operand_source(0)), scale, bias, bias_after_scale);
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    ir_mapping.Add(op->result(i), pd_op->result(i));
-  }
-  return pd_op;
-}
-
-::pir::Operation* ConvertFlipOp(::pir::Operation* op,
-                                ::pir::IrMapping& ir_mapping,        // NOLINT
-                                ::pir::PatternRewriter& rewriter) {  // NOLINT
-  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  const auto& attrs = op->attributes();
-  auto pd_op = rewriter.Build<paddle::dialect::FlipOp>(
-      ir_mapping.Lookup(op->operand_source(0)), attrs);
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    ir_mapping.Add(op->result(i), pd_op->result(i));
-  }
-  return pd_op;
-}
-
 ::pir::Operation* ConvertPool2dOp(::pir::Operation* op,
                                   ::pir::IrMapping& ir_mapping,        // NOLINT
                                   ::pir::PatternRewriter& rewriter) {  // NOLINT
@@ -219,27 +207,6 @@ template <typename TARGET_OP, std::size_t INPUT_NUM = 1>
   attrs.erase("padding_size");
   auto pd_op = rewriter.Build<paddle::dialect::Pool2dOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    ir_mapping.Add(op->result(i), pd_op->result(i));
-  }
-  return pd_op;
-}
-
-::pir::Operation* ConvertIscloseOp(
-    ::pir::Operation* op,
-    ::pir::IrMapping& ir_mapping,        // NOLINT
-    ::pir::PatternRewriter& rewriter) {  // NOLINT
-  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  const auto& attrs = op->attributes();
-  double rtol = attrs.at("atol").dyn_cast<pir::FloatAttribute>().data();
-  double atol = attrs.at("atol").dyn_cast<pir::FloatAttribute>().data();
-  bool equal_nan = attrs.at("equal_nan").dyn_cast<pir::BoolAttribute>().data();
-  auto pd_op = rewriter.Build<paddle::dialect::IscloseOp>(
-      ir_mapping.Lookup(op->operand_source(0)),
-      ir_mapping.Lookup(op->operand_source(1)),
-      rtol,
-      atol,
-      equal_nan);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -306,22 +273,6 @@ template <typename TARGET_OP, std::size_t INPUT_NUM = 1>
 
   auto pd_op = rewriter.Build<paddle::dialect::UniformOp>(
       shape, dtype, min, max, seed, place);
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    ir_mapping.Add(op->result(i), pd_op->result(i));
-  }
-  return pd_op;
-}
-
-::pir::Operation* ConvertGatherOp(::pir::Operation* op,
-                                  ::pir::IrMapping& ir_mapping,        // NOLINT
-                                  ::pir::PatternRewriter& rewriter) {  // NOLINT
-  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  const auto& attrs = op->attributes();
-  int axis = attrs.at("axis").dyn_cast<pir::Int32Attribute>().data();
-  auto pd_op = rewriter.Build<paddle::dialect::GatherOp>(
-      ir_mapping.Lookup(op->operand_source(0)),
-      ir_mapping.Lookup(op->operand_source(1)),
-      axis);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -395,6 +346,26 @@ REGISTER_TRANSFORM_RULES(
     (cinn::dialect::details::ConvertCinnOp<paddle::dialect::ProdOp, 1>));
 
 REGISTER_TRANSFORM_RULES(
+    flip_op,
+    cinn::dialect::ReverseOp::name(),
+    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::FlipOp, 1>));
+
+REGISTER_TRANSFORM_RULES(
+    gather_op,
+    cinn::dialect::GatherOp::name(),
+    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::GatherOp, 2>));
+
+REGISTER_TRANSFORM_RULES(
+    isclose_op,
+    cinn::dialect::IscloseOp::name(),
+    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::IscloseOp, 2>));
+
+REGISTER_TRANSFORM_RULES(
+    scale_op,
+    cinn::dialect::ScaleOp::name(),
+    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::ScaleOp, 1>));
+
+REGISTER_TRANSFORM_RULES(
     slice_op,
     cinn::dialect::SliceOp::name(),
     (cinn::dialect::details::ConvertCinnOp<paddle::dialect::SliceOp, 1>));
@@ -410,23 +381,10 @@ REGISTER_TRANSFORM_RULES(concat_op,
 REGISTER_TRANSFORM_RULES(generate_shape_op,
                          cinn::dialect::GenerateShapeOp::name(),
                          cinn::dialect::details::ConvertGenerateShapeOp);
-REGISTER_TRANSFORM_RULES(scale_op,
-                         cinn::dialect::ScaleOp::name(),
-                         cinn::dialect::details::ConvertScaleOp);
-
-REGISTER_TRANSFORM_RULES(
-    flip_op,
-    cinn::dialect::ReverseOp::name(),  // cinn::dialect::ReverseOp <->
-                                       // paddle::dialect::FlipOp
-    cinn::dialect::details::ConvertFlipOp);
 
 REGISTER_TRANSFORM_RULES(pool2d_op,
                          cinn::dialect::Pool2dOp::name(),
                          cinn::dialect::details::ConvertPool2dOp);
-
-REGISTER_TRANSFORM_RULES(isclose_op,
-                         cinn::dialect::IscloseOp::name(),
-                         cinn::dialect::details::ConvertIscloseOp);
 
 REGISTER_TRANSFORM_RULES(yield_store,
                          cinn::dialect::YieldStoreOp::name(),
@@ -441,7 +399,3 @@ REGISTER_TRANSFORM_RULES(
 REGISTER_TRANSFORM_RULES(uniform_op,
                          cinn::dialect::UniformRandomOp::name(),
                          cinn::dialect::details::ConvertUniformOp);
-
-REGISTER_TRANSFORM_RULES(gather_op,
-                         cinn::dialect::GatherOp::name(),
-                         cinn::dialect::details::ConvertGatherOp);
