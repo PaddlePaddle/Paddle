@@ -12,13 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections import defaultdict
 from functools import reduce
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 
 from ..base import framework
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .optimizer import _ParameterConfig
 
 __all__ = []
 
@@ -333,28 +343,28 @@ class LBFGS(Optimizer):
         learning_rate (float, optional): learning rate .The default value is 1.
         max_iter (int, optional): maximal number of iterations per optimization step.
             The default value is 20.
-        max_eval (int, optional): maximal number of function evaluations per optimization
+        max_eval (int|None, optional): maximal number of function evaluations per optimization
             step. The default value is max_iter * 1.25.
         tolerance_grad (float, optional): termination tolerance on first order optimality
             The default value is 1e-5.
         tolerance_change (float, optional): termination tolerance on function
             value/parameter changes. The default value is 1e-9.
         history_size (int, optional): update history size. The default value is 100.
-        line_search_fn (string, optional): either 'strong_wolfe' or None. The default value is strong_wolfe.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
+        line_search_fn (string|None, optional): either 'strong_wolfe' or None. The default value is strong_wolfe.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. The default value is None.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of \
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of \
             some derived class of ``GradientClipBase`` . There are three clipping strategies \
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , \
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
@@ -405,18 +415,18 @@ class LBFGS(Optimizer):
 
     def __init__(
         self,
-        learning_rate=1.0,
-        max_iter=20,
-        max_eval=None,
-        tolerance_grad=1e-7,
-        tolerance_change=1e-9,
-        history_size=100,
-        line_search_fn=None,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-    ):
+        learning_rate: float = 1.0,
+        max_iter: int = 20,
+        max_eval: int | None = None,
+        tolerance_grad: float = 1e-7,
+        tolerance_change: float = 1e-9,
+        history_size: int = 100,
+        line_search_fn: str | None = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+    ) -> None:
         if max_eval is None:
             max_eval = max_iter * 5 // 4
 
@@ -505,7 +515,7 @@ class LBFGS(Optimizer):
 
         return {'state': packed_state}
 
-    def _numel(self):
+    def _numel(self) -> int:
         # compute the number of all parameters
         if self._numel_cache is None:
             self._numel_cache = reduce(
