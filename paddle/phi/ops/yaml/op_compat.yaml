@@ -777,6 +777,13 @@
       data_type : int
       support_tensor : true
 
+- op : cvm
+  backward: cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Y
+
 - op : data_norm
   backward : data_norm_grad
   extra :
