@@ -210,7 +210,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
            })
-      .def("_slice", &phi::DenseTensor::Slice)
+      .def("_slice",
+           [](phi::DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
+             if (!self.meta().is_contiguous()) {
+               PADDLE_THROW(platform::errors::InvalidArgument(
+                   "Tensor is not contiguous, cannot call "
+                   "_slice on it."));
+             }
+             return self.Slice(start, end);
+           })
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
            [](const phi::DenseTensor &self) { return self.IsInitialized(); })
