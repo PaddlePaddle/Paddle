@@ -518,8 +518,7 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
       if (combined_shape[j] == -1) {
         shapes.push_back(get_slice<T>(temp_shape, j));
       } else {
-        int64_t value = combined_shape[j];
-        shapes.push_back(full<T>({value}, 1, temp_shape.type()));
+        shapes.push_back(full<T>({1}, combined_shape[j], temp_shape.type()));
       }
     }
 

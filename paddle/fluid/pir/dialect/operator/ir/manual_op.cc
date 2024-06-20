@@ -3366,14 +3366,15 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       vec_shape = std::vector<int64_t>(shape_size, -2);
       *is_from_tensor = true;
     } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
+      common::DDim shape_dim =
+          shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+
       if (shape.isa<pir::OpResult>() &&
           shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
         std::vector<pir::Value> inputs = shape.defining_op()
                                              ->operand_source(0)
                                              .defining_op()
                                              ->operands_source();
-        auto shape_dim =
-            shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 
         if (shape_dim.size() == 1 &&
             shape_dim[0] == static_cast<int64_t>(inputs.size())) {
@@ -3399,8 +3400,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
         }
       }
 
-      common::DDim shape_dim =
-          shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       size_t shape_size = common::product(shape_dim);
       if (common::contain_unknown_dim(shape_dim)) {
         shape_size = 1;
