@@ -2984,15 +2984,6 @@ def qr(
     ...
 
 
-@overload
-def qr(
-    x: Tensor,
-    mode: Literal['reduced', 'complete', 'r'] = ...,
-    name: str | None = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
-
-
 def qr(
     x,
     mode="reduced",
