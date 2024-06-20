@@ -65,7 +65,6 @@ class TestSplitWithNum(unittest.TestCase):
     def test_eval(self):
         cinn_outs = self.eval(use_cinn=True)
         dygraph_outs = self.eval(use_cinn=False)
-        print(f"dygraph_outs: {dygraph_outs} /n cinn_outs:{cinn_outs}")
         assert len(cinn_outs) == len(dygraph_outs)
         for i in range(len(cinn_outs)):
             np.testing.assert_allclose(
