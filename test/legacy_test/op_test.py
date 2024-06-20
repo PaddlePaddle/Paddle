@@ -1611,8 +1611,9 @@ class OpTest(unittest.TestCase):
         else:
             return outs, fetch_list
 
-    def _infer_and_compare_symbol(self):
+    def _infer_and_compare_symbol(self, place):
         """Don't caculate the program, only infer the shape of var"""
+        kernel_sig = self.get_kernel_signature(place)
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
             with scope_guard(Scope()):
@@ -1623,12 +1624,26 @@ class OpTest(unittest.TestCase):
                     input_dict,
                     feed,
                 ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
-
+                # prepare args
+                args = OpTestUtils.prepare_python_api_arguments(
+                    self.python_api,
+                    static_inputs,
+                    attrs,
+                    kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
+                )
+                inputs_sig, attrs_sig, outputs_sig = kernel_sig
+                if hasattr(self, "python_out_sig"):
+                    outputs_sig = self.python_out_sig
+                args = OpTestUtils.assumption_assert_and_transform(
+                    args, len(inputs_sig)
+                )
+                # add op to program
+                ret_tuple = self.python_api(*args)
                 # run the program with pass
                 pm = pir.PassManager()
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
                 pm.run(program)
-
                 # compare expect & actual
                 shape_analysis = (
                     paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
@@ -2578,7 +2593,7 @@ class OpTest(unittest.TestCase):
             def infer_and_compare_symbol(self):
                 """infer symbol and compare it with actualy shape and data"""
                 self.is_python_api_test = True
-                self.op_test._infer_and_compare_symbol()
+                self.op_test._infer_and_compare_symbol(place)
 
         # set some flags by the combination of arguments.
         if self.is_float16_op():

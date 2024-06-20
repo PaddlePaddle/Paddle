@@ -2575,6 +2575,8 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                        "is int64_t."));
                    return false;
                  }
+                 VLOG(3) << "expect[" << i << "]: " << expect.at(i)
+                         << " actual[" << i << "]: " << actual.at(i) << " .";
                  if (actual.at(i) != expect.at(i)) {
                    LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
                               << " is not equal to actual[" << i

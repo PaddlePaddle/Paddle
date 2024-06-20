@@ -245,7 +245,10 @@ class ShapeOptimizationPass : public pir::Pass {
 
 void InferSymExprForBlock(const Block& block,
                           InferSymbolicShapeContext* infer_context) {
+  VLOG(3)
+      << "===================== InferSymExprForBlock start... ==============";
   for (auto& op : block) {
+    VLOG(3) << "op name: " << op.name();
     auto infer_symbolic_shape_interface =
         op.dyn_cast<pir::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
@@ -267,6 +270,8 @@ void InferSymExprForBlock(const Block& block,
         bool all_static_dims = true;
         for (uint32_t i = 0; i < op.num_results(); ++i) {
           if (IsStaticShape(op.result(i))) {
+            VLOG(3) << "result[" << i << "] of " << op.name()
+                    << " is static shape";
             continue;
           } else {
             all_static_dims = false;
@@ -290,6 +295,8 @@ void InferSymExprForBlock(const Block& block,
 }
 
 void InferSymExprForAllValues(ModuleOp module_op) {
+  VLOG(vlog_level)
+      << "===================== InferSymExprForAllValues start... ";
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
   auto* infer_context = shape_analysis.MutInferSymbolicShapeContext();
@@ -326,6 +333,9 @@ std::unique_ptr<Pass> CreateShapeOptimizationPass() {
 namespace pir::shape {
 
 bool HasDynamicShape(const pir::Program& program) {
+  // (gongshaotian) : for test
+  return true;
+
   for (const auto& op : *program.block()) {
     if (op.isa<pir::CombineOp>()) {
       continue;
@@ -351,6 +361,7 @@ void AddShapeOptimizationPass(
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   if (FLAGS_pir_apply_shape_optimization_pass) {
+    VLOG(3) << "FLAGS_pir_apply_shape_optimization_pass";
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
