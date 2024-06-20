@@ -2231,6 +2231,13 @@
   outputs :
     out : Y
 
+- op : match_matrix_tensor
+  backward: match_matrix_tensor_grad
+  inputs:
+    {x : X, y : Y, w : W}
+  outputs:
+    {out : Out, tmp : Tmp}
+
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
   inputs :
