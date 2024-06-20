@@ -2633,6 +2633,41 @@ set -x
     fi
 }
 
+function parallel_fa_unit() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running FA unit tests in parallel way ...
+    ========================================
+EOF
+local parallel_list
+parallel_list="^test_weight_only_linear$|\
+^test_block_multihead_attention$|\
+^test_fused_flash_attn_pass$|\
+^test_fused_weight_only_linear_pass$|\
+^test_fused_multi_transformer_op$|\
+^test_fused_multi_transformer_int8_op$|\
+^test_flash_attention$|\
+^test_flash_attention_deterministic$|\
+^test_fused_gate_attention_op$"
+get_quickly_disable_ut||disable_ut_quickly='disable_ut'
+
+card_test "${parallel_list}" 1
+
+collect_failed_tests
+rm -f $tmp_dir/*
+if [ -n "$failed_test_lists" ];then
+    echo "Sorry, some FA tests failed."
+    collect_failed_tests
+    echo "Summary Failed Tests... "
+    echo "========================================"
+    echo "The following tests FAILED: "
+    echo "${failed_test_lists}"| sort -u
+    exit 8
+fi
+
+}
+
 function parallel_test_base_gpu_test() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -3440,6 +3475,10 @@ function distribute_test() {
     echo "Start gpups tests"
     parallel_test_base_gpups
     echo "End gpups tests"
+
+    echo "Start FA tests"
+    parallel_fa_unit
+    echo "End FA tests"
 
     echo "Dowloading ...."
     cd ${work_dir}
