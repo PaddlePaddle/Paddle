@@ -2969,15 +2969,6 @@ def matrix_power(
 @overload
 def qr(
     x: Tensor,
-    mode: Literal['r'] = ...,
-    name: str | None = ...,
-) -> Tensor:
-    ...
-
-
-@overload
-def qr(
-    x: Tensor,
     mode: Literal['reduced', 'complete'] = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
@@ -2987,9 +2978,18 @@ def qr(
 @overload
 def qr(
     x: Tensor,
+    mode: Literal['r'] = ...,
+    name: str | None = ...,
+) -> Tensor:
+    ...
+
+
+@overload
+def qr(
+    x: Tensor,
     mode: Literal['reduced', 'complete', 'r'] = ...,
-    name: str | None = None,
-) -> tuple[Tensor, Tensor] | Tensor:
+    name: str | None = ...,
+) -> Tensor | tuple[Tensor, Tensor]:
     ...
 
 
@@ -2997,7 +2997,7 @@ def qr(
     x,
     mode="reduced",
     name=None,
-) -> tuple[Tensor, Tensor] | Tensor:
+) -> Tensor | tuple[Tensor, Tensor]:
     r"""
     Computes the QR decomposition of one matrix or batches of matrices (backward is unsupported now).
 
@@ -3027,12 +3027,12 @@ def qr(
 
             >>> x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
             >>> q, r = paddle.linalg.qr(x)
-            >>> print (q)
+            >>> print(q)
             Tensor(shape=[3, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[-0.16903085,  0.89708523],
              [-0.50709255,  0.27602622],
              [-0.84515425, -0.34503278]])
-            >>> print (r)
+            >>> print(r)
             Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[-5.91607978, -7.43735744],
              [ 0.        ,  0.82807867]])
