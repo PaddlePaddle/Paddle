@@ -15,16 +15,11 @@
 from __future__ import annotations
 
 import warnings
-from typing import Sequence
-
-from typing_extensions import NotRequired
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
-from paddle.nn.clip import GradientClipBase
-from paddle.optimizer.lr import LRScheduler
-from paddle.regularizer import WeightDecayRegularizer
 
 from ..base import core, framework
 from ..base.framework import (
@@ -33,13 +28,21 @@ from ..base.framework import (
 )
 from .optimizer import Optimizer, _ParameterConfig
 
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.optimizer.lr import LRScheduler
+    from paddle.regularizer import WeightDecayRegularizer
+
+    class _RAdamParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float]
+
+
 __all__ = []
-
-
-class _RAdamParameterConfig(_ParameterConfig):
-    beta1: NotRequired[float | paddle.Tensor]
-    beta2: NotRequired[float | paddle.Tensor]
-    epsilon: NotRequired[float]
 
 
 class RAdam(Optimizer):

@@ -13,18 +13,22 @@
 # limitations under the License.
 
 import warnings
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops
-from paddle.nn.clip import GradientClipBase
-from paddle.optimizer.lr import LRScheduler
 from paddle.tensor.creation import to_tensor
 
 from ..base import framework
 from ..base.dygraph import no_grad
 from ..base.framework import in_dynamic_or_pir_mode
-from .optimizer import Optimizer, _ParameterConfig
+from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from paddle.nn.clip import GradientClipBase
+    from paddle.optimizer.lr import LRScheduler
+
+    from .optimizer import _ParameterConfig
 
 __all__ = []
 

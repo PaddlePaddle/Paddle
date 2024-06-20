@@ -15,28 +15,34 @@
 from __future__ import annotations
 
 import warnings
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from typing_extensions import NotRequired
 
-import paddle
 from paddle import _C_ops
-from paddle.nn.clip import GradientClipBase
-from paddle.optimizer.lr import LRScheduler
-from paddle.regularizer import WeightDecayRegularizer
 
 from ..base import framework
 from ..base.framework import in_dynamic_or_pir_mode
-from .optimizer import Optimizer, _ParameterConfig
+from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.optimizer.lr import LRScheduler
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .optimizer import _ParameterConfig
+
+    class _RMSPropParameterConfig(_ParameterConfig):
+        epsilon: NotRequired[float]
+        momentum: NotRequired[float]
+        rho: NotRequired[float]
+        centered: NotRequired[bool]
+
 
 __all__ = []
-
-
-class _RMSPropParameterConfig(_ParameterConfig):
-    epsilon: NotRequired[float]
-    momentum: NotRequired[float]
-    rho: NotRequired[float]
-    centered: NotRequired[bool]
 
 
 class RMSProp(Optimizer):
@@ -170,8 +176,7 @@ class RMSProp(Optimizer):
         epsilon: float = 1.0e-6,
         momentum: float = 0.0,
         centered: bool = False,
-        parameters: Sequence[paddle.Tensor | _RMSPropParameterConfig]
-        | None = None,
+        parameters: Sequence[Tensor | _RMSPropParameterConfig] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
