@@ -217,7 +217,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                    "Tensor is not contiguous, cannot call "
                    "_slice on it."));
              }
-             return self.Slice(start, end);
+             return self.Slice(begin_idx, end_idx);
            })
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
