@@ -561,78 +561,6 @@ void FlashAttnWithSparseMaskKernel(
                                   seed_offset);
 }
 
-template <typename T, typename Context>
-void CalcReducedAttnScoresKernel(const Context& ctx,
-                                 const DenseTensor& q,
-                                 const DenseTensor& k,
-                                 const DenseTensor& softmax_lse,
-                                 const bool return_softmax,
-                                 DenseTensor* reduced_scores,
-                                 DenseTensor* softmax) {
-#ifdef PADDLE_WITH_FLASHATTN
-  if (!reduced_scores->IsInitialized())
-    ctx.template Alloc<float>(reduced_scores);
-  phi::funcs::SetConstant<Context, float> set_zero;
-  set_zero(ctx, reduced_scores, 0.0f);
-  // q, k, v [batch_size, seq_len, num_heads, head_dim]
-  const int64_t batch_size = q.dims()[0];
-  const int64_t seqlen_q = q.dims()[1];
-  const int64_t num_heads = q.dims()[2];
-  const int64_t head_size = q.dims()[3];
-  const int64_t seqlen_k = k.dims()[1];
-  const int64_t num_heads_k = k.dims()[2];
-
-  const float softmax_scale = 1.0f / std::sqrt(head_size);
-  const float softmax_unscale = std::sqrt(head_size);
-
-  using Params = CalcReducedAttnScoresParams;
-
-  Params params = Params(ctx,
-                         batch_size,
-                         seqlen_q,
-                         seqlen_k,
-                         num_heads,
-                         num_heads_k,
-                         head_size,
-                         softmax_scale,
-                         return_softmax,
-                         q.dtype(),
-                         softmax);
-
-  cudaStream_t stream = ctx.stream();
-
-  bool succ = phi::dynload::calc_reduced_attn_scores(
-      q.data(),
-      k.data(),
-      softmax_lse.data(),
-      reduced_scores->data(),
-      params.return_softmax ? params.softmax->data() : nullptr,
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.softmax_scale,
-      params.return_softmax,
-      params.is_bf16,
-      /*num_splits=*/0,
-      stream,
-      q.strides()[1],
-      k.strides()[1],
-      reduced_scores->strides()[1],
-      q.strides()[2],
-      k.strides()[2],
-      reduced_scores->strides()[2],
-      q.strides()[0],
-      k.strides()[0],
-      reduced_scores->strides()[0]);
-  CheckFlashAttnStatus(succ);
-#else
-  RaiseNotSupportedError();
-#endif
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flash_attn_unpadded,
@@ -683,13 +611,4 @@ PD_REGISTER_KERNEL(flash_attn_with_sparse_mask,
                    phi::dtype::bfloat16) {
   kernel->InputAt(4).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
-}
-
-PD_REGISTER_KERNEL(calc_reduced_attn_scores,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CalcReducedAttnScoresKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

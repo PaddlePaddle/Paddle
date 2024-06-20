@@ -352,42 +352,6 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   }
 };
 
-struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
-  bool return_softmax;
-  DenseTensor* softmax;
-
-  CalcReducedAttnScoresParams(const GPUContext& ctx,
-                              const int _batch_size,
-                              const int64_t _max_seqlen_q,
-                              const int64_t _max_seqlen_k,
-                              const int _num_heads,
-                              const int _num_heads_k,
-                              const int _head_size,
-                              const float _scale,
-                              const bool _return_softmax,
-                              const DataType q_dtype,
-                              DenseTensor* _softmax)
-      : FlashAttnParamsBase(_batch_size,
-                            _max_seqlen_q,
-                            _max_seqlen_k,
-                            _num_heads,
-                            _num_heads_k,
-                            _head_size,
-                            _scale,
-                            /*_causal=*/false,
-                            /*_attn_mask_start_row=*/0,
-                            q_dtype,
-                            paddle::optional<DenseTensor>{},
-                            paddle::optional<DenseTensor>{}),
-        return_softmax(_return_softmax),
-        softmax(_softmax) {
-    if (return_softmax) {
-      softmax->Resize({batch_size, num_heads, max_seqlen_q, max_seqlen_k});
-      ctx.template Alloc<float>(softmax);
-    }
-  }
-};
-
 static void CheckFlashAttnStatus(const bool status) {
   PADDLE_ENFORCE_EQ(status,
                     true,

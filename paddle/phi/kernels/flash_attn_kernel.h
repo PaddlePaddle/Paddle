@@ -78,12 +78,4 @@ void FlashAttnWithSparseMaskKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset);
 
-template <typename T, typename Context>
-void CalcReducedAttnScoresKernel(const Context& ctx,
-                                 const DenseTensor& q,
-                                 const DenseTensor& k,
-                                 const DenseTensor& softmax_lse,
-                                 const bool return_softmax,
-                                 DenseTensor* reduced_scores,
-                                 DenseTensor* softmax);
 }  // namespace phi
