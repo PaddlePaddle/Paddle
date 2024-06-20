@@ -172,8 +172,8 @@ void Instruction::Run(
                   static_cast<void*>(pod_args.data()), pod_args.size());
             },
             [&](common::HygonDCUArchHIP) {
-              // meaningless branch
-              CINN_NOT_IMPLEMENTED
+              PADDLE_THROW(
+                  phi::errors::Unimplemented("CINN meaningless branch case!"));
             });
       }
     }
@@ -201,8 +201,8 @@ void Instruction::Run(
                   static_cast<void*>(pod_args.data()), pod_args.size());
             },
             [&](common::HygonDCUArchHIP) {
-              // meaningless branch
-              CINN_NOT_IMPLEMENTED
+              PADDLE_THROW(
+                  phi::errors::Unimplemented("CINN meaningless branch case!"));
             });
       }
     }
@@ -265,8 +265,8 @@ void Instruction::Run(
                     static_cast<void*>(pod_args.data()), pod_args.size());
               },
               [&](common::HygonDCUArchHIP) {
-                // meaningless branch
-                CINN_NOT_IMPLEMENTED
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "CINN meaningless branch case!"));
               });
         }
       }

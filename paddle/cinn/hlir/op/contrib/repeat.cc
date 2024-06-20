@@ -198,7 +198,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      target.arch.Match(
           [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::X86Arch) {
             pe::IRScheduleInjectiveCPU(

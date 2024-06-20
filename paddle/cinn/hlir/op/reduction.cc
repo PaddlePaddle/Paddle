@@ -152,7 +152,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
 
         const auto &NaiveCompute = [&]() {
           VLOG(3) << "Do Reduce Compute!";
-          auto out = common_reduce_func(x, reduce_axes, keep_dim, tensor_name);
+          auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
           auto stages = CreateStages({out});
 
           std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};

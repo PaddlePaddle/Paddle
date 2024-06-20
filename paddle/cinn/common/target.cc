@@ -318,9 +318,9 @@ int GetMaxBlocks() {
 }
 
 const Target &DefaultTarget() {
-#if defined(CINN_WITH_CUDA)
+#ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
-#elseif defined(CINN_WITH_HIP)
+#elif defined(CINN_WITH_HIP)
   return DefaultHygonDcuHipTarget();
 #else
   return DefaultHostTarget();

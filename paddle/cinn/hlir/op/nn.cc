@@ -323,16 +323,6 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                 out = pe::Identity(A.as_tensor_ref());
                                 out.push_back(A.as_tensor_ref());
                                 out.push_back(B.as_tensor_ref());
-                                // as backward_data and backward_filter is not
-                                // support now, we built a fake op to instead.
-                                // as the runtime use cudnn to compute the
-                                // conv2d, so this fake op is not been called.
-                                // When cinn support
-                                // backward_filter/backward_data code gen, this
-                                // code is to be removed.
-                                out = pe::Identity(A.as_tensor_ref());
-                                out.push_back(A.as_tensor_ref());
-                                out.push_back(B.as_tensor_ref());
 #endif
                               }
                             },
@@ -364,8 +354,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         }
         CHECK(out.size() == 3U || out.size() == 2U || out.size() == 5U ||
               out.size() == 12U)
-            << "The output tensor sizes of conv2d op in conv2d op should "
-               "be 2 "
+            << "The output tensor sizes of conv2d op in conv2d op should be 2 "
                "or 3 or 5\n";
 
         res.push_back(CINNValue(stages));
@@ -374,8 +363,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
 
   framework::CINNSchedule conv2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of conv2d schedule is "
-                            "empty! Please check.\n";
+    CHECK(!args.empty())
+        << "The input argument of conv2d schedule is empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -403,11 +392,10 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDNN
-          // If conv_type is backward_filter or backward_data, we built
-          // a fake op. As runtime use cudnn to compute conv2d, this
-          // fake op is not to be called. When cinn support
-          // backward_filter/backward_data code gen, this code is to be
-          // removed.
+          // If conv_type is backward_filter or backward_data, we built a fake
+          // op. As runtime use cudnn to compute conv2d, this fake op is not to
+          // be called. When cinn support backward_filter/backward_data code
+          // gen, this code is to be removed.
           if (conv_type != "forward") {
             CHECK_EQ(vec_ast.size(), 1);
             pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
@@ -809,13 +797,10 @@ std::vector<shape_t> InferShapeForConv2dNCHWc(
   CHECK_EQ(stride.size(), 2)
       << "The size of stride in conv2d_NCHWc op is not 2! Please check.";
   CHECK_EQ(inputs_shape[0].size(), 5)
-      << "The first input tensor's shape size of conv2d_NCHWc op should be "
-         "5! "
+      << "The first input tensor's shape size of conv2d_NCHWc op should be 5! "
          "Please check.";
-  CHECK_EQ(inputs_shape[1].size(), 6)
-      << "The second input tensor's shape size of conv2d_NCHWc op should "
-         "be 6! "
-         "Please check.";
+  CHECK_EQ(inputs_shape[1].size(), 6) << "The second input tensor's shape size "
+                                         "of conv2d_NCHWc op should be 6! ";
 
   std::vector<shape_t> res;
   CHECK(data_format == "NCHWc") << "NCHWc op's data_format should be NCHWc";

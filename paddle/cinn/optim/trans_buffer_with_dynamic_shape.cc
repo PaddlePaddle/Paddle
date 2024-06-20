@@ -106,21 +106,32 @@ struct Mutator : public ir::IRMutator<> {
 void CudaTransBufferWithDynamicShape(ir::Expr* e) {
   Mutator mutator;
   mutator.Visit(e, e);
-  auto TransBufferNvHygon = [&] {
-#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
-    auto cur_dev_info = common::DevInfoMgr<arch.value()>::GetDevInfo(0);
-    if (cur_dev_info->IsValid()) {
-      size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
-      CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)
-          << "The shared memory size used by current kernel "
-          << "is greater than the max shared memory per block";
-    }
-#endif
-  };
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch) { TransBufferNvHygon(); },
-      [&](common::HygonDCUArchHIP) { TransBufferNvHygon(); });
+      [&](common::NVGPUArch) {
+#ifdef CINN_WITH_CUDA
+        auto cur_dev_info =
+            common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+        if (cur_dev_info->IsValid()) {
+          size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
+          CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)
+              << "The shared memory size used by current kernel "
+              << "is greater than the max shared memory per block";
+        }
+#endif
+      },
+      [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+        auto cur_dev_info =
+            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
+        if (cur_dev_info->IsValid()) {
+          size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
+          CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)
+              << "The shared memory size used by current kernel "
+              << "is greater than the max shared memory per block";
+        }
+#endif
+      });
 }
 }  // namespace cinn::optim

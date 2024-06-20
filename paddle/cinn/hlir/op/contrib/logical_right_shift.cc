@@ -57,10 +57,10 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
   target.arch.Match(
       [&](common::X86Arch) { extern_func += "host_"; },
       [&](common::NVGPUArch) { extern_func += "nvgpu_"; },
-      [&](common::HygonDCUArchHIP) { extern_func += "hygonDcuHip_"; },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED
-      });
+      },
+      [&](common::HygonDCUArchHIP) { extern_func += "hygonDcuHip_"; });
 
   extern_func += "logical_right_shift";
 

@@ -107,8 +107,8 @@ void DyScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
-  auto bindNvHygon = [&] {
-#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
+  auto bindNvHygon = [&](const std::array<int, 3>& kMaxBlockDims,
+                         const std::array<int, 3>& kMaxGridDims) {
     CINN_IR_SCHEDULE_BEGIN();
     std::string primitive = "Bind";
     std::ostringstream os;
@@ -124,9 +124,6 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
     int offset = thread_axis.back() - 'x';
-    auto cur_dev_info = common::DevInfoMgr<arch.value()>::GetDevInfo(0);
-    const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
-    const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
     auto check_offset = [&](const char& c) -> bool {
       // TODO(BiynXu): rewrite the function after we have a mechanism to
       // calculate the upper bound of symbols.
@@ -148,14 +145,31 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       MutateForType(loop, ForType::GPUThread, offset);
     }
     CINN_IR_SCHEDULE_END(this->err_msg_level_);
-#endif
   };
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // nothing
       },
-      [&](common::NVGPUArch arch) { bindNvHygon(); },
-      [&](common::HygonDCUArchHIP arch) { bindNvHygon(); });
+      [&](common::NVGPUArch arch) {
+#ifdef CINN_WITH_CUDA
+        auto cur_dev_info =
+            common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        bindNvHygon(kMaxBlockDims, kMaxGridDims);
+#endif
+      },
+      [&](common::HygonDCUArchHIP arch) {
+#ifdef CINN_WITH_HIP
+        auto cur_dev_info =
+            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        bindNvHygon(kMaxBlockDims, kMaxGridDims);
+#endif
+      });
 }
 }  // namespace ir
 }  // namespace cinn
@@ -202,8 +216,8 @@ void StScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
-  auto bindNvHygon = [&] {
-#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
+  auto bindNvHygon = [&](const std::array<int, 3>& kMaxBlockDims,
+                         const std::array<int, 3>& kMaxGridDims) {
     CINN_IR_SCHEDULE_BEGIN();
     static std::set<std::string> thread_axes = {"blockIdx.x",
                                                 "blockIdx.y",
@@ -214,9 +228,6 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     CHECK(thread_axes.count(thread_axis))
         << "thread_axis " << thread_axis << " is not supported";
     int offset = thread_axis.back() - 'x';
-    auto cur_dev_info = cinn::common::DevInfoMgr<arch.value()>::GetDevInfo(0);
-    const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
-    const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
     auto check_offset = [&](const char& c) -> bool {
       auto extent = loop.As<ir::For>()->extent.as_int64();
       return extent <=
@@ -234,13 +245,30 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       MutateForType(loop, ForType::GPUThread, offset);
     }
     CINN_IR_SCHEDULE_END(this->err_msg_level_);
-#endif
   };
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch arch) { bindNvHygon(); },
-      [&](common::HygonDCUArchHIP arch) { bindNvHygon(); });
+      [&](common::NVGPUArch arch) {
+#ifdef CINN_WITH_CUDA
+        auto cur_dev_info =
+            common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        bindNvHygon(kMaxBlockDims, kMaxGridDims);
+#endif
+      },
+      [&](common::HygonDCUArchHIP arch) {
+#ifdef CINN_WITH_HIP
+        auto cur_dev_info =
+            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        bindNvHygon(kMaxBlockDims, kMaxGridDims);
+#endif
+      });
 }
 
 }  // namespace ir
