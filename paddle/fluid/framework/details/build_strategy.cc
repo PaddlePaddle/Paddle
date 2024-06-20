@@ -70,8 +70,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
     AppendAddReaderDependencyPass();
-    AppendMultiDevPass();
-    AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
@@ -81,8 +79,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "runtime_context_cache_pass");
     AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
                         "modify_op_lock_and_record_event_pass");
-    // Note: This pass is used to check whether the multi_device_graph is right.
-    AppendPass("multi_devices_check_pass");
 
     SetCollectiveContext();
   }
@@ -249,35 +245,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
   void AppendAddReaderDependencyPass() {
     AppendPass("add_reader_dependency_pass");
-  }
-
-  // Convert graph to run on multi-devices.
-  void AppendMultiDevPass() {
-    ir::Pass *multi_devices_pass = nullptr;
-    if (strategy_.async_mode_) {
-      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
-    } else if (strategy_.is_distribution_) {
-      multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
-    } else {
-      switch (strategy_.reduce_) {
-        case BuildStrategy::ReduceStrategy::kAllReduce:
-          multi_devices_pass =
-              AppendPass("all_reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kReduce:
-          multi_devices_pass =
-              AppendPass("reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kNoReduce:
-          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
-          break;
-        default:
-          PADDLE_THROW(
-              platform::errors::Unimplemented("Unknown reduce strategy."));
-      }
-    }
-    multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
-                                                         &strategy_);
   }
 
   void AppendPrintGraphPass(const std::string &pass_name,

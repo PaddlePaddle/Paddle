@@ -24,10 +24,6 @@ cc_library(
   sequential_execution_pass
   SRCS sequential_execution_pass.cc
   DEPS graph graph_helper pass)
-cc_library(
-  set_reader_device_info_utils
-  SRCS set_reader_device_info_utils.cc
-  DEPS graph graph_helper pass multi_devices_graph_pass)
 
 cc_library(
   fuse_all_reduce_op_pass
