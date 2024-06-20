@@ -500,7 +500,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
 
     @test_with_dygraph_pir
     def test_output_same_order(self):
-        model_path = os.path.join(self.temp_dir.name, "./dict_out_model")
+        model_path = os.path.join(self.temp_dir.name, "dict_out_model")
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         model = LinearNetWithNonLexicographicalOrderDict(8, 8)
@@ -513,7 +513,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             paddle.jit.save(st_model, model_path)
             self.assertIn(
-                "Outputs of save model contains dict, we will flatten it to list, and sort it by alphabet order.",
+                "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys.",
                 str(w[-1].message),
             )
         loaded_model = paddle.jit.load(model_path)
@@ -554,7 +554,7 @@ class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
 
     @test_with_dygraph_pir
     def test_nested_output_same_order(self):
-        model_path = os.path.join(self.temp_dir.name, "./nested_dict_out_model")
+        model_path = os.path.join(self.temp_dir.name, "nested_dict_out_model")
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         model = LinearNetWithNestedNonLexicographicalOrderDict(8, 8)
@@ -568,7 +568,7 @@ class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             paddle.jit.save(st_model, model_path)
             self.assertIn(
-                "Outputs of save model contains dict, we will flatten it to list, and sort it by alphabet order.",
+                "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys.",
                 str(w[-1].message),
             )
         loaded_model = paddle.jit.load(model_path)

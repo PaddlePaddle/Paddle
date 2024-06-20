@@ -658,7 +658,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
     result_list = []
     if _contains_dict(outputs):
         warnings.warn(
-            "Outputs of save model contains dict, we will flatten it to list, and sort it by alphabet order."
+            "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys."
         )
     if use_pir_api():
         from paddle.autograd.backward_utils import ValueSet
