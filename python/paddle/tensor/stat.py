@@ -15,7 +15,7 @@
 # TODO: define statistical functions of a tensor
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import paddle
 from paddle import _C_ops
@@ -32,13 +32,13 @@ from .search import where
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import NestedSequence
+
 __all__ = []
 
 
 def mean(
     x: Tensor,
-    axis: NestedSequence[int] | None = None,
+    axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
 ) -> Tensor:
@@ -134,7 +134,7 @@ def mean(
 
 def var(
     x: Tensor,
-    axis: NestedSequence[int] | None = None,
+    axis: int | Sequence[int] | None = None,
     unbiased: bool = True,
     keepdim: bool = False,
     name: str | None = None,
@@ -193,7 +193,7 @@ def var(
 
 def std(
     x: Tensor,
-    axis: NestedSequence[int] | None = None,
+    axis: int | Sequence[int] | None = None,
     unbiased: bool = True,
     keepdim: bool = False,
     name: str | None = None,
@@ -292,13 +292,35 @@ def numel(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@overload
 def nanmedian(
     x: Tensor,
-    axis: NestedSequence[int] | None = None,
-    keepdim: bool = False,
-    mode: str = 'avg',
+    axis: int,
+    keepdim: bool = ...,
+    mode: Literal['min'] = ...,
     name: str | None = None,
-) -> Tensor | tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def nanmedian(
+    x: Tensor,
+    axis: int | Sequence[int] | None = ...,
+    Keepdim: bool = ...,
+    mode: Literal['avg', 'min'] = ...,
+    name: str | None = None,
+) -> Tensor:
+    ...
+
+
+def nanmedian(
+    x,
+    axis=None,
+    keepdim=False,
+    mode='avg',
+    name=None,
+):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -415,13 +437,35 @@ def nanmedian(
         return out
 
 
+@overload
 def median(
     x: Tensor,
-    axis: int | None = None,
-    keepdim: bool = False,
-    mode: str = 'avg',
-    name: str | None = None,
-) -> Tensor | tuple[Tensor, Tensor]:
+    axis: int = ...,
+    keepdim: bool = ...,
+    mode: Literal['min'] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def median(
+    x: Tensor,
+    axis: int | None = ...,
+    keepdim: bool = ...,
+    mode: Literal['avg', 'min'] = ...,
+    name: str | None = ...,
+) -> Tensor:
+    ...
+
+
+def median(
+    x,
+    axis=None,
+    keepdim=False,
+    mode='avg',
+    name=None,
+):
     """
     Compute the median along the specified axis.
 
@@ -647,10 +691,12 @@ def median(
 
 def _compute_quantile(
     x: Tensor,
-    q: NestedSequence[float] | Tensor | None,
+    q: float | Sequence[float] | Tensor | None,
     axis: int | list[int] | None = None,
     keepdim: bool = False,
-    interpolation: str = "linear",
+    interpolation: Literal[
+        'linear', 'higher', 'lower', 'midpoint', 'nearest'
+    ] = "linear",
     ignore_nan: bool = False,
 ) -> Tensor:
     """
@@ -829,10 +875,12 @@ def _compute_quantile(
 
 def quantile(
     x: Tensor,
-    q: NestedSequence[float] | Tensor,
+    q: float | Sequence[float] | Tensor,
     axis: int | list[int] | None = None,
     keepdim: bool = False,
-    interpolation: str = "linear",
+    interpolation: Literal[
+        'linear', 'higher', 'lower', 'midpoint', 'nearest'
+    ] = "linear",
     name: str | None = None,
 ) -> Tensor:
     """
@@ -914,10 +962,12 @@ def quantile(
 
 def nanquantile(
     x: Tensor,
-    q: NestedSequence[float] | Tensor,
+    q: float | Sequence[float] | Tensor,
     axis: list[int] | int = None,
     keepdim: bool = False,
-    interpolation: str = "linear",
+    interpolation: Literal[
+        'linear', 'higher', 'lower', 'midpoint', 'nearest'
+    ] = "linear",
     name: str | None = None,
 ) -> Tensor:
     """
