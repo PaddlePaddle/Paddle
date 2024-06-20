@@ -4210,6 +4210,12 @@
   outputs:
     {out: Out}
 
+- op: lookup_table_dequant
+  inputs:
+    {w : W, ids : Ids}
+  outputs:
+    out : Out
+
 - op: lstm
   backward: lstm_grad
   inputs:

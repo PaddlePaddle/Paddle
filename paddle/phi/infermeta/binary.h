@@ -453,6 +453,11 @@ void LogLossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void LookupTableDequantInferMeta(const MetaTensor& w,
+                                 const MetaTensor& ids,
+                                 int64_t padding_idx,
+                                 MetaTensor* out);
+
 void LUUnpackInferMeta(const MetaTensor& x,
                        const MetaTensor& pivots,
                        bool unpack_ludata,
