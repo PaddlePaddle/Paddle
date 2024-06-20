@@ -97,7 +97,8 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
   int block_size = gpu_config.GetBlockSize();
-  if ((arch == 80) || (arch == 86) || (arch == 75)) {
+  if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
+      (arch == 75)) {
     weight_permute_kernel_wint8<<<grid_size, block_size>>>(
         input_data, output_data, numel, total_k, total_n);
   } else if (arch == 70) {

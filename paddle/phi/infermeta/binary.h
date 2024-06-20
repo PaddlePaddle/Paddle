@@ -209,6 +209,11 @@ void CtcAlignInferMeta(const MetaTensor& input,
                        MetaTensor* output,
                        MetaTensor* output_length);
 
+void CvmInferMeta(const MetaTensor& x,
+                  const MetaTensor& cvm,
+                  bool use_cvm,
+                  MetaTensor* out);
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
