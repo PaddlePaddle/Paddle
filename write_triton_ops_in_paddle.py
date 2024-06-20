@@ -121,6 +121,7 @@ def softmax(x):
             BLOCK_SIZE=BLOCK_SIZE,
         )
 
+    # 上面是已经注册完这个Op了，下面开始真正的调用这个自定义算子啦。
     if in_dynamic_or_pir_mode():
         print(f"== we are in dynamic mode, op_name: {op_name}")
         outs = _C_ops._run_custom_op(op_name, x)
@@ -142,4 +143,3 @@ for i in range(100):
     baseline = paddle.nn.functional.softmax(x, -1)
 
 print(paddle.max(paddle.abs(out - baseline)))
-
