@@ -395,6 +395,21 @@
   backward : atanh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : attention_lstm
+  args: (Tensor x, Tensor c0, Tensor h0, Tensor attention_weight, Tensor attention_bias,
+    Tensor attention_scalar, Tensor attention_scalar_bias, Tensor lstm_weight,
+    Tensor lstm_bias, str gate_activation = "sigmoid", str cell_activation = "tanh",
+    str candidate_activation = "tanh")
+  output: Tensor (hidden), Tensor (cell), Tensor (attentioned_x), Tensor (attention_fc_out),
+    Tensor (lstm_x), Tensor (lstm_out)
+  infer_meta:
+    func: AttentionLstmInferMeta
+  kernel:
+    func: attention_lstm
+    data_type: x
+  optional: h0, attention_bias, attention_scalar, attention_scalar_bias
+  intermediate: attentioned_x, attention_fc_out, lstm_x, lstm_out
+
 - op : auc
   args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve = "ROC", int num_thresholds = (2 << 12) - 1, int slide_steps = 1)
   output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)

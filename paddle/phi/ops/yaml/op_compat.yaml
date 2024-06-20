@@ -343,6 +343,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : attention_lstm
+  backward: attention_lstm_grad
+  inputs:
+    {x : X, c0 : C0, h0 : H0, attention_weight : AttentionWeight, attention_bias : AttentionBias, attention_scalar : AttentionScalar, attention_scalar_bias : AttentionScalarBias, lstm_weight : LSTMWeight, lstm_bias : LSTMBias}
+  outputs:
+    {hidden : Hidden, cell : Cell, attentioned_x : AttentionedX, attention_fc_out : AttentionFCOut, lstm_x : LSTMX, lstm_out : LSTMOUT}
+
 - op : auc
   inputs :
     {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
