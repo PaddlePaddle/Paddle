@@ -46,6 +46,16 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }
 }  // namespace detail
 
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,
@@ -5782,13 +5792,13 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
-#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
-#endif
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),

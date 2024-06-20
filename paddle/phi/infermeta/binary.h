@@ -209,6 +209,11 @@ void CtcAlignInferMeta(const MetaTensor& input,
                        MetaTensor* output,
                        MetaTensor* output_length);
 
+void CvmInferMeta(const MetaTensor& x,
+                  const MetaTensor& cvm,
+                  bool use_cvm,
+                  MetaTensor* out);
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
@@ -648,13 +653,6 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids);
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,

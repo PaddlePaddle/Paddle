@@ -1306,6 +1306,26 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void CvmInferMeta(const MetaTensor& x,
+                  const MetaTensor& cvm,
+                  bool use_cvm,
+                  MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument("Input(X)'s rank should be 2, but got %d",
+                                   x_dims.size()));
+
+  if (use_cvm) {
+    out->set_dims({x_dims[0], x_dims[1]});
+  } else {
+    out->set_dims({x_dims[0], x_dims[1] - 2});
+  }
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void DequantizeAbsMaxInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                float max_range,
@@ -2657,6 +2677,9 @@ void MatmulInferMeta(const MetaTensor& x,
   out->set_dims(ddim_out);
   if (x.dtype() == phi::DataType::INT8) {
     out->set_dtype(phi::DataType::INT32);
+  } else if (x.dtype() == phi::DataType::FLOAT8_E4M3FN ||
+             x.dtype() == phi::DataType::FLOAT8_E5M2) {
+    out->set_dtype(phi::DataType::FLOAT16);
   } else {
     out->set_dtype(x.dtype());
   }
@@ -3669,27 +3692,6 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
-}
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids) {
-  auto x_dims = x.dims();
-  auto ps_dims = ps.dims();
-  PADDLE_ENFORCE_EQ(x_dims[0],
-                    ps_dims[0],
-                    phi::errors::InvalidArgument(
-                        "The x_dims[0] must be equal to ps_dims[0] "
-                        "But received x_dims[0] = %d and ps_dims[0] = %d.",
-                        x_dims[0],
-                        ps_dims[0]));
-  ids->set_dims(common::make_ddim({x_dims[0], 1}));
-  ids->set_dtype(DataType::INT64);
-  out->set_dims(common::make_ddim({x_dims[0], 1}));
-  out->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,

@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/reduction_factoring.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
@@ -402,25 +400,6 @@ void StaticShapeGroupScheduler::DoComputeInline() {
   VLOG(5) << "[Start DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
-  std::unordered_set<std::string> no_inline_output_names = OutputTensorNames();
-  auto_schedule::AutoInline inliner(target_, no_inline_output_names);
-
-  auto InlineFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try ComputeInline on: " << node->id()
-            << ", before ComputeInline, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    ir::Expr schedule_block = node->Block();
-    inliner.Apply(ir_sch_, schedule_block);
-    VLOG(6) << "try ComputeInline on: " << node->id()
-            << ", after ComputeInline, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(InlineFunc);
-  schedule_block_graph_->Update(*ir_sch_);
   VLOG(5) << "[After DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
@@ -593,23 +572,6 @@ void StaticShapeGroupScheduler::BindCudaAxis() {
   if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
-
-  auto_schedule::AutoBind binder(target_);
-
-  auto BindFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try bind cuda axis on: " << node->id()
-            << ", before bind, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    binder.Apply(ir_sch_, node->id());
-    VLOG(6) << "try bind cuda axis on: " << node->id()
-            << ", after bind, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(BindFunc);
 
   VLOG(5) << "[After BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
@@ -1098,24 +1060,6 @@ void StaticShapeGroupScheduler::AllocateStorage() {
 void StaticShapeGroupScheduler::OptimizeReduction() {
   VLOG(5) << "[Start OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();
-
-  auto_schedule::ReductionFactoring rf(target_);
-
-  auto ReductionFactoring = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try ReductionFactoring on: " << node->id()
-            << ", before ReductionFactoring, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    rf.Apply(node->id(), ir_sch_);
-    VLOG(6) << "try ReductionFactoring on: " << node->id()
-            << ", after ReductionFactoring, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(ReductionFactoring);
-  schedule_block_graph_->Update(*ir_sch_);
 
   VLOG(5) << "[After OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();

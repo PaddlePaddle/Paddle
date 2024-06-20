@@ -33,6 +33,11 @@ struct MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out);
+
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,

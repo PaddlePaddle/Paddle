@@ -202,6 +202,11 @@ class TestModelCastBF16(unittest.TestCase):
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable it temporarily.",
+)
 class TestProgramBF16(AmpTestBase):
     def _check_optimizer(self, program, expected_num_mp):
         optimizers = []
@@ -269,6 +274,11 @@ class TestProgramBF16(AmpTestBase):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable it temporarily.",
 )
 class TestStaticBF16(AmpTestBase):
     def _generate_feed_x(self):

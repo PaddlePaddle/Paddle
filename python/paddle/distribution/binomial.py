@@ -71,10 +71,6 @@ class Binomial(distribution.Distribution):
         self.dtype = paddle.get_default_dtype()
         self.total_count, self.probs = self._to_tensor(total_count, probs)
 
-        if not self._check_constraint(self.total_count, self.probs):
-            raise ValueError(
-                'Every element of input parameter `total_count` should be grater than or equal to one, and `probs` should be grater than or equal to zero and less than or equal to one.'
-            )
         if self.total_count.shape == []:
             batch_shape = (1,)
         else:
@@ -99,20 +95,6 @@ class Binomial(distribution.Distribution):
 
         # broadcast tensor
         return paddle.broadcast_tensors([total_count, probs])
-
-    def _check_constraint(self, total_count, probs):
-        """Check the constraints for input parameters
-
-        Args:
-            total_count (Tensor)
-            probs (Tensor)
-
-        Returns:
-            bool: pass or not.
-        """
-        total_count_check = (total_count >= 1).all()
-        probability_check = (probs >= 0).all() * (probs <= 1).all()
-        return total_count_check and probability_check
 
     @property
     def mean(self):
@@ -253,10 +235,6 @@ class Binomial(distribution.Distribution):
             Tensor: kl-divergence between two binomial distributions. The data type is the same as `probs`.
 
         """
-        if not (paddle.equal(self.total_count, other.total_count)).all():
-            raise ValueError(
-                "KL divergence of two binomial distributions should share the same `total_count` and `batch_shape`."
-            )
         support = self._enumerate_support()
         log_prob_1 = self.log_prob(support)
         log_prob_2 = other.log_prob(support)

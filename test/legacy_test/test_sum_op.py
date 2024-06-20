@@ -28,6 +28,7 @@ import paddle.inference as paddle_infer
 from paddle import base, enable_static
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -580,6 +581,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         pd_out.backward()
         self.assertEqual(self.x.gradient().shape, tuple(self.x.shape))
 
+    @test_with_pir_api
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -598,7 +600,6 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                         axis.append(item)
                     else:
                         axis.append(paddle.full([1], self.np_axis[i], 'int64'))
-
             linear = paddle.nn.Linear(x.shape[-1], 5)
             linear_out = linear(x)
             out = self.pd_api(linear_out, axis, keepdim=self.keepdim)
@@ -613,9 +614,16 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
 
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            config = paddle_infer.Config(
-                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-            )
+            if in_pir_mode():
+                config = paddle_infer.Config(
+                    self.save_path + '.json', self.save_path + '.pdiparams'
+                )
+                config.enable_new_ir()
+                config.enable_new_executor()
+            else:
+                config = paddle_infer.Config(
+                    self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+                )
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             else:
