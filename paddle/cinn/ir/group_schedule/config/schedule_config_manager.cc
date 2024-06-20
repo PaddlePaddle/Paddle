@@ -35,15 +35,24 @@ void ScheduleConfigManager::AddConfigDatabase(
 ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
     const common::Target& target,
     const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) const {
-  if (policy_ == "default" || tile_config_data_.count(policy_) == 0) {
-    return BuildScheduleConfig(group_info, target);
-  } else {
-    VLOG(3) << "Enter policy branch: " << policy_;
+  auto ReadConfigs = [&](std::string policy) -> ScheduleConfigMap {
     std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
         InitBasicInfo(group_info);
-    TileConfigMap tile_config_map = tile_config_data_.at(policy_)->GetConfigs(
+    TileConfigMap tile_config_map = tile_config_data_.at(policy)->GetConfigs(
         target, base_info->iter_space_type);
     return CombineBaseInfoAndConfig(tile_config_map, base_info);
+  };
+
+  if (policy_ == "default" || tile_config_data_.count(policy_) == 0) {
+    return BuildScheduleConfig(group_info, target);
+  } else if (policy_ == "hybrid") {
+    ScheduleConfigMap default_map = BuildScheduleConfig(group_info, target);
+    ScheduleConfigMap stored_map = ReadConfigs(policy_);
+    stored_map.insert(default_map.begin(), default_map.end());
+    return stored_map;
+  } else {
+    VLOG(3) << "Enter policy branch: " << policy_;
+    return ReadConfigs(policy_);
   }
 }
 
@@ -60,7 +69,7 @@ void InitScheduleConfig() {
     policy = FLAGS_tile_config_policy;
   }
   schedule_config_manager.SetPolicy(policy);
-  if (policy == "optimal") {
+  if (policy == "optimal" || policy == "hybrid") {
     std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
         std::make_shared<cinn::ir::FileTileConfigDatabase>();
     schedule_config_manager.AddConfigDatabase(policy, tile_config_database);
