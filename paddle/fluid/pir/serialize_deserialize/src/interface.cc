@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include <stdio.h>
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
@@ -77,9 +78,9 @@ bool ReadModule(const std::string& file_path,
     uint64_t file_version =
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
+      std::string cur_file = std::string(__FILE__);
       std::string yaml_file =
-          "/home/chenzhiyang02/work/Paddle/paddle/fluid/pir/"
-          "serialize_deserialize/src/patch.yaml";
+          cur_file.substr(0, cur_file.rfind('/')) + "/patch.yaml";
       builder.BuildPatch(yaml_file);  // TODO(czy) : find file patch
     }
   } else {

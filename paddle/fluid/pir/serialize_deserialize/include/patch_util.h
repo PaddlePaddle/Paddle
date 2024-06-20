@@ -134,7 +134,13 @@ Json GetAttrTypeJson(const YAML::Node &action) {
   return json;
 }
 Json YamlPaser(const std::string &yaml_file) {
-  YAML::Node root = YAML::LoadFile(yaml_file);
+  std::ifstream fin;
+  fin.open(yaml_file);
+  if (!fin) {
+    PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
+                                          yaml_file.c_str()));
+  }
+  YAML::Node root = YAML::Load(fin);
   Json json_patch;
   if (!root.IsDefined()) {
     std::cout << "Not defined" << std::endl;
