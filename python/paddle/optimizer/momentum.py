@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops
@@ -108,8 +108,6 @@ class Momentum(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
-            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
             >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
             >>> back = out.backward()
             >>> momentum.step()
@@ -124,7 +122,7 @@ class Momentum(Optimizer):
             >>> loss = paddle.mean(out)
             >>> momentum = paddle.optimizer.Momentum(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{ # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -145,7 +143,9 @@ class Momentum(Optimizer):
         self,
         learning_rate: float | Tensor | LRScheduler = 0.001,
         momentum: float = 0.9,
-        parameters: list | tuple | None = None,
+        parameters: Sequence[Tensor]
+        | Sequence[_MomentumParameterConfig]
+        | None = None,
         use_nesterov: bool = False,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
