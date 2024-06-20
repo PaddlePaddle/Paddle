@@ -15,7 +15,9 @@
 # TODO: define statistical functions of a tensor
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, TypeAlias, overload
+from typing import TYPE_CHECKING, Literal, Sequence, overload
+
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import _C_ops
