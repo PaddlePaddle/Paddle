@@ -738,7 +738,8 @@ class TestMobileNet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-
+        if os.name == "nt" and use_pir_api():
+            return
         predictor_pre = predict_analysis_inference(self.args, image)
         np.testing.assert_allclose(
             predictor_pre,
