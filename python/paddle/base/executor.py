@@ -1403,14 +1403,15 @@ class Executor:
                 # If the feed_target_name is not in feed list, but is persistable, maybe it is a optimizer param
                 # and don't need feed data.
                 continue
-            cur_feed = feed[feed_target_name]
-            if not isinstance(cur_feed, core.LoDTensor):
-                cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-            pir_check_feed_shape_type(
-                cur_feed, feed_target_name, var_shape, var_type
-            )
-            # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
-            core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
+            if "_inner_uninitialized_tensor_" != feed_target_name:
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
+                pir_check_feed_shape_type(
+                    cur_feed, feed_target_name, var_shape, var_type
+                )
+                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
+                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
 
         # pop variable which is not found in program
         for feed_name in list(feed.keys()):

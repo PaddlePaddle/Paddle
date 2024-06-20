@@ -1599,7 +1599,7 @@ class RNNBase(LayerList):
             # should dropout state be persistable for static-graph
             if in_pir_mode():
                 self._dropout_state = paddle.static.data(
-                    name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
+                    name="_inner_uninitialized_tensor_",
                     shape=[1],
                     dtype='uint8',
                 )
