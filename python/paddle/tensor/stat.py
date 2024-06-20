@@ -15,7 +15,7 @@
 # TODO: define statistical functions of a tensor
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, Sequence, TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
@@ -33,6 +33,9 @@ from .search import where
 if TYPE_CHECKING:
     from paddle import Tensor
 
+_Interpolation: TypeAlias = Literal[
+    'linear', 'higher', 'lower', 'midpoint', 'nearest'
+]
 __all__ = []
 
 
@@ -298,7 +301,7 @@ def nanmedian(
     axis: int,
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
-    name: str | None = None,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -309,7 +312,7 @@ def nanmedian(
     axis: int | Sequence[int] | None = ...,
     Keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
-    name: str | None = None,
+    name: str | None = ...,
 ) -> Tensor:
     ...
 
@@ -694,9 +697,7 @@ def _compute_quantile(
     q: float | Sequence[float] | Tensor | None,
     axis: int | list[int] | None = None,
     keepdim: bool = False,
-    interpolation: Literal[
-        'linear', 'higher', 'lower', 'midpoint', 'nearest'
-    ] = "linear",
+    interpolation: _Interpolation = "linear",
     ignore_nan: bool = False,
 ) -> Tensor:
     """
@@ -878,9 +879,7 @@ def quantile(
     q: float | Sequence[float] | Tensor,
     axis: int | list[int] | None = None,
     keepdim: bool = False,
-    interpolation: Literal[
-        'linear', 'higher', 'lower', 'midpoint', 'nearest'
-    ] = "linear",
+    interpolation: _Interpolation = "linear",
     name: str | None = None,
 ) -> Tensor:
     """
@@ -965,9 +964,7 @@ def nanquantile(
     q: float | Sequence[float] | Tensor,
     axis: list[int] | int = None,
     keepdim: bool = False,
-    interpolation: Literal[
-        'linear', 'higher', 'lower', 'midpoint', 'nearest'
-    ] = "linear",
+    interpolation: _Interpolation = "linear",
     name: str | None = None,
 ) -> Tensor:
     """
