@@ -418,6 +418,8 @@ class ResNetHelper:
             self.params_filename,
             [data],
         )
+        (out,) = output()
+        return out
 
 
 class TestResnet(Dy2StTestBase):
@@ -433,6 +435,7 @@ class TestResnet(Dy2StTestBase):
         dy_pre = self.resnet_helper.predict_dygraph(image)
         st_pre = self.resnet_helper.predict_static(image)
         dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -445,8 +448,6 @@ class TestResnet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-
-        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,

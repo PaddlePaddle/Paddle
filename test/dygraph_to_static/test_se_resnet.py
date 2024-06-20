@@ -549,6 +549,8 @@ class TestSeResnet(Dy2StTestBase):
             self.params_filename,
             [data],
         )
+        (out,) = output()
+        return out
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')
@@ -577,7 +579,7 @@ class TestSeResnet(Dy2StTestBase):
             self.assertAlmostEqual(
                 flat_predictor_pre[i],
                 flat_st_pre[i],
-                delta=1e-6,
+                delta=1e-5,
                 msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
             )
 

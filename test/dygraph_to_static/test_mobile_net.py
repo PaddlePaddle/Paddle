@@ -671,6 +671,8 @@ def predict_analysis_inference(args, data):
     output = PredictorTools(
         args.model_save_dir, model_filename, args.params_filename, [data]
     )
+    (out,) = output()
+    return out
 
 
 class TestMobileNet(Dy2StTestBase):
