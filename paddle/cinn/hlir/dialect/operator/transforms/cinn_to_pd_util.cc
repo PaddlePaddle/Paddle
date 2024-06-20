@@ -71,11 +71,11 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
 }
 
 enum class TransAttrType { IntArray, Int32, Int64, Float, Bool };
-using OpAttrTypeMap = const std::unordered_map<
-    std::string,
-    const std::unordered_map<std::string, TransAttrType>>;
+using OpAttrTypeMap =
+    std::unordered_map<std::string,
+                       std::unordered_map<std::string, TransAttrType>>;
 
-static OpAttrTypeMap OP_TRANS_ATTRTYPES_MAP = {
+static const OpAttrTypeMap OP_TRANS_ATTRTYPES_MAP = {
     {"reduce_max", {{"axis", TransAttrType::IntArray}}},
     {"reduce_min", {{"axis", TransAttrType::IntArray}}},
     {"reduce_sum", {{"axis", TransAttrType::IntArray}}},
