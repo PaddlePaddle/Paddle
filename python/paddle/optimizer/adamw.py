@@ -73,7 +73,7 @@ class AdamW(Optimizer):
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        epsilon (float|Tensor, optional): A small float value for numerical stability.
             The default value is 1e-08.
         parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
@@ -170,7 +170,7 @@ class AdamW(Optimizer):
         learning_rate: float | LRScheduler = 0.001,
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
-        epsilon: float = 1e-8,
+        epsilon: float | Tensor = 1e-8,
         parameters: Sequence[Tensor]
         | Sequence[_AdamParameterConfig]
         | None = None,
