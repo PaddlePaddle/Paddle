@@ -13,7 +13,16 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Sequence, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    List,
+    Literal,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import numpy.typing as npt
@@ -44,3 +53,5 @@ IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
+
+PaddingMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']

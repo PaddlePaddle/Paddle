@@ -1306,6 +1306,26 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void CvmInferMeta(const MetaTensor& x,
+                  const MetaTensor& cvm,
+                  bool use_cvm,
+                  MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument("Input(X)'s rank should be 2, but got %d",
+                                   x_dims.size()));
+
+  if (use_cvm) {
+    out->set_dims({x_dims[0], x_dims[1]});
+  } else {
+    out->set_dims({x_dims[0], x_dims[1] - 2});
+  }
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void DequantizeAbsMaxInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                float max_range,
@@ -2177,6 +2197,41 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void HingeLossInferMeta(const MetaTensor& logits,
+                        const MetaTensor& labels,
+                        MetaTensor* loss) {
+  const auto& pred_dims = logits.dims();
+  const auto& label_dims = labels.dims();
+
+  PADDLE_ENFORCE_EQ(
+      pred_dims,
+      label_dims,
+      phi::errors::InvalidArgument(
+          "The Input(input) and Input(label) should have the same "
+          "shape, but received input shape [%s] != label shape [%s]",
+          pred_dims,
+          label_dims));
+
+  PADDLE_ENFORCE_EQ(
+      pred_dims.size(),
+      2,
+      phi::errors::InvalidArgument("Input(input) rank should be 2, "
+                                   "but received input rank(%d) != 2",
+                                   pred_dims.size()));
+
+  PADDLE_ENFORCE_EQ(pred_dims[1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(input) should be 1, "
+                        "as each row of input contains a real value, "
+                        "but received second dimension of input (%d) != 1",
+                        pred_dims[1]));
+
+  loss->set_dims({pred_dims[0], 1});
+  loss->share_lod(logits);
+  loss->set_dtype(logits.dtype());
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,
@@ -2468,6 +2523,65 @@ void LogLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void LookupTableDequantInferMeta(const MetaTensor& w,
+                                 const MetaTensor& ids,
+                                 int64_t padding_idx,
+                                 MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      w.initialized(),
+      true,
+      phi::errors::InvalidArgument(
+          "Input(W) of LookupTableDequantOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ids.initialized(),
+      true,
+      phi::errors::InvalidArgument(
+          "Input(Ids) of LookupTableDequantOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      out != nullptr,
+      true,
+      phi::errors::InvalidArgument(
+          "Output(Out) of LookupTableDequantOp should not be null."));
+
+  const auto& table_dims = w.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+  PADDLE_ENFORCE_EQ(
+      ids_dims[ids_rank - 1],
+      1,
+      phi::errors::InvalidArgument(
+          "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
+          "But received Ids's last dimensions = %d, Ids's shape = [%s].",
+          ids_dims[ids_rank - 1],
+          ids_dims));
+
+  auto output_dims =
+      common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  PADDLE_ENFORCE_GE(table_dims[1],
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the second dim of table_dims should be "
+                        "greater or equal to 2, but the actual shape "
+                        "is [%s]",
+                        table_dims));
+
+  output_dims.push_back((table_dims[1] - 2) * 4);
+
+  out->set_dims(common::make_ddim(output_dims));
+  out->share_lod(ids);
+  out->set_dtype(w.dtype());
+}
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out) {
@@ -2657,6 +2771,9 @@ void MatmulInferMeta(const MetaTensor& x,
   out->set_dims(ddim_out);
   if (x.dtype() == phi::DataType::INT8) {
     out->set_dtype(phi::DataType::INT32);
+  } else if (x.dtype() == phi::DataType::FLOAT8_E4M3FN ||
+             x.dtype() == phi::DataType::FLOAT8_E5M2) {
+    out->set_dtype(phi::DataType::FLOAT16);
   } else {
     out->set_dtype(x.dtype());
   }
@@ -3669,27 +3786,6 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
-}
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids) {
-  auto x_dims = x.dims();
-  auto ps_dims = ps.dims();
-  PADDLE_ENFORCE_EQ(x_dims[0],
-                    ps_dims[0],
-                    phi::errors::InvalidArgument(
-                        "The x_dims[0] must be equal to ps_dims[0] "
-                        "But received x_dims[0] = %d and ps_dims[0] = %d.",
-                        x_dims[0],
-                        ps_dims[0]));
-  ids->set_dims(common::make_ddim({x_dims[0], 1}));
-  ids->set_dtype(DataType::INT64);
-  out->set_dims(common::make_ddim({x_dims[0], 1}));
-  out->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,

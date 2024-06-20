@@ -20,7 +20,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
-from typing_extensions import NotRequired, TypedDict
 
 import paddle
 import paddle.autograd as imperative_base
@@ -50,18 +49,18 @@ from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
-
-class _ParameterConfig(TypedDict):
-    params: Sequence[Tensor]
-    weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-    learning_rate: NotRequired[float | Tensor | LRScheduler | None]
-
-
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
 
     from ..base.framework import Operator, Program
+
+    class _ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
 
 __all__ = []
@@ -835,14 +834,27 @@ class Optimizer:
                     startup_param = get_param_from_startup(
                         startup_program, param.name
                     )
-                    var = paddle.cast(startup_param, 'float32')
-                    var.persistable = True
-                    paddle._pir_ops.set_persistable_value(var, var_name)
+                    startup_var = paddle.cast(startup_param, 'float32')
+                    startup_var.persistable = True
+                    paddle._pir_ops.set_persistable_value(startup_var, var_name)
                 with paddle.static.program_guard(main_program):
                     paddle.pir.reset_insertion_point_to_start()
                     var = paddle.static.data(
-                        var_name, var.shape, var.dtype, core.Place()
+                        var_name,
+                        startup_var.shape,
+                        startup_var.dtype,
+                        core.Place(),
                     )
+                    if startup_var.is_dist():
+                        var.set_type(startup_var.type())
+                        op_dist_attr = (
+                            paddle.base.libpaddle.pir.create_op_dist_attribute(
+                                startup_var.dist_attr().process_mesh,
+                                [],
+                                [startup_var.dist_attr()],
+                            )
+                        )
+                        var.get_defining_op().dist_attr = op_dist_attr
                     var.persistable = True
             elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
