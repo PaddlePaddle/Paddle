@@ -26,7 +26,6 @@ if(WITH_CUDA)
     DEPS
     cinncore_static
     cinn_runtime
-    pybind
     common)
   message("cuda_nvrtc: ${CUDA_NVRTC}")
   target_link_libraries(core_api ${CUDA_NVRTC_LIB} ${CUDA_LIBRARIES} cuda cudnn)
@@ -43,7 +42,6 @@ else()
     DEPS
     cinncore_static
     cinn_runtime
-    pybind
     ${llvm_libs})
 endif()
 

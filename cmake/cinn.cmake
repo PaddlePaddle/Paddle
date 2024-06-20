@@ -164,7 +164,6 @@ cinn_cc_library(
   absl
   isl
   ginac
-  pybind
   op_fusion
   cinn_op_dialect
   ${jitify_deps})
@@ -173,7 +172,8 @@ add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
-# target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
+add_dependencies(cinnapi python)
+target_link_libraries(cinnapi "-Wl,-undefined,dynamic_lookup")
 
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
