@@ -854,6 +854,7 @@ def flash_attention_with_sparse_mask(
     return_seed_offset=False,
     training=True,
     name=None,
+    test="",
 ):
     r"""
     The equation is:
