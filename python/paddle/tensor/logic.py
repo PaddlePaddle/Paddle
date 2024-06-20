@@ -505,8 +505,8 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): Tensor, data type is bool, float16, float32, float64, bfloat16, int16, int32, int64.
+        y (Tensor): Tensor, data type is bool, float16, float32, float64, bfloat16, int16, int32, int64.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
