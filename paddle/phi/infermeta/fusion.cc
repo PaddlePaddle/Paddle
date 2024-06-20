@@ -4696,4 +4696,134 @@ void FusedElemwiseActivationGradInferMeta(
   }
 }
 
+void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
+                                   const MetaTensor& embeddings,
+                                   const MetaTensor& weight_h,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& h0,
+                                   const MetaTensor& c0,
+                                   bool use_peepholes,
+                                   bool is_reverse,
+                                   bool use_seq,
+                                   const std::string& gate_activation,
+                                   const std::string& cell_activation,
+                                   const std::string& candidate_activation,
+                                   MetaTensor* hidden,
+                                   MetaTensor* cell,
+                                   MetaTensor* xx,
+                                   MetaTensor* batched_input,
+                                   MetaTensor* batched_hidden,
+                                   MetaTensor* batched_cell,
+                                   MetaTensor* reordered_h0,
+                                   MetaTensor* reordered_c0) {
+  const auto& table_dims = embeddings.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Embeddings's rank should be 2, but received value is:%d.",
+          table_dims.size()));
+  PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The last dimension of the 'Ids' tensor must be 1, but "
+                        "received value is:%d.",
+                        ids_dims[ids_rank - 1]));
+
+  const auto& x_dims = ids.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(Ids)'s rank must be 2, but received value is:%d.",
+          x_dims.size()));
+
+  if (h0.initialized()) {
+    PADDLE_ENFORCE_EQ(c0.initialized(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(Cell) and Input(Hidden) of LSTM should exist "
+                          "at the same time."));
+    const auto& h_dims = h0.dims();
+    const auto& c_dims = c0.dims();
+    PADDLE_ENFORCE_EQ(
+        h_dims,
+        c_dims,
+        phi::errors::InvalidArgument(
+            "The dimension of Input(H0) and Input(C0) "
+            "should be the same, but received H0 dim is:[%s], C0 dim is[%s]",
+            h_dims,
+            c_dims));
+  }
+
+  const auto& wh_dims = weight_h.dims();
+  int frame_size = static_cast<int>(wh_dims[1] / 4);
+  PADDLE_ENFORCE_EQ(
+      wh_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(WeightH) should be 2, but received value is:%d.",
+          wh_dims.size()));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(WeightH) should equal to "
+                        "frame size:%d, but received value is:%d.",
+                        frame_size,
+                        wh_dims[0]));
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(WeightH) should equal "
+                        "to 4 * %d, but received value is:%d.",
+                        frame_size,
+                        wh_dims[1]));
+
+  const auto& b_dims = bias.dims();
+  PADDLE_ENFORCE_EQ(
+      b_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(Bias) should be 2, but received value is:%d.",
+          b_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      b_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dimension of Input(Bias) "
+                                   "should be 1, but received value is:%d.",
+                                   b_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      b_dims[1],
+      (use_peepholes ? 7 : 4) * frame_size,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(Bias) should be "
+          "7 * %d if enable peepholes connection or"
+          "4 * %d if disable peepholes, bias dim is:%d, use_peepholes:%d",
+          frame_size,
+          frame_size,
+          b_dims[1],
+          use_peepholes));
+
+  phi::DDim out_dims({x_dims[0], frame_size});
+  hidden->set_dims(out_dims);
+  cell->set_dims(out_dims);
+  hidden->share_lod(ids);
+  cell->share_lod(ids);
+  hidden->set_dtype(embeddings.dtype());
+  cell->set_dtype(embeddings.dtype());
+  if (!use_seq) {
+    batched_input->set_dims({x_dims[0], wh_dims[1]});
+    batched_hidden->set_dims(out_dims);
+    batched_cell->set_dims(out_dims);
+    batched_input->set_dtype(embeddings.dtype());
+    batched_hidden->set_dtype(embeddings.dtype());
+    batched_cell->set_dtype(embeddings.dtype());
+  }
+  xx->set_dims({x_dims[0], wh_dims[1]});
+  xx->share_lod(ids);
+  xx->set_dtype(embeddings.dtype());
+}
 }  // namespace phi

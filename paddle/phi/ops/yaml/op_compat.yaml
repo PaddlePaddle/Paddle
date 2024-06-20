@@ -1528,6 +1528,12 @@
   outputs :
     out : Out
 
+- op : fused_embedding_fc_lstm
+  inputs:
+    {ids : Ids, embeddings : Embeddings, weight_h : WeightH, bias : Bias, h0 : H0, c0 : C0}
+  outputs:
+    {hidden : Hidden, cell : Cell, xx : XX, batched_input : BatchedInput, batched_hidden : BatchedHidden, batched_cell : BatchedCell, reordered_h0 : ReorderedH0, reordered_c0 : ReorderedC0}
+
 - op : fused_fc_elementwise_layernorm
   inputs :
     x : X
