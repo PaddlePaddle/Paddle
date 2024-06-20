@@ -495,8 +495,9 @@ template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   std::vector<Tensor> concat_x;
   bool is_dynamic = false;
+  size_t rank = x[0].shape().size();
 
-  std::vector<int64_t> combined_shape(x[0].shape().size(), -1);
+  std::vector<int64_t> combined_shape(rank, -1);
   for (auto& item : x) {
     auto item_shape = item.shape();
     for (size_t i = 0; i < item_shape.size(); i++) {
@@ -511,15 +512,18 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   if (is_dynamic && has_dynamic_shape(combined_shape)) {
     std::vector<Tensor> shapes;
     Tensor temp_shape = shape<T>(x[0]);
-    for (size_t j = 0; j < x[0].shape().size(); j++) {
-      if (static_cast<int>(j) == axis) {
-        shapes.push_back(full<T>({1}, 1, temp_shape.type()));
-      }
+    for (size_t j = 0; j < rank; j++) {
       if (combined_shape[j] == -1) {
         shapes.push_back(get_slice<T>(temp_shape, j));
       } else {
         shapes.push_back(full<T>({1}, combined_shape[j], temp_shape.type()));
       }
+    }
+    if (axis < 0) {
+      shapes.insert(shapes.begin() + (axis + rank + 1),
+                    full<T>({1}, 1, temp_shape.type()));
+    } else {
+      shapes.insert(shapes.begin() + axis, full<T>({1}, 1, temp_shape.type()));
     }
 
     Tensor out_shape = concat<T>(shapes);

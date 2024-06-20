@@ -33,7 +33,7 @@ def apply_to_static(net, use_cinn, input_spec=None):
 
 
 def meshgrid_net(x, y, z):
-    temp = paddle.stack([x, y])
+    temp = paddle.stack([x, y], axis=-1)
     return paddle.concat([temp, z])
 
 
@@ -45,9 +45,9 @@ def meshgrid_net(x, y, z):
 class TestPrimMode1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [4098]
-        self.shape_y = [4098]
-        self.shape_z = [2, 4098]
+        self.shape_x = [128, 128]
+        self.shape_y = [128, 128]
+        self.shape_z = [128, 128, 2]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.z = np.random.random(self.shape_z).astype("float32")
@@ -64,9 +64,9 @@ class TestPrimMode1(unittest.TestCase):
                 self.net,
                 use_cinn=self.enable_cinn,
                 input_spec=[
-                    InputSpec(shape=[None], dtype='float32'),
-                    InputSpec(shape=[None], dtype='float32'),
-                    InputSpec(shape=[4098, 4098], dtype='float32'),
+                    InputSpec(shape=[None, None], dtype='float32'),
+                    InputSpec(shape=[None, None], dtype='float32'),
+                    InputSpec(shape=[None, 128, None], dtype='float32'),
                 ],
             )
             fn.eval()

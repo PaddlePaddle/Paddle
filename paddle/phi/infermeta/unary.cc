@@ -1241,8 +1241,15 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out) {
 #define EXPAND_MAX_RANK_SUPPORTED 8
+  VLOG(0) << "expand infermeta x.shape -------- " << x.dims();
+  VLOG(0) << "expand infermeta out.shape -------- " << out->dims();
+
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
+  VLOG(0) << "expand infermeta expand_shape &&&&&&&& ";
+  for (auto t : expand_shape) {
+    VLOG(0) << t;
+  }
 
   if (expand_shape.empty()) {
     expand_shape = std::vector<int64_t>(x_dims.size(), -1);
@@ -1298,6 +1305,8 @@ void ExpandInferMeta(const MetaTensor& x,
       out_shape[i] = expand_shape[i];
     }
   }
+  VLOG(0) << "expand infermeta out_shape -------- "
+          << common::make_ddim(out_shape);
 
   out->set_dims(common::make_ddim(out_shape));
   out->set_dtype(x.dtype());
