@@ -626,7 +626,8 @@ class LlamaModelAuto(nn.Layer):
             mesh,
             [dist.Replicate() for _ in range(len(mesh._shape))],
         )
-
+        if not hasattr(self.config, "sep_parallel_degree"):
+            self.config.sep_parallel_degree = -1
         if position_ids is None and self.config.sep_parallel_degree > 1:
             position_ids = paddle.arange(seq_length, dtype="int64").expand(
                 (batch_size, seq_length)
