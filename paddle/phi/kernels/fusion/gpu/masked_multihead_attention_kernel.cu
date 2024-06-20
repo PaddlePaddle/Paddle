@@ -896,81 +896,34 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
       T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 128, stream, load_func, store_func);
 }
 
+#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)                  \
+  case dim_head_:                                                             \
+    fmha_launch_kernel<T, dim_head_, dim_head_max_>(                          \
+        params, stream, load_func, store_func);                               \
+    if (params.split_seq == 1) return;                                        \
+    post_process_kernel_kai_v3<T, dim_head_, dim_head_max_, SPLTS_PER_BLOCK_> \
+        <<<grid, SPLTS_PER_BLOCK_ * dim_head_max_, smem_sz, stream>>>(        \
+            params, store_func);                                              \
+    break;
+
 template <typename T, typename LoadFunc, typename StoreFunc>
 void fmha_impl(const phi::GPUContext &dev_ctx,
                const Masked_multihead_attention_params<T> &params,
                int dim_head,
                LoadFunc load_func,
                StoreFunc store_func) {
-  switch (dim_head) {
-    case 16:
-      fmha_launch_kernel<T, 16, 32>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    case 32:
-      fmha_launch_kernel<T, 32, 32>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    case 64:
-      fmha_launch_kernel<T, 64, 64>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    // for opt model
-    case 80:
-      fmha_launch_kernel<T, 80, 128>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    case 96:
-      fmha_launch_kernel<T, 96, 128>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    case 128:
-      fmha_launch_kernel<T, 128, 128>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    case 192:
-      fmha_launch_kernel<T, 192, 256>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
-  }
-
-  // for shortSeq postProcessKernel is not necessary
-  if (params.split_seq == 1) return;
-
   dim3 grid(params.num_head, params.batch_size);
   int smem_sz = params.split_seq * sizeof(float2);
+  constexpr int SPLTS_PER_BLOCK_ = 4;
+  auto stream = dev_ctx.stream();
   switch (dim_head) {
-    case 16:
-      post_process_kernel_kai_v3<T, 16, 32, 8, StoreFunc>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
-    case 32:
-      post_process_kernel_kai_v3<T, 32, 32, 8, StoreFunc>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
-    case 64:
-      post_process_kernel_kai_v3<T, 64, 64, 4, StoreFunc>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
-    case 80:
-      post_process_kernel_kai_v3<T, 80, 128, 4, StoreFunc>
-          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
-    case 96:
-      post_process_kernel_kai_v3<T, 96, 128, 4, StoreFunc>
-          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
-    case 128:
-      post_process_kernel_kai_v3<T, 128, 128, 4, StoreFunc>
-          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
-    case 192:
-      post_process_kernel_kai_v3<T, 192, 256, 4, StoreFunc>
-          <<<grid, 1024, smem_sz, dev_ctx.stream()>>>(params, store_func);
-      break;
+    FMHA_LAUNCH_KERNEL(16, 32, stream)
+    FMHA_LAUNCH_KERNEL(32, 32, stream)
+    FMHA_LAUNCH_KERNEL(64, 64, stream)
+    FMHA_LAUNCH_KERNEL(80, 128, stream)
+    FMHA_LAUNCH_KERNEL(96, 128, stream)
+    FMHA_LAUNCH_KERNEL(128, 128, stream)
+    FMHA_LAUNCH_KERNEL(192, 256, stream)
     default:
       PADDLE_THROW(
           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
