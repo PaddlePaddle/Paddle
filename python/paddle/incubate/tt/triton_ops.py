@@ -153,7 +153,12 @@ class KernelInterface:
             if so_path is None:
                 print("== we do not find so_path, we need to compile it")
                 with open(paddle_custom_op_file_path, "w") as f:
-                    f.write(SubstituteTemplate(custom_op_template, op_dict))
+                    f.write(
+                        SubstituteTemplate(
+                            paddle_custom_op_head_part + custom_op_template,
+                            op_dict,
+                        )
+                    )
                     f.close()
 
                 # ahead of time compile command.
@@ -239,8 +244,7 @@ def get_wint8_kernel_config():
 
 
 triton_wint8_template = (
-    paddle_custom_op_head_part
-    + """
+    """
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor& x,
     const paddle::Tensor& qweight,
@@ -934,8 +938,7 @@ def fused_adaLN_scale_residual(
 
 
 triton_adaptive_layer_norm_template = (
-    paddle_custom_op_head_part
-    + """
+    """
 
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor &x,
@@ -1167,8 +1170,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
 
 
 rms_norm_template = (
-    paddle_custom_op_head_part
-    + """
+    """
 
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor &x,
