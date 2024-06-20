@@ -19,6 +19,7 @@
 namespace cinn::fusion {
 
 enum InstructionType {
+  T_Base,
   T_Copy,
   T_Combine,
   T_Return,
@@ -31,8 +32,8 @@ enum InstructionType {
 };
 
 struct FusionInstruction {
-  virtual InstructionType type() const;
-  virtual std::string DebugStr() const;
+  virtual InstructionType type() const { return T_Base; }
+  virtual std::string DebugStr() const { return "BaseInstr"; }
 };
 
 struct CopyInstr : public FusionInstruction {
