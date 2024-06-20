@@ -1221,7 +1221,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    VLOG(0) << "predictor program " << *pir_program_;
+    VLOG(1) << "predictor program " << *pir_program_;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
