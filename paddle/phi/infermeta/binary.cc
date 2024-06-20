@@ -2488,6 +2488,65 @@ void LogLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void LookupTableDequantInferMeta(const MetaTensor& w,
+                                 const MetaTensor& ids,
+                                 int64_t padding_idx,
+                                 MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      w.initialized(),
+      true,
+      phi::errors::InvalidArgument(
+          "Input(W) of LookupTableDequantOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ids.initialized(),
+      true,
+      phi::errors::InvalidArgument(
+          "Input(Ids) of LookupTableDequantOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      out != nullptr,
+      true,
+      phi::errors::InvalidArgument(
+          "Output(Out) of LookupTableDequantOp should not be null."));
+
+  const auto& table_dims = w.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+  PADDLE_ENFORCE_EQ(
+      ids_dims[ids_rank - 1],
+      1,
+      phi::errors::InvalidArgument(
+          "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
+          "But received Ids's last dimensions = %d, Ids's shape = [%s].",
+          ids_dims[ids_rank - 1],
+          ids_dims));
+
+  auto output_dims =
+      common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  PADDLE_ENFORCE_GE(table_dims[1],
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the second dim of table_dims should be "
+                        "greater or equal to 2, but the actual shape "
+                        "is [%s]",
+                        table_dims));
+
+  output_dims.push_back((table_dims[1] - 2) * 4);
+
+  out->set_dims(common::make_ddim(output_dims));
+  out->share_lod(ids);
+  out->set_dtype(w.dtype());
+}
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out) {

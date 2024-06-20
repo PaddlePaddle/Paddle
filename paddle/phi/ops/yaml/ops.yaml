@@ -2764,6 +2764,15 @@
   backward : logsumexp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : lookup_table_dequant
+  args: (Tensor w, Tensor ids, int64_t padding_idx = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: LookupTableDequantInferMeta
+  kernel:
+    func: lookup_table_dequant
+    data_type: w
+
 - op : lp_pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
   output : Tensor(out)
