@@ -93,7 +93,7 @@ static OpAttrTypeMap OP_TRANS_ATTRTYPES_MAP = {
      {{"starts", TransAttrType::IntArray}, {"ends", TransAttrType::IntArray}}},
 };
 
-pir::AttributeMap TransformAttributes(::pir::Operation* op) {
+pir::AttributeMap ConvertAttributes(::pir::Operation* op) {
   auto attrs = op->attributes();
   if (OP_TRANS_ATTRTYPES_MAP.count(op->name()) == 0) {
     return attrs;
@@ -116,7 +116,7 @@ pir::AttributeMap TransformAttributes(::pir::Operation* op) {
       attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::BoolAttribute>();
     } else {
       PADDLE_THROW(::common::errors::Unimplemented(
-          "Unsupported attribute type in TransformAttributes"));
+          "Unsupported attribute type in ConvertAttributes"));
     }
   }
   return attrs;
@@ -127,7 +127,7 @@ template <typename TARGET_OP, std::size_t INPUT_NUM>
                                 ::pir::IrMapping& ir_mapping,        // NOLINT
                                 ::pir::PatternRewriter& rewriter) {  // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = TransformAttributes(op);
+  auto attrs = ConvertAttributes(op);
 
   std::vector<pir::Value> inputs;
   for (uint32_t i = 0; i < INPUT_NUM; ++i) {
