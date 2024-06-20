@@ -1874,6 +1874,13 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
 
+- op : hinge_loss
+  backward: hinge_loss_grad
+  inputs:
+    {logits : Logits, labels : Labels}
+  outputs:
+    loss : Loss
+
 - op : histogram
   inputs :
     input : X

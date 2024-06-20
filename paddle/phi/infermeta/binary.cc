@@ -2197,6 +2197,41 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void HingeLossInferMeta(const MetaTensor& logits,
+                        const MetaTensor& labels,
+                        MetaTensor* loss) {
+  const auto& pred_dims = logits.dims();
+  const auto& label_dims = labels.dims();
+
+  PADDLE_ENFORCE_EQ(
+      pred_dims,
+      label_dims,
+      phi::errors::InvalidArgument(
+          "The Input(input) and Input(label) should have the same "
+          "shape, but received input shape [%s] != label shape [%s]",
+          pred_dims,
+          label_dims));
+
+  PADDLE_ENFORCE_EQ(
+      pred_dims.size(),
+      2,
+      phi::errors::InvalidArgument("Input(input) rank should be 2, "
+                                   "but received input rank(%d) != 2",
+                                   pred_dims.size()));
+
+  PADDLE_ENFORCE_EQ(pred_dims[1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(input) should be 1, "
+                        "as each row of input contains a real value, "
+                        "but received second dimension of input (%d) != 1",
+                        pred_dims[1]));
+
+  loss->set_dims({pred_dims[0], 1});
+  loss->share_lod(logits);
+  loss->set_dtype(logits.dtype());
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,

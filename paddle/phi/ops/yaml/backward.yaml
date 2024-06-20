@@ -1435,6 +1435,17 @@
     func : heaviside_grad
     data_type : out_grad
 
+- backward_op : hinge_loss_grad
+  forward: hinge_loss(Tensor logits, Tensor labels) -> Tensor (loss)
+  args: (Tensor logits, Tensor labels, Tensor loss_grad)
+  output: Tensor (logits_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [logits]
+  kernel:
+    func: hinge_loss_grad
+    data_type: loss_grad
+
 - backward_op : hsigmoid_loss_grad
   forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
   args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, Tensor pre_out, Tensor out_grad, int num_classes, bool is_sparse)

@@ -2221,6 +2221,16 @@
     func : heaviside
   backward : heaviside_grad
 
+- op : hinge_loss
+  args: (Tensor logits, Tensor labels)
+  output: Tensor (loss)
+  infer_meta:
+    func: HingeLossInferMeta
+  kernel:
+    func: hinge_loss
+    data_type: logits
+  backward: hinge_loss_grad
+
 - op : histogram
   args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
   output : Tensor(out)
