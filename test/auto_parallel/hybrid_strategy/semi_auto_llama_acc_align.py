@@ -92,13 +92,13 @@ class TestLlamaAuto:
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
-        self.config.recompute = int(os.getenv("recompute"))
+        self.config.recompute = False
         self.config.sep_parallel_degree = 1
 
         self.init_dist_env()
 
     def init_dist_env(self):
-        order = ["pp", "dp", "mp"]
+        order = ["dp", "pp", "mp"]
         dp_degree = self.dp
         mp_degree = self.mp
         pp_degree = self.pp
@@ -166,6 +166,10 @@ class TestLlamaAuto:
 
             if step >= 9:
                 break
+            if int(dist.get_rank()) in [2, 3, 6, 7]:
+                assert tr_loss_step._is_initialized()
+            else:
+                assert not tr_loss_step._is_initialized()
 
         return tr_loss_step._md5sum()
 
@@ -215,6 +219,10 @@ class TestLlamaAuto:
             lr_scheduler.step()
             if step >= 9:
                 break
+            if int(dist.get_rank()) in [2, 3, 6, 7]:
+                assert loss is not None
+            else:
+                assert loss is None
         numpy_array = np.array(loss)
         array_bytes = numpy_array.tobytes()
         loss_md5 = hashlib.md5(array_bytes).hexdigest()
@@ -225,7 +233,7 @@ class TestLlamaAuto:
         dy_loss_md5 = self.run_dynamic()
         self.init_dist_env()
         st_loss_md5 = self.run_dy2static()
-        if int(dist.get_rank()) >= 4:
+        if int(dist.get_rank()) in [2, 3, 6, 7]:
             assert dy_loss_md5 == st_loss_md5
 
 

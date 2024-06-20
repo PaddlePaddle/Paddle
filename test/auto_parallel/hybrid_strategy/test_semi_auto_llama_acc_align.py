@@ -29,7 +29,6 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {
             "backend": ["gpu"],
-            "recompute": ["0"],
         }
 
     def test_simple_net_hybrid_strategy_acc(self):
