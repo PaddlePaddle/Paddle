@@ -2831,7 +2831,7 @@
   outputs :
     {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
-    attrs : [float moving_rate = 0.9]
+    attrs : [bit_length = 8, float moving_rate = 0.9]
 
 - op : randint
   outputs :
