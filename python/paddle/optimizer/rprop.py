@@ -15,7 +15,6 @@
 import warnings
 from typing import TYPE_CHECKING, Sequence
 
-import paddle
 from paddle import _C_ops
 from paddle.tensor.creation import to_tensor
 
@@ -25,6 +24,7 @@ from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.optimizer.lr import LRScheduler
 
@@ -107,9 +107,9 @@ class Rprop(Optimizer):
 
     def __init__(
         self,
-        learning_rate: float | paddle.Tensor | LRScheduler = 0.001,
+        learning_rate: float | Tensor | LRScheduler = 0.001,
         learning_rate_range: tuple[float, float] = (1e-5, 50),
-        parameters: Sequence[paddle.Tensor | _ParameterConfig] | None = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         etas: tuple[float, float] = (0.5, 1.2),
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,

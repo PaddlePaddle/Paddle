@@ -17,7 +17,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Sequence
 
-import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 
@@ -154,15 +153,13 @@ class RAdam(Optimizer):
     def __init__(
         self,
         learning_rate: float | LRScheduler = 0.001,
-        beta1: float | paddle.Tensor = 0.9,
-        beta2: float | paddle.Tensor = 0.999,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
         epsilon: float = 1.0e-8,
-        parameters: Sequence[paddle.Tensor | _RAdamParameterConfig]
+        parameters: Sequence[Tensor]
+        | Sequence[_RAdamParameterConfig]
         | None = None,
-        weight_decay: float
-        | paddle.Tensor
-        | WeightDecayRegularizer
-        | None = None,
+        weight_decay: float | Tensor | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
     ) -> None:
