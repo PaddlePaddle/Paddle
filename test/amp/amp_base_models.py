@@ -370,8 +370,8 @@ def build_while_model():
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA and not support amp.",
+    not (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()),
+    "core is not compiled with CUDA or XPU and not support amp.",
 )
 class AmpTestBase(unittest.TestCase):
     def setUp(self):

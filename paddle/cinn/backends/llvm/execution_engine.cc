@@ -178,7 +178,6 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 template <typename CodeGenT>
 void ExecutionEngine::Link(const ir::Module &module, bool add_module) {
   utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
-  llvm::SMDiagnostic error;
 
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
   VLOG(3) << "ir_emitter->Compile(module) Begin";

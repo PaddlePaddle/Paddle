@@ -598,6 +598,7 @@ def get_test_capacity(run_on_device="cpu"):
 def get_docstring(
     full_test: bool = False,
     filter_api: typing.Callable[[str], bool] | None = None,
+    apis: list[tuple[str, str]] | None = None,
 ):
     '''
     this function will get the docstring for test.
@@ -605,34 +606,40 @@ def get_docstring(
     Args:
         full_test, get all api
         filter_api, a function that filter api, if `True` then skip add to `docstrings_to_test`.
+        apis, checking apis with ((line, api), (line, api), ...) like (("paddle.abs", "paddle.abs"), ("paddle.sin", "paddle.sin"), ...).
+            Do NOT use `full_test` and `apis` at the same time.
     '''
     import paddle
     import paddle.static.quantization  # noqa: F401
 
-    if full_test:
-        get_full_api_from_pr_spec()
-    else:
-        get_incrementapi()
-
     docstrings_to_test = {}
     whl_error = []
-    with open(API_DIFF_SPEC_FN) as f:
-        for line in f.readlines():
-            api = line.replace('\n', '')
-            if filter_api is not None and filter_api(api.strip()):
-                continue
 
-            try:
-                api_obj = eval(api)
-            except AttributeError:
-                whl_error.append(api)
-                continue
-            except SyntaxError:
-                logger.warning('line:%s, api:%s', line, api)
-                # paddle.Tensor.<lambda>
-                continue
-            if hasattr(api_obj, '__doc__') and api_obj.__doc__:
-                docstrings_to_test[api] = api_obj.__doc__
+    if apis is None or not apis:
+        # get api from spec
+        if full_test:
+            get_full_api_from_pr_spec()
+        else:
+            get_incrementapi()
+
+        with open(API_DIFF_SPEC_FN) as f:
+            apis = ((line, line.replace('\n', '')) for line in f.readlines())
+
+    for line, api in apis:
+        if filter_api is not None and filter_api(api.strip()):
+            continue
+
+        try:
+            api_obj = eval(api)
+        except AttributeError:
+            whl_error.append(api)
+            continue
+        except SyntaxError:
+            logger.warning('line:%s, api:%s', line, api)
+            # paddle.Tensor.<lambda>
+            continue
+        if hasattr(api_obj, '__doc__') and api_obj.__doc__:
+            docstrings_to_test[api] = api_obj.__doc__
 
     if len(docstrings_to_test) == 0 and len(whl_error) == 0:
         logger.warning("-----API_PR.spec is the same as API_DEV.spec-----")

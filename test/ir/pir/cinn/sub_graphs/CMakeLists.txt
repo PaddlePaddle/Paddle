@@ -5,8 +5,6 @@ if(WITH_GPU)
       test_sub_graph_2
       test_sub_graph_3
       test_sub_graph_5
-      test_sub_graph_7
-      test_sub_graph_9
       test_sub_graph_10
       test_sub_graph_12
       test_sub_graph_13

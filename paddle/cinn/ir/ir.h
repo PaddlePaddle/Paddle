@@ -988,8 +988,11 @@ struct Block : public ExprNode<Block> {
 struct NoneReduceMethod {};
 struct WarpReduceMethod {};
 struct BlockReduceMethod {};
-using ReduceMethod =
-    std::variant<NoneReduceMethod, WarpReduceMethod, BlockReduceMethod>;
+struct DiscreteReduceMethod {};
+using ReduceMethod = std::variant<NoneReduceMethod,
+                                  WarpReduceMethod,
+                                  BlockReduceMethod,
+                                  DiscreteReduceMethod>;
 
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation
