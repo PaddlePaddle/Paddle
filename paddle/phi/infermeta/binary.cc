@@ -169,9 +169,8 @@ void ArrayReadInferMeta(const MetaTensor& array,
                         MetaTensor* out,
                         MetaConfig config) {
   if (!config.is_runtime) {
-    out->set_dims(array.dims());  // if dims is -1, rnn will crash, return last
-                                  // ArrayWrite DenseTensor's dims. return
-                                  // array[0].dims in old static graph.
+    out->set_dims(array.dims());  // if dims is -1, rnn will crash, return
+                                  // array[0].dims same with old static graph.
   } else {
     double index = i.to<int64_t>();
     out->set_dims(array.dims(index));  // NOLINT
@@ -1652,8 +1651,9 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                           -1 * max_dim,
                           max_dim,
                           axis));
-    axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
-                     : axis);
+    int x_size = x_dims.size() == -1 ? 0 : x_dims.size();
+    int y_size = y_dims.size() == -1 ? 0 : y_dims.size();
+    axis = (axis < 0 ? (std::abs(x_size - y_size) + axis + 1) : axis);
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);

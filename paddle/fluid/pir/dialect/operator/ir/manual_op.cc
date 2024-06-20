@@ -2035,14 +2035,16 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
         pir::IrContext::Instance(),
         place,
         array_type.dtype(),
-        x_type.dims(),
+        phi::product(array_type.dims()) == 0 ? x_type.dims()
+                                             : array_type.dims(),
         array_type.data_layout()));
   } else if (array_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
-    array_.set_type(
-        paddle::dialect::DenseTensorArrayType::get(pir::IrContext::Instance(),
-                                                   array_type.dtype(),
-                                                   x_type.dims(),
-                                                   array_type.data_layout()));
+    array_.set_type(paddle::dialect::DenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        array_type.dtype(),
+        phi::product(array_type.dims()) == 0 ? x_type.dims()
+                                             : array_type.dims(),
+        array_type.data_layout()));
   }
 
   argument_outputs.push_back(out_type);
