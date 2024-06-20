@@ -26,7 +26,7 @@ from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .optimizer import Optimizer, _ParameterConfig
+from .optimizer import Optimizer
 
 if TYPE_CHECKING:
     from typing_extensions import NotRequired
@@ -35,6 +35,8 @@ if TYPE_CHECKING:
     from paddle.nn.clip import GradientClipBase
     from paddle.optimizer.lr import LRScheduler
     from paddle.regularizer import WeightDecayRegularizer
+
+    from .optimizer import _ParameterConfig
 
     class _RAdamParameterConfig(_ParameterConfig):
         beta1: NotRequired[float | Tensor]
