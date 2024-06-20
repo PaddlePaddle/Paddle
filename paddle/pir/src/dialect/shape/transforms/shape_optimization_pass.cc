@@ -18,6 +18,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/cache_grad_op_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
@@ -284,6 +285,19 @@ void InferSymExprForBlock(const Block& block,
         infer_context->SetSymbolForValueByStaticShape(op.result(i));
       }
     }
+    const auto& CacheGradOpSymbolicShape = [&]() {
+      auto cache_grad_op_symbolic_shape_interface =
+          op.dyn_cast<pir::CacheGradOpSymbolicShapeInterface>();
+      if (cache_grad_op_symbolic_shape_interface) {
+        VLOG(3) << "CacheGradOpSymbolicShape for: " << op.name();
+        PADDLE_ENFORCE_EQ(
+            cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
+                infer_context),
+            true,
+            "CacheGradOpSymbolicShape for %s failed.",
+            op.name());
+      }
+    }();
     DebugPrintOpInfo(&op, infer_context);
     CheckInferSymWithInferMeta(&op, infer_context);
   }
