@@ -139,7 +139,7 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
 std::vector<FusibleOp> TransformReduceLoopRange(
     const ReduceOp& upstream,
     FusibleOp* downstream,
-    std::vector<size_t> fake_reduce_iter_idx);
+    const std::vector<size_t>& fake_reduce_iter_idx);
 
 template <typename T>
 std::vector<T> FilterWithFakeReduceIter(
