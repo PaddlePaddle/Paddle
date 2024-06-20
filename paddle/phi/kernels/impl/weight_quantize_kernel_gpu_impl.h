@@ -445,7 +445,8 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
   int kGridSize =
       max((vec_total_n + kBlockSize - 1) / kBlockSize, static_cast<int>(1));
   if (algo == "weight_only_int4") {
-    if ((arch == 80) || (arch == 86) || (arch == 75)) {
+    if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
+        (arch == 75)) {
       per_channel_quant_gpu_int4_col_pack<T, kVectorSize>
           <<<kGridSize, kBlockSize>>>(weight_data,
                                       quanted_weight_data,
