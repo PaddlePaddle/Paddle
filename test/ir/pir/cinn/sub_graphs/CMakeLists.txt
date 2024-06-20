@@ -3,13 +3,19 @@ if(WITH_GPU)
       test_sub_graph_0
       test_sub_graph_7
       test_sub_graph_9
+      test_sub_graph_12
       test_sub_graph_23
+      test_sub_graph_26
+      test_sub_graph_27
+      test_sub_graph_30
+      test_sub_graph_34
       test_sub_graph_42
       test_sub_graph_43
       test_sub_graph_48
       test_sub_graph_49
       test_sub_graph_add_n
       test_sub_graph_chunk
+      test_sub_graph_mul_method
       test_sub_graph_52
       test_sub_graph_56
       test_sub_graph_61
