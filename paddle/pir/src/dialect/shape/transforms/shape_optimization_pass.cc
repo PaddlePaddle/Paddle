@@ -251,7 +251,7 @@ void InferSymExprForBlock(const Block& block,
       input_shape_or_data.emplace_back(
           infer_context->GetShapeOrDataForValue(input));
     }
-    OperationShapeInfo op_shape_info(op, input_shape_or_data);
+    InferSymbolicShapeCacheKey op_infer_cache_key(op, input_shape_or_data);
     auto infer_symbolic_shape_interface =
         op.dyn_cast<pir::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
@@ -289,10 +289,10 @@ void InferSymExprForBlock(const Block& block,
           infer_context->SetSymbolForValueByStaticShape(op.result(i));
         }
       } else {
-        if (infer_context->GetOpInferSymbolicShapeCache(op_shape_info)
+        if (infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
                 .has_value()) {
           std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
-              infer_context->GetOpInferSymbolicShapeCache(op_shape_info)
+              infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
                   .value();
           CHECK(cached_result_shape_or_data.size() == op.num_results());
           for (uint32_t i = 0; i < op.num_results(); ++i) {
@@ -315,10 +315,11 @@ void InferSymExprForBlock(const Block& block,
         result_shape_or_data.emplace_back(
             infer_context->GetShapeOrDataForValue(result));
       }
-      if (infer_context->GetOpInferSymbolicShapeCache(op_shape_info)
+      if (infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
               .has_value()) {
         std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
-            infer_context->GetOpInferSymbolicShapeCache(op_shape_info).value();
+            infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
+                .value();
         // check whether the result_shape_or_data is consistent with the cached
         // TODO(Hongqing-work): delete check and only set cache for op without
         // InferSymbolicShapeInterface after fixing all warnings.
@@ -328,14 +329,15 @@ void InferSymExprForBlock(const Block& block,
           for (uint32_t i = 0; i < op.num_results(); ++i) {
             if (cached_result_shape_or_data[i] != result_shape_or_data[i]) {
               LOG(WARNING) << "cached shape is not consistent with real shape";
-              VLOG(3) << "OperationShapeInfo is: " << op_shape_info;
+              VLOG(3) << "InferSymbolicShapeCacheKey is: "
+                      << op_infer_cache_key;
               VLOG(3) << "cached shape is: " << cached_result_shape_or_data[i];
               VLOG(3) << "real shape is: " << result_shape_or_data[i];
             }
           }
         }
       } else {
-        infer_context->SetOpInferSymbolicShapeCache(op_shape_info,
+        infer_context->SetOpInferSymbolicShapeCache(op_infer_cache_key,
                                                     result_shape_or_data);
       }
     };

@@ -24,13 +24,50 @@
 #include "paddle/pir/include/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
-#include "paddle/pir/include/dialect/shape/utils/operation_shape_info.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
+using InferSymbolicShapeCacheValue = std::vector<symbol::ShapeOrDataDimExprs>;
+/**
+ * This class represents information needed to determine the output
+ * shape of an operator, which includes the operator's name, input shapes, and
+ * attributes.
+ */
+class IR_API InferSymbolicShapeCacheKey {
+ public:
+  InferSymbolicShapeCacheKey(
+      const Operation& op,
+      const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas);
+  InferSymbolicShapeCacheKey(
+      const std::string& op_name,
+      const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas,
+      const AttributeMap& attributes);
+  bool operator==(const InferSymbolicShapeCacheKey& other) const;
+  std::size_t GetHashValue() const;
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const InferSymbolicShapeCacheKey& info);
+  friend class InferSymbolicShapeContext;
 
-using ShareCacheResultT = std::vector<symbol::ShapeOrDataDimExprs>;
+ private:
+  std::string op_name_;
+  std::vector<symbol::ShapeOrDataDimExprs> input_shape_or_datas_;
+  std::vector<std::pair<std::string, ::pir::Attribute>> attributes_;
+  const std::vector<symbol::ShapeOrDataDimExprs>& GetInputShapeOrDatas() const;
+  void SetInputShapeOrDatas(
+      const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas);
+};
+}  // namespace pir
 
+namespace std {
+template <>
+struct hash<pir::InferSymbolicShapeCacheKey> {
+  std::size_t operator()(const pir::InferSymbolicShapeCacheKey& obj) const {
+    return obj.GetHashValue();
+  }
+};
+}  // namespace std
+
+namespace pir {
 void InferSymExprForAllValues(ModuleOp module_op);
 
 class IR_API InferSymbolicShapeContext {
@@ -71,11 +108,12 @@ class IR_API InferSymbolicShapeContext {
 
   void PrintShapeOrDatas() const;
 
-  void SetOpInferSymbolicShapeCache(const OperationShapeInfo& op_shape_info,
-                                    ShareCacheResultT result_shape);
+  void SetOpInferSymbolicShapeCache(
+      const InferSymbolicShapeCacheKey& op_infer_cache_key,
+      InferSymbolicShapeCacheValue result_shape);
 
-  std::optional<ShareCacheResultT> GetOpInferSymbolicShapeCache(
-      const OperationShapeInfo& op_shape_info) const;
+  std::optional<InferSymbolicShapeCacheValue> GetOpInferSymbolicShapeCache(
+      const InferSymbolicShapeCacheKey& op_infer_cache_key) const;
 
   const symbol::ConstraintsManager& constraints_manager() const {
     return constraints_manager_;
@@ -100,9 +138,8 @@ class IR_API InferSymbolicShapeContext {
       std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
   DimExprSubstitutionPattern substitution_pattern_;
 
-  std::unordered_map<OperationShapeInfo,
-                     std::vector<symbol::ShapeOrDataDimExprs>>
-      op_shape_share_cache_;
+  std::unordered_map<InferSymbolicShapeCacheKey, InferSymbolicShapeCacheValue>
+      infer_symbolic_shape_cache_;
 };
 
 class IR_API ShapeConstraintIRAnalysis final

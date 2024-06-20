@@ -71,6 +71,12 @@ void InferSymbolicShapeContext::RegisterSymbolConstraintFromContext(
   }
 
   substitution_pattern_ = other.substitution_pattern_;
+
+  // TODO(Hongqing-work): change this func name and pybind after add backward
+  // cache mechanism
+  for (const auto& kv : other.infer_symbolic_shape_cache_) {
+    infer_symbolic_shape_cache_[kv.first] = kv.second;
+  }
 }
 
 const std::string InferSymbolicShapeContext::GetNextSymName() {
@@ -304,17 +310,31 @@ void InferSymbolicShapeContext::SubstituteDimExpr(
         symbol::SubstituteShapeOrData(val.second, substitution_pattern_);
     val.second = substituted_shape_or_data;
   }
-  for (auto it = op_shape_share_cache_.begin();
-       it != op_shape_share_cache_.end();
-       it++) {
-    std::vector<symbol::ShapeOrDataDimExprs> substituted_result;
-    for (const auto& shape_or_data : it->second) {
+
+  decltype(infer_symbolic_shape_cache_) new_op_shape_share_cache;
+  for (auto& item : infer_symbolic_shape_cache_) {
+    std::vector<symbol::ShapeOrDataDimExprs> input_shape_or_datas =
+        item.first.GetInputShapeOrDatas();
+    std::vector<symbol::ShapeOrDataDimExprs> input_substituted_result;
+    for (const auto& shape_or_data : input_shape_or_datas) {
       const auto& substituted_shape_or_data =
           symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
-      substituted_result.emplace_back(substituted_shape_or_data);
+      input_substituted_result.emplace_back(substituted_shape_or_data);
     }
-    it->second = substituted_result;
+    pir::InferSymbolicShapeCacheKey new_infer_symbolic_shape_cache_key =
+        item.first;
+    new_infer_symbolic_shape_cache_key.SetInputShapeOrDatas(
+        input_substituted_result);
+    std::vector<symbol::ShapeOrDataDimExprs> output_substituted_result;
+    for (const auto& shape_or_data : item.second) {
+      const auto& substituted_shape_or_data =
+          symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
+      output_substituted_result.emplace_back(substituted_shape_or_data);
+    }
+    new_op_shape_share_cache[new_infer_symbolic_shape_cache_key] =
+        output_substituted_result;
   }
+  infer_symbolic_shape_cache_ = std::move(new_op_shape_share_cache);
 }
 
 void InferSymbolicShapeContext::PrintShapeOrDatas() const {
@@ -328,15 +348,16 @@ void InferSymbolicShapeContext::PrintShapeOrDatas() const {
 }
 
 void InferSymbolicShapeContext::SetOpInferSymbolicShapeCache(
-    const OperationShapeInfo& op_shape_info, ShareCacheResultT result_shape) {
-  op_shape_share_cache_[op_shape_info] = result_shape;
+    const InferSymbolicShapeCacheKey& op_infer_cache_key,
+    InferSymbolicShapeCacheValue result_shape) {
+  infer_symbolic_shape_cache_[op_infer_cache_key] = result_shape;
 }
 
-std::optional<ShareCacheResultT>
+std::optional<InferSymbolicShapeCacheValue>
 InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
-    const OperationShapeInfo& op_shape_info) const {
-  if (op_shape_share_cache_.count(op_shape_info) != 0) {
-    return op_shape_share_cache_.at(op_shape_info);
+    const InferSymbolicShapeCacheKey& op_infer_cache_key) const {
+  if (infer_symbolic_shape_cache_.count(op_infer_cache_key) != 0) {
+    return infer_symbolic_shape_cache_.at(op_infer_cache_key);
   }
   return std::nullopt;
 }
@@ -722,6 +743,97 @@ bool IsStaticShape(const Value& value) {
     return is_static;
   }
   return false;
+}
+
+static const char* kOpCallStack = "op_callstack";
+static const char* kSymShapeStr = "sym_shape_str";
+static const char* kResultName = "name";
+
+InferSymbolicShapeCacheKey::InferSymbolicShapeCacheKey(
+    const Operation& op,
+    const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas)
+    : InferSymbolicShapeCacheKey(
+          op.name(), input_shape_or_datas, op.attributes()) {}
+
+InferSymbolicShapeCacheKey::InferSymbolicShapeCacheKey(
+    const std::string& op_name,
+    const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas,
+    const AttributeMap& attributes)
+    : op_name_(op_name), input_shape_or_datas_(input_shape_or_datas) {
+  // Keep attribute always in order.
+  std::map<std::string, ::pir::Attribute, std::less<>> order_attributes(
+      attributes.begin(), attributes.end());
+  attributes_.reserve(attributes.size());
+  for (const auto& [attr_name, attr_value] : order_attributes) {
+    if (!attr_value || attr_name == kOpCallStack || attr_name == kSymShapeStr ||
+        attr_name == kResultName)
+      continue;
+    attributes_.emplace_back(attr_name, attr_value);
+  }
+}
+
+std::size_t InferSymbolicShapeCacheKey::GetHashValue() const {
+  const auto name_hash_func = std::hash<std::string>();
+  const auto attr_hash_func = std::hash<pir::Attribute>();
+  const auto shape_hash_func = std::hash<symbol::ShapeOrDataDimExprs>();
+  std::size_t res = name_hash_func(op_name_);
+  for (const auto& item : attributes_) {
+    res = pir::detail::hash_combine(res, name_hash_func(item.first));
+    res = pir::detail::hash_combine(res, attr_hash_func(item.second));
+  }
+  for (const auto& item : input_shape_or_datas_) {
+    res = pir::detail::hash_combine(res, shape_hash_func(item));
+  }
+  return res;
+}
+
+bool InferSymbolicShapeCacheKey::operator==(
+    const InferSymbolicShapeCacheKey& other) const {
+  if (op_name_ != other.op_name_) return false;
+  if (attributes_.size() != other.attributes_.size()) return false;
+  for (std::size_t i = 0; i < attributes_.size(); ++i) {
+    if (attributes_[i].first != other.attributes_[i].first ||
+        attributes_[i].second != other.attributes_[i].second)
+      return false;
+  }
+  if (input_shape_or_datas_.size() != other.input_shape_or_datas_.size())
+    return false;
+  for (std::size_t i = 0; i < input_shape_or_datas_.size(); ++i) {
+    if (input_shape_or_datas_[i] != other.input_shape_or_datas_[i])
+      return false;
+  }
+  return true;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const InferSymbolicShapeCacheKey& info) {
+  os << "InferSymbolicShapeCacheKey - " << info.op_name_ << std::endl;
+  if (!info.attributes_.empty()) {
+    os << "  attrs: {";
+    for (std::size_t i = 0; i < info.attributes_.size() - 1; ++i) {
+      ::pir::IrPrinter(os).PrintAttribute(info.attributes_[i].second);
+      os << ", ";
+    }
+    ::pir::IrPrinter(os).PrintAttribute(info.attributes_.back().second);
+    os << std::endl;
+  }
+  if (!info.input_shape_or_datas_.empty()) {
+    os << "  input_shape_or_datas: {";
+    for (std::size_t i = 0; i < info.input_shape_or_datas_.size() - 1; ++i) {
+      os << info.input_shape_or_datas_[i] << ", ";
+    }
+    os << info.input_shape_or_datas_.back() << "}" << std::endl;
+  }
+  return os;
+}
+
+const std::vector<symbol::ShapeOrDataDimExprs>&
+InferSymbolicShapeCacheKey::GetInputShapeOrDatas() const {
+  return input_shape_or_datas_;
+}
+void InferSymbolicShapeCacheKey::SetInputShapeOrDatas(
+    const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas) {
+  this->input_shape_or_datas_ = input_shape_or_datas;
 }
 
 }  // namespace pir
