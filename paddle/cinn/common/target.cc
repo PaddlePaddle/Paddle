@@ -57,7 +57,8 @@ int GetRuntimeArchImpl(NVGPUArch) {
 }
 
 int GetRuntimeArchImpl(HygonDCUArchHIP) {
-  PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "HygonDCUArchHIP not supported GetRuntimeArch!"));
 }
 
 int GetRuntimeArch(Arch arch) {

@@ -73,18 +73,7 @@ class CinnJitInstruction::FnPtrImpl {
       ::common::PerformanceStatistician& ps =
           ::common::PerformanceStatistician::Instance();
       auto data_p = static_cast<void*>(func_args_.data());
-      cinn::common::DefaultDeviceTarget().arch.Match(
-          [&](cinn::common::UnknownArch) {},
-          [&](cinn::common::X86Arch) {},
-          [&](cinn::common::ARMArch) {},
-          [&](cinn::common::NVGPUArch) {
-#ifdef CINN_WITH_CUDA
-            cudaDeviceSynchronize();
-#endif
-          },
-          [&](cinn::common::HygonDCUArchHIP arch) {
-            BackendAPI::get_backend(arch)->device_sync();
-          });
+      cudaDeviceSynchronize();
       ps.Start(FLAGS_cinn_kernel_execution_label);
       if (is_gpu) {
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
@@ -93,18 +82,7 @@ class CinnJitInstruction::FnPtrImpl {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
-      cinn::common::DefaultDeviceTarget().arch.Match(
-          [&](cinn::common::UnknownArch) {},
-          [&](cinn::common::X86Arch) {},
-          [&](cinn::common::ARMArch) {},
-          [&](cinn::common::NVGPUArch) {
-#ifdef CINN_WITH_CUDA
-            cudaDeviceSynchronize();
-#endif
-          },
-          [&](cinn::common::HygonDCUArchHIP arch) {
-            BackendAPI::get_backend(arch)->device_sync();
-          });
+      cudaDeviceSynchronize();
       ps.End(FLAGS_cinn_kernel_execution_label);
     } else {
       if (is_gpu) {
