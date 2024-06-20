@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     List,
     Literal,
     Sequence,
@@ -49,6 +50,9 @@ TensorIndex: TypeAlias = Union[
 _T = TypeVar("_T")
 
 NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
+NestedStructure = Union[
+    _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
+]
 IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]

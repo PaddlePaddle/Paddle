@@ -20,6 +20,7 @@ from .basic import (
     IntSequence as IntSequence,
     NestedNumbericSequence as NestedNumbericSequence,
     NestedSequence as NestedSequence,
+    NestedStructure as NestedStructure,
     Numberic as Numberic,
     NumbericSequence as NumbericSequence,
     TensorIndex as TensorIndex,
