@@ -29,7 +29,7 @@ set(YAML_BuildTests
 
 if(WIN32)
   set(YAML_LIBRARIES
-      "${YAML_INSTALL_DIR}/lib/libyaml-cpp.a"
+      "${YAML_INSTALL_DIR}/lib/yaml-cpp.lib"
       CACHE FILEPATH "yaml library." FORCE)
 else()
   set(YAML_LIBRARIES
