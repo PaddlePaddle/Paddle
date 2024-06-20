@@ -20,7 +20,7 @@ gather_srcs(
   arithmetic.cc
   cas.cc
   union_find.cc
-  # python_interpreter_guard.cc
+  python_interpreter_guard.cc
   nvgpu_dev_info.cc
   integer_set.cc
   dim_expr_converter.cc
