@@ -416,6 +416,17 @@
   inplace : (input -> out)
   backward : bce_loss_grad
 
+- op : beam_search
+  args: (Tensor pre_ids, Tensor pre_scores, Tensor ids, Tensor scores, int level,
+    int beam_size, int end_id, bool is_accumulated = true)
+  output: Tensor (selected_ids), Tensor (selected_scores), Tensor (parent_idx)
+  infer_meta:
+    func: BeamSearchInferMeta
+  kernel:
+    func: beam_search
+    data_type: pre_ids
+  optional: ids, parent_idx
+
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
