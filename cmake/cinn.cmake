@@ -173,7 +173,7 @@ add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
-target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
+# target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
