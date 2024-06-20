@@ -29,6 +29,10 @@
 namespace pir {
 
 void GetPatchCompressOpName(std::string *op_name) {
+  if (*op_name == "builtin.parameter") {
+    *op_name = 'p';
+    return;
+  }
   std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
   *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
              "." + name.second;
@@ -168,7 +172,7 @@ Json YamlPaser(const std::string &yaml_file) {
         Json j_attr;
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
-        j_patch["patch"][ATTRS] = j_attr;
+        j_patch["patch"][ATTRS].push_back(j_attr);
       } else if (action_name == "add_output_attr" ||
                  action_name == "modify_output_attr" ||
                  action_name == "delete_output_attr") {
@@ -176,7 +180,7 @@ Json YamlPaser(const std::string &yaml_file) {
         Json j_attr;
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
-        j_patch["patch"][OPRESULTS_ATTRS] = j_attr;
+        j_patch["patch"][OPRESULTS_ATTRS].push_back(j_attr);
       }
     }
     json_patch["op_patches"].push_back(j_patch);
