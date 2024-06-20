@@ -135,11 +135,11 @@ template <typename TARGET_OP, std::size_t INPUT_NUM>
   }
   auto input_tuple = VectorToTuple<pir::Value, INPUT_NUM>(inputs);
 
-  auto args = std::tuple_cat(input_tuple, std::make_tuple(attrs));
+  auto tuple_args = std::tuple_cat(input_tuple, std::make_tuple(attrs));
   const auto& build_op_func = [&rewriter](auto&&... args) {
     return rewriter.Build<TARGET_OP>(std::forward<decltype(args)>(args)...);
   };
-  auto pd_op = ApplyTupleArgs(build_op_func, args);
+  auto pd_op = ApplyTupleArgs(build_op_func, tuple_args);
 
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
