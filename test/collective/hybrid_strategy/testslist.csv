@@ -1,2 +1,3 @@
 name,os,arch,timeout,run_type,launcher,num_port,run_serial,envs,conditions
 test_dygraph_comm_groups_hybrid_strategy,LINUX,GPU,120,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_parallel_dygraph_pipeline_parallel_communicate_with_dict,LINUX,GPU,500,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,

@@ -12,3 +12,12 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_dygraph_comm_groups_hybrid_strategy
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_parallel_dygraph_pipeline_parallel_communicate_with_dict MODULES
+    test_parallel_dygraph_pipeline_parallel_communicate_with_dict ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(
+    test_parallel_dygraph_pipeline_parallel_communicate_with_dict
+    PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=HYBRID")
+endif()

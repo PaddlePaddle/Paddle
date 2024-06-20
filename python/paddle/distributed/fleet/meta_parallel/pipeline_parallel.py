@@ -15,7 +15,7 @@ import queue
 import sys
 import time
 import warnings
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 
 import paddle
 from paddle import framework
@@ -868,6 +868,16 @@ class PipelineParallel(MetaParallelBase):
                         tensors=outputs,
                         grad_tensors=list(output_tensor_grad),
                     )
+                elif isinstance(output_tensor, (dict, OrderedDict)):
+                    outputs = []
+                    out_grads = []
+                    for key, value in output_tensor.items():
+                        if not value.stop_gradient:
+                            outputs.append(value)
+                            out_grads.append(output_tensor_grad[key])
+                    paddle.autograd.backward(
+                        tensors=outputs, grad_tensors=out_grads
+                    )
                 else:
                     paddle.autograd.backward(
                         tensors=[output_tensor],
@@ -880,6 +890,11 @@ class PipelineParallel(MetaParallelBase):
                     input_tensor_grad = tuple(
                         [t.grad for t in input_tensor if not t.stop_gradient]
                     )
+                elif isinstance(input_tensor, (dict, OrderedDict)):
+                    input_tensor_grad = {}
+                    for key, value in input_tensor.items():
+                        if not value.stop_gradient:
+                            input_tensor_grad[key] = value.grad
                 else:
                     input_tensor_grad = input_tensor.grad
             if self._enable_timer:
@@ -999,6 +1014,11 @@ class PipelineParallel(MetaParallelBase):
             for t in output:
                 if can_free(t):
                     t._clear_dataptr()
+
+        elif isinstance(output, (dict, OrderedDict)):
+            for key in output.keys():
+                if can_free(output[key]):
+                    output[key]._clear_dataptr()
 
         elif can_free(output):
             output._clear_dataptr()
