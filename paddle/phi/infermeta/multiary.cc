@@ -2071,21 +2071,28 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaConfig config) {
   auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(x_dims.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "The size of Input(x) must be 2: %s", x_dims));
-  auto token_num = x_dims[0];
-  auto dim = x_dims[1];
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The size of Input(x) must greater than 2: %s", x_dims));
+  int x_last_dim = x_dims.size() - 1;
+  auto dim = x_dims[x_last_dim];
+
+  std::vector<int64_t> x_shapes;
+  for (int i = 0; i < x_dims.size(); i++) {
+    x_shapes.push_back(x_dims[i]);
+  }
+  auto token_num = x.numel() / dim;
 
   if (config.is_runtime) {
     PADDLE_ENFORCE_GT(
-        x_dims[0],
+        token_num,
         0,
         phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
     PADDLE_ENFORCE_GT(
-        x_dims[1],
+        dim,
         0,
         phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
   }
@@ -2096,10 +2103,10 @@ void FusedBiasActInferMeta(const MetaTensor& x,
         0,
         phi::errors::InvalidArgument(
             "The seconde dimension of x must be even, but receive %d", dim));
-    dim /= 2;
-    out->set_dims(common::make_ddim({token_num, dim}));
+    x_shapes[x_last_dim] /= 2;
+    out->set_dims(common::make_ddim(x_shapes));
   } else if (act_method == "gelu" || act_method == "relu") {
-    out->set_dims(common::make_ddim({token_num, dim}));
+    out->set_dims(common::make_ddim(x_shapes));
   } else {
     PADDLE_THROW(
         errors::InvalidArgument("act_method must be geglu, swiglu or gelu, "
