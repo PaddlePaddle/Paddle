@@ -112,21 +112,29 @@ __global__ void weight_interval_kernel_wint4(int8_t* output_data_dev,
       int8_t interval_weight_0 = output_data_dev[linear_idx + pack];
       int8_t interval_weight_1 = output_data_dev[linear_idx + pack + 2];
 
-      uint8_t interval_weight_0_l = static_cast<uint8_t>(interval_weight_0) & 0x0F;
-      uint8_t interval_weight_0_r = static_cast<uint8_t>(interval_weight_0) >> 4;
-      uint8_t interval_weight_1_l = static_cast<uint8_t>(interval_weight_1) & 0x0F;
-      uint8_t interval_weight_1_r = static_cast<uint8_t>(interval_weight_1) >> 4;
+      uint8_t interval_weight_0_l =
+          static_cast<uint8_t>(interval_weight_0) & 0x0F;
+      uint8_t interval_weight_0_r =
+          static_cast<uint8_t>(interval_weight_0) >> 4;
+      uint8_t interval_weight_1_l =
+          static_cast<uint8_t>(interval_weight_1) & 0x0F;
+      uint8_t interval_weight_1_r =
+          static_cast<uint8_t>(interval_weight_1) >> 4;
 
       interval_weight_0_l = (interval_weight_0_l + 8) & 0x0F;
       interval_weight_0_r = (interval_weight_0_r + 8) & 0x0F;
       interval_weight_1_l = (interval_weight_1_l + 8) & 0x0F;
       interval_weight_1_r = (interval_weight_1_r + 8) & 0x0F;
 
-      uint8_t new_interval_weight_0 = interval_weight_0_l | (interval_weight_1_l << 4);
-      uint8_t new_interval_weight_1 = interval_weight_0_r | (interval_weight_1_r << 4);
+      uint8_t new_interval_weight_0 =
+          interval_weight_0_l | (interval_weight_1_l << 4);
+      uint8_t new_interval_weight_1 =
+          interval_weight_0_r | (interval_weight_1_r << 4);
 
-      output_data_dev[linear_idx + pack] = static_cast<int8_t>(new_interval_weight_0);
-      output_data_dev[linear_idx + pack + 2] = static_cast<int8_t>(new_interval_weight_1);
+      output_data_dev[linear_idx + pack] =
+          static_cast<int8_t>(new_interval_weight_0);
+      output_data_dev[linear_idx + pack + 2] =
+          static_cast<int8_t>(new_interval_weight_1);
     }
   }
 }
@@ -173,17 +181,15 @@ For SM70 volta arch, weightonly int4 dequantize invoked in load global memory.
 So it only need interleave in K-dimension
 K_index: 0 1 2 3 4 5 6 7 -> 0 2 4 6 1 3 5 7
 */
-__global__ void weight_interleave_add_bias_kernel_wint4(
-    int8_t* input_data_dev,
-    int8_t* output_data_dev,
-    int numel,
-    int total_k,
-    int total_n) {
+__global__ void weight_interleave_add_bias_kernel_wint4(int8_t* input_data_dev,
+                                                        int8_t* output_data_dev,
+                                                        int numel,
+                                                        int total_k,
+                                                        int total_n) {
   const int num_registers = numel / 4;
   uint32_t* packed_input = reinterpret_cast<uint32_t*>(input_data_dev);
   uint32_t* packed_output = reinterpret_cast<uint32_t*>(output_data_dev);
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; 
-       i < num_registers; 
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_registers;
        i += blockDim.x * gridDim.x) {
     uint32_t current_pack = packed_input[i];
     uint32_t transformed_pack = 0;
@@ -215,13 +221,14 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
   int block_size = gpu_config.GetBlockSize();
-  if ((arch == 80) || (arch == 86) || (arch == 75)) {
+  if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
+      (arch == 75)) {
     if (algo == "weight_only_int4") {
       numel /= 2;
       weight_permute_kernel_wint4<<<grid_size, block_size>>>(
           input_data, output_data, numel, total_k, total_n);
-      weight_interval_kernel_wint4<<<grid_size, block_size>>>(
-          output_data, numel);
+      weight_interval_kernel_wint4<<<grid_size, block_size>>>(output_data,
+                                                              numel);
     } else {
       weight_permute_kernel_wint8<<<grid_size, block_size>>>(
           input_data, output_data, numel, total_k, total_n);
@@ -303,8 +310,7 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
   if (n < total_vec_n) {
     const int4* vec_weight_data_ptr =
         reinterpret_cast<const int4*>(weight_data);
-    int* vec_quanted_weight_data =
-        reinterpret_cast<int*>(quanted_weight_data);
+    int* vec_quanted_weight_data = reinterpret_cast<int*>(quanted_weight_data);
     phi::AlignedVector<float, VectorSize> abs_max;
 #pragma unroll
     for (int i = 0; i < VectorSize; ++i) {
@@ -338,9 +344,9 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
         int8_t packed_int4s = 0;
         for (int pack = 0; pack < 2; ++pack) {
           int vector_index = i * 2 + pack;
-          float scaled_weight =
-            (static_cast<float>(weight[vector_index]) / static_cast<float>(abs_max[vector_index])) *
-              static_cast<float>(7.0);
+          float scaled_weight = (static_cast<float>(weight[vector_index]) /
+                                 static_cast<float>(abs_max[vector_index])) *
+                                static_cast<float>(7.0);
           int8_t clipped_weight = static_cast<int8_t>(
               lroundf(fmaxf(-7.0f, fminf(7.0f, scaled_weight))));
           packed_int4s |= ((clipped_weight & 0x0F) << (4 * pack));
@@ -440,12 +446,19 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
       max((vec_total_n + kBlockSize - 1) / kBlockSize, static_cast<int>(1));
   if (algo == "weight_only_int4") {
     if ((arch == 80) || (arch == 86) || (arch == 75)) {
-      per_channel_quant_gpu_int4_col_pack<T, kVectorSize><<<kGridSize, kBlockSize>>>(
-        weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
-    }
-    else if ((arch == 70)) {
-      per_channel_quant_gpu_int4_row_pack<T, kVectorSize><<<kGridSize, kBlockSize>>>(
-        weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
+      per_channel_quant_gpu_int4_col_pack<T, kVectorSize>
+          <<<kGridSize, kBlockSize>>>(weight_data,
+                                      quanted_weight_data,
+                                      scale_data,
+                                      total_k,
+                                      vec_total_n);
+    } else if ((arch == 70)) {
+      per_channel_quant_gpu_int4_row_pack<T, kVectorSize>
+          <<<kGridSize, kBlockSize>>>(weight_data,
+                                      quanted_weight_data,
+                                      scale_data,
+                                      total_k,
+                                      vec_total_n);
     }
   } else {
     per_channel_quant_gpu<T, kVectorSize><<<kGridSize, kBlockSize>>>(

@@ -116,6 +116,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : add_position_encoding
+  backward: add_position_encoding_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : addmm
   backward : addmm_grad
   inputs :
@@ -126,6 +133,13 @@
     {alpha : Alpha, beta : Beta}
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : affine_channel
+  backward: affine_channel_grad
+  inputs:
+    {x : X, scale : Scale, bias : Bias}
+  outputs:
+    out : Out
 
 - op : affine_grid
   backward : affine_grid_grad
@@ -762,6 +776,13 @@
     axis:
       data_type : int
       support_tensor : true
+
+- op : cvm
+  backward: cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Y
 
 - op : data_norm
   backward : data_norm_grad
@@ -1527,6 +1548,12 @@
     scale : Scale
   outputs :
     out : Out
+
+- op : fused_embedding_fc_lstm
+  inputs:
+    {ids : Ids, embeddings : Embeddings, weight_h : WeightH, bias : Bias, h0 : H0, c0 : C0}
+  outputs:
+    {hidden : Hidden, cell : Cell, xx : XX, batched_input : BatchedInput, batched_hidden : BatchedHidden, batched_cell : BatchedCell, reordered_h0 : ReorderedH0, reordered_c0 : ReorderedC0}
 
 - op : fused_fc_elementwise_layernorm
   inputs :
@@ -2730,9 +2757,9 @@
   outputs:
     out : Out
   attrs:
-    { dims : dim,  keep_dim : keep_dim}
+    { axis : dim,  keepdim : keep_dim}
   int_array:
-    dims :
+    axis :
       data_type : int
       support_tensor : true
   extra :

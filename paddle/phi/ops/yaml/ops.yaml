@@ -124,6 +124,16 @@
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
   traits : pir::SideEffectTrait
 
+- op : add_position_encoding
+  args: (Tensor x, float alpha = 1.0f, float beta = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: AddPositionEncodingInferMeta
+  kernel:
+    func: add_position_encoding
+    data_type: x
+  backward: add_position_encoding_grad
+
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
   output : Tensor(out)
@@ -134,6 +144,16 @@
     data_type : x
   inplace: (input -> out)
   backward : addmm_grad
+
+- op : affine_channel
+  args: (Tensor x, Tensor scale, Tensor bias, str data_layout = "AnyLayout")
+  output: Tensor (out)
+  infer_meta:
+    func: AffineChannelInferMeta
+  kernel:
+    func: affine_channel
+  backward: affine_channel_grad
+  inplace : (x -> out)
 
 - op : affine_grid
   args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
@@ -405,6 +425,17 @@
     data_type : input
   inplace : (input -> out)
   backward : bce_loss_grad
+
+- op : beam_search
+  args: (Tensor pre_ids, Tensor pre_scores, Tensor ids, Tensor scores, int level,
+    int beam_size, int end_id, bool is_accumulated = true)
+  output: Tensor (selected_ids), Tensor (selected_scores), Tensor (parent_idx)
+  infer_meta:
+    func: BeamSearchInferMeta
+  kernel:
+    func: beam_search
+    data_type: pre_ids
+  optional: ids, parent_idx
 
 - op : bernoulli
   args : (Tensor x)
@@ -1057,6 +1088,17 @@
   inplace: (x -> out)
   backward : cumsum_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : cvm
+  args: (Tensor x, Tensor cvm, bool use_cvm = true)
+  output: Tensor (out)
+  infer_meta:
+    func: CvmInferMeta
+  kernel:
+    func: cvm
+    data_type: x
+  backward: cvm_grad
+  no_need_buffer: cvm
 
 - op : data
   args : (str name, IntArray shape, DataType dtype, Place place)
@@ -3301,7 +3343,7 @@
     data_type : input
 
 - op : prod
-  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, IntArray axis, bool keepdim, bool reduce_all)
   output : Tensor
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase
@@ -4287,14 +4329,14 @@
   backward : thresholded_relu_grad
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
-  output : Tensor (out), Tensor(ids)
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int random_seed=-1, int k=1, str mode="truncate")
+  output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
   infer_meta :
     func : TopPSamplingInferMeta
   kernel :
     func : top_p_sampling
     data_type : x
-  optional : threshold
+  optional : threshold, topp_seed
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : topk

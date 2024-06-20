@@ -213,6 +213,18 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                              MetaTensor* variance_out,
                              MetaConfig config = MetaConfig());
 
+void BeamSearchInferMeta(const MetaTensor& pre_ids,
+                         const MetaTensor& pre_scores,
+                         const MetaTensor& ids,
+                         const MetaTensor& scores,
+                         int level,
+                         int beam_size,
+                         int end_id,
+                         bool is_accumulated,
+                         MetaTensor* selected_ids,
+                         MetaTensor* selected_scores,
+                         MetaTensor* parent_idx);
+
 void BilinearInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const MetaTensor& weight,
@@ -1171,5 +1183,17 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out);
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
+                           int random_seed,
+                           int k,
+                           const std::string& mode,
+                           MetaTensor* out,
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids);
 
 }  // namespace phi
