@@ -150,7 +150,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // nothing
       },
-      [&](common::NVGPUArch arch) {
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
         auto cur_dev_info =
             common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
@@ -160,7 +160,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       },
-      [&](common::HygonDCUArchHIP arch) {
+      [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
         auto cur_dev_info =
             common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
@@ -249,7 +249,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch arch) {
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
         auto cur_dev_info =
             common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
@@ -259,7 +259,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       },
-      [&](common::HygonDCUArchHIP arch) {
+      [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
         auto cur_dev_info =
             common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);

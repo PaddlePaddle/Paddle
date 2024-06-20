@@ -776,12 +776,10 @@ std::vector<Tensor> MulBaseCallImpl(common::ARMArch,
   LOG(FATAL) << "NotImplemented.";
 }
 
-std::vector<Tensor> MulBaseCallImpl(
-    std::variant<common::NVGPUArch, common::HygonDCUArchHIP>,
-    const Tensor& A,
-    const Tensor& B,
-    const std::string& name,
-    const cinn::common::Target& target) {
+std::vector<Tensor> MulBaseCallImplNvHygon(const Tensor& A,
+                                           const Tensor& B,
+                                           const std::string& name,
+                                           const cinn::common::Target& target) {
   std::vector<Expr> output_shape;
   PADDLE_ENFORCE_EQ(
       A->shape.size(),
@@ -821,6 +819,22 @@ std::vector<Tensor> MulBaseCallImpl(
         return lang::ReduceSum(A(A_indice) * B(B_indice), {reduce_k});
       },
       name)};
+}
+
+std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
+  MulBaseCallImplNvHygon(A, B, name, target);
+}
+
+std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchHIP,
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
+  MulBaseCallImplNvHygon(A, B, name, target);
 }
 
 std::vector<Tensor> MulBaseCall(const Tensor& A,

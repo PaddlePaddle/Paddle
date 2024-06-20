@@ -158,7 +158,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
           *ret = CINNValuePack{cinn_values};
         };
-        auto reductionComputeGpuDcu = [&] {
+        auto reductionComputeNvHygon = [&] {
           if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
             if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
               VLOG(3) << "Do Two Step Block Reduce Compute!";
@@ -190,11 +190,11 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           }
         };
         target.arch.Match(
-            [&](common::NVGPUArch) { reductionComputeGpuDcu(); },
-            [&](common::HygonDCUArchHIP) { reductionComputeGpuDcu(); },
+            [&](common::NVGPUArch) { reductionComputeNvHygon(); },
             [&](std::variant<common::UnknownArch,
                              common::X86Arch,
-                             common::ARMArch>) { NaiveCompute(); });
+                             common::ARMArch>) { NaiveCompute(); },
+            [&](common::HygonDCUArchHIP) { reductionComputeNvHygon(); });
       });
 
   framework::CINNSchedule reduction_schedule([=](lang::Args args,

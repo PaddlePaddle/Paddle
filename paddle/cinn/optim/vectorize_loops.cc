@@ -853,14 +853,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
             body_stmts.end(), store_exprs.begin(), store_exprs.end());
       };
       target.arch.Match([&](common::NVGPUArch) { setNvHygon(); },
-                        [&](common::HygonDCUArchHIP) { setNvHygon(); },
                         [&](std::variant<common::UnknownArch,
                                          common::X86Arch,
                                          common::ARMArch>) {
                           Vectorizer(
                               new_forloop->loop_var, extent, var_intervals)
                               .Visit(&new_forloop->body);
-                        });
+                        },
+                        [&](common::HygonDCUArchHIP) { setNvHygon(); });
 
       VLOG(2) << "after vectorize body:\n" << node->body;
 

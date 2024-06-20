@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/arch_util.h"
+#include "paddle/common/enforce.h"
 
 using cinn::backends::GlobalSymbolRegistry;
 
@@ -35,7 +36,9 @@ BackendAPI* BackendAPI::get_backend(common::Arch arch) {
                        common::X86Arch,
                        common::ARMArch,
                        common::NVGPUArch>) {
-        LOG(FATAL) << "Target(" << arch << ") is not support get_backend now.";
+        std::stringstream ss;
+        ss << "Target(" << arch << ") is not support get_backend now.";
+        PADDLE_THROW(phi::errors::Fatal(ss.str()));
       });
   return reinterpret_cast<BackendAPI*>(temp_backend_api);
 }

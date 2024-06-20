@@ -437,7 +437,10 @@ void Instruction::Run(
               ((lower_func_ptr_t)fn_ptrs_[idx])(
                   static_cast<void*>(pod_args.data()), pod_args.size());
             },
-            [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED });
+            [&](common::HygonDCUArchHIP) {
+              PADDLE_THROW(
+                  phi::errors::Unimplemented("CINN meaningless branch case!"));
+            });
       }
     }
     VLOG(3) << "Done Running extern function " << function_name_;

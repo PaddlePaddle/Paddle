@@ -1542,15 +1542,14 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
+    target.arch.Match(
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
         [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) { pe::IRGlobalPoolScheduleGPU(ir_sch, target); },
         [&](common::HygonDCUArchHIP) {
           pe::IRGlobalPoolScheduleGPU(ir_sch, target);
-        },
-    });
+        });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1625,17 +1624,15 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       auto block_input_pad = ir_sch.GetBlock(input_pad_name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {},
-        [&](common::ARMArch) {},
-        [&](common::NVGPUArch) {
-          pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-        },
-        [&](common::HygonDCUArchHIP) {
-          pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {},
+                      [&](common::ARMArch) {},
+                      [&](common::NVGPUArch) {
+                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });

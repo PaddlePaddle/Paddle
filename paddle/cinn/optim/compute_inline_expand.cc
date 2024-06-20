@@ -152,7 +152,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
             [&](std::variant<common::UnknownArch,
                              common::X86Arch,
                              common::ARMArch>) {},
-            [&](common::NVGPUArch arch) {
+            [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
               bindNvHygon();
 #endif
