@@ -14,19 +14,18 @@
 
 __all__ = []
 
-try:
-    from .triton_ops import (
-        adaptive_layer_norm,
-        fused_adaLN_scale_residual,
-        rms_norm,
-        weight_only_int8,
-    )
+from .triton_ops import (
+    adaptive_layer_norm,
+    fused_adaLN_scale_residual,
+    paddle_use_triton,
+    rms_norm,
+    weight_only_int8,
+)
 
-    __all__ += [
-        "weight_only_int8",
-        "adaptive_layer_norm",
-        "fused_adaLN_scale_residual",
-        "rms_norm",
-    ]
-except:
-    print("import triton_ops failed")
+__all__ += [
+    "paddle_use_triton",
+    "weight_only_int8",
+    "adaptive_layer_norm",
+    "fused_adaLN_scale_residual",
+    "rms_norm",
+]

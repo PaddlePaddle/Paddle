@@ -38,6 +38,7 @@ from .triton_utils import (
     python_path,
     rename_c_to_cu,
     tune_and_invoke_part,
+    tune_and_invoke_part2,
 )
 
 
@@ -60,6 +61,12 @@ class KernelInterface:
             self.arg_names.index(name)
             for name in self.arg_names
             if self.annotations.get(name) == triton.language.core.constexpr
+        ]
+
+        self.arg_exclude_constexpr = [
+            self.arg_names[i]
+            for i in range(len(self.arg_names))
+            if i not in self.constexprs
         ]
 
         import textwrap
@@ -133,6 +140,7 @@ class KernelInterface:
             lanuch_grid = ",".join(lanuch_grid)
 
             op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
+            op_dict["triton_kernel_args"] = ",".join(self.arg_exclude_constexpr)
             # when tunning, we need to reset the out to zero.
             if "reset_zero_when_tune" in other_config.keys():
                 op_dict["reset_zero_when_tune"] = other_config[
@@ -239,51 +247,38 @@ std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor& scales,
     paddle::optional<paddle::Tensor>& bias,
     bool bool_trans_w) {
-  int m = x.shape()[0];
-  int k = x.shape()[1];
-  int n = scales.shape()[0];
+  int M = x.shape()[0];
+  int K = x.shape()[1];
+  int N = scales.shape()[0];
 
-  auto c_out = paddle::full({m, n}, 0, x.dtype(), x.place());
+  auto c_out = paddle::full({M, N}, 0, x.dtype(), x.place());
 
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_weight = get_tensor_ptr(qweight);
-  auto dev_c = get_tensor_ptr(c_out);
-  auto dev_scales = get_tensor_ptr(scales);
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
+  auto a_ptr = get_tensor_ptr(x);
+  auto b_ptr = get_tensor_ptr(qweight);
+  auto c_ptr = get_tensor_ptr(c_out);
+  auto bs_ptr = get_tensor_ptr(scales);
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
   if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
+    bias_ptr = get_tensor_ptr(*bias);
   }
 
-  int stride_bk = n;
+  int stride_bk = N;
   int stride_bn = 1;
 
   if (bool_trans_w) {
     stride_bk = 1;
-    stride_bn = k;
+    stride_bn = K;
   }
+  int stride_am = K;
+  int stride_ak = 1;
 
-auto run_triton_kernel = [&](int algo_id) -> CUresult{
-    return ${op_name}_kernel(c_out.stream(),
-                               dev_x,
-                               dev_weight,
-                               dev_c,
-                               dev_scales,
-                               dev_bias,
-                               m,
-                               n,
-                               k,
-                               k,
-                               1,
-                               stride_bk,
-                               stride_bn,
-                               n,
-                               1,
-                               algo_id);
-};
+  int stride_cm = N;
+  int stride_cn = 1;
 
-std::vector<int> problem_size = {m, n, k};
+  auto run_stream = c_out.stream();
+  std::vector<int> problem_size = {M, N, K};
 """
-    + tune_and_invoke_part
+    + tune_and_invoke_part2
     + """
   return {c_out};
 }
@@ -315,7 +310,7 @@ PD_BUILD_OP(${op_name})
 )
 
 wint8_kernel_other_config = {
-    "reset_zero_when_tune": "cudaMemset((void*)dev_c, 0, sizeof(phi::dtype::float16) * m * n);"
+    "reset_zero_when_tune": "cudaMemset((void*)c_ptr, 0, sizeof(phi::dtype::float16) * M * N);"
 }
 
 
@@ -954,37 +949,22 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int seq_size = x.dims()[1];
   auto y = paddle::empty(x.shape(), x.dtype(), x.place());
 
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_y = get_tensor_ptr(y);
-  auto dev_scale = get_tensor_ptr(scale);
-  auto dev_shift = get_tensor_ptr(shift);
-  CUdeviceptr dev_weight = (CUdeviceptr)(nullptr);
+  auto x_ptr = get_tensor_ptr(x);
+  auto y_ptr = get_tensor_ptr(y);
+  auto scale_ptr = get_tensor_ptr(scale);
+  auto shift_ptr = get_tensor_ptr(shift);
+  CUdeviceptr weight_ptr = (CUdeviceptr)(nullptr);
   if (weight) {
-    dev_weight = get_tensor_ptr(*weight);
+    weight_ptr = get_tensor_ptr(*weight);
   }
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
   if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
+    bias_ptr = get_tensor_ptr(*bias);
   }
-
-  auto run_triton_kernel = [&](int algo_id) -> CUresult{
-      return ${op_name}_kernel(y.stream(),
-                                               dev_x,
-                                               dev_y,
-                                               dev_weight,
-                                               dev_bias,
-                                               dev_scale,
-                                               dev_shift,
-                                               M,
-                                               N,
-                                               seq_size,
-                                               epsilon,
-                                               algo_id);
-  };
-
+  auto run_stream = y.stream();
   std::vector<int> problem_size = {M, N};
 """
-    + tune_and_invoke_part
+    + tune_and_invoke_part2
     + """
   return {y};
 }
@@ -1142,7 +1122,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         y = paddle.empty_like(x)
-        grid = "M"
+        grid = ("M",)
         adaptive_layer_norm_kernel[(op_name, grid)](
             x,
             y,
@@ -1199,32 +1179,20 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int N = x.dims()[3];
   auto y = paddle::empty(x.shape(), x.dtype(), x.place());
 
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_y = get_tensor_ptr(y);
-  CUdeviceptr dev_weight = (CUdeviceptr)(nullptr);
+  auto x_ptr = get_tensor_ptr(x);
+  auto y_ptr = get_tensor_ptr(y);
+  CUdeviceptr weight_ptr = (CUdeviceptr)(nullptr);
   if (weight) {
-    dev_weight = get_tensor_ptr(*weight);
+    weight_ptr = get_tensor_ptr(*weight);
   }
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
   if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
+    bias_ptr = get_tensor_ptr(*bias);
   }
-
-  auto run_triton_kernel = [&](int algo_id) -> CUresult{
-      return ${op_name}_kernel(y.stream(),
-                                               dev_x,
-                                               dev_y,
-                                               dev_weight,
-                                               dev_bias,
-                                               M,
-                                               N,
-                                               epsilon,
-                                               algo_id);
-  };
-
+  auto run_stream = y.stream();
   std::vector<int> problem_size = {M, N};
 """
-    + tune_and_invoke_part
+    + tune_and_invoke_part2
     + """
     return {y};
 }

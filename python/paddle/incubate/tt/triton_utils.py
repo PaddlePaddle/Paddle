@@ -335,3 +335,80 @@ tune_and_invoke_part = """
     assert(status == CUDA_SUCCESS);
   }
 """
+
+
+tune_and_invoke_part2 = """
+
+  auto run_triton_kernel = [&](int algo_id) -> CUresult{
+      return ${op_name}_kernel(run_stream,
+                                               ${triton_kernel_args},
+
+                                               algo_id);
+  };
+
+  if (!map_problem_${op_name}.count(problem_size)) {
+    std::cout << "we are tuning for ${op_name} which key is: {";
+    for (int i = 0; i < problem_size.size(); i++) {
+        std::cout << problem_size[i] << ", ";
+    }
+    std::cout << "}" << std::endl;
+
+    float min_time = 10000.f;
+    int select_id = -1;
+    constexpr int WARMUP = 5;
+    constexpr int REPEAT = 10;
+
+    for (int algo_id = 0; algo_id < ${op_name}_kernel_get_num_algos(); ++algo_id) {
+        cudaEvent_t beg[REPEAT];
+        cudaEvent_t end[REPEAT];
+        float elapsed_times[REPEAT];
+
+        auto status = CUDA_SUCCESS;
+
+        for (int ii = 0; ii < WARMUP + REPEAT; ii++) {
+            int repeat_id = ii - WARMUP;
+
+            if (repeat_id >= 0) {
+                (cudaEventCreate(beg + repeat_id));
+                (cudaEventCreate(end + repeat_id));
+                (cudaEventRecord(beg[repeat_id]));
+            }
+
+            auto flush_l2_cache = paddle::full(
+                {10 * 1024 * 1024}, 0, paddle::DataType::INT32, x.place());
+            // std::cout << &flush_l2_cache  << std::endl;
+            // this is used when out is need to be reset to zero, such as split-k gemm.
+            ${reset_zero_when_tune};
+
+            status = run_triton_kernel(algo_id);
+            // assert(status == CUDA_SUCCESS);
+
+            if (repeat_id >= 0) {
+                (cudaEventRecord(end[repeat_id]));
+                (cudaEventSynchronize(end[repeat_id]));
+                (cudaEventElapsedTime(
+                    elapsed_times + repeat_id, beg[repeat_id], end[repeat_id]));
+            }
+        }
+
+        float avg_elapsed_time = 0.f;
+        for (int ii = 0; ii < REPEAT; ++ii) {
+            avg_elapsed_time += elapsed_times[ii];
+        }
+        if (avg_elapsed_time < min_time && status == CUDA_SUCCESS) {
+            min_time = avg_elapsed_time;
+            select_id = algo_id;
+        }
+    }
+
+    map_problem_${op_name}[problem_size] = select_id;
+    std::cout << "select algo id: " << select_id << std::endl;
+    ${reset_zero_when_tune};
+  }
+
+  if (map_problem_${op_name}.count(problem_size)) {
+    int algo_id = map_problem_${op_name}[problem_size];
+    auto status = run_triton_kernel(algo_id);
+    assert(status == CUDA_SUCCESS);
+  }
+"""
