@@ -149,6 +149,60 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void AffineChannelInferMeta(const MetaTensor& x,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const std::string& data_layout_in,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& scale_dims = scale.dims();
+  const auto& b_dims = bias.dims();
+  const phi::DataLayout data_layout =
+      common::StringToDataLayout(data_layout_in);
+
+  const int64_t C =
+      (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
+
+  PADDLE_ENFORCE_EQ(scale_dims.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Scale) must be 1,"
+                        "But received the dimensions of Input(Scale) is [%d] ",
+                        scale_dims.size()));
+  PADDLE_ENFORCE_EQ(b_dims.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Bias) must be 1,"
+                        "But received the dimensions of Input(Bias) is [%d] ",
+                        scale_dims.size()));
+  if (config.is_runtime || scale_dims[0] > 0) {
+    PADDLE_ENFORCE_EQ(
+        scale_dims[0],
+        C,
+        phi::errors::InvalidArgument(
+            "The first dimension value of Input(Scale) must be [%d],"
+            "But received [%d].",
+            C,
+            scale_dims[0]));
+  }
+  if (config.is_runtime || b_dims[0] > 0) {
+    PADDLE_ENFORCE_EQ(
+        b_dims[0],
+        C,
+        phi::errors::InvalidArgument(
+            "The first dimension value of Input(Bias) must be [%d],"
+            "But received [%d].",
+            C,
+            b_dims[0]));
+  }
+
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void AssignPosInferMeta(const MetaTensor& x,
                         const MetaTensor& cum_count,
                         const MetaTensor& eff_num_len,
