@@ -295,6 +295,8 @@ def _recompute_without_reentrant(
         cur_device = paddle.get_device()
         if 'gpu:' in cur_device:
             fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        elif 'cpu' in cur_device:
+            fw_cuda_rng_state = paddle.get_rng_state()
         elif 'xpu:' in cur_device:
             fw_cuda_rng_state = paddle.get_rng_state()
         elif (
@@ -346,13 +348,26 @@ def _recompute_without_reentrant(
                     return
 
                 if inner_x.is_contiguous():
-                    tmp_tensor = core.eager.Tensor(
-                        inner_x.dtype,
-                        inner_x.shape,
-                        inner_x.name + "cpy",
-                        core.VarDesc.VarType.LOD_TENSOR,
-                        inner_x.persistable,
-                    )
+                    if inner_x.is_dist():
+                        # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
+                        # but other errors will be triggered during the current period, and can be modified after resolution
+                        tmp_tensor = core.eager.Tensor(
+                            inner_x.dtype,
+                            inner_x.shape,
+                            inner_x.name + "cpy",
+                            core.VarDesc.VarType.LOD_TENSOR,
+                            inner_x.persistable,
+                            inner_x.process_mesh,
+                            inner_x.placements,
+                        )
+                    else:
+                        tmp_tensor = core.eager.Tensor(
+                            inner_x.dtype,
+                            inner_x.shape,
+                            inner_x.name + "cpy",
+                            core.VarDesc.VarType.LOD_TENSOR,
+                            inner_x.persistable,
+                        )
                     inner_x._share_buffer_to(tmp_tensor)
                     storage[holder_list[unpack_counter - 1]()] = tmp_tensor
                 else:
