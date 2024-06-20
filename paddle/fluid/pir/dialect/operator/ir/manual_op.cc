@@ -3371,7 +3371,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
 
       if (shape.isa<pir::OpResult>() &&
           shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
-        VLOG(0) << "************************* 0";
         std::vector<pir::Value> inputs = shape.defining_op()
                                              ->operand_source(0)
                                              .defining_op()
@@ -3385,14 +3384,8 @@ std::vector<pir::Type> ExpandOp::InferMeta(
               int64_t value = shape_input.type()
                                   .dyn_cast<paddle::dialect::DenseTensorType>()
                                   .dims()[0];
-              if (value < 0) {
-                vec_shape.push_back(-2);
-              } else {
-                vec_shape.push_back(value);
-              }
+              vec_shape.push_back(value);
 
-              VLOG(0) << "************************* 1 "
-                      << vec_shape[vec_shape.size() - 1];
             } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
               auto shape_item = shape.defining_op()
                                     ->dyn_cast<paddle::dialect::FullOp>()
@@ -3400,16 +3393,12 @@ std::vector<pir::Type> ExpandOp::InferMeta(
                                     .dyn_cast<pir::FloatAttribute>()
                                     .data();
               vec_shape.push_back(static_cast<int64_t>(shape_item));
-              VLOG(0) << "************************* 2 "
-                      << vec_shape[vec_shape.size() - 1];
 
             } else {
-              VLOG(0) << "************************* 3";
-              vec_shape.push_back(-2);
+              vec_shape.push_back(-1);
             }
-          }
-          for (auto t : vec_shape) {
-            VLOG(0) << "expand res shape ======== " << t;
+            // From expand infermeta, -2 means this dim from tensor var.
+            std::replace(vec_shape.begin(), vec_shape.end(), -1, -2);
           }
           return vec_shape;
         }

@@ -252,8 +252,6 @@ void DecompProgram::check_decomp_outputs(
 
       auto orig_dim = GetValueDims(orig_outs[i]);
       auto decomp_dim = GetValueDims(decomp_outs[i]);
-      VLOG(0) << " For op" << op_name << ", origin out dims: " << orig_dim
-              << "  decomp out dims: " << decomp_dim;
 
       PADDLE_ENFORCE(
           orig_dim.size() == decomp_dim.size(),
