@@ -13,17 +13,38 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    List,
+    Literal,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import TypeAlias
 
+from .backport import EllipsisType
+
 if TYPE_CHECKING:
     from paddle import Tensor
 
+
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
 TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numberic]
+_TensorIndexItem: TypeAlias = Union[
+    None, bool, int, slice, "Tensor", EllipsisType
+]
+TensorIndex: TypeAlias = Union[
+    _TensorIndexItem,
+    Tuple[_TensorIndexItem, ...],
+    List[_TensorIndexItem],
+]
+
 
 _T = TypeVar("_T")
 
@@ -32,3 +53,5 @@ IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
+
+PaddingMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']

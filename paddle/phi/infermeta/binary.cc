@@ -2657,6 +2657,9 @@ void MatmulInferMeta(const MetaTensor& x,
   out->set_dims(ddim_out);
   if (x.dtype() == phi::DataType::INT8) {
     out->set_dtype(phi::DataType::INT32);
+  } else if (x.dtype() == phi::DataType::FLOAT8_E4M3FN ||
+             x.dtype() == phi::DataType::FLOAT8_E5M2) {
+    out->set_dtype(phi::DataType::FLOAT16);
   } else {
     out->set_dtype(x.dtype());
   }
@@ -3669,27 +3672,6 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
-}
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids) {
-  auto x_dims = x.dims();
-  auto ps_dims = ps.dims();
-  PADDLE_ENFORCE_EQ(x_dims[0],
-                    ps_dims[0],
-                    phi::errors::InvalidArgument(
-                        "The x_dims[0] must be equal to ps_dims[0] "
-                        "But received x_dims[0] = %d and ps_dims[0] = %d.",
-                        x_dims[0],
-                        ps_dims[0]));
-  ids->set_dims(common::make_ddim({x_dims[0], 1}));
-  ids->set_dtype(DataType::INT64);
-  out->set_dims(common::make_ddim({x_dims[0], 1}));
-  out->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,
