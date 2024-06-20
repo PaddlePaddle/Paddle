@@ -1651,15 +1651,22 @@ class OpTest(unittest.TestCase):
                     )
                 )
                 for var in program.list_vars():
-                    shape_or_data = shape_analysis.get_shape_or_data_for_var(
-                        var
+                    print("is dense_tensor ?: ", var.is_dense_tensor_type())
+                    print(
+                        "is selected_row_type ?: ", var.is_selected_row_type()
                     )
-                    expect_shape = var.shape
-                    expect_data = []
-                    if not shape_or_data.is_equal(expect_shape, expect_data):
-                        raise AssertionError(
-                            f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                    if var.is_dense_tensor_type() or var.is_selected_row_type():
+                        shape_or_data = (
+                            shape_analysis.get_shape_or_data_for_var(var)
                         )
+                        expect_shape = var.shape
+                        expect_data = []
+                        if not shape_or_data.is_equal(
+                            expect_shape, expect_data
+                        ):
+                            raise AssertionError(
+                                f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                            )
                 return True
 
     def _compare_expect_and_actual_outputs(
@@ -2083,7 +2090,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2849,7 +2856,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
