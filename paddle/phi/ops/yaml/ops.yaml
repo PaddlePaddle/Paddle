@@ -1089,6 +1089,17 @@
   backward : cumsum_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : cvm
+  args: (Tensor x, Tensor cvm, bool use_cvm = true)
+  output: Tensor (out)
+  infer_meta:
+    func: CvmInferMeta
+  kernel:
+    func: cvm
+    data_type: x
+  backward: cvm_grad
+  no_need_buffer: cvm
+
 - op : data
   args : (str name, IntArray shape, DataType dtype, Place place)
   output : Tensor(out)

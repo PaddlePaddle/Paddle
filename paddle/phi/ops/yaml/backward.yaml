@@ -667,6 +667,18 @@
     data_type: x
   composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
 
+- backward_op : cvm_grad
+  forward: cvm (Tensor x, Tensor cvm, bool use_cvm = true) -> Tensor (out)
+  args: (Tensor x, Tensor cvm, Tensor out_grad, bool use_cvm = true)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: cvm_grad
+    data_type: out_grad
+  no_need_buffer: x
+
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
