@@ -22,6 +22,7 @@ from .basic import (
     NestedSequence as NestedSequence,
     Numberic as Numberic,
     NumbericSequence as NumbericSequence,
+    PaddingMode as PaddingMode,
     TensorIndex as TensorIndex,
     TensorLike as TensorLike,
     TensorOrTensors as TensorOrTensors,
