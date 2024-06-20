@@ -894,6 +894,26 @@ void BilinearInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void BeamSearchInferMeta(const MetaTensor& pre_ids,
+                         const MetaTensor& pre_scores,
+                         const MetaTensor& ids,
+                         const MetaTensor& scores,
+                         int level,
+                         int beam_size,
+                         int end_id,
+                         bool is_accumulated,
+                         MetaTensor* selected_ids,
+                         MetaTensor* selected_scores,
+                         MetaTensor* parent_idx) {
+  const auto& id_dims = pre_ids.dims();
+  selected_scores->set_dims(pre_scores.dims());
+  selected_ids->set_dims(id_dims);
+  parent_idx->set_dims({id_dims[0]});
+  selected_scores->set_dtype(pre_scores.dtype());
+  selected_ids->set_dtype(pre_ids.dtype());
+  parent_idx->set_dtype(pre_ids.dtype());
+}
+
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
@@ -4459,10 +4479,15 @@ void RmsNormInferMeta(const MetaTensor& x,
   auto out_dims = common::make_ddim(x_dims_vec);
 
   out->set_dims(out_dims);
-  if (quant_scale <= 0.0f) {
-    out->set_dtype(x.dtype());
+
+  if (quant_scale > 0) {
+    if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+      out->set_dtype(phi::DataType::INT8);
+    } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+    }
   } else {
-    out->set_dtype(phi::DataType::INT8);
+    out->set_dtype(x.dtype());
   }
   out->set_layout(x.layout());
   out->share_lod(x);
