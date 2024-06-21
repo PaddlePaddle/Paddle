@@ -112,20 +112,6 @@ void CompilationInfoDumper::DumpPtxCodeByGroupIndex(
       FLAGS_cinn_dump_group_ptx, gidx, device_id, "source_ptx.ptx", source_ptx);
 }
 
-void CompilationInfoDumper::DumpInstructionByGroupIndex(
-    const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-    const int gidx,
-    const int device_id) {
-  if (FLAGS_cinn_dump_group_instruction.empty() || instr.get() == nullptr) {
-    return;
-  }
-  Dump(FLAGS_cinn_dump_group_instruction,
-       gidx,
-       device_id,
-       "instruction.txt",
-       instr->DumpInstruction());
-}
-
 void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
@@ -177,25 +163,6 @@ void CompilationInfoDumper::DumpPtxCode() {
     }
     Dump(
         FLAGS_cinn_dump_group_ptx, idx, device_id_, "source_ptx.ptx", dump_str);
-  }
-}
-
-void CompilationInfoDumper::DumpInstruction() {
-  if (FLAGS_cinn_dump_group_instruction.empty()) {
-    return;
-  }
-  for (int idx = 0; idx < info_.RuntimeInstructions().size(); ++idx) {
-    std::string dump_str;
-    if (info_.RuntimeInstruction(idx).get() != nullptr) {
-      dump_str = info_.RuntimeInstruction(idx)->DumpInstruction();
-    } else {
-      dump_str = "[No instruction generated]\n\n" + info_.Message(idx);
-    }
-    Dump(FLAGS_cinn_dump_group_instruction,
-         idx,
-         device_id_,
-         "instruction.txt",
-         dump_str);
   }
 }
 

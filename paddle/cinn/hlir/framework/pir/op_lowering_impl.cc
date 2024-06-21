@@ -303,28 +303,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   return funcs_wrapper;
 }
 
-void OpLowererImpl::InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
-  auto& name_map = name_gene_->GetNameMap();
-  for (auto it = name_map.begin(); it != name_map.end(); ++it) {
-    auto value = it->first;
-    if (!(value) || !(value.type())) {
-      return;
-    }
-
-    auto& name = it->second;
-    auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto* var = scope->Var<Tensor>(name);
-    auto& tensor = absl::get<Tensor>(*var);
-
-    std::vector<Shape::dim_t> shape;
-    for (auto i = 0; i < type_info.dims().size(); ++i) {
-      shape.push_back(Shape::dim_t(type_info.dims()[i]));
-    }
-    tensor->Resize(Shape{shape});
-    tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
-  }
-}
-
 bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
   return true;
 }
