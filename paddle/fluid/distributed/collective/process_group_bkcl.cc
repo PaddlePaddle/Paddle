@@ -216,8 +216,10 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place)
                              .get());
-  // comm context creates a separate XPU stream for communication
-  comm_ctx->CreateStream();
+  // Note(lijin23): XPU use calc stream for communication now, so we disable the
+  // creation of comm stream to reduce the total number of streams used. comm
+  // context creates a separate XPU stream for communication
+  // comm_ctx->CreateStream();
 
   place_to_calc_ctx_[place_key] = calc_ctx;
   place_to_comm_ctx_[place_key] = std::move(comm_ctx);
@@ -524,6 +526,12 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
 
 phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
