@@ -876,7 +876,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
     }
     task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+    allocation_stream_pairs.emplace_back(tensor_tmp.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
