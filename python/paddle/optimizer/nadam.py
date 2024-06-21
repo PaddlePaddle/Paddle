@@ -154,9 +154,9 @@ class NAdam(Optimizer):
         beta2: float | Tensor = 0.999,
         epsilon: float = 1.0e-8,
         momentum_decay: float = 0.004,
-        parameters: Sequence[Tensor]
-        | Sequence[_NAdamParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_NAdamParameterConfig] | None
+        ) = None,
         weight_decay: float | Tensor | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
