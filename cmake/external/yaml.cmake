@@ -31,17 +31,13 @@ if(WIN32)
   set(YAML_LIBRARIES
       "${YAML_INSTALL_DIR}/lib/yaml-cpp.lib"
       CACHE FILEPATH "yaml library." FORCE)
-  if(MSVC)
-    add_compile_options(
-      $<$<CONFIG:>:/MT> #---------|
-      $<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
-      $<$<CONFIG:Release>:/MT> #--|
-    )
-  endif()
+  set(CMAKE_CXX_FLAGS_RELEASE "/MT")
+  set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
+endif()
 else()
-  set(YAML_LIBRARIES
-      "${YAML_INSTALL_DIR}/lib/libyaml-cpp.a"
-      CACHE FILEPATH "yaml library." FORCE)
+set(YAML_LIBRARIES
+    "${YAML_INSTALL_DIR}/lib/libyaml-cpp.a"
+    CACHE FILEPATH "yaml library." FORCE)
 endif()
 
 ExternalProject_Add(
