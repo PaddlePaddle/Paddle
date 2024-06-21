@@ -1230,6 +1230,7 @@
   kernel :
     func : diag_embed
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  forward_only : True
 
 - op : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
