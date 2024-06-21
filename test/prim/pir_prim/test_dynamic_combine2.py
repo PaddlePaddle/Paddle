@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,14 +32,9 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-def meshgrid_net(x, y, z):
+def stack_net(x, y, z):
     temp = paddle.stack([x, y], axis=-1)
     return paddle.concat([temp, z])
-
-
-# def meshgrid_net(x, y, z):
-#     temp = paddle.meshgrid(x, y)[0]
-#     return paddle.concat([temp, z])
 
 
 class TestPrimMode1(unittest.TestCase):
@@ -51,7 +46,7 @@ class TestPrimMode1(unittest.TestCase):
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.z = np.random.random(self.shape_z).astype("float32")
-        self.net = meshgrid_net
+        self.net = stack_net
         self.enable_cinn = False
 
     def base_net(self, flag=None):
@@ -81,7 +76,7 @@ class TestPrimMode1(unittest.TestCase):
                 .infer_program.program.global_block()
                 .ops
             ]
-            assert "pd_op.mean" not in ops
+            assert "pd_op.stack" not in ops
             core._set_prim_all_enabled(False)
         return res
 

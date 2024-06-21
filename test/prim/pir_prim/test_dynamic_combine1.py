@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ class TestPrimMode1(unittest.TestCase):
                 .infer_program.program.global_block()
                 .ops
             ]
-            assert "pd_op.mean" not in ops
+            assert "pd_op.meshgrid" not in ops
             core._set_prim_all_enabled(False)
         return res
 
