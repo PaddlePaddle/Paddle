@@ -287,7 +287,7 @@ else()
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
     if(WITH_GPU OR WITH_ROCM)
       set(paddle_phi_kernel_gpu_lib
-          ${PADDLE_BINARY_DIR}/paddle/phi/libphi_kernel_gpu.*)
+          ${PADDLE_BINARY_DIR}/paddle/phi/libphi_gpu.*)
       copy(
         inference_lib_dist
         SRCS ${paddle_phi_kernel_gpu_lib}

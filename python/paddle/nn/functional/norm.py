@@ -352,8 +352,9 @@ def layer_norm(
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
     if input_ndim < normalized_ndim or (
-        isinstance(normalized_shape[0], int)
-        and input_shape[begin_norm_axis:] != normalized_shape
+        not paddle.utils.is_same_shape(
+            input_shape[begin_norm_axis:], normalized_shape
+        )
     ):
         str_normalized_shape = str(normalized_shape)
         raise ValueError(

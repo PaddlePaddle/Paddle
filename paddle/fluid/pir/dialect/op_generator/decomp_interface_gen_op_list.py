@@ -60,6 +60,7 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "unbind",
     "huber_loss",
 ]
 
@@ -103,6 +104,7 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "unbind",
     "huber_loss",
 ]
 

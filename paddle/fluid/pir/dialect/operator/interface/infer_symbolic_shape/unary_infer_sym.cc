@@ -825,13 +825,26 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  int64_t axis = op->operand_source(1)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
+  const symbol::ShapeOrDataDimExprs &axis_shape_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  PADDLE_ENFORCE_EQ(
+      axis_shape_data.data().has_value(),
+      true,
+      phi::errors::InvalidArgument(
+          "In InferSymbolicShape, axis of SplitWithNumOp is null"));
+  const std::vector<symbol::DimExpr> &axis_data =
+      axis_shape_data.data().value();
+  PADDLE_ENFORCE_EQ(
+      axis_data.size() == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "In SplitWithNumOp, data of axis should be one dimension"));
+  if (!axis_data[0].isa<int64_t>()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of axis must be int64_t"));
+  }
+  int64_t axis = axis_data[0].dyn_cast<int64_t>();
+
   const auto &attributes = op->attributes();
   int num = attributes.at("num").dyn_cast<pir::Int32Attribute>().data();
   const auto &x_s_or_d =

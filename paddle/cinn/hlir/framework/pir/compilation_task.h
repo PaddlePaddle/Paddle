@@ -41,6 +41,7 @@ class GroupCompilationContext {
   const Target& target_;
   const pir::OpLoweringGroupPtr& group_;
   std::vector<ir::SymbolicPredicate> predicates_;
+  std::vector<int> priorities_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   std::vector<ir::SymbolicPredicate> CX86_predicates_;
   std::vector<ir::LoweredFunc> CX86_lowered_funcs_;
