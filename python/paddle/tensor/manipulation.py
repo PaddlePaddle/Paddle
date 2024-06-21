@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence, overload, Literal
+from typing import TYPE_CHECKING, Callable, Literal, Sequence, overload
 
 import numpy as np
 
@@ -29,7 +29,7 @@ from paddle._typing import (
 )
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
-from python.paddle._typing.basic import NestedStructure
+from python.paddle._typing.basic import NestedSequence
 
 from ..base.data_feeder import (
     check_dtype,
@@ -289,9 +289,9 @@ def cast_(x: Tensor, dtype: DTypeLike) -> Tensor:
 
 def slice(
     input: Tensor,
-    axes: Sequence[int|Tensor],
-    starts: Sequence[int| Tensor] | Tensor,
-    ends: Sequence[int|Tensor] | Tensor,
+    axes: Sequence[int | Tensor],
+    starts: Sequence[int | Tensor] | Tensor,
+    ends: Sequence[int | Tensor] | Tensor,
 ) -> Tensor:
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
@@ -5120,10 +5120,10 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
 
 def strided_slice(
     x: Tensor,
-    axes: Sequence[int| Tensor],
-    starts: Sequence[int|Tensor] | Tensor,
-    ends: Sequence[int|Tensor] | Tensor,
-    strides: Sequence[int|Tensor] | Tensor,
+    axes: Sequence[int | Tensor],
+    starts: Sequence[int | Tensor] | Tensor,
+    ends: Sequence[int | Tensor] | Tensor,
+    strides: Sequence[int | Tensor] | Tensor,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -5343,7 +5343,7 @@ def strided_slice(
 def tensordot(
     x: Tensor,
     y: Tensor,
-    axes: int | NestedStructure[int] | Tensor = 2,
+    axes: int | NestedSequence[int] | Tensor = 2,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -6073,9 +6073,11 @@ def take_along_axis(
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
-    values: int|Tensor,
+    values: int | Tensor,
     axis: int,
-    reduce: Literal['assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'] = "assign",
+    reduce: Literal[
+        'assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'
+    ] = "assign",
     include_self: bool = True,
     broadcast: bool = True,
 ) -> Tensor:
