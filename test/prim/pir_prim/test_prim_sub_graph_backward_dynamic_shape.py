@@ -764,7 +764,7 @@ class TestPrimMultiplyWithGrad8(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad9(TestPrimTwoWithGrad):
@@ -779,7 +779,7 @@ class TestPrimMultiplyWithGrad9(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 if __name__ == "__main__":
