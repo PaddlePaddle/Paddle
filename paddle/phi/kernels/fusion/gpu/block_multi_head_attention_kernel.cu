@@ -121,6 +121,19 @@ __forceinline__ __device__ int8_t quant_helper(const data_t input,
 }
 
 template <typename data_t>
+__forceinline__ __device__ phi::dtype::float8_e4m3fn fp8_quant_helper(
+    const data_t input,
+    const float scale,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  float quant_value = max_bound * scale * static_cast<float>(input);
+  quant_value = quant_value > max_bound ? max_bound : quant_value;
+  quant_value = quant_value < min_bound ? min_bound : quant_value;
+  return static_cast<phi::dtype::float8_e4m3fn>(quant_value);
+}
+
+template <typename data_t>
 __global__ void QuantKernel(const data_t* input,
                             char4* output,
                             const float scale,
@@ -145,6 +158,34 @@ __global__ void QuantKernel(const data_t* input,
         input[m_id * n + n_id + 3], scale, round_type, max_bound, min_bound);
 
     output[(m_id * n + n_id) >> 2] = tmp;
+  }
+}
+
+template <typename data_t>
+__global__ void FP8QuantKernel(const data_t* input,
+                               phi::dtype::float8_e4m3fn* output,
+                               const float scale,
+                               const int m,
+                               const int n,
+                               const int round_type,
+                               const float max_bound,
+                               const float min_bound) {
+  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
+  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  bool check = ((m_id < m) && (n_id < n));
+
+  if (check) {
+#pragma unroll
+    for (int i = 0; i < 4; ++i) {
+      output[m_id * n + n_id] = fp8_quant_helper(
+          input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
+      output[m_id * n + n_id + 1] = fp8_quant_helper(
+          input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
+      output[m_id * n + n_id + 2] = fp8_quant_helper(
+          input[m_id * n + n_id + 2], scale, round_type, max_bound, min_bound);
+      output[m_id * n + n_id + 3] = fp8_quant_helper(
+          input[m_id * n + n_id + 3], scale, round_type, max_bound, min_bound);
+    }
   }
 }
 
@@ -273,13 +314,17 @@ void DispatchWithDtype(
   phi::DenseTensor fmha_buf;
 
   VLOG(1) << "fmha_out " << fmha_out->dims();
-  if (out_scale <= 0) {
-    dev_ctx.template Alloc<T>(fmha_out);
-    fmha_buf = *fmha_out;
-  } else {
+  if (fmha_out->dtype() == phi::DataType::INT8) {
     fmha_buf.Resize(fmha_out->dims());
     dev_ctx.template Alloc<T>(&fmha_buf);
     dev_ctx.template Alloc<int8_t>(fmha_out);
+  } else if (fmha_out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    fmha_buf.Resize(fmha_out->dims());
+    dev_ctx.template Alloc<T>(&fmha_buf);
+    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(fmha_out);
+  } else {
+    dev_ctx.template Alloc<T>(fmha_out);
+    fmha_buf = *fmha_out;
   }
 
   InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
@@ -680,15 +725,27 @@ void DispatchWithDtype(
           quant_max_bound,
           quant_min_bound);
     } else {
-      QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          fmha_buf.data<T>(),
-          reinterpret_cast<char4*>(fmha_out->data<int8_t>()),
-          out_scale,
-          m,
-          n,
-          quant_round_type,
-          quant_max_bound,
-          quant_min_bound);
+      if (fmha_out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+        FP8QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+            fmha_buf.data<T>(),
+            fmha_out->data<phi::dtype::float8_e4m3fn>(),
+            out_scale,
+            m,
+            n,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound);
+      } else {
+        QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+            fmha_buf.data<T>(),
+            reinterpret_cast<char4*>(fmha_out->data<int8_t>()),
+            out_scale,
+            m,
+            n,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound);
+      }
     }
     VLOG(3) << "decoder done";
   }

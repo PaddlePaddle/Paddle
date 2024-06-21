@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define logic functions of a tensor
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from typing_extensions import TypeGuard
 
 import paddle
-
-from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..common_ops_import import Variable
-
-Tensor = paddle.base.framework.core.eager.Tensor
-
 from paddle import _C_ops
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
+from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     in_dynamic_mode,
@@ -33,10 +33,20 @@ from ..framework import (
     in_pir_mode,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 
-def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+def _logical_op(
+    op_name: str,
+    x: Tensor,
+    y: Tensor | None,
+    out: Tensor | None = None,
+    name: str | None = None,
+    binary_op: bool = True,
+) -> Tensor:
     if in_dynamic_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
@@ -101,7 +111,9 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
-def logical_and(x, y, out=None, name=None):
+def logical_and(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
 
     Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
@@ -119,8 +131,8 @@ def logical_and(x, y, out=None, name=None):
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64, complex64, complex128.
         y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64, complex64, complex128.
-        out(Tensor, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor|None, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
@@ -147,7 +159,7 @@ def logical_and(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def logical_and_(x, y, name=None):
+def logical_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``logical_and`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_logical_and`.
@@ -161,7 +173,9 @@ def logical_and_(x, y, name=None):
         return _C_ops.logical_and_(x, y)
 
 
-def logical_or(x, y, out=None, name=None):
+def logical_or(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
 
     ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
@@ -179,8 +193,8 @@ def logical_or(x, y, out=None, name=None):
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64, complex64, complex128.
         y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64, complex64, complex128.
-        out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor|None, optional): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
@@ -206,7 +220,7 @@ def logical_or(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def logical_or_(x, y, name=None):
+def logical_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``logical_or`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_logical_or`.
@@ -220,7 +234,9 @@ def logical_or_(x, y, name=None):
         return _C_ops.logical_or_(x, y)
 
 
-def logical_xor(x, y, out=None, name=None):
+def logical_xor(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
 
     ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
@@ -238,8 +254,8 @@ def logical_xor(x, y, out=None, name=None):
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, float16, float32, float64, complex64, complex128.
         y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, float16, float32, float64, complex64, complex128.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor|None, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
@@ -266,7 +282,7 @@ def logical_xor(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def logical_xor_(x, y, name=None):
+def logical_xor_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``logical_xor`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_logical_xor`.
@@ -280,7 +296,9 @@ def logical_xor_(x, y, name=None):
         return _C_ops.logical_xor_(x, y)
 
 
-def logical_not(x, out=None, name=None):
+def logical_not(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
 
     ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
@@ -298,8 +316,8 @@ def logical_not(x, out=None, name=None):
     Args:
 
         x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float16, float32, or float64, complex64, complex128.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor|None): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
+        name(str|None, optional): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
@@ -323,7 +341,7 @@ def logical_not(x, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def logical_not_(x, name=None):
+def logical_not_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``logical_not`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_logical_not`.
@@ -332,14 +350,14 @@ def logical_not_(x, name=None):
         return _C_ops.logical_not_(x)
 
 
-def is_empty(x, name=None):
+def is_empty(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Test whether a Tensor is empty.
 
     Args:
         x (Tensor): The Tensor to be tested.
-        name (str, optional): The default value is ``None`` . Normally users don't have to set this parameter. For more information, please refer to :ref:`api_guide_Name` .
+        name (str|None, optional): The default value is ``None`` . Normally users don't have to set this parameter. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
@@ -375,7 +393,7 @@ def is_empty(x, name=None):
         return cond
 
 
-def equal_all(x, y, name=None):
+def equal_all(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
@@ -385,7 +403,7 @@ def equal_all(x, y, name=None):
     Args:
         x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
         y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        name(str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -421,7 +439,14 @@ def equal_all(x, y, name=None):
         return out
 
 
-def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+def allclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:
 
@@ -434,10 +459,10 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64.
         y (Tensor): The input tensor, it's data type should be float16, float32, float64.
-        rtol (rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
-        atol (atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
-        equal_nan (bool, optional): Whether to compare nan as equal. Default: False.
-        name (str, optional): Name for the operation. For more information, please
+        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
+        name (str|None, optional): Name for the operation. For more information, please
             refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
@@ -496,7 +521,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         return out
 
 
-def equal(x, y, name=None):
+def equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
     This layer returns the truth value of :math:`x == y` elementwise.
@@ -507,7 +532,7 @@ def equal(x, y, name=None):
     Args:
         x (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         y (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): The default value is None. Normally there is no need for
+        name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -573,7 +598,6 @@ def equal(x, y, name=None):
         helper = LayerHelper("equal", **locals())
         out = helper.create_variable_for_type_inference(dtype='bool')
         out.stop_gradient = True
-
         helper.append_op(
             type='equal',
             inputs={'X': [x], 'Y': [y]},
@@ -583,7 +607,7 @@ def equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def equal_(x, y, name=None):
+def equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``equal`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_equal`.
@@ -597,7 +621,7 @@ def equal_(x, y, name=None):
         return _C_ops.equal_(x, y)
 
 
-def greater_equal(x, y, name=None):
+def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
@@ -607,7 +631,7 @@ def greater_equal(x, y, name=None):
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -664,7 +688,6 @@ def greater_equal(x, y, name=None):
         helper = LayerHelper("greater_equal", **locals())
         out = helper.create_variable_for_type_inference(dtype='bool')
         out.stop_gradient = True
-
         helper.append_op(
             type='greater_equal',
             inputs={'X': [x], 'Y': [y]},
@@ -674,7 +697,7 @@ def greater_equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def greater_equal_(x, y, name=None):
+def greater_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``greater_equal`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_greater_equal`.
@@ -688,7 +711,7 @@ def greater_equal_(x, y, name=None):
         return _C_ops.greater_equal_(x, y)
 
 
-def greater_than(x, y, name=None):
+def greater_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
@@ -698,7 +721,7 @@ def greater_than(x, y, name=None):
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -755,7 +778,6 @@ def greater_than(x, y, name=None):
         helper = LayerHelper("greater_than", **locals())
         out = helper.create_variable_for_type_inference(dtype='bool')
         out.stop_gradient = True
-
         helper.append_op(
             type='greater_than',
             inputs={'X': [x], 'Y': [y]},
@@ -765,7 +787,7 @@ def greater_than(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def greater_than_(x, y, name=None):
+def greater_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``greater_than`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_greater_than`.
@@ -779,7 +801,7 @@ def greater_than_(x, y, name=None):
         return _C_ops.greater_than_(x, y)
 
 
-def less_equal(x, y, name=None):
+def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
@@ -789,7 +811,7 @@ def less_equal(x, y, name=None):
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -847,7 +869,6 @@ def less_equal(x, y, name=None):
         helper = LayerHelper("less_equal", **locals())
         out = helper.create_variable_for_type_inference(dtype='bool')
         out.stop_gradient = True
-
         helper.append_op(
             type='less_equal',
             inputs={'X': [x], 'Y': [y]},
@@ -857,7 +878,7 @@ def less_equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def less_equal_(x, y, name=None):
+def less_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``less_equal`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_less_equal`.
@@ -871,7 +892,7 @@ def less_equal_(x, y, name=None):
         return _C_ops.less_equal_(x, y)
 
 
-def less_than(x, y, name=None):
+def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
 
@@ -881,7 +902,7 @@ def less_than(x, y, name=None):
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -949,7 +970,7 @@ def less_than(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def less_than_(x, y, name=None):
+def less_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``less_than`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_less_than`.
@@ -963,7 +984,7 @@ def less_than_(x, y, name=None):
         return _C_ops.less_than_(x, y)
 
 
-def not_equal(x, y, name=None):
+def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
@@ -973,7 +994,7 @@ def not_equal(x, y, name=None):
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, uint8, int8, int16, int32, int64.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1041,7 +1062,7 @@ def not_equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def not_equal_(x, y, name=None):
+def not_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``not_equal`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_not_equal`.
@@ -1055,7 +1076,7 @@ def not_equal_(x, y, name=None):
         return _C_ops.not_equal_(x, y)
 
 
-def is_tensor(x):
+def is_tensor(x: Any) -> TypeGuard[Tensor]:
     """
 
     Tests whether input object is a paddle.Tensor.
@@ -1083,14 +1104,19 @@ def is_tensor(x):
 
     """
     if in_dynamic_or_pir_mode():
-        return isinstance(
-            x, (Tensor, paddle.base.core.eager.Tensor, paddle.pir.Value)
-        )
+        return isinstance(x, (paddle.Tensor, paddle.pir.Value))
     else:
         return isinstance(x, Variable)
 
 
-def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
+def _bitwise_op(
+    op_name: str,
+    x: Tensor,
+    y: Tensor | None,
+    out: Tensor | None = None,
+    name: str | None = None,
+    binary_op: bool = True,
+) -> Tensor:
     if in_dynamic_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
@@ -1133,7 +1159,9 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
-def bitwise_and(x, y, out=None, name=None):
+def bitwise_and(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
 
     Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
@@ -1149,8 +1177,8 @@ def bitwise_and(x, y, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor, optional): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for
+        out (Tensor|None, optional): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1175,7 +1203,7 @@ def bitwise_and(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def bitwise_and_(x, y, name=None):
+def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_bitwise_and`.
@@ -1189,7 +1217,9 @@ def bitwise_and_(x, y, name=None):
         return _C_ops.bitwise_and_(x, y)
 
 
-def bitwise_or(x, y, out=None, name=None):
+def bitwise_or(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
 
     Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
@@ -1205,8 +1235,8 @@ def bitwise_or(x, y, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor, optional): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for
+        out (Tensor|None, optional): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1232,7 +1262,7 @@ def bitwise_or(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def bitwise_or_(x, y, name=None):
+def bitwise_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_bitwise_or`.
@@ -1246,7 +1276,9 @@ def bitwise_or_(x, y, name=None):
         return _C_ops.bitwise_or_(x, y)
 
 
-def bitwise_xor(x, y, out=None, name=None):
+def bitwise_xor(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
 
     Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
@@ -1262,8 +1294,8 @@ def bitwise_xor(x, y, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor, optional): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for
+        out (Tensor|None, optional): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1288,7 +1320,7 @@ def bitwise_xor(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def bitwise_xor_(x, y, name=None):
+def bitwise_xor_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_bitwise_xor`.
@@ -1302,7 +1334,9 @@ def bitwise_xor_(x, y, name=None):
         return _C_ops.bitwise_xor_(x, y)
 
 
-def bitwise_not(x, out=None, name=None):
+def bitwise_not(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
 
     Apply ``bitwise_not`` on Tensor ``X``.
@@ -1317,8 +1351,8 @@ def bitwise_not(x, out=None, name=None):
 
     Args:
         x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor, optional): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for
+        out (Tensor|None, optional): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1343,7 +1377,7 @@ def bitwise_not(x, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def bitwise_not_(x, name=None):
+def bitwise_not_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_bitwise_not`.
@@ -1352,7 +1386,14 @@ def bitwise_not_(x, name=None):
         return _C_ops.bitwise_not_(x)
 
 
-def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+def isclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:
 
@@ -1367,10 +1408,10 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     Args:
         x(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
         y(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
-        rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
-        atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
-        equal_nan(equalnantype, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
-        name (str, optional): Name for the operation. For more information, please
+        rtol(float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol(float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan(bool, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
+        name (str|None, optional): Name for the operation. For more information, please
             refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:

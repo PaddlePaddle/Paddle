@@ -968,6 +968,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
+  pir_feeds_.clear();
   for (auto op : pir_program_->block()->ops()) {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
     if (op->isa<paddle::dialect::FetchOp>()) {
@@ -984,9 +985,11 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
       idx2feeds_[feed_idx] = data_name;
+      feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
     }
+
     for (auto var : op->results()) {
       std::string var_name;
       auto is_persistable =
