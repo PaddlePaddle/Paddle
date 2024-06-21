@@ -604,13 +604,41 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = out_grad * y;
-    auto x_grad_reduced = reduce_as<T>(x_grad_unreduce, x);
-    set_output<T>(x_grad_reduced, x_grad);
+    if (has_dynamic_shape(x.shape())) {
+      auto x_grad_reduced = reduce_as<T>(x_grad_unreduce, x);
+      set_output<T>(x_grad_reduced, x_grad);
+    } else {
+      if (x_grad_unreduce.dims() != x.dims()) {
+        auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
+        auto x_grad_reduced = x_grad_unreduce.sum(
+            common::vectorize(axes), x_grad_unreduce.dtype(), false);
+        if (x_grad_reduced.dims().size() != x.dims().size()) {
+          x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
+        }
+        set_output<T>(x_grad_reduced, x_grad);
+      } else {
+        set_output<T>(x_grad_unreduce, x_grad);
+      }
+    }
   }
   if (y_grad) {
     auto y_grad_unreduce = out_grad * x;
-    auto y_grad_reduced = reduce_as<T>(y_grad_unreduce, y);
-    set_output<T>(y_grad_reduced, y_grad);
+    if (has_dynamic_shape(y.shape())) {
+      auto y_grad_reduced = reduce_as<T>(y_grad_unreduce, y);
+      set_output<T>(y_grad_reduced, y_grad);
+    } else {
+      if (y_grad_unreduce.dims() != y.dims()) {
+        auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
+        auto y_grad_reduced = y_grad_unreduce.sum(
+            common::vectorize(axes), y_grad_unreduce.dtype(), false);
+        if (y_grad_reduced.dims().size() != y.dims().size()) {
+          y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
+        }
+        set_output<T>(y_grad_reduced, y_grad);
+      } else {
+        set_output<T>(y_grad_unreduce, y_grad);
+      }
+    }
   }
 }
 
