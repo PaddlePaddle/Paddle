@@ -93,6 +93,10 @@ def deprecated(update_to="", since="", reason="", level=0):
         if level == 0:
             return func
 
+        def parse_version(version: str):
+            # Split the version string and convert numeric parts to integers
+            return [int(part) for part in version.split(".") if part.isdigit()]
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             """deprecated warning should be fired in 3 circumstances:
