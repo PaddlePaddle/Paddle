@@ -940,7 +940,7 @@ class Layer:
                 Default: True.
 
         Returns:
-            list of Tensor, a list of Parameters.
+            list, list of Tensor, a list of Parameters.
 
         Examples:
             .. code-block:: python

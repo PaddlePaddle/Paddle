@@ -19,7 +19,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/device_context.h"
