@@ -41,10 +41,10 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     int num_ele = data_size / sizeof(int16_t);
     framework::DDim data_shape = common::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
-    data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
         static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
         data_size);
+    data_tensors_.push_back(temp_tensor);
   }
 }
 
