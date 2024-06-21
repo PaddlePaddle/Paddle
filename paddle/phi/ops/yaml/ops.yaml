@@ -1336,6 +1336,15 @@
     data_type : x
   backward : dot_grad
 
+- op : dpsgd
+  args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
+  output: Tensor(param_out)
+  infer_meta:
+     func: DpsgdInferMeta
+  kernel:
+     func: dpsgd
+     data_type: param
+
 - op : dropout
   args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
   output : Tensor(out), Tensor(mask)
@@ -1855,6 +1864,16 @@
     func : frobenius_norm
   backward : frobenius_norm_grad
 
+- op : ftrl
+  args: (Tensor param, Tensor squared_accumulator, Tensor linear_accumulator, Tensor grad, Tensor learning_rate, float l1=0.0f, float l2=0.0f, float lr_power=-0.5f)
+  output: Tensor(param_out), Tensor(squared_accum_out), Tensor(linear_accum_out)
+  infer_meta:
+    func: FtrlInferMeta
+  kernel:
+    func: ftrl {dense, dense, dense, dense, dense -> dense, dense, dense}
+          ftrl_sr {dense, dense, dense, selected_rows, dense -> dense, dense, dense}
+    data_type: param
+
 - op : full
   args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
@@ -2201,6 +2220,16 @@
   kernel :
     func : heaviside
   backward : heaviside_grad
+
+- op : hinge_loss
+  args: (Tensor logits, Tensor labels)
+  output: Tensor (loss)
+  infer_meta:
+    func: HingeLossInferMeta
+  kernel:
+    func: hinge_loss
+    data_type: logits
+  backward: hinge_loss_grad
 
 - op : histogram
   args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
@@ -2744,6 +2773,15 @@
     func : logsumexp
   backward : logsumexp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : lookup_table_dequant
+  args: (Tensor w, Tensor ids, int64_t padding_idx = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: LookupTableDequantInferMeta
+  kernel:
+    func: lookup_table_dequant
+    data_type: w
 
 - op : lp_pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
@@ -4353,14 +4391,14 @@
   backward : thresholded_relu_grad
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int random_seed=-1, int k=1, str mode="truncate")
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")
   output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
   infer_meta :
     func : TopPSamplingInferMeta
   kernel :
     func : top_p_sampling
     data_type : x
-  optional : threshold, topp_seed
+  optional : threshold, topp_seed, topk_scores, topk_ids
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : topk

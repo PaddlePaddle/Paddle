@@ -3562,11 +3562,20 @@ function exec_type_checking() {
 
     # check all sample code
     TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing all" || true`
+    DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[debug]" || true`
 
     if [[ ${TITLE_CHECK_ALL} ]]; then
-        python type_checking.py --full-test; type_checking_error=$?
+        if [[ ${DEBUG_MODE} ]]; then
+            python type_checking.py --debug --full-test; type_checking_error=$?
+        else
+            python type_checking.py --full-test; type_checking_error=$?
+        fi
     else
-        python type_checking.py; type_checking_error=$?
+        if [[ ${DEBUG_MODE} ]]; then
+            python type_checking.py --debug; type_checking_error=$?
+        else
+            python type_checking.py; type_checking_error=$?
+        fi
     fi
 
     if [ "$type_checking_error" != "0" ];then
