@@ -143,9 +143,9 @@ class Momentum(Optimizer):
         self,
         learning_rate: float | Tensor | LRScheduler = 0.001,
         momentum: float = 0.9,
-        parameters: Sequence[Tensor]
-        | Sequence[_MomentumParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_MomentumParameterConfig] | None
+        ) = None,
         use_nesterov: bool = False,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
