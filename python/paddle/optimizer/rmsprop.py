@@ -176,9 +176,9 @@ class RMSProp(Optimizer):
         epsilon: float = 1.0e-6,
         momentum: float = 0.0,
         centered: bool = False,
-        parameters: Sequence[Tensor]
-        | Sequence[_RMSPropParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_RMSPropParameterConfig] | None
+        ) = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,

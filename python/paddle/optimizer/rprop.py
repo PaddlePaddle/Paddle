@@ -111,7 +111,9 @@ class Rprop(Optimizer):
         self,
         learning_rate: float | Tensor | LRScheduler = 0.001,
         learning_rate_range: tuple[float, float] = (1e-5, 50),
-        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_ParameterConfig] | None
+        ) = None,
         etas: tuple[float, float] = (0.5, 1.2),
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,

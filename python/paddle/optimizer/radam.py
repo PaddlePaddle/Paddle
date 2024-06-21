@@ -156,9 +156,9 @@ class RAdam(Optimizer):
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
         epsilon: float = 1.0e-8,
-        parameters: Sequence[Tensor]
-        | Sequence[_RAdamParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_RAdamParameterConfig] | None
+        ) = None,
         weight_decay: float | Tensor | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
