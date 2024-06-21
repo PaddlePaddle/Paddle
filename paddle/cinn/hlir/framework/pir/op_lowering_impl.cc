@@ -922,10 +922,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   // 2.Do lower
   std::string lower_fn_name = CompatibleInfo::OpFuncName(*op);
-  // ast_gen_ius::TensorGroup tensor_group =
-  //     ast_gen_ius::ConvertStageMapToTensorGroup(tmp_stages);
-  // using output value build tensor group
 
+  // using output value build tensor group
   ast_gen_ius::TensorGroup tensor_group(stage_tensors);
   std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
       lower_fn_name, *op_func_arg_tensors, {&tensor_group}, this->target_);
