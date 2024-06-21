@@ -206,7 +206,7 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   auto* calc_ctx = static_cast<phi::XPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
-  auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  auto comm_ctx = std::make_unique<XPUDeviceContext>(place, true);
   // comm_ctx does not require a pre-allocated GM buffer
   comm_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
   auto bkcl_comm_ctx = this->GetCommContext();
@@ -217,8 +217,7 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
                              .GetAllocator(place)
                              .get());
   // Note(lijin23): XPU use calc stream for communication now, so we disable the
-  // creation of comm stream to reduce the total number of streams used. comm
-  // context creates a separate XPU stream for communication
+  // creation of comm stream to reduce the total number of streams used.
   // comm_ctx->CreateStream();
 
   place_to_calc_ctx_[place_key] = calc_ctx;
