@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence, overload
+from typing import TYPE_CHECKING, Callable, Sequence, overload, Literal
 
 import numpy as np
 
@@ -29,6 +29,7 @@ from paddle._typing import (
 )
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from python.paddle._typing.basic import NestedStructure
 
 from ..base.data_feeder import (
     check_dtype,
@@ -288,9 +289,9 @@ def cast_(x: Tensor, dtype: DTypeLike) -> Tensor:
 
 def slice(
     input: Tensor,
-    axes: Sequence[int],
-    starts: Sequence[int] | Tensor,
-    ends: Sequence[int] | Tensor,
+    axes: Sequence[int|Tensor],
+    starts: Sequence[int| Tensor] | Tensor,
+    ends: Sequence[int|Tensor] | Tensor,
 ) -> Tensor:
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
@@ -4794,7 +4795,7 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
 
 def atleast_1d(
-    *inputs: tuple[Tensor], name: str | None = None
+    *inputs: TensorOrTensors, name: str | None = None
 ) -> TensorOrTensors:
     """
     Convert inputs to tensors and return the view with at least 1-dimension. Scalar inputs are converted,
@@ -4865,7 +4866,7 @@ def atleast_1d(
 
 
 def atleast_2d(
-    *inputs: tuple[Tensor], name: str | None = None
+    *inputs: TensorOrTensors, name: str | None = None
 ) -> TensorOrTensors:
     """
     Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
@@ -4937,7 +4938,7 @@ def atleast_2d(
 
 
 def atleast_3d(
-    *inputs: tuple[Tensor], name: str | None = None
+    *inputs: TensorOrTensors, name: str | None = None
 ) -> TensorOrTensors:
     """
     Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
@@ -5119,10 +5120,10 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
 
 def strided_slice(
     x: Tensor,
-    axes: Sequence[int],
-    starts: Sequence[int] | Tensor,
-    ends: Sequence[int] | Tensor,
-    strides: Sequence[int] | Tensor,
+    axes: Sequence[int| Tensor],
+    starts: Sequence[int|Tensor] | Tensor,
+    ends: Sequence[int|Tensor] | Tensor,
+    strides: Sequence[int|Tensor] | Tensor,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -5342,7 +5343,7 @@ def strided_slice(
 def tensordot(
     x: Tensor,
     y: Tensor,
-    axes: int | Sequence[int] | Tensor = 2,
+    axes: int | NestedStructure[int] | Tensor = 2,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -6072,9 +6073,9 @@ def take_along_axis(
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
-    values: Tensor,
+    values: int|Tensor,
     axis: int,
-    reduce: str = "assign",
+    reduce: Literal['assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'] = "assign",
     include_self: bool = True,
     broadcast: bool = True,
 ) -> Tensor:
@@ -6085,7 +6086,7 @@ def put_along_axis(
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr if broadcast is 'True'. Supported data type are int and int64.
-        values (Tensor) : The value element(s) to put. The data types should be same as arr.
+        values (int|Tensor) : The value element(s) to put. The data types should be same as arr.
         axis (int) : The axis to put 1d slices along.
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul', 'multiply', 'mean', 'amin' and 'amax'.
         include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
@@ -6367,7 +6368,7 @@ def index_add_(
 @inplace_apis_in_dygraph_only
 def index_put_(
     x: Tensor,
-    indices: tuple[Tensor],
+    indices: tuple[Tensor, ...],
     value: Tensor,
     accumulate: bool = False,
     name: str | None = None,
@@ -6416,7 +6417,7 @@ def index_put_(
 
 def index_put(
     x: Tensor,
-    indices: tuple[Tensor],
+    indices: tuple[Tensor, ...],
     value: Tensor,
     accumulate: bool = False,
     name: str | None = None,
