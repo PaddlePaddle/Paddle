@@ -5,7 +5,7 @@
     func : ReduceInferMetaBase
   kernel :
     func : all
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : all_gather
   args : (Tensor x, int ring_id = 0, int nranks=0)
@@ -68,7 +68,7 @@
   kernel :
     func : any_raw
     param : [x, axis, keepdim, reduce_all]
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : arange
   args : (Tensor start, Tensor end, Tensor step)
@@ -101,7 +101,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
@@ -255,7 +255,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : exponential_
   args : (Tensor x, float lam = 1.0f)
@@ -298,7 +298,7 @@
     func : ElementwiseRawInferMeta
   kernel :
     func : floor_divide
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
@@ -319,7 +319,7 @@
     func : full_like
     param : [x, value, dtype]
     data_type : dtype > x
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : gaussian
   args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
@@ -331,7 +331,7 @@
     func : gaussian
     param : [shape, mean, std, seed, dtype]
     data_type : dtype
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -344,7 +344,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_than
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -357,7 +357,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hardswish
   args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
@@ -381,7 +381,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : less_than
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -394,7 +394,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
@@ -499,7 +499,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : one_hot
   args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
@@ -509,7 +509,7 @@
   kernel :
     func : one_hot_raw
     data_type : x
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : p_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
@@ -607,7 +607,7 @@
     func : randint
     param : [low, high, shape, dtype]
     data_type : dtype
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : randperm
   args : (int n, DataType dtype = DataType::INT64)
@@ -648,7 +648,7 @@
   kernel :
     func : remainder
   inplace : (x -> out)
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
@@ -795,7 +795,7 @@
     func : uniform
     param: [shape, dtype, min, max, seed]
     data_type : dtype
-  forward_only : True
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)

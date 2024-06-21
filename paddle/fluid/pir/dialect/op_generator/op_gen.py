@@ -544,11 +544,6 @@ class OpInfoParser:
         else:
             self.dynamic_fallback = False
 
-        if "forward_only" in self.op_yaml_item:
-            self.is_forward_only = self.op_yaml_item["forward_only"]
-        else:
-            self.is_forward_only = False
-
     def parse_op_traits(self):
         if 'traits' in self.op_yaml_item:
             return self.op_yaml_item['traits']
@@ -1347,9 +1342,6 @@ def AutoCodeGen(
 
             if op_info.dynamic_fallback:
                 op_traits += ["paddle::dialect::OneDNNDynamicFallbackTrait"]
-
-            if op_info.is_forward_only:
-                op_traits += ["paddle::dialect::ForwardOnlyTrait"]
 
             op_traits_str = ""
             if len(op_traits) > 0:
