@@ -312,7 +312,7 @@ def nanmedian(
 def nanmedian(
     x: Tensor,
     axis: int | Sequence[int] | None = ...,
-    Keepdim: bool = ...,
+    keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
 ) -> Tensor:
