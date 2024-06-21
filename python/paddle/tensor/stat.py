@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define statistical functions of a tensor
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, Sequence, overload
