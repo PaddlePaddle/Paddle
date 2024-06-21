@@ -1331,7 +1331,7 @@ def top_p_sampling(
     threshold: Tensor | None = None,
     topp_seed: Tensor | None = None,
     seed: int = -1,
-    k: int = 1,
+    k: int = 0,
     mode: Literal['truncated', 'non-truncated'] = "truncated",
     return_top: bool = False,
     name: str | None = None,
@@ -1348,7 +1348,7 @@ def top_p_sampling(
         topp_seed(Tensor|None, optional): A 1-D Tensor with type int64,
             used to specify the random seed for each query.
         seed(int, optional): the random seed. Default is -1,
-        k(int): the number of top_k scores/ids to be returned. Default is 1.
+        k(int): the number of top_k scores/ids to be returned. Default is 0.
         mode(str): The mode to choose sampling strategy. If the mode is `truncated`, sampling will truncate the probability at top_p_value.
             If the mode is `non-truncated`, it will not be truncated. Default is `truncated`.
         return_top(bool): Whether to return the top_k scores and ids. Default is False.
@@ -1396,7 +1396,7 @@ def top_p_sampling(
             return res[0], res[1]
 
     inputs = {"x": x, "ps": ps, "threshold": threshold, "topp_seed": topp_seed}
-    attrs = {"random_seed": seed, "k": k, "mode": mode}
+    attrs = {"seed": seed, "k": k, "mode": mode}
 
     helper = LayerHelper('top_p_sampling', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
