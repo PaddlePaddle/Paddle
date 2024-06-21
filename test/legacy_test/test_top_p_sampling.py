@@ -104,6 +104,7 @@ class TestTopPAPI(unittest.TestCase):
                 input_tensor,
                 topp_tensor,
                 seed=-1,
+                k=5,
                 mode="non-truncated",
                 return_top=True,
             )

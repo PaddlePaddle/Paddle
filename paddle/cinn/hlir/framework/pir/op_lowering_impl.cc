@@ -192,7 +192,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
-    return {{{ir::Expr(1), LowerCustomCall(group)[0]}}, ir::LoweredFunc()};
+    return {{std::make_tuple(ir::Expr(1), LowerCustomCall(group)[0], 100)},
+            ir::LoweredFunc()};
   }
   auto X86Expr = LowerX86(group, ops, apply_op_schedule);
   VLOG(3) << "After x86 lower, ir is: \n" << X86Expr;
@@ -235,6 +236,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
       mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
   ir_sch.MergeExprs();
   std::vector<std::pair<ir::SymbolicPredicate, ir::Expr>> cond2func_bodies;
+  std::vector<int> priorities;
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
@@ -272,9 +274,14 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
     cond2func_bodies = group_scheduler->GetIRs();
     VLOG(4) << "End   group_scheduler->GetIRs";
+
+    priorities = group_scheduler->GetPriorities();
+    VLOG(4) << "End group_scheduler->GetPriorities";
+
   } else {
     cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
+    priorities.emplace_back(100);
   }
 
   // The last func is stored as a kernel on x86
@@ -317,10 +324,15 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                     phi::errors::InvalidArgument(
                         "The size of funcs and cond2func_bodies should be "
                         "the same."));
+  PADDLE_ENFORCE_EQ(
+      funcs.size(),
+      priorities.size() + 1,
+      phi::errors::InvalidArgument("The size of funcs should equals to the "
+                                   "size of priorities plus one."));
   BucketLoweredFuncsWrapper funcs_wrapper;
   for (int i = 0; i < funcs.size() - 1; ++i) {
-    funcs_wrapper.predicate2funcs.emplace_back(cond2func_bodies[i].first,
-                                               funcs[i]);
+    funcs_wrapper.predicate2funcs.emplace_back(
+        std::make_tuple(cond2func_bodies[i].first, funcs[i], priorities[i]));
   }
   // The last func is x86 kernel.
   for (size_t i = funcs.size() - 1; i < funcs.size(); ++i) {
