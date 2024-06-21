@@ -233,6 +233,11 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
     allocation_stream_pairs.clear();
   }
 
+  virtual void StartCoalescing();
+
+  virtual void EndCoalescing(
+      std::vector<std::shared_ptr<ProcessGroup::Task>>& tasks);  // NOLINT
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
 
@@ -256,6 +261,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs;
+
+  bool is_coalescing_{false};
+  std::vector<std::shared_ptr<phi::DenseTensor>> lazy_colaescing_tensors_;
 };
 
 }  //  namespace distributed

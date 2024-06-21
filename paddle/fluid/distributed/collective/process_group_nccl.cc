@@ -871,12 +871,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator ||
-        FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    if (!is_coalescing_) {
+      if (FLAGS_use_stream_safe_cuda_allocator ||
+          FLAGS_use_cuda_malloc_async_allocator) {
+        memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+      }
+      task->UpdateWaitChain(*comm_ctx);
+      allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+    } else {
+      lazy_colaescing_tensors_.emplace_back(
+          std::make_shared<phi::DenseTensor>(tensor_tmp));
     }
-    task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -1042,6 +1047,35 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
                     nullptr,
                     phi::errors::Unavailable("NCCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupNCCL::StartCoalescing() {
+  is_coalescing_ = true;
+  GroupStart();
+}
+
+void ProcessGroupNCCL::EndCoalescing(
+    std::vector<std::shared_ptr<ProcessGroup::Task>>& tasks) {
+  GroupEnd();
+
+  // if (FLAGS_use_stream_safe_cuda_allocator ||
+  //     FLAGS_use_cuda_malloc_async_allocator) {
+  //   memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+  // }
+  // task->UpdateWaitChain(*comm_ctx);
+  // allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+
+  for (const auto& task : tasks) {
+    auto nccl_task = static_cast<ProcessGroupNCCL::NCCLTask*>(task.get());
+
+    if (FLAGS_use_stream_safe_cuda_allocator ||
+        FLAGS_use_cuda_malloc_async_allocator) {
+      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    }
+    nccl_task->UpdateWaitChain(*comm_ctx);
+    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+  }
+  // is_coalescing_ = false;
 }
 
 }  // namespace paddle::distributed
