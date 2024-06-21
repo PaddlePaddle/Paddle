@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     test_default_and_pir,
     test_legacy_and_pt_and_pir,
-    test_pir_only,
 )
 from test_resnet import ResNetHelper
 
@@ -67,7 +66,7 @@ class TestResnetWithPass(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_pir_only
+    @test_default_and_pir
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
