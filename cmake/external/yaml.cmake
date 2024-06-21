@@ -31,6 +31,13 @@ if(WIN32)
   set(YAML_LIBRARIES
       "${YAML_INSTALL_DIR}/lib/yaml-cpp.lib"
       CACHE FILEPATH "yaml library." FORCE)
+  if(MSVC)
+    add_compile_options(
+      $<$<CONFIG:>:/MT> #---------|
+      $<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
+      $<$<CONFIG:Release>:/MT> #--|
+    )
+  endif()
 else()
   set(YAML_LIBRARIES
       "${YAML_INSTALL_DIR}/lib/libyaml-cpp.a"
