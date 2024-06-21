@@ -906,6 +906,14 @@ void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void square_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp = 2 * x * out_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     if (out.dtype() == phi::DataType::FLOAT16 ||

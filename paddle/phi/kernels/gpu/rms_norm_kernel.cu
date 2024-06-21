@@ -1284,6 +1284,50 @@ template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
                                         float* residual_output,
                                         float* output);
 
+template <typename T, typename Context>
+void RmsNormWrapper(const Context& ctx,
+                    const T* x,
+                    const T* weight,
+                    const T* bias,
+                    const float epsilon,
+                    const int rows,
+                    const int cols,
+                    T* output) {
+  using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  DirectLoad<T, ComputeType> load(x, cols);
+  AffineStore<ComputeType, T> store(output, cols, weight, bias);
+  DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
+      ctx.stream(), load, store, rows, cols, epsilon, nullptr);
+}
+
+template void RmsNormWrapper(const phi::GPUContext& ctx,
+                             const phi::dtype::float16* x,
+                             const phi::dtype::float16* weight,
+                             const phi::dtype::float16* bias,
+                             const float epsilon,
+                             const int rows,
+                             const int cols,
+                             phi::dtype::float16* output);
+
+template void RmsNormWrapper(const phi::GPUContext& ctx,
+                             const phi::dtype::bfloat16* x,
+                             const phi::dtype::bfloat16* weight,
+                             const phi::dtype::bfloat16* bias,
+                             const float epsilon,
+                             const int rows,
+                             const int cols,
+                             phi::dtype::bfloat16* output);
+
+template void RmsNormWrapper(const phi::GPUContext& ctx,
+                             const float* x,
+                             const float* weight,
+                             const float* bias,
+                             const float epsilon,
+                             const int rows,
+                             const int cols,
+                             float* output);
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(rms_norm,
