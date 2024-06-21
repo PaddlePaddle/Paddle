@@ -13,7 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-import paddle
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 
 from ...base.data_feeder import check_variable_and_dtype
@@ -21,14 +22,17 @@ from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 
 def one_hot(
-    x: paddle.Tensor,
+    x: Tensor,
     num_classes: int,
     name: str | None = None,
-) -> paddle.Tensor:
+) -> Tensor:
     """
 
     The operator converts each id in the input `x` to an one-hot vector with a
@@ -124,12 +128,12 @@ def one_hot(
 
 
 def embedding(
-    x: paddle.Tensor,
-    weight: paddle.Tensor,
+    x: Tensor,
+    weight: Tensor,
     padding_idx: int | None = None,
     sparse: bool = False,
     name: str | None = None,
-) -> paddle.Tensor:
+) -> Tensor:
     r"""
     Used to lookup embeddings vector of ids provided by :attr:`x` .
 
