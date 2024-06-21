@@ -297,7 +297,8 @@ void InferSymExprForBlock(const Block& block,
             "CacheGradOpSymbolicShape for %s failed.",
             op.name());
       }
-    }();
+    };
+    CacheGradOpSymbolicShape();
     DebugPrintOpInfo(&op, infer_context);
     CheckInferSymWithInferMeta(&op, infer_context);
   }
