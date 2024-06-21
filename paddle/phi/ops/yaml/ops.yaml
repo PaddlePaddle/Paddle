@@ -2007,7 +2007,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : [pir::SideEffectTrait,paddle::dialect::ForwardOnlyTrait]
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : gaussian_inplace
   args: (Tensor x, float mean=0, float std=1.0, int seed=0)
@@ -3417,7 +3417,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : [pir::SideEffectTrait,paddle::dialect::ForwardOnlyTrait]
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
@@ -4495,7 +4495,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : [pir::SideEffectTrait,paddle::dialect::ForwardOnlyTrait]
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : uniform_inplace
   args: (Tensor x, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)
