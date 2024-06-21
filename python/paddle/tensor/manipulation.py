@@ -23,10 +23,10 @@ from paddle import _C_ops
 from paddle._typing import (
     DTypeLike,
     NestedList,
+    NestedSequence,
     Numberic,
     ShapeLike,
     TensorOrTensors,
-    NestedSequence,
 )
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -3141,7 +3141,7 @@ def squeeze(
 
 @inplace_apis_in_dygraph_only
 def squeeze_(
-    x: Tensor, axis=int | Sequence[int], name: str | None = None
+    x: Tensor, axis: int | Sequence[int], name: str | None = None
 ) -> Tensor:
     """
     Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
@@ -6241,7 +6241,9 @@ def put_along_axis_(
     indices: Tensor,
     values: Tensor,
     axis: int,
-    reduce: str = 'assign',
+    reduce: Literal[
+        'assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'
+    ] = "assign",
     include_self: bool = True,
 ):
     r"""
@@ -6778,7 +6780,9 @@ def _index_fill_impl(
         return out
 
 
-def index_fill(x: Tensor, index: Tensor, axis: int, value: float, name=None):
+def index_fill(
+    x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
+):
     """
     Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_index_fill_`.
@@ -6807,7 +6811,9 @@ def index_fill(x: Tensor, index: Tensor, axis: int, value: float, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def index_fill_(x: Tensor, index: Tensor, axis: int, value: float, name=None):
+def index_fill_(
+    x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
+):
     """
     Fill the elements of the input tensor with value by the specific axis and index.
 
