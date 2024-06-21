@@ -13,7 +13,7 @@ endforeach()
 set(STATIC_BUILD_TESTS
     test_standalone_controlflow test_standalone_cuda_graph_multi_stream
     test_standalone_custom_stream test_standalone_custom_event
-    test_standalone_multiply_write)
+    test_standalone_multiply_write test_standalone_executor)
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(

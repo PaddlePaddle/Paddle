@@ -28,12 +28,3 @@ py_test_modules(
 py_test_modules(
   test_standalone_executor_stats MODULES test_standalone_executor ENVS
   FLAGS_host_trace_level=10 FLAGS_static_executor_perfstat_filepath=./perfstat)
-
-# These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
-set(STATIC_BUILD_TESTS test_standalone_executor)
-
-foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
-  py_test_modules(
-    ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
-endforeach()
