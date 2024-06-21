@@ -26,10 +26,10 @@ from paddle._typing import (
     Numberic,
     ShapeLike,
     TensorOrTensors,
+    NestedSequence,
 )
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
-from python.paddle._typing.basic import NestedSequence
 
 from ..base.data_feeder import (
     check_dtype,
