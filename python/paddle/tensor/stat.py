@@ -881,7 +881,6 @@ def quantile(
     axis: int | list[int] | None = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
-    name: str | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
@@ -966,7 +965,6 @@ def nanquantile(
     axis: list[int] | int = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
-    name: str | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input as if NaN values in input did not exist.
