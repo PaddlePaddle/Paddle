@@ -62,7 +62,6 @@ class TestConv2dBnPassXPUPattern(PassTest):
                 # out = bn(conv2d(x))
                 out = paddle.add(conv2d(x), bias)
                 out = paddle.assign(out)
-                print(np.zeros((1, 32, 1, 1)).astype("float32"))
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                     "bias": np.zeros((1, 32, 1, 1)).astype("float32"),

@@ -38,7 +38,7 @@ class Conv2dAddXpuFusePattern : public paddle::drr::DrrPatternBase {
  public:
   explicit Conv2dAddXpuFusePattern(
       bool enable_int8,
-      std::map<std::string, int> quant_post_type,
+      const std::map<std::string, int> &quant_post_type,
       std::reference_wrapper<std::optional<pir::detail::PassExecutionState>>
           pass_state)
       : enable_int8_(enable_int8),
@@ -262,10 +262,11 @@ class Conv2dAddFusePass : public pir::PatternRewritePass {
 
     std::map<std::string, int> default_type;
     default_type.insert(std::make_pair("conv2d", -1));
-    auto quant_post_type = Has("quant_post_dynamic_weight_methods")
-                               ? Get<std::map<std::string, int>>(
-                                     "quant_post_dynamic_weight_methods")
-                               : default_type;
+    const std::map<std::string, int> quant_post_type =
+        Has("quant_post_dynamic_weight_methods")
+            ? Get<std::map<std::string, int>>(
+                  "quant_post_dynamic_weight_methods")
+            : default_type;
     for (auto it = quant_post_type.begin(); it != quant_post_type.end(); ++it) {
       VLOG(5) << "Key:" << it->first;
       VLOG(5) << "Value:" << it->second;

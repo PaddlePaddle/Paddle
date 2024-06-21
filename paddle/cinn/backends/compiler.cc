@@ -14,12 +14,12 @@
 
 #include "paddle/cinn/backends/compiler.h"
 
+#include <sys/stat.h>
 #include <fstream>
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
-#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
@@ -38,6 +38,36 @@ PD_DECLARE_string(cinn_dump_group_source_code);
 PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
 PD_DECLARE_string(cinn_debug_custom_code_path);
+
+namespace {
+
+bool MakeDirectory(const std::string& dirname, mode_t mode) {
+  struct stat st;
+  std::string path;
+  for (int i = 0; i < dirname.size(); ++i) {
+    path.push_back(dirname[i]);
+    if (!(dirname[i] == '/' || i + 1 == dirname.size())) {
+      continue;
+    }
+    if (stat(path.c_str(), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        continue;
+      } else {
+        LOG(WARNING) << path << " is not a directory, please check your path.";
+        return false;
+      }
+    } else {
+      if (mkdir(path.c_str(), mode) == 0) {
+        continue;
+      } else {
+        LOG(WARNING) << "Make directory fail: " << path;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+}  // namespace
 
 namespace cinn {
 namespace backends {
@@ -176,8 +206,8 @@ void CompilationInfoDumper::Dump(const std::string& base_path,
                                  const std::string& content) {
   auto dump_path = utils::StringFormat(
       "%s/device_%d/fusion_group_%d", base_path.c_str(), device_id, idx);
-  if (!hlir::framework::MakeDirectory(
-          dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+  if (!MakeDirectory(dump_path,
+                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
     LOG(WARNING) << "Failed to make directory: \"" << dump_path
                  << "\", the instruction for this group will not dump.";
   } else {

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -50,11 +51,11 @@ class XPUTestScaleOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             if self.dtype == np.uint16:
-                x = np.random.random((10, 10)).astype('float32')
+                x = np.random.random(self.shape).astype('float32')
                 self.inputs = {'X': convert_float_to_uint16(x)}
             else:
                 self.inputs = {
-                    'X': np.random.random((10, 10)).astype(self.dtype)
+                    'X': np.random.random(self.shape).astype(self.dtype)
                 }
 
         def set_output(self):
@@ -102,29 +103,35 @@ class XPUTestScaleOp(XPUOpTestWrapper):
         def set_attrs(self):
             self.attrs = {'scale': -0.003}
 
-    # class TestScaleOpLargeShape1(TestScaleOp):
-    #     def set_shape(self):
-    #         self.shape = [64]
+    @check_run_big_shape_test()
+    class TestScaleOpLargeShape1(TestScaleOp):
+        def set_shape(self):
+            self.shape = [64]
 
-    # class TestScaleOpLargeShape2(TestScaleOp):
-    #     def set_shape(self):
-    #         self.shape = [8192, 1]
+    @check_run_big_shape_test()
+    class TestScaleOpLargeShape2(TestScaleOp):
+        def set_shape(self):
+            self.shape = [8192, 1]
 
-    # class TestScaleOpLargeShape3(TestScaleOp):
-    #     def set_shape(self):
-    #         self.shape = [1, 8192, 5, 64]
+    @check_run_big_shape_test()
+    class TestScaleOpLargeShape3(TestScaleOp):
+        def set_shape(self):
+            self.shape = [1, 8192, 5, 64]
 
-    # class TestScaleOpLargeShape4(TestScaleOp):
-    #     def set_shape(self):
-    #         self.shape = [8192, 1920]
+    @check_run_big_shape_test()
+    class TestScaleOpLargeShape4(TestScaleOp):
+        def set_shape(self):
+            self.shape = [8192, 1920]
 
-    # class TestScaleOpLargeShape5(TestScaleOp):
-    #     def set_shape(self):
-    #         self.shape = [1024, 5120]
+    @check_run_big_shape_test()
+    class TestScaleOpLargeShape5(TestScaleOp):
+        def set_shape(self):
+            self.shape = [1024, 5120]
 
-    # class TestScaleOpLargeShape6(TestScaleOp):
-    #     def set_shape(self):
-    #         self.shape = [8192, 3456]
+    @check_run_big_shape_test()
+    class TestScaleOpLargeShape6(TestScaleOp):
+        def set_shape(self):
+            self.shape = [8192, 3456]
 
 
 class TestScaleApiStatic(unittest.TestCase):
