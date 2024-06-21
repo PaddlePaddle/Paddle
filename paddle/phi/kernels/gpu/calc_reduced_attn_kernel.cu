@@ -20,6 +20,7 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_FLASHATTN
 struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
   bool return_softmax;
   DenseTensor* softmax;
@@ -55,6 +56,7 @@ struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
     }
   }
 };
+#endif
 
 template <typename T, typename Context>
 void CalcReducedAttnScoresKernel(const Context& ctx,
@@ -65,6 +67,18 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                                  DenseTensor* reduced_scores,
                                  DenseTensor* softmax) {
 #ifdef PADDLE_WITH_FLASHATTN
+  PADDLE_ENFORCE_EQ(q.dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "calc_reduced_attention receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+  PADDLE_ENFORCE_EQ(k.dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "calc_reduced_attention receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
   if (!reduced_scores->IsInitialized())
     ctx.template Alloc<float>(reduced_scores);
   phi::funcs::SetConstant<Context, float> set_zero;
