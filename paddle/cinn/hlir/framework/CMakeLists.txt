@@ -15,7 +15,6 @@ gather_srcs(
   node.cc
   op_strategy.cc
   accuracy_checker.cc
-  visualize_helper.cc
   compile_error.cc)
 
 cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)

@@ -1265,7 +1265,7 @@ def top_p_sampling(
     threshold=None,
     topp_seed=None,
     seed=-1,
-    k=1,
+    k=0,
     mode="truncated",
     return_top=False,
     name=None,
@@ -1330,7 +1330,7 @@ def top_p_sampling(
             return res[0], res[1]
 
     inputs = {"x": x, "ps": ps, "threshold": threshold, "topp_seed": topp_seed}
-    attrs = {"random_seed": seed, "k": k, "mode": mode}
+    attrs = {"seed": seed, "k": k, "mode": mode}
 
     helper = LayerHelper('top_p_sampling', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
