@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -443,7 +443,22 @@ def index_select(
         return out
 
 
-def nonzero(x: Tensor, as_tuple: bool = False) -> Tensor:
+@overload
+def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor:
+    ...
+
+
+@overload
+def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]:
+    ...
+
+
+@overload
+def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]:
+    ...
+
+
+def nonzero(x: Tensor, as_tuple=False):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
@@ -458,7 +473,7 @@ def nonzero(x: Tensor, as_tuple: bool = False) -> Tensor:
         as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
 
     Returns:
-        Tensor. The data type is int64.
+        Tensor or tuple of Tensor, The data type is int64.
 
     Examples:
 
