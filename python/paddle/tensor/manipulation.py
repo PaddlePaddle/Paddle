@@ -3141,7 +3141,7 @@ def squeeze(
 
 @inplace_apis_in_dygraph_only
 def squeeze_(
-    x: Tensor, axis: int | Sequence[int], name: str | None = None
+    x: Tensor, axis: int | Sequence[int] = None, name: str | None = None
 ) -> Tensor:
     """
     Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
