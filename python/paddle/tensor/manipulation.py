@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence, overload
 
 import numpy as np
 
@@ -4794,7 +4794,7 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
 
 def atleast_1d(
-    *inputs: TensorOrTensors, name: str | None = None
+    *inputs: tuple[Tensor], name: str | None = None
 ) -> TensorOrTensors:
     """
     Convert inputs to tensors and return the view with at least 1-dimension. Scalar inputs are converted,
@@ -4865,7 +4865,7 @@ def atleast_1d(
 
 
 def atleast_2d(
-    *inputs: TensorOrTensors, name: str | None = None
+    *inputs: tuple[Tensor], name: str | None = None
 ) -> TensorOrTensors:
     """
     Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
@@ -4937,7 +4937,7 @@ def atleast_2d(
 
 
 def atleast_3d(
-    *inputs: TensorOrTensors, name: str | None = None
+    *inputs: tuple[Tensor], name: str | None = None
 ) -> TensorOrTensors:
     """
     Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
@@ -5944,7 +5944,17 @@ def masked_fill_(
     return out
 
 
-def non_negative_axis(arr: Tensor, axis: int | Tensor) -> int | Tensor:
+@overload
+def non_negative_axis(arr: Tensor, axis: int) -> int:
+    ...
+
+
+@overload
+def non_negative_axis(arr: Tensor, axis: Tensor) -> Tensor:
+    ...
+
+
+def non_negative_axis(arr, axis):
     ndim = len(arr.shape)
     if axis >= 0:
         assert axis < ndim, f"'axis'  must be in the range of [-{ndim}, {ndim})"
