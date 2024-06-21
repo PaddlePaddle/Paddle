@@ -169,8 +169,11 @@ void ArrayReadInferMeta(const MetaTensor& array,
                         MetaTensor* out,
                         MetaConfig config) {
   if (!config.is_runtime) {
-    out->set_dims(array.dims());  // if dims is -1, rnn will crash, return
-                                  // array[0].dims same with old static graph.
+    auto dims = array.dims();
+    for (int i = 0; i < dims.size(); ++i) {
+      dims[i] = -1;
+    }
+    out->set_dims(dims);
   } else {
     double index = i.to<int64_t>();
     out->set_dims(array.dims(index));  // NOLINT
