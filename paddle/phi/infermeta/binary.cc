@@ -469,7 +469,9 @@ void CompareRawInferMeta(const MetaTensor& x,
     out->share_meta(x);
   } else {
     int max_dim = std::max(dim_x.size(), dim_y.size());
-    int axis = std::abs(dim_x.size() - dim_y.size());
+    int dim_x_size = dim_x.size() == -1 ? 0 : dim_x.size();
+    int dim_y_size = dim_y.size() == -1 ? 0 : dim_y.size();
+    int axis = std::abs(dim_x_size - dim_y_size);
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
