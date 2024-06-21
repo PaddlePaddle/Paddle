@@ -14,8 +14,15 @@
 
 from __future__ import annotations
 
+from typing import (
+    TYPE_CHECKING,
+)
+
 import paddle
 from paddle import nn
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -65,7 +72,7 @@ class LeNet(nn.Layer):
                 nn.Linear(84, num_classes),
             )
 
-    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, inputs: Tensor) -> Tensor:
         x = self.features(inputs)
 
         if self.num_classes > 0:
