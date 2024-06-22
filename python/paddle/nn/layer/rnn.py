@@ -49,9 +49,9 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.param_attr import ParamAttr
 
-    DirectionType = Literal["forward", "bidirect", "bidirectional"]
-    RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]
-    ActivationType = Literal["tanh", "relu"]
+    _DirectionType = Literal["forward", "bidirect", "bidirectional"]
+    _RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]
+    _ActivationType = Literal["tanh", "relu"]
 
 __all__ = []
 
@@ -59,7 +59,7 @@ __all__ = []
 def rnn(
     cell: RNNCellBase,
     inputs: Tensor,
-    initial_states: Tensor | None = None,
+    initial_states: TensorOrTensors | None = None,
     sequence_length: Tensor | None = None,
     time_major: bool = False,
     is_reverse: bool = False,
@@ -372,7 +372,7 @@ def birnn(
     cell_fw: RNNCellBase,
     cell_bw: RNNCellBase,
     inputs: Tensor,
-    initial_states: tuple[Tensor, Tensor] | None = None,
+    initial_states: tuple[Tensor, Tensor] | list[Tensor] | None = None,
     sequence_length: Tensor | None = None,
     time_major: bool = False,
     **kwargs,
@@ -581,10 +581,12 @@ class RNNCellBase(Layer):
     def get_initial_states(
         self,
         batch_ref: Tensor,
-        shape: list[int]
-        | tuple[int]
-        | tuple[tuple[int], tuple[int]]
-        | None = None,
+        shape: (
+            list[int]
+            | tuple[int, ...]
+            | tuple[tuple[int, ...], tuple[int, ...]]
+            | None
+        ) = None,
         dtype: DTypeLike = None,
         init_value: float = 0.0,
         batch_dim_idx: int = 0,
@@ -795,7 +797,7 @@ class SimpleRNNCell(RNNCellBase):
         self,
         input_size: int,
         hidden_size: int,
-        activation: ActivationType | str = "tanh",
+        activation: _ActivationType | str = "tanh",
         weight_ih_attr: ParamAttr | None = None,
         weight_hh_attr: ParamAttr | None = None,
         bias_ih_attr: ParamAttr | None = None,
@@ -1287,7 +1289,7 @@ class GRUCell(RNNCellBase):
         self._activation = paddle.tanh
 
     def forward(
-        self, inputs: Tensor, states: Tensor | list[Tensor] | None = None
+        self, inputs: Tensor, states: Tensor | None = None
     ) -> tuple[Tensor, Tensor]:
         if states is None:
             states = self.get_initial_states(inputs, self.state_shape)
@@ -1389,8 +1391,8 @@ class RNN(Layer):
     def forward(
         self,
         inputs: Tensor,
-        initial_states: Tensor | list[Tensor] | tuple[Tensor] = None,
-        sequence_length=None,
+        initial_states: TensorOrTensors | None = None,
+        sequence_length: Tensor = None,
         **kwargs,
     ):
         final_outputs, final_states = rnn(
@@ -1477,7 +1479,7 @@ class BiRNN(Layer):
     def forward(
         self,
         inputs: Tensor,
-        initial_states: tuple[Tensor, Tensor] | None = None,
+        initial_states: tuple[Tensor, Tensor] | list[Tensor] | None = None,
         sequence_length: Tensor | None = None,
         **kwargs,
     ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
@@ -1506,11 +1508,11 @@ class RNNBase(LayerList):
 
     def __init__(
         self,
-        mode: RNNType | str,
+        mode: _RNNType | str,
         input_size: int,
         hidden_size: int,
         num_layers: int = 1,
-        direction: DirectionType | str = "forward",
+        direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
         weight_ih_attr: ParamAttr | None = None,
@@ -1906,10 +1908,10 @@ class SimpleRNN(RNNBase):
         input_size: int,
         hidden_size: int,
         num_layers: int = 1,
-        direction: DirectionType | str = "forward",
+        direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        activation: ActivationType | str = "tanh",
+        activation: _ActivationType | str = "tanh",
         weight_ih_attr: ParamAttr | None = None,
         weight_hh_attr: ParamAttr | None = None,
         bias_ih_attr: ParamAttr | None = None,
@@ -2050,7 +2052,7 @@ class LSTM(RNNBase):
         input_size: int,
         hidden_size: int,
         num_layers: int = 1,
-        direction: DirectionType | str = "forward",
+        direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
         weight_ih_attr: ParamAttr | None = None,
@@ -2171,7 +2173,7 @@ class GRU(RNNBase):
         input_size: int,
         hidden_size: int,
         num_layers: int = 1,
-        direction: DirectionType | str = "forward",
+        direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
         weight_ih_attr: ParamAttr | None = None,
