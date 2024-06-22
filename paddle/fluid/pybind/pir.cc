@@ -1901,7 +1901,6 @@ SplitedResult SplitForwardBackward(
   const auto &inplace_chains = GetOpInplaceChains(program.block());
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
-
   // Replace inplace value with source value.
   // NOTE(SigureMo): Why not process inplace value for forward_inputs in
   // forward?
@@ -1990,7 +1989,6 @@ SplitedResult SplitForwardBackward(
   std::for_each(forward_outputs_mutable.begin(),
                 forward_outputs_mutable.end(),
                 create_output_fn_forward);
-
   pir::Block *forward_block = forward_program->block();
   const auto &forward_name_map = GetNameMap(forward_block);
   auto create_kwarg_fn = [&backward_block,
@@ -2010,7 +2008,6 @@ SplitedResult SplitForwardBackward(
       if (forward_name_map.count(forward_value)) {
         name = forward_name_map.at(forward_value);
       }
-
       backward_value_map[v] = backward_block.AddKwarg(name, v.type());
     }
   };
