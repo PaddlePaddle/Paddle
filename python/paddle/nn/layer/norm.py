@@ -930,7 +930,7 @@ class BatchNorm(Layer):
         epsilon: float = 1e-05,
         param_attr: ParamAttr | bool | None = None,
         bias_attr: ParamAttr | bool | None = None,
-        dtype: str = 'float32',
+        dtype: DTypeLike = 'float32',
         data_layout: DataLayout2D | str = 'NCHW',
         in_place: bool = False,
         moving_mean_name: str | None = None,
@@ -1887,7 +1887,7 @@ class SpectralNorm(Layer):
         dim: int = 0,
         power_iters: int = 1,
         eps: float = 1e-12,
-        dtype: DTypeLike | str = 'float32',
+        dtype: DTypeLike = 'float32',
     ) -> None:
         super().__init__()
         self._power_iters = power_iters
