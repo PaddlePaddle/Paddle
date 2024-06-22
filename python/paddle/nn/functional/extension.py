@@ -53,7 +53,7 @@ def diag_embed(
 def sequence_mask(
     x: Tensor,
     maxlen: int | None = None,
-    dtype: DTypeLike | str = 'int64',
+    dtype: DTypeLike = 'int64',
     name: str | None = None,
 ) -> Tensor:
     r"""
