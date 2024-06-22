@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import (
-    TYPE_CHECKING,
-)
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle._typing import (
     DataLayout1D,
