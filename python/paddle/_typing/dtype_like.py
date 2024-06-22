@@ -56,4 +56,4 @@ _DTypeNumpy: TypeAlias = Union[
 ]
 
 
-DTypeLike: TypeAlias = Union["dtype", _DTypeNumpy, _DTypeLiteral, str]
+DTypeLike: TypeAlias = Union["dtype", _DTypeNumpy, _DTypeLiteral]
