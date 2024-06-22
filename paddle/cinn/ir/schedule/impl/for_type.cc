@@ -225,8 +225,10 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
                                                 "threadIdx.x",
                                                 "threadIdx.y",
                                                 "threadIdx.z"};
-    CHECK(thread_axes.count(thread_axis))
-        << "thread_axis " << thread_axis << " is not supported";
+    PADDLE_ENFORCE_EQ(thread_axes.count(thread_axis),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "thread_axis %s is not supported", thread_axis));
     int offset = thread_axis.back() - 'x';
     auto check_offset = [&](const char& c) -> bool {
       auto extent = loop.As<ir::For>()->extent.as_int64();
@@ -234,14 +236,18 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
              (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
     };
     if (thread_axis[0] == 'b') {
-      CHECK(check_offset(thread_axis[0]))
-          << "Invalid Bind! The extent of loop is out of range on grid "
-             "size!\n";
+      PADDLE_ENFORCE_EQ(
+          check_offset(thread_axis[0]),
+          true,
+          phi::errors::InvalidArgument("Invalid Bind! The extent of loop is "
+                                       "out of range on grid size!\n"));
       MutateForType(loop, ForType::GPUBlock, offset);
     } else {
-      CHECK(check_offset(thread_axis[0]))
-          << "Invalid Bind! The extent of loop is out of range on block "
-             "size!\n";
+      PADDLE_ENFORCE_EQ(
+          check_offset(thread_axis[0]),
+          true,
+          phi::errors::InvalidArgument("Invalid Bind! The extent of loop is "
+                                       "out of range on block size!\n"));
       MutateForType(loop, ForType::GPUThread, offset);
     }
     CINN_IR_SCHEDULE_END(this->err_msg_level_);

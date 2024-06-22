@@ -25,30 +25,34 @@ namespace cinn {
 namespace runtime {
 namespace hip {
 
-#define HIP_CALL(func)                                           \
-  {                                                              \
-    auto status = func;                                          \
-    if (status != hipSuccess) {                                  \
-      LOG(FATAL) << "HIP Error : " << hipGetErrorString(status); \
-    }                                                            \
+#define HIP_CALL(func)                                                       \
+  {                                                                          \
+    auto status = func;                                                      \
+    if (status != hipSuccess) {                                              \
+      PADDLE_THROW(phi::errors::InvalidArgument("HIP Error : %s",            \
+                                                hipGetErrorString(status))); \
+    }                                                                        \
   }
 
-#define HIP_DRIVER_CALL(func)                                                 \
-  {                                                                           \
-    auto status = func;                                                       \
-    if (status != hipSuccess) {                                               \
-      const char* msg;                                                        \
-      hipDrvGetErrorString(status, &msg);                                     \
-      LOG(FATAL) << "HIP Driver Error: " #func " failed with error: " << msg; \
-    }                                                                         \
+#define HIP_DRIVER_CALL(func)                         \
+  {                                                   \
+    auto status = func;                               \
+    if (status != hipSuccess) {                       \
+      const char* msg;                                \
+      hipDrvGetErrorString(status, &msg);             \
+      PADDLE_THROW(phi::errors::InvalidArgument(      \
+          "HIP Driver Error: %s failed with error: ", \
+          hipGetErrorString(status)));                \
+    }                                                 \
   }
 
-#define HIPRTC_CALL(func)                                             \
-  {                                                                   \
-    auto status = func;                                               \
-    if (status != HIPRTC_SUCCESS) {                                   \
-      LOG(FATAL) << "NVRTC Error : " << hiprtcGetErrorString(status); \
-    }                                                                 \
+#define HIPRTC_CALL(func)                                     \
+  {                                                           \
+    auto status = func;                                       \
+    if (status != HIPRTC_SUCCESS) {                           \
+      PADDLE_THROW(phi::errors::InvalidArgument(              \
+          "NVRTC Error : %s", hiprtcGetErrorString(status))); \
+    }                                                         \
   }
 }  // namespace hip
 }  // namespace runtime

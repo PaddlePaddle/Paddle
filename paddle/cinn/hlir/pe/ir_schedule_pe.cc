@@ -353,7 +353,11 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
         for (int idx = 0; idx < block_names.size(); ++idx) {
           ir_sch.FlattenLoops(ir_sch.GetLoops(block_names[idx]), false);
           auto first_loop = ir_sch.GetLoops(block_names[idx])[0];
-          CHECK(first_loop.As<ir::For>());
+          PADDLE_ENFORCE_NOT_NULL(
+              first_loop.As<ir::For>(),
+              true,
+              phi::errors::InvalidArgument(
+                  "first_loop is not ir::For! Please check.\n"));
           auto tsize = first_loop.As<ir::For>()->extent.as_int32();
           if (tsize > target.max_num_threads()) {
             // split [-1, 256]

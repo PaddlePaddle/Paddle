@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <hip/hip_runtime.h>
 #include "paddle/cinn/runtime/hip/hip_util.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -118,7 +119,8 @@ int HIPBackendAPI::get_device_property(DeviceProperty device_property,
       break;
     }
     default:
-      LOG(FATAL) << "Not supported device property!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Not supported device property!"));
   }
   return rv;
 }

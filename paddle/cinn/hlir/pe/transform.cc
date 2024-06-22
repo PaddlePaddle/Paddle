@@ -1610,9 +1610,11 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
 
     auto pos_axis = axis;
     if (pos_axis < 0) pos_axis += input->shape.size();
-    CHECK(pos_axis >= 0 && pos_axis < input->shape.size())
-        << "Param [axis] of IndexAdd should satisfy 0 <= axis < input.shape ! "
-           "Please Check.\n";
+    PADDLE_ENFORCE_EQ(pos_axis >= 0 && pos_axis < input->shape.size(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Param [axis] of IndexAdd should satisfy 0 <= axis < "
+                          "input.shape ! Please Check.\n"));
 
     // compute each dimension's stride, it is used for indice2offset.
     // for shape=[1,2,3,4], strides=[2*3*4,3*4,4*1,1]=[24, 12, 4, 1]

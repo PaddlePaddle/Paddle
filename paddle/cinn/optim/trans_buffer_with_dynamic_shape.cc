@@ -127,9 +127,12 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
             common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
         if (cur_dev_info->IsValid()) {
           size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
-          CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)
-              << "The shared memory size used by current kernel "
-              << "is greater than the max shared memory per block";
+          PADDLE_ENFORCE_LE(
+              mutator.shared_mem_size_used_,
+              max_shm_per_block,
+              phi::errors::InvalidArgument(
+                  "The shared memory size used by current kernel is greater "
+                  "than the max shared memory per block"));
         }
 #endif
       });

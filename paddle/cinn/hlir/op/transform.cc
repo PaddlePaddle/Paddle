@@ -601,15 +601,24 @@ std::shared_ptr<OpStrategy> StrategyForMul(
   const auto &output_shape = new_shape[2];
 
   framework::CINNCompute mul_compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input arguments of Mul compute is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input arguments of Mul compute is empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "at least 2 input tensors for Mul compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "at least 2 input tensors for Mul compute\n"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
-    CHECK(A.as_tensor());
-    CHECK(B.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The A is not as tensor! Please check.\n"));
+    PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The B is not as tensor! Please check.\n"));
 
     auto A_tensor = A.as_tensor_ref();
     auto B_tensor = B.as_tensor_ref();
@@ -622,7 +631,10 @@ std::shared_ptr<OpStrategy> StrategyForMul(
     auto new_B = B_tensor->Reshape(new_shape_B_e, stages);
 
     std::vector<ir::Tensor> out;
-    CHECK(pack_args.back().is_string());
+    PADDLE_ENFORCE_EQ(pack_args.back().is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The pack_args is not string! Please check.\n"));
     std::string tensor_name = pack_args.back().operator std::string();
 
     target.arch.Match(

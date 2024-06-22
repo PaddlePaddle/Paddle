@@ -29,8 +29,10 @@ BackendAPI* BackendAPI::get_backend(common::Arch arch) {
       [&](common::HygonDCUArchHIP) {
         temp_backend_api =
             GlobalSymbolRegistry::Global().Lookup("backend_api.hip");
-        CHECK(temp_backend_api != nullptr)
-            << "global symbol (backend_api.hip) not found!";
+        PADDLE_ENFORCE_NE(temp_backend_api,
+                          nullptr,
+                          phi::errors::InvalidArgument(
+                              "global symbol (backend_api.hip) not found!"));
       },
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,

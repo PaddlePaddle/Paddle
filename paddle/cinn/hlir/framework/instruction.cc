@@ -157,8 +157,10 @@ void Instruction::Run(
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
       VLOG(3) << "Running func name: " << fn_names_[idx];
       auto& pod_args = args_cached_[idx];
-      CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
-                              "calling SetLoweredFunc method";
+      PADDLE_ENFORCE_NOT_NULL(fn_ptrs_[idx],
+                              phi::errors::InvalidArgument(
+                                  "The LoweredFunc address should be set first "
+                                  "by calling SetLoweredFunc method"));
       if (!dryrun) {
         target_.arch.Match(
             [&](common::NVGPUArch) {
