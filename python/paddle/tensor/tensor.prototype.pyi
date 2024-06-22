@@ -30,6 +30,10 @@ import numpy.typing as npt
 
 import paddle
 from paddle import _typing
+from paddle.base.dygraph.tensor_patch_methods import (
+    TensorHookRemoveHelper,  # noqa: F401
+)
+from paddle.base.param_attr import ParamAttr  # noqa: F401
 
 class Tensor:
     # annotation: ${tensor_docstring}
