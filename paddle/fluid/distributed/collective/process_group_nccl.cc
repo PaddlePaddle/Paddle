@@ -1057,20 +1057,26 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
 }
 
 void ProcessGroupNCCL::StartCoalescing() {
+  PADDLE_ENFORCE_EQ(is_coalescing_,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Coalescing is on, please call EndCoalesce."));
   is_coalescing_ = true;
   GroupStart();
 }
 
 void ProcessGroupNCCL::EndCoalescing(
-    std::vector<std::shared_ptr<ProcessGroup::Task>>& tasks) {  // NOLINT
+    std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>> tasks_opt) {
   GroupEnd();
 
   // NOTE(shenliang03): If using calculate stream, no need to record stream and
   // update task.
-  if (colaescing_tensors_.empty()) {
+  if (!tasks_opt.has_value() | colaescing_tensors_.empty()) {
     is_coalescing_ = false;
     return;
   }
+
+  auto& tasks = tasks_opt.value();
 
   PADDLE_ENFORCE_EQ(
       tasks.size(),

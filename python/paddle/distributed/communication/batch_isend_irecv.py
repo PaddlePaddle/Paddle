@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import contextlib
-from typing import List
 
 import paddle.distributed as dist
 from paddle import framework
@@ -77,12 +76,14 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _coalescing_manager(group, tasks: List[framework.core.Task]):
+def _coalescing_manager(group, tasks=None):
     group = _get_global_group() if group is None else group
     group._start_coalescing()
     try:
         yield
     finally:
+        if tasks is None or len(tasks) == 0:
+            group._end_coalescing()
         group._end_coalescing(tasks)
 
 

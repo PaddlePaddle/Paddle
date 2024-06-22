@@ -132,7 +132,7 @@ void BindDistributed(py::module *m) {
                py::call_guard<py::gil_scoped_release>())
           .def("_end_coalescing",
                &distributed::ProcessGroup::EndCoalescing,
-               py::arg("tasks") = std::vector<std::shared_ptr<Task>>(),
+               py::arg("tasks") = std::nullopt,
                py::call_guard<py::gil_scoped_release>())
           .def(
               "all_reduce",

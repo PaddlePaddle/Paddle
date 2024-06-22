@@ -236,7 +236,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   virtual void StartCoalescing();
 
   virtual void EndCoalescing(
-      std::vector<std::shared_ptr<ProcessGroup::Task>>& tasks);  // NOLINT
+      std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
+          tasks_opt = std::nullopt);
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;
