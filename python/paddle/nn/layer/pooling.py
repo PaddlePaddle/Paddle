@@ -16,22 +16,23 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from paddle._typing import (
+    DataLayout1D,
+    DataLayout2D,
+    DataLayout3D,
+    PaddingMode,
+    Size1,
+    Size2,
+    Size3,
+    Size4,
+    Size6,
+)
+
 from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import (
-        DataLayout1D,
-        DataLayout2D,
-        DataLayout3D,
-        PaddingMode,
-        Size1,
-        Size2,
-        Size3,
-        Size4,
-        Size6,
-    )
 __all__ = []
 
 
