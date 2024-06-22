@@ -19,6 +19,7 @@
 
 #include <glog/logging.h>
 
+#include <regex>
 #include <sstream>
 
 #include "paddle/cinn/backends/cuda_util.h"
@@ -197,6 +198,35 @@ std::string Target::arch_str() const {
   std::ostringstream oss;
   oss << arch;
   return oss.str();
+}
+
+static cudaDeviceProp properties;
+static bool count = true;
+std::string Target::device_name_str() const {
+  if (count) {
+    int device_idx = 0;
+    cudaError_t result = cudaGetDevice(&device_idx);
+    if (result != cudaSuccess) {
+      // Call cudaGetLastError() to clear the error bit
+      result = cudaGetLastError();
+      PADDLE_THROW(::common::errors::Unavailable(
+          " cudaGetDevice() returned error %s", cudaGetErrorString(result)));
+      return 0;
+    }
+
+    result = cudaGetDeviceProperties(&properties, device_idx);
+    if (result != cudaSuccess) {
+      // Call cudaGetLastError() to clear the error bit
+      result = cudaGetLastError();
+      PADDLE_THROW(::common::errors::Unavailable(
+          " cudaGetDeviceProperties() returned error %s",
+          cudaGetErrorString(result)));
+      return 0;
+    }
+    std::string device_name = properties.name;
+    auto device_name_1 = std::regex_replace(device_name, std::regex(" "), "_");
+    return std::regex_replace(device_name_1, std::regex("-"), "_");
+  }
 }
 
 std::ostream &operator<<(std::ostream &os, const Target &target) {
