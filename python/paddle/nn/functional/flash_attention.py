@@ -610,8 +610,8 @@ def flash_attn_varlen_qkvpacked(
     qkv: Tensor,
     cu_seqlens_q: Tensor,
     cu_seqlens_k: Tensor,
-    max_seqlen_q: Tensor,
-    max_seqlen_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
     scale: float,
     dropout: float = 0.0,
     causal: bool = False,
@@ -944,7 +944,7 @@ def flash_attention_with_sparse_mask(
             >>>     dropout_p=0.9,
             >>>     is_causal=True,
             >>> )
-            >>> print(output)
+            >>> print(out)
             >>> # doctest: -SKIP
     """
 
