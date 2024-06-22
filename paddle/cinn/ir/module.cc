@@ -76,6 +76,10 @@ void Module::Builder::AddPredicate(ir::Expr predicate) {
   module_->predicates.push_back(predicate);
 }
 
+void Module::Builder::AddPriority(int priority) {
+  module_->priorities.push_back(priority);
+}
+
 void Module::Builder::SetInferShapeFunc(ir::Expr infer_shape_func) {
   module_->infer_shape_func = infer_shape_func;
 }

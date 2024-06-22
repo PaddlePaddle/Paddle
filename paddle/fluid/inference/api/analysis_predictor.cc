@@ -849,7 +849,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       // gpu
       if (!config_.custom_pass_only_) {
         for (const auto &gpu_pass : kPirGpuPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        gpu_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+          }
         }
       }
 
@@ -858,8 +862,12 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       // xpu
       if (!config_.custom_pass_only_) {
         for (const auto &xpu_pass : kPirXpuPasses) {
-          pass_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        xpu_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
+          }
         }
       }
 #endif
@@ -869,7 +877,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       // mkldnn
       if (!config_.custom_pass_only_) {
         for (const auto &mkldnn_pass : kPirMkldnnPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        mkldnn_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+          }
         }
       }
 #endif
@@ -877,7 +889,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       // cpu
       if (!config_.custom_pass_only_) {
         for (const auto &cpu_pass : kPirCpuPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        cpu_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
+          }
         }
       }
     }
@@ -915,21 +931,43 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-  basic_pass_pm.AddPass(::pir::CreateCommonSubexpressionEliminationPass());
+  auto common_subexpression_elimination_pass =
+      ::pir::CreateCommonSubexpressionEliminationPass();
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                common_subexpression_elimination_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
+  }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
-  params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-  params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
-                                              sub_scope_);
-  basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                params_sync_among_devices_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+    params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                                sub_scope_);
+    basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
+  }
   auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-  constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
-  basic_pass_pm.AddPass(std::move(constant_folding_pass));
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                constant_folding_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+    constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+    basic_pass_pm.AddPass(std::move(constant_folding_pass));
+  }
   auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
-  dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
-                                          sub_scope_);
-  basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                dead_code_elimination_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                            sub_scope_);
+    basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
+  }
   basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
   if (!config_.glog_info_disabled()) {
     basic_pass_pm.EnablePrintStatistics();
@@ -1221,6 +1259,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
+    VLOG(1) << "predictor program " << *pir_program_;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);

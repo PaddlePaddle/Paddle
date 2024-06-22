@@ -165,6 +165,11 @@ StaticShapeGroupScheduler::GetIRs() {
   return {{Expr(1), ir_sch_->GetModule().GetExprs()[0]}};
 }
 
+std::vector<int> StaticShapeGroupScheduler::GetPriorities() {
+  std::vector<int> priorities = {100};
+  return priorities;
+}
+
 NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
     const ir::ScheduleBlockNode* node) const {
   bool has_loop_binded = false;
