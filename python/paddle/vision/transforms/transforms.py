@@ -11,18 +11,41 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import math
 import numbers
 import random
 import traceback
 from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 import numpy as np
+from typing_extensions import TypeAlias
 
 import paddle
 
 from . import functional as F
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    from PIL.Image import Image as PILImage
+
+    from paddle import Tensor
+    from paddle._typing import DataLayout1D
+
+    _DataT = TypeVar("_DataT", bound=Tensor | PILImage | npt.NDArray[Any])
+    _Keys: TypeAlias = Sequence[Literal["image", "coords", "boxes", "mask"]]
+    _InterpolationPil: TypeAlias = Literal[
+        "nearest", "bilinear", "bicubic", "lanczos", "hamming"
+    ]
+    _InterpolationCv2: TypeAlias = Literal[
+        "nearest", "bilinear", "area", "bicubic", "lanczos"
+    ]
+    _PaddingMode: TypeAlias = Literal[
+        "constant", "edge", "reflect", "symmetric"
+    ]
+
 
 __all__ = []
 
@@ -97,8 +120,18 @@ class Compose:
             (811, 608) [1]
     """
 
-    def __init__(self, transforms):
+    transforms: Sequence[BaseTransform]
+
+    def __init__(self, transforms: Sequence[BaseTransform]) -> None:
         self.transforms = transforms
+
+    @overload
+    def __call__(self, data: _DataT) -> _DataT:
+        ...
+
+    @overload
+    def __call__(self, data: tuple[_DataT, ...]) -> tuple[_DataT, ...]:
+        ...
 
     def __call__(self, data):
         for f in self.transforms:
@@ -229,7 +262,9 @@ class BaseTransform:
 
     """
 
-    def __init__(self, keys=None):
+    keys: _Keys
+
+    def __init__(self, keys: _Keys | None = None) -> None:
         if keys is None:
             keys = ("image",)
         elif not isinstance(keys, Sequence):
@@ -244,6 +279,14 @@ class BaseTransform:
 
     def _get_params(self, inputs):
         pass
+
+    @overload
+    def __call__(self, inputs: _DataT) -> _DataT:
+        ...
+
+    @overload
+    def __call__(self, inputs: tuple[_DataT, ...]) -> tuple[_DataT, ...]:
+        ...
 
     def __call__(self, inputs):
         """Apply transform on single input data"""
@@ -278,6 +321,9 @@ class BaseTransform:
         raise NotImplementedError
 
     def _apply_mask(self, mask):
+        raise NotImplementedError
+
+    def _apply_coords(self, coords):
         raise NotImplementedError
 
 
@@ -328,7 +374,11 @@ class ToTensor(BaseTransform):
             paddle.float32
     """
 
-    def __init__(self, data_format='CHW', keys=None):
+    data_format: DataLayout1D
+
+    def __init__(
+        self, data_format: DataLayout1D = 'CHW', keys: _Keys | None = None
+    ) -> None:
         super().__init__(keys)
         self.data_format = data_format
 
@@ -394,7 +444,15 @@ class Resize(BaseTransform):
             (150, 200)
     """
 
-    def __init__(self, size, interpolation='bilinear', keys=None):
+    size: int | Sequence[int]
+    interpolation: _InterpolationPil | _InterpolationCv2
+
+    def __init__(
+        self,
+        size: int | Sequence[int],
+        interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         assert isinstance(size, int) or (
             isinstance(size, Iterable) and len(size) == 2
@@ -458,12 +516,12 @@ class RandomResizedCrop(BaseTransform):
 
     def __init__(
         self,
-        size,
-        scale=(0.08, 1.0),
-        ratio=(3.0 / 4, 4.0 / 3),
-        interpolation='bilinear',
-        keys=None,
-    ):
+        size: int | Sequence[int],
+        scale: Sequence[float] = (0.08, 1.0),
+        ratio: Sequence[float] = (3.0 / 4, 4.0 / 3),
+        interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         if isinstance(size, int):
             self.size = (size, size)
@@ -642,7 +700,11 @@ class CenterCrop(BaseTransform):
 
     """
 
-    def __init__(self, size, keys=None):
+    size: Sequence[int]
+
+    def __init__(
+        self, size: int | Sequence[int], keys: _Keys | None = None
+    ) -> None:
         super().__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
@@ -688,7 +750,9 @@ class RandomHorizontalFlip(BaseTransform):
 
     """
 
-    def __init__(self, prob=0.5, keys=None):
+    prob: float
+
+    def __init__(self, prob: float = 0.5, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
@@ -747,7 +811,9 @@ class RandomVerticalFlip(BaseTransform):
 
     """
 
-    def __init__(self, prob=0.5, keys=None):
+    prob: float
+
+    def __init__(self, prob: float = 0.5, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
@@ -814,9 +880,19 @@ class Normalize(BaseTransform):
 
     """
 
+    mean: Sequence[float]
+    std: Sequence[float]
+    data_format: DataLayout1D
+    to_rgb: bool
+
     def __init__(
-        self, mean=0.0, std=1.0, data_format='CHW', to_rgb=False, keys=None
-    ):
+        self,
+        mean: float | Sequence[float] = 0.0,
+        std: float | Sequence[float] = 1.0,
+        data_format: DataLayout1D = 'CHW',
+        to_rgb: bool = False,
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         if isinstance(mean, numbers.Number):
             mean = [mean, mean, mean]
@@ -869,7 +945,11 @@ class Transpose(BaseTransform):
 
     """
 
-    def __init__(self, order=(2, 0, 1), keys=None):
+    order: Sequence[int]
+
+    def __init__(
+        self, order: Sequence[int] = (2, 0, 1), keys: _Keys | None = None
+    ) -> None:
         super().__init__(keys)
         self.order = order
 
@@ -920,7 +1000,9 @@ class BrightnessTransform(BaseTransform):
 
     """
 
-    def __init__(self, value, keys=None):
+    value: float
+
+    def __init__(self, value: float, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         self.value = _check_input(value, 'brightness')
 
@@ -963,7 +1045,9 @@ class ContrastTransform(BaseTransform):
 
     """
 
-    def __init__(self, value, keys=None):
+    value: float
+
+    def __init__(self, value: float, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         if value < 0:
             raise ValueError("contrast value should be non-negative")
@@ -1007,7 +1091,9 @@ class SaturationTransform(BaseTransform):
             (224, 224)
     """
 
-    def __init__(self, value, keys=None):
+    value: float
+
+    def __init__(self, value: float, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         self.value = _check_input(value, 'saturation')
 
@@ -1050,7 +1136,9 @@ class HueTransform(BaseTransform):
 
     """
 
-    def __init__(self, value, keys=None):
+    value: float
+
+    def __init__(self, value: float, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         self.value = _check_input(
             value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False
@@ -1101,9 +1189,19 @@ class ColorJitter(BaseTransform):
 
     """
 
+    brightness: float
+    contrast: float
+    saturation: float
+    hue: float
+
     def __init__(
-        self, brightness=0, contrast=0, saturation=0, hue=0, keys=None
-    ):
+        self,
+        brightness: float = 0,
+        contrast: float = 0,
+        saturation: float = 0,
+        hue: float = 0,
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         self.brightness = brightness
         self.contrast = contrast
@@ -1209,15 +1307,21 @@ class RandomCrop(BaseTransform):
             [3, 224, 224]
     """
 
+    size: Sequence[int]
+    padding: int | Sequence[int] | None
+    pad_if_needed: bool
+    fill: int | tuple[int, ...]
+    padding_mode: Literal['constant', 'edge', 'reflect', 'symmetric']
+
     def __init__(
         self,
-        size,
-        padding=None,
-        pad_if_needed=False,
-        fill=0,
-        padding_mode='constant',
-        keys=None,
-    ):
+        size: int | Sequence[int],
+        padding: int | Sequence[int] | None = None,
+        pad_if_needed: bool = False,
+        fill: int | tuple[int, ...] = 0,
+        padding_mode: _PaddingMode = 'constant',
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
@@ -1325,7 +1429,17 @@ class Pad(BaseTransform):
             (228, 228)
     """
 
-    def __init__(self, padding, fill=0, padding_mode='constant', keys=None):
+    padding: int | Sequence[int]
+    fill: int | Sequence[int]
+    padding_mode: _PaddingMode
+
+    def __init__(
+        self,
+        padding: int | Sequence[int],
+        fill: int | Sequence[int] = 0,
+        padding_mode: _PaddingMode = 'constant',
+        keys: _Keys | None = None,
+    ) -> None:
         assert isinstance(padding, (numbers.Number, list, tuple))
         assert isinstance(fill, (numbers.Number, str, list, tuple))
         assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric']
@@ -1439,17 +1553,25 @@ class RandomAffine(BaseTransform):
             [3, 256, 300]
     """
 
+    degrees: Sequence[float]
+    translate: tuple[float, float] | None
+    scale: tuple[float, float] | None
+    shear: float | Sequence[float] | None
+    interpolation: _InterpolationPil | _InterpolationCv2
+    fill: int | Sequence[int]
+    center: tuple[float, float]
+
     def __init__(
         self,
-        degrees,
-        translate=None,
-        scale=None,
-        shear=None,
-        interpolation='nearest',
-        fill=0,
-        center=None,
-        keys=None,
-    ):
+        degrees: float | Sequence[float],
+        translate: tuple[float, float] | None = None,
+        scale: tuple[float, float] | None = None,
+        shear: float | Sequence[float] | None = None,
+        interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
+        fill: int | Sequence[int] = 0,
+        center: tuple[float, float] = None,
+        keys: _Keys | None = None,
+    ) -> None:
         self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2,))
 
         super().__init__(keys)
@@ -1593,15 +1715,21 @@ class RandomRotation(BaseTransform):
             (150, 200)
     """
 
+    degrees: Sequence[float]
+    interpolation: _InterpolationPil | _InterpolationCv2
+    expand: bool
+    center: tuple[float, float]
+    fill: int | Sequence[int]
+
     def __init__(
         self,
-        degrees,
-        interpolation='nearest',
-        expand=False,
-        center=None,
-        fill=0,
-        keys=None,
-    ):
+        degrees: float | Sequence[float],
+        interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
+        expand: bool = False,
+        center: tuple[float, float] = None,
+        fill: int | Sequence[int] = 0,
+        keys: _Keys | None = None,
+    ) -> None:
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
                 raise ValueError(
@@ -1691,14 +1819,19 @@ class RandomPerspective(BaseTransform):
             [3, 200, 150]
     """
 
+    prob: float
+    distortion_scale: float
+    interpolation: _InterpolationPil | _InterpolationCv2
+    fill: int | Sequence[int]
+
     def __init__(
         self,
-        prob=0.5,
-        distortion_scale=0.5,
-        interpolation='nearest',
-        fill=0,
-        keys=None,
-    ):
+        prob: float = 0.5,
+        distortion_scale: float = 0.5,
+        interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
+        fill: int | Sequence[int] = 0,
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         assert (
@@ -1814,7 +1947,11 @@ class Grayscale(BaseTransform):
             (224, 224)
     """
 
-    def __init__(self, num_output_channels=1, keys=None):
+    num_output_channels: int
+
+    def __init__(
+        self, num_output_channels: int = 1, keys: _Keys | None = None
+    ) -> None:
         super().__init__(keys)
         self.num_output_channels = num_output_channels
 
@@ -1873,15 +2010,21 @@ class RandomErasing(BaseTransform):
 
     """
 
+    prob: float
+    scale: Sequence[float]
+    ratio: Sequence[float]
+    value: int | float | Sequence[float] | str
+    inplace: bool
+
     def __init__(
         self,
-        prob=0.5,
-        scale=(0.02, 0.33),
-        ratio=(0.3, 3.3),
-        value=0,
-        inplace=False,
-        keys=None,
-    ):
+        prob: float = 0.5,
+        scale: Sequence[float] = (0.02, 0.33),
+        ratio: Sequence[float] = (0.3, 3.3),
+        value: float | Sequence[float] | str = 0,
+        inplace: bool = False,
+        keys: _Keys | None = None,
+    ) -> None:
         super().__init__(keys)
         assert isinstance(
             scale, (tuple, list)
