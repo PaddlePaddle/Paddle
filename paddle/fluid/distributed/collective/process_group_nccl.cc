@@ -133,7 +133,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       place_to_group_key_(),
       pg_timeout_(timeout),
       nccl_comm_init_option_(nccl_comm_init_option),
-      allocation_stream_pairs() {
+      allocation_stream_pairs_() {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
@@ -877,10 +877,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
         memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
       }
       task->UpdateWaitChain(*comm_ctx);
-      allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+      allocation_stream_pairs_.emplace_back(tensor_tmp.Holder(), nccl_stream);
     } else {
-      lazy_colaescing_tensors_.emplace_back(
+      colaescing_tensors_.emplace_back(
           std::make_shared<phi::DenseTensor>(tensor_tmp));
+      colaescing_place_keys_.push_back(key);
     }
   }
 
@@ -992,12 +993,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator ||
-        FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    if (!is_coalescing_) {
+      if (FLAGS_use_stream_safe_cuda_allocator ||
+          FLAGS_use_cuda_malloc_async_allocator) {
+        memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+      }
+      task->UpdateWaitChain(*comm_ctx);
+      allocation_stream_pairs_.emplace_back(tensor_tmp.Holder(), nccl_stream);
+    } else {
+      colaescing_tensors_.emplace_back(
+          std::make_shared<phi::DenseTensor>(tensor_tmp));
+      colaescing_place_keys_.push_back(key);
     }
-    task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -1055,27 +1062,43 @@ void ProcessGroupNCCL::StartCoalescing() {
 }
 
 void ProcessGroupNCCL::EndCoalescing(
-    std::vector<std::shared_ptr<ProcessGroup::Task>>& tasks) {
+    std::vector<std::shared_ptr<ProcessGroup::Task>>& tasks) {  // NOLINT
   GroupEnd();
 
-  // if (FLAGS_use_stream_safe_cuda_allocator ||
-  //     FLAGS_use_cuda_malloc_async_allocator) {
-  //   memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
-  // }
-  // task->UpdateWaitChain(*comm_ctx);
-  // allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+  // NOTE(shenliang03): If using calculate stream, no need to record stream and
+  // update task.
+  if (colaescing_tensors_.empty()) {
+    is_coalescing_ = false;
+    return;
+  }
 
-  for (const auto& task : tasks) {
-    auto nccl_task = static_cast<ProcessGroupNCCL::NCCLTask*>(task.get());
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      colaescing_tensors_.size(),
+      phi::errors::PreconditionNotMet(
+          "Number of tasks[%d] do not match number of collectives[%d].",
+          tasks.size(),
+          colaescing_tensors_.size()));
+
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    auto* nccl_task = static_cast<ProcessGroupNCCL::NCCLTask*>(tasks[i].get());
+    const auto& tensor = colaescing_tensors_[i];
+    const auto& key = colaescing_place_keys_[i];
+    const auto& comm_ctx = place_to_comm_ctx_.at(key);
+    auto nccl_stream = comm_ctx->stream();
 
     if (FLAGS_use_stream_safe_cuda_allocator ||
         FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+      memory::RecordStream(tensor->Holder(), nccl_stream);
     }
+
     nccl_task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
+    allocation_stream_pairs_.emplace_back(tensor->Holder(), nccl_stream);
   }
-  // is_coalescing_ = false;
+
+  is_coalescing_ = false;
+  colaescing_tensors_.clear();
+  colaescing_place_keys_.clear();
 }
 
 }  // namespace paddle::distributed

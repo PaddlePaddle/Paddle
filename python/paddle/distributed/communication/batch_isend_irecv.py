@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+from typing import List
 
 import paddle.distributed as dist
 from paddle import framework
@@ -76,18 +77,13 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _with_batch_p2p_guard(backend):
-    if backend == "NCCL":
-        framework.core.ProcessGroupNCCL.group_start()
-    elif backend == "BKCL":
-        framework.core.ProcessGroupBKCL.group_start()
+def _coalescing_manager(group, tasks: List[framework.core.Task]):
+    group = _get_global_group() if group is None else group
+    group._start_coalescing()
     try:
         yield
     finally:
-        if backend == "NCCL":
-            framework.core.ProcessGroupNCCL.group_end()
-        elif backend == "BKCL":
-            framework.core.ProcessGroupBKCL.group_end()
+        group._end_coalescing(tasks)
 
 
 def _check_p2p_op_list(p2p_op_list):
@@ -167,7 +163,7 @@ def batch_isend_irecv(p2p_op_list):
         group = _get_global_group() if group is None else group
         backend = group.backend
         tasks = []
-        with _with_batch_p2p_guard(backend):
+        with _coalescing_manager(group, tasks):
             for p2p_op in p2p_op_list:
                 op = p2p_op.op
                 tensor = p2p_op.tensor
