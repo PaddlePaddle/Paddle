@@ -352,13 +352,14 @@ class CrossEntropyLoss(Layer):
 
             >>> # soft labels
             >>> import paddle
+            >>> from typing import Optional
             >>> paddle.seed(2023)
             >>> axis = -1
             >>> N = 4
             >>> C = 3
             >>> shape = [N, C]
             >>> reduction='mean'
-            >>> weight = None
+            >>> weight: Optional[paddle.Tensor] = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> # case1: soft labels without label_smoothing
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
@@ -2379,8 +2380,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
             >>> input = paddle.randn([3, 5], dtype="float32")
             >>> target = paddle.full((3,), 1, dtype='int64')
-            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(in_features=5, n_classes=3, cutoffs=[
-                                  2], div_value=2.0, head_bias=False)
+            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(in_features=5, n_classes=3, cutoffs=[2], div_value=2.0, head_bias=False)
             >>> out, loss = asfm(input, target)
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
