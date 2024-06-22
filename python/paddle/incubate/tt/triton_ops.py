@@ -43,8 +43,16 @@ from .triton_utils import (
 
 
 class KernelInterface:
-    def __init__(self, func, tune_config, custom_op_template, other_config):
+    def __init__(
+        self,
+        func,
+        tune_config,
+        custom_op_template,
+        other_config,
+        key_args=["1"],
+    ):
         self.func = func
+        self.key_args = key_args
 
         import inspect
         import os
@@ -91,7 +99,6 @@ class KernelInterface:
             const_hint_dict = {}
             for i in range(len(all_input)):
                 ele = all_input[i]
-                print(type(ele))
                 if (
                     type(ele) == paddle.Tensor
                     or type(ele) == paddle.base.framework.EagerParamBase
@@ -141,6 +148,7 @@ class KernelInterface:
 
             op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
             op_dict["triton_kernel_args"] = ",".join(self.arg_exclude_constexpr)
+            op_dict["key"] = ",".join(self.key_args)
             # when tunning, we need to reset the out to zero.
             if "reset_zero_when_tune" in other_config.keys():
                 op_dict["reset_zero_when_tune"] = other_config[
@@ -210,10 +218,10 @@ class KernelInterface:
         return self.decorator
 
 
-def paddle_use_triton(tune_config, custom_op_template, other_config={}):
+def paddle_use_triton(tune_config, custom_op_template, other_config={}, key=[]):
     def decorator(func):
         return KernelInterface(
-            func, tune_config, custom_op_template, other_config
+            func, tune_config, custom_op_template, other_config, key
         )
 
     return decorator
@@ -280,7 +288,6 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int stride_cn = 1;
 
   auto run_stream = c_out.stream();
-  std::vector<int> problem_size = {M, N, K};
 """
     + tune_and_invoke_part2
     + """
@@ -322,6 +329,7 @@ wint8_kernel_other_config = {
     tune_config=get_wint8_kernel_config(),
     custom_op_template=triton_wint8_template,
     other_config=wint8_kernel_other_config,
+    key=["M", "N", "K"],
 )
 def wint8_kernel(
     a_ptr,
@@ -965,7 +973,6 @@ std::vector<paddle::Tensor> ${op_name}_func(
     bias_ptr = get_tensor_ptr(*bias);
   }
   auto run_stream = y.stream();
-  std::vector<int> problem_size = {M, N};
 """
     + tune_and_invoke_part2
     + """
@@ -1002,6 +1009,7 @@ adaptive_layer_norm_kernel_config = [
 @paddle_use_triton(
     tune_config=adaptive_layer_norm_kernel_config,
     custom_op_template=triton_adaptive_layer_norm_template,
+    key=["M"],
 )
 def adaptive_layer_norm_kernel(
     x_ptr,
@@ -1192,7 +1200,6 @@ std::vector<paddle::Tensor> ${op_name}_func(
     bias_ptr = get_tensor_ptr(*bias);
   }
   auto run_stream = y.stream();
-  std::vector<int> problem_size = {M, N};
 """
     + tune_and_invoke_part2
     + """
@@ -1227,7 +1234,9 @@ rms_norm_kernel_config = [
 
 
 @paddle_use_triton(
-    tune_config=rms_norm_kernel_config, custom_op_template=rms_norm_template
+    tune_config=rms_norm_kernel_config,
+    custom_op_template=rms_norm_template,
+    key=["M"],
 )
 def rms_norm_kernel(
     x_ptr,

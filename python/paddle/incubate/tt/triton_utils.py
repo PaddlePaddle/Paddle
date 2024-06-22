@@ -318,6 +318,10 @@ tune_and_invoke_part = """
         for (int ii = 0; ii < REPEAT; ++ii) {
             avg_elapsed_time += elapsed_times[ii];
         }
+
+
+        std::cout << "algo id " << algo_id << " costs " << avg_elapsed_time << " ms" << std::endl;
+
         if (avg_elapsed_time < min_time && status == CUDA_SUCCESS) {
             min_time = avg_elapsed_time;
             select_id = algo_id;
@@ -338,7 +342,7 @@ tune_and_invoke_part = """
 
 
 tune_and_invoke_part2 = """
-
+  std::vector<int> problem_size = {${key}};
   auto run_triton_kernel = [&](int algo_id) -> CUresult{
       return ${op_name}_kernel(run_stream,
                                                ${triton_kernel_args},
@@ -395,6 +399,9 @@ tune_and_invoke_part2 = """
         for (int ii = 0; ii < REPEAT; ++ii) {
             avg_elapsed_time += elapsed_times[ii];
         }
+
+        std::cout << "algo id " << algo_id << " costs " << avg_elapsed_time << " ms" << std::endl;
+
         if (avg_elapsed_time < min_time && status == CUDA_SUCCESS) {
             min_time = avg_elapsed_time;
             select_id = algo_id;
