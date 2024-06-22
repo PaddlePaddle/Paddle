@@ -1883,6 +1883,18 @@
     func : lp_pool2d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
 
+- backward_op : lrn_grad
+  forward: lrn (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout") -> Tensor (out), Tensor (mid_out)
+  args: (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format
+    = "AnyLayout")
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: lrn_grad
+    data_type: out_grad
+
 - backward_op : lstm_grad
   forward: lstm (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
     = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",

@@ -196,6 +196,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'nce',
     'lars_momentum',
     'lars_momentum_',
+    'lrn',
     'max_pool2d_v2',
     'partial_sum',
     'pull_gpups_sparse',

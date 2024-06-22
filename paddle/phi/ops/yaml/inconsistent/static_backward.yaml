@@ -226,16 +226,6 @@
   inplace : (out_grad -> x_grad)
   composite : hardswish_grad(x, out_grad, x_grad)
 
-- backward_op : lrn_grad
-  forward : lrn (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW") -> Tensor(out), Tensor(mid_out)
-  args : (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : lrn_grad
-
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, bool transpose_x=false, bool transpose_y=false)
