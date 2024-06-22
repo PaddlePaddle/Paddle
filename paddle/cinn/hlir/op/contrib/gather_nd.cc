@@ -181,7 +181,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
     PADDLE_ENFORCE_EQ(
         !vec_ast.empty(),
         true,
