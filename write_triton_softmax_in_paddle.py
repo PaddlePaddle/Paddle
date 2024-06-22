@@ -118,7 +118,7 @@ def softmax(x):
         softmax_kernel[(op_name, grid)](
             y,
             x,
-            M,
+            -1, # M, -1 means we can allow any M.
             input_row_stride,
             output_row_stride,
             n_cols,
