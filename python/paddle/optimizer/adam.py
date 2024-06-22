@@ -18,8 +18,6 @@ import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Sequence
 
-from typing_extensions import NotRequired
-
 import paddle
 from paddle import _C_ops, pir
 from paddle.base.libpaddle import DataType
@@ -33,20 +31,23 @@ from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .optimizer import Optimizer, _ParameterConfig
-
-
-class _AdamParameterConfig(_ParameterConfig):
-    beta1: NotRequired[float | Tensor]
-    beta2: NotRequired[float | Tensor]
-
+from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.regularizer import WeightDecayRegularizer
 
     from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
+
+    class _AdamParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float | Tensor]
+        lazy_mode: NotRequired[bool]
 
 
 __all__ = []
@@ -179,6 +180,7 @@ class Adam(Optimizer):
             >>> adam.clear_grad()
 
     """
+    type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _beta1_pow_acc_str = "beta1_pow_acc"

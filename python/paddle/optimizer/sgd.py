@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
     from .lr import LRScheduler
     from .optimizer import _ParameterConfig
+
 __all__ = []
 
 
@@ -80,6 +81,8 @@ class SGD(Optimizer):
             >>> sgd.clear_grad()
 
     """
+
+    type: str
 
     def __init__(
         self,
