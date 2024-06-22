@@ -122,8 +122,9 @@ class RMSProp(Optimizer):
           some derived class of ``GradientClipBase`` . There are three clipping strategies
           ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
           :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str|None, optional): This parameter is used by developers to print debugging information.
-          For details, please refer to :ref:`api_guide_Name`. Default is None.
+        name (str|None, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
 
     Examples:
             .. code-block:: python
