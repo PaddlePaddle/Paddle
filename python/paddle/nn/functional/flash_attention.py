@@ -14,11 +14,7 @@
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generator,
-)
+from typing import TYPE_CHECKING, Generator
 
 import paddle
 import paddle.nn.functional as F
@@ -40,7 +36,7 @@ def sdp_kernel(
     enable_math: bool = False,
     enable_flash: bool = True,
     enable_mem_efficient: bool = True,
-) -> Generator[None, Any, None]:
+) -> Generator[None, None, None]:
     r"""
     With the sdp_kernel context manager, different algorithm implementations can
     be selected for scaled_dot_product_attention.
