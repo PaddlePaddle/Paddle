@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
+    Any,
+    Literal,
     TypedDict,
 )
 
@@ -117,7 +119,9 @@ class VGG(nn.Layer):
         return x
 
 
-def make_layers(cfg: dict[str, list[Any]], batch_norm: bool = False) -> Sequential:
+def make_layers(
+    cfg: dict[str, list[Any]], batch_norm: bool = False
+) -> Sequential:
     layers = []
     in_channels = 3
     for v in cfg:
@@ -199,8 +203,8 @@ cfgs = {
 
 
 def _vgg(
-    arch,
-    cfg: str,
+    arch: str,
+    cfg: Literal["A", "B", "D", "E"],
     batch_norm: bool,
     pretrained: bool,
     **kwargs: Unpack[_VGGOptions],
