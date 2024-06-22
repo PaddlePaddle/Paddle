@@ -105,7 +105,7 @@ function local_prepare() {
 function local_assemble() {
     # xre assemble
     cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
-    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/libxpurt* xpu/lib/
+    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/* xpu/lib/
 
     # xccl assemble
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/include/* xpu/include/xpu/
@@ -113,19 +113,19 @@ function local_assemble() {
 
     # xhpc assemble
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/* xpu/lib/
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
 
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/so/* xpu/lib
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
 }
 
 if [[ $XRE_URL != "http"* ]]; then
     # below is local way
     build_from="local"
-    LOCAL_PATH=$(dirname "$XPU_BASE_URL")
+    LOCAL_PATH=$(dirname "$XRE_URL")
     echo "LOCAL_PATH: ${LOCAL_PATH}"
 
     local_prepare

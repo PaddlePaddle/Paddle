@@ -47,7 +47,7 @@ class ConstantInitializer(Initializer):
         self,
         var: paddle.Tensor,
         block: paddle.pir.Block | None = None,
-    ):
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with constant.
 
         Args:

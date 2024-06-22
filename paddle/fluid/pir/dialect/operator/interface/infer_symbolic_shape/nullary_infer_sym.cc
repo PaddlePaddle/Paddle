@@ -117,9 +117,11 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
     return sym_dims;
   }();
 
-  auto IsOneNumel = [&](pir::Value value) {
+  auto IsNumelLEKMaxRank = [](pir::Value value) {
     const auto &dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
-    if (dims.size() == 1 && dims[0] == 1) {
+    if (dims.size() == 0) return true;
+    if (dims.size() != 1) return false;
+    if (dims[0] >= 1 && dims[0] <= ::common::DDim::kMaxRank) {
       return true;
     }
     return false;
@@ -130,12 +132,20 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
     return dtype.isa<pir::Int32Type>() || dtype.isa<pir::Int64Type>();
   };
 
+  auto CreateSymForEachNumel = [&](pir::Value value) -> decltype(auto) {
+    const auto &dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
+    const int64_t numel = ::common::product(dims);
+    std::vector<symbol::DimExpr> data;
+    for (int64_t i = 0; i < numel; ++i) {
+      data.push_back(symbol::DimExpr(infer_context->GetNextSymName()));
+    }
+    return data;
+  };
+
   const auto &shape_or_data = [&]() {
-    if (IsOneNumel(op->result(0)) && IsIntType(op->result(0))) {
-      std::vector<symbol::DimExpr> data{
-          symbol::DimExpr(infer_context->GetNextSymName())};
-      return symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(sym_dims, data)};
+    if (IsNumelLEKMaxRank(op->result(0)) && IsIntType(op->result(0))) {
+      return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          sym_dims, CreateSymForEachNumel(op->result(0)))};
     } else {
       return symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(sym_dims)};
