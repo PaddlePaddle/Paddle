@@ -756,7 +756,7 @@ class Layer:
         self,
         shape: ShapeLike,
         attr: ParamAttr | None = None,
-        dtype: DTypeLike | None = None,
+        dtype: DTypeLike | str | None = None,
         is_bias: bool = False,
         default_initializer: Initializer | None = None,
     ) -> Tensor:
