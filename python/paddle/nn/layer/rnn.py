@@ -20,12 +20,11 @@ from functools import partial, reduce
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy._typing import DTypeLike
 from typing_extensions import Self
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle._typing import TensorOrTensors
+from paddle._typing import DTypeLike, TensorOrTensors
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
