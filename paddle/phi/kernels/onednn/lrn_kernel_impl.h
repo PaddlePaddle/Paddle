@@ -205,16 +205,16 @@ void LRNMKLDNNGradOpKernel(const Context& dev_ctx,
 
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  LRNOneDNNHandler<T> handler(n,
-                              k,
-                              alpha,
-                              beta,
-                              is_test,
-                              onednn_engine,
-                              dev_ctx.GetPlace(),
-                              in_x,
-                              out_grad,
-                              in_x_grad);
+  LRNOneDNNHandler<T, Context> handler(n,
+                                       k,
+                                       alpha,
+                                       beta,
+                                       is_test,
+                                       onednn_engine,
+                                       dev_ctx.GetPlace(),
+                                       in_x,
+                                       out_grad,
+                                       in_x_grad);
 
   auto src_memory = handler.AcquireSrcMemory(in_x);
   auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);
