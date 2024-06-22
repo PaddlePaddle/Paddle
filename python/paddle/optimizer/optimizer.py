@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-# mypy: ignore-errors
+# type: ignore
 # Avoid mypy internal error
 
 from __future__ import annotations
@@ -165,8 +165,10 @@ class Optimizer:
             >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters())
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -182,7 +184,7 @@ class Optimizer:
             >>> loss = paddle.mean(out)
             >>> sgd = paddle.optimizer.SGD(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),  # type: ignore

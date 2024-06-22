@@ -109,8 +109,10 @@ class NAdam(Optimizer):
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
 
-            >>> nadam = paddle.optimizer.NAdam(learning_rate=0.1,
-            ...                     parameters=linear.parameters())
+            >>> nadam = paddle.optimizer.NAdam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> out.backward()
             >>> nadam.step()
             >>> nadam.clear_grad()
@@ -124,7 +126,7 @@ class NAdam(Optimizer):
             >>> loss = paddle.mean(out)
             >>> opt = paddle.optimizer.NAdam(
             ...     learning_rate=0.1,
-            ...     parameters=[{ # type: ignore
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),

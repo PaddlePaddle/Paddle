@@ -112,8 +112,10 @@ class RAdam(Optimizer):
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
 
-            >>> radam = paddle.optimizer.RAdam(learning_rate=0.1,
-            ...                     parameters=linear.parameters())
+            >>> radam = paddle.optimizer.RAdam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> out.backward()
             >>> radam.step()
             >>> radam.clear_grad()
@@ -127,7 +129,7 @@ class RAdam(Optimizer):
             >>> loss = paddle.mean(out)
             >>> opt = paddle.optimizer.RAdam(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),

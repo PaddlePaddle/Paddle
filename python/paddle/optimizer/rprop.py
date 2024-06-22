@@ -99,11 +99,17 @@ class Rprop(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> rprop = paddle.optimizer.Rprop(learning_rate=0.001, learning_rate_range=(0.0001,0.1), parameters=linear.parameters(), etas=(0.5,1.2))
+            >>> rprop = paddle.optimizer.Rprop(
+            ...     learning_rate=0.001,
+            ...     learning_rate_range=(0.0001, 0.1),
+            ...     parameters=linear.parameters(),
+            ...     etas=(0.5, 1.2)
+            ... )
             >>> out.backward()
             >>> rprop.step()
             >>> rprop.clear_grad()
     """
+
     _prevs_acc_str = "prevs"
     _learning_rates_acc_str = "learning_rates"
 
@@ -111,9 +117,7 @@ class Rprop(Optimizer):
         self,
         learning_rate: float | Tensor | LRScheduler = 0.001,
         learning_rate_range: tuple[float, float] = (1e-5, 50),
-        parameters: (
-            Sequence[Tensor] | Sequence[_ParameterConfig] | None
-        ) = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         etas: tuple[float, float] = (0.5, 1.2),
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,

@@ -135,9 +135,11 @@ class RMSProp(Optimizer):
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
 
-                >>> rmsprop = paddle.optimizer.RMSProp(learning_rate=0.1,
-                ...                     parameters=linear.parameters(),
-                ...                             weight_decay=0.01)
+                >>> rmsprop = paddle.optimizer.RMSProp(
+                ...     learning_rate=0.1,
+                ...     parameters=linear.parameters(),
+                ...     weight_decay=0.01
+                ... )
                 >>> out.backward()
                 >>> rmsprop.step()
                 >>> rmsprop.clear_grad()
@@ -151,7 +153,7 @@ class RMSProp(Optimizer):
                 >>> loss = paddle.mean(out)
                 >>> rmsprop = paddle.optimizer.RMSProp(
                 ...     learning_rate=0.1,
-                ...     parameters=[{
+                ...     parameters=[{  # type: ignore
                 ...         'params': linear_1.parameters()
                 ...     }, {
                 ...         'params': linear_2.parameters(),
