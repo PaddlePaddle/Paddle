@@ -106,7 +106,7 @@ class Momentum(Optimizer):
             >>> loss = paddle.mean(out)
             >>> momentum = paddle.optimizer.Momentum(
             ...     learning_rate=0.1,
-            ...     parameters=[{  # type: ignore
+            ...     parameters=[{
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),

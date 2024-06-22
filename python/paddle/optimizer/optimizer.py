@@ -184,10 +184,10 @@ class Optimizer:
             >>> loss = paddle.mean(out)
             >>> sgd = paddle.optimizer.SGD(
             ...     learning_rate=0.1,
-            ...     parameters=[{  # type: ignore
+            ...     parameters=[{
             ...         'params': linear_1.parameters()
             ...     }, {
-            ...         'params': linear_2.parameters(),  # type: ignore
+            ...         'params': linear_2.parameters(),
             ...         'weight_decay': 0.001,
             ...         'learning_rate': 0.1
             ...     }],
