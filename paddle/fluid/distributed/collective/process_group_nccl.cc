@@ -225,7 +225,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
@@ -255,7 +255,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->AllReduce(
@@ -320,7 +320,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                 << ", in_size_each_rank: "
                 << string::join_strings(in_size_each_rank, ',')
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         GroupStart();
@@ -389,7 +389,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->Broadcast(out_tensor, tensor_tmp, root, stream);
       },
@@ -420,7 +420,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->Reduce(out_tensor,
                              tensor_tmp,
@@ -454,7 +454,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->ReduceScatter(
             out_tensor, tensor_tmp, ToNCCLRedType(opts.reduce_op), stream);
@@ -498,7 +498,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         int64_t numel = tensor_tmp.numel() / size_;
@@ -582,7 +582,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
             << ", ncclcomm: " << comm_context->GetNcclComm()
             << ", stream: " << stream << ", rank_in_group: " << rank_
             << ", nranks: " << size_ << ", sync_op: " << sync_op
-            << ", use_calc_stream: " << use_calc_stream << GetGroupMessage();
+            << ", use_calc_stream: " << use_calc_stream << ", "
+            << ", " << GetGroupMessage();
 
     GroupStart();
     // root receive from all devices
@@ -627,7 +628,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << ", stream: " << stream
                 << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->Recv(tensor, tensor->numel(), rank_in_group, stream);
@@ -666,7 +667,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                 << ", stream: " << stream
                 << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->Send(tensor_maybe_partial,

@@ -571,7 +571,7 @@ void ProcessGroupBKCL::EndCoalescing(
 
   // NOTE(shenliang03): If using calculate stream, no need to record stream and
   // update task.
-  if (!tasks_opt.has_value() | colaescing_tensors_.empty()) {
+  if (!tasks_opt.has_value() | colaescing_place_keys_.empty()) {
     is_coalescing_ = false;
     return;
   }
@@ -580,11 +580,11 @@ void ProcessGroupBKCL::EndCoalescing(
 
   PADDLE_ENFORCE_EQ(
       tasks.size(),
-      colaescing_tensors_.size(),
+      colaescing_place_keys_.size(),
       phi::errors::PreconditionNotMet(
           "Number of tasks[%d] do not match number of collectives[%d].",
           tasks.size(),
-          colaescing_tensors_.size()));
+          colaescing_place_keys_.size()));
 
   for (size_t i = 0; i < tasks.size(); ++i) {
     auto* task = static_cast<ProcessGroupBKCL::BKCLTask*>(tasks[i].get());
