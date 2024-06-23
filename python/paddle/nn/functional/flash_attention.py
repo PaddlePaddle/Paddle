@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Generator, Literal, overload
 
 import paddle
 import paddle.nn.functional as F
@@ -66,15 +66,54 @@ def get_triangle_upper_mask(x: Tensor) -> Tensor:
     return mask
 
 
+@overload
 def _math_attention(
     query: Tensor,
     key: Tensor,
     value: Tensor,
-    dropout_rate: float = 0.0,
-    causal: bool = False,
-    return_softmax: bool = False,
-    training: bool = True,
+    dropout_rate: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    training: bool = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def _math_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout_rate: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    training: bool = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def _math_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout_rate: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    training: bool = ...,
 ) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
+def _math_attention(
+    query,
+    key,
+    value,
+    dropout_rate=0.0,
+    causal=False,
+    return_softmax=False,
+    training=True,
+):
     r"""
     This is a basic implementation of scaled dot product attention composed of
     combinations of fundamental components.
@@ -155,19 +194,70 @@ def _select_sdp(head_dim: int) -> str:
     return "mem_efficient"
 
 
+@overload
 def flash_attention(
     query: Tensor,
     key: Tensor,
     value: Tensor,
-    dropout: float = 0.0,
-    causal: bool = False,
-    return_softmax: bool = False,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
     *,
-    fixed_seed_offset: Tensor | None = None,
-    rng_name: str = "",
-    training: bool = True,
-    name: str | None = None,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
+def flash_attention(
+    query,
+    key,
+    value,
+    dropout,
+    causal,
+    return_softmax,
+    *,
+    fixed_seed_offset,
+    rng_name="",
+    training=True,
+    name=None,
+):
     r"""
     The equation is:
 
@@ -311,17 +401,62 @@ def flash_attention(
             )
 
 
+@overload
 def flash_attn_qkvpacked(
     qkv: Tensor,
-    dropout: float = 0.0,
-    causal: bool = False,
-    return_softmax: bool = False,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
     *,
-    fixed_seed_offset: Tensor | None = None,
-    rng_name: str = "",
-    training: bool = True,
-    name: str | None = None,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attn_qkvpacked(
+    qkv: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attn_qkvpacked(
+    qkv: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
+def flash_attn_qkvpacked(
+    qkv,
+    dropout,
+    causal,
+    return_softmax,
+    *,
+    fixed_seed_offset,
+    rng_name,
+    training,
+    name,
+):
     r"""
     The equation is:
 
@@ -463,6 +598,69 @@ def flash_attn_qkvpacked(
             )
 
 
+@overload
+def flash_attn_unpadded(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attn_unpadded(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attn_unpadded(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
 def flash_attn_unpadded(
     query: Tensor,
     key: Tensor,
@@ -600,6 +798,66 @@ def flash_attn_unpadded(
         },
     )
     return out, softmax if return_softmax else None
+
+
+@overload
+def flash_attn_varlen_qkvpacked(
+    qkv: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    varlen_padded: bool = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attn_varlen_qkvpacked(
+    qkv: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    varlen_padded: bool = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attn_varlen_qkvpacked(
+    qkv: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    varlen_padded: bool = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
 
 
 def flash_attn_varlen_qkvpacked(
