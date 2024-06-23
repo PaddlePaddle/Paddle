@@ -249,11 +249,11 @@ def flash_attention(
     query,
     key,
     value,
-    dropout,
-    causal,
-    return_softmax,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
     *,
-    fixed_seed_offset,
+    fixed_seed_offset=None,
     rng_name="",
     training=True,
     name=None,
@@ -448,14 +448,14 @@ def flash_attn_qkvpacked(
 
 def flash_attn_qkvpacked(
     qkv,
-    dropout,
-    causal,
-    return_softmax,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
     *,
-    fixed_seed_offset,
-    rng_name,
-    training,
-    name,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
+    name=None,
 ):
     r"""
     The equation is:
@@ -662,22 +662,22 @@ def flash_attn_unpadded(
 
 
 def flash_attn_unpadded(
-    query: Tensor,
-    key: Tensor,
-    value: Tensor,
-    cu_seqlens_q: Tensor,
-    cu_seqlens_k: Tensor,
-    max_seqlen_q: int,
-    max_seqlen_k: int,
-    scale: float,
-    dropout: float = 0.0,
-    causal: bool = False,
-    return_softmax: bool = False,
-    fixed_seed_offset: Tensor | None = None,
-    rng_name: str = '',
-    training: bool = True,
-    name: str | None = None,
-) -> tuple[Tensor, Tensor | None]:
+    query,
+    key,
+    value,
+    cu_seqlens_q,
+    cu_seqlens_k,
+    max_seqlen_q,
+    max_seqlen_k,
+    scale,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    fixed_seed_offset=None,
+    rng_name='',
+    training=True,
+    name=None,
+):
     r"""
     The equation is:
 
@@ -861,21 +861,21 @@ def flash_attn_varlen_qkvpacked(
 
 
 def flash_attn_varlen_qkvpacked(
-    qkv: Tensor,
-    cu_seqlens_q: Tensor,
-    cu_seqlens_k: Tensor,
-    max_seqlen_q: int,
-    max_seqlen_k: int,
-    scale: float,
-    dropout: float = 0.0,
-    causal: bool = False,
-    return_softmax: bool = False,
-    fixed_seed_offset: Tensor | None = None,
-    rng_name: str = "",
-    varlen_padded: bool = True,
-    training: bool = True,
-    name: str | None = None,
-) -> tuple[Tensor, Tensor | None]:
+    qkv,
+    cu_seqlens_q,
+    cu_seqlens_k,
+    max_seqlen_q,
+    max_seqlen_k,
+    scale,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    fixed_seed_offset=None,
+    rng_name="",
+    varlen_padded=True,
+    training=True,
+    name=None,
+):
     r"""
     The equation is:
 
