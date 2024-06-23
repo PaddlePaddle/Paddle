@@ -3404,6 +3404,7 @@ def unique(
     ...
 
 
+@overload
 def unique(
     x: Tensor,
     return_index: bool = False,
@@ -3413,6 +3414,18 @@ def unique(
     dtype: DTypeLike = "int64",
     name: str | None = None,
 ) -> Tensor | tuple[Tensor, ...]:
+    ...
+
+
+def unique(
+    x,
+    return_index=False,
+    return_inverse=False,
+    return_counts=False,
+    axis=None,
+    dtype="int64",
+    name=None,
+):
     r"""
     Returns the unique elements of `x` in ascending order.
 
