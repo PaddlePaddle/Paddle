@@ -78,13 +78,14 @@ class P2POp:
 @contextlib.contextmanager
 def _coalescing_manager(group, tasks=None):
     group = _get_global_group() if group is None else group
-    group._start_coalescing()
+    pg = group.process_group
+    pg._start_coalescing()
     try:
         yield
     finally:
         if tasks is None or len(tasks) == 0:
-            group._end_coalescing()
-        group._end_coalescing(tasks)
+            pg._end_coalescing()
+        pg._end_coalescing(tasks)
 
 
 def _check_p2p_op_list(p2p_op_list):
