@@ -15,18 +15,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from typing_extensions import TypeAlias
-
 if TYPE_CHECKING:
     import numpy.typing as npt
 
-    from paddle.vision.transforms.transforms import (
-        ImageType,
-        _Transform,
-    )
+    from paddle._typing.dtype_like import _DTypeLiteral
+    from paddle.vision.transforms.transforms import _Transform
+
+    from ..image import _ImageBackend, _ImageDataType
 
     _DatasetMode = Literal["train", "test"]
-    _ImageBackend: TypeAlias = Literal["pil", "cv2"]
 
 
 import pickle
@@ -120,6 +117,12 @@ class Cifar10(Dataset):
 
     """
 
+    mode: _DatasetMode
+    backend: _ImageBackend
+    data_file: str | None
+    transform: _Transform[Any, Any] | None
+    dtype: _DTypeLiteral
+
     def __init__(
         self,
         data_file: str | None = None,
@@ -183,7 +186,7 @@ class Cifar10(Dataset):
                 for sample, label in zip(data, labels):
                     self.data.append((sample, label))
 
-    def __getitem__(self, idx: int) -> tuple[ImageType, npt.NDArray[Any]]:
+    def __getitem__(self, idx: int) -> tuple[_ImageDataType, npt.NDArray[Any]]:
         image, label = self.data[idx]
         image = np.reshape(image, [3, 32, 32])
         image = image.transpose([1, 2, 0])
