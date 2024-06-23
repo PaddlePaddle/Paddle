@@ -5531,7 +5531,7 @@ def tensordot(
 
             >>> import paddle
 
-            >>> data_type = 'float64'
+            >>> data_type: Literal["float64"] = 'float64'
 
             >>> # For two 2-d tensor x and y, the case axes=0 is equivalent to outer product.
             >>> # Note that tensordot supports empty axis sequence, so all the axes=0, axes=[], axes=[[]], and axes=[[],[]] are equivalent cases.
