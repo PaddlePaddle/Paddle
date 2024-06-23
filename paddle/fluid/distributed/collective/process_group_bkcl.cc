@@ -264,7 +264,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
-    task->comm_event_->Record(*comm_ctx.get());
+    if (!is_coalescing_) {
+      task->comm_event_->Record(*comm_ctx.get());
+    } else {
+      colaescing_place_keys_.push_back(key);
+    }
   }
 
   if (sync_op) {
@@ -310,7 +314,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
-    task->comm_event_->Record(*comm_ctx.get());
+    if (!is_coalescing_) {
+      task->comm_event_->Record(*comm_ctx.get());
+    } else {
+      colaescing_place_keys_.push_back(key);
+    }
   }
 
   if (sync_op) {
@@ -546,6 +554,47 @@ phi::distributed::BKCLCommContext* ProcessGroupBKCL::GetCommContext() {
                     nullptr,
                     phi::errors::Unavailable("BKCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupBKCL::StartCoalescing() {
+  PADDLE_ENFORCE_EQ(is_coalescing_,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Coalescing is on, please call EndCoalesce."));
+  is_coalescing_ = true;
+  GroupStart();
+}
+
+void ProcessGroupBKCL::EndCoalescing(
+    std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>> tasks_opt) {
+  GroupEnd();
+
+  // NOTE(shenliang03): If using calculate stream, no need to record stream and
+  // update task.
+  if (!tasks_opt.has_value() | colaescing_tensors_.empty()) {
+    is_coalescing_ = false;
+    return;
+  }
+
+  auto& tasks = tasks_opt.value();
+
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      colaescing_tensors_.size(),
+      phi::errors::PreconditionNotMet(
+          "Number of tasks[%d] do not match number of collectives[%d].",
+          tasks.size(),
+          colaescing_tensors_.size()));
+
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    auto* task = static_cast<ProcessGroupBKCL::BKCLTask*>(tasks[i].get());
+    const auto& key = colaescing_place_keys_[i];
+    const auto& comm_ctx = place_to_comm_ctx_.at(key);
+    task->comm_event_->Record(*comm_ctx.get());
+  }
+
+  is_coalescing_ = false;
+  colaescing_place_keys_.clear();
 }
 
 }  //  namespace distributed
