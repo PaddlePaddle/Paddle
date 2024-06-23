@@ -45,7 +45,7 @@ class TestCollectiveBatchIsendIrecv(unittest.TestCase):
 
         res = recv_t - (rank - 1 + world_size) % world_size
         res = paddle.sum(base - res)
-        np.testing.assert_allclose(recv_t.numpy(), [0])
+        np.testing.assert_allclose(res.numpy(), [0])
 
 
 if __name__ == '__main__':
