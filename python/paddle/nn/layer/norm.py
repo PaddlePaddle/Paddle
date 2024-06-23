@@ -1678,7 +1678,7 @@ class SyncBatchNorm(_BatchNormBase):
         return sync_batch_norm_out
 
     @classmethod
-    def convert_sync_batchnorm(cls, layer: Layer) -> None:
+    def convert_sync_batchnorm(cls, layer: Layer) -> Layer:
         """
         Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
 
