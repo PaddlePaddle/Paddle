@@ -111,12 +111,18 @@ class Lamb(Optimizer):
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.85], dtype="float32")
             >>> lamb = paddle.optimizer.Lamb(
-            ...     learning_rate=0.002, beta1=beta1, beta2=beta2, parameters=linear.parameters(), lamb_weight_decay=0.01)
+            ...     learning_rate=0.002,
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     parameters=linear.parameters(),
+            ...     lamb_weight_decay=0.01
+            ... )
             >>> back = out.backward()
             >>> lamb.step()
             >>> lamb.clear_grad()
 
     """
+
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _beta1_pow_acc_str = "beta1_pow_acc"
@@ -129,9 +135,9 @@ class Lamb(Optimizer):
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
         epsilon: float | Tensor = 1e-6,
-        parameters: Sequence[Tensor]
-        | Sequence[_LambParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_LambParameterConfig] | None
+        ) = None,
         grad_clip: GradientClipBase | None = None,
         exclude_from_weight_decay_fn: Callable[[Tensor], bool] | None = None,
         multi_precision: bool = False,
@@ -211,9 +217,9 @@ class Lamb(Optimizer):
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.9
-            if isinstance(self._beta1, Variable)
-            else self._beta1,
+            fill_value=(
+                0.9 if isinstance(self._beta1, Variable) else self._beta1
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -222,9 +228,9 @@ class Lamb(Optimizer):
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.999
-            if isinstance(self._beta2, Variable)
-            else self._beta2,
+            fill_value=(
+                0.999 if isinstance(self._beta2, Variable) else self._beta2
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
