@@ -35,7 +35,9 @@ if TYPE_CHECKING:
     from paddle._typing import DataLayoutImage, Size2, Size3, Size4
 
     _DataT = TypeVar("_DataT", Tensor, PILImage, npt.NDArray[Any])
-    _Keys: TypeAlias = Sequence[Literal["image", "coords", "boxes", "mask"]]
+    _TransformInputKeys: TypeAlias = Sequence[
+        Literal["image", "coords", "boxes", "mask"]
+    ]
     _InterpolationPil: TypeAlias = Literal[
         "nearest", "bilinear", "bicubic", "lanczos", "hamming"
     ]
@@ -262,9 +264,10 @@ class BaseTransform:
 
     """
 
-    keys: _Keys
+    keys: _TransformInputKeys
+    params: Any
 
-    def __init__(self, keys: _Keys | None = None) -> None:
+    def __init__(self, keys: _TransformInputKeys | None = None) -> None:
         if keys is None:
             keys = ("image",)
         elif not isinstance(keys, Sequence):
@@ -377,7 +380,9 @@ class ToTensor(BaseTransform):
     data_format: DataLayoutImage
 
     def __init__(
-        self, data_format: DataLayoutImage = 'CHW', keys: _Keys | None = None
+        self,
+        data_format: DataLayoutImage = 'CHW',
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         self.data_format = data_format
@@ -451,7 +456,7 @@ class Resize(BaseTransform):
         self,
         size: Size2,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         assert isinstance(size, int) or (
@@ -525,7 +530,7 @@ class RandomResizedCrop(BaseTransform):
         scale: Sequence[float] = (0.08, 1.0),
         ratio: Sequence[float] = (3.0 / 4, 4.0 / 3),
         interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         if isinstance(size, int):
@@ -707,7 +712,9 @@ class CenterCrop(BaseTransform):
 
     size: Size2
 
-    def __init__(self, size: Size2, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, size: Size2, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
@@ -755,7 +762,9 @@ class RandomHorizontalFlip(BaseTransform):
 
     prob: float
 
-    def __init__(self, prob: float = 0.5, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, prob: float = 0.5, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
@@ -816,7 +825,9 @@ class RandomVerticalFlip(BaseTransform):
 
     prob: float
 
-    def __init__(self, prob: float = 0.5, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, prob: float = 0.5, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
@@ -894,7 +905,7 @@ class Normalize(BaseTransform):
         std: float | Sequence[float] = 1.0,
         data_format: DataLayoutImage = 'CHW',
         to_rgb: bool = False,
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         if isinstance(mean, numbers.Number):
@@ -951,7 +962,9 @@ class Transpose(BaseTransform):
     order: Sequence[int]
 
     def __init__(
-        self, order: Sequence[int] = (2, 0, 1), keys: _Keys | None = None
+        self,
+        order: Sequence[int] = (2, 0, 1),
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         self.order = order
@@ -1005,7 +1018,9 @@ class BrightnessTransform(BaseTransform):
 
     value: float
 
-    def __init__(self, value: float, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, value: float, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         self.value = _check_input(value, 'brightness')
 
@@ -1050,7 +1065,9 @@ class ContrastTransform(BaseTransform):
 
     value: float
 
-    def __init__(self, value: float, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, value: float, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         if value < 0:
             raise ValueError("contrast value should be non-negative")
@@ -1096,7 +1113,9 @@ class SaturationTransform(BaseTransform):
 
     value: float
 
-    def __init__(self, value: float, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, value: float, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         self.value = _check_input(value, 'saturation')
 
@@ -1141,7 +1160,9 @@ class HueTransform(BaseTransform):
 
     value: float
 
-    def __init__(self, value: float, keys: _Keys | None = None) -> None:
+    def __init__(
+        self, value: float, keys: _TransformInputKeys | None = None
+    ) -> None:
         super().__init__(keys)
         self.value = _check_input(
             value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False
@@ -1203,7 +1224,7 @@ class ColorJitter(BaseTransform):
         contrast: float = 0,
         saturation: float = 0,
         hue: float = 0,
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         self.brightness = brightness
@@ -1323,7 +1344,7 @@ class RandomCrop(BaseTransform):
         pad_if_needed: bool = False,
         fill: Size3 = 0,
         padding_mode: _PaddingMode = 'constant',
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         if isinstance(size, numbers.Number):
@@ -1441,7 +1462,7 @@ class Pad(BaseTransform):
         padding: Size2 | Size4,
         fill: Size3 = 0,
         padding_mode: _PaddingMode = 'constant',
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         assert isinstance(padding, (numbers.Number, list, tuple))
         assert isinstance(fill, (numbers.Number, str, list, tuple))
@@ -1573,7 +1594,7 @@ class RandomAffine(BaseTransform):
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         fill: Size3 = 0,
         center: tuple[float, float] = None,
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2,))
 
@@ -1731,7 +1752,7 @@ class RandomRotation(BaseTransform):
         expand: bool = False,
         center: tuple[float, float] = None,
         fill: Size3 = 0,
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
@@ -1833,7 +1854,7 @@ class RandomPerspective(BaseTransform):
         distortion_scale: float = 0.5,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         fill: Size3 = 0,
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
@@ -1955,7 +1976,9 @@ class Grayscale(BaseTransform):
     num_output_channels: int
 
     def __init__(
-        self, num_output_channels: int = 1, keys: _Keys | None = None
+        self,
+        num_output_channels: int = 1,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         self.num_output_channels = num_output_channels
@@ -2028,7 +2051,7 @@ class RandomErasing(BaseTransform):
         ratio: Sequence[float] = (0.3, 3.3),
         value: float | Sequence[float] | str = 0,
         inplace: bool = False,
-        keys: _Keys | None = None,
+        keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
         assert isinstance(
