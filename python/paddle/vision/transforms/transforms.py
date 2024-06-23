@@ -357,7 +357,7 @@ class BaseTransform(_Transform[_InputT, _RetT]):
         raise NotImplementedError
 
 
-class ToTensor(BaseTransform[_InputT, Tensor]):
+class ToTensor(BaseTransform[_InputT, "Tensor"]):
     """Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
     Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
