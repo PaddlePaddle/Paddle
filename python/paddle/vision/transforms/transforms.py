@@ -32,9 +32,9 @@ if TYPE_CHECKING:
     from PIL.Image import Image as PILImage
 
     from paddle import Tensor
-    from paddle._typing import DataLayout1D
+    from paddle._typing import DataLayoutImage, Size2, Size3, Size4
 
-    _DataT = TypeVar("_DataT", bound=Tensor | PILImage | npt.NDArray[Any])
+    _DataT = TypeVar("_DataT", Tensor, PILImage, npt.NDArray[Any])
     _Keys: TypeAlias = Sequence[Literal["image", "coords", "boxes", "mask"]]
     _InterpolationPil: TypeAlias = Literal[
         "nearest", "bilinear", "bicubic", "lanczos", "hamming"
@@ -374,10 +374,10 @@ class ToTensor(BaseTransform):
             paddle.float32
     """
 
-    data_format: DataLayout1D
+    data_format: DataLayoutImage
 
     def __init__(
-        self, data_format: DataLayout1D = 'CHW', keys: _Keys | None = None
+        self, data_format: DataLayoutImage = 'CHW', keys: _Keys | None = None
     ) -> None:
         super().__init__(keys)
         self.data_format = data_format
@@ -444,12 +444,12 @@ class Resize(BaseTransform):
             (150, 200)
     """
 
-    size: int | Sequence[int]
+    size: Size2
     interpolation: _InterpolationPil | _InterpolationCv2
 
     def __init__(
         self,
-        size: int | Sequence[int],
+        size: Size2,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
         keys: _Keys | None = None,
     ) -> None:
@@ -514,9 +514,14 @@ class RandomResizedCrop(BaseTransform):
 
     """
 
+    size: Size2
+    scale: Sequence[float]
+    ratio: Sequence[float]
+    interpolation: _InterpolationPil | _InterpolationCv2
+
     def __init__(
         self,
-        size: int | Sequence[int],
+        size: Size2,
         scale: Sequence[float] = (0.08, 1.0),
         ratio: Sequence[float] = (3.0 / 4, 4.0 / 3),
         interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
@@ -700,11 +705,9 @@ class CenterCrop(BaseTransform):
 
     """
 
-    size: Sequence[int]
+    size: Size2
 
-    def __init__(
-        self, size: int | Sequence[int], keys: _Keys | None = None
-    ) -> None:
+    def __init__(self, size: Size2, keys: _Keys | None = None) -> None:
         super().__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
@@ -882,14 +885,14 @@ class Normalize(BaseTransform):
 
     mean: Sequence[float]
     std: Sequence[float]
-    data_format: DataLayout1D
+    data_format: DataLayoutImage
     to_rgb: bool
 
     def __init__(
         self,
         mean: float | Sequence[float] = 0.0,
         std: float | Sequence[float] = 1.0,
-        data_format: DataLayout1D = 'CHW',
+        data_format: DataLayoutImage = 'CHW',
         to_rgb: bool = False,
         keys: _Keys | None = None,
     ) -> None:
@@ -1307,18 +1310,18 @@ class RandomCrop(BaseTransform):
             [3, 224, 224]
     """
 
-    size: Sequence[int]
-    padding: int | Sequence[int] | None
+    size: Size2
+    padding: Size2 | Size4 | None
     pad_if_needed: bool
-    fill: int | tuple[int, ...]
-    padding_mode: Literal['constant', 'edge', 'reflect', 'symmetric']
+    fill: Size3
+    padding_mode: _PaddingMode
 
     def __init__(
         self,
-        size: int | Sequence[int],
-        padding: int | Sequence[int] | None = None,
+        size: Size2,
+        padding: Size2 | Size4 | None = None,
         pad_if_needed: bool = False,
-        fill: int | tuple[int, ...] = 0,
+        fill: Size3 = 0,
         padding_mode: _PaddingMode = 'constant',
         keys: _Keys | None = None,
     ) -> None:
@@ -1429,14 +1432,14 @@ class Pad(BaseTransform):
             (228, 228)
     """
 
-    padding: int | Sequence[int]
-    fill: int | Sequence[int]
+    padding: Size2 | Size4
+    fill: Size3
     padding_mode: _PaddingMode
 
     def __init__(
         self,
-        padding: int | Sequence[int],
-        fill: int | Sequence[int] = 0,
+        padding: Size2 | Size4,
+        fill: Size3 = 0,
         padding_mode: _PaddingMode = 'constant',
         keys: _Keys | None = None,
     ) -> None:
@@ -1558,7 +1561,7 @@ class RandomAffine(BaseTransform):
     scale: tuple[float, float] | None
     shear: float | Sequence[float] | None
     interpolation: _InterpolationPil | _InterpolationCv2
-    fill: int | Sequence[int]
+    fill: Size3
     center: tuple[float, float]
 
     def __init__(
@@ -1568,7 +1571,7 @@ class RandomAffine(BaseTransform):
         scale: tuple[float, float] | None = None,
         shear: float | Sequence[float] | None = None,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
-        fill: int | Sequence[int] = 0,
+        fill: Size3 = 0,
         center: tuple[float, float] = None,
         keys: _Keys | None = None,
     ) -> None:
@@ -1719,7 +1722,7 @@ class RandomRotation(BaseTransform):
     interpolation: _InterpolationPil | _InterpolationCv2
     expand: bool
     center: tuple[float, float]
-    fill: int | Sequence[int]
+    fill: Size3
 
     def __init__(
         self,
@@ -1727,7 +1730,7 @@ class RandomRotation(BaseTransform):
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         expand: bool = False,
         center: tuple[float, float] = None,
-        fill: int | Sequence[int] = 0,
+        fill: Size3 = 0,
         keys: _Keys | None = None,
     ) -> None:
         if isinstance(degrees, numbers.Number):
@@ -1822,14 +1825,14 @@ class RandomPerspective(BaseTransform):
     prob: float
     distortion_scale: float
     interpolation: _InterpolationPil | _InterpolationCv2
-    fill: int | Sequence[int]
+    fill: Size3
 
     def __init__(
         self,
         prob: float = 0.5,
         distortion_scale: float = 0.5,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
-        fill: int | Sequence[int] = 0,
+        fill: Size3 = 0,
         keys: _Keys | None = None,
     ) -> None:
         super().__init__(keys)
@@ -1845,7 +1848,9 @@ class RandomPerspective(BaseTransform):
         self.interpolation = interpolation
         self.fill = fill
 
-    def get_params(self, width, height, distortion_scale):
+    def get_params(
+        self, width: int, height: int, distortion_scale: float
+    ) -> tuple[list[list[int]], list[list[int]]]:
         """
         Returns:
             startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
