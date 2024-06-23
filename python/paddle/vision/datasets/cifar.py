@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from paddle.vision.transforms import BaseTransform
+
 
 import pickle
 import tarfile
@@ -44,12 +51,12 @@ class Cifar10(Dataset):
     dataset, which has 10 categories.
 
     Args:
-        data_file (str, optional): Path to data file, can be set None if
+        data_file (str|None, optional): Path to data file, can be set None if
             :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
         mode (str, optional): Either train or test mode. Default 'train'.
-        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        transform (Callable[[(list|tuple)],BaseTransform]|None, optional): transform to perform on image, None for no transform. Default: None.
         download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default True.
-        backend (str, optional): Specifies which type of image to be returned:
+        backend (str|None, optional): Specifies which type of image to be returned:
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_paddle_vision_get_image_backend>`,
             default backend is 'pil'. Default: None.
@@ -105,11 +112,11 @@ class Cifar10(Dataset):
 
     def __init__(
         self,
-        data_file=None,
-        mode='train',
-        transform=None,
-        download=True,
-        backend=None,
+        data_file: str | None = None,
+        mode: str = 'train',
+        transform: Callable[[(list | tuple)], BaseTransform] | None = None,
+        download: bool = True,
+        backend: str = None,
     ):
         assert mode.lower() in [
             'train',
@@ -166,7 +173,7 @@ class Cifar10(Dataset):
                 for sample, label in zip(data, labels):
                     self.data.append((sample, label))
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         image, label = self.data[idx]
         image = np.reshape(image, [3, 32, 32])
         image = image.transpose([1, 2, 0])
@@ -191,12 +198,12 @@ class Cifar100(Cifar10):
     dataset, which has 100 categories.
 
     Args:
-        data_file (str, optional): path to data file, can be set None if
+        data_file (str|None, optional): path to data file, can be set None if
             :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/cifar
         mode (str, optional): Either train or test mode. Default 'train'.
-        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        transform (Callable[[(list|tuple)],BaseTransform]|None, optional): transform to perform on image, None for no transform. Default: None.
         download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default True.
-        backend (str, optional): Specifies which type of image to be returned:
+        backend (str|None, optional): Specifies which type of image to be returned:
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_paddle_vision_get_image_backend>`,
             default backend is 'pil'. Default: None.
@@ -253,11 +260,11 @@ class Cifar100(Cifar10):
 
     def __init__(
         self,
-        data_file=None,
-        mode='train',
-        transform=None,
-        download=True,
-        backend=None,
+        data_file: str | None = None,
+        mode: str = 'train',
+        transform: Callable[[(list | tuple)], BaseTransform] | None = None,
+        download: bool = True,
+        backend: str | None = None,
     ):
         super().__init__(data_file, mode, transform, download, backend)
 
