@@ -13,7 +13,6 @@ set(op_handle_srcs
     nan_inf_utils_detail.cc
     all_reduce_op_handle.cc
     fused_all_reduce_op_handle.cc
-    grad_merge_all_reduce_op_handle.cc
     reduce_op_handle.cc
     broadcast_op_handle.cc
     fused_broadcast_op_handle.cc
@@ -76,8 +75,6 @@ add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
 set(IR_PASS_DEPS
     graph_viz_pass
     multi_devices_graph_pass
-    multi_devices_graph_print_pass
-    multi_devices_graph_check_pass
     fuse_elewise_add_act_pass
     fuse_bn_act_pass
     fuse_bn_add_act_pass
@@ -85,12 +82,9 @@ set(IR_PASS_DEPS
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
     sequential_execution_pass
-    all_reduce_deps_pass
     add_reader_dependency_pass
     modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass
-    fuse_all_reduce_op_pass
-    backward_optimizer_op_deps_pass
     fuse_adam_op_pass
     fuse_sgd_op_pass
     fuse_momentum_op_pass
