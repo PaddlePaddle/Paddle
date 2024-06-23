@@ -1071,7 +1071,7 @@ void ProcessGroupNCCL::EndCoalescing(
 
   // NOTE(shenliang03): If using calculate stream, no need to record stream and
   // update task.
-  if (!tasks_opt.has_value() | colaescing_tensors_.empty()) {
+  if (!tasks_opt.has_value() || colaescing_tensors_.empty()) {
     is_coalescing_ = false;
     return;
   }
