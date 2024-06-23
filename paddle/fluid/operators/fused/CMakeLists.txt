@@ -14,11 +14,9 @@ register_operators(
   fused_multi_transformer_int8_op
   resnet_unit_op
   fused_gemm_epilogue_op
-  fused_gate_attention_op
-  resnet_basic_block_op)
+  fused_gate_attention_op)
 
 if(WITH_XPU)
-  op_library(resnet_basic_block_op)
   op_library(resnet_unit_op)
   op_library(fused_gemm_epilogue_op)
   op_library(fused_attention_op)

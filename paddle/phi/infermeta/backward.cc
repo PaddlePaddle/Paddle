@@ -1404,6 +1404,56 @@ void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
   dx->set_layout(out_grad.layout());
 }
 
+void ResnetBasicBlockGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& filter1,
+                                   const MetaTensor& scale1,
+                                   const MetaTensor& filter2,
+                                   const MetaTensor& scale2,
+                                   const MetaTensor& filter3,
+                                   const MetaTensor& scale3,
+                                   bool has_shortcut,
+                                   MetaTensor* x_grad,
+                                   MetaTensor* filter1_grad,
+                                   MetaTensor* scale1_grad,
+                                   MetaTensor* bias1_grad,
+                                   MetaTensor* filter2_grad,
+                                   MetaTensor* scale2_grad,
+                                   MetaTensor* bias2_grad,
+                                   MetaTensor* filter3_grad,
+                                   MetaTensor* scale3_grad,
+                                   MetaTensor* bias3_grad,
+                                   MetaConfig config) {
+  const auto& x1_dims = x.dims();
+  const auto& filter1_x_dims = filter1.dims();
+  const auto& param1_dims = scale1.dims();
+  const auto& filter2_x_dims = filter2.dims();
+  const auto& param2_dims = scale2.dims();
+  x_grad->set_dims(x1_dims);
+  filter1_grad->set_dims(filter1_x_dims);
+  scale1_grad->set_dims(param1_dims);
+  bias1_grad->set_dims(param1_dims);
+  filter2_grad->set_dims(filter2_x_dims);
+  scale2_grad->set_dims(param2_dims);
+  bias2_grad->set_dims(param2_dims);
+  x_grad->set_dtype(x.dtype());
+  filter1_grad->set_dtype(x.dtype());
+  filter2_grad->set_dtype(x.dtype());
+  scale1_grad->set_dtype(DataType::FLOAT32);
+  bias1_grad->set_dtype(DataType::FLOAT32);
+  scale2_grad->set_dtype(DataType::FLOAT32);
+  bias2_grad->set_dtype(DataType::FLOAT32);
+  if (has_shortcut) {
+    const auto& filter_z_dims = filter3.dims();
+    filter3_grad->set_dims(filter_z_dims);
+    scale3_grad->set_dims(param2_dims);
+    bias3_grad->set_dims(param2_dims);
+
+    filter3_grad->set_dtype(x.dtype());
+    scale3_grad->set_dtype(DataType::FLOAT32);
+    bias3_grad->set_dtype(DataType::FLOAT32);
+  }
+}
+
 void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                 const MetaTensor& x_grad_grad,
                                 MetaTensor* out_grad_grad) {

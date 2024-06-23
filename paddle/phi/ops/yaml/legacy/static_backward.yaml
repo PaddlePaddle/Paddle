@@ -300,6 +300,44 @@
     func : prod_grad
   composite: prod_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
+- backward_op : resnet_basic_block_grad
+  forward: resnet_basic_block(Tensor x, Tensor filter1, Tensor scale1, Tensor bias1, Tensor mean1, Tensor
+    var1, Tensor filter2, Tensor scale2, Tensor bias2, Tensor mean2, Tensor var2,
+    Tensor filter3, Tensor scale3, Tensor bias3, Tensor mean3, Tensor var3, int stride1
+    = 1, int stride2 = 1, int stride3 = 1, int padding1 = 0, int padding2 = 0, int
+    padding3 = 0, int dilation1 = 1, int dilation2 = 1, int dilation3 = 1, int group
+    = 1, float momentum = 0.9, float epsilon = 1e-5, str data_format = "NCHW", bool
+    has_shortcut = false, bool use_global_stats = false, bool is_test = false, bool
+    trainable_statistics = false, str act_type = "relu", bool find_conv_input_max
+    = true) -> Tensor (out), Tensor (conv1), Tensor (saved_mean1), Tensor (saved_invstd1),
+    Tensor (mean1_out), Tensor (var1_out), Tensor (conv2), Tensor (conv2_input), Tensor
+    (saved_mean2), Tensor (saved_invstd2), Tensor (mean2_out), Tensor (var2_out),
+    Tensor (conv3), Tensor (saved_mean3), Tensor (saved_invstd3), Tensor (mean3_out),
+    Tensor (var3_out), Tensor (max_input1), Tensor (max_filter1), Tensor (max_input2),
+    Tensor (max_filter2), Tensor (max_input3), Tensor (max_filter3)
+  args: (Tensor x, Tensor filter1, Tensor conv1, Tensor scale1, Tensor bias1, Tensor saved_mean1, Tensor
+    saved_invstd1, Tensor filter2, Tensor conv2, Tensor conv2_input, Tensor scale2, Tensor bias2, Tensor saved_mean2, Tensor saved_invstd2,
+    Tensor filter3, Tensor conv3, Tensor scale3, Tensor bias3, Tensor saved_mean3, Tensor saved_invstd3,
+    Tensor max_input1, Tensor max_filter1, Tensor max_input2, Tensor max_filter2,
+    Tensor max_input3, Tensor max_filter3,
+    Tensor out, Tensor out_grad,
+    int stride1 = 1, int stride2 = 1, int stride3 = 1, int padding1 = 0, int padding2 = 0, int
+    padding3 = 0, int dilation1 = 1, int dilation2 = 1, int dilation3 = 1, int group
+    = 1, float momentum = 0.9, float epsilon = 1e-5, str data_format = "NCHW", bool
+    has_shortcut = false, bool use_global_stats = false, bool is_test = false, bool
+    trainable_statistics = false, str act_type = "relu", bool find_conv_input_max
+    = true)
+  output: Tensor (x_grad), Tensor (filter1_grad), Tensor (scale1_grad), Tensor (bias1_grad),
+    Tensor (filter2_grad), Tensor (scale2_grad), Tensor (bias2_grad),
+    Tensor (filter3_grad), Tensor (scale3_grad), Tensor (bias3_grad)
+  infer_meta:
+    func: ResnetBasicBlockGradInferMeta
+    param: [x, filter1, scale1, filter2, scale2, filter3, scale3, has_shortcut]
+  kernel:
+    func: resnet_basic_block_grad
+    data_type: x
+  optional: filter3, conv3, scale3, bias3, saved_mean3, saved_invstd3
+
 - backward_op : rnn_grad
   forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
   args : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor dropout_state_out, Tensor reserve, Tensor out_grad, Tensor[] state_grad, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
