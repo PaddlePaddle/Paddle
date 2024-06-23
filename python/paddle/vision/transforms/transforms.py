@@ -54,11 +54,10 @@ if TYPE_CHECKING:
     _PaddingMode: TypeAlias = Literal[
         "constant", "edge", "reflect", "symmetric"
     ]
-
-_InputT = TypeVar(
-    "_InputT", Tensor, PILImage, npt.NDArray[Any], contravariant=True
-)
-_RetT = TypeVar("_RetT", Tensor, PILImage, npt.NDArray[Any], covariant=True)
+    _InputT = TypeVar(
+        "_InputT", Tensor, PILImage, npt.NDArray[Any], contravariant=True
+    )
+    _RetT = TypeVar("_RetT", Tensor, PILImage, npt.NDArray[Any], covariant=True)
 
 
 class _Transform(Protocol, Generic[_InputT, _RetT]):
