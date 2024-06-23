@@ -59,6 +59,11 @@ PD_DEFINE_string(cinn_tile_config_filename_label,
                                "./config/"),
                  "Label used to name file of tile config database");
 
+PD_DEFINE_string(
+    tile_config_policy,
+    StringFromEnv("FLAGS_tile_config_policy", "default"),
+    "Which config does the compiler use, optimal, custom or default");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
@@ -278,6 +283,9 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+PD_DEFINE_bool(cinn_check_tensor_buffer_map,
+               BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
+               "Whether to check tensor buffer mapping in cinn ir.");
 
 namespace cinn {
 namespace runtime {

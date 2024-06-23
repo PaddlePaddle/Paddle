@@ -1161,6 +1161,39 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   return "";
 }
 
+std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
+                                           const ir::Expr& tensor) {
+  CHECK_NOTNULL(tensor.as_tensor());
+  if (op.As<ir::Add>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_discrete_reduce_any_internal_shm";
+    }
+    return "cinn_discrete_reduce_sum" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
+  } else if (op.As<ir::Mul>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_discrete_reduce_all_internal_shm";
+    }
+    return "cinn_discrete_reduce_prod" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
+  } else if (op.As<ir::Max>()) {
+    return "cinn_discrete_reduce_max" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
+  } else if (op.As<ir::Min>()) {
+    return "cinn_discrete_reduce_min" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
+  } else if (op.As<ir::And>()) {
+    return "cinn_discrete_reduce_all_internal_shm";
+  } else if (op.As<ir::Or>()) {
+    return "cinn_discrete_reduce_any_internal_shm";
+  } else {
+    std::stringstream ss;
+    ss << "Reduce type: " << op << " Not supported yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  }
+  return "";
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

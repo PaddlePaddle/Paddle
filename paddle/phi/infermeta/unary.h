@@ -33,6 +33,11 @@ struct MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out);
+
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,
@@ -67,6 +72,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
+
+void BipartiteMatchInferMeta(const MetaTensor& dist_mat,
+                             const std::string& match_type,
+                             float dist_threshold,
+                             MetaTensor* col_to_row_match_indices,
+                             MetaTensor* col_to_row_match_dist);
 
 void TensorToArrayInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
