@@ -25,7 +25,6 @@ from typing import (
     Literal,
     Protocol,
     TypeVar,
-    Union,
     overload,
 )
 
@@ -55,7 +54,6 @@ if TYPE_CHECKING:
     _PaddingMode: TypeAlias = Literal[
         "constant", "edge", "reflect", "symmetric"
     ]
-    ImageType: TypeAlias = Union[Tensor, PILImage, npt.NDArray[Any]]
 
 _InputT = TypeVar(
     "_InputT", "Tensor", "PILImage", "npt.NDArray[Any]", contravariant=True
