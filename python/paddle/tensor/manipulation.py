@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
 
 import numpy as np
 
@@ -114,7 +114,7 @@ def tensor_array_to_tensor(
                 output_index.data = [2, 2, 2]
 
     Args:
-        input(Tensor|list(Tensor)): A TensorArray variable.
+        input(Tensor|list[Tensor]): A TensorArray variable.
         axis(int, optional): The axis along which the tensors in attr::`input` will be
             concatenated or stacked.
         use_stack(bool, optional): Act as concat_op or stack_op. For stack mode, all
@@ -3300,6 +3300,110 @@ def unique_consecutive(
         return tuple(outs)
 
 
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[True] = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[True] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[False] = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[True] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[True] = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[True] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[True] = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[False] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[False] = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[True] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[False] = ...,
+    return_inverse: Literal[True] = ...,
+    return_counts: Literal[False] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[True] = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[False] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def unique(
+    x: Tensor,
+    return_index: Literal[False] = ...,
+    return_inverse: Literal[False] = ...,
+    return_counts: Literal[False] = ...,
+    axis: int | None = None,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> Tensor:
+    ...
+
+
 def unique(
     x: Tensor,
     return_index: bool = False,
@@ -4794,15 +4898,23 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
-def atleast_1d(
-    *inputs: TensorOrTensors, name: str | None = None
-) -> TensorOrTensors:
+@overload
+def atleast_1d(inputs: Tensor, name: str | None = None) -> Tensor:
+    ...
+
+
+@overload
+def atleast_1d(*inputs: Tensor, name: str | None = None) -> list[Tensor]:
+    ...
+
+
+def atleast_1d(*inputs, name):
     """
     Convert inputs to tensors and return the view with at least 1-dimension. Scalar inputs are converted,
     one or high-dimensional inputs are preserved.
 
     Args:
-        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
+        inputs (list[Tensor]): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4865,9 +4977,17 @@ def atleast_1d(
         return out
 
 
-def atleast_2d(
-    *inputs: TensorOrTensors, name: str | None = None
-) -> TensorOrTensors:
+@overload
+def atleast_2d(inputs: Tensor, name: str | None = None) -> Tensor:
+    ...
+
+
+@overload
+def atleast_2d(*inputs: Tensor, name: str | None = None) -> list[Tensor]:
+    ...
+
+
+def atleast_2d(*inputs, name):
     """
     Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
 
@@ -4937,9 +5057,17 @@ def atleast_2d(
         return out
 
 
-def atleast_3d(
-    *inputs: TensorOrTensors, name: str | None = None
-) -> TensorOrTensors:
+@overload
+def atleast_3d(inputs: Tensor, name: str | None = None) -> Tensor:
+    ...
+
+
+@overload
+def atleast_3d(*inputs: Tensor, name: str | None = None) -> list[Tensor]:
+    ...
+
+
+def atleast_3d(*inputs, name):
     """
     Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
 
@@ -6372,7 +6500,7 @@ def index_add_(
 @inplace_apis_in_dygraph_only
 def index_put_(
     x: Tensor,
-    indices: tuple[Tensor, ...],
+    indices: Sequence[Tensor],
     value: Tensor,
     accumulate: bool = False,
     name: str | None = None,
@@ -6384,7 +6512,7 @@ def index_put_(
 
     Args:
         x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
-        indices (tuple(Tensor)): The tuple of Tensor containing the indices to index.
+        indices (list[Tensor]|tuple[Tensor]): The tuple of Tensor containing the indices to index.
             The data type of ``tensor in indices`` must be int32, int64 or bool.
         value (Tensor): The tensor used to be assigned to x.
         accumulate (bool, optional): Whether the elements in values are added to x. Default: False.
@@ -6421,7 +6549,7 @@ def index_put_(
 
 def index_put(
     x: Tensor,
-    indices: tuple[Tensor, ...],
+    indices: Sequence[Tensor],
     value: Tensor,
     accumulate: bool = False,
     name: str | None = None,
@@ -6731,7 +6859,7 @@ def unfold(
 
 
 # TODO(dev): We need avoid implementing it by this way.
-__METHODS: dict[str, Callable] = {
+__METHODS: dict[str, Callable[..., Any]] = {
     'fill_': fill_,
     'zero_': zero_,
     'fill_diagonal_': fill_diagonal_,
