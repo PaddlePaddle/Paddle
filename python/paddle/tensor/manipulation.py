@@ -3306,9 +3306,9 @@ def unique(
     return_index: Literal[True] = ...,
     return_inverse: Literal[True] = ...,
     return_counts: Literal[True] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     ...
 
@@ -3319,9 +3319,9 @@ def unique(
     return_index: Literal[False] = ...,
     return_inverse: Literal[True] = ...,
     return_counts: Literal[True] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
 
@@ -3332,9 +3332,9 @@ def unique(
     return_index: Literal[True] = ...,
     return_inverse: Literal[False] = ...,
     return_counts: Literal[True] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
 
@@ -3345,9 +3345,9 @@ def unique(
     return_index: Literal[True] = ...,
     return_inverse: Literal[True] = ...,
     return_counts: Literal[False] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
 
@@ -3358,9 +3358,9 @@ def unique(
     return_index: Literal[False] = ...,
     return_inverse: Literal[False] = ...,
     return_counts: Literal[True] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -3371,9 +3371,9 @@ def unique(
     return_index: Literal[False] = ...,
     return_inverse: Literal[True] = ...,
     return_counts: Literal[False] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -3384,9 +3384,9 @@ def unique(
     return_index: Literal[True] = ...,
     return_inverse: Literal[False] = ...,
     return_counts: Literal[False] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -3397,9 +3397,9 @@ def unique(
     return_index: Literal[False] = ...,
     return_inverse: Literal[False] = ...,
     return_counts: Literal[False] = ...,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> Tensor:
     ...
 
@@ -3410,9 +3410,9 @@ def unique(
     return_index: bool = False,
     return_inverse: bool = False,
     return_counts: bool = False,
-    axis: int | None = None,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
+    axis: int | None = ...,
+    dtype: DTypeLike = ...,
+    name: str | None = ...,
 ) -> Tensor | tuple[Tensor, ...]:
     ...
 
@@ -4912,16 +4912,16 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
 
 @overload
-def atleast_1d(inputs: Tensor, name: str | None = None) -> Tensor:
+def atleast_1d(inputs: Tensor, name: str | None = ...) -> Tensor:
     ...
 
 
 @overload
-def atleast_1d(*inputs: Tensor, name: str | None = None) -> list[Tensor]:
+def atleast_1d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
     ...
 
 
-def atleast_1d(*inputs, name):
+def atleast_1d(*inputs, name=None):
     """
     Convert inputs to tensors and return the view with at least 1-dimension. Scalar inputs are converted,
     one or high-dimensional inputs are preserved.
@@ -4991,16 +4991,16 @@ def atleast_1d(*inputs, name):
 
 
 @overload
-def atleast_2d(inputs: Tensor, name: str | None = None) -> Tensor:
+def atleast_2d(inputs: Tensor, name: str | None = ...) -> Tensor:
     ...
 
 
 @overload
-def atleast_2d(*inputs: Tensor, name: str | None = None) -> list[Tensor]:
+def atleast_2d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
     ...
 
 
-def atleast_2d(*inputs, name):
+def atleast_2d(*inputs, name=None):
     """
     Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
 
@@ -5071,16 +5071,16 @@ def atleast_2d(*inputs, name):
 
 
 @overload
-def atleast_3d(inputs: Tensor, name: str | None = None) -> Tensor:
+def atleast_3d(inputs: Tensor, name: str | None = ...) -> Tensor:
     ...
 
 
 @overload
-def atleast_3d(*inputs: Tensor, name: str | None = None) -> list[Tensor]:
+def atleast_3d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
     ...
 
 
-def atleast_3d(*inputs, name):
+def atleast_3d(*inputs, name=None):
     """
     Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
 
