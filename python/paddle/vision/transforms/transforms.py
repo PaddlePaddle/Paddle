@@ -18,7 +18,15 @@ import numbers
 import random
 import traceback
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Literal,
+    Protocol,
+    TypeVar,
+    overload,
+)
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -34,7 +42,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DataLayoutImage, Size2, Size3, Size4
 
-    _DataT = TypeVar("_DataT", Tensor, PILImage, npt.NDArray[Any])
     _TransformInputKeys: TypeAlias = Sequence[
         Literal["image", "coords", "boxes", "mask"]
     ]
@@ -47,6 +54,22 @@ if TYPE_CHECKING:
     _PaddingMode: TypeAlias = Literal[
         "constant", "edge", "reflect", "symmetric"
     ]
+    _InputT = TypeVar(
+        "_InputT", Tensor, PILImage, npt.NDArray[Any], contravariant=True
+    )
+    _RetT = TypeVar("_RetT", Tensor, PILImage, npt.NDArray[Any], covariant=True)
+
+    class _Transform(Protocol, Generic[_InputT, _RetT]):
+        @overload
+        def __call__(self, data: _InputT) -> _RetT:
+            ...
+
+        @overload
+        def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
+            ...
+
+        def __call__(self, data) -> Any:
+            ...
 
 
 __all__ = []
@@ -94,7 +117,7 @@ def _check_input(
     return value
 
 
-class Compose:
+class Compose(_Transform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """
     Composes several transforms together use for composing list of transforms
     together for a dataset transform.
@@ -122,20 +145,20 @@ class Compose:
             (811, 608) [1]
     """
 
-    transforms: Sequence[BaseTransform]
+    transforms: Sequence[_Transform[Any, Any]]
 
-    def __init__(self, transforms: Sequence[BaseTransform]) -> None:
+    def __init__(self, transforms: Sequence[_Transform[Any, Any]]) -> None:
         self.transforms = transforms
 
     @overload
-    def __call__(self, data: _DataT) -> _DataT:
+    def __call__(self, data: _InputT) -> _RetT:
         ...
 
     @overload
-    def __call__(self, data: tuple[_DataT, ...]) -> tuple[_DataT, ...]:
+    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
         ...
 
-    def __call__(self, data):
+    def __call__(self, data) -> Any:
         for f in self.transforms:
             try:
                 data = f(data)
@@ -148,7 +171,7 @@ class Compose:
                 raise e
         return data
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         format_string = self.__class__.__name__ + '('
         for t in self.transforms:
             format_string += '\n'
@@ -157,7 +180,7 @@ class Compose:
         return format_string
 
 
-class BaseTransform:
+class BaseTransform(_Transform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """
     Base class of all transforms used in computer vision.
 
@@ -284,14 +307,14 @@ class BaseTransform:
         pass
 
     @overload
-    def __call__(self, inputs: _DataT) -> _DataT:
+    def __call__(self, inputs: _InputT) -> _RetT:
         ...
 
     @overload
-    def __call__(self, inputs: tuple[_DataT, ...]) -> tuple[_DataT, ...]:
+    def __call__(self, inputs: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
         ...
 
-    def __call__(self, inputs):
+    def __call__(self, inputs) -> Any:
         """Apply transform on single input data"""
         if not isinstance(inputs, tuple):
             inputs = (inputs,)
@@ -330,7 +353,7 @@ class BaseTransform:
         raise NotImplementedError
 
 
-class ToTensor(BaseTransform):
+class ToTensor(BaseTransform[_InputT, Tensor], Generic[_InputT]):
     """Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
     Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
@@ -398,7 +421,7 @@ class ToTensor(BaseTransform):
         return F.to_tensor(img, self.data_format)
 
 
-class Resize(BaseTransform):
+class Resize(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Resize the input Image to the given size.
 
     Args:
@@ -469,7 +492,7 @@ class Resize(BaseTransform):
         return F.resize(img, self.size, self.interpolation)
 
 
-class RandomResizedCrop(BaseTransform):
+class RandomResizedCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Crop the input data to random size and aspect ratio.
     A crop of random size (default: of 0.08 to 1.0) of the original size and a random
     aspect ratio (default: of 3/4 to 1.33) of the original aspect ratio is made.
@@ -680,7 +703,7 @@ class RandomResizedCrop(BaseTransform):
         return F.resize(cropped_img, self.size, self.interpolation)
 
 
-class CenterCrop(BaseTransform):
+class CenterCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Crops the given the input data at the center.
 
     Args:
@@ -725,7 +748,9 @@ class CenterCrop(BaseTransform):
         return F.center_crop(img, self.size)
 
 
-class RandomHorizontalFlip(BaseTransform):
+class RandomHorizontalFlip(
+    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
+):
     """Horizontally flip the input data randomly with a given probability.
 
     Args:
@@ -788,7 +813,9 @@ class RandomHorizontalFlip(BaseTransform):
         )
 
 
-class RandomVerticalFlip(BaseTransform):
+class RandomVerticalFlip(
+    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
+):
     """Vertically flip the input data randomly with a given probability.
 
     Args:
@@ -851,7 +878,7 @@ class RandomVerticalFlip(BaseTransform):
         )
 
 
-class Normalize(BaseTransform):
+class Normalize(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Normalize the input data with mean and standard deviation.
     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels,
     this transform will normalize each channel of the input data.
@@ -925,7 +952,7 @@ class Normalize(BaseTransform):
         )
 
 
-class Transpose(BaseTransform):
+class Transpose(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Transpose input data to a target format.
     For example, most transforms use HWC mode image,
     while the Neural Network might use CHW mode input tensor.
@@ -981,7 +1008,9 @@ class Transpose(BaseTransform):
         return img.transpose(self.order)
 
 
-class BrightnessTransform(BaseTransform):
+class BrightnessTransform(
+    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
+):
     """Adjust brightness of the image.
 
     Args:
@@ -1032,7 +1061,7 @@ class BrightnessTransform(BaseTransform):
         return F.adjust_brightness(img, brightness_factor)
 
 
-class ContrastTransform(BaseTransform):
+class ContrastTransform(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Adjust contrast of the image.
 
     Args:
@@ -1081,7 +1110,9 @@ class ContrastTransform(BaseTransform):
         return F.adjust_contrast(img, contrast_factor)
 
 
-class SaturationTransform(BaseTransform):
+class SaturationTransform(
+    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
+):
     """Adjust saturation of the image.
 
     Args:
@@ -1127,7 +1158,7 @@ class SaturationTransform(BaseTransform):
         return F.adjust_saturation(img, saturation_factor)
 
 
-class HueTransform(BaseTransform):
+class HueTransform(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Adjust hue of the image.
 
     Args:
@@ -1176,7 +1207,7 @@ class HueTransform(BaseTransform):
         return F.adjust_hue(img, hue_factor)
 
 
-class ColorJitter(BaseTransform):
+class ColorJitter(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
@@ -1274,7 +1305,7 @@ class ColorJitter(BaseTransform):
         return transform(img)
 
 
-class RandomCrop(BaseTransform):
+class RandomCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Crops the given CV Image at a random location.
 
     Args:
@@ -1408,7 +1439,7 @@ class RandomCrop(BaseTransform):
         return F.crop(img, i, j, h, w)
 
 
-class Pad(BaseTransform):
+class Pad(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Pads the given CV Image on all sides with the given "pad" value.
 
     Args:
@@ -1520,7 +1551,7 @@ def _setup_angle(x, name, req_sizes=(2,)):
     return [float(d) for d in x]
 
 
-class RandomAffine(BaseTransform):
+class RandomAffine(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Random affine transformation of the image.
 
     Args:
@@ -1691,7 +1722,7 @@ class RandomAffine(BaseTransform):
         )
 
 
-class RandomRotation(BaseTransform):
+class RandomRotation(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Rotates the image by angle.
 
     Args:
@@ -1799,7 +1830,7 @@ class RandomRotation(BaseTransform):
         )
 
 
-class RandomPerspective(BaseTransform):
+class RandomPerspective(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Random perspective transformation with a given probability.
 
     Args:
@@ -1942,7 +1973,7 @@ class RandomPerspective(BaseTransform):
         return img
 
 
-class Grayscale(BaseTransform):
+class Grayscale(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Converts image to grayscale.
 
     Args:
@@ -1994,7 +2025,7 @@ class Grayscale(BaseTransform):
         return F.to_grayscale(img, self.num_output_channels)
 
 
-class RandomErasing(BaseTransform):
+class RandomErasing(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
     """Erase the pixels in a rectangle region selected randomly.
 
     Args:
