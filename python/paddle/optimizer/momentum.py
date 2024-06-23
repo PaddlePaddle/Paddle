@@ -108,7 +108,11 @@ class Momentum(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            >>> momentum = paddle.optimizer.Momentum(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     weight_decay=0.01
+            ... )
             >>> back = out.backward()
             >>> momentum.step()
             >>> momentum.clear_grad()
@@ -137,6 +141,7 @@ class Momentum(Optimizer):
             >>> momentum.clear_grad()
 
     """
+
     _velocity_acc_str = "velocity"
 
     def __init__(
