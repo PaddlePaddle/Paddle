@@ -129,8 +129,10 @@ class Adam(Optimizer):
             >>> inp = paddle.rand([10,10], dtype="float32")
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters())
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -147,11 +149,13 @@ class Adam(Optimizer):
             >>> loss = paddle.mean(out)
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters(),
-            ...         beta1=beta1,
-            ...         beta2=beta2,
-            ...         weight_decay=0.01)
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     weight_decay=0.01
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -174,12 +178,14 @@ class Adam(Optimizer):
             ...         'beta1': 0.8
             ...     }],
             ...     weight_decay=0.01,
-            ...     beta1=0.9)
+            ...     beta1=0.9
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
 
     """
+
     type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -192,9 +198,9 @@ class Adam(Optimizer):
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
         epsilon: float | Tensor = 1e-8,
-        parameters: Sequence[Tensor]
-        | Sequence[_AdamParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdamParameterConfig] | None
+        ) = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         lazy_mode: bool = False,
@@ -265,9 +271,11 @@ class Adam(Optimizer):
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.9
-            if isinstance(self._beta1, (Variable, Value))
-            else self._beta1,
+            fill_value=(
+                0.9
+                if isinstance(self._beta1, (Variable, Value))
+                else self._beta1
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -276,9 +284,11 @@ class Adam(Optimizer):
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.999
-            if isinstance(self._beta2, (Variable, Value))
-            else self._beta2,
+            fill_value=(
+                0.999
+                if isinstance(self._beta2, (Variable, Value))
+                else self._beta2
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
