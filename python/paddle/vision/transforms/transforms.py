@@ -54,10 +54,11 @@ if TYPE_CHECKING:
     _PaddingMode: TypeAlias = Literal[
         "constant", "edge", "reflect", "symmetric"
     ]
-    _InputT = TypeVar(
-        "_InputT", Tensor, PILImage, npt.NDArray[Any], contravariant=True
-    )
-    _RetT = TypeVar("_RetT", Tensor, PILImage, npt.NDArray[Any], covariant=True)
+
+_InputT = TypeVar(
+    "_InputT", "Tensor", "PILImage", npt.NDArray[Any], contravariant=True
+)
+_RetT = TypeVar("_RetT", "Tensor", "PILImage", npt.NDArray[Any], covariant=True)
 
 
 class _Transform(Protocol, Generic[_InputT, _RetT]):
@@ -118,7 +119,7 @@ def _check_input(
     return value
 
 
-class Compose(_Transform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class Compose(_Transform[_InputT, _RetT]):
     """
     Composes several transforms together use for composing list of transforms
     together for a dataset transform.
@@ -181,7 +182,7 @@ class Compose(_Transform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return format_string
 
 
-class BaseTransform(_Transform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class BaseTransform(_Transform[_InputT, _RetT]):
     """
     Base class of all transforms used in computer vision.
 
@@ -354,7 +355,7 @@ class BaseTransform(_Transform[_InputT, _RetT], Generic[_InputT, _RetT]):
         raise NotImplementedError
 
 
-class ToTensor(BaseTransform[_InputT, Tensor], Generic[_InputT]):
+class ToTensor(BaseTransform[_InputT, Tensor]):
     """Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
     Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
@@ -422,7 +423,7 @@ class ToTensor(BaseTransform[_InputT, Tensor], Generic[_InputT]):
         return F.to_tensor(img, self.data_format)
 
 
-class Resize(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class Resize(BaseTransform[_InputT, _RetT]):
     """Resize the input Image to the given size.
 
     Args:
@@ -493,7 +494,7 @@ class Resize(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.resize(img, self.size, self.interpolation)
 
 
-class RandomResizedCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
     """Crop the input data to random size and aspect ratio.
     A crop of random size (default: of 0.08 to 1.0) of the original size and a random
     aspect ratio (default: of 3/4 to 1.33) of the original aspect ratio is made.
@@ -704,7 +705,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.resize(cropped_img, self.size, self.interpolation)
 
 
-class CenterCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class CenterCrop(BaseTransform[_InputT, _RetT]):
     """Crops the given the input data at the center.
 
     Args:
@@ -749,9 +750,7 @@ class CenterCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.center_crop(img, self.size)
 
 
-class RandomHorizontalFlip(
-    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
-):
+class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
     """Horizontally flip the input data randomly with a given probability.
 
     Args:
@@ -814,9 +813,7 @@ class RandomHorizontalFlip(
         )
 
 
-class RandomVerticalFlip(
-    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
-):
+class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
     """Vertically flip the input data randomly with a given probability.
 
     Args:
@@ -879,7 +876,7 @@ class RandomVerticalFlip(
         )
 
 
-class Normalize(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class Normalize(BaseTransform[_InputT, _RetT]):
     """Normalize the input data with mean and standard deviation.
     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels,
     this transform will normalize each channel of the input data.
@@ -953,7 +950,7 @@ class Normalize(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         )
 
 
-class Transpose(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class Transpose(BaseTransform[_InputT, _RetT]):
     """Transpose input data to a target format.
     For example, most transforms use HWC mode image,
     while the Neural Network might use CHW mode input tensor.
@@ -1009,9 +1006,7 @@ class Transpose(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return img.transpose(self.order)
 
 
-class BrightnessTransform(
-    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
-):
+class BrightnessTransform(BaseTransform[_InputT, _RetT]):
     """Adjust brightness of the image.
 
     Args:
@@ -1062,7 +1057,7 @@ class BrightnessTransform(
         return F.adjust_brightness(img, brightness_factor)
 
 
-class ContrastTransform(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class ContrastTransform(BaseTransform[_InputT, _RetT]):
     """Adjust contrast of the image.
 
     Args:
@@ -1111,9 +1106,7 @@ class ContrastTransform(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.adjust_contrast(img, contrast_factor)
 
 
-class SaturationTransform(
-    BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]
-):
+class SaturationTransform(BaseTransform[_InputT, _RetT]):
     """Adjust saturation of the image.
 
     Args:
@@ -1159,7 +1152,7 @@ class SaturationTransform(
         return F.adjust_saturation(img, saturation_factor)
 
 
-class HueTransform(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class HueTransform(BaseTransform[_InputT, _RetT]):
     """Adjust hue of the image.
 
     Args:
@@ -1208,7 +1201,7 @@ class HueTransform(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.adjust_hue(img, hue_factor)
 
 
-class ColorJitter(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class ColorJitter(BaseTransform[_InputT, _RetT]):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
@@ -1306,7 +1299,7 @@ class ColorJitter(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return transform(img)
 
 
-class RandomCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class RandomCrop(BaseTransform[_InputT, _RetT]):
     """Crops the given CV Image at a random location.
 
     Args:
@@ -1440,7 +1433,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.crop(img, i, j, h, w)
 
 
-class Pad(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class Pad(BaseTransform[_InputT, _RetT]):
     """Pads the given CV Image on all sides with the given "pad" value.
 
     Args:
@@ -1552,7 +1545,7 @@ def _setup_angle(x, name, req_sizes=(2,)):
     return [float(d) for d in x]
 
 
-class RandomAffine(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class RandomAffine(BaseTransform[_InputT, _RetT]):
     """Random affine transformation of the image.
 
     Args:
@@ -1723,7 +1716,7 @@ class RandomAffine(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         )
 
 
-class RandomRotation(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class RandomRotation(BaseTransform[_InputT, _RetT]):
     """Rotates the image by angle.
 
     Args:
@@ -1831,7 +1824,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         )
 
 
-class RandomPerspective(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class RandomPerspective(BaseTransform[_InputT, _RetT]):
     """Random perspective transformation with a given probability.
 
     Args:
@@ -1974,7 +1967,7 @@ class RandomPerspective(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return img
 
 
-class Grayscale(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class Grayscale(BaseTransform[_InputT, _RetT]):
     """Converts image to grayscale.
 
     Args:
@@ -2026,7 +2019,7 @@ class Grayscale(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
         return F.to_grayscale(img, self.num_output_channels)
 
 
-class RandomErasing(BaseTransform[_InputT, _RetT], Generic[_InputT, _RetT]):
+class RandomErasing(BaseTransform[_InputT, _RetT]):
     """Erase the pixels in a rectangle region selected randomly.
 
     Args:
