@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "glog/logging.h"
 #include "paddle/phi/kernels/clip_by_norm_kernel.h"
 
 namespace phi {
