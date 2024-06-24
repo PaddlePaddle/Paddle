@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# type: ignore
+# Avoid mypy internal error
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +24,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
-from typing_extensions import NotRequired, TypedDict
 
 import paddle
 import paddle.autograd as imperative_base
@@ -50,18 +53,18 @@ from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
-
-class _ParameterConfig(TypedDict):
-    params: Sequence[Tensor]
-    weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-    learning_rate: NotRequired[float | Tensor | LRScheduler | None]
-
-
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
 
     from ..base.framework import Operator, Program
+
+    class _ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
 
 __all__ = []
@@ -162,8 +165,10 @@ class Optimizer:
             >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters())
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -182,7 +187,7 @@ class Optimizer:
             ...     parameters=[{
             ...         'params': linear_1.parameters()
             ...     }, {
-            ...         'params': linear_2.parameters(),  # type: ignore
+            ...         'params': linear_2.parameters(),
             ...         'weight_decay': 0.001,
             ...         'learning_rate': 0.1
             ...     }],
