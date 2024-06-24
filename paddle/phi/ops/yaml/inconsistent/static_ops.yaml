@@ -409,6 +409,17 @@
     func : hardswish
   backward : hardswish_grad
 
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+    param: [x, num_hash, mod_by]
+  kernel:
+    func: hash
+    param: [x, num_hash, mod_by]
+    data_type: x
+
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
