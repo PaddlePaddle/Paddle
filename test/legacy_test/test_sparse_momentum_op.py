@@ -17,40 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle
-
-
-def api_wrapper(
-    param,
-    grad,
-    velocity,
-    index,
-    learning_rate,
-    master_param=None,
-    mu=0.0,
-    axis=0,
-    use_nesterov=False,
-    regularization_method="",
-    regularization_coeff=0.0,
-    multi_precision=False,
-    rescale_grad=1.0,
-):
-    return paddle._C_ops.sparse_momentum(
-        param,
-        grad,
-        velocity,
-        index,
-        learning_rate,
-        master_param,
-        mu,
-        axis,
-        use_nesterov,
-        regularization_method,
-        regularization_coeff,
-        multi_precision,
-        rescale_grad,
-    )
-
 
 def calculate_sparse_momentum_by_numpy(
     param,
@@ -97,8 +63,6 @@ def calculate_sparse_momentum_by_numpy(
 class TestSparseMomentumOp(OpTest):
     def setUp(self):
         self.op_type = "sparse_momentum"
-        self.python_api = api_wrapper
-        self.python_out_sig = ['ParamOut']
         self.dtype = np.float32
         self.index_dtype = np.int32
         self.axis = 0
