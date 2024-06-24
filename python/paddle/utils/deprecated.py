@@ -93,7 +93,7 @@ def deprecated(update_to="", since="", reason="", level=0):
         if level == 0:
             return func
 
-        def parse_version(version: str) -> List[int]:
+        def parse_version(version: str):
             # Split the version string and convert numeric parts to integers
             return [int(part) for part in version.split(".") if part.isdigit()]
 
