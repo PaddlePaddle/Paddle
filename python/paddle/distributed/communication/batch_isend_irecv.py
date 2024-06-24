@@ -85,7 +85,8 @@ def _coalescing_manager(group, tasks=None):
     finally:
         if tasks is None or len(tasks) == 0:
             pg._end_coalescing()
-        pg._end_coalescing(tasks)
+        else:
+            pg._end_coalescing(tasks)
 
 
 def _check_p2p_op_list(p2p_op_list):
