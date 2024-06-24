@@ -18,6 +18,8 @@ from collections import defaultdict
 from functools import reduce
 from typing import TYPE_CHECKING, NoReturn, Sequence, TypedDict
 
+from typing_extensions import NotRequired
+
 import paddle
 
 from ..base import framework
@@ -33,7 +35,7 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-class _LbfgsState:
+class _LbfgsState(TypedDict):
     func_evals: int
     n_iter: int
     d: Tensor
@@ -44,7 +46,7 @@ class _LbfgsState:
     H_diag: Tensor
     prev_flat_grad: Tensor
     prev_loss: float
-    al: list[Tensor]
+    al: NotRequired[list[Tensor]]
 
 
 class _LbfgsStateDict(TypedDict):
@@ -397,10 +399,10 @@ class LBFGS(Optimizer):
 
             >>> paddle.disable_static()
             >>> np.random.seed(0)
-            >>> np_w = np.random.rand(1).astype(np.float32)
-            >>> np_x = np.random.rand(1).astype(np.float32)
+            >>> np_w = np.random.rand(1).astype(np.float32)  # type: ignore
+            >>> np_x = np.random.rand(1).astype(np.float32)  # type: ignore
 
-            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]
+            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]  # type: ignore
             >>> # y = 2x
             >>> targets = [2 * x for x in inputs]
 
@@ -425,9 +427,9 @@ class LBFGS(Optimizer):
             ...         return loss
             ...     opt.step(closure)
             ...
-            >>> for input, target in zip(inputs, targets):
-            ...     input = paddle.to_tensor(input)
-            ...     target = paddle.to_tensor(target)
+            >>> for input_np, target_np in zip(inputs, targets):
+            ...     input = paddle.to_tensor(input_np)
+            ...     target = paddle.to_tensor(target_np)
             ...     train_step(input, target)
     """
 
@@ -524,7 +526,6 @@ class LBFGS(Optimizer):
                 ...     loss = train_step(inputs, targets)
                 ...     n_iter = opt.state_dict()["state"]["func_evals"]
                 ...     print("n_iter:", n_iter)
-                ...
         """
 
         packed_state = {}
