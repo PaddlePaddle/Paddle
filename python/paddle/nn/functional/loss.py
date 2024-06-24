@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 # TODO: define loss functions of neural network
 import paddle
@@ -31,12 +32,23 @@ from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
+if TYPE_CHECKING:
+    from typing import TypeAlias
+
+    from paddle import Tensor
+
+    _ReduceMode: TypeAlias = Literal['mean', 'sum', 'none']
 __all__ = []
 
 kIgnoreIndex = -100
 
 
-def dice_loss(input, label, epsilon=0.00001, name=None):
+def dice_loss(
+    input: Tensor,
+    label: Tensor,
+    epsilon: float = 1e-05,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Dice loss for comparing the similarity between the input predictions and the label.
@@ -60,7 +72,7 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
         epsilon (float): The epsilon will be added to the numerator and denominator.
                          If both input and label are empty, it makes sure dice is 1.
                          Default: 0.00001
-        name(str, optional): The default value is None.
+        name(str|None, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
 
@@ -110,7 +122,12 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     return paddle.mean(dice_score)
 
 
-def log_loss(input, label, epsilon=1e-4, name=None):
+def log_loss(
+    input: Tensor,
+    label: Tensor,
+    epsilon: float = 0.0001,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     **Negative Log Loss Layer**
@@ -124,14 +141,14 @@ def log_loss(input, label, epsilon=1e-4, name=None):
               - (1 - label) * \log{(1 - input + \epsilon)}
 
     Args:
-        input (Tensor|list):  A 2-D tensor with shape [N x 1], where N is the
+        input (Tensor):  A 2-D tensor with shape [N x 1], where N is the
                                 batch size. This input is a probability computed
                                 by the previous operator. Data type float32.
-        label (Tensor|list):  The ground truth which is a 2-D tensor with
+        label (Tensor):  The ground truth which is a 2-D tensor with
                                 shape [N x 1], where N is the batch size.
                                 Data type float32.
         epsilon (float, optional): A small number for numerical stability. Default 1e-4.
-        name(str|None): For detailed information, please refer to
+        name(str|None, optional): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
@@ -166,14 +183,14 @@ def log_loss(input, label, epsilon=1e-4, name=None):
 
 
 def base_softmax_with_cross_entropy(
-    logits,
-    label,
-    soft_label=False,
-    ignore_index=-100,
-    numeric_stable_mode=True,
-    return_softmax=False,
-    axis=-1,
-):
+    logits: Tensor,
+    label: Tensor,
+    soft_label: bool = False,
+    ignore_index: int = -100,
+    numeric_stable_mode: bool = True,
+    return_softmax: bool = False,
+    axis: int = -1,
+) -> Tensor:
     r"""
 
     This operator implements the cross entropy loss function with softmax. This function
@@ -310,7 +327,9 @@ def base_softmax_with_cross_entropy(
         return loss
 
 
-def npair_loss(anchor, positive, labels, l2_reg=0.002):
+def npair_loss(
+    anchor: Tensor, positive: Tensor, labels: Tensor, l2_reg: float = 0.002
+) -> Tensor:
     """
 
     Npair loss requires paired data. Npair loss has two parts: the first part is L2
@@ -326,7 +345,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
       positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims],
                         the data type is float32 or float64.
       labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
-      l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
+      l2_reg(float, optional): L2 regularization term on embedding vector, default: 0.002.
 
 
     Returns:
@@ -392,7 +411,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     return l2loss + celoss
 
 
-def square_error_cost(input, label):
+def square_error_cost(input: Tensor, label: Tensor) -> Tensor:
     r"""
 
     This op accepts input predictions and target label and returns the
@@ -456,13 +475,13 @@ def square_error_cost(input, label):
 
 
 def edit_distance(
-    input,
-    label,
-    normalized=True,
+    input: Tensor,
+    label: Tensor,
+    normalized: bool = True,
     ignored_tokens=None,
-    input_length=None,
-    label_length=None,
-):
+    input_length: Tensor | None = None,
+    label_length: Tensor | None = None,
+) -> tuple[Tensor, Tensor]:
     """
     This op computes the edit distances, also called Levenshtein distance, between a batch of
     hypothesis strings and their references. It measures how dissimilar two strings are by counting
@@ -584,8 +603,12 @@ def edit_distance(
 
 
 def binary_cross_entropy(
-    input, label, weight=None, reduction='mean', name=None
-):
+    input: Tensor,
+    label: Tensor,
+    weight: Tensor | None = None,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     """
     Measure the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
@@ -631,7 +654,7 @@ def binary_cross_entropy(
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
 
@@ -715,8 +738,13 @@ def binary_cross_entropy(
 
 
 def binary_cross_entropy_with_logits(
-    logit, label, weight=None, reduction='mean', pos_weight=None, name=None
-):
+    logit: Tensor,
+    label: Tensor,
+    weight: Tensor | None = None,
+    reduction: _ReduceMode = 'mean',
+    pos_weight: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Combine the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
 
@@ -884,16 +912,16 @@ def binary_cross_entropy_with_logits(
 
 
 def hsigmoid_loss(
-    input,
-    label,
-    num_classes,
-    weight,
-    bias=None,
-    path_table=None,
-    path_code=None,
-    is_sparse=False,
-    name=None,
-):
+    input: Tensor,
+    label: Tensor,
+    num_classes: int,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    path_table: Tensor | None = None,
+    path_code: Tensor | None = None,
+    is_sparse: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
@@ -941,7 +969,7 @@ def hsigmoid_loss(
             `path_code` are None, the default tree will be used. Default is None.
         is_sparse (bool, optional): Whether use sparse updating instead of dense updating. If `is_sparse` is True,
             the gradient of `weight` and `input` will be sparse. Default is False.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1060,7 +1088,13 @@ def hsigmoid_loss(
         return out
 
 
-def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
+def smooth_l1_loss(
+    input: Tensor,
+    label: Tensor,
+    reduction: _ReduceMode = 'mean',
+    delta: float = 1.0,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Calculate smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
@@ -1097,7 +1131,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, The tensor variable storing the smooth_l1_loss of input and label.
@@ -1160,8 +1194,13 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
 
 def margin_ranking_loss(
-    input, other, label, margin=0.0, reduction='mean', name=None
-):
+    input: Tensor,
+    other: Tensor,
+    label: Tensor,
+    margin: float = 0.0,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Calculate the margin rank loss between the input, other and label, use the math function as follows.
@@ -1187,7 +1226,7 @@ def margin_ranking_loss(
         label(Tensor): the label value corresponding to input, it's data type should be float32, float64.
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candidates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
@@ -1275,7 +1314,12 @@ def margin_ranking_loss(
             return result_out
 
 
-def l1_loss(input, label, reduction='mean', name=None):
+def l1_loss(
+    input: Tensor,
+    label: Tensor,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
@@ -1305,7 +1349,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             If `reduction` is ``'mean'``, the reduced mean loss is returned.
             If `reduction` is ``'sum'``, the reduced sum loss is returned.
             Default is ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
@@ -1377,8 +1421,13 @@ def l1_loss(input, label, reduction='mean', name=None):
 
 
 def nll_loss(
-    input, label, weight=None, ignore_index=-100, reduction='mean', name=None
-):
+    input: Tensor,
+    label: Tensor,
+    weight: Tensor | None = None,
+    ignore_index: int = -100,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     """
     This api returns negative log likelihood.
     See more detail in :ref:`NLLLoss <api_paddle_nn_NLLLoss>` .
@@ -1402,7 +1451,7 @@ def nll_loss(
              if `reduction` is ``'sum'``, the reduced sum loss is returned;
              if `reduction` is ``'none'``, no reduction will be applied.
              Default is ``'mean'``.
-         name (str, optional): Name for the operation (optional, default is None).
+         name (str|None, optional): Name for the operation (optional, default is None).
              For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1500,14 +1549,14 @@ def nll_loss(
 
 
 def poisson_nll_loss(
-    input,
-    label,
-    log_input=True,
-    full=False,
-    epsilon=1e-8,
-    reduction="mean",
-    name=None,
-):
+    input: Tensor,
+    label: Tensor,
+    log_input: bool = True,
+    full: bool = False,
+    epsilon: float = 1e-08,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""Poisson negative log likelihood loss.
     See more detail in :ref:`PoissonNLLLoss <api_paddle_nn_PoissonNLLLoss>` .
 
@@ -1539,7 +1588,7 @@ def poisson_nll_loss(
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
-         name (str, optional):
+         name (str|None, optional):
             Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -1617,7 +1666,13 @@ def poisson_nll_loss(
     return loss_out
 
 
-def kl_div(input, label, reduction='mean', log_target=False, name=None):
+def kl_div(
+    input: Tensor,
+    label: Tensor,
+    reduction: _ReduceMode = 'mean',
+    log_target: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
@@ -1757,7 +1812,12 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
         return loss
 
 
-def mse_loss(input, label, reduction='mean', name=None):
+def mse_loss(
+    input: Tensor,
+    label: Tensor,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Accept input predications and label and returns the mean square error.
 
@@ -1833,14 +1893,14 @@ def mse_loss(input, label, reduction='mean', name=None):
 
 
 def ctc_loss(
-    log_probs,
-    labels,
-    input_lengths,
-    label_lengths,
-    blank=0,
-    reduction='mean',
-    norm_by_times=False,
-):
+    log_probs: Tensor,
+    labels: Tensor,
+    input_lengths: Tensor,
+    label_lengths: Tensor,
+    blank: int = 0,
+    reduction: _ReduceMode = 'mean',
+    norm_by_times: bool = False,
+) -> Tensor:
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1981,15 +2041,15 @@ def ctc_loss(
 
 
 def rnnt_loss(
-    input,
-    label,
-    input_lengths,
-    label_lengths,
-    blank=0,
-    fastemit_lambda=0.001,
-    reduction='mean',
-    name=None,
-):
+    input: Tensor,
+    label: Tensor,
+    input_lengths: Tensor,
+    label_lengths: Tensor,
+    blank: int = 0,
+    fastemit_lambda: float = 0.001,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     """
     An operator integrating the open source Warp-Transducer library (https://github.com/b-flo/warp-transducer.git)
     to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
@@ -2002,7 +2062,7 @@ def rnnt_loss(
         blank (int, optional): The blank label index of RNN-T loss, which is in the half-opened interval [0, B). The data type must be int32. Default is 0.
         fastemit_lambda (float, default 0.001): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
         reduction (string, optional): Indicate how to average the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output will be sum of loss and be divided by the batch_size; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``logprobs``.
@@ -2107,6 +2167,51 @@ def rnnt_loss(
     return loss_out
 
 
+@overload
+def margin_cross_entropy(
+    logits: Tensor,
+    label: Tensor,
+    margin1: float = ...,
+    margin2: float = ...,
+    margin3: float = ...,
+    scale: float = ...,
+    group=...,
+    return_softmax: Literal[True] = ...,
+    reduction: _ReduceMode = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def margin_cross_entropy(
+    logits: Tensor,
+    label: Tensor,
+    margin1: float = ...,
+    margin2: float = ...,
+    margin3: float = ...,
+    scale: float = ...,
+    group=...,
+    return_softmax: Literal[False] = ...,
+    reduction: _ReduceMode = ...,
+) -> Tensor:
+    ...
+
+
+@overload
+def margin_cross_entropy(
+    logits: Tensor,
+    label: Tensor,
+    margin1: float = ...,
+    margin2: float = ...,
+    margin3: float = ...,
+    scale: float = ...,
+    group=...,
+    return_softmax: bool = ...,
+    reduction: _ReduceMode = ...,
+) -> Tensor | tuple[Tensor, Tensor]:
+    ...
+
+
 def margin_cross_entropy(
     logits,
     label,
@@ -2145,7 +2250,7 @@ def margin_cross_entropy(
             or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
             Default is ``None``.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
-        reduction (str, optional): The candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+        reduction (str|None, optional): The candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'mean'``, return the average of loss;
                     If :attr:`reduction` is ``'sum'``, return the sum of loss;
                     If :attr:`reduction` is ``'none'``, no reduction will be applied.
@@ -2405,6 +2510,45 @@ def margin_cross_entropy(
             return loss, softmax
 
 
+@overload
+def softmax_with_cross_entropy(
+    logits: Tensor,
+    label: Tensor,
+    soft_label: bool = ...,
+    ignore_index: int = ...,
+    numeric_stable_mode: bool = ...,
+    return_softmax: Literal[True] = ...,
+    axis: int = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def softmax_with_cross_entropy(
+    logits: Tensor,
+    label: Tensor,
+    soft_label: bool = ...,
+    ignore_index: int = ...,
+    numeric_stable_mode: bool = ...,
+    return_softmax: Literal[False] = ...,
+    axis: int = ...,
+) -> Tensor:
+    ...
+
+
+@overload
+def softmax_with_cross_entropy(
+    logits: Tensor,
+    label: Tensor,
+    soft_label: bool = ...,
+    ignore_index: int = ...,
+    numeric_stable_mode: bool = ...,
+    return_softmax: bool = ...,
+    axis: int = ...,
+) -> Tensor | tuple[Tensor, Tensor]:
+    ...
+
+
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.functional.cross_entropy",
@@ -2519,17 +2663,17 @@ def softmax_with_cross_entropy(
 
 
 def cross_entropy(
-    input,
-    label,
-    weight=None,
+    input: Tensor,
+    label: Tensor,
+    weight: Tensor | None = None,
     ignore_index=-100,
-    reduction='mean',
-    soft_label=False,
-    axis=-1,
-    use_softmax=True,
-    label_smoothing=0.0,
-    name=None,
-):
+    reduction: _ReduceMode = 'mean',
+    soft_label: bool = False,
+    axis: int = -1,
+    use_softmax: bool = True,
+    label_smoothing: float = 0.0,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     By default, the cross entropy loss function is implemented using softmax. This function
@@ -2688,7 +2832,7 @@ def cross_entropy(
             Default is ``-1`` .
         use_softmax (bool, optional): Indicate whether compute softmax before cross_entropy.
             Default is ``True``.
-        name (str, optional): The name of the operator. Default is ``None`` .
+        name (str|None, optional): The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -3106,14 +3250,14 @@ def cross_entropy(
 
 
 def sigmoid_focal_loss(
-    logit,
-    label,
-    normalizer=None,
-    alpha=0.25,
-    gamma=2.0,
-    reduction='sum',
-    name=None,
-):
+    logit: Tensor,
+    label: Tensor,
+    normalizer: Tensor | None = None,
+    alpha: float = 0.25,
+    gamma: float = 2.0,
+    reduction: _ReduceMode = 'sum',
+    name: str | None = None,
+) -> Tensor:
     r"""
     `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is proposed to address the
     foreground-background class imbalance for classification tasks. It down-weights
@@ -3162,7 +3306,7 @@ def sigmoid_focal_loss(
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'sum'``.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3284,8 +3428,12 @@ def sigmoid_focal_loss(
 
 
 def multi_label_soft_margin_loss(
-    input, label, weight=None, reduction="mean", name=None
-):
+    input: Tensor,
+    label: Tensor,
+    weight: Tensor | None = None,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Calculate a multi-class multi-classification
     hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
@@ -3313,7 +3461,7 @@ def multi_label_soft_margin_loss(
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
                 Default: ``'mean'``
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -3394,7 +3542,13 @@ def multi_label_soft_margin_loss(
         return paddle.sum(loss)
 
 
-def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
+def hinge_embedding_loss(
+    input: Tensor,
+    label: Tensor,
+    margin: float = 1.0,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
@@ -3433,7 +3587,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -3498,8 +3652,13 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 
 
 def cosine_embedding_loss(
-    input1, input2, label, margin=0, reduction='mean', name=None
-):
+    input1: Tensor,
+    input2: Tensor,
+    label: Tensor,
+    margin: float = 0,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Compute the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 
@@ -3613,15 +3772,15 @@ def cosine_embedding_loss(
 
 
 def triplet_margin_with_distance_loss(
-    input,
-    positive,
-    negative,
+    input: Tensor,
+    positive: Tensor,
+    negative: Tensor,
     distance_function=None,
-    margin=1.0,
-    swap=False,
-    reduction='mean',
-    name=None,
-):
+    margin: float = 1.0,
+    swap: bool = False,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
@@ -3656,7 +3815,7 @@ def triplet_margin_with_distance_loss(
         negative (Tensor):Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
 
-        distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+        distance_function (callable|None, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
 
         margin (float, optional): A nonnegative margin representing the minimum difference
             between the positive and negative distances required for the loss to be 0. Default value is :math:`1`.
@@ -3670,7 +3829,7 @@ def triplet_margin_with_distance_loss(
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3769,16 +3928,16 @@ def triplet_margin_with_distance_loss(
 
 
 def triplet_margin_loss(
-    input,
-    positive,
-    negative,
-    margin=1.0,
-    p=2,
-    epsilon=1e-6,
-    swap=False,
-    reduction='mean',
-    name=None,
-):
+    input: Tensor,
+    positive: Tensor,
+    negative: Tensor,
+    margin: float = 1.0,
+    p: float = 2.0,
+    epsilon: float = 1e-06,
+    swap: bool = False,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
         Measures the triplet loss given an input
         tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
@@ -3808,26 +3967,26 @@ def triplet_margin_loss(
         negative (Tensor): Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
 
-        margin (float, Optional): Default: :math:`1`.
+        margin (float, optional): Default: :math:`1`.
 
-        p (int, Optional): The norm degree for pairwise distance. Default: :math:`2`.
+        p (float, optional): The norm degree for pairwise distance. Default: :math:`2.0`.
 
-        epsilon (float, Optional): Add small value to avoid division by zero,
+        epsilon (float, optional): Add small value to avoid division by zero,
             default value is 1e-6.
 
-        swap (bool,Optional): The distance swap change the negative distance to the distance between
+        swap (bool, optional): The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
             Default: ``False``.
 
 
-        reduction (str, Optional):Indicate how to average the loss by batch_size.
+        reduction (str, optional):Indicate how to average the loss by batch_size.
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
 
-        name (str, Optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3899,14 +4058,14 @@ def triplet_margin_loss(
 
 
 def multi_margin_loss(
-    input,
-    label,
+    input: Tensor,
+    label: Tensor,
     p: int = 1,
     margin: float = 1.0,
-    weight=None,
-    reduction='mean',
-    name=None,
-):
+    weight: Tensor | None = None,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""
         Measures a multi-class classification hinge loss between input :math:`input` and label :math:`label`:
 
@@ -3932,23 +4091,23 @@ def multi_margin_loss(
 
         label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,)
 
-        p (int, Optional): The power num. Default: :math:`1`.
+        p (int, optional): The power num. Default: :math:`1`.
 
-        margin (float, Optional): Default: :math:`1`.
+        margin (float, optional): Default: :math:`1`.
 
-        weight (Tensor,optional): a manual rescaling weight given to each class.
+        weight (Tensor|None, optional): a manual rescaling weight given to each class.
                 If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
                 Default is ``'None'`` .
 
 
-        reduction (str, Optional):Indicate how to calculate the loss by batch_size.
+        reduction (str, optional):Indicate how to calculate the loss by batch_size.
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
 
-        name (str, Optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4025,7 +4184,12 @@ def multi_margin_loss(
         return loss
 
 
-def soft_margin_loss(input, label, reduction='mean', name=None):
+def soft_margin_loss(
+    input: Tensor,
+    label: Tensor,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     """
 
     The API measures the soft margin loss between input predictions ``input``
@@ -4051,7 +4215,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
 
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4118,14 +4282,14 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
 
 def gaussian_nll_loss(
-    input,
-    label,
-    variance,
-    full=False,
-    epsilon=1e-6,
-    reduction='mean',
-    name=None,
-):
+    input: Tensor,
+    label: Tensor,
+    variance: Tensor,
+    full: bool = False,
+    epsilon: float = 1e-06,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
     r"""Gaussian negative log likelihood loss.
 
     Gaussian negative log likelihood loss among ``input``, ``variance`` and
@@ -4165,7 +4329,7 @@ def gaussian_nll_loss(
             will be applied, ``'mean'``: the output is the average of all batch
             member losses, ``'sum'``: the output is the sum of all batch member
             losses. Default: ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
 
@@ -4287,8 +4451,14 @@ def gaussian_nll_loss(
 
 
 def adaptive_log_softmax_with_loss(
-    input, label, head_weight, tail_weights, cutoffs, head_bias=None, name=None
-):
+    input: Tensor,
+    label: Tensor,
+    head_weight: Tensor,
+    tail_weights: Sequence[Tensor],
+    cutoffs: Sequence[int | Tensor],
+    head_bias: Tensor | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
     r"""Compute adaptive logsoftmax result and negative log likelihood between ``input`` and ``label``.
     Parameter ``head``, ``tail_weights``, ``cutoffs`` are inner members of AdaptiveLogSoftmaxWithLoss
     Please refer to :ref:`api_paddle_nn_AdaptiveLogSoftmaxWithLoss`.
@@ -4297,10 +4467,10 @@ def adaptive_log_softmax_with_loss(
         input (Tensor): Input tensor, the data type should be float32 or float64.
         label (Tensor): Label tensor, the data type should be float32 or float64.
         head_weight (Tensor): weight tensor for linear computation, the data type should be float32 or float64, the shape should be ``[input.shape[1], shortlist_size + n_clusters]``, where ``shortlist_size`` is the first element in the cutoffs list, and ``n_clusters`` is the length of the cutoffs list minus 1.
-        tail_weights (list[Tensor]): weight tensor list for linear computation, the data type should be float32 or float64. The number of elements in the tail_weights depends on the value of the n_clusters, and each element contains the weights of two linear layers, their dimensions are ``[input.shape[1], hsz]`` and ``[hsz, osz]``, where ``hsz`` is the number of input features in_features divided by div_value to the power ``(i + 1)``, where i is the cyclic variable, from ``0`` to ``n_clusters - 1``, and ``osz`` is the ``(i + 1)`` The difference between the cutoff and the ith cutoff.
+        tail_weights (list[Tensor]|tuple[Tensor]): weight tensor list or tuple for linear computation, the data type should be float32 or float64. The number of elements in the tail_weights depends on the value of the n_clusters, and each element contains the weights of two linear layers, their dimensions are ``[input.shape[1], hsz]`` and ``[hsz, osz]``, where ``hsz`` is the number of input features in_features divided by div_value to the power ``(i + 1)``, where i is the cyclic variable, from ``0`` to ``n_clusters - 1``, and ``osz`` is the ``(i + 1)`` The difference between the cutoff and the ith cutoff.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
-        head_bias (Tensor, optional): bias tensor for linear computation, the data type should be float32 or float64. Default: ``None``.
-        name (str, optional): Name for the operation (optional, default is ``None``). For more information, please refer to :ref:`api_guide_Name`.
+        head_bias (Tensor|None, optional): bias tensor for linear computation, the data type should be float32 or float64. Default: ``None``.
+        name (str|None, optional): Name for the operation (optional, default is ``None``). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         - output (Tensor). The tensor sotring adaptive logsoftmax result, the shape of output is ``[N]``

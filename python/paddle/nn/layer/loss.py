@@ -27,12 +27,11 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeAlias
-
     from paddle import Tensor
     from paddle.base.param_attr import ParamAttr
 
-    ReduceMode: TypeAlias = Literal['mean', 'sum', 'none']
+    from ..functional.loss import _ReduceMode
+
 
 __all__ = []
 
@@ -119,7 +118,7 @@ class BCEWithLogitsLoss(Layer):
     def __init__(
         self,
         weight: Tensor | None = None,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         pos_weight: Tensor | None = None,
         name: str | None = None,
     ) -> None:
@@ -408,7 +407,7 @@ class CrossEntropyLoss(Layer):
         self,
         weight: Tensor | None = None,
         ignore_index: int = -100,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         soft_label: bool = False,
         axis: int = -1,
         use_softmax: bool = True,
@@ -636,7 +635,7 @@ class MSELoss(Layer):
 
     """
 
-    def __init__(self, reduction: ReduceMode | str = 'mean'):
+    def __init__(self, reduction: _ReduceMode = 'mean'):
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -737,7 +736,7 @@ class L1Loss(Layer):
     """
 
     def __init__(
-        self, reduction: ReduceMode | str = 'mean', name: str | None = None
+        self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -825,7 +824,7 @@ class BCELoss(Layer):
     def __init__(
         self,
         weight: Tensor | None = None,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ):
         if reduction not in ['sum', 'mean', 'none']:
@@ -938,7 +937,7 @@ class NLLLoss(Layer):
         self,
         weight: Tensor | None = None,
         ignore_index: int = -100,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         if reduction not in ['sum', 'mean', 'none']:
@@ -1027,7 +1026,7 @@ class PoissonNLLLoss(Layer):
         log_input: bool = True,
         full: bool = False,
         epsilon: float = 1e-08,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         if epsilon <= 0:
@@ -1152,7 +1151,7 @@ class KLDivLoss(Layer):
     """
 
     def __init__(
-        self, reduction: ReduceMode | str = 'mean', log_target: bool = False
+        self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
         super().__init__()
         self.reduction = reduction
@@ -1222,7 +1221,7 @@ class MarginRankingLoss(Layer):
     def __init__(
         self,
         margin: float = 0.0,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         if reduction not in ['sum', 'mean', 'none']:
@@ -1305,9 +1304,7 @@ class CTCLoss(Layer):
             1.13760614)
     """
 
-    def __init__(
-        self, blank: int = 0, reduction: ReduceMode | str = 'mean'
-    ) -> None:
+    def __init__(self, blank: int = 0, reduction: _ReduceMode = 'mean') -> None:
         super().__init__()
         self.blank = blank
         self.reduction = reduction
@@ -1386,7 +1383,7 @@ class RNNTLoss(Layer):
         self,
         blank: int = 0,
         fastemit_lambda: float = 0.001,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name=None,
     ) -> None:
         super().__init__()
@@ -1475,7 +1472,7 @@ class SmoothL1Loss(Layer):
 
     def __init__(
         self,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         delta: float = 1.0,
         name: str | None = None,
     ) -> None:
@@ -1561,7 +1558,7 @@ class MultiLabelSoftMarginLoss(Layer):
         weight: Tensor | None = None,
         reduction: str = 'mean',
         name: str | None = None,
-    ) -> Tensor:
+    ) -> None:
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -1761,7 +1758,7 @@ class CosineEmbeddingLoss(Layer):
     def __init__(
         self,
         margin: float = 0,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         if margin > 1 or margin < -1:
@@ -1876,7 +1873,7 @@ class TripletMarginWithDistanceLoss(Layer):
         distance_function: Callable | None = None,
         margin: float = 1.0,
         swap: bool = False,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1989,7 +1986,7 @@ class TripletMarginLoss(Layer):
         p: float = 2.0,
         epsilon: float = 1e-06,
         swap: bool = False,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -2098,7 +2095,7 @@ class MultiMarginLoss(Layer):
         p: int = 1,
         margin: float = 1.0,
         weight: Tensor | None = None,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -2188,7 +2185,7 @@ class SoftMarginLoss(Layer):
     """
 
     def __init__(
-        self, reduction: ReduceMode | str = 'mean', name: str | None = None
+        self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -2286,7 +2283,7 @@ class GaussianNLLLoss(Layer):
         self,
         full: bool = False,
         epsilon: float = 1e-06,
-        reduction: ReduceMode | str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         if reduction not in ['sum', 'mean', 'none']:
