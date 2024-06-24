@@ -433,9 +433,9 @@ class MobileNetV3Large(MobileNetV3):
 
 
 def _mobilenet_v3(
-    arch,
-    pretrained=False,
-    scale=1.0,
+    arch: str,
+    pretrained: bool = False,
+    scale: float = 1.0,
     **kwargs: Unpack[_MobileNetV3Options],
 ) -> MobileNetV3:
     if arch == "mobilenet_v3_large":
@@ -457,8 +457,8 @@ def _mobilenet_v3(
 
 
 def mobilenet_v3_small(
-    pretrained=False,
-    scale=1.0,
+    pretrained: bool = False,
+    scale: float = 1.0,
     **kwargs: Unpack[_MobileNetV3Options],
 ) -> MobileNetV3Small:
     """MobileNetV3 Small architecture model from
@@ -500,8 +500,8 @@ def mobilenet_v3_small(
 
 
 def mobilenet_v3_large(
-    pretrained=False,
-    scale=1.0,
+    pretrained: bool = False,
+    scale: float = 1.0,
     **kwargs: Unpack[_MobileNetV3Options],
 ) -> MobileNetV3Large:
     """MobileNetV3 Large architecture model from
