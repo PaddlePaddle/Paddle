@@ -63,6 +63,8 @@ class PredictorTools:
         if use_pir_api():
             config.enable_new_ir()
             config.enable_new_executor()
+            if os.name == 'nt':
+                config.delete_pass(["conv2d_bn_fuse_pass"])
 
         return config
 
