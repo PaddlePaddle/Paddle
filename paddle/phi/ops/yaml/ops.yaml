@@ -2794,17 +2794,6 @@
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
   backward : lp_pool2d_grad
 
-- op : lrn
-  args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
-  output: Tensor (out), Tensor (mid_out)
-  infer_meta:
-    func: LrnInferMeta
-    param : [x, n]
-  kernel:
-    func: lrn
-    data_type: x
-  backward: lrn_grad
-
 - op : lstm
   args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
     = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
