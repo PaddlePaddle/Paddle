@@ -168,6 +168,7 @@ class TestWithComTypeFP16(TestFusedBiasActOp):
         self.compute_dtype = 'fp16'
 
 
+@unittest.skipIf(core.is_compiled_with_rocm(), "ROCM does not support FastGelu")
 class TestFastGeluFP16(TestFusedBiasActOp):
     def use_fast_math(self, enabled):
         paddle.set_flags({'FLAGS_use_fast_math': enabled})
