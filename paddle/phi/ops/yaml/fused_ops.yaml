@@ -187,6 +187,28 @@
     data_type : x
   optional : bias, x_max, scale_max, out_max_in
 
+- op : fp8_fp8_bf16_gemm_fused
+  args : (Tensor x, Tensor y, Tensor bias, bool transpose_x = false, bool transpose_y = false, float scale = 1.0f, str activation_type = "identity")
+  output : Tensor(out)
+  infer_meta :
+    func : FP8OutBF16GemmFusedInferMeta
+  kernel :
+    func : fp8_fp8_bf16_gemm_fused
+    data_type : x
+  optional : bias
+  support_dygraph_mode : true
+
+- op : fp8_fp8_fp16_gemm_fused
+  args : (Tensor x, Tensor y, Tensor bias, bool transpose_x = false, bool transpose_y = false, float scale = 1.0f, str activation_type = "identity")
+  output : Tensor(out)
+  infer_meta :
+    func : FP8OutFP16GemmFusedInferMeta
+  kernel :
+    func : fp8_fp8_fp16_gemm_fused
+    data_type : x
+  optional : bias
+  support_dygraph_mode : true
+
 - op : fused_bias_act
   args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
   output : Tensor(out)
