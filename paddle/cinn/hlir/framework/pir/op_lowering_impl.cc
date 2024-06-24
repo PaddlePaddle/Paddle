@@ -864,10 +864,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   cinn::common::CINNValuePack pack =
       op_impl->fcompute(cinn::common::CINNValuePack{cinn_inputs});
 
-  poly::StageMap tmp_stages = pack.back();
   std::string post = "";
   std::vector<ir::Tensor> stage_tensors;
-  for (int idx = 0; idx < pack.size() - 1; ++idx) {
+  for (int idx = 0; idx < pack.size(); ++idx) {
     Expr expr = pack[idx];
     // Insert the output tensor defined by Compute into the tensor_map
     if (pack.size() - 1 > op_results.size()) {
