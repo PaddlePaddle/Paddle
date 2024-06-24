@@ -139,7 +139,9 @@ class FlashAttnPatternQscaleWithMask : public paddle::drr::DrrPatternBase {
       }
       // mask's shape [bs, 1, seq_len, seq_len]
       auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-      if (mask_add.size() != 4 || mask_add.at(1) != 1 || mask_add.at(0) != -1) {
+      auto q_shape = pir::GetShapeFromValue(match_ctx.Tensor("q"));
+      if (mask_add.size() != 4 || mask_add.at(1) != 1 ||
+          mask_add.at(0) != q_shape.at(0)) {
         return false;
       }
 
@@ -285,7 +287,9 @@ class FlashAttnPatternOutscaleWithMask : public paddle::drr::DrrPatternBase {
       }
       // mask's shape [bs, 1, seq_len, seq_len]
       auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-      if (mask_add.size() != 4 || mask_add.at(1) != 1 || mask_add.at(0) != -1) {
+      auto q_shape = pir::GetShapeFromValue(match_ctx.Tensor("q"));
+      if (mask_add.size() != 4 || mask_add.at(1) != 1 ||
+          mask_add.at(0) != q_shape.at(0)) {
         return false;
       }
 
@@ -504,6 +508,7 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
 
     // mask
     const auto &mask_add = src.Op("pd_op.add");
+
     src.Tensor("mask_add_out") =
         mask_add(src.Tensor("qk_scale_out"), src.Tensor("mask"));
 
@@ -556,7 +561,9 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
       }
       // mask's shape [bs, 1, seq_len, seq_len]
       auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-      if (mask_add.size() != 4 || mask_add.at(1) != 1 || mask_add.at(0) != -1) {
+      auto q_shape = pir::GetShapeFromValue(match_ctx.Tensor("q"));
+      if (mask_add.size() != 4 || mask_add.at(1) != 1 ||
+          mask_add.at(0) != q_shape.at(0)) {
         return false;
       }
 
