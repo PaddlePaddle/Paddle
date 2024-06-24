@@ -158,7 +158,14 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                      ir::CallType::Extern,
                      ir::FunctionRef(),
                      0);
-  buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
+  if (buckets_.empty()) {
+    buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
+  } else {
+    auto false_expr = buckets_.back();
+    buckets_.pop_back();
+    buckets_.emplace_back(
+        ir::IfThenElse::Make(predicate, call_extern_api, false_expr));
+  }
 }
 
 void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(

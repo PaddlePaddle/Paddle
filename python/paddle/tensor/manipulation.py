@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to manipulate a tensor
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -38,6 +40,9 @@ from ..framework import (
     in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -219,6 +224,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'cast',
         )
@@ -236,6 +243,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'cast',
         )
@@ -3361,7 +3370,11 @@ def unique(
         return tuple(outs)
 
 
-def unsqueeze(x, axis, name=None):
+def unsqueeze(
+    x: Tensor,
+    axis: int | Sequence[Tensor | int] | Tensor,
+    name: str | None = None,
+) -> Tensor:
     """
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.
@@ -6904,9 +6917,11 @@ def block_diag(inputs, name=None):
 
     def to_col_block(arys, i, a):
         return [
-            a
-            if idx == i
-            else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            (
+                a
+                if idx == i
+                else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            )
             for idx, ary in enumerate(arys)
         ]
 
