@@ -139,7 +139,7 @@ with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
-def show():
+def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
 
     Returns:
@@ -218,10 +218,10 @@ def show():
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
 
-def mkl():
+def mkl() -> str:
     return with_mkl
 
-def nccl():
+def nccl() -> str:
     """Get nccl version of paddle package.
 
     Returns:
@@ -239,7 +239,7 @@ def nccl():
     """
     return nccl_version
 
-def cuda():
+def cuda() -> str:
     """Get cuda version of paddle package.
 
     Returns:
@@ -257,7 +257,7 @@ def cuda():
     """
     return cuda_version
 
-def cudnn():
+def cudnn() -> str:
     """Get cudnn version of paddle package.
 
     Returns:
@@ -275,7 +275,7 @@ def cudnn():
     """
     return cudnn_version
 
-def xpu():
+def xpu() -> str:
     """Get xpu version of paddle package. The API is deprecated now, please use xpu_xhpc() instead.
 
     Returns:
@@ -289,7 +289,7 @@ def xpu():
     """
     return xpu_xhpc_version
 
-def xpu_xre():
+def xpu_xre() -> str:
     """Get xpu xre version of paddle package.
 
     Returns:
@@ -307,7 +307,7 @@ def xpu_xre():
     """
     return xpu_xre_version
 
-def xpu_xccl():
+def xpu_xccl() -> str:
     """Get xpu xccl version of paddle package.
 
     Returns:
@@ -325,7 +325,7 @@ def xpu_xccl():
     """
     return xpu_xccl_version
 
-def xpu_xhpc():
+def xpu_xhpc() -> str:
     """Get xpu xhpc version of paddle package.
 
     Returns:
@@ -343,7 +343,7 @@ def xpu_xhpc():
     """
     return xpu_xhpc_version
 
-def cinn():
+def cinn() -> str:
     """Get CINN version of paddle package.
 
     Returns:
@@ -724,12 +724,11 @@ package_data['paddle.libs']= []
 if('${WITH_SHARED_PHI}' == 'ON'):
     package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
-    if('${PHI_KERNEL_GPU_LIB}'):
-        package_data['paddle.libs'] += [
-            ('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu')
-            + ext_name
-        ]
-        shutil.copy('${PHI_KERNEL_GPU_LIB}', libs_path)
+    package_data['paddle.libs'] += [('libphi_core' if os.name != 'nt' else 'phi_core') + ext_name]
+    shutil.copy('${PHI_CORE_LIB}', libs_path)
+    if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+        package_data['paddle.libs'] += [('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_name]
+        shutil.copy('${PHI_GPU_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
     package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
@@ -885,6 +884,9 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+                    commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
@@ -893,6 +895,10 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
+
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")

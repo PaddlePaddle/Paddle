@@ -55,6 +55,7 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_debug);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
@@ -248,6 +249,12 @@ void ApplyCinnPass(::pir::Program* program,
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
+  if (FLAGS_pir_debug) {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+    std::cout << "Program before lowering: \n"
+              << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+              << std::endl;
+  }
   ApplyCinnLowerPass(program, CreatePassManager);
 }
 

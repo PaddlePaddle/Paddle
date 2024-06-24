@@ -75,6 +75,7 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : divide
   args : (Tensor x, Tensor y)
@@ -140,6 +141,7 @@
   kernel :
     func : equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : floor_divide
   args : (Tensor x, Tensor y)
@@ -149,6 +151,7 @@
   kernel :
     func : floor_divide
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -176,6 +179,7 @@
   kernel :
     func : greater_equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -185,6 +189,7 @@
   kernel :
     func : greater_than
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hardswish
   args : (Tensor x)
@@ -204,6 +209,7 @@
   kernel :
     func : less_equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -213,6 +219,7 @@
   kernel :
     func : less_than
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -273,6 +280,7 @@
   kernel :
     func : not_equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : remainder
   args : (Tensor x, Tensor y)
@@ -282,6 +290,7 @@
   kernel :
     func : remainder
   inplace : (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : reshape
   args : (Tensor x, IntArray shape)

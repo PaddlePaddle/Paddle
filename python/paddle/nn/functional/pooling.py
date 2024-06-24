@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from paddle import _C_ops, in_dynamic_mode
@@ -32,6 +36,11 @@ from ...utils import (
     _is_symmetric_padding,
     convert_to_list,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    from ..._typing import PaddingMode, Size1, Size2
 
 __all__ = []
 
@@ -173,14 +182,14 @@ def _expand_low_nd_padding(padding):
 
 
 def avg_pool1d(
-    x,
-    kernel_size,
-    stride=None,
-    padding=0,
-    exclusive=True,
-    ceil_mode=False,
-    name=None,
-):
+    x: Tensor,
+    kernel_size: Size1,
+    stride: Size1 | None = None,
+    padding: PaddingMode | Size1 | Size2 = 0,
+    exclusive: bool = True,
+    ceil_mode: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     This API implements average pooling 1d operation,
     See more details in :ref:`api_paddle_nn_AvgPool1d` .

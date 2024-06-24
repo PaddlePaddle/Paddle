@@ -34,9 +34,6 @@ DynamicSymbolT = TypeVar("DynamicSymbolT")
 
 
 class SymbolicInt(metaclass=Singleton):
-    # def __eq__(self, other) -> bool:
-    #     return isinstance(other, (int, SymbolicInt))
-
     def __repr__(self) -> str:
         return "SymbolicInt()"
 
@@ -120,7 +117,7 @@ class MetaInfo:
 
     @staticmethod
     def from_tensor(
-        tensor, *, dynamic_axes: list[int] | None = None
+        tensor: paddle.Tensor, *, dynamic_axes: list[int] | None = None
     ) -> MetaInfo:
         assert isinstance(
             tensor, paddle.Tensor
@@ -147,9 +144,6 @@ class MetaInfo:
 
     @staticmethod
     def from_value(value) -> MetaInfo:
-        # TODO: Check if we need to handle paddle.Tensor
-        # if isinstance(value, paddle.Tensor):
-        #     return MetaInfo.from_tensor(value)
         if isinstance(value, paddle.pir.Value):
             name = "Value@NoName"
         else:
