@@ -75,7 +75,11 @@ extern void *cublasLt_dso_handle;
   __macro(cublasLtMatrixTransformDescDestroy);      \
   __macro(cublasLtMatrixTransformDescSetAttribute); \
   __macro(cublasLtMatmulAlgoInit);                  \
-  __macro(cublasLtMatmulAlgoConfigSetAttribute);
+  __macro(cublasLtMatmulAlgoConfigSetAttribute);    \
+  __macro(cublasLtMatmulAlgoCheck);                 \
+  __macro(cublasLtMatmulAlgoCapGetAttribute);       \
+  __macro(cublasLtGetCudartVersion);                \
+  __macro(cublasLtMatmulAlgoGetIds);
 
 CUBLASLT_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
 // #endif

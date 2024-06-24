@@ -1697,6 +1697,18 @@ PHI_DEFINE_EXPORTED_string(
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
 
+/**
+ * Apply global search in blaslt FLAG
+ * Name: enable_blaslt_global_search
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply global search in blaslt.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_blaslt_global_search,
+                         false,
+                         "Whether to use global search in blaslt.");
+
 PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                            "",
                            "Specify path for loading user-defined op library.");
