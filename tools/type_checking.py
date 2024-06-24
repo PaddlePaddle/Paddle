@@ -70,10 +70,16 @@ class TestResult:
 
 class MypyChecker(TypeChecker):
     def __init__(
-        self, config_file: str, cache_dir: str, *args: Any, **kwargs: Any
+        self,
+        config_file: str,
+        cache_dir: str,
+        debug: bool = False,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         self.config_file = config_file
         self.cache_dir = cache_dir
+        self.debug = debug
         super().__init__(*args, **kwargs)
 
     def run(self, api_name: str, codeblock: str) -> TestResult:
@@ -99,7 +105,8 @@ class MypyChecker(TypeChecker):
         )
 
         normal_report, error_report, exit_status = mypy_api.run(
-            [
+            (["--show-traceback"] if self.debug else [])
+            + [
                 f'--config-file={self.config_file}',
                 f'--cache-dir={self.cache_dir}',
                 '-c',
@@ -262,13 +269,15 @@ def get_test_results(
             )
 
     test_results = []
-    pool = multiprocessing.Pool(initializer=init_worker)
-    try:
-        test_results = pool.starmap(type_checker.run, codeblocks)
-
-    except KeyboardInterrupt:
-        pool.terminate()
-        pool.join()
+    with multiprocessing.Pool(initializer=init_worker) as pool:
+        try:
+            test_results = pool.starmap(type_checker.run, codeblocks)
+        except KeyboardInterrupt:
+            pool.terminate()
+        else:
+            pool.close()
+        finally:
+            pool.join()
 
     return list(test_results)
 
@@ -311,5 +320,6 @@ if __name__ == '__main__':
         cache_dir=(
             args.cache_dir if args.cache_dir else (base_path / '.mypy_cache')
         ),
+        debug=args.debug,
     )
     run_type_checker(args, mypy_checker)
