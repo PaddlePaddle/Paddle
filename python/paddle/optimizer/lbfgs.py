@@ -35,7 +35,7 @@ __all__ = []
 
 class _LbfgsStateDict(TypedDict):
     state: str
-    packed_state: _LbfgsStateDict
+    packed_state: dict
 
 
 def dot(x, y):
