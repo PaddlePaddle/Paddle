@@ -1646,7 +1646,7 @@ class OpTest(unittest.TestCase):
                 pm.run(program)
 
                 # check that all ops have defined the InferSymbolicShapeInterface
-                if paddle.base.libpaddle.pir.all_ops_define_symbol_infer(
+                if paddle.base.libpaddle.pir.all_ops_defined_symbol_infer(
                     program
                 ):
                     # compare expect & actual

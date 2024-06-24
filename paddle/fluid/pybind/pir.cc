@@ -2602,7 +2602,7 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
         return pir::ShapeAnalysisManager::Instance().Get(program);
       },
       return_value_policy::reference);
-  m->def("all_ops_define_symbol_infer",
+  m->def("all_ops_defined_symbol_infer",
          [](const pir::Program *program) -> bool {
            // check that all ops have defined the InferSymbolicShapeInterface
            bool flag = true;

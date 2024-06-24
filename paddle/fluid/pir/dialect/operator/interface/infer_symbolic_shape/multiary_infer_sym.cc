@@ -614,40 +614,45 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
-
+  // [4,dimexpr{5,6,7}]
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   int rank = shape_data_list[0].shape().size();
+  VLOG(3) << "StackOpInferSymbolicShape rank: " << rank;
   if (axis < 0) axis += rank + 1;
-
+  VLOG(3) << "StackOpInferSymbolicShape axis: " << axis;
   const symbol::ShapeOrDataDimExprs shape_data = [&] {
-    std::vector<symbol::DimExpr> shape_dim_exprs;
-    std::vector<symbol::DimExpr> data_dim_exprs;
-    for (const auto &shape_data : shape_data_list) {
-      if (shape_data.data().has_value() && axis == 0) {
-        data_dim_exprs.emplace_back(shape_data.data().value()[0]);
+    std::vector<symbol::DimExpr> result_shape = {};
+    std::vector<symbol::DimExpr> result_data = {};
+    symbol::ShapeOrDataDimExprs x_shape_data = shape_data_list.at(0);
+    if (x_shape_data.data().has_value()) {
+      // case 1: data is not empty, eg: shape_data_list =
+      // [[shape:{3},data:{S0,6,7}],...]
+      result_shape.emplace_back(
+          static_cast<std::int64_t>(x_shape_data.data().value().size() + 1));
+      for (const symbol::DimExpr &dim : x_shape_data.data().value()) {
+        result_data.emplace_back(dim);
       }
+      result_data.insert(result_data.begin() + axis,
+                         static_cast<std::int64_t>(shape_data_list.size()));
+    } else {
+      // case 2: data is empty, eg: shape_data_list =
+      // [[shape:{5,6,7},data:{}],...]
+      for (const symbol::DimExpr &dim : x_shape_data.shape()) {
+        result_shape.emplace_back(dim);
+      }
+      result_shape.insert(result_shape.begin() + axis,
+                          static_cast<std::int64_t>(shape_data_list.size()));
     }
 
-    if (!data_dim_exprs.empty()) {
-      shape_dim_exprs.emplace_back(
-          static_cast<std::int64_t>(shape_data_list.size()));
-    } else {
-      for (int i = 0; i < rank; ++i) {
-        details::BuildCstrEqForTensorListAlongAxis(
-            infer_context, shape_data_list, i);
-      }
-      shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
-                             static_cast<std::int64_t>(shape_data_list.size()));
-    }
-    if (data_dim_exprs.empty()) {
+    if (result_data.empty()) {
       return symbol::ShapeOrDataDimExprs(
-          symbol::TensorShapeOrDataDimExprs(shape_dim_exprs));
+          symbol::TensorShapeOrDataDimExprs(result_shape));
     }
     return symbol::ShapeOrDataDimExprs(
-        symbol::TensorShapeOrDataDimExprs(shape_dim_exprs, data_dim_exprs));
+        symbol::TensorShapeOrDataDimExprs(result_shape, result_data));
   }();
 
   pir::Value res = op->result(0);
