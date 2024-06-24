@@ -91,6 +91,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
             "use_ps_gpu"
         ]
+        attrs['use_gpu_graph'] = self.user_defined_strategy.a_sync_configs[
+            "use_gpu_graph"
+        ]
         attrs['lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
             "lr_decay_steps"
         ]

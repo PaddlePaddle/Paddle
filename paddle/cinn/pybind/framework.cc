@@ -17,10 +17,8 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
+#include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cinn_value.h"
-#include "paddle/cinn/frontend/interpreter.h"
-#include "paddle/cinn/hlir/framework/graph_compiler.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -42,51 +40,6 @@ void BindFramework(pybind11::module *m) {
       .def("get_op_shape_attrs", [](const std::string &key) {
         return Operator::GetAttrs<InferShapeFunction>(key);
       });
-
-  py::class_<OpValueType<StrategyFunction>>(*m, "OpValueType")
-      .def("apply_strategy",
-           [](OpValueType<StrategyFunction> &self,
-              const std::string &key,
-              const NodeAttr &attrs,
-              const std::vector<ir::Tensor> &inputs,
-              const std::vector<Type> &out_types,
-              const std::vector<std::vector<int>> &output_shapes,
-              const cinn::common::Target &target) {
-             const Operator *op_ptr = Operator::Get(key);
-             auto impl = OpStrategy::SelectImpl(
-                 self[op_ptr](attrs, inputs, out_types, output_shapes, target));
-             std::vector<cinn::common::CINNValue> temp_inputs;
-             std::vector<ir::Tensor> res;
-             for (auto &tensor : inputs) {
-               res.push_back(tensor);
-               temp_inputs.push_back(cinn::common::CINNValue(tensor));
-             }
-
-             ir::LoweredFunc func;
-             std::string output_name = "out";
-             temp_inputs.emplace_back(output_name);
-             std::vector<std::string> input_output_names;
-             for (const auto &input : inputs) {
-               input_output_names.push_back(input->name);
-             }
-             input_output_names.push_back(output_name);
-             std::vector<ir::LoweredFunc> funcs =
-                 hlir::framework::GetFuncFromImpl(
-                     impl,
-                     cinn::common::CINNValuePack{temp_inputs},
-                     res,
-                     input_output_names,
-                     key,
-                     target);
-             PADDLE_ENFORCE_EQ(funcs.size(),
-                               1U,
-                               phi::errors::InvalidArgument(
-                                   "The size of funcs is incorrect."
-                                   "Expected size is 1, but receive %d.",
-                                   funcs.size()));
-             func = funcs[0];
-             return func;
-           });
 
   py::class_<OpValueType<InferShapeFunction>>(*m, "OpValueType1")
       .def("infer_shape",
@@ -244,23 +197,5 @@ void BindFramework(pybind11::module *m) {
 #endif
                 });
           });
-
-  py::class_<Instruction> instruction(*m, "Instruction");
-  instruction
-      .def(py::init<const Target &,
-                    Scope *,
-                    const std::vector<std::string> &,
-                    const std::vector<std::string> &,
-                    const std::string &>())
-      .def("run",
-           [](Instruction &self,
-              backends::Compiler &compiler,
-              const std::string fn_name,
-              std::map<std::string, cinn_pod_value_t> &name_to_pod) {
-             auto fn_ptr = compiler.Lookup(fn_name);
-             self.Finalize();
-             self.SetLoweredFunc(fn_ptr);
-             self.Run(&name_to_pod);
-           });
 }
 }  // namespace cinn::pybind
