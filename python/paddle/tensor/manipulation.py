@@ -2048,6 +2048,8 @@ def stack(
     tensor is [N, A, B]; if ``axis == 1``, the shape of stacked
     tensor is [A, N, B], etc.
 
+    It also supports the operation with zero-size tensors which contain 0 in their shape.
+    See the examples below.
 
     .. code-block:: text
 
@@ -2091,6 +2093,38 @@ def stack(
                           [3.0, 4.0]
                           [5.0, 6.0] ] ]
 
+
+        Case 3:
+
+            Input:
+                x[0].shape = [0, 1, 2]
+                x[0].data = []
+                x[1].shape = [0, 1, 2]
+                x[1].data = []
+
+            Attrs:
+                axis = 0
+
+            Output:
+                Out.shape = [2, 0, 1, 2]
+                Out.data = []
+
+
+        Case 4:
+
+            Input:
+                x[0].shape = [0, 1, 2]
+                x[0].data = []
+                x[1].shape = [0, 1, 2]
+                x[1].data = []
+
+            Attrs:
+                axis = 1
+
+            Output:
+                Out.shape = [0, 2, 1, 2]
+                Out.data = []
+
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
                                      must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
@@ -2128,6 +2162,25 @@ def stack(
             [[[1., 2.],
               [3., 4.],
               [5., 6.]]])
+
+            >>> # zero-size tensors
+            >>> x1 = paddle.ones([0, 1, 2])
+            >>> x2 = paddle.ones([0, 1, 2])
+
+            >>> out = paddle.stack([x1, x2], axis=0)
+            >>> print(out.shape)
+            [2, 0, 1, 2]
+            >>> print(out)
+            Tensor(shape=[2, 0, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[],
+             []])
+
+            >>> out = paddle.stack([x1, x2], axis=1)
+            >>> print(out.shape)
+            [0, 2, 1, 2]
+            >>> print(out)
+            Tensor(shape=[0, 2, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [])
     """
     axis = 0 if axis is None else axis
 
