@@ -81,9 +81,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-if(WITH_CINN)
-  add_subdirectory(paddle2cinn)
-endif()
+
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
