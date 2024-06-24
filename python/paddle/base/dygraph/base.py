@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import inspect
 import sys
 import warnings
-from typing import Callable, TypeVar
+from typing import Callable, ContextManager, TypeVar, overload
 
 import decorator
 from typing_extensions import ParamSpec
@@ -271,6 +274,16 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
+@overload
+def no_grad(func: None = ...) -> ContextManager:
+    ...
+
+
+@overload
+def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    ...
+
+
 def no_grad(func=None):
     """
     :api_attr: imperative
@@ -327,7 +340,11 @@ def no_grad(func=None):
     else:
 
         @decorator.decorator
-        def __impl__(func, *args, **kwargs):
+        def __impl__(
+            func: Callable[_InputT, _RetT],
+            *args: _InputT.args,
+            **kwargs: _InputT.kwargs,
+        ) -> _RetT:
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 

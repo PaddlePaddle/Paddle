@@ -154,6 +154,8 @@ check_untyped_defs = true
 follow_imports = "normal"
 # Miscellaneous
 warn_unused_configs = true
+# Disallow generic without type arguments
+disallow_any_generics = true
 # Configuring warnings
 warn_redundant_casts = true
 warn_unused_ignores = true

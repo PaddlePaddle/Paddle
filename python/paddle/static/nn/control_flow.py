@@ -2139,7 +2139,17 @@ def Print(
     check_variable_and_dtype(
         input,
         'input',
-        ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'float8_e4m3fn',
+            'float8_e5m2',
+        ],
         'paddle.static.Print',
     )
     message = message or ""
