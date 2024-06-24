@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from test_attribute_var_deprecated import UnittestBase
+from test_attribute_var import UnittestBase
 
 import paddle
 from paddle.base import core
