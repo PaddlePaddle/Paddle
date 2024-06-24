@@ -2743,7 +2743,7 @@ class OpTest(unittest.TestCase):
                     pir_checker = PirChecker(self, self.outputs)
                     pir_checker.check()
 
-        if check_symbol_infer:
+        if check_pir and check_symbol_infer:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
