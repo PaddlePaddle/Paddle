@@ -303,57 +303,53 @@ void InferSymExprForOp(Operation* op,
   }
 }
 
-void CacheSymExprForOp(Operation* op,
-                       InferSymbolicShapeContext* infer_context,
-                       const InferSymbolicShapeCacheKey& op_infer_cache_key) {
-  const auto& CacheSelfSymbolicShape = [&]() {
-    std::vector<symbol::ShapeOrDataDimExprs> result_shape_or_data;
-    for (auto& result : op->results()) {
-      result_shape_or_data.emplace_back(
-          infer_context->GetShapeOrDataForValue(result));
-    }
-    if (infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
-            .has_value()) {
-      std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
-          infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
-              .value();
-      // check whether the result_shape_or_data is consistent with the cached
-      // TODO(Hongqing-work): delete check and only set cache for op without
-      // InferSymbolicShapeInterface after fixing all warnings.
-      if (cached_result_shape_or_data.size() != result_shape_or_data.size()) {
-        LOG(WARNING) << "cached shape is not consistent with real shape";
-      } else {
-        for (uint32_t i = 0; i < op->num_results(); ++i) {
-          if (cached_result_shape_or_data[i] != result_shape_or_data[i]) {
-            LOG(WARNING) << "cached shape is not consistent with real shape";
-            VLOG(3) << "InferSymbolicShapeCacheKey is: " << op_infer_cache_key;
-            VLOG(3) << "cached shape is: " << cached_result_shape_or_data[i];
-            VLOG(3) << "real shape is: " << result_shape_or_data[i];
-          }
+void CacheSelfSymbolicShape(
+    Operation* op,
+    InferSymbolicShapeContext* infer_context,
+    const InferSymbolicShapeCacheKey& op_infer_cache_key) {
+  std::vector<symbol::ShapeOrDataDimExprs> result_shape_or_data;
+  for (auto& result : op->results()) {
+    result_shape_or_data.emplace_back(
+        infer_context->GetShapeOrDataForValue(result));
+  }
+  if (infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
+          .has_value()) {
+    std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
+        infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key).value();
+    // check whether the result_shape_or_data is consistent with the cached
+    // TODO(Hongqing-work): delete check and only set cache for op without
+    // InferSymbolicShapeInterface after fixing all warnings.
+    if (cached_result_shape_or_data.size() != result_shape_or_data.size()) {
+      LOG(WARNING) << "cached shape is not consistent with real shape";
+    } else {
+      for (uint32_t i = 0; i < op->num_results(); ++i) {
+        if (cached_result_shape_or_data[i] != result_shape_or_data[i]) {
+          LOG(WARNING) << "cached shape is not consistent with real shape";
+          VLOG(3) << "InferSymbolicShapeCacheKey is: " << op_infer_cache_key;
+          VLOG(3) << "cached shape is: " << cached_result_shape_or_data[i];
+          VLOG(3) << "real shape is: " << result_shape_or_data[i];
         }
       }
-    } else {
-      infer_context->SetOpInferSymbolicShapeCache(op_infer_cache_key,
-                                                  result_shape_or_data);
     }
-  };
+  } else {
+    infer_context->SetOpInferSymbolicShapeCache(op_infer_cache_key,
+                                                result_shape_or_data);
+  }
+}
 
-  const auto& CacheGradOpSymbolicShape = [&]() {
-    auto cache_grad_op_symbolic_shape_interface =
-        op->dyn_cast<pir::CacheGradOpSymbolicShapeInterface>();
-    if (cache_grad_op_symbolic_shape_interface) {
-      VLOG(3) << "CacheGradOpSymbolicShape for: " << op->name();
-      PADDLE_ENFORCE_EQ(
-          cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
-              infer_context),
-          true,
-          "CacheGradOpSymbolicShape for %s failed.",
-          op->name());
-    }
-  };
-
-  CacheSelfSymbolicShape();
-  CacheGradOpSymbolicShape();
+void CacheGradOpSymbolicShape(Operation* op,
+                              InferSymbolicShapeContext* infer_context) {
+  auto cache_grad_op_symbolic_shape_interface =
+      op->dyn_cast<pir::CacheGradOpSymbolicShapeInterface>();
+  if (cache_grad_op_symbolic_shape_interface) {
+    VLOG(3) << "CacheGradOpSymbolicShape for: " << op->name();
+    PADDLE_ENFORCE_EQ(
+        cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
+            infer_context),
+        true,
+        "CacheGradOpSymbolicShape for %s failed.",
+        op->name());
+  }
 }
 
 void InferSymExprForBlock(const Block& block,
@@ -366,7 +362,8 @@ void InferSymExprForBlock(const Block& block,
     }
     InferSymbolicShapeCacheKey op_infer_cache_key(op, input_shape_or_data);
     InferSymExprForOp(&op, infer_context, op_infer_cache_key);
-    CacheSymExprForOp(&op, infer_context, op_infer_cache_key);
+    CacheSelfSymbolicShape(&op, infer_context, op_infer_cache_key);
+    CacheGradOpSymbolicShape(&op, infer_context);
     DebugPrintOpInfo(&op, infer_context);
     CheckInferSymWithInferMeta(&op, infer_context);
   }
