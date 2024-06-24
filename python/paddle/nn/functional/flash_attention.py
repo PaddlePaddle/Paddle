@@ -841,132 +841,130 @@ def scaled_dot_product_attention(
             return out
 
 
-def flash_attention_with_sparse_mask(
+def flashmask_attention(
     query,
     key,
     value,
-    attn_mask_start_row_indices,
-    attn_mask_start_row=0,
-    dropout_p=0.0,
-    is_causal=False,
-    return_softmax=False,
+    *,
+    startend_row_indices,
+    dropout=0.0,
+    causal=False,
     return_softmax_lse=False,
     return_seed_offset=False,
+    fixed_seed_offset=None,
+    rng_name="",
     training=True,
     name=None,
 ):
     r"""
+    Implements FlashAttention with a sparse mask representation.
+
     The equation is:
 
     .. math::
-        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
 
-    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
-    The dimensions of the three parameters are the same.
-    ``d`` represents the size of the last dimension of the three parameters.
+        result = softmax(\frac{Q \cdot K^T}{\sqrt{d}} + M) \cdot V
+
+    where ``Q``, ``K``, and ``V`` are the input tensors of the attention module.
+    They share the same dimensions, and ``d`` represents the size of the last dimension.
+    ``M`` is the dense mask.
 
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
 
     Args:
-        query(Tensor): The query tensor in the Attention module.
-                        4-D tensor with shape:
-                        [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
-        key(Tensor): The key tensor in the Attention module.
-                        4-D tensor with shape:
-                        [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
-        value(Tensor): The value tensor in the Attention module.
-                        4-D tensor with shape:
-                        [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
-        attn_mask_start_row_indices(Tensor): A sparse attention mask
-                        indices tensor, the shape is [batch_size, num_head, seq_len],
-                        The value of each element indicates the row index where the
-                        mask starts in score matrix. The dtype must be int32.
-        attn_mask_start_row(int,optional): When `attn_mask_start_row_indices` is passed
-                        in and the minimum row number is known to be greater than 0,
-                        it can set `attn_mask_start_row` for performance improvement.
-                        The default value is 0.
-        dropout_p(float): The dropout ratio.
-        is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase.
-        name(str, optional): The default value is None. Normally there is no need for user
-                        to set this property. For more information, please refer to
-                        :ref:`api_guide_Name`.
-    Returns:
-        out(Tensor), The attention tensor.
-                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
-                    The dtype can be float16 or bfloat16.
-    Examples:
-        .. code-block:: python
+        query (Tensor): The query tensor in the attention module.
+                        A 4-D tensor with shape [batch_size, seq_len, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        key (Tensor): The key tensor in the attention module.
+                      A 4-D tensor with shape [batch_size, seq_len, num_heads, head_dim].
+                      The dtype can be float16 or bfloat16.
+        value (Tensor): The value tensor in the attention module.
+                        A 4-D tensor with shape [batch_size, seq_len, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        startend_row_indices (Tensor): A sparse attention mask indices tensor.
+                                       A 4-D tensor with shape [batch_size, num_heads, seq_len, {1, 2, 4}].
+                                       Heads will be broadcasted if less than query's heads.
+                                       The dtype must be int32. The size of the last dimension depends on the
+                                       `causal` and `is_closed` settings:
+            - When `causal=True` and the shape is [batch_size, num_heads, seq_len, 1],
+              indicating unidirectional attention. The value represents the starting row index of the left
+              lower triangular mask in the dense mask.
+            - When `causal=True` and the shape is [batch_size, num_heads, seq_len, 2],
+              indicating unidirectional attention. The values represent the starting and ending row indices of
+              the left lower triangular mask in the dense mask.
+            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 2],
+              indicating bidirectional attention. The values represent the starting row index of the left
+              lower triangular mask and the ending row index of the right upper triangular mask in the dense mask.
+            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4],
+              indicating bidirectional attention. The values represent the start and end row indices of the
+              left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask.
+        dropout (float): The dropout ratio. Default is 0.0.
+        causal (bool): Whether to enable causal mode. Default is False.
+        return_softmax_lse (bool): Whether to return the log-sum-exp of the softmax. Default is False.
+        return_seed_offset (bool): Whether to return the random seed offset. Default is False.
+        fixed_seed_offset (Tensor, optional): With fixed seed, offset for dropout mask.
+        rng_name (str): The name to select Generator.
+        training (bool): Whether the module is in training mode. Default is True.
+        name (str, optional): Name of the operation. Default is None. Normally, users do not need to set this property.
+                              For more information, refer to :ref:`api_guide_Name`.
 
-            >>> # doctest: +SKIP('bfloat need V100 compile')
-            >>> import paddle
-            >>> import numpy as np
-            >>> def generate_start_rows(bz, num_head, rows, cols, start_row):
-            >>>     assert rows == cols, f"rows {rows} must be equal to cols {cols}."
-            >>>     start_rows_list = []
-            >>>     for bz_idx in range(bz):
-            >>>         for head_idx in range(num_head):
-            >>>             start_rows = np.array([rows+1] * cols)
-            >>>             mask_pos = np.random.choice(cols-1, cols - start_row, replace=False)
-            >>>             index = np.arange(start_row, rows)
-            >>>             mask_pos = np.concatenate([mask_pos[mask_pos < index - 1], mask_pos[mask_pos >= index - 1]])
-            >>>             start_rows[mask_pos] = index
-            >>>             start_rows_list.append(start_rows)
-            >>>     start_rows_arr = np.array(start_rows_list).reshape([bz, num_head, rows])
-            >>>     return start_rows_arr
-            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
-            >>> attn_mask_start_row = 48
-            >>> start_row_indices = generate_start_rows(1, 2, 128, 128, attn_mask_start_row)
-            >>> attn_mask_start_row_indices = paddle.to_tensor(start_row_indices, dtype=paddle.int32)
-            >>> out = paddle.nn.functional.flash_attention.flash_attention_with_sparse_mask(
-            >>>     q, q, q,
-            >>>     attn_mask_start_row_indices=attn_mask_start_row_indices,
-            >>>     attn_mask_start_row=attn_mask_start_row,
-            >>>     dropout_p=0.9,
-            >>>     is_causal=True,
-            >>> )
-            >>> print(output)
-            >>> # doctest: -SKIP
+    Returns:
+        Tensor: The computed attention result with the same shape as the input `value`.
     """
 
     assert (
-        attn_mask_start_row_indices is not None
-    ), f"attn_mask_start_row_indices must be not None, but got {attn_mask_start_row_indices}"
+        startend_row_indices is not None
+    ), f"startend_row_indices must be not None, but got {startend_row_indices}"
     assert (
-        is_causal is True
-    ), f"is_causal must be True when attn_mask_start_row_indices is not None, but got {is_causal}"
+        startend_row_indices.dtype == paddle.int32
+    ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
     assert (
-        attn_mask_start_row_indices.dtype == paddle.int32
-    ), f"attn_mask_start_row_indices.dtype must be paddle.int32, but got {attn_mask_start_row_indices.dtype}"
-    assert isinstance(
-        attn_mask_start_row, int
-    ), f"attn_mask_start_row must be int, but got {type(attn_mask_start_row)}"
-    assert (
-        attn_mask_start_row >= 0
-    ), f"Should set attn_mask_start_row >=0 when attn_mask_start_row_indices is not None, but got {attn_mask_start_row}"
+        len(startend_row_indices.shape) == 4
+    ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
 
-    fixed_seed_offset = None
+    assert (
+        startend_row_indices.shape[0] == key.shape[0]
+    ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+
+    assert (
+        startend_row_indices.shape[2] == key.shape[1]
+    ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+
+    if causal:
+        if startend_row_indices.shape[-1] in [1, 2]:
+            pass
+        else:
+            raise ValueError(
+                f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
+            )
+    else:
+        if startend_row_indices.shape[-1] == 2:
+            pass
+        elif startend_row_indices.shape[-1] == 4:
+            raise NotImplementedError(
+                "ending row index is not implemented yet."
+            )
+        else:
+            raise ValueError(
+                f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
+            )
+
     return_softmax = False
-    rng_name = ""
 
     (
         out,
         result_softmax,
         result_softmax_lse,
         result_seed_offset,
-    ) = _C_ops.flash_attn_with_sparse_mask(
+    ) = _C_ops.flashmask_attention(
         query,
         key,
         value,
-        attn_mask_start_row_indices,
+        startend_row_indices,
         fixed_seed_offset,
-        dropout_p,
-        is_causal,
-        attn_mask_start_row,
+        dropout,
+        causal,
         return_softmax,
         not training,
         rng_name,
