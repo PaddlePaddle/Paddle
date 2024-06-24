@@ -34,18 +34,8 @@ __all__ = []
 
 
 class _LbfgsStateDict(TypedDict):
-    state: _LbfgsStateDict
-    func_evals: int
-    n_iter: int
-    d: Tensor
-    alpha: int
-    old_yk: list[Tensor]
-    old_sk: list[Tensor]
-    ro: Tensor
-    H_diag: Tensor
-    prev_flat_grad: Tensor
-    prev_loss: float
-    al: Tensor
+    state: str
+    packed_state: _LbfgsStateDict
 
 
 def dot(x, y):
