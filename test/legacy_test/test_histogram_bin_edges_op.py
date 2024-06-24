@@ -31,7 +31,7 @@ class TestHistogramBinEdgesOp(unittest.TestCase):
     def check_with_place(self, place):
         x_var = paddle.Tensor(self.x, place=place)
         out_var = paddle.histogram_bin_edges(
-            x_var, bins=self.bin, range=self.range
+            x_var, bins=self.bin, min=self.range[0], max=self.range[1]
         )
         out = np.array(out_var)
         self.assertTrue(np.allclose(self.out, out))
@@ -47,6 +47,16 @@ class TestHistogramBinEdgesOp(TestHistogramBinEdgesOp):
         self.x = np.random.randn(5, 20).astype('float32')
         self.bin = 10
         self.range = (0, 1)
+        self.out = np.histogram_bin_edges(
+            self.x, bins=self.bin, range=self.range
+        )
+
+
+class TestHistogramBinEdgesOpTest1(TestHistogramBinEdgesOp):
+    def setUp(self):
+        self.x = np.random.randn(5, 20).astype('float32')
+        self.bin = 10
+        self.range = (1, 1)
         self.out = np.histogram_bin_edges(
             self.x, bins=self.bin, range=self.range
         )
