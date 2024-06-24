@@ -89,6 +89,9 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
               SimplifyTensorShapeOrData(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
+      },
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }

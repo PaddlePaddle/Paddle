@@ -23,7 +23,7 @@ import sys
 import types
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, Protocol
 
 from typing_extensions import TypeAlias
 
@@ -41,6 +41,26 @@ MemberType: TypeAlias = Literal[
     "attribute",
     "method",
 ]
+
+
+class AnnoConverter(Protocol):
+    """
+    convert bad annotation, e.g.:
+
+    "Literal[('raise', 'wrap', 'clip')]" -> "Literal['raise', 'wrap', 'clip']"
+    """
+
+    def convert(self, input: str) -> str:
+        ...
+
+
+class LiteralConverter(AnnoConverter):
+    pattern = re.compile(
+        r"(?P<lit_start>Literal\[)\((?P<content>.*?)\)(?P<lit_end>\])"
+    )
+
+    def convert(self, input: str) -> str:
+        return self.pattern.sub(r'\g<lit_start>\g<content>\g<lit_end>', input)
 
 
 @dataclass
@@ -68,6 +88,7 @@ class TensorGen:
     def __init__(self, template: str = ''):
         self._template = template
         self._template_codes: list[tuple[int, int, str]] = []
+        self._converters: list[AnnoConverter] = [LiteralConverter()]
 
     def find_annotation_slot(self, slot_name: str) -> tuple[str, int, int]:
         pattern = _slot_pattern(slot_name)
@@ -227,7 +248,12 @@ class TensorGen:
             start = _end
         _template.append(self._template[start:])
 
-        return header + ''.join(_template)
+        _content = header + ''.join(_template)
+
+        for converter in self._converters:
+            _content = converter.convert(_content)
+
+        return _content
 
 
 def is_inherited_member(name: str, cls: type) -> bool:

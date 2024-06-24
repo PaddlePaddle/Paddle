@@ -2654,6 +2654,7 @@ class ShardDataloader:
                 shuffle=shuffle,
                 drop_last=drop_last,
             )
+            self.batch_sampler._acc_steps = dataloader.batch_sampler._acc_steps
             self._dataloader = paddle.io.DataLoader(
                 dataset=dataloader.dataset,
                 batch_sampler=self.batch_sampler,
@@ -2719,7 +2720,6 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
-        self.iter = self._dataloader.__iter__()
         return self
 
     def _get_mesh_and_placement(self, index):
@@ -2840,7 +2840,8 @@ class ShardDataloader:
         return self._get_batch(batch_data)
 
     def __call__(self):
-        return self.__iter__()
+        self.iter = self._dataloader.__iter__()
+        return self
 
 
 def shard_dataloader(
