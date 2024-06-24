@@ -5530,6 +5530,7 @@ def tensordot(
         .. code-block:: python
 
             >>> import paddle
+            >>> from typing import Literal
 
             >>> data_type: Literal["float64"] = 'float64'
 
