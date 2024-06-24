@@ -4011,17 +4011,6 @@
   intermediate: sparse_dot_sdd, softmax
   backward: sparse_attention_grad
 
-- op : sparse_momentum
-  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
-  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
-  infer_meta:
-    func: SparseMomentumInferMeta
-    param: [param, grad, velocity, index, learning_rate]
-  kernel:
-    func: sparse_momentum
-    data_type: param
-  optional: master_param, master_param_out
-
 - op : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
   output : Tensor
