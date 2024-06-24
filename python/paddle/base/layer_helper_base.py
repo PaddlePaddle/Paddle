@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 
@@ -460,7 +461,7 @@ class LayerHelperBase:
 
     def create_variable_for_type_inference(
         self, dtype, stop_gradient=False, shape=None
-    ):
+    ) -> paddle.Tensor:
         """Create a temporary variable that should be type inferred layer.
 
         Note:

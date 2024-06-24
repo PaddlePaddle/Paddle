@@ -629,6 +629,23 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
 }
 
 template <typename T>
+std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
+  std::vector<Tensor> res;
+  if (axis < 0) {
+    axis = x.shape().size() + axis;
+  }
+  if (x.shape()[axis] == -1) {
+    PADDLE_THROW(phi::errors::Unimplemented("unbind axis must not be dynamic"));
+  }
+  size_t num = x.shape()[axis];
+  std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
+  for (size_t i = 0; i < tmp.size(); i++) {
+    res.push_back(squeeze<T>(tmp[i], {axis}));
+  }
+  return res;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,

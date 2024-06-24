@@ -292,7 +292,8 @@ static PyObject* tensor__add__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -396,7 +397,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -498,7 +500,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -604,7 +607,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -707,7 +711,8 @@ static PyObject* tensor__div__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -813,7 +818,8 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -923,7 +929,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1023,7 +1030,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1124,7 +1132,8 @@ static PyObject* tensor__mod__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1221,7 +1230,8 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1349,7 +1359,8 @@ static PyObject* tensor__lt__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1449,7 +1460,8 @@ static PyObject* tensor__le__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1550,7 +1562,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1654,7 +1667,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1754,7 +1768,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1854,7 +1869,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
@@ -1953,7 +1969,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
     other_tensor = other_tensor_ref;
   } else {
     if (IsNumpyArray(other_obj)) {
-      py::object numpy_value = py::object(py::handle(other_obj), true);
+      py::object numpy_value =
+          py::reinterpret_borrow<py::object>(py::handle(other_obj));
       other_tensor = paddle::Tensor(place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
