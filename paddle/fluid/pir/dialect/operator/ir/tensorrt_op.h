@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/fluid/platform/tensorrt/engine.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -33,22 +34,20 @@ class TensorRTEngineOp
     : public pir::Op<TensorRTEngineOp, paddle::dialect::OpYamlInfoInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "trt_op.tensorrt_engine_op"; }
-  static const char *attributes_name[7];
-  static constexpr uint32_t attributes_num = 7;
+  static const char *name() { return "pd_op.tensorrt_engine_op"; }
+  static const char *attributes_name[12];
+  static constexpr uint32_t attributes_num = 12;
   static OpInfoTuple GetOpInfo();
 
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value x,
-                    void *engine,
-                    int64_t workspace_size,
-                    bool allow_build_at_runtime,
-                    std::vector<std::string> input_names,
-                    std::vector<std::string> output_names,
-                    std::vector<int> origin_output_rank,
-                    std::vector<phi::DataType> origin_outputs_dtype,
-                    const std::vector<paddle::dialect::IrTensor> &outs_meta);
+  static void Build(
+      pir::Builder &builder,             // NOLINT
+      pir::OperationArgument &argument,  // NOLINT
+      pir::Value x,
+      paddle::platform::TensorRTEngine::ConstructionParams trt_params,
+      std::vector<std::string> input_names,
+      std::vector<std::string> output_names,
+      std::vector<std::vector<int64_t>> outputs_shape,
+      std::vector<phi::DataType> outputs_dtype);
 
   void VerifySig();
 

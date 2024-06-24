@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
@@ -23,13 +24,18 @@
 namespace paddle {
 namespace dialect {
 
-const char* TensorRTEngineOp::attributes_name[7] = {"engine",
-                                                    "workspace_size",
-                                                    "allow_build_at_runtime",
-                                                    "input_names",
-                                                    "output_names",
-                                                    "origin_output_rank",
-                                                    "origin_outputs_dtype"};
+const char *TensorRTEngineOp::attributes_name[12] = {"engine_serialized_data",
+                                                     "workspace_size",
+                                                     "allow_build_at_runtime",
+                                                     "input_names",
+                                                     "output_names",
+                                                     "outputs_rank",
+                                                     "outputs_dtype",
+                                                     "dynamic_shape_names",
+                                                     "dynamic_shape_lens",
+                                                     "min_input_shape_vector",
+                                                     "max_input_shape_vector",
+                                                     "opt_input_shape_vector"};
 
 OpInfoTuple TensorRTEngineOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -41,7 +47,8 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
                   false)};
 
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      paddle::dialect::OpAttributeInfo("engine", "pir::PointerAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "engine_serialized_data", "pir::StrAttribute", ""),
       paddle::dialect::OpAttributeInfo(
           "workspace_size", "pir::Int64Attribute", ""),
       paddle::dialect::OpAttributeInfo(
@@ -51,9 +58,19 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
       paddle::dialect::OpAttributeInfo(
           "output_names", "pir::ArrayAttribute", ""),
       paddle::dialect::OpAttributeInfo(
-          "origin_output_rank", "pir::ArrayAttribute", ""),
+          "outputs_rank", "pir::ArrayAttribute", ""),
       paddle::dialect::OpAttributeInfo(
-          "origin_outputs_dtype", "pir::ArrayAttribute", "")};
+          "outputs_dtype", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "dynamic_shape_names", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "dynamic_shape_lens", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "min_input_shape_vector", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "max_input_shape_vector", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "opt_input_shape_vector", "pir::ArrayAttribute", "")};
 
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out",
@@ -68,18 +85,34 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
       inputs, attributes, outputs, run_time_info, "tensorrt_engine_op");
 }
 
+#define ADD_VEC_ATTRIBUTE(type, name)                                   \
+  std::vector<pir::Attribute> name##_tmp;                               \
+  name##_tmp.reserve(name.size());                                      \
+  for (const auto &v : name) {                                          \
+    name##_tmp.push_back(type::get(pir::IrContext::Instance(), v));     \
+  }                                                                     \
+  pir::Attribute attr_##name =                                          \
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), name##_tmp); \
+  argument.AddAttribute(#name, attr_##name)
+
+#define VERIFY_ATTRIBUTE(type, name)                                         \
+  PADDLE_ENFORCE_GT(attributes.count(#name),                                 \
+                    0,                                                       \
+                    phi::errors::InvalidArgument(#name " does not exist.")); \
+  PADDLE_ENFORCE_EQ(attributes.at(#name).isa<type>(),                        \
+                    true,                                                    \
+                    phi::errors::InvalidArgument("Type of attribute: " #name \
+                                                 " is not " #type))
+
 void TensorRTEngineOp::Build(
-    pir::Builder& builder,
-    pir::OperationArgument& argument,
+    pir::Builder &builder,             // NOLINT
+    pir::OperationArgument &argument,  // NOLINT
     pir::Value x,
-    void* engine,
-    int64_t workspace_size,
-    bool allow_build_at_runtime,
+    paddle::platform::TensorRTEngine::ConstructionParams trt_params,
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
-    std::vector<int> origin_output_rank,
-    std::vector<phi::DataType> origin_outputs_dtype,
-    const std::vector<paddle::dialect::IrTensor>& outs_meta) {
+    std::vector<std::vector<int64_t>> outputs_shape,
+    std::vector<phi::DataType> outputs_dtype) {
   VLOG(4) << "Start build TensorRTEngineOp";
 
   VLOG(4) << "Builder construction inputs";
@@ -87,73 +120,73 @@ void TensorRTEngineOp::Build(
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::Attribute attr_engine =
-      pir::PointerAttribute::get(pir::IrContext::Instance(), engine);
-  argument.AddAttribute("engine", attr_engine);
-  pir::Attribute attr_workspace_size =
-      pir::Int64Attribute::get(pir::IrContext::Instance(), workspace_size);
+  pir::Attribute attr_engine_serialized_data = pir::StrAttribute::get(
+      pir::IrContext::Instance(), trt_params.engine_serialized_data);
+  argument.AddAttribute("engine_serialized_data", attr_engine_serialized_data);
+  pir::Attribute attr_workspace_size = pir::Int64Attribute::get(
+      pir::IrContext::Instance(), trt_params.max_workspace_size);
   argument.AddAttribute("workspace_size", attr_workspace_size);
   pir::Attribute attr_allow_build_at_runtime = pir::BoolAttribute::get(
-      pir::IrContext::Instance(), allow_build_at_runtime);
+      pir::IrContext::Instance(), trt_params.allow_build_at_runtime);
   argument.AddAttribute("allow_build_at_runtime", attr_allow_build_at_runtime);
 
-  std::vector<pir::Attribute> input_names_tmp;
-  input_names_tmp.reserve(input_names.size());
-  for (const auto& v : input_names) {
-    input_names_tmp.push_back(
-        pir::StrAttribute::get(pir::IrContext::Instance(), v));
+  std::vector<pir::Attribute> outputs_rank_tmp;
+  outputs_rank_tmp.reserve(outputs_shape.size());
+  for (const auto &v : outputs_shape) {
+    outputs_rank_tmp.push_back(
+        pir::Int32Attribute::get(pir::IrContext::Instance(), v.size()));
   }
-  pir::Attribute attr_input_names =
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), input_names_tmp);
-  argument.AddAttribute("input_names", attr_input_names);
+  pir::Attribute attr_outputs_rank =
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outputs_rank_tmp);
+  argument.AddAttribute("outputs_rank", attr_outputs_rank);
 
-  std::vector<pir::Attribute> output_names_tmp;
-  output_names_tmp.reserve(output_names.size());
-  for (const auto& v : output_names) {
-    output_names_tmp.push_back(
-        pir::StrAttribute::get(pir::IrContext::Instance(), v));
+  std::vector<std::string> dynamic_shape_names;
+  std::vector<int> dynamic_shape_lens;
+  std::vector<int> min_input_shape_vector;
+  std::vector<int> max_input_shape_vector;
+  std::vector<int> opt_input_shape_vector;
+  for (const auto &it : trt_params.min_input_shape) {
+    dynamic_shape_names.push_back(it.first);
+    dynamic_shape_lens.push_back(it.second.size());
+    for (const auto &value : it.second) {
+      min_input_shape_vector.push_back(value);
+    }
   }
-  pir::Attribute attr_output_names =
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), output_names_tmp);
-  argument.AddAttribute("output_names", attr_output_names);
+  for (const auto &it : trt_params.max_input_shape) {
+    for (const auto &value : it.second) {
+      max_input_shape_vector.push_back(value);
+    }
+  }
+  for (const auto &it : trt_params.optim_input_shape) {
+    for (const auto &value : it.second) {
+      opt_input_shape_vector.push_back(value);
+    }
+  }
 
-  std::vector<pir::Attribute> origin_output_rank_tmp;
-  origin_output_rank_tmp.reserve(origin_output_rank.size());
-  for (const auto& v : origin_output_rank) {
-    origin_output_rank_tmp.push_back(
-        pir::Int32Attribute::get(pir::IrContext::Instance(), v));
-  }
-  pir::Attribute attr_origin_output_rank = pir::ArrayAttribute::get(
-      pir::IrContext::Instance(), origin_output_rank_tmp);
-  argument.AddAttribute("origin_output_rank", attr_origin_output_rank);
-
-  std::vector<pir::Attribute> origin_outputs_dtype_tmp;
-  origin_outputs_dtype_tmp.reserve(origin_outputs_dtype.size());
-  for (const auto& v : origin_outputs_dtype) {
-    origin_outputs_dtype_tmp.push_back(
-        paddle::dialect::DataTypeAttribute::get(pir::IrContext::Instance(), v));
-  }
-  pir::Attribute attr_origin_outputs_dtype = pir::ArrayAttribute::get(
-      pir::IrContext::Instance(), origin_outputs_dtype_tmp);
-  argument.AddAttribute("origin_outputs_dtype", attr_origin_outputs_dtype);
+  ADD_VEC_ATTRIBUTE(pir::StrAttribute, input_names);
+  ADD_VEC_ATTRIBUTE(pir::StrAttribute, output_names);
+  ADD_VEC_ATTRIBUTE(paddle::dialect::DataTypeAttribute, outputs_dtype);
+  ADD_VEC_ATTRIBUTE(pir::StrAttribute, dynamic_shape_names);
+  ADD_VEC_ATTRIBUTE(pir::Int32Attribute, dynamic_shape_lens);
+  ADD_VEC_ATTRIBUTE(pir::Int32Attribute, min_input_shape_vector);
+  ADD_VEC_ATTRIBUTE(pir::Int32Attribute, max_input_shape_vector);
+  ADD_VEC_ATTRIBUTE(pir::Int32Attribute, opt_input_shape_vector);
 
   VLOG(4) << "Builder construction outputs";
 
   std::vector<pir::Type> argument_outputs;
-
   std::vector<pir::Type> out_types;
-  for (size_t i = 0; i < static_cast<size_t>(outs_meta.size()); i++) {
-    out_types.push_back(
-        pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                  TransToIrDataType(outs_meta[i].dtype()),
-                                  outs_meta[i].dims(),
-                                  outs_meta[i].layout(),
-                                  outs_meta[i].lod(),
-                                  outs_meta[i].offset()));
+  for (size_t i = 0; i < static_cast<size_t>(outputs_shape.size()); i++) {
+    out_types.push_back(pir::DenseTensorType::get(
+        pir::IrContext::Instance(),
+        TransToIrDataType(outputs_dtype[i]),
+        phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
+        phi::DataLayout::ALL_LAYOUT,
+        phi::LoD(),
+        0));
   }
   pir::Type out_vector_type =
       pir::VectorType::get(pir::IrContext::Instance(), out_types);
-
   argument_outputs.push_back(out_vector_type);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
@@ -189,70 +222,19 @@ void TensorRTEngineOp::VerifySig() {
   }
   VLOG(4) << "Verifying attributes:";
   {
-    auto& attributes = this->attributes();
-    PADDLE_ENFORCE_GT(attributes.count("engine"),
-                      0,
-                      phi::errors::InvalidArgument("engine does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("engine").isa<pir::PointerAttribute>(),
-        true,
-        phi::errors::InvalidArgument(
-            "Type of attribute: engine is not pir::PointerAttribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("workspace_size"),
-        0,
-        phi::errors::InvalidArgument("workspace_size does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("workspace_size").isa<pir::Int64Attribute>(),
-        true,
-        phi::errors::InvalidArgument(
-            "Type of attribute: workspace_size is not pir::Int64Attribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("allow_build_at_runtime"),
-        0,
-        phi::errors::InvalidArgument("allow_build_at_runtime does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("allow_build_at_runtime").isa<pir::BoolAttribute>(),
-        true,
-        phi::errors::InvalidArgument(
-            "Type of attribute: allow_build_at_runtime is not "
-            "pir::BoolAttribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("input_names"),
-        0,
-        phi::errors::InvalidArgument("input_names does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("input_names").isa<pir::ArrayAttribute>(),
-        true,
-        phi::errors::InvalidArgument(
-            "Type of attribute: input_names is not pir::ArrayAttribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("output_names"),
-        0,
-        phi::errors::InvalidArgument("output_names does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("output_names").isa<pir::ArrayAttribute>(),
-        true,
-        phi::errors::InvalidArgument(
-            "Type of attribute: output_names is not pir::ArrayAttribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("origin_output_rank"),
-        0,
-        phi::errors::InvalidArgument("origin_output_rank does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("origin_output_rank").isa<pir::ArrayAttribute>(),
-        true,
-        phi::errors::InvalidArgument("Type of attribute: origin_output_rank is "
-                                     "not pir::ArrayAttribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("origin_outputs_dtype"),
-        0,
-        phi::errors::InvalidArgument("origin_outputs_dtype does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("origin_outputs_dtype").isa<pir::ArrayAttribute>(),
-        true,
-        phi::errors::InvalidArgument("Type of attribute: origin_outputs_dtype "
-                                     "is not pir::ArrayAttribute."));
+    auto &attributes = this->attributes();
+    VERIFY_ATTRIBUTE(pir::StrAttribute, engine_serialized_data);
+    VERIFY_ATTRIBUTE(pir::Int64Attribute, workspace_size);
+    VERIFY_ATTRIBUTE(pir::BoolAttribute, allow_build_at_runtime);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, input_names);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, output_names);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, outputs_rank);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, outputs_dtype);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, dynamic_shape_names);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, dynamic_shape_lens);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, min_input_shape_vector);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, max_input_shape_vector);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, opt_input_shape_vector);
   }
 
   VLOG(4) << "Verifying outputs:";

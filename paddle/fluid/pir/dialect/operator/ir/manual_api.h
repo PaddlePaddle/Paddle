@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/fluid/platform/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/value.h"
@@ -100,15 +101,12 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
                                                        std::string activation);
 pir::Value array_pop(pir::Value input, int index);
 
-pir::Value tensorrt_engine(
-    const pir::Value& x,
-    void* engine,
-    int64_t workspace_size,
-    bool allow_build_at_runtime,
+std::vector<pir::Value> tensorrt_engine(
+    const std::vector<pir::Value>& inputs,
+    paddle::platform::TensorRTEngine::ConstructionParams trt_params,
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
-    std::vector<int> origin_output_rank,
-    std::vector<phi::DataType> origin_outputs_dtype,
-    const std::vector<paddle::dialect::IrTensor>& outs_meta);
+    std::vector<std::vector<int64_t>> outputs_shape,
+    std::vector<phi::DataType> outputs_dtype);
 }  // namespace dialect
 }  // namespace paddle

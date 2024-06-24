@@ -60,13 +60,9 @@ void TensorRTEngine::InitNetwork() {
   FreshDeviceId();
   infer_builder_.reset(createInferBuilder(&logger_));
 
-  if (with_dynamic_shape()) {
-    infer_network_.reset(infer_builder_->createNetworkV2(
-        1U << static_cast<int>(
-            nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
-  } else {
-    infer_network_.reset(infer_builder_->createNetworkV2(0U));
-  }
+  infer_network_.reset(infer_builder_->createNetworkV2(
+      1U << static_cast<int>(
+          nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
   optim_profiles_.resize(max_profile_num_);
@@ -95,18 +91,17 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
         infer_context,
         platform::errors::InvalidArgument(
             "TensorRT engine can not build execution context."));
-    if (with_dynamic_shape()) {
-      // need new profile if it's not the first
-      if (cur_profile_num_ > 0) {
+    // need new profile if it's not the first
+    if (cur_profile_num_ > 0) {
 #if IS_TRT_VERSION_GE(8600)
-        infer_context->setOptimizationProfileAsync(cur_profile_num_, nullptr);
+      infer_context->setOptimizationProfileAsync(cur_profile_num_, nullptr);
 #else
-        infer_context->setOptimizationProfile(cur_profile_num_);
+      infer_context->setOptimizationProfile(cur_profile_num_);
 #endif
-      }
-      profile_index_[predictor_id_per_thread] = cur_profile_num_;
-      ++cur_profile_num_;
     }
+    profile_index_[predictor_id_per_thread] = cur_profile_num_;
+    ++cur_profile_num_;
+
     infer_context_[predictor_id_per_thread].reset(infer_context);
   }
   return infer_context_[predictor_id_per_thread].get();
@@ -187,15 +182,11 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 #endif
 
   bool ret;
-  if (!with_dynamic_shape()) {
-    ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
-  } else {
 #if IS_TRT_VERSION_GE(8500)
-    ret = context->enqueueV3(stream);
+  ret = context->enqueueV3(stream);
 #else
-    ret = context->enqueueV2(buffers->data(), stream, nullptr);
+  ret = context->enqueueV2(buffers->data(), stream, nullptr);
 #endif
-  }
   return ret;
 }
 
@@ -209,10 +200,6 @@ void TensorRTEngine::FreezeNetwork() {
   PADDLE_ENFORCE_NOT_NULL(network(),
                           platform::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
-  // build engine.
-  if (!with_dynamic_shape()) {
-    infer_builder_->setMaxBatchSize(params_.max_batch_size);
-  }
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, params_.max_workspace_size);
@@ -311,81 +298,78 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  if (with_dynamic_shape()) {
-    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
-    for (int i = 0; i < max_profile_num_; i++) {
-      for (auto &input : min_input_shape()) {
+  LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+  for (int i = 0; i < max_profile_num_; i++) {
+    for (auto &input : min_input_shape()) {
 #if IS_TRT_VERSION_LT(7100)
-        // trt6/trt7011 will check all_of input > 0
-        if (!(std::all_of(input.second.begin(),
-                          input.second.end(),
-                          [](int x) { return x > 0; }) &&
-              std::all_of(max_input_shape()[input.first].begin(),
-                          max_input_shape()[input.first].end(),
-                          [](int x) { return x > 0; }) &&
-              std::all_of(optim_input_shape()[input.first].begin(),
-                          optim_input_shape()[input.first].end(),
-                          [](int x) { return x > 0; }))) {
-          continue;
-        }
+      // trt6/trt7011 will check all_of input > 0
+      if (!(std::all_of(input.second.begin(),
+                        input.second.end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(max_input_shape()[input.first].begin(),
+                        max_input_shape()[input.first].end(),
+                        [](int x) { return x > 0; }) &&
+            std::all_of(optim_input_shape()[input.first].begin(),
+                        optim_input_shape()[input.first].end(),
+                        [](int x) { return x > 0; }))) {
+        continue;
+      }
 #endif
-        VLOG(4) << "TRT dynamic_shape set " << input.first
-                << " min: " << Vec2Str(input.second)
-                << ", max: " << Vec2Str(max_input_shape()[input.first])
-                << ", opt: " << Vec2Str(optim_input_shape()[input.first]);
+      VLOG(4) << "TRT dynamic_shape set " << input.first
+              << " min: " << Vec2Str(input.second)
+              << ", max: " << Vec2Str(max_input_shape()[input.first])
+              << ", opt: " << Vec2Str(optim_input_shape()[input.first]);
 
-        optim_profiles_[i]->setDimensions(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kMIN,
-            Vec2TRT_Dims(input.second, input.first, true));
-        optim_profiles_[i]->setDimensions(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kMAX,
-            Vec2TRT_Dims(max_input_shape()[input.first], input.first, true));
-        optim_profiles_[i]->setDimensions(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kOPT,
-            Vec2TRT_Dims(optim_input_shape()[input.first], input.first, true));
-      }
-
-      for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
-        auto input_name = network()->getInput(input_id)->getName();
-        if (!itensor_map_.count(input_name)) continue;
-        if (!GetITensor(input_name)->isShapeTensor()) continue;
-        PADDLE_ENFORCE_EQ(min_shape_tensor().count(input_name) > 0 &&
-                              max_shape_tensor().count(input_name) > 0 &&
-                              optim_shape_tensor().count(input_name) > 0,
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Fail to find min/max/optim shape value for TRT "
-                              "network's shape tensor input named %s.",
-                              input_name));
-        auto min_vec = min_shape_tensor().at(input_name);
-        optim_profiles_[i]->setShapeValues(input_name,
-                                           nvinfer1::OptProfileSelector::kMIN,
-                                           min_vec.data(),
-                                           min_vec.size());
-        optim_profiles_[i]->setShapeValues(
-            input_name,
-            nvinfer1::OptProfileSelector::kMAX,
-            max_shape_tensor()[input_name].data(),
-            min_vec.size());
-        optim_profiles_[i]->setShapeValues(
-            input_name,
-            nvinfer1::OptProfileSelector::kOPT,
-            optim_shape_tensor()[input_name].data(),
-            min_vec.size());
-      }
-
-      infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
+      optim_profiles_[i]->setDimensions(
+          input.first.c_str(),
+          nvinfer1::OptProfileSelector::kMIN,
+          Vec2TRT_Dims(input.second, input.first, true));
+      optim_profiles_[i]->setDimensions(
+          input.first.c_str(),
+          nvinfer1::OptProfileSelector::kMAX,
+          Vec2TRT_Dims(max_input_shape()[input.first], input.first, true));
+      optim_profiles_[i]->setDimensions(
+          input.first.c_str(),
+          nvinfer1::OptProfileSelector::kOPT,
+          Vec2TRT_Dims(optim_input_shape()[input.first], input.first, true));
     }
-    if (WithFp16() && disable_trt_plugin_fp16()) {
-      LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
-                   "disabled the fp16 mode of TRT Plugin,\n"
-                << "you can reopen it with "
-                   "'config.SetDynamicShapeInfo(min_shape, max_shape, "
-                   "opt_shape, false /*disable_trt_plugin_fp16*/)'";
+
+    for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
+      auto input_name = network()->getInput(input_id)->getName();
+      if (!itensor_map_.count(input_name)) continue;
+      if (!GetITensor(input_name)->isShapeTensor()) continue;
+      PADDLE_ENFORCE_EQ(min_shape_tensor().count(input_name) > 0 &&
+                            max_shape_tensor().count(input_name) > 0 &&
+                            optim_shape_tensor().count(input_name) > 0,
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Fail to find min/max/optim shape value for TRT "
+                            "network's shape tensor input named %s.",
+                            input_name));
+      auto min_vec = min_shape_tensor().at(input_name);
+      optim_profiles_[i]->setShapeValues(input_name,
+                                         nvinfer1::OptProfileSelector::kMIN,
+                                         min_vec.data(),
+                                         min_vec.size());
+      optim_profiles_[i]->setShapeValues(input_name,
+                                         nvinfer1::OptProfileSelector::kMAX,
+                                         max_shape_tensor()[input_name].data(),
+                                         min_vec.size());
+      optim_profiles_[i]->setShapeValues(
+          input_name,
+          nvinfer1::OptProfileSelector::kOPT,
+          optim_shape_tensor()[input_name].data(),
+          min_vec.size());
     }
+
+    infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
+  }
+  if (WithFp16() && disable_trt_plugin_fp16()) {
+    LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
+                 "disabled the fp16 mode of TRT Plugin,\n"
+              << "you can reopen it with "
+                 "'config.SetDynamicShapeInfo(min_shape, max_shape, "
+                 "opt_shape, false /*disable_trt_plugin_fp16*/)'";
   }
 #if IS_TRT_VERSION_GE(8200)
   if (params_.use_inspector) {
@@ -400,14 +384,12 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setBuilderOptimizationLevel(
       params_.optimization_level);
 #endif
-
 #if IS_TRT_VERSION_GE(8210)
   if (!trt_ops_run_float_.empty()) {
     infer_builder_config_->setFlag(
         nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
   }
 #endif
-
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
@@ -585,14 +567,7 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
     trt_in_shape.nbDims = 1;
     trt_in_shape.d[0] = 1;
   }
-  // In fact , this is not always right, because we can't determine if the
-  // 0th dimension is batch. Just for run chenqu's model
-  if (!with_dynamic_shape()) {
-    trt_in_shape.nbDims--;
-    for (int i = 0; i < trt_in_shape.nbDims; i++) {
-      trt_in_shape.d[i] = trt_in_shape.d[i + 1];
-    }
-  }
+
   if (scalar) {
     trt_in_shape.nbDims = 0;
     trt_in_shape.d[0] = var_dims[0];
@@ -908,12 +883,10 @@ void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
   if (engine_info_path.empty()) {
-    LOG(INFO) << "====== engine info ======";
     for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
       LOG(INFO) << infer_inspector->getLayerInformation(
           i, nvinfer1::LayerInformationFormat::kJSON);
     }
-    LOG(INFO) << "====== engine info end ======";
   } else {
     std::fstream out_file;
     out_file.open(engine_info_path, std::ios_base::out);

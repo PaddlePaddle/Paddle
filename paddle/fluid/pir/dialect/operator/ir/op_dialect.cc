@@ -395,6 +395,9 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
       >();
 #endif
+
+  RegisterOps<TensorRTEngineOp>();
+
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -1065,26 +1068,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func);
 }
 
-TensorRTOpDialect::TensorRTOpDialect(pir::IrContext* context)
-    : pir::Dialect(name(), context, pir::TypeId::get<TensorRTOpDialect>()) {
-  RegisterOps<TensorRTEngineOp>();
-}
-
-void TensorRTOpDialect::PrintType(pir::Type type, std::ostream& os) const {
-  PrintTypeImpl(type, os);
-}
-
-void TensorRTOpDialect::PrintAttribute(pir::Attribute attr,
-                                       std::ostream& os) const {
-  PrintAttributeImpl(attr, os);
-}
-
-pir::OpPrintFn TensorRTOpDialect::PrintOperation(pir::Operation* op) const {
-  return nullptr;
-}
-
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorRTOpDialect)

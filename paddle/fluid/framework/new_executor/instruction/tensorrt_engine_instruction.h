@@ -55,15 +55,15 @@ class TensorRTEngineInstruction : public InstructionBase {
                         int output_index,
                         std::vector<void*>& buffers,  // NOLINT
                         int* runtime_batch);
-  paddle::platform::TensorRTEngine* trt_engine_;  // not owned
+  std::unique_ptr<paddle::platform::TensorRTEngine> trt_engine_;  // not owned
   int64_t workspace_size_;
   bool allow_build_at_runtime_;
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
-  std::vector<int> origin_output_rank_;
-  std::vector<phi::DataType> origin_outputs_dtype_;
+  std::vector<int> outputs_rank_;
+  std::vector<phi::DataType> outputs_dtype_;
   std::vector<std::string> runtime_output_names_;
-  std::string op_name_ = "trt_op.tensorrt_engine_op";
+  std::string op_name_ = "pd_op.tensorrt_engine_op";
   ::pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned

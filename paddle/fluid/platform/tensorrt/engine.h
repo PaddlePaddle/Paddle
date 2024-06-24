@@ -108,7 +108,6 @@ class TrtCudaGraph {
  * protobuf model, another way is to manually construct the network.
  */
 class TensorRTEngine {
-  using DescType = ::paddle::framework::proto::BlockDesc;
   using ShapeMapType = std::map<std::string, std::vector<int>>;
   using PredictorID = int;
 
@@ -117,9 +116,6 @@ class TensorRTEngine {
    * Construction parameters of TensorRTEngine.
    */
   struct ConstructionParams {
-    // The max batch size.
-    int32_t max_batch_size;
-
     // The max memory size the engine uses.
     int64_t max_workspace_size;
 
@@ -130,8 +126,6 @@ class TensorRTEngine {
     bool context_memory_sharing{false};
 
     int device_id{0};
-
-    bool with_dynamic_shape{false};
 
     bool use_dla{false};
     int dla_core{0};
@@ -145,6 +139,7 @@ class TensorRTEngine {
 
     bool use_inspector{false};
     std::string engine_info_path{""};
+    std::string engine_serialized_data{""};
 
     //
     // From tensorrt_subgraph_pass, only used for OpConverter.
@@ -160,6 +155,7 @@ class TensorRTEngine {
     bool disable_trt_plugin_fp16{false};
     int optimization_level{3};
     bool use_explicit_quantization{false};
+    bool allow_build_at_runtime{false};
   };
 
   // Weight is model parameter.
@@ -490,7 +486,6 @@ class TensorRTEngine {
     return params_.tensorrt_transformer_maskid;
   }
   bool disable_trt_plugin_fp16() { return params_.disable_trt_plugin_fp16; }
-  bool with_dynamic_shape() { return params_.with_dynamic_shape; }
   phi::DataType precision() { return params_.precision; }
 
   void SetProfileNum(int num) { max_profile_num_ = num; }

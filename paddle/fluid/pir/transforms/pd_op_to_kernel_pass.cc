@@ -3148,7 +3148,6 @@ void ProcessBlock(
       continue;
     }
 
-#ifdef PADDLE_WITH_TENSORRT
     if (paddle::dialect::IsTensorRTOp(op_item)) {
       HandleForTensorRTOp(ctx,
                           op_item,
@@ -3159,7 +3158,6 @@ void ProcessBlock(
                           new_block);
       continue;
     }
-#endif
 
 #ifdef PADDLE_WITH_DNNL
     if (op_item->HasTrait<OneDNNTrait>() &&

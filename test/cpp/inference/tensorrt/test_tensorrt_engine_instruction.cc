@@ -59,9 +59,18 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   dev_ctx->Alloc<float>(y_tensor);
 
   // 2. construct trt engine
+  std::map<std::string, std::vector<int>> min_input_shape = {
+      {"x", {1, 1, 1, 1}}};
+  std::map<std::string, std::vector<int>> max_input_shape = {
+      {"x", {10, 1, 1, 1}}};
+  std::map<std::string, std::vector<int>> optim_input_shape = {
+      {"x", {5, 1, 1, 1}}};
+
   paddle::platform::TensorRTEngine::ConstructionParams params;
-  params.max_batch_size = 10;
   params.max_workspace_size = 1 << 10;
+  params.min_input_shape = min_input_shape;
+  params.max_input_shape = max_input_shape;
+  params.optim_input_shape = optim_input_shape;
   auto engine = std::make_unique<paddle::platform::TensorRTEngine>(params);
   engine->InitNetwork();
 
@@ -71,7 +80,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   paddle::platform::TensorRTEngine::Weight bias(
       nvinfer1::DataType::kFLOAT, raw_bias, size);
   auto *x = engine->DeclareInput(
-      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 1, 1});
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims4{-1, 1, 1, 1});
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(
       engine, FullyConnected, *x, size, weight.get(), bias.get());
   PADDLE_ENFORCE_NOT_NULL(fc_layer,
@@ -81,17 +90,16 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   engine->DeclareOutput(fc_layer, 0, "y");
   std::vector<std::string> input_names = {"x", ""};
   std::vector<std::string> output_names = {"y"};
-  std::vector<int> origin_output_rank = {1};
-  std::vector<phi::DataType> origin_outputs_dtype = {phi::DataType::FLOAT32};
-  std::vector<paddle::dialect::IrTensor> outs_meta;
-  outs_meta.emplace_back(phi::DataType::FLOAT32,
-                         phi::DDim({1}),
-                         phi::DataLayout::NCHW,
-                         pir::LoD(),
-                         0);
+  std::vector<std::vector<int64_t>> outputs_shape = {{1}};
+  std::vector<phi::DataType> outputs_dtype = {phi::DataType::FLOAT32};
   LOG(INFO) << "freeze network";
   engine->FreezeNetwork();
   ASSERT_EQ(engine->engine()->getNbBindings(), 2);
+  nvinfer1::IHostMemory *serialized_engine_data = engine->Serialize();
+  auto trt_engine_serialized_data =
+      std::string((const char *)serialized_engine_data->data(),
+                  serialized_engine_data->size());
+  params.engine_serialized_data = trt_engine_serialized_data;
 
   // 3. Build PIR Program
   // x --------
@@ -99,14 +107,14 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   // weight ---
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::TensorRTOpDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::Program program(ctx);
   pir::Builder builder(ctx, program.block());
-  auto x_value =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1}, 100.0f)
-          .out();
+  auto x_value = builder
+                     .Build<paddle::dialect::FullOp>(
+                         std::vector<int64_t>{1, 1, 1, 1}, 100.0f)
+                     .out();
   auto weight_value =
       builder.Build<pir::ParameterOp>("weight", x_value.type()).result(0);
   auto y_value =
@@ -117,14 +125,11 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   auto tensorrt_result =
       builder
           .Build<paddle::dialect::TensorRTEngineOp>(tensorrt_input,
-                                                    engine.get(),
-                                                    1 << 10,
-                                                    false,
+                                                    params,
                                                     input_names,
                                                     output_names,
-                                                    origin_output_rank,
-                                                    origin_outputs_dtype,
-                                                    outs_meta)
+                                                    outputs_shape,
+                                                    outputs_dtype)
           .out();
   auto assign_input = builder.Build<pir::SplitOp>(tensorrt_result).outputs()[0];
   builder.Build<paddle::dialect::AssignOut_Op>(assign_input, y_value);
@@ -183,9 +188,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
       {"shape", {18, 8, 4}}};
 
   paddle::platform::TensorRTEngine::ConstructionParams params;
-  params.max_batch_size = 16;
   params.max_workspace_size = 1 << 10;
-  params.with_dynamic_shape = true;
   params.min_input_shape = min_input_shape;
   params.max_input_shape = max_input_shape;
   params.optim_input_shape = optim_input_shape;
@@ -197,8 +200,6 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
       params, paddle::platform::NaiveLogger::Global());
   engine->InitNetwork();
 
-  std::cout << "with_dynamic_shape: " << engine->with_dynamic_shape()
-            << std::endl;
   auto *x = engine->DeclareInput(
       "input", nvinfer1::DataType::kFLOAT, nvinfer1::Dims2{-1, 32});
   nvinfer1::Dims shape_dim;
@@ -213,6 +214,13 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
                               "TRT shuffle layer building failed."));
   engine->DeclareOutput(layer, 0, "y");
   engine->FreezeNetwork();
+
+  nvinfer1::IHostMemory *serialized_engine_data = engine->Serialize();
+  auto trt_engine_serialized_data =
+      std::string((const char *)serialized_engine_data->data(),
+                  serialized_engine_data->size());
+  params.engine_serialized_data = trt_engine_serialized_data;
+
   LOG(INFO) << "freeze network";
 
   // 3. Build PIR Program
@@ -221,7 +229,6 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   // weight ---
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::TensorRTOpDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::Program program(ctx);
@@ -248,26 +255,17 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
 
   std::vector<std::string> input_names = {"input", "shape"};
   std::vector<std::string> output_names = {"y"};
-  std::vector<int> origin_output_rank = {1};
-  std::vector<phi::DataType> origin_outputs_dtype = {phi::DataType::FLOAT32};
-  std::vector<paddle::dialect::IrTensor> outs_meta;
-  outs_meta.emplace_back(phi::DataType::FLOAT32,
-                         phi::DDim(vec_shape.data(), vec_shape.size()),
-                         phi::DataLayout::NCHW,
-                         pir::LoD(),
-                         0);
+  std::vector<std::vector<int64_t>> outputs_shape = {vec_shape};
+  std::vector<phi::DataType> outputs_dtype = {phi::DataType::FLOAT32};
 
   auto tensorrt_result =
       builder
           .Build<paddle::dialect::TensorRTEngineOp>(tensorrt_input,
-                                                    engine.get(),
-                                                    1 << 10,
-                                                    false,
+                                                    params,
                                                     input_names,
                                                     output_names,
-                                                    origin_output_rank,
-                                                    origin_outputs_dtype,
-                                                    outs_meta)
+                                                    outputs_shape,
+                                                    outputs_dtype)
           .out();
   auto assign_input = builder.Build<pir::SplitOp>(tensorrt_result).outputs()[0];
   builder.Build<paddle::dialect::AssignOut_Op>(assign_input, y_value);

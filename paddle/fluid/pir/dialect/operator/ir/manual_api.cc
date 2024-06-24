@@ -293,29 +293,27 @@ pir::Value array_pop(pir::Value input, int index) {
   }
 }
 
-pir::Value tensorrt_engine(
-    const pir::Value& x,
-    void* engine,
-    int64_t workspace_size,
-    bool allow_build_at_runtime,
+std::vector<pir::Value> tensorrt_engine(
+    const std::vector<pir::Value>& inputs,
+    paddle::platform::TensorRTEngine::ConstructionParams trt_params,
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
-    std::vector<int> origin_output_rank,
-    std::vector<phi::DataType> origin_outputs_dtype,
-    const std::vector<paddle::dialect::IrTensor>& outs_meta) {
+    std::vector<std::vector<int64_t>> outputs_shape,
+    std::vector<phi::DataType> outputs_dtype) {
+  auto x =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs).out();
   paddle::dialect::TensorRTEngineOp tensorrt_engine_op =
       ApiBuilder::Instance()
           .GetBuilder()
           ->Build<paddle::dialect::TensorRTEngineOp>(x,
-                                                     engine,
-                                                     workspace_size,
-                                                     allow_build_at_runtime,
+                                                     trt_params,
                                                      input_names,
                                                      output_names,
-                                                     origin_output_rank,
-                                                     origin_outputs_dtype,
-                                                     outs_meta);
-  return tensorrt_engine_op.result(0);
+                                                     outputs_shape,
+                                                     outputs_dtype);
+  auto out_split_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
+      tensorrt_engine_op.result(0));
+  return out_split_op.outputs();
 }
 
 }  // namespace dialect

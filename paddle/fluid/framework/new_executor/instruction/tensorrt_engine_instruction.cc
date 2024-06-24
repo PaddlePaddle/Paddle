@@ -31,8 +31,11 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
     const ValueExecutionInfo *value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
-  trt_engine_ = static_cast<TensorRTEngine *>(
-      op_attributes.at("engine").dyn_cast<pir::PointerAttribute>().data());
+
+  VLOG(6) << "Start Build engine";
+  auto engine_serialized_data = op_attributes.at("engine_serialized_data")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
   workspace_size_ =
       op_attributes.at("workspace_size").dyn_cast<pir::Int64Attribute>().data();
   allow_build_at_runtime_ = op_attributes.at("allow_build_at_runtime")
@@ -45,19 +48,19 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
     output_names_.push_back(
         output_names_attr.dyn_cast<pir::StrAttribute>().AsString());
   }
-  auto origin_output_rank_attrs = op_attributes.at("origin_output_rank")
-                                      .dyn_cast<pir::ArrayAttribute>()
-                                      .AsVector();
-  for (auto origin_output_rank_attr : origin_output_rank_attrs) {
-    origin_output_rank_.push_back(
-        origin_output_rank_attr.dyn_cast<pir::Int32Attribute>().data());
+  auto outputs_rank_attrs = op_attributes.at("outputs_rank")
+                                .dyn_cast<pir::ArrayAttribute>()
+                                .AsVector();
+  for (auto outputs_rank_attr : outputs_rank_attrs) {
+    outputs_rank_.push_back(
+        outputs_rank_attr.dyn_cast<pir::Int32Attribute>().data());
   }
-  auto origin_outputs_dtype_attrs = op_attributes.at("origin_outputs_dtype")
-                                        .dyn_cast<pir::ArrayAttribute>()
-                                        .AsVector();
-  for (auto origin_outputs_dtype_attr : origin_outputs_dtype_attrs) {
-    origin_outputs_dtype_.push_back(
-        origin_outputs_dtype_attr.dyn_cast<paddle::dialect::DataTypeAttribute>()
+  auto outputs_dtype_attrs = op_attributes.at("outputs_dtype")
+                                 .dyn_cast<pir::ArrayAttribute>()
+                                 .AsVector();
+  for (auto outputs_dtype_attr : outputs_dtype_attrs) {
+    outputs_dtype_.push_back(
+        outputs_dtype_attr.dyn_cast<paddle::dialect::DataTypeAttribute>()
             .data());
   }
 
@@ -70,7 +73,82 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
         input_names_attr.dyn_cast<pir::StrAttribute>().AsString());
   }
 
-  VLOG(6) << "construct kernel instruction for: " << op_name_;
+  std::vector<std::string> dynamic_shape_names;
+  std::vector<int> dynamic_shape_lens;
+  std::vector<int> min_input_shape_vector;
+  std::vector<int> max_input_shape_vector;
+  std::vector<int> opt_input_shape_vector;
+
+  auto dynamic_shape_names_attrs = op_attributes.at("dynamic_shape_names")
+                                       .dyn_cast<pir::ArrayAttribute>()
+                                       .AsVector();
+  auto min_input_shapes_attrs = op_attributes.at("min_input_shape_vector")
+                                    .dyn_cast<pir::ArrayAttribute>()
+                                    .AsVector();
+  auto max_input_shapes_attrs = op_attributes.at("max_input_shape_vector")
+                                    .dyn_cast<pir::ArrayAttribute>()
+                                    .AsVector();
+  auto opt_input_shapes_attrs = op_attributes.at("opt_input_shape_vector")
+                                    .dyn_cast<pir::ArrayAttribute>()
+                                    .AsVector();
+  auto dynamic_shape_lens_attrs = op_attributes.at("dynamic_shape_lens")
+                                      .dyn_cast<pir::ArrayAttribute>()
+                                      .AsVector();
+  for (auto dynamic_shape_names_attr : dynamic_shape_names_attrs) {
+    dynamic_shape_names.push_back(
+        dynamic_shape_names_attr.dyn_cast<pir::StrAttribute>().AsString());
+  }
+  for (auto dynamic_shape_lens_attr : dynamic_shape_lens_attrs) {
+    dynamic_shape_lens.push_back(
+        dynamic_shape_lens_attr.dyn_cast<pir::Int32Attribute>().data());
+  }
+  for (auto min_input_shapes_attr : min_input_shapes_attrs) {
+    min_input_shape_vector.push_back(
+        min_input_shapes_attr.dyn_cast<pir::Int32Attribute>().data());
+  }
+  for (auto max_input_shapes_attr : max_input_shapes_attrs) {
+    max_input_shape_vector.push_back(
+        max_input_shapes_attr.dyn_cast<pir::Int32Attribute>().data());
+  }
+  for (auto opt_input_shapes_attr : opt_input_shapes_attrs) {
+    opt_input_shape_vector.push_back(
+        opt_input_shapes_attr.dyn_cast<pir::Int32Attribute>().data());
+  }
+
+  int idx = 0;
+  std::vector<std::vector<int>> min_input_shapes;
+  std::vector<std::vector<int>> max_input_shapes;
+  std::vector<std::vector<int>> opt_input_shapes;
+  for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+    std::vector<int> tmp1, tmp2, tmp3;
+    for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+      tmp1.push_back(min_input_shape_vector[idx]);
+      tmp2.push_back(max_input_shape_vector[idx]);
+      tmp3.push_back(opt_input_shape_vector[idx++]);
+    }
+    min_input_shapes.emplace_back(tmp1);
+    max_input_shapes.emplace_back(tmp2);
+    opt_input_shapes.emplace_back(tmp3);
+  }
+
+  TensorRTEngine::ConstructionParams params;
+  params.max_workspace_size = workspace_size_;
+  params.device_id = place.device;
+
+  for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+    params.min_input_shape.insert(
+        std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+    params.max_input_shape.insert(
+        std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+    params.optim_input_shape.insert(
+        std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+  }
+
+  trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
+      params, paddle::platform::NaiveLogger::Global());
+  trt_engine_->Deserialize(engine_serialized_data);
+
+  VLOG(6) << "Finish build engine for: " << op_name_;
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -236,6 +314,9 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
     std::map<std::string, std::vector<int>> max_input_shape =
         trt_engine_->max_input_shape();
     for (auto x : input_names_) {
+      if (x == "") {
+        continue;
+      }
       auto is_shape_tensor = false;
       if (trt_engine_->engine()) {
         auto *engine = trt_engine_->engine();
@@ -309,11 +390,9 @@ void TensorRTEngineInstruction::BindInputTensor(
   const int num_bindings = trt_engine_->GetNbBindings();
   int binding_offset = 0;
   nvinfer1::IExecutionContext *trt_context = nullptr;
-  if (trt_engine_->with_dynamic_shape()) {
-    // Initialize context and get offset by profile index
-    trt_context = trt_engine_->context();
-    binding_offset = trt_engine_->GetBindingsOffset();
-  }
+  // Initialize context and get offset by profile index
+  trt_context = trt_engine_->context();
+  binding_offset = trt_engine_->GetBindingsOffset();
 
   PADDLE_ENFORCE_GT(
       input_tensor.numel(),
@@ -359,80 +438,77 @@ void TensorRTEngineInstruction::BindInputTensor(
                         "index=%d >= total inputs and outputs=%d",
                         bind_index,
                         num_bindings));
-  if (!trt_engine_->with_dynamic_shape()) {
-    // TODO(YuanRisheng): check if the input shapes are consistent with model.
-    // RuntimeStaticShapeCheck(runtime_input_shape, model_input_shape);
-  } else {
+
 #if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
-    if (trt_engine_->engine()->isShapeBinding(bind_index) &&
-        trt_engine_->engine()->bindingIsInput(bind_index)) {
-      if (input_tensor.dtype() == phi::DataType::INT32) {
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                shape_v.data(),
-                                input_tensor.place(),
-                                input_tensor.data<int32_t>(),
-                                input_tensor.numel() * sizeof(int),
-                                nullptr);
-      } else if (input_tensor.dtype() == phi::DataType::INT64) {
-        std::string x_t = input_name + "_cast_to_INT32";
-        if (scope.FindVar(x_t) == nullptr) {
-          const_cast<framework::Scope *>(&scope)->Var(x_t);
-        }
-        auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
-        *int32_tensor = phi::Cast<int64_t>(
-            reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
-            input_tensor,
-            phi::DataType::INT32);
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                shape_v.data(),
-                                int32_tensor->place(),
-                                int32_tensor->data<int32_t>(),
-                                int32_tensor->numel() * sizeof(int),
-                                nullptr);
+  if (trt_engine_->engine()->isShapeBinding(bind_index) &&
+      trt_engine_->engine()->bindingIsInput(bind_index)) {
+    if (input_tensor.dtype() == phi::DataType::INT32) {
+      phi::memory_utils::Copy(phi::CPUPlace(),
+                              shape_v.data(),
+                              input_tensor.place(),
+                              input_tensor.data<int32_t>(),
+                              input_tensor.numel() * sizeof(int),
+                              nullptr);
+    } else if (input_tensor.dtype() == phi::DataType::INT64) {
+      std::string x_t = input_name + "_cast_to_INT32";
+      if (scope.FindVar(x_t) == nullptr) {
+        const_cast<framework::Scope *>(&scope)->Var(x_t);
       }
-      trt_context->setTensorAddress(input_name.c_str(), shape_v.data());
-    } else {
-      trt_context->setInputShape(
-          input_name.c_str(),
-          paddle::platform::Vec2TRT_Dims(input_shape, input_name, true));
+      auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+      *int32_tensor = phi::Cast<int64_t>(
+          reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
+          input_tensor,
+          phi::DataType::INT32);
+      phi::memory_utils::Copy(phi::CPUPlace(),
+                              shape_v.data(),
+                              int32_tensor->place(),
+                              int32_tensor->data<int32_t>(),
+                              int32_tensor->numel() * sizeof(int),
+                              nullptr);
     }
-#else
-    trt_context->setBindingDimensions(
-        bind_index,
+    trt_context->setTensorAddress(input_name.c_str(), shape_v.data());
+  } else {
+    trt_context->setInputShape(
+        input_name.c_str(),
         paddle::platform::Vec2TRT_Dims(input_shape, input_name, true));
-    // If this x is a shape tensor, we need call setInputShapeBinding
-    if (trt_engine_->engine()->isShapeBinding(bind_index) &&
-        trt_engine_->engine()->bindingIsInput(bind_index)) {
-      if (input_tensor.dtype() == phi::DataType::INT32) {
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                shape_v.data(),
-                                input_tensor.place(),
-                                input_tensor.data<int32_t>(),
-                                input_tensor.numel() * sizeof(int),
-                                nullptr);
-      } else if (input_tensor.dtype() == phi::DataType::INT64) {
-        std::string x_t = input_name + "_cast_to_INT32";
-        if (scope.FindVar(x_t) == nullptr) {
-          const_cast<framework::Scope *>(&scope)->Var(x_t);
-        }
-        auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
-        *int32_tensor = phi::Cast<int64_t>(
-            reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
-            input_tensor,
-            phi::DataType::INT32);
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                shape_v.data(),
-                                int32_tensor->place(),
-                                int32_tensor->data<int32_t>(),
-                                int32_tensor->numel() * sizeof(int),
-                                nullptr);
-      }
-      trt_context->setInputShapeBinding(bind_index, shape_v.data());
-    }
-#endif
-#endif
   }
+#else
+  trt_context->setBindingDimensions(
+      bind_index,
+      paddle::platform::Vec2TRT_Dims(input_shape, input_name, true));
+  // If this x is a shape tensor, we need call setInputShapeBinding
+  if (trt_engine_->engine()->isShapeBinding(bind_index) &&
+      trt_engine_->engine()->bindingIsInput(bind_index)) {
+    if (input_tensor.dtype() == phi::DataType::INT32) {
+      phi::memory_utils::Copy(phi::CPUPlace(),
+                              shape_v.data(),
+                              input_tensor.place(),
+                              input_tensor.data<int32_t>(),
+                              input_tensor.numel() * sizeof(int),
+                              nullptr);
+    } else if (input_tensor.dtype() == phi::DataType::INT64) {
+      std::string x_t = input_name + "_cast_to_INT32";
+      if (scope.FindVar(x_t) == nullptr) {
+        const_cast<framework::Scope *>(&scope)->Var(x_t);
+      }
+      auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+      *int32_tensor = phi::Cast<int64_t>(
+          reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
+          input_tensor,
+          phi::DataType::INT32);
+      phi::memory_utils::Copy(phi::CPUPlace(),
+                              shape_v.data(),
+                              int32_tensor->place(),
+                              int32_tensor->data<int32_t>(),
+                              int32_tensor->numel() * sizeof(int),
+                              nullptr);
+    }
+    trt_context->setInputShapeBinding(bind_index, shape_v.data());
+  }
+#endif
+#endif
+
   *runtime_batch = input_shape[0];
   VLOG(1) << "trt input [" << input_name << "] dtype is "
           << input_tensor.dtype();
@@ -500,50 +576,40 @@ void TensorRTEngineInstruction::BindOutputTensor(
   int binding_offset = 0;
   const int num_bindings = trt_engine_->GetNbBindings();
   nvinfer1::IExecutionContext *trt_context = nullptr;
-  if (trt_engine_->with_dynamic_shape()) {
-    // Initialize context and get offset by profile index
-    trt_context = trt_engine_->context();
-    binding_offset = trt_engine_->GetBindingsOffset();
-  }
+  // Initialize context and get offset by profile index
+  trt_context = trt_engine_->context();
+  binding_offset = trt_engine_->GetBindingsOffset();
+
   const int bind_index =
       trt_engine_->engine()->getBindingIndex(output_name.c_str()) +
       binding_offset;
   std::vector<int> ddim;
 
-  if (!trt_engine_->with_dynamic_shape()) {
-    auto dims = trt_engine_->engine()->getBindingDimensions(bind_index);
-    ddim.push_back(*runtime_batch);
-    for (int i = 0; i < dims.nbDims; i++) {
-      ddim.push_back(dims.d[i]);
-    }
-  } else {
 #if IS_TRT_VERSION_GE(8500)
-    auto x_name = trt_engine_->engine()->getBindingName(bind_index);
-    auto dims = trt_context->getTensorShape(x_name);
-    int nb_dims = dims.nbDims;
-    for (; nb_dims > 0; nb_dims--) {
-      // some 'x 1' of shape is normal, no need to remove it
-      if (dims.d[nb_dims - 1] != 1 ||
-          nb_dims == origin_output_rank_[output_index])
-        break;
-    }
-    for (int i = 0; i < nb_dims; i++) {
-      ddim.push_back(dims.d[i]);
-    }
-#else
-    auto dims = trt_context->getBindingDimensions(bind_index);
-    int nb_dims = dims.nbDims;
-    for (; nb_dims > 0; nb_dims--) {
-      // some 'x 1' of shape is normal, no need to remove it
-      if (dims.d[nb_dims - 1] != 1 ||
-          nb_dims == origin_output_rank_[output_index])
-        break;
-    }
-    for (int i = 0; i < nb_dims; i++) {
-      ddim.push_back(dims.d[i]);
-    }
-#endif
+  auto x_name = trt_engine_->engine()->getBindingName(bind_index);
+  auto dims = trt_context->getTensorShape(x_name);
+  int nb_dims = dims.nbDims;
+  for (; nb_dims > 0; nb_dims--) {
+    // some 'x 1' of shape is normal, no need to remove it
+    if (dims.d[nb_dims - 1] != 1 || nb_dims == outputs_rank_[output_index])
+      break;
   }
+  for (int i = 0; i < nb_dims; i++) {
+    ddim.push_back(dims.d[i]);
+  }
+#else
+  auto dims = trt_context->getBindingDimensions(bind_index);
+  int nb_dims = dims.nbDims;
+  for (; nb_dims > 0; nb_dims--) {
+    // some 'x 1' of shape is normal, no need to remove it
+    if (dims.d[nb_dims - 1] != 1 || nb_dims == outputs_rank_[output_index])
+      break;
+  }
+  for (int i = 0; i < nb_dims; i++) {
+    ddim.push_back(dims.d[i]);
+  }
+#endif
+
   auto *fluid_t = output_tensor;
   fluid_t->Resize(common::make_ddim(ddim));
 
@@ -631,7 +697,7 @@ void TensorRTEngineInstruction::RunTrt() {
   trt_engine_->Execute(runtime_batch, &buffers, stream);
 
   for (size_t i = 0; i < out_variable_array->size(); ++i) {
-    auto type = origin_outputs_dtype_[i];
+    auto type = outputs_dtype_[i];
 
     if (type == phi::DataType::INT64) {
       auto y = output_names_[i];
@@ -672,9 +738,7 @@ void TensorRTEngineInstruction::RunTrt() {
 }
 
 void TensorRTEngineInstruction::Run() {
-  if (trt_engine_->with_dynamic_shape()) {
-    PrepareDynamicShape();
-  }
+  PrepareDynamicShape();
   RunTrt();
 }
 

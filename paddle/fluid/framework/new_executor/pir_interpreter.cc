@@ -72,6 +72,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -865,6 +866,14 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectInputInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
+      } else if (op.isa<paddle::dialect::TensorRTEngineOp>()) {
+#ifdef PADDLE_WITH_TENSORRT
+        CREATE_INSTR(TensorRTEngineInstruction);
+#else
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Program has TensorRTEngineOp and must compile Paddle use "
+            "-DWITH_TENSORRT=ON"));
+#endif
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -909,10 +918,6 @@ void PirInterpreter::BuildInstruction() {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
-#ifdef PADDLE_WITH_TENSORRT
-    } else if (op.dialect()->name() == "trt_op") {
-      CREATE_INSTR(TensorRTEngineInstruction);
-#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel, onednn_kernel, custom_kernel, trt_op "
