@@ -71,7 +71,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, concentration):
-        if concentration.dim() < 1 or math.prod(concentration.shape) < 1:
+        if concentration.dim() < 1 or math.prod(concentration.shape) == 0:
             # 0-dim tensor or 0-sized tensor is invalid
             raise ValueError(
                 "`concentration` parameter must be at least one dimensional"
