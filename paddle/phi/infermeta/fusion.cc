@@ -53,10 +53,8 @@ static phi::DDim BroadCastInferShape(const DDim x_dims,
                           -1 * max_dim,
                           max_dim,
                           axis));
-    int dim_x_size = x_dims.size() == -1 ? 0 : x_dims.size();
-    int dim_y_size = y_dims.size() == -1 ? 0 : y_dims.size();
-
-    axis = (axis < 0 ? (std::abs(dim_x_size - dim_y_size) + axis + 1) : axis);
+    axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
+                     : axis);
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     out_dims_array.resize(max_dim);

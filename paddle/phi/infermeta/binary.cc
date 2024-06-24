@@ -169,7 +169,15 @@ void ArrayReadInferMeta(const MetaTensor& array,
                         MetaTensor* out,
                         MetaConfig config) {
   if (!config.is_runtime) {
-    out->set_dims({-1});
+    auto dims = array.dims();
+    if (dims.size() > 1) {
+      for (int i = 0; i < dims.size(); ++i) {
+        dims[i] = -1;
+      }
+      out->set_dims(dims);
+    } else {
+      out->set_dims({-1});
+    }
   } else {
     double index = i.to<int64_t>();
     out->set_dims(array.dims(index));  // NOLINT
@@ -468,9 +476,7 @@ void CompareRawInferMeta(const MetaTensor& x,
     out->share_meta(x);
   } else {
     int max_dim = std::max(dim_x.size(), dim_y.size());
-    int dim_x_size = dim_x.size() == -1 ? 0 : dim_x.size();
-    int dim_y_size = dim_y.size() == -1 ? 0 : dim_y.size();
-    int axis = std::abs(dim_x_size - dim_y_size);
+    int axis = std::abs(dim_x.size() - dim_y.size());
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
@@ -1672,9 +1678,8 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                           -1 * max_dim,
                           max_dim,
                           axis));
-    int x_size = x_dims.size() == -1 ? 0 : x_dims.size();
-    int y_size = y_dims.size() == -1 ? 0 : y_dims.size();
-    axis = (axis < 0 ? (std::abs(x_size - y_size) + axis + 1) : axis);
+    axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
+                     : axis);
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
