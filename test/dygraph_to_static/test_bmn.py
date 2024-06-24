@@ -756,55 +756,34 @@ class TestTrain(Dy2StTestBase):
             static_pred_res = self.predict_static(video_data)
             dygraph_pred_res = self.predict_dygraph(video_data)
             dygraph_jit_pred_res = self.predict_dygraph_jit(video_data)
-            if use_pir_api():
-                for dy_res, st_res, dy_jit_res in zip(
-                    dygraph_pred_res,
-                    static_pred_res,
-                    dygraph_jit_pred_res,
-                ):
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
-                        atol=1e-8,
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_jit_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
-                        atol=1e-8,
-                    )
-            else:
-                predictor_pred_res = self.predict_analysis_inference(video_data)
-                for dy_res, st_res, dy_jit_res, predictor_res in zip(
-                    dygraph_pred_res,
-                    static_pred_res,
-                    dygraph_jit_pred_res,
-                    predictor_pred_res,
-                ):
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
-                        atol=1e-8,
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_jit_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
-                        atol=1e-8,
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        predictor_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_jit_res: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
-                        atol=1e-8,
-                    )
+            predictor_pred_res = self.predict_analysis_inference(video_data)
+            for dy_res, st_res, dy_jit_res, predictor_res in zip(
+                dygraph_pred_res,
+                static_pred_res,
+                dygraph_jit_pred_res,
+                predictor_pred_res,
+            ):
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
+                    atol=1e-8,
+                )
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_jit_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
+                    atol=1e-8,
+                )
+                np.testing.assert_allclose(
+                    st_res,
+                    predictor_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_jit_res: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
+                    atol=1e-8,
+                )
             break
 
     def predict_dygraph(self, data):
@@ -857,9 +836,14 @@ class TestTrain(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         output = PredictorTools(
             self.model_save_dir,
-            self.model_filename,
+            model_filename,
             self.params_filename,
             [data],
         )

@@ -15,6 +15,7 @@
 import fcntl
 import inspect
 import os
+import unittest
 
 import numpy as np
 
@@ -322,6 +323,17 @@ def create_test_class(
     record_op_test(op_name, test_type)
     if not no_grad:
         record_op_test(op_name + '_grad', test_type)
+
+
+def check_run_big_shape_test():
+    def wrapper(cls):
+        run_big_shape_test_flag = os.environ.get("FLAGS_xpu_big_shape_test")
+        return unittest.skipIf(
+            not (run_big_shape_test_flag and run_big_shape_test_flag == "true"),
+            "skip big shape test.",
+        )(cls)
+
+    return wrapper
 
 
 def get_test_cover_info():

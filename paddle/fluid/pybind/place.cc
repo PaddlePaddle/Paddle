@@ -158,10 +158,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -478,14 +474,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     return platform::get_xpu_op_list(version);
   });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
-    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    // XPUs with Compute Capability > xpu1 support float16
     return platform::get_xpu_version(place.device) >
            phi::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
-    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    // XPUs with Compute Capability > xpu2 support bfloat16
     return platform::get_xpu_version(place.device) >
-           phi::backends::xpu::XPUVersion::XPU1;
+           phi::backends::xpu::XPUVersion::XPU2;
   });
 #endif
 

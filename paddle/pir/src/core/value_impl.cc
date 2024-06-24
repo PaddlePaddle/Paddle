@@ -23,9 +23,8 @@ uint64_t GenerateId() {
   return ++uid;
 }
 }  // namespace
-namespace pir {
 
-namespace detail {
+namespace pir::detail {
 void ValueImpl::set_first_use(OpOperandImpl *first_use) {
   uint32_t offset = kind();
   uintptr_t ptr = reinterpret_cast<uintptr_t>(first_use) + offset;
@@ -64,5 +63,4 @@ ValueImpl::ValueImpl(Type type, uint32_t kind) : id_(GenerateId()) {
            << ". The value_impl address is: " << this;
 }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

@@ -131,27 +131,33 @@ class BatchSampler(Sampler):
         assert (
             isinstance(batch_size, int) and batch_size > 0
         ), f"batch_size should be a positive integer, but got {batch_size}"
-        self.batch_size = batch_size
+        self.batch_size = batch_size  # per_device_batch_size or mini_batch_size
         self.shuffle = shuffle
         assert isinstance(
             drop_last, bool
         ), f"drop_last should be a boolean value, but got {type(drop_last)}"
         self.drop_last = drop_last
 
+        # TODO(dev): consider to make it as public argument, acc_steps is only used
+        # in auto-parallel
+        self._acc_steps = 1
+
     def __iter__(self):
+        local_batch_size = self.batch_size * self._acc_steps
         batch_indices = []
         for idx in self.sampler:
             batch_indices.append(idx)
-            if len(batch_indices) == self.batch_size:
+            if len(batch_indices) == local_batch_size:
                 yield batch_indices
                 batch_indices = []
         if not self.drop_last and len(batch_indices) > 0:
             yield batch_indices
 
     def __len__(self):
+        local_batch_size = self.batch_size * self._acc_steps
         num_samples = len(self.sampler)
-        num_samples += int(not self.drop_last) * (self.batch_size - 1)
-        return num_samples // self.batch_size
+        num_samples += int(not self.drop_last) * (local_batch_size - 1)
+        return num_samples // local_batch_size
 
 
 class _InfiniteIterableSampler:
@@ -269,7 +275,12 @@ class DistributedBatchSampler(BatchSampler):
         self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
 
+        # TODO(dev): consider to make it as public argument, acc_steps is only used
+        # in auto-parallel
+        self._acc_steps = 1
+
     def __iter__(self):
+        local_batch_size = self.batch_size * self._acc_steps
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
         # add extra samples to make it evenly divisible
@@ -308,6 +319,7 @@ class DistributedBatchSampler(BatchSampler):
                     * last_local_batch_size
                 ]
             )
+
             return subsampled_indices
 
         if self.nranks > 1:
@@ -319,16 +331,17 @@ class DistributedBatchSampler(BatchSampler):
         batch_indices = []
         for idx in _sample_iter:
             batch_indices.append(idx)
-            if len(batch_indices) == self.batch_size:
+            if len(batch_indices) == local_batch_size:
                 yield batch_indices
                 batch_indices = []
         if not self.drop_last and len(batch_indices) > 0:
             yield batch_indices
 
     def __len__(self):
+        local_batch_size = self.batch_size * self._acc_steps
         num_samples = self.num_samples
-        num_samples += int(not self.drop_last) * (self.batch_size - 1)
-        return num_samples // self.batch_size
+        num_samples += int(not self.drop_last) * (local_batch_size - 1)
+        return num_samples // local_batch_size
 
     def set_epoch(self, epoch):
         """
