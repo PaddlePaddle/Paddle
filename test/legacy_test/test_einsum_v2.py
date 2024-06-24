@@ -48,7 +48,7 @@ class TestErrors(unittest.TestCase):
         a = paddle.to_tensor(a)
         with self.assertRaisesRegex(
             AssertionError,
-            ("Required at least one operand in Einsum API, but received 0 "),
+            ("Required at least one operand in Einsum API, but received 0"),
         ):
             paddle.einsum('ijk')
         with self.assertRaisesRegex(
