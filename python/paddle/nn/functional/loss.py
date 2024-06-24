@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 from typing import TYPE_CHECKING, Literal, Sequence, overload
 
-# TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
@@ -678,8 +679,7 @@ def binary_cross_entropy(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in binary_cross_entropy should be 'sum', "
-            "'mean' or 'none', but received %s, which is not allowed."
-            % reduction
+            f"'mean' or 'none', but received {reduction}, which is not allowed."
         )
 
     if in_dynamic_or_pir_mode():
@@ -825,8 +825,7 @@ def binary_cross_entropy_with_logits(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in binary_cross_entropy_with_logits "
-            "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
-            % reduction
+            f"should be 'sum', 'mean' or 'none', but received {reduction}, which is not allowed."
         )
 
     if in_dynamic_or_pir_mode():
@@ -1183,7 +1182,7 @@ def smooth_l1_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in smooth_l1_loss should be 'sum', 'mean' or"
-            " 'none', but received %s, which is not allowed." % reduction
+            f" 'none', but received {reduction}, which is not allowed."
         )
     if reduction == 'none':
         return out
@@ -1249,7 +1248,7 @@ def margin_ranking_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
-            "received %s, which is not allowed." % reduction
+            f"received {reduction}, which is not allowed."
         )
     if in_dynamic_or_pir_mode():
         out = _C_ops.subtract(other, input)
@@ -1384,7 +1383,7 @@ def l1_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
-            "received %s, which is not allowed." % reduction
+            f"received {reduction}, which is not allowed."
         )
 
     if in_dynamic_or_pir_mode():
@@ -1480,7 +1479,7 @@ def nll_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
-            "'none', but received %s, which is not allowed." % reduction
+            f"'none', but received {reduction}, which is not allowed."
         )
 
     input_shape = list(input.shape)
@@ -1617,14 +1616,13 @@ def poisson_nll_loss(
     # check parameter values
     if epsilon <= 0:
         raise ValueError(
-            "The value of `epsilon` in poisson_nll_loss should be positive, but received %f, which is not allowed"
-            % epsilon
+            f"The value of `epsilon` in poisson_nll_loss should be positive, but received {epsilon:f}, which is not allowed"
         )
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in poisson_nll_loss should be 'sum', 'mean' or 'none', but "
-            "received %s, which is not allowed." % reduction
+            f"received {reduction}, which is not allowed."
         )
     # check input dtype and dimension
     check_variable_and_dtype(
@@ -2943,14 +2941,12 @@ def cross_entropy(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in softmax_cross_entropy"
-            "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
-            % reduction
+            f"should be 'sum', 'mean' or 'none', but received {reduction}, which is not allowed."
         )
     if ignore_index > 0 and soft_label:
         raise ValueError(
             "When soft_label == True, the value of 'ignore_index' in softmax_cross_entropy"
-            "should be '-100', but received %s, which is not allowed."
-            % ignore_index
+            f"should be '-100', but received {ignore_index}, which is not allowed."
         )
 
     input_dims = len(list(input.shape))
@@ -3332,8 +3328,7 @@ def sigmoid_focal_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in sigmoid_focal_loss "
-            "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
-            % reduction
+            f"should be 'sum', 'mean' or 'none', but received {reduction}, which is not allowed."
         )
 
     if normalizer is not None:
@@ -4252,8 +4247,7 @@ def soft_margin_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in soft_margin_loss should be 'sum', "
-            "'mean' or 'none', but received %s, which is not allowed."
-            % reduction
+            f"'mean' or 'none', but received {reduction}, which is not allowed."
         )
 
     if not in_dynamic_mode():

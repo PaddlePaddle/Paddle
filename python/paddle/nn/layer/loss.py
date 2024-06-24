@@ -18,8 +18,6 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable
 
 import paddle
-
-# TODO: define loss functions of neural network
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 
@@ -125,7 +123,7 @@ class BCEWithLogitsLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in BCEWithLogitsLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
 
         super().__init__()
@@ -741,7 +739,7 @@ class L1Loss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
         super().__init__()
         self.reduction = reduction
@@ -830,7 +828,7 @@ class BCELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
 
         super().__init__()
@@ -943,7 +941,7 @@ class NLLLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
-                "'none', but received %s, which is not allowed." % reduction
+                f"'none', but received {reduction}, which is not allowed."
             )
         super().__init__()
         self._weight = weight
@@ -1031,13 +1029,12 @@ class PoissonNLLLoss(Layer):
     ) -> None:
         if epsilon <= 0:
             raise ValueError(
-                "The value of `epsilon` in PoissonNLLLoss should be positive, but received %f, which is not allowed"
-                % epsilon
+                f"The value of `epsilon` in PoissonNLLLoss should be positive, but received {epsilon:f}, which is not allowed"
             )
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in PoissonNLLLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
         super().__init__()
         self._log_input = log_input
@@ -1227,7 +1224,7 @@ class MarginRankingLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
         super().__init__()
         self.margin = margin
@@ -1763,13 +1760,12 @@ class CosineEmbeddingLoss(Layer):
     ) -> None:
         if margin > 1 or margin < -1:
             raise ValueError(
-                "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
-                % margin
+                f"The value of 'margin' should be in the interval of [-1, 1], but received {margin:f}, which is not allowed."
             )
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' should be 'sum', 'mean' or "
-                "'none', but received %s, which is not allowed." % reduction
+                f"'none', but received {reduction}, which is not allowed."
             )
         super().__init__()
         self.margin = margin
@@ -1881,7 +1877,7 @@ class TripletMarginWithDistanceLoss(Layer):
             raise ValueError(
                 "The value of 'reduction' in TripletMarginWithDistanceLoss "
                 "should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
         self.margin = margin
         self.swap = swap
@@ -1993,7 +1989,7 @@ class TripletMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
         self.margin = margin
         self.p = p
@@ -2190,7 +2186,7 @@ class SoftMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
 
         super().__init__()
@@ -2289,7 +2285,7 @@ class GaussianNLLLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in GaussianNLLLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction
+                f"received {reduction}, which is not allowed."
             )
 
         super().__init__()
@@ -2377,7 +2373,13 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
             >>> input = paddle.randn([3, 5], dtype="float32")
             >>> target = paddle.full((3,), 1, dtype='int64')
-            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(in_features=5, n_classes=3, cutoffs=[2], div_value=2.0, head_bias=False)
+            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(
+            ...     in_features=5,
+            ...     n_classes=3,
+            ...     cutoffs=[2],
+            ...     div_value=2.0,
+            ...     head_bias=False
+            ... )
             >>> out, loss = asfm(input, target)
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -2482,7 +2484,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             )
             self.tail_weights.append(projection)
 
-    def forward(self, input: Tensor, label: Tensor) -> Tensor:
+    def forward(self, input: Tensor, label: Tensor) -> tuple[Tensor, Tensor]:
         return F.adaptive_log_softmax_with_loss(
             input,
             label,
