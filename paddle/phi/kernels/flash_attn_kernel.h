@@ -60,19 +60,20 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* seed_offset);
 
 template <typename T, typename Context>
-void FlashMaskGradKernel(const Context& ctx,
-                         const DenseTensor& q,
-                         const DenseTensor& k,
-                         const DenseTensor& v,
-                         const DenseTensor& startend_row_indices,
-                         const DenseTensor& out,
-                         const DenseTensor& softmax_lse,
-                         const DenseTensor& seed_offset,
-                         const DenseTensor& dout,
-                         float dropout,
-                         bool causal,
-                         DenseTensor* dq,
-                         DenseTensor* dk,
-                         DenseTensor* dv);
+void FlashMaskKernel(const Context& ctx,
+                     const DenseTensor& q,
+                     const DenseTensor& k,
+                     const DenseTensor& v,
+                     const DenseTensor& startend_row_indices,
+                     const paddle::optional<DenseTensor>& fixed_seed_offset,
+                     float dropout,
+                     bool causal,
+                     bool return_softmax,
+                     bool is_test,
+                     const std::string& rng_name,
+                     DenseTensor* out,
+                     DenseTensor* softmax,
+                     DenseTensor* softmax_lse,
+                     DenseTensor* seed_offset);
 
 }  // namespace phi
