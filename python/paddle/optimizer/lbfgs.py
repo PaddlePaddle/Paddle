@@ -33,9 +33,22 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+class _LbfgsState:
+    func_evals: int
+    n_iter: int
+    d: Tensor
+    alpha: Tensor
+    old_yk: list[Tensor]
+    old_sk: list[Tensor]
+    ro: list[Tensor]
+    H_diag: Tensor
+    prev_flat_grad: Tensor
+    prev_loss: float
+    al: list[Tensor]
+
+
 class _LbfgsStateDict(TypedDict):
-    state: str
-    packed_state: dict
+    state: _LbfgsState
 
 
 def dot(x, y):
