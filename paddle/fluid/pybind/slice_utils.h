@@ -26,7 +26,6 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -39,6 +38,24 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+
+template <typename T>
+inline T GetValue(const phi::DenseTensor* x) {
+  T value = static_cast<T>(0);
+  if (!(x->place().GetType() == phi::AllocationType::CPU)) {
+    phi::DenseTensor cpu_x;
+    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    const platform::DeviceContext* dev_ctx = pool.Get(x->place());
+    dev_ctx->Wait();
+#endif
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x->data<T>()[0];
+  }
+  return value;
+}
 
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
@@ -63,10 +80,10 @@ static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   if (tensor.numel() == 1) {
     if (framework::TransToProtoVarType(tensor.type()) ==
         framework::proto::VarType::INT32) {
-      return static_cast<Py_ssize_t>(operators::GetValue<int32_t>(&tensor));
+      return static_cast<Py_ssize_t>(GetValue<int32_t>(&tensor));
     } else if (framework::TransToProtoVarType(tensor.type()) ==
                framework::proto::VarType::INT64) {
-      return static_cast<Py_ssize_t>(operators::GetValue<int64_t>(&tensor));
+      return static_cast<Py_ssize_t>(GetValue<int64_t>(&tensor));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently, the type of tensor in slice indices only allows "
