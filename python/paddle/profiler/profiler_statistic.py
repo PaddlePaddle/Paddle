@@ -104,6 +104,7 @@ class HostStatisticNode:
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
         self.flops = 0
+        self.input_shapes = {}
 
     def cal_flops(self):
         if self.hostnode.type == TracerEventType.Operator:
@@ -116,6 +117,8 @@ class HostStatisticNode:
                 )
 
     def cal_statistic(self):
+        if hasattr(self.hostnode, 'input_shapes'):
+            self.input_shapes = self.hostnode.input_shapes
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         self.self_cpu_time = self.cpu_time
         self.cal_flops()
@@ -520,6 +523,7 @@ class EventSummary:
             self.min_general_gpu_time = float('inf')
             self.max_general_gpu_time = 0
             self._flops = 0
+            self._input_shapes = {}
 
         @property
         def flops(self):
@@ -563,6 +567,9 @@ class EventSummary:
 
         def add_flops(self, flops):
             self._flops += flops
+
+        def add_input_shapes(self, input_shapes):
+            self._input_shapes = input_shapes
 
         def add_item(self, node):
             raise NotImplementedError
@@ -629,7 +636,7 @@ class EventSummary:
         self.memory_manipulation_items = {}  # for memory manipulation summary
         self.kernel_items = {}  # for kernel summary
 
-    def parse(self, nodetrees):
+    def parse(self, nodetrees, divide_with_shape=False):
         r"""
         Analysis operator event in the nodetress.
         """
@@ -642,7 +649,7 @@ class EventSummary:
                 1:
             ]:  # skip root node
                 if host_statistic_node.type == TracerEventType.Operator:
-                    self.add_operator_item(host_statistic_node)
+                    self.add_operator_item(host_statistic_node, divide_with_shape)
                 if (
                     host_statistic_node.type == TracerEventType.UserDefined
                     or host_statistic_node.type
@@ -685,7 +692,13 @@ class EventSummary:
     def add_forward_item(self, operator_node):
         pass
 
-    def add_operator_item(self, operator_node):
+    def add_operator_item(self, operator_node, divide_with_shape=False):
+        if divide_with_shape:
+            shape_info = ''
+            for key, value in operator_node.input_shapes.items():
+                shape_info += (key + ': [' + ','.join(str(num) for num in value) + ']   ')
+            if len(shape_info) > 0:
+                operator_node.name += ('\n ' + shape_info)
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name
@@ -857,7 +870,7 @@ class StatisticData:
     Hold all analysed results.
     """
 
-    def __init__(self, node_trees, extra_info):
+    def __init__(self, node_trees, extra_info, divide_with_shape=False):
         self.node_trees = node_trees
         self.extra_info = extra_info
         self.time_range_summary = TimeRangeSummary()
@@ -865,7 +878,7 @@ class StatisticData:
         self.distributed_summary = DistributedSummary()
         self.memory_summary = MemorySummary()
         self.time_range_summary.parse(node_trees)
-        self.event_summary.parse(node_trees)
+        self.event_summary.parse(node_trees, divide_with_shape)
         self.distributed_summary.parse(node_trees)
         self.memory_summary.parse(node_trees)
 
@@ -876,7 +889,7 @@ def _build_table(
     op_detail=True,
     thread_sep=False,
     time_unit='ms',
-    row_limit=100,
+    row_limit=200,
     max_src_column_width=75,
     views=None,
 ):
@@ -1377,6 +1390,8 @@ def _build_table(
                     sorted_items = sorted(
                         items.items(), key=lambda x: x[1].min_general_gpu_time
                     )
+                else:
+                    sorted_items = items.items()
                 total_op_cpu_time = 0
                 total_op_gpu_time = 0
 
@@ -1397,15 +1412,15 @@ def _build_table(
                         )
                     row_values = [
                         name,
-                        item.call,
-                        '{} / {} / {} / {} / {}'.format(
+                        f'|{item.call}|',
+                        '{} | {} | {} | {} | {} |'.format(
                             format_time(item.cpu_time, unit=time_unit),
                             format_time(item.avg_cpu_time, unit=time_unit),
                             format_time(item.max_cpu_time, unit=time_unit),
                             format_time(item.min_cpu_time, unit=time_unit),
                             format_ratio(cpu_ratio),
                         ),
-                        '{} / {} / {} / {} / {}'.format(
+                        '{} | {} | {} | {} | {} |'.format(
                             format_time(item.general_gpu_time, unit=time_unit),
                             format_time(
                                 item.avg_general_gpu_time, unit=time_unit
@@ -1446,8 +1461,8 @@ def _build_table(
                                 innerop_name += "..."
                             row_values = [
                                 f'  {innerop_name}',
-                                innerop_node.call,
-                                '{} / {} / {} / {} / {}'.format(
+                                f'|{innerop_node.call}|',
+                                '{} | {} | {} | {} | {} |'.format(
                                     format_time(
                                         innerop_node.cpu_time, unit=time_unit
                                     ),
@@ -1465,7 +1480,7 @@ def _build_table(
                                     ),
                                     format_ratio(cpu_ratio),
                                 ),
-                                '{} / {} / {} / {} / {}'.format(
+                                '{} | {} | {} | {} | {} |'.format(
                                     format_time(
                                         innerop_node.general_gpu_time,
                                         unit=time_unit,
@@ -1508,9 +1523,9 @@ def _build_table(
                                     device_node_name += "..."
                                 row_values = [
                                     f'    {device_node_name}',
-                                    device_node.call,
-                                    '- / - / - / - / -',
-                                    '{} / {} / {} / {} / {}'.format(
+                                    f'|{device_node.call}|',
+                                    '- | - | - | - | - |',
+                                    '{} | {} | {} | {} | {} |'.format(
                                         format_time(
                                             device_node.gpu_time, unit=time_unit
                                         ),
@@ -1549,9 +1564,9 @@ def _build_table(
                                 device_node_name += "..."
                             row_values = [
                                 f'  {device_node_name}',
-                                device_node.call,
-                                '- / - / - / - / -',
-                                '{} / {} / {} / {} / {}'.format(
+                                f'|{device_node.call}|',
+                                '- | - | - | - | - |',
+                                '{} | {} | {} | {} | {} |'.format(
                                     format_time(
                                         device_node.gpu_time, unit=time_unit
                                     ),
@@ -1588,9 +1603,9 @@ def _build_table(
                     gpu_data_description_width = len(row_values[3])
             headers = [
                 'Name',
-                'Calls',
-                'CPU Total / Avg / Max / Min / Ratio(%)',
-                'GPU Total / Avg / Max / Min / Ratio(%)',
+                '|Calls|',
+                'CPU Total | Avg | Max | Min | Ratio(%) |',
+                'GPU Total | Avg | Max | Min | Ratio(%) |',
                 'FLOPs',
             ]
             row_format_list = [""]
@@ -1659,8 +1674,8 @@ def _build_table(
                     gpu_ratio = float(item.gpu_time) / total_kernel_gpu_time
                 row_values = [
                     name,
-                    item.call,
-                    '{} / {} / {} / {} / {}'.format(
+                    '|{}|'.format(item.call),
+                    '{} | {} | {} | {} | {}'.format(
                         format_time(item.gpu_time, unit=time_unit),
                         format_time(item.avg_gpu_time, unit=time_unit),
                         format_time(item.max_gpu_time, unit=time_unit),
@@ -1672,12 +1687,12 @@ def _build_table(
 
             headers = [
                 'Name',
-                'Calls',
-                'GPU Total / Avg / Max / Min / Ratio(%)',
+                '|Calls|',
+                'GPU Total | Avg | Max | Min | Ratio(%)',
             ]
             # Calculate the column width
             name_column_width = row_limit
-            calltime_width = 6
+            calltime_width = 8
             gpu_data_description_width = 40
             for row_values in all_row_values:
                 if (
@@ -1713,7 +1728,7 @@ def _build_table(
                 else:
                     name = row_values[0]
                 if len(name) > name_column_width:
-                    row_values[0] = name[: name_column_width - 3] + '...'
+                    row_values[0] = name[: name_column_width - 5] + '...>'
                 else:
                     row_values[0] = name
                 append(row_format.format(*row_values))

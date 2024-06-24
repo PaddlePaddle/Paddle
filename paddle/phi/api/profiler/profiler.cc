@@ -24,7 +24,10 @@ limitations under the License. */
 
 #include "paddle/phi/api/profiler/common_event.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
-#include "paddle/phi/api/profiler/host_event_recorder.h"
+// #include "paddle/phi/api/profiler/host_event_recorder.h"
+#include "paddle/fluid/platform/profiler/host_event_recorder.h"
+#include "paddle/fluid/platform/profiler/common_event.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/phi/api/profiler/host_tracer.h"
 #include "paddle/phi/api/profiler/profiler_helper.h"
 #include "paddle/phi/core/enforce.h"
@@ -282,8 +285,16 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     return;
   }
   uint64_t op_id = 0;
-  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, attrs, op_id);
+  // HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+  //     PosixInNsec(), type, input_shapes, attrs, op_id);
+  std::map<std::string, std::vector<paddle::framework::DDim>> input_shapes_;
+  for (uint32_t i = 0; i < input_shapes.size(); ++i) {
+    input_shapes_[std::string(input_shapes[i].first)] = input_shapes[i].second;
+  }
+  std::map<std::string, std::vector<paddle::framework::proto::VarType::Type>> dtypes_;
+  paddle::framework::AttributeMap attrs_;
+  HostEventRecorder<paddle::platform::OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes_, dtypes_, attrs_, op_id);
 }
 
 bool RecordOpInfoSupplement::IsEnabled() { return FLAGS_enable_record_op_info; }
