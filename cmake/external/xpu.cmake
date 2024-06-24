@@ -30,7 +30,7 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240515")
+  set(XPU_XHPC_BASE_DATE "20240601")
 endif()
 set(XPU_XCCL_BASE_VERSION "1.2.1.2")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -58,7 +58,6 @@ set(XPU_XPTI_BASE_URL
 
 if(WITH_XPU_XRE5)
   set(XPU_XRE_BASE_VERSION "5.0.3.1")
-  set(XPU_XHPC_BASE_DATE "20240601")
   set(XPU_XRE_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
   )
@@ -79,12 +78,11 @@ elseif(WITH_SUNWAY)
   set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no deepin output at now.
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no deepin output at now.
 elseif(WITH_BDCENTOS)
+  set(XPU_XHPC_DIR_NAME "xhpc-bdcentos7_x86_64")
   if(WITH_XPU_XRE5)
     set(XPU_XRE_DIR_NAME "xre-bdcentos-x86_64-${XPU_XRE_BASE_VERSION}")
-    set(XPU_XHPC_DIR_NAME "xhpc-bdcentos7_x86_64")
   else()
     set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
-    set(XPU_XHPC_DIR_NAME "xhpc-bdcentos_x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
@@ -99,7 +97,7 @@ else()
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu2004_x86_64")
   else()
     set(XPU_XRE_DIR_NAME "xre-ubuntu_1604_x86_64")
-    set(XPU_XHPC_DIR_NAME "xhpc-ubuntu_x86_64")
+    set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
@@ -206,8 +204,11 @@ include_directories(${XPU_XHPC_INC_DIR})
 set(XPU_XBLAS_INC_DIR "${XPU_INC_DIR}/xhpc/xblas")
 include_directories(${XPU_XBLAS_INC_DIR})
 
-set(XPU_XFA_INC_DIR "${XPU_INC_DIR}/xhpc/xfa")
-include_directories(${XPU_XFA_INC_DIR})
+if(WITH_XPU_XRE5)
+  add_definitions(-DPADDLE_WITH_XPU_XRE5)
+  set(XPU_XFA_INC_DIR "${XPU_INC_DIR}/xhpc/xfa")
+  include_directories(${XPU_XFA_INC_DIR})
+endif()
 
 if(WITH_XPTI)
   message(STATUS "Compile with XPU XPTI!")
@@ -225,8 +226,13 @@ if(WITH_XPTI)
   target_link_libraries(xpulib ${XPU_XPTI_LIB})
 endif()
 
-target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
-                      ${XPU_API_LIB} ${XPU_XFA_LIB})
+if(WITH_XPU_XRE5)
+  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
+                        ${XPU_API_LIB} ${XPU_XFA_LIB})
+else()
+  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
+                        ${XPU_API_LIB})
+endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
 

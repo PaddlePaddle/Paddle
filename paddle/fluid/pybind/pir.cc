@@ -549,7 +549,11 @@ void BindProgram(py::module *m) {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
                }
              }
-           });
+           })
+      .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
+      });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -669,10 +673,15 @@ void BindBlock(py::module *m) {
              }
              return param_list;
            })
-      .def("refresh_stopgradient", [](Block &self) {
-        for (auto &op : self) {
-          RefreshOpStopgradients(&op);
-        }
+      .def("refresh_stopgradient",
+           [](Block &self) {
+             for (auto &op : self) {
+               RefreshOpStopgradients(&op);
+             }
+           })
+      .def("_sync_with_cpp", [](const Block &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
       });
 }
 
@@ -1113,7 +1122,8 @@ pir::Value apply(Value self, py::object func) {
           return py::cast<py::none>(Py_None);                                \
         }                                                                    \
         auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
-        py::object obj = py::object(py::handle(py_data), true);              \
+        py::object obj =                                                     \
+            py::reinterpret_borrow<py::object>(py::handle(py_data));         \
         return obj;                                                          \
       },                                                                     \
       [](Value self, py::object obj) {                                       \
