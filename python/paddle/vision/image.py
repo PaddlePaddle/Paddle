@@ -75,7 +75,7 @@ def set_image_backend(backend: _ImageBackend) -> None:
 
             >>> pil_data_folder = DatasetFolder(temp_dir)
 
-            >>> for items in pil_data_folder:
+            >>> for items in pil_data_folder:  # type: ignore
             ...     break
 
             >>> print(type(items[0]))
@@ -86,7 +86,7 @@ def set_image_backend(backend: _ImageBackend) -> None:
 
             >>> cv2_data_folder = DatasetFolder(temp_dir)
 
-            >>> for items in cv2_data_folder:
+            >>> for items in cv2_data_folder:  # type: ignore
             ...     break
 
             >>> print(type(items[0]))
@@ -152,7 +152,7 @@ def image_load(
 
             >>> set_image_backend('pil')
 
-            >>> pil_img = image_load(path).convert('RGB')
+            >>> pil_img = image_load(path).convert('RGB')  # type: ignore
 
             >>> print(type(pil_img))
             <class 'PIL.Image.Image'>
