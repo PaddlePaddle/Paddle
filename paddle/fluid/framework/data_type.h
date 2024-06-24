@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/fp8_e4m3fn.h"
+#include "paddle/fluid/platform/fp8_e5m2.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/utils/test_macros.h"
 
@@ -65,7 +67,10 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(                                               \
       callback, ::paddle::platform::complex<float>, COMPLEX64);          \
   _ForEachDataTypeHelper_(                                               \
-      callback, ::paddle::platform::complex<double>, COMPLEX128);
+      callback, ::paddle::platform::complex<double>, COMPLEX128);        \
+  _ForEachDataTypeHelper_(                                               \
+      callback, ::paddle::platform::float8_e4m3fn, FP8_E4M3FN);          \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float8_e5m2, FP8_E5M2);
 
 #define _ForEachIntDataType_(callback)               \
   _ForEachDataTypeHelper_(callback, int, INT32);     \

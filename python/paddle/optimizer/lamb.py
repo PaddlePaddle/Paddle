@@ -24,10 +24,22 @@ from ..base.framework import Variable
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
 
     from .optimizer import _ParameterConfig
+
+    class _LambParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float | Tensor]
+        lamb_weight_decay: NotRequired[float]
+        exclude_from_weight_decay_fn: NotRequired[
+            Callable[[Tensor], bool] | None
+        ]
+
 
 __all__ = []
 
@@ -62,14 +74,14 @@ class Lamb(Optimizer):
     learning rate, :math:`\\lambda` the LAMB weight decay rate.
 
     Args:
-        learning_rate (float|Variable, optional): the learning rate used to update parameters. \
+        learning_rate (float|Tensor, optional): the learning rate used to update parameters. \
             Can be a float value or a Variable with data type float32. Default 0.001.
         lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01. Remind that weight_decay should be None.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             Default 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
-        epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
+        epsilon (float|Tensor, optional): A small float value for numerical stability. Default 1e-6.
         parameters (list|tuple|None, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
@@ -98,12 +110,19 @@ class Lamb(Optimizer):
             >>> loss = paddle.mean(out)
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.85], dtype="float32")
-            >>> lamb = paddle.optimizer.Lamb(learning_rate=0.002, parameters=linear.parameters(), lamb_weight_decay=0.01)
+            >>> lamb = paddle.optimizer.Lamb(
+            ...     learning_rate=0.002,
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     parameters=linear.parameters(),
+            ...     lamb_weight_decay=0.01
+            ... )
             >>> back = out.backward()
             >>> lamb.step()
             >>> lamb.clear_grad()
 
     """
+
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _beta1_pow_acc_str = "beta1_pow_acc"
@@ -113,10 +132,12 @@ class Lamb(Optimizer):
         self,
         learning_rate: float | Tensor = 0.001,
         lamb_weight_decay: float = 0.01,
-        beta1: float = 0.9,
-        beta2: float = 0.999,
-        epsilon: float = 1e-6,
-        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float | Tensor = 1e-6,
+        parameters: (
+            Sequence[Tensor] | Sequence[_LambParameterConfig] | None
+        ) = None,
         grad_clip: GradientClipBase | None = None,
         exclude_from_weight_decay_fn: Callable[[Tensor], bool] | None = None,
         multi_precision: bool = False,
@@ -196,9 +217,9 @@ class Lamb(Optimizer):
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.9
-            if isinstance(self._beta1, Variable)
-            else self._beta1,
+            fill_value=(
+                0.9 if isinstance(self._beta1, Variable) else self._beta1
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -207,9 +228,9 @@ class Lamb(Optimizer):
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.999
-            if isinstance(self._beta2, Variable)
-            else self._beta2,
+            fill_value=(
+                0.999 if isinstance(self._beta2, Variable) else self._beta2
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',

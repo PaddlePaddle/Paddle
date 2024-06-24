@@ -30,7 +30,6 @@ void CompilationResult::InitCompilationResult(int group_size) {
   lowered_funcs_.resize(group_size, std::nullopt);
   source_codes_.resize(group_size, std::nullopt);
   source_ptxs_.resize(group_size, std::nullopt);
-  instructions_.resize(group_size);
 }
 
 void CompilationResult::SetStatus(int idx, const CompilationStatus& status) {
@@ -62,18 +61,6 @@ void CompilationResult::SetSourcePtx(int idx, const std::string& source_ptx) {
   if (idx < source_ptxs_.size()) {
     source_ptxs_[idx] = source_ptx;
   }
-}
-
-void CompilationResult::SetInstruction(
-    int idx, std::unique_ptr<Instruction> instruction) {
-  if (idx < instructions_.size()) {
-    instructions_[idx] = std::move(instruction);
-  }
-}
-
-void CompilationResult::SetRuntimeProgram(
-    std::unique_ptr<Program> runtime_program) {
-  runtime_program_ = std::move(runtime_program);
 }
 
 bool CompilationResult::IsSuccess() const {
@@ -227,49 +214,6 @@ std::string CompilationResult::SourcePtx(int idx) const {
     PADDLE_THROW(phi::errors::Fatal(ss.str()));
   }
   return source_ptxs_[idx].value();
-}
-
-const std::vector<std::unique_ptr<Instruction>>&
-CompilationResult::RuntimeInstructions() const {
-  if (runtime_program_ != nullptr) {
-    return runtime_program_->GetRunInstructions();
-  }
-  for (int idx = 0; idx < instructions_.size(); ++idx) {
-    if (instructions_[idx] == nullptr) {
-      std::stringstream ss;
-      ss << "Instruction of group[" << idx << "] is not generated.\n"
-         << "Some errors may have occurred during or before the build "
-            "instruction process.\n"
-         << Message();
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));
-    }
-  }
-  return instructions_;
-}
-
-const std::unique_ptr<Instruction>& CompilationResult::RuntimeInstruction(
-    int idx) const {
-  const std::vector<std::unique_ptr<Instruction>>& insts =
-      runtime_program_ ? runtime_program_->GetRunInstructions() : instructions_;
-  if (idx >= insts.size()) {
-    std::stringstream ss;
-    ss << "The index(" << idx
-       << ") is expected to be less than the size of group(" << insts.size()
-       << ").";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-  }
-  return insts[idx];
-}
-
-std::unique_ptr<Program> CompilationResult::RuntimeProgram() {
-  if (runtime_program_ == nullptr) {
-    std::stringstream ss;
-    ss << "Runtime program is not generated.\n"
-       << "Some errors may have occurred during the compilation process.\n"
-       << Message();
-    PADDLE_THROW(phi::errors::Fatal(ss.str()));
-  }
-  return std::move(runtime_program_);
 }
 
 }  // namespace framework

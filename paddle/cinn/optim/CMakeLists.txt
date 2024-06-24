@@ -33,7 +33,8 @@ gather_srcs(
   eliminate_common_factor_of_local_index.cc
   if_fusion.cc
   eliminate_common_global_memory_read.cc
-  rearrange_load_instruction.cc)
+  rearrange_load_instruction.cc
+  check_tensor_buffer_map.cc)
 
 if(WITH_CUDA)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)

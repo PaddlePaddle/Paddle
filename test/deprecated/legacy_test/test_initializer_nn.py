@@ -409,6 +409,28 @@ class TestNormal(unittest.TestCase):
 
         return block
 
+    def test_normal_initializer_complex(self, dtype="complex64"):
+        """Test normal initializer with complex dtype"""
+        with static_guard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Normal(2.3 + 2.3j, 1.9),
+                )
+            num_ops = 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            self.assertAlmostEqual(init_op.attr('mean'), 2.3, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
+
+        return block
+
     def test_normal_initializer_fp16(self):
         """Test normal initializer with float16"""
         block = self.test_normal_initializer("float16")
@@ -416,6 +438,14 @@ class TestNormal(unittest.TestCase):
     def test_normal_initializer_bf16(self):
         """Test normal initializer with bfloat16"""
         block = self.test_normal_initializer("uint16")  # bfloat16
+
+    def test_normal_initializer_complex64(self):
+        """Test normal initializer with complex64"""
+        block = self.test_normal_initializer_complex("complex64")
+
+    def test_normal_initializer_complex128(self):
+        """Test normal initializer with complex128"""
+        block = self.test_normal_initializer_complex("complex128")
 
     def test_normal_initializer_dygraph(self):
         """Test normal initializer in dygraph model."""
@@ -426,6 +456,10 @@ class TestNormal(unittest.TestCase):
             initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0),
         )
         linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr)
+
+    def test_normal_initializer_complex_error(self):
+        with self.assertRaises(ValueError):
+            paddle.nn.initializer.Normal(mean=0.1 + 0.2j, std=2.0)
 
 
 class TestTruncatedNormal(unittest.TestCase):

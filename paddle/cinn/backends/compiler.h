@@ -61,10 +61,6 @@ class CompilationInfoDumper {
   static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
                                       const int gidx,
                                       const int device_id);
-  static void DumpInstructionByGroupIndex(
-      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-      const int gidx,
-      const int device_id);
 
  private:
   void DumpLoweredFunc();
