@@ -2322,6 +2322,17 @@
   inplace: (x -> out)
   backward : identity_loss_grad
 
+- op : im2sequence
+  args: (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1})
+  output: Tensor (out)
+  infer_meta:
+    func: Im2sequenceInferMeta
+  kernel:
+    func: im2sequence
+  optional: y
+  backward: im2sequence_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)

@@ -1901,6 +1901,12 @@
   outputs :
     {out : Out, residual : Residual}
 
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+
 - op : imag
   backward : imag_grad
   inputs :

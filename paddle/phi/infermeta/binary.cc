@@ -2315,6 +2315,38 @@ void IndexSampleInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void Im2sequenceInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const std::vector<int>& kernels,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& out_stride,
+                          MetaTensor* out,
+                          MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      x.initialized(),
+      true,
+      phi::errors::NotFound("The input 'X' of Im2SequenceOp is not found."));
+  PADDLE_ENFORCE_EQ(
+      out != nullptr,
+      true,
+      phi::errors::NotFound("The output 'Out' of Im2SequenceOp is not found."));
+  const auto& in_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(in_dim.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The dimensions size of input 'X' in Im2SequenceOp "
+                        "should be 4. But "
+                        "received dimensions size=[%d], dimensions=[%s].",
+                        in_dim.size(),
+                        in_dim));
+  auto img_channels = in_dim[1];
+
+  out->set_dims({in_dim[0], img_channels * kernels[0] * kernels[1]});
+  out->set_dtype(x.dtype());
+}
+
 void IndexSelectInferMeta(const MetaTensor& x,
                           const MetaTensor& index,
                           int dim,
