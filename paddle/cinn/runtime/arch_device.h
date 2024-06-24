@@ -20,6 +20,7 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::runtime {
