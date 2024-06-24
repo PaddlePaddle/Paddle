@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
