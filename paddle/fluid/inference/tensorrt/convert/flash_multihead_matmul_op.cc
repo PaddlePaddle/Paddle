@@ -18,9 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class FlashMultiheadMatMulOpConverter : public OpConverter {
  public:
@@ -530,9 +528,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(flash_multihead_matmul,
                           FlashMultiheadMatMulOpConverter);

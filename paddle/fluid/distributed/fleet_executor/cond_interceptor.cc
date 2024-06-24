@@ -22,8 +22,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 CondInterceptor::CondInterceptor(int64_t interceptor_id, TaskNode* node)
     : Interceptor(interceptor_id, node),
@@ -223,5 +222,4 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
 
 REGISTER_INTERCEPTOR(Cond, CondInterceptor);
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed
