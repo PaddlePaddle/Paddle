@@ -257,6 +257,11 @@ void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  MetaTensor* out,
                                  MetaTensor* out_scale);
 
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out);
+
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
                           DataType dtype,
