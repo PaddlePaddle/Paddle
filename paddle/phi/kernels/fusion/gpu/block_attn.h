@@ -56,6 +56,7 @@ struct Block_AttN_params {
 
   const float *rotary_emb = nullptr;
   int rotary_emb_dims;
+  int rope_stride;
   float inv_compression_ratio = 1.0f;  // Default as 1.0
 
   int batch_size;  // batch * beam
@@ -96,13 +97,11 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
   int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
     return;
   }
-
   act_time_step += params.pre_cache_length;
 
   const int *block_table =
@@ -121,9 +120,12 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   int block_smem_offset =
       div_up(params.max_num_blocks_per_seq, 4) * 4 * sizeof(int);
+
   float *qk_smem = reinterpret_cast<float *>(smem_ + block_smem_offset);
 
-  float *logits_smem = reinterpret_cast<float *>(smem_ + block_smem_offset);
+  char *logits_smem_ = smem_ + block_smem_offset;
+  // fp32 accum for logits
+  float *logits_smem = reinterpret_cast<float *>(logits_smem_);
 
   /*
   Note: This shared memory is used in Final Reduce, so we do not
@@ -134,34 +136,33 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
-  using QK_Packed_Int8_t = typename Packed_Int8_<Qk_vec, CACHE_TYPE>::Type;
+  using QK_Packed_Int8_t =
+      typename packed_type<uint8_t, num_elems<Qk_vec>::value>::type;
 
   // 每个 block 有一个 head 的 q 值
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   const int tid = threadIdx.x;
   const int hi = blockIdx.x;  // head index
-  const int kv_hi = hi / params.gqa_num_per_partitions;
 
-  const int cache_id = kv_hi;
-  float k_quant_scale =
-      static_cast<float>(params.cache_k_quant_scales[cache_id]);
-  float v_quant_scale =
-      static_cast<float>(params.cache_v_quant_scales[cache_id]);
-  float k_dequant_scale =
-      static_cast<float>(params.cache_k_dequant_scales[cache_id]);
-  float v_dequant_scale =
-      static_cast<float>(params.cache_v_dequant_scales[cache_id]);
+  float k_quant_scale;
+  float v_quant_scale;
+  float k_dequant_scale;
+  float v_dequant_scale;
+  if (CACHE_TYPE == CacheType::INT8) {
+    k_quant_scale = static_cast<float>(params.cache_k_quant_scales[hi]);
+    v_quant_scale = static_cast<float>(params.cache_v_quant_scales[hi]);
+    k_dequant_scale = static_cast<float>(params.cache_k_dequant_scales[hi]);
+    v_dequant_scale = static_cast<float>(params.cache_v_dequant_scales[hi]);
+  }
 
   const int bhi = bi * params.q_num_head + hi;
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
   const int thi = params.cum_offsets ? ti * params.q_num_head + hi : -1;
   int *block_table_smem = reinterpret_cast<int *>(smem_);
-
-  for (int local_id = tid; local_id < params.max_num_blocks_per_seq;
-       local_id += blockDim.x) {
-    block_table_smem[local_id] = block_table[local_id];
+  if (tid < params.max_num_blocks_per_seq) {
+    block_table_smem[tid] = block_table[tid];
   }
   __syncthreads();
 
@@ -174,11 +175,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   // cache offset of current token
   const int base_cache_offset =
-      physical_block_number * params.kv_num_head * BLOCK_SIZE * Dh +
-      kv_hi * BLOCK_SIZE * Dh + block_offset * Dh;
+      physical_block_number * params.q_num_head * BLOCK_SIZE * Dh +
+      hi * BLOCK_SIZE * Dh + block_offset * Dh;
 
-  // qkv [B, S=1, num_head + 2 * (kv_num_head), head_dim]
-  int qkv_base_offset = bi * (params.q_num_head + params.kv_num_head * 2) * Dh;
+  // qkv [B, S=1, 3, num_head, head_dim]
+  int qkv_base_offset = bi * 3 * params.q_num_head * Dh + hi * Dh;
 
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
@@ -206,19 +207,17 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Qk_vec q;
     zero(q);
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      load_func.template load<Qk_vec>(q, qk_offset + hi * Dh);
+      load_func.template load<Qk_vec>(q, qk_offset);
     }
 
     Qk_vec k;
     zero(k);
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      load_func.template load<Qk_vec>(
-          k, params.q_num_head * Dh + qk_offset + kv_hi * Dh);
+      load_func.template load<Qk_vec>(k, params.q_num_head * Dh + qk_offset);
     }
 
     if (params.add_qkv_bias) {
-      const int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
-      const int k_bias_offset = kv_hi * Dh + tid * QK_VEC_SIZE;
+      const int qk_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
       Qk_vec q_bias;
       zero(q_bias);
       Qk_vec k_bias;
@@ -226,11 +225,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
       q_bias =
           (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-              ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[q_bias_offset])
+              ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[qk_bias_offset])
               : q_bias;
       k_bias =
           (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[k_bias_offset])
+              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[qk_bias_offset])
               : k_bias;
 
       q = add(q, q_bias);
@@ -249,26 +248,25 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
       } else {
         int last_dim = Dh / params.rotary_emb_dims;
         int half_lastdim = last_dim / 2;
-        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        // [1, 1, max_seq_len, 1, dh]
+        int rotary_offset = act_time_step * Dh + tid * QK_VEC_SIZE;
         const float *cos_base = params.rotary_emb;
-        const float *sin_base = params.rotary_emb + params.batch_size * Dh;
+        const float *sin_base = params.rotary_emb + params.rope_stride;
         int stride = half_lastdim / QK_VEC_SIZE;
         int stride_all_lastdim = 2 * stride;
         int right_id = tid / stride_all_lastdim * stride_all_lastdim +
                        (tid + stride) % (stride_all_lastdim);
-        int q_right_offset = qkv_base_offset + hi * Dh + right_id * QK_VEC_SIZE;
-        int k_right_offset = qkv_base_offset + params.q_num_head * Dh +
-                             kv_hi * Dh + right_id * QK_VEC_SIZE;
-
+        int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          load_func.template load<Qk_vec>(q_right, q_right_offset);
+          load_func.template load<Qk_vec>(q_right, qk_right_offset);
         }
         Qk_vec k_right;
         zero(k_right);
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          load_func.template load<Qk_vec>(k_right, k_right_offset);
+          load_func.template load<Qk_vec>(
+              k_right, params.q_num_head * Dh + qk_right_offset);
         }
 
         Qk_vec_RoPE cos_emb;
@@ -294,16 +292,16 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
       }
     }
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
+
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
+      const int offset = base_cache_offset + tid * QK_VEC_SIZE;
       if (CACHE_TYPE == CacheType::INT8) {
-        const int offset = base_cache_offset + tid * QK_VEC_SIZE;
         QK_Packed_Int8_t k_tmp =
             round_tmp<QK_Packed_Int8_t, Qk_vec, CACHE_TYPE>(
                 mul<Qk_vec, float, Qk_vec>(k_quant_scale, k));
         *reinterpret_cast<QK_Packed_Int8_t *>(&params.k_cache_I[offset]) =
             k_tmp;
       } else {
-        const int offset = base_cache_offset + tid * QK_VEC_SIZE;
         *reinterpret_cast<Qk_vec *>(&params.k_cache[offset]) = k;
       }
     }
@@ -336,8 +334,9 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     qk_smem[act_time_step] = qk;
   }
   __syncthreads();
-  using K_vec = typename K_vec_bttn_<T>::Type;
-  using K_vec_I = typename K_vec_I_bttn_<T, CACHE_TYPE>::Type;
+
+  using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
+  using K_vec_I = typename K_vec_I_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
@@ -367,11 +366,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   zero(k_vec_zero);
   // ti is the timestep index
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
-    int physical_block_number = block_table_smem[ti / BLOCK_SIZE];
+    const int physical_block_number = block_table_smem[ti / BLOCK_SIZE];
     const int block_offset = ti % BLOCK_SIZE;
     const int k_offset =
-        physical_block_number * params.kv_num_head * BLOCK_SIZE * Dh +
-        kv_hi * BLOCK_SIZE * Dh + block_offset * Dh + ki;
+        physical_block_number * params.q_num_head * BLOCK_SIZE * Dh +
+        hi * BLOCK_SIZE * Dh + block_offset * Dh + ki;
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       if (ti < act_time_step) {
@@ -394,7 +393,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     }
 
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
-
     if (params.attn_mask) {
       auto mask_bhi = bhi;
       if (params.mask_broadcast_num_heads) {
@@ -403,7 +401,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
       T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
       qk += static_cast<float>(mask);
     }
-
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
       qk_smem[ti] = qk;
@@ -450,7 +447,8 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
-  using V_Packed_Int8_t = typename Packed_Int8_<V_vec, CACHE_TYPE>::Type;
+  using V_Packed_Int8_t =
+      typename packed_type<uint8_t, num_elems<V_vec>::value>::type;
 
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
@@ -467,12 +465,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = vo; ti < act_time_step; ti += V_PER_ITER) {
-      int physical_block_number = block_table_smem[ti / BLOCK_SIZE];
-
+      const int physical_block_number = block_table_smem[ti / BLOCK_SIZE];
       const int block_offset = ti % BLOCK_SIZE;
       const int v_offset =
-          physical_block_number * params.kv_num_head * BLOCK_SIZE * Dh +
-          kv_hi * BLOCK_SIZE * Dh + block_offset * Dh + vi;
+          physical_block_number * params.q_num_head * BLOCK_SIZE * Dh +
+          hi * BLOCK_SIZE * Dh + block_offset * Dh + vi;
       V_vec v;
       if (CACHE_TYPE == CacheType::INT8) {
         mul_pointer_v2<V_vec, float, V_Packed_Int8_t, CACHE_TYPE>(
@@ -497,15 +494,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
-    // 读取当前的 v 到 v cache 中
     load_func.template load<V_vec>(
-        v,
-        (params.q_num_head + params.kv_num_head) * Dh + qkv_base_offset +
-            kv_hi * Dh + vi);
+        v, 2 * params.q_num_head * Dh + qkv_base_offset + vi);
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
-          &params.qkv_bias[(params.q_num_head + params.kv_num_head) * Dh +
-                           kv_hi * Dh + vi]);
+          &params.qkv_bias[(2 * params.q_num_head) * Dh + vi]);
       v = add(v, v_bias);
     }
 
@@ -562,9 +555,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
-#else
-  assert(false);
-#endif
 }
 
 template <typename T,
@@ -1548,6 +1538,7 @@ void blha(const phi::GPUContext &dev_ctx,
 
   if (rotary_tensor) {
     params.rotary_emb = rotary_tensor->data<float>();
+    params.rope_stride = rotary_tensor->dims()[2] * rotary_tensor->dims()[4];
   } else {
     params.rotary_emb = nullptr;
   }
@@ -2333,6 +2324,72 @@ __global__ void VariableLengthRotaryKernel(
   }
 }
 
+template <typename T, int VecSize = 1>
+__global__ void NeoxVariableLengthRotaryKernel(
+    const T *qkv,
+    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
+    const float *sin_emb,
+    const int *padding_offsets,
+    const int *seq_lens,
+    T *qkv_out,
+    const int64_t elem_cnt,
+    const int num_head,
+    const int seq_len,
+    const int last_dim) {
+  // [token_num, 2, num_head, dim_head / 2]
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  LoadT left_vec;
+  LoadT right_vec;
+  LoadEmbT cos_emb_vec;
+  LoadEmbT sin_emb_vec;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int half_lastdim = last_dim / 2;
+  const int hidden_size = num_head * half_lastdim;
+  const int full_hidden_size = num_head * last_dim;
+  const int offset = 2 * hidden_size;
+  for (int64_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size;
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / half_lastdim;
+    const int h_bias = qkv_bias % half_lastdim;
+
+    const int ori_seq_id = ori_token_idx % seq_len;
+
+    const int emb_idx = ori_seq_id * last_dim + h_bias;
+    const int base_idx_left = token_idx * 3 * full_hidden_size +
+                              qkv_id * full_hidden_size + hi * last_dim +
+                              h_bias;
+    const int base_idx_right = base_idx_left + half_lastdim;
+
+    phi::Load<T, VecSize>(&qkv[base_idx_left], &left_vec);
+    phi::Load<T, VecSize>(&qkv[base_idx_right], &right_vec);
+    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      const float input_left = static_cast<float>(left_vec[i]);
+      const float input_right = static_cast<float>(right_vec[i]);
+      const float cos_tmp = cos_emb_vec[i];
+      const float sin_tmp = sin_emb_vec[i];
+      left_vec[i] =
+          static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
+      right_vec[i] =
+          static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
+    }
+    phi::Store<T, VecSize>(left_vec, &qkv_out[base_idx_left]);
+    phi::Store<T, VecSize>(right_vec, &qkv_out[base_idx_right]);
+  }
+}
+
 template <typename T>
 void rotary_qk_variable(
     const phi::GPUContext &dev_ctx,
@@ -2345,26 +2402,46 @@ void rotary_qk_variable(
     const int head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head) {
+    const int dim_head,
+    bool use_neox_style = false) {
   int elem_nums = token_num * 2 * head_num * dim_head;  // just q and k
+  if (use_neox_style) {
+    elem_nums = token_num * head_num * dim_head;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  const float *cos_emb = rotary_emb;
-  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-  VariableLengthRotaryKernel<T, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                      cos_emb,
-                                                      sin_emb,
-                                                      padding_offsets,
-                                                      seq_lens,
-                                                      qkv,
-                                                      elem_nums,
-                                                      head_num,
-                                                      seq_len,
-                                                      dim_head);
+  if (!use_neox_style) {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+    VariableLengthRotaryKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        dim_head);
+  } else {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head;
+    NeoxVariableLengthRotaryKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        dim_head);
+  }
 }
 
 template <typename T, int VecSize = 1>
@@ -2439,7 +2516,8 @@ void gqa_rotary_qk_variable(
     const int kv_head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head) {
+    const int dim_head,
+    bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
   constexpr int PackSize = 16 / sizeof(T);
@@ -2543,6 +2621,97 @@ __global__ void VariableLengthRotaryKernel(
   }
 }
 
+template <typename T, int VecSize = 1>
+__global__ void NeoxVariableLengthRotaryKernel(
+    const int *qkv,
+    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
+    const float *sin_emb,
+    const int *padding_offsets,
+    const int *seq_lens,
+    const float *qkv_out_scales,  // [3, num_head, dim_head]
+    const T *qkv_biases,          // [3, num_head, dim_head]
+    T *qkv_out,
+    const int64_t elem_cnt,
+    const int num_head,
+    const int seq_len,
+    const int last_dim) {
+  using LoadT = phi::AlignedVector<int, VecSize>;
+  using LoadBiasT = phi::AlignedVector<T, VecSize>;
+  using LoadScaleT = phi::AlignedVector<float, VecSize>;
+  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  LoadT left_vec;
+  LoadT right_vec;
+  LoadBiasT left_bias_vec;
+  LoadBiasT right_bias_vec;
+  LoadScaleT left_out_scale_vec;
+  LoadScaleT right_out_scale_vec;
+  LoadEmbT cos_emb_vec;
+  LoadEmbT sin_emb_vec;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int half_lastdim = last_dim / 2;
+  const int hidden_size = num_head * half_lastdim;
+  const int full_hidden_size = num_head * last_dim;
+  const int offset = 3 * hidden_size;
+  for (int64_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size;
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / half_lastdim;
+    const int h_bias = qkv_bias % half_lastdim;
+
+    const int ori_seq_id = ori_token_idx % seq_len;
+
+    const int emb_idx = ori_seq_id * last_dim + h_bias;
+    const int bias_idx_left =
+        qkv_id * full_hidden_size + hi * last_dim + h_bias;
+    const int bias_idx_right = bias_idx_left + half_lastdim;
+    const int base_idx_left = token_idx * 3 * full_hidden_size + bias_idx_left;
+    const int base_idx_right = base_idx_left + half_lastdim;
+    phi::Load<int, VecSize>(&qkv[base_idx_left], &left_vec);
+    phi::Load<int, VecSize>(&qkv[base_idx_right], &right_vec);
+    phi::Load<T, VecSize>(&qkv_biases[bias_idx_left], &left_bias_vec);
+    phi::Load<T, VecSize>(&qkv_biases[bias_idx_right], &right_bias_vec);
+    phi::Load<float, VecSize>(&qkv_out_scales[bias_idx_left],
+                              &left_out_scale_vec);
+    phi::Load<float, VecSize>(&qkv_out_scales[bias_idx_right],
+                              &right_out_scale_vec);
+    if (qkv_id < 2) {
+      phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+      phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+    }
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      float input_left = static_cast<float>(left_vec[i]);
+      float input_right = static_cast<float>(right_vec[i]);
+      // dequant + bias_add
+      input_left = input_left * left_out_scale_vec[i] +
+                   static_cast<float>(left_bias_vec[i]);
+      input_right = input_right * right_out_scale_vec[i] +
+                    static_cast<float>(right_bias_vec[i]);
+      if (qkv_id < 2) {  // qk rope
+        const float cos_tmp = cos_emb_vec[i];
+        const float sin_tmp = sin_emb_vec[i];
+        left_bias_vec[i] =
+            static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
+        right_bias_vec[i] =
+            static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
+      } else {
+        left_bias_vec[i] = static_cast<T>(input_left);
+        right_bias_vec[i] = static_cast<T>(input_right);
+      }
+    }
+    phi::Store<T, VecSize>(left_bias_vec, &qkv_out[base_idx_left]);
+    phi::Store<T, VecSize>(right_bias_vec, &qkv_out[base_idx_right]);
+  }
+}
+
 template <typename T>
 void rotary_qk_variable(
     const phi::GPUContext &dev_ctx,
@@ -2557,28 +2726,50 @@ void rotary_qk_variable(
     const int head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head) {
+    const int dim_head,
+    bool use_neox_style = false) {
   int elem_nums = token_num * 3 * head_num * dim_head;  // just q and k
+  if (use_neox_style) {
+    elem_nums = token_num * 3 * head_num * dim_head / 2;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  const float *cos_emb = rotary_emb;
-  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-  VariableLengthRotaryKernel<T, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                      cos_emb,
-                                                      sin_emb,
-                                                      padding_offsets,
-                                                      seq_lens,
-                                                      qkv_out_scales,
-                                                      qkv_bias,
-                                                      qkv,
-                                                      elem_nums,
-                                                      head_num,
-                                                      seq_len,
-                                                      dim_head);
+  if (!use_neox_style) {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+    VariableLengthRotaryKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv_out_scales,
+                                                        qkv_bias,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        dim_head);
+  } else {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head;
+    NeoxVariableLengthRotaryKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv_out_scales,
+                                                        qkv_bias,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        dim_head);
+  }
 }
 
 template <typename T, int VecSize = 1>
@@ -2673,7 +2864,8 @@ void gqa_rotary_qk_variable(
     const int kv_head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head) {
+    const int dim_head,
+    bool use_neox_style = false) {
   const int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
   constexpr int PackSize = 16 / sizeof(T);
@@ -2770,6 +2962,84 @@ __global__ void VariableLengthRotaryKernel(
   }
 }
 
+template <typename T, int VecSize = 1>
+__global__ void NeoxVariableLengthRotaryKernel(
+    const T *qkv,
+    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
+    const float *sin_emb,
+    const int *padding_offsets,
+    const int *seq_lens,
+    const T *qkv_biases,
+    T *qkv_out,
+    const int64_t elem_cnt,
+    const int num_head,
+    const int seq_len,
+    const int last_dim) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  LoadT left_vec;
+  LoadT right_vec;
+  LoadT left_bias_vec;
+  LoadT right_bias_vec;
+  LoadEmbT cos_emb_vec;
+  LoadEmbT sin_emb_vec;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int half_lastdim = last_dim / 2;
+  const int hidden_size = num_head * half_lastdim;
+  const int full_hidden_size = num_head * last_dim;
+  const int offset = 3 * hidden_size;
+  for (int64_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size;
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / half_lastdim;
+    const int h_bias = qkv_bias % half_lastdim;
+
+    const int ori_seq_id = ori_token_idx % seq_len;
+
+    const int emb_idx = ori_seq_id * last_dim + h_bias;
+    const int bias_idx_left =
+        qkv_id * full_hidden_size + hi * last_dim + h_bias;
+    const int bias_idx_right = bias_idx_left + half_lastdim;
+    const int base_idx_left = token_idx * 3 * full_hidden_size + bias_idx_left;
+    const int base_idx_right = base_idx_left + half_lastdim;
+    phi::Load<int, VecSize>(&qkv[base_idx_left], &left_vec);
+    phi::Load<int, VecSize>(&qkv[base_idx_right], &right_vec);
+    phi::Load<T, VecSize>(&qkv_biases[bias_idx_left], &left_bias_vec);
+    phi::Load<T, VecSize>(&qkv_biases[bias_idx_right], &right_bias_vec);
+    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      const float input_left =
+          static_cast<float>(left_vec[i] + left_bias_vec[i]);
+      const float input_right =
+          static_cast<float>(right_vec[i] + right_bias_vec[i]);
+
+      if (qkv_id < 2) {  // qk rope
+        const float cos_tmp = cos_emb_vec[i];
+        const float sin_tmp = sin_emb_vec[i];
+        left_vec[i] =
+            static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
+        right_vec[i] =
+            static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
+      } else {
+        left_vec[i] = static_cast<T>(input_left);
+        right_vec[i] = static_cast<T>(input_right);
+      }
+    }
+    phi::Store<T, VecSize>(left_vec, &qkv_out[base_idx_left]);
+    phi::Store<T, VecSize>(right_vec, &qkv_out[base_idx_right]);
+  }
+}
+
 template <typename T>
 void rotary_qk_variable(
     const phi::GPUContext &dev_ctx,
@@ -2783,28 +3053,48 @@ void rotary_qk_variable(
     const int head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head) {
+    const int dim_head,
+    bool use_neox_style = false) {
   int elem_nums = token_num * 3 * head_num * dim_head;  // just q and k
+  if (use_neox_style) {
+    elem_nums = token_num * 3 * head_num * dim_head / 2;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-
-  const float *cos_emb = rotary_emb;
-  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-  VariableLengthRotaryKernel<T, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                      cos_emb,
-                                                      sin_emb,
-                                                      padding_offsets,
-                                                      seq_lens,
-                                                      qkv_bias,
-                                                      qkv,
-                                                      elem_nums,
-                                                      head_num,
-                                                      seq_len,
-                                                      dim_head);
+  if (!use_neox_style) {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+    VariableLengthRotaryKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv_bias,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        dim_head);
+  } else {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head;
+    NeoxVariableLengthRotaryKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv_bias,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        dim_head);
+  }
 }
 
 template <typename T, int VecSize = 1>
@@ -2895,7 +3185,8 @@ void gqa_rotary_qk_variable(
     const int kv_head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head) {
+    const int dim_head,
+    bool use_neox_style = false) {
   const int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
   constexpr int PackSize = 16 / sizeof(T);
