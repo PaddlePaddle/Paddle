@@ -25,6 +25,7 @@
   kernel :
     func : accuracy
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : accuracy_check
   args : (Tensor x, Tensor y, str fn_name, double rtol=1e-5, double atol=1e-8,  bool equal_nan=false)
@@ -175,6 +176,7 @@
     spmd_rule : ReductionAllInferSpmdDynamic
   kernel :
     func : all
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : allclose
   args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
@@ -221,6 +223,7 @@
     func : ReduceInferMeta
   kernel :
     func : any
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
@@ -241,6 +244,7 @@
     func : argmax
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : argmin
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
@@ -363,6 +367,7 @@
     data_type : dtype
     backend : place > output
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : atan
   args : (Tensor x)
@@ -460,6 +465,7 @@
   kernel :
     func : bernoulli
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bicubic_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -536,6 +542,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bitwise_left_shift
   args : (Tensor x, Tensor y, bool is_arithmetic = true)
@@ -546,6 +553,7 @@
     func : bitwise_left_shift
     backend : x
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bitwise_not
   args : (Tensor x)
@@ -558,6 +566,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bitwise_or
   args : (Tensor x, Tensor y)
@@ -568,6 +577,7 @@
     func : bitwise_or
     backend : x
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bitwise_right_shift
   args : (Tensor x, Tensor y, bool is_arithmetic = true)
@@ -578,6 +588,7 @@
     func : bitwise_right_shift
     backend : x
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bitwise_xor
   args : (Tensor x, Tensor y)
@@ -589,6 +600,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : bmm
   args : (Tensor x, Tensor y)
@@ -1275,6 +1287,7 @@
   kernel :
     func : diag_embed
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
@@ -1939,6 +1952,7 @@
     backend : place > x
   data_transform :
     skip_transform : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : full_with_tensor
   args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
@@ -1950,6 +1964,7 @@
     func : full_with_tensor
     data_type : dtype
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fused_batch_norm_act
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str act_type)
@@ -2068,7 +2083,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : gaussian_inplace
   args: (Tensor x, float mean=0, float std=1.0, int seed=0)
@@ -2443,6 +2458,7 @@
     func : isinf {dense -> dense},
            isinf_sr {selected_rows -> selected_rows}
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : isnan
   args : (Tensor x)
@@ -2453,6 +2469,7 @@
     func : isnan {dense -> dense},
            isnan_sr {selected_rows -> selected_rows}
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : kldiv_loss
   args : (Tensor x, Tensor label, str reduction = "mean", bool log_target = false)
@@ -2693,6 +2710,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logical_not
   args : (Tensor x)
@@ -2705,6 +2723,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logical_or
   args : (Tensor x, Tensor y)
@@ -2717,6 +2736,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logical_xor
   args : (Tensor x, Tensor y)
@@ -2729,6 +2749,7 @@
     backend : x
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
@@ -3104,6 +3125,7 @@
   kernel :
     func : multinomial
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)
@@ -3170,6 +3192,7 @@
   kernel :
     func : nextafter
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")
@@ -3200,6 +3223,7 @@
     func : nonzero
     data_type: condition
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
@@ -3239,6 +3263,7 @@
     func : OneHotInferMeta
   kernel :
     func : one_hot
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : ones
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -3403,6 +3428,7 @@
   kernel :
     func : prior_box
     data_type : input
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : prod
   args : (Tensor x, IntArray axis, bool keepdim, bool reduce_all)
@@ -3495,7 +3521,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
@@ -3945,6 +3971,7 @@
   data_transform :
     skip_transform : input
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : shard_index
   args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
@@ -4572,7 +4599,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : uniform_inplace
   args: (Tensor x, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)

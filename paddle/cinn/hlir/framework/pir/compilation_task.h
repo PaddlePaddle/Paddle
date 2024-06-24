@@ -15,7 +15,6 @@
 #pragma once
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"

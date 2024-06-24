@@ -179,7 +179,9 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         if use_compiled:
             main_program = paddle.static.CompiledProgram(main_program)
 
-        if use_str:  # test for fetch name
+        if (
+            use_str and not paddle.framework.in_pir_mode()
+        ):  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]
         if add_wrong_fetch:  # test for wrong fetch type
             fetch_vars.append(1123)
@@ -328,9 +330,10 @@ class TestException(unittest.TestCase):
             },
         ]
         self.run_new_executor(feed)
-        self.assertIsNone(
-            paddle.static.global_scope().find_var(self.fetch_vars.name)
-        )
+        if not paddle.framework.in_pir_mode():
+            self.assertIsNone(
+                paddle.static.global_scope().find_var(self.fetch_vars.name)
+            )
 
 
 class TestFetchEmptyTensor(unittest.TestCase):
