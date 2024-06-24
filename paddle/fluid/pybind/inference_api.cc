@@ -1032,6 +1032,7 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
+      .def("delete_pass", &AnalysisConfig::DeletePass)
       .def(
           "pass_builder",
           [](AnalysisConfig &self) {

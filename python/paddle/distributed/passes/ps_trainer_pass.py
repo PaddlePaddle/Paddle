@@ -841,7 +841,8 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        if core._is_compiled_with_gpu_graph() is False:
+        attrs = pass_ctx._attrs
+        if attrs['use_gpu_graph'] == 0:
             from ..transpiler.collective import MultiThread
 
             t = MultiThread()

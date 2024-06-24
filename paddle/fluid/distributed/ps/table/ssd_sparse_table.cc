@@ -588,6 +588,15 @@ int64_t SSDSparseTable::LocalSize() {
 
 int32_t SSDSparseTable::Save(const std::string& path,
                              const std::string& param) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  // gpu graph mode
+  if (_use_gpu_graph) {
+    auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
+    if (save_filtered_slots != nullptr && (save_filtered_slots->size()) > 0) {
+      return Save_v2(path, param);
+    }
+  }
+#endif
   std::lock_guard<std::mutex> guard(_table_mutex);
 #ifdef PADDLE_WITH_HETERPS
   int save_param = atoi(param.c_str());
@@ -604,13 +613,9 @@ int32_t SSDSparseTable::Save(const std::string& path,
 #endif
 }
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
 int32_t SSDSparseTable::Save_v2(const std::string& path,
                                 const std::string& param) {
-  auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
-  if (save_filtered_slots && (save_filtered_slots->size()) <= 0) {
-    return Save(path, param);
-  }
   std::lock_guard<std::mutex> guard(_table_mutex);
 #ifdef PADDLE_WITH_HETERPS
   int save_param = atoi(param.c_str());
@@ -659,7 +664,7 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -833,7 +838,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1124,7 +1129,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   _afs_client.remove(paddle::string::format_string(
       "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1575,7 +1580,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1877,7 +1882,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   _afs_client.remove(paddle::string::format_string(
       "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;

@@ -489,9 +489,10 @@ void BindAutoParallel(py::module *m) {
                        .def(py::self == py::self)   // NOLINT
                        .def(py::self != py::self);  // NOLINT
 
-  auto Partial = py::class_<phi::distributed::Partial,
-                            std::shared_ptr<phi::distributed::Partial>>(
-                     *m, "Partial", Placement, R"DOC(
+  auto Partial =
+      py::class_<phi::distributed::Partial,
+                 std::shared_ptr<phi::distributed::Partial>>(
+          *m, "Partial", Placement, R"DOC(
                  The `Partial` describes `Tensor` across multiple devices, this type of tensor has the same shape but only a fraction of the value, which can be further reduce (e.g. sum/min/max) to obtain dist_tensor, often used as an intermediate representation.
 
                  Parameters:
@@ -509,12 +510,13 @@ void BindAutoParallel(py::module *m) {
                          >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
 
                  )DOC")
-                     .def(py::init<phi::ReduceType>(),
-                          py::arg("reduce_type") = phi::ReduceType::kRedSum)
-                     .def("__hash__", &phi::distributed::Partial::hash)
-                     .def("__str__", &phi::distributed::Partial::to_string)
-                     .def(py::self == py::self)   // NOLINT
-                     .def(py::self != py::self);  // NOLINT
+          .def(py::init<phi::ReduceType>(),
+               py::arg("reduce_type") = phi::ReduceType::kRedSum)
+          .def("reduce_type", &phi::distributed::Partial::get_reduce_type)
+          .def("__hash__", &phi::distributed::Partial::hash)
+          .def("__str__", &phi::distributed::Partial::to_string)
+          .def(py::self == py::self)   // NOLINT
+          .def(py::self != py::self);  // NOLINT
 
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
   g_placement_replicated_pytype =
