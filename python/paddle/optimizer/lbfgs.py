@@ -16,9 +16,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, Sequence, TypedDict
-
-from typing_extensions import NotRequired
+from typing import TYPE_CHECKING, NoReturn, Sequence, TypedDict
 
 import paddle
 
@@ -36,13 +34,18 @@ __all__ = []
 
 
 class _LbfgsStateDict(TypedDict):
-    learning_rate: float
-    max_iter: int
-    max_eval: NotRequired[int]
-    tolerance_grad: float
-    tolerance_change: float
-    history_size: int
-    line_search_fn: NotRequired[str]
+    state: _LbfgsStateDict
+    func_evals: int
+    n_iter: int
+    d: Tensor
+    alpha: int
+    old_yk: list[Tensor]
+    old_sk: list[Tensor]
+    ro: Tensor
+    H_diag: Tensor
+    prev_flat_grad: Tensor
+    prev_loss: float
+    al: Tensor
 
 
 def dot(x, y):
@@ -800,7 +803,7 @@ class LBFGS(Optimizer):
 
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
-    ) -> None:
+    ) -> NoReturn:
         """Empty method. LBFGS optimizer does not use this way to minimize ``loss``. Please refer 'Examples' of LBFGS() above for usage."""
         raise NotImplementedError(
             "LBFGS optimizer does not use this way to minimize loss. Please refer 'Examples' of LBFGS() for usage."
