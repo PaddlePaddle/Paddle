@@ -847,7 +847,7 @@ def standard_normal(shape, dtype=None, name=None):
                 shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name
             )
     else:
-        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=None, name=name)
+        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
 def randn(shape, dtype=None, name=None):
@@ -1005,9 +1005,9 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             >>> out5 = paddle.normal(mean=mean_tensor)
             >>> print(out5)
             Tensor(shape=[3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [(1.137553095817566+1.0932074785232544j),
-             (2.795501232147217+1.5819810628890991j),
-             (2.326997995376587+2.908363103866577j) ])
+            [(1.136009693145752-0.11074113845825195j),
+             (2.529331684112549+2.1968750953674316j) ,
+             (2.2910101413726807+1.8114780187606812j)])
     """
     if not in_dynamic_mode():
         check_type(

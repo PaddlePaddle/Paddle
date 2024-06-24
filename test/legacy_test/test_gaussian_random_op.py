@@ -414,7 +414,7 @@ class TestComplexRandnAPI(unittest.TestCase):
                 out = paddle.randn([5000, 2], dtype=dtype)
                 mean = out.numpy().mean()
                 np.testing.assert_allclose(
-                    mean, 0.0 + 0.0j, rtol=0.02, atol=0.02
+                    0.0 + 0.0j, mean, rtol=0.02, atol=0.02
                 )
                 var = out.numpy().var()
                 var_real = out.numpy().real.var()
@@ -440,7 +440,7 @@ class TestComplexRandnAPI(unittest.TestCase):
 
                 mean = ret[0].mean()
                 np.testing.assert_allclose(
-                    mean, 0.0 + 0.0j, rtol=0.02, atol=0.02
+                    0.0 + 0.0j, mean, rtol=0.02, atol=0.02
                 )
                 var = ret[0].var()
                 var_real = ret[0].real.var()
