@@ -45,7 +45,7 @@ class SelectOutputOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const phi::Place &dev_place) const override {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();

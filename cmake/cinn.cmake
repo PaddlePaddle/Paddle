@@ -156,14 +156,13 @@ cinn_cc_library(
   DEPS
   glog
   ${llvm_libs}
-  cinn_framework_proto
   param_proto
   auto_schedule_proto
   schedule_desc_proto
+  tile_config_proto
   absl
   isl
   ginac
-  pybind
   op_fusion
   cinn_op_dialect
   ${jitify_deps})
@@ -172,7 +171,12 @@ add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
-target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
+add_dependencies(cinnapi python)
+if(LINUX)
+  target_link_libraries(cinnapi "-Wl,--unresolved-symbols=ignore-all")
+elseif(APPLE)
+  target_link_libraries(cinnapi "-Wl,-undefined,dynamic_lookup")
+endif()
 
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
@@ -216,10 +220,10 @@ function(gen_cinncore LINKTYPE)
     DEPS
     glog
     ${llvm_libs}
-    cinn_framework_proto
     param_proto
     auto_schedule_proto
     schedule_desc_proto
+    tile_config_proto
     absl
     isl
     ginac
@@ -312,10 +316,6 @@ if(PUBLISH_LIBS)
       ${CMAKE_BINARY_DIR}/dist/build_demo.sh
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinncore_static.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinncore_static.a
-    COMMAND
-      cmake -E copy
-      ${CMAKE_BINARY_DIR}/paddle/cinn/frontend/paddle/libcinn_framework_proto.a
-      ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinn_framework_proto.a
     COMMAND
       cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/hlir/pe/libparam_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libparam_proto.a

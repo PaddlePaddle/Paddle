@@ -22,12 +22,12 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
-#include "paddle/fluid/operators/fused/fused_dropout_common.h"
-#include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math/bert_encoder_functor.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_layernorm_residual_dropout_bias.h"
 
 namespace paddle {
 namespace inference {
@@ -401,11 +401,11 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     float *mean = nullptr;
     float *var = nullptr;
     const int VecSize = 8;
-    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<float,
-                                                                uint8_t,
-                                                                VecSize,
-                                                                float,
-                                                                false>()(
+    phi::fusion::FusedLayernormResidualDropoutBiasFunctor<float,
+                                                          uint8_t,
+                                                          VecSize,
+                                                          float,
+                                                          false>()(
         rows,
         cols,
         seed,
@@ -481,11 +481,11 @@ int PrelnResidualBiasPluginDynamic::enqueue(
                 "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
         }
       } else {
-        paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
-                                                                    uint8_t,
-                                                                    VecSize,
-                                                                    float,
-                                                                    false>()(
+        phi::fusion::FusedLayernormResidualDropoutBiasFunctor<half,
+                                                              uint8_t,
+                                                              VecSize,
+                                                              float,
+                                                              false>()(
             rows,
             cols,
             seed,
@@ -508,11 +508,11 @@ int PrelnResidualBiasPluginDynamic::enqueue(
       }
     } else {
       // if sm < 60, use FusedLayernormResidualDropoutBiasFunctor only
-      paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
-                                                                  uint8_t,
-                                                                  VecSize,
-                                                                  float,
-                                                                  false>()(
+      phi::fusion::FusedLayernormResidualDropoutBiasFunctor<half,
+                                                            uint8_t,
+                                                            VecSize,
+                                                            float,
+                                                            false>()(
           rows,
           cols,
           seed,

@@ -35,8 +35,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject *g_vartype_pytype = nullptr;
 PyTypeObject *g_blockdesc_pytype = nullptr;
@@ -294,6 +293,8 @@ void BindVarDesc(pybind11::module *m) {
       .value("BF16", pd::proto::VarType::BF16)
       .value("COMPLEX64", pd::proto::VarType::COMPLEX64)
       .value("COMPLEX128", pd::proto::VarType::COMPLEX128)
+      .value("FP8_E4M3FN", pd::proto::VarType::FP8_E4M3FN)
+      .value("FP8_E5M2", pd::proto::VarType::FP8_E5M2)
       .value("LOD_TENSOR", pd::proto::VarType::LOD_TENSOR)
       .value("SELECTED_ROWS", pd::proto::VarType::SELECTED_ROWS)
       .value("FEED_MINIBATCH", pd::proto::VarType::FEED_MINIBATCH)
@@ -547,5 +548,4 @@ void BindJitProperty(pybind11::module *m) {
       .def("parse_from_string", DeserializeMessage<jit::Property>);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

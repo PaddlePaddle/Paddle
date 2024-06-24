@@ -51,8 +51,7 @@ class WriteToArrayOp : public ArrayOp {
     auto *out_tensor = &out->at(offset);
     out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
       paddle::framework::TensorCopy(x_tensor, place, dev_ctx, out_tensor);
@@ -158,8 +157,7 @@ class ReadFromArrayOp : public ArrayOp {
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<phi::DenseTensor>();
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());

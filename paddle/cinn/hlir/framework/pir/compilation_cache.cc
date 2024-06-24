@@ -37,11 +37,22 @@ void* BackendResource::GetInferFuncPtr() const {
   return ptr;
 }
 
+void* BackendResource::GetCX86HostFuncPtr() const {
+  VLOG(4) << "Lookup kernel name: " << host_fn_name_ + "_CX86";
+  void* ptr = backend_compiler_->Lookup(host_fn_name_ + "_CX86");
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr,
+      ::common::errors::InvalidArgument("Can't find kernel function %s",
+                                        host_fn_name_ + "_CX86"));
+  return ptr;
+}
+
 pir::CINNKernelInfo BackendResource::GenerateKernelInfo() const {
   pir::CINNKernelInfo kernel_info;
   kernel_info.fn_name = host_fn_name_;
   kernel_info.fn_ptr = GetHostFuncPtr();
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
+  kernel_info.CX86_fn_ptr = GetCX86HostFuncPtr();
   kernel_info.int_args_map = GetIntArgsMap();
   return kernel_info;
 }

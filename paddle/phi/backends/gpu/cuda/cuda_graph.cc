@@ -25,9 +25,7 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
-namespace phi {
-namespace backends {
-namespace gpu {
+namespace phi::backends::gpu {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
@@ -379,6 +377,4 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 }
 #endif
 
-}  // namespace gpu
-}  // namespace backends
-}  // namespace phi
+}  // namespace phi::backends::gpu

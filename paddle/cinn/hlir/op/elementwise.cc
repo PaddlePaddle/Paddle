@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -358,6 +359,14 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     void operator()(const std::vector<std::string> &) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("wrong type std::vector<std::string>"));
+    }
+    void operator()(const std::vector<symbol::DimExpr> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<symbol::DimExpr>"));
+    }
+    void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);
@@ -1271,6 +1280,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("output_dim_exprs"),
+      ::common::errors::InvalidArgument("Expected attribute output_dim_exprs "
+                                        "in strategy for generate shape op"));
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("symbol_bindings"),
+      ::common::errors::InvalidArgument("Expected attribute symbol_bindings "
+                                        "in strategy for generate shape op"));
+  auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
+      attrs.attr_store.at("output_dim_exprs"));
+  auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
+      attrs.attr_store.at("symbol_bindings"));
+
   framework::CINNCompute generate_shape_compute(
       [=](lang::Args args, lang::RetValue *ret) {
         PADDLE_ENFORCE(!args.empty(),
@@ -1287,16 +1309,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         auto stages = CreateStages({});
 
         std::string tensor_name = pack_args.back().operator std::string();
-        ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
-                                          /*dtype=*/common::type_of<int64_t>(),
-                                          /*shape=*/
-                                          {
-                                              Expr(1),
-                                          },
-                                          /*domain=*/
-                                          {
-                                              Expr(1),
-                                          }));
+        ir::Tensor out = pe::GenerateShape(
+            inputs, symbol_bindings, output_dim_exprs, tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
@@ -1371,10 +1385,22 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
   auto attr_store = attrs.attr_store;
-  CHECK(attr_store.count("start"));
-  CHECK(attr_store.count("stop"));
-  CHECK(attr_store.count("step"));
-  CHECK(attr_store.count("dtype"));
+  PADDLE_ENFORCE_GT(attr_store.count("start"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No start attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("stop"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No stop attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("step"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No step attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("dtype"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No dtype attribute in arange Op! Please check."));
 
   auto start = absl::get<float>(attr_store.at("start"));
   auto stop = absl::get<float>(attr_store.at("stop"));
@@ -1382,22 +1408,29 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
   auto dtype =
       cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
 
-  framework::CINNCompute arange_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of arange compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
+  framework::CINNCompute arange_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of arange compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
 
-        CHECK_EQ(pack_args.size(), 1U);
-        std::string tensor_name = pack_args[0].operator std::string();
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      1U,
+                      ::common::errors::InvalidArgument(
+                          "The number of input argument of arange should be at "
+                          "last 1. Please check."));
+    std::string tensor_name = pack_args[0].operator std::string();
 
-        auto out = pe::Arange(start, stop, step, dtype, tensor_name);
-        std::vector<cinn::common::CINNValue> res;
-        auto stages = CreateStages({out});
-        res.push_back(cinn::common::CINNValue(out));
-        res.push_back(cinn::common::CINNValue(stages));
-        *ret = CINNValuePack{res};
-      });
+    auto out = pe::Arange(start, stop, step, dtype, tensor_name);
+    std::vector<cinn::common::CINNValue> res;
+    auto stages = CreateStages({out});
+    res.push_back(cinn::common::CINNValue(out));
+    res.push_back(cinn::common::CINNValue(stages));
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(
@@ -1796,7 +1829,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
       .set_attr("generate_equations",
                 MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
 #endif
@@ -1814,7 +1847,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConstScalar))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConstScalar))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConstScalar))
 #endif
@@ -1848,7 +1881,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr(
           "generate_equations",
           MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))
 #endif
@@ -1866,7 +1899,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForAssignValue))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForAssignValue))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForAssignValue))
 #endif

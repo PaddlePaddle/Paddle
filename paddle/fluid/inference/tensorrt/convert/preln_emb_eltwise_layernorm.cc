@@ -14,9 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
@@ -173,10 +171,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                           static_cast<int32_t>(emb_sizes[i]));
     }
 
-    nvinfer1::PluginFieldCollection* plugin_ptr =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_ptr) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+        new nvinfer1::PluginFieldCollection);
     plugin_ptr->nbFields = static_cast<int>(fields.size());
     plugin_ptr->fields = fields.data();
 
@@ -188,7 +184,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         "ManyEmbLayerNormVarlenPluginDynamic", "2");
 
     auto plugin_obj = creator->createPlugin(
-        "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr);
+        "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr.get());
 
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -196,7 +192,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     plugin_layer->setName(("ManyEmbLayerNormPluginDynamic_V3(Output: " +
                            op_desc.Output("Out")[0] + ")")
                               .c_str());
-    free(plugin_ptr);
+    plugin_ptr.reset();
     float out_0_scale =
         PADDLE_GET_CONST(float, op_desc.GetAttr("out_0_threshold"));
     float out_1_scale =
@@ -239,9 +235,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fused_preln_embedding_eltwise_layernorm,
                           PrelnEmbEltwiseLayerNormOpConverter);

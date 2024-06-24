@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass_tester.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-namespace fc_lstm_test {
+namespace paddle::framework::ir::fc_lstm_test {
 
 TEST(FcLstmFusePass, basic) {
   std::unique_ptr<ir::Graph> graph = PrepareGraph();
@@ -50,9 +46,6 @@ TEST(FcLstmFusePass, basic) {
                         "The number of fusion_gru nodes does "
                         "not meet expectations after fuse"));
 }
-}  // namespace fc_lstm_test
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fc_lstm_test
 
 USE_PASS(fc_lstm_fuse_pass);

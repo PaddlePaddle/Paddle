@@ -95,7 +95,7 @@ std::unordered_set<Node *> MemoryReusePass::FindNodesByName(
 }
 
 VarDesc *MemoryReusePass::GetVarDesc(const details::VarHandle &var) const {
-  const auto var_name = var.Name();
+  const auto &var_name = var.Name();
   size_t scope_idx = var.scope_idx();
   auto iter = var_descs_[scope_idx].find(var_name);
   if (iter == var_descs_[scope_idx].end()) {
@@ -156,14 +156,14 @@ void MemoryReusePass::CollectReusedVars() const {
 
 bool MemoryReusePass::IsInVarAlreadyReused(
     const details::VarHandle &in_var) const {
-  const auto var_name = in_var.Name();
+  const auto &var_name = in_var.Name();
   size_t scope_idx = in_var.scope_idx();
   return reused_in_var_names_[scope_idx].count(var_name) > 0;
 }
 
 bool MemoryReusePass::IsOutVarAlreadyReused(
     const details::VarHandle &out_var) const {
-  const auto var_name = out_var.Name();
+  const auto &var_name = out_var.Name();
   size_t scope_idx = out_var.scope_idx();
   return reused_out_var_names_[scope_idx].count(var_name) > 0;
 }
@@ -238,7 +238,6 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
  *  - it is the first version var. Otherwise, the var may be overwritten
  *    in the second batch, which results in wrong calculation result.
  *    It is critical especially when
- *    ExecutionStrategy::num_iteration_per_drop_scope_ > 1.
  *  - it has not reused other var's memory. It is not necessary to do memory
  *    reuse twice for the same var.
  *  - it is not a persistable var.
@@ -314,7 +313,7 @@ bool MemoryReusePass::IsVarPairReusable(
           "Var(%s) have no GeneratedOp, or it's op is not ComputationOpHandle.",
           out_var.Name()));
 
-  const auto in_name = in_var.Name();
+  const auto &in_name = in_var.Name();
   if (in_name == out_var.Name()) {
     return false;
   }

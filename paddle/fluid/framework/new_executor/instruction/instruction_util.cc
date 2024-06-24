@@ -42,8 +42,7 @@
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info) {
@@ -155,8 +154,7 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 
   auto& op_attributes = op->attributes();
 
-  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
-       0) &&
+  if ((op->dialect()->name() == paddle::dialect::KernelDialect::name()) &&
       (op_attributes.count("kernel_key") > 0)) {
     auto kernel_key = op_attributes.at("kernel_key")
                           .dyn_cast<dialect::KernelAttribute>()
@@ -408,5 +406,4 @@ bool GetCondData(const phi::DenseTensor& cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

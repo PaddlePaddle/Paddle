@@ -656,6 +656,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
         # Use a separate random generator for skipping tests
         self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
+        self.optimization_level = None
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -683,6 +684,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     self.dynamic_shape.opt_input_shape,
                     self.dynamic_shape.disable_trt_plugin_fp16,
                 )
+            if self.optimization_level is not None:
+                config.set_tensorrt_optimization_level(self.optimization_level)
         return config
 
     def assert_tensors_near(

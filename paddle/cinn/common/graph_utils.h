@@ -31,7 +31,7 @@
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -86,7 +86,8 @@ class GraphNode : public Object {
   std::tuple<EdgeT*, EdgeT*> LinkTo(GraphNode* other) {
     EdgeT *a, *b;
     CHECK(other);
-    CHECK_NE(other, this) << "Cannot link to itself";
+    PADDLE_ENFORCE_NE(
+        other, this, phi::errors::InvalidArgument("Cannot link to itself"));
     auto outlink_edge = make_shared<GraphEdge>(this, other, index_outlinks);
     auto inlink_edge =
         make_shared<GraphEdge>(this, other, other->index_inlinks);
@@ -127,7 +128,10 @@ class GraphNode : public Object {
         break;
       }
     }
-    CHECK_EQ(outlink_linked, inlink_linked);
+    PADDLE_ENFORCE_EQ(outlink_linked,
+                      inlink_linked,
+                      phi::errors::InvalidArgument(
+                          "The outlink_linked should same as inlink_linked."));
     if (outlink_linked)
       return;
     else

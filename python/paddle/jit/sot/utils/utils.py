@@ -71,9 +71,6 @@ class NameGenerator:
         return name.startswith(self.prefix)
 
 
-_tmp_name_records = None
-
-
 class TmpNameRecords:
     def __init__(self):
         self.name_generator = NameGenerator(prefix="_sot_tmp_")
@@ -89,6 +86,9 @@ class TmpNameRecords:
             tmp_name = self.next_name()
             self.tmp_names_record[expr] = tmp_name
             return tmp_name
+
+
+_tmp_name_records = TmpNameRecords()
 
 
 @contextmanager

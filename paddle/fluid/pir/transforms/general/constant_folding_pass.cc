@@ -77,7 +77,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // 1. Some ops do not need to be processed
     if (op->HasTrait<pir::SideEffectTrait>() ||
         op->isa<pir::ConstantTensorOp>() || op->isa<pir::ParameterOp>() ||
-        op->isa<paddle::dialect::FeedOp>()) {
+        op->isa<paddle::dialect::FeedOp>() ||
+        op->isa<paddle::dialect::DataOp>()) {
       return false;
     }
 
@@ -227,6 +228,13 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       }
     }
     rewriter.EraseOp(op);
+
+    // NOTE(liuyuanle): Here, we release one useless variable after another to
+    // effectively reduce peak memory usage.
+    if (deleted_vars_.size() > 0) {
+      scope_->EraseVars(deleted_vars_);
+      deleted_vars_.clear();
+    }
     VLOG(4) << "constant_folding_pass applied rewrite on [" << op->name()
             << "] op";
   }
@@ -306,6 +314,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     if (op->operand_source(index).use_count() > 1) {
       from_op->set_attribute(kAttrIsPersistable,
                              rewriter.array_attr({rewriter.bool_attr(true)}));
+    } else {
+      deleted_vars_.push_back(var_name);
     }
     return from_op;
   }
@@ -397,6 +407,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   phi::Place place_;
   paddle::framework::Scope* scope_;
   paddle::framework::interpreter::ExecutionConfig* exe_config_;
+  mutable std::vector<std::string> deleted_vars_;
 };
 
 class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {

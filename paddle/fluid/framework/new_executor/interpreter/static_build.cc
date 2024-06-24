@@ -794,7 +794,7 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& runtime_ctx,
     const platform::DeviceContext& dev_ctx) {
-  std::string op_type = op.Type();
+  const std::string& op_type = op.Type();
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();
   PADDLE_ENFORCE_EQ(output_names.size(),

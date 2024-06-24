@@ -168,8 +168,6 @@ def GenBuildOutputsPart2(
                                                       {name}.dims(),
                                                       {name}.non_zero_dims(),
                                                       {name}.data_layout(),
-                                                      {name}.non_zero_elements(),
-                                                      {name}.non_zero_indices(),
                                                       {name}.coalesced());
   VLOG(4) << "Builder construction  meta_{name}";
   paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
@@ -225,8 +223,6 @@ def GenBuildOutputsPart2(
                                                         {name}.dims(),
                                                         {name}.non_zero_dims(),
                                                         {name}.data_layout(),
-                                                        {name}.non_zero_elements(),
-                                                        {name}.non_zero_indices(),
                                                         {name}.coalesced());
     VLOG(4) << "Builder construction  meta_{name}";
     meta_{name} = paddle::dialect::IrMetaTensor(&ir_tensor_{name});

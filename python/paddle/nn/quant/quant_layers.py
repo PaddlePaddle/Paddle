@@ -111,12 +111,14 @@ class FakeQuantAbsMax(Layer):
                 )
                 out_scale.stop_gradient = True
             (
-                out,
-                _,
-            ) = _legacy_C_ops.fake_quantize_dequantize_abs_max(
-                input, quant_out, out_scale, *attrs
+                out1,
+                out2,
+            ) = _C_ops.fake_quantize_dequantize_abs_max(
+                input, self._quant_bits, 1
             )
-            return out
+            _C_ops.assign_out_(out1, quant_out)
+            _C_ops.assign_out_(out2, out_scale)
+            return quant_out
 
         check_variable_and_dtype(input, 'input', ['float32'], "FakeQuantAbsMax")
         attrs = {'bit_length': self._quant_bits}
@@ -230,23 +232,28 @@ class FakeQuantMovingAverageAbsMax(Layer):
             accum = self._accum if self.training else None
 
             (
-                out,
-                _,
-                _,
-                _,
-            ) = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
+                out1,
+                out2,
+                out3,
+                out4,
+            ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
                 input,
                 self._scale,
                 accum,
                 state,
-                quant_out,
-                self._scale,
-                state,
-                accum,
-                *attrs,
+                self._moving_rate,
+                self._quant_bits,
+                not self.training,
+                1,
             )
-
-            return out
+            _C_ops.assign_out_(out1, quant_out)
+            if out2._is_initialized():
+                _C_ops.assign_out_(out2, self._scale)
+            if state:
+                _C_ops.assign_out_(out3, state)
+            if accum:
+                _C_ops.assign_out_(out4, accum)
+            return quant_out
 
         check_variable_and_dtype(
             input, 'input', ['float32'], "FakeQuantMovingAverageAbsMax"

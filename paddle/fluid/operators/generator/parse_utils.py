@@ -643,6 +643,8 @@ def validate_backward_inputs(
 
 
 def validate_backward_outputs(op, forward_inputs, backward_outputs):
+    if op in ['fused_attention_grad']:
+        return
     assert len(backward_outputs) <= len(
         forward_inputs
     ), f"{op } has too many outputs"

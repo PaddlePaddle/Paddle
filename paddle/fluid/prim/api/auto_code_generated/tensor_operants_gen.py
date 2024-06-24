@@ -490,7 +490,7 @@ def main():
         '--api_yaml_path',
         help='path to api yaml file',
         nargs='+',
-        default=['paddle/phi/api/yaml/ops.yaml'],
+        default=['paddle/phi/ops/yaml/ops.yaml'],
     )
 
     parser.add_argument(

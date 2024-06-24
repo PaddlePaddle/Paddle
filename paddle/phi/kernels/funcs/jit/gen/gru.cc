@@ -20,9 +20,7 @@
 #include "paddle/phi/kernels/funcs/jit/macro.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void GRUJitCode::genCode() {
   reg64_t reg_ptr_gates = rax;
@@ -107,9 +105,7 @@ DECLARE_GRU_CREATOR(GRUHtPart2);
 
 #undef DECLARE_GRU_CREATOR
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

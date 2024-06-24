@@ -13,22 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class InferShapeContext;
 class OpDesc;
 class Scope;
 template <typename T>
 class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
+}  // namespace paddle::framework
+namespace paddle::imperative {
 class OpBase;
-}  // namespace imperative
+}  // namespace paddle::imperative
 
-}  // namespace paddle
-
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FetchBarrierOp : public framework::OperatorBase {
  public:
@@ -72,8 +68,7 @@ class FetchBarrierOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

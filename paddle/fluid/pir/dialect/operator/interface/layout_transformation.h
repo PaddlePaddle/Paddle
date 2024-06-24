@@ -34,21 +34,25 @@ class LayoutTransformationInterface
   using RewriteByLayoutFn = void (*)(pir::Operation*, common::DataLayout);
   using RelevantInputsFn = std::vector<pir::Value> (*)(pir::Operation*);
   using RelevantOutputsFn = std::vector<pir::Value> (*)(pir::Operation*);
+  using CanBeModifiedFn = bool (*)(pir::Operation*);
 
   struct Concept {
     explicit Concept(PreferLayoutFn prefer_layout,
                      RewriteByLayoutFn rewrite_by_layout,
                      RelevantInputsFn relevant_inputs,
-                     RelevantOutputsFn relevant_outputs)
+                     RelevantOutputsFn relevant_outputs,
+                     CanBeModifiedFn can_be_modified)
         : prefer_layout(prefer_layout),
           rewrite_by_layout(rewrite_by_layout),
           relevant_inputs(relevant_inputs),
-          relevant_outputs(relevant_outputs) {}
+          relevant_outputs(relevant_outputs),
+          can_be_modified(can_be_modified) {}
 
     PreferLayoutFn prefer_layout;
     RewriteByLayoutFn rewrite_by_layout;
     RelevantInputsFn relevant_inputs;
     RelevantOutputsFn relevant_outputs;
+    CanBeModifiedFn can_be_modified;
   };
 
   template <typename ConcreteOp>
@@ -70,11 +74,16 @@ class LayoutTransformationInterface
       return RelevantOutputsImpl<ConcreteOp>(op);
     }
 
+    static bool CanBeModifiedModel(pir::Operation* op) {
+      return CanBeModifiedImpl<ConcreteOp>(op);
+    }
+
     Model()
         : Concept(PreferLayoutModel,
                   RewriteByLayoutModel,
                   RelevantInputsModel,
-                  RelevantOutputsModel) {}
+                  RelevantOutputsModel,
+                  CanBeModifiedModel) {}
   };
 
   LayoutTransformationInterface(pir::Operation* op, Concept* impl)
@@ -95,6 +104,8 @@ class LayoutTransformationInterface
   std::vector<pir::Value> RelevantOutputs(pir::Operation* op) {
     return impl_->relevant_outputs(op);
   }
+
+  bool CanBeModified(pir::Operation* op) { return impl_->can_be_modified(op); }
 
  private:
   Concept* impl_;

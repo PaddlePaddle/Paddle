@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 void BroadcastOpHandle::RunImpl() {
   platform::RecordEvent record_event(
@@ -266,6 +264,4 @@ void BroadcastOpHandle::InitOutputValue(
 }
 
 std::string BroadcastOpHandle::Name() const { return "broadcast"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

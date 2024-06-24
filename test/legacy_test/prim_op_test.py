@@ -100,8 +100,7 @@ class OpTestUtils:
             """we think the kernel_sig is missing."""
             kernel_sig = None
             print(
-                "[Warning: op_test.py] Kernel Signature is not found for %s, fall back to intermediate state."
-                % op_type
+                f"[Warning: op_test.py] Kernel Signature is not found for {op_type}, fall back to intermediate state."
             )
         return kernel_sig
 
@@ -677,9 +676,9 @@ class PrimForwardChecker:
                 # ensure the operator not in program if check_prim is True
                 if not in_pir_mode():
                     forward_ops = [op.type for op in main_program.blocks[0].ops]
-                    assert self.op_type not in forward_ops, (
-                        "%s shouldn't appear in program when check_prim is True"
-                    ) % (self.op_type)
+                    assert (
+                        self.op_type not in forward_ops
+                    ), f"{self.op_type} shouldn't appear in program when check_prim is True"
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_program)
                 ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -761,9 +760,9 @@ class PrimForwardChecker:
                     .forward_program.block(0)
                     .ops
                 ]
-                assert self.op_type not in forward_ops, (
-                    "%s shouldn't appear in program when check_prim is True"
-                ) % (self.op_type)
+                assert (
+                    self.op_type not in forward_ops
+                ), f"{self.op_type} shouldn't appear in program when check_prim is True"
             ret = flatten(_as_list(net(args)))
             ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
             if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -854,9 +853,9 @@ class PrimForwardChecker:
                 .forward_program.block(0)
                 .ops
             ]
-            assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (self.op_type)
+            assert (
+                self.op_type not in forward_ops
+            ), f"{self.op_type} shouldn't appear in program when check_prim is True"
             ret = flatten(_as_list(net(args)))
             ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
             if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -1160,9 +1159,9 @@ class PrimGradChecker(PrimForwardChecker):
                 if not in_pir_mode():
                     ops = [op.type for op in main_program.blocks[0].ops]
                     backward_op_type = self.op_type + "_grad"
-                    assert backward_op_type not in ops, (
-                        "%s shouldn't appear in program when check_prim is True"
-                    ) % (backward_op_type)
+                    assert (
+                        backward_op_type not in ops
+                    ), f"{backward_op_type} shouldn't appear in program when check_prim is True"
                 elif self.prim_op_type == "prim":
                     grad_ops = []
                     for op in main_program.global_block().ops:
@@ -1261,9 +1260,9 @@ class PrimGradChecker(PrimForwardChecker):
                     .ops
                 ]
                 backward_op_type = self.op_type + "_grad"
-                assert backward_op_type not in ops, (
-                    "%s shouldn't appear in program when check_prim is True"
-                ) % (backward_op_type)
+                assert (
+                    backward_op_type not in ops
+                ), f"{backward_op_type} shouldn't appear in program when check_prim is True"
             out = _as_list(net(args))
             if hasattr(self.op_test, "python_out_sig"):
                 outputs_sig = self.op_test.python_out_sig
@@ -1387,9 +1386,9 @@ class PrimGradChecker(PrimForwardChecker):
                 .ops
             ]
             backward_op_type = self.op_type + "_grad"
-            assert backward_op_type not in ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (backward_op_type)
+            assert (
+                backward_op_type not in ops
+            ), f"{backward_op_type} shouldn't appear in program when check_prim is True"
 
             out = _as_list(net(args))
             if hasattr(self.op_test, "python_out_sig"):

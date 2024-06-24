@@ -27,7 +27,7 @@ logger = log_helper.get_logger(
 
 
 # We need this function, for any kind of inputs with iterables
-# we recursivly apply the function to the leave nodes
+# we recursively apply the function to the leave nodes
 def recursive_apply(function, input_var):
     if isinstance(input_var, list):
         return [recursive_apply(function, item) for item in input_var]
@@ -53,7 +53,7 @@ def detach_tensor(tensor):
 
 # We try our best to flatten the input to list of tensors
 # example: args = ((t1,t2),(t3,(t4,t5))) -> [t1, t2, t3, t4, t5]
-def recurive_flatten(target):
+def recursive_flatten(target):
     ret = []
 
     def append(arg):
@@ -66,10 +66,10 @@ def recurive_flatten(target):
 
 
 # input any kind of args / kwargs structure, output list of tensor
-def recurive_flatten_args_kwargs(args, kwargs):
+def recursive_flatten_args_kwargs(args, kwargs):
     return [
-        *recurive_flatten(args),
-        *recurive_flatten(tuple(kwargs.values())),
+        *recursive_flatten(args),
+        *recursive_flatten(tuple(kwargs.values())),
     ]
 
 
@@ -97,7 +97,7 @@ class CUDAGraphWithStaticInputOutput:
         self.args_static = None
         self.kwargs_static = None
 
-        # inputs is the recurively flattened args and kwargs
+        # inputs is the recursively flattened args and kwargs
         self.inputs_static = None
         self.outputs_static = None
 
@@ -105,11 +105,11 @@ class CUDAGraphWithStaticInputOutput:
         if self.args_static is None:
             self.args_static = args
             self.kwargs_static = kwargs
-            self.inputs_static = recurive_flatten_args_kwargs(
+            self.inputs_static = recursive_flatten_args_kwargs(
                 self.args_static, self.kwargs_static
             )
         else:
-            inputs = recurive_flatten_args_kwargs(args, kwargs)
+            inputs = recursive_flatten_args_kwargs(args, kwargs)
             for x_staic, x in zip(self.inputs_static, inputs):
                 x_staic.copy_(x, True)
 
@@ -187,7 +187,7 @@ class CUDAGraphContext:
         self._step = 0
         self.status = CUDAGraphLayerStatus.WARMUP
 
-        # Queue to support 1f1b/interleved scheduler, assuming FIFO order
+        # Queue to support 1f1b/interleaved scheduler, assuming FIFO order
         # data queue
         self.data_queue = deque()
 
@@ -275,7 +275,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         args = detach(args)
         kwargs = detach(kwargs)
 
-        detached_grad_inputs = recurive_flatten_args_kwargs(args, kwargs)
+        detached_grad_inputs = recursive_flatten_args_kwargs(args, kwargs)
         inputs = (grad_inputs, detached_grad_inputs)
 
         if context.is_warmup_step():
@@ -403,7 +403,7 @@ class CUDAGraphedLayer(paddle.nn.Layer):
 
     def forward(self, *args, **kwargs):
         # We collect them into a list of tensor that required grad
-        grad_inputs = recurive_flatten_args_kwargs(args, kwargs)
+        grad_inputs = recursive_flatten_args_kwargs(args, kwargs)
         return _CUDAGraphedLayer.apply(
             self.context, (args, kwargs), *grad_inputs
         )

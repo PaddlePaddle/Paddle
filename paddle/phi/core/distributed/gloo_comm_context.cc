@@ -147,7 +147,7 @@ void GlooCommContext::Send(const phi::DenseTensor& in_tensor,
   SendRecvOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
-  opts.setSrc(gloo_context_.get()->rank);
+  opts.setSrc(gloo_context_->rank);
   opts.setDst(dst);
   opts.setTag(tag);
   send_recv(&opts);
@@ -160,7 +160,7 @@ void GlooCommContext::Recv(phi::DenseTensor* out_tensor,
   const auto& dtype = out_tensor->dtype();
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   opts.setSrc(src);
-  opts.setDst(gloo_context_.get()->rank);
+  opts.setDst(gloo_context_->rank);
   opts.setTag(tag);
   send_recv(&opts);
 }

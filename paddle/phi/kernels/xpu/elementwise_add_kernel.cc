@@ -37,6 +37,7 @@ void AddKernel(const Context& dev_ctx,
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
        y.dtype() == phi::DataType::FLOAT16)) {
+    // special case for "float32 + bfloat16", or "float32 + float16"
     auto dev_version =
         phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
     if (dev_version >= phi::backends::xpu::XPUVersion::XPU3 &&
@@ -123,6 +124,7 @@ PD_REGISTER_KERNEL(add,
                    XPU,
                    ALL_LAYOUT,
                    phi::AddKernel,
+                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    float,

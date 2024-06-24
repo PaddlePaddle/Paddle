@@ -507,6 +507,11 @@ class FusedCommBuffer:
         else:
             param._copy_gradient_from(tmp_var)
 
+        # record address for the following `acc_steps - 1` steps.
+        self._grads_to_addr[param.name] = get_grad_address(
+            param, self.use_main_grad
+        )
+
     def _reset_params_checked_in(self):
         self._task = None
         self._init_step_dict()
@@ -522,13 +527,16 @@ class FusedCommBuffer:
     def add_grad(self, param, use_comm=True):
         assert param.name in self._params_step_dict
 
-        if not self._release_grads:
+        if not self._release_grads or self._params_step_dict[param.name] > 0:
             current_ptr = get_grad_address(param, self.use_main_grad)
             if self._grads_to_addr[param.name] != current_ptr:
                 error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
                 logger.error(error_message)
                 raise ValueError(error_message)
         else:
+            # When release_grads is enabled, fusing of gradients only happen
+            # in the 0-th gradient accumulation step, and remain unchanged for
+            # the following `acc_steps - 1` steps.
             self._copy_grad_to_buffer(param)
 
         self._params_step_dict[param.name] += 1

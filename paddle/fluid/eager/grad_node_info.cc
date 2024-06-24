@@ -62,7 +62,8 @@ static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
   }
 }
 
-GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
+GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+    : bwd_out_meta_(), bwd_in_meta_(), gradient_hooks_() {
   VLOG(7) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);

@@ -90,7 +90,8 @@ PD_REGISTER_KERNEL(less_than_raw,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -103,6 +104,7 @@ PD_REGISTER_KERNEL(less_than_raw,
                      int64_t,                             \
                      float,                               \
                      phi::dtype::float16,                 \
+                     phi::dtype::bfloat16,                \
                      bool) {                              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }

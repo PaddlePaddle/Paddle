@@ -177,7 +177,7 @@ static std::string FindCUDAIncludePath() {
     return pos != std::string::npos && pos == (str.length() - substr.length());
   };
 
-  struct stat st;
+  struct stat st = {};
   std::string cuda_include_path;
   if (!FLAGS_cuda_dir.empty()) {
     cuda_include_path = FLAGS_cuda_dir;

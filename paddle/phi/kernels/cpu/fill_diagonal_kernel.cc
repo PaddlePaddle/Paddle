@@ -36,7 +36,7 @@ void FillDiagonalKernel(const Context& ctx,
   auto strides = funcs::CalStride(out_dims);
   auto size = out->numel();
 
-  // The wrap mode supported only the dims equels to 2; In wrap mode, the
+  // The wrap mode supported only the dims equals to 2; In wrap mode, the
   // value will be filled in cycles
   if (!wrap) {
     size = std::min(size, out_dims[1] * out_dims[1]);

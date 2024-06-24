@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to manipulate a tensor
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -38,6 +40,9 @@ from ..framework import (
     in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -219,6 +224,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'cast',
         )
@@ -236,6 +243,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'cast',
         )
@@ -3361,7 +3370,11 @@ def unique(
         return tuple(outs)
 
 
-def unsqueeze(x, axis, name=None):
+def unsqueeze(
+    x: Tensor,
+    axis: int | Sequence[Tensor | int] | Tensor,
+    name: str | None = None,
+) -> Tensor:
     """
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.
@@ -3971,7 +3984,7 @@ def tile(x, repeat_times, name=None):
     Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
 
     Args:
-        x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32, int64, complex64 or complex128.
         repeat_times (list|tuple|Tensor): The number of repeating times. If repeat_times is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -4038,6 +4051,8 @@ def tile(x, repeat_times, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'tile',
         )
@@ -4209,7 +4224,7 @@ def expand(x, shape, name=None):
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 0.
 
     Args:
-        x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
+        x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8, uint16, complex64 or complex128.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -4275,6 +4290,8 @@ def expand(x, shape, name=None):
                 'int64',
                 'uint8',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'expand',
         )
@@ -6861,3 +6878,69 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         )
 
         return output
+
+
+def block_diag(inputs, name=None):
+    """
+    Create a block diagonal matrix from provided tensors.
+
+    Args:
+        inputs (list|tuple): ``inputs`` is a Tensor list or Tensor tuple, one or more tensors with 0, 1, or 2 dimensions. The data type: ``bool``, ``float16``, ``float32``, ``float64``, ``uint8``, ``int8``, ``int16``, ``int32``, ``int64``, ``bfloat16``, ``complex64``, ``complex128``.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, A ``Tensor``. The data type is same as ``inputs``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> A = paddle.to_tensor([[4], [3], [2]])
+            >>> B = paddle.to_tensor([7, 6, 5])
+            >>> C = paddle.to_tensor(1)
+            >>> D = paddle.to_tensor([[5, 4, 3], [2, 1, 0]])
+            >>> E = paddle.to_tensor([[8, 7], [7, 8]])
+            >>> out = paddle.block_diag([A, B, C, D, E])
+            >>> print(out)
+            Tensor(shape=[9, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 7, 6, 5, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 5, 4, 3, 0, 0],
+                [0, 0, 0, 0, 0, 2, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 8, 7],
+                [0, 0, 0, 0, 0, 0, 0, 0, 7, 8]])
+    """
+
+    def to_col_block(arys, i, a):
+        return [
+            (
+                a
+                if idx == i
+                else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            )
+            for idx, ary in enumerate(arys)
+        ]
+
+    def to_2d(ary):
+        if ary.ndim == 0:
+            return ary.unsqueeze(axis=0).unsqueeze(axis=0)
+        if ary.ndim == 1:
+            return ary.unsqueeze(axis=0)
+        if ary.ndim == 2:
+            return ary
+        raise ValueError(
+            "For 'block_diag', the dimension of each elements in 'inputs' must be 0, 1, or 2, but got "
+            f"{ary.ndim}"
+        )
+
+    arys = [to_2d(ary) for ary in inputs]
+
+    matrix = [
+        paddle.concat(to_col_block(arys, idx, ary), axis=0)
+        for idx, ary in enumerate(arys)
+    ]
+    return paddle.concat(matrix, axis=1)

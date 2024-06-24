@@ -39,7 +39,11 @@ class TensorReader {
                size_t beginning_offset,
                std::vector<int> shape,
                std::string name)
-      : file_(file), position_(beginning_offset), shape_(shape), name_(name) {
+      : file_(file),
+        position_(beginning_offset),
+        shape_(shape),
+        name_(name),
+        numel_(0) {
     numel_ = std::accumulate(
         shape_.begin(), shape_.end(), size_t{1}, std::multiplies<size_t>());
   }

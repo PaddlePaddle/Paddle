@@ -14,6 +14,7 @@
 
 import argparse
 import logging
+import math
 import os
 import pathlib
 import sys
@@ -24,7 +25,7 @@ from decomp_interface_gen_op_list import (
     decomp_interface_declare_gen_op_list,
     decomp_vjp_interface_declare_gen_op_list,
 )
-from gen_utils import to_pascal_case
+from gen_utils import attr_types_map, to_pascal_case
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_all_func_gen import gen_op_all_func
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
@@ -344,54 +345,6 @@ ONEDNN_MANUAL_OP_LIST = {
     'expand',
 }
 
-attr_types_map = {
-    'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
-    'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-    'Scalar(int)': ['pir::Int32Attribute', 'int'],
-    'Scalar(int64_t)': ['pir::Int64Attribute', 'int64_t'],
-    'Scalar(float)': ['pir::FloatAttribute', 'float'],
-    'Scalar(double)': ['pir::DoubleAttribute', 'double'],
-    'Scalar[]': [
-        'pir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-        'const std::vector<Scalar>&',
-    ],
-    'int': ['pir::Int32Attribute', 'int'],
-    'int32_t': ['pir::Int32Attribute', 'int32_t'],
-    'int64_t': ['pir::Int64Attribute', 'int64_t'],
-    'long': ['pir::LongAttribute', 'long'],
-    'size_t': ['pir::Size_tAttribute', 'size_t'],
-    'float': ['pir::FloatAttribute', 'float'],
-    'float[]': [
-        'pir::ArrayAttribute<pir::FloatAttribute>',
-        'const std::vector<float>&',
-    ],
-    'double': ['pir::DoubleAttribute', 'double'],
-    'bool': ['pir::BoolAttribute', 'bool'],
-    'bool[]': [
-        'pir::ArrayAttribute<pir::BoolAttribute>',
-        'const std::vector<bool>&',
-    ],
-    'str': ['pir::StrAttribute', 'const std::string&'],
-    'str[]': [
-        'pir::ArrayAttribute<pir::StrAttribute>',
-        'const std::vector<std::string>&',
-    ],
-    'Place': ['paddle::dialect::PlaceAttribute', 'const phi::Place&'],
-    'DataLayout': [
-        'paddle::dialect::DataLayoutAttribute',
-        'DataLayout',
-    ],
-    'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
-    'int64_t[]': [
-        'pir::ArrayAttribute<pir::Int64Attribute>',
-        'const std::vector<int64_t>&',
-    ],
-    'int[]': [
-        'pir::ArrayAttribute<pir::Int32Attribute>',
-        'const std::vector<int>&',
-    ],
-}
-
 
 def to_phi_and_fluid_op_name(op_item):
     # Template: - op : phi_name (fluid_name)
@@ -589,6 +542,18 @@ class OpInfoParser:
             self.dynamic_fallback = self.op_yaml_item["dynamic_fallback"]
         else:
             self.dynamic_fallback = False
+
+        self.is_forward_only = (
+            False
+            if (
+                (
+                    'backward' in self.op_yaml_item
+                    and self.op_yaml_item['backward'] is not None
+                )
+                or 'forward' in self.op_yaml_item
+            )
+            else True
+        )
 
     def parse_op_traits(self):
         if 'traits' in self.op_yaml_item:
@@ -1119,10 +1084,11 @@ def get_input_grad_semantic(op_info, op_info_items):
 
     # get backward op
     bwd_op_name = op_info.backward_name
+    sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         input_grad_semantics = ["false" for i in range(num_inputs)]
     else:
-        bwd_op_info = op_info_items[bwd_op_name]
+        bwd_op_info = op_info_items[bwd_op_name + sparse_op_name_suffix]
 
         # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding input
         # thus determine whether each input has grad semantic
@@ -1153,12 +1119,13 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
 
     # get backward op
     bwd_op_name = op_info.backward_name
+    sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         mutable_attribute_grad_semantics = [
             "false" for i in range(len(fwd_mutable_attribute_list))
         ]
     else:
-        bwd_op_info = op_info_items[bwd_op_name]
+        bwd_op_info = op_info_items[bwd_op_name + sparse_op_name_suffix]
 
         # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding attribute
         # thus determine whether each attribute has grad semantic
@@ -1174,6 +1141,21 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
                 mutable_attribute_grad_semantics.append("false")
 
     return mutable_attribute_grad_semantics
+
+
+def split_ops(op_info_items: dict, cc_file, split_nums):
+    op_list = list(op_info_items.keys())
+    ops_max_size = math.ceil(len(op_list) / split_nums)
+    split_op_info_items = []
+    for i in range(split_nums):
+        split_op_info_items.append({})
+    for i, op_name in enumerate(op_list):
+        list_idx = math.ceil((i + 1) / ops_max_size) - 1
+        split_op_info_items[list_idx][op_name] = op_info_items[op_name]
+    split_cc_files = []
+    for i in range(split_nums):
+        split_cc_files.append(cc_file.replace(".cc", f"{i + 1}.cc"))
+    return split_op_info_items, split_cc_files
 
 
 def GenOneDnnExtraAttrsDefaultValue(onednn_extra_args):
@@ -1602,8 +1584,11 @@ def AutoCodeGen(
                         )
 
                         build_mutable_attr_is_input = f"static void Build({build_args_with_muta_attr_is_input_for_declare});"
-                if (op_invoke_map is not None) and (
-                    op_invoke_map['func'] in op_info_items
+                # TODO(huangjiyi): support invoke op for sparse op.
+                if (
+                    (op_invoke_map is not None)
+                    and (not op_info.is_sparse_op)
+                    and (op_invoke_map['func'] in all_op_info_items)
                 ):
                     op_invoke_class_name = (
                         to_pascal_case(op_invoke_map['func']) + "Op"
@@ -2123,6 +2108,8 @@ def OpGenerator(
     op_info_file,
     op_def_cc_file,
     op_vjp_cc_file,
+    op_cc_split_num,
+    bwd_op_cc_split_num,
     onednn_yaml_file,
     ops_onednn_extra_yaml_file,
 ):
@@ -2169,9 +2156,11 @@ def OpGenerator(
 
     op_infos = []
     all_op_info_items = {}
+    new_op_def_cc_file = []
     first_file = True
     onednn_only_op_list = []
-    for yaml_file in op_yaml_files:
+    for idx in range(len(op_yaml_files)):
+        yaml_file = op_yaml_files[idx]
         op_yaml_items = []
         with open(yaml_file, "r") as f:
             ops = yaml.safe_load(f)
@@ -2237,13 +2226,37 @@ def OpGenerator(
             key_suffix = '_sp' if item.is_sparse_op else ''
             op_info_items[op['name'] + key_suffix] = item
             all_op_info_items[op['name'] + key_suffix] = item
-        op_infos.append(op_info_items)
+
+        if dialect_name != "onednn_op":
+            cc_file = op_def_cc_file[idx]
+            if (
+                yaml_file.split('/')[-1] == "ops.parsed.yaml"
+                and op_cc_split_num is not None
+            ):
+                split_op_info_items, split_cc_files = split_ops(
+                    op_info_items, cc_file, op_cc_split_num
+                )
+                op_infos.extend(split_op_info_items)
+                new_op_def_cc_file.extend(split_cc_files)
+            elif (
+                yaml_file.split('/')[-1] == "backward.parsed.yaml"
+                and bwd_op_cc_split_num is not None
+            ):
+                split_op_info_items, split_cc_files = split_ops(
+                    op_info_items, cc_file, bwd_op_cc_split_num
+                )
+                op_infos.extend(split_op_info_items)
+                new_op_def_cc_file.extend(split_cc_files)
+            else:
+                op_infos.append(op_info_items)
+                new_op_def_cc_file.append(cc_file)
 
         if first_file:
             first_file = False
 
     if dialect_name == "onednn_op":
         op_infos = [all_op_info_items]
+        new_op_def_cc_file = op_def_cc_file
     # (3) auto code gen
     op_list_strs = []
     declare_type_id_strs = []
@@ -2372,7 +2385,7 @@ def OpGenerator(
             f.write(op_info_str)
 
     # (6) write to files for xx_op.cc.tmp
-    for id in range(len(op_def_cc_file)):
+    for id in range(len(new_op_def_cc_file)):
         source_file_str = source_file_strs[id]
         for name in reversed(namespaces):
             source_file_str = NAMESPACE_GARD_TEMPLATE.format(
@@ -2392,7 +2405,7 @@ def OpGenerator(
             input=source_file_str,
             define_type_id=define_type_id_strs[id],
         )
-        with open(op_def_cc_file[id], 'w') as f:
+        with open(new_op_def_cc_file[id], 'w') as f:
             f.write(source_file_str)
 
     # (6) write to files for xx_vjp_op.cc.tmp
@@ -2424,6 +2437,8 @@ def ParseArguments():
     parser.add_argument('--op_info_file', type=str)
     parser.add_argument('--op_def_cc_file', type=str)
     parser.add_argument('--op_vjp_cc_file', type=str)
+    parser.add_argument('--op_cc_split_num', type=int)
+    parser.add_argument('--bwd_op_cc_split_num', type=int)
     parser.add_argument('--onednn_yaml_file', type=str)
     parser.add_argument('--ops_onednn_extra_yaml_file', type=str)
     parser.add_argument('--with_distributed', type=strtobool)
@@ -2446,6 +2461,8 @@ if __name__ == "__main__":
     op_info_file = args.op_info_file
     op_def_cc_files = args.op_def_cc_file.split(",")
     op_vjp_cc_file = args.op_vjp_cc_file
+    op_cc_split_num = args.op_cc_split_num
+    bwd_op_cc_split_num = args.bwd_op_cc_split_num
     onednn_yaml_file = args.onednn_yaml_file
     ops_onednn_extra_yaml_file = args.ops_onednn_extra_yaml_file
 
@@ -2460,6 +2477,8 @@ if __name__ == "__main__":
         op_info_file,
         op_def_cc_files,
         op_vjp_cc_file,
+        op_cc_split_num,
+        bwd_op_cc_split_num,
         onednn_yaml_file,
         ops_onednn_extra_yaml_file,
     )

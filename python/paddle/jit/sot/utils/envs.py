@@ -27,7 +27,6 @@ ENV_COST_MODEL = BooleanEnvironmentVariable("COST_MODEL", False)
 ENV_MIN_GRAPH_SIZE = IntegerEnvironmentVariable("MIN_GRAPH_SIZE", 10)
 ENV_SOT_LOG_LEVEL = IntegerEnvironmentVariable("SOT_LOG_LEVEL", 0)
 ENV_STRICT_MODE = BooleanEnvironmentVariable("STRICT_MODE", False)
-ENV_SHOW_TRACKERS = StringEnvironmentVariable("SHOW_TRACKERS", "")
 ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
 ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
     "SOT_WITH_CONTROL_FLOW", True

@@ -34,7 +34,7 @@ cd ${paddle_dir}
 # get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
 count=0
 for element in "${target_lists_for_semi_auto_ci[@]}";do
-  if [[ "$element" == "test/auto_parallel" ]]; then  
+  if [[ "$element" == "test/auto_parallel" ]]; then
     test_auto_num=$count
     break
   fi
@@ -43,7 +43,7 @@ done
 # get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
 count=0
 for element in "${target_lists_for_dygraph_ci[@]}";do
-  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then  
+  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then
     test_dygraph_num=$count
     break
   fi
@@ -64,7 +64,7 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
     else
-        # The most auto unittests have been monitored in PR-CI-Distribute-stable, 
+        # The most auto unittests have been monitored in PR-CI-Distribute-stable,
         # while the other tests of llama model will be executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_semi_auto_ci[@]}; i++)); do
             if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
@@ -122,7 +122,7 @@ get_diff_TO_case
 
 ####################
 if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_auto_pir"* ]]; then
-    echo "同时命中gpt-3_auto 和 gpt-3_auto_pir, 只执行新ir, 不执行旧ir"  
+    echo "同时命中gpt-3_auto 和 gpt-3_auto_pir, 只执行新ir, 不执行旧ir"
     case_list=("${case_list[@]/*gpt-3_auto_pir*/}")
     case_list=("${case_list[@]/*gpt-3_auto*/}")
     case_list[${#case_list[*]}]=gpt-3_auto_pir
@@ -135,7 +135,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m ---- case_list length: ${#case_list[*]}, cases: ${case_list[*]} \033"
     echo -e "\033[31m ============================= \033"
     set +e
-    
+
     # Install paddle
     install_paddle
     case_num=1

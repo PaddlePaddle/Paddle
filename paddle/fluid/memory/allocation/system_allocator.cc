@@ -46,9 +46,7 @@ COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 void* AlignedMalloc(size_t size) {
   void* p = nullptr;
@@ -348,6 +346,4 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
 bool CustomAllocator::UseGpu() const { return true; }
 #endif
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail

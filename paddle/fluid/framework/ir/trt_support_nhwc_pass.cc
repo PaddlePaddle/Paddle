@@ -26,9 +26,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 
@@ -383,8 +381,6 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   AddStatis(transposed_ops.size());
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_support_nhwc_pass, paddle::framework::ir::TrtSupportNHWCPass);

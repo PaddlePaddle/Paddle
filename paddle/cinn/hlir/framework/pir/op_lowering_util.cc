@@ -23,9 +23,9 @@
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -559,7 +559,10 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
         ir_sch.Split(loops[index], {-1, idx});
         break;
       }
-      CHECK_GT(idx, 1);
+      PADDLE_ENFORCE_GT(idx,
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Error! Can't find suitable split factor!"));
     }
   }
 
@@ -637,7 +640,10 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
         --idx;
       } while (idx >= max_num_threads / 2);
       // if can't be divide by(1024, 512), it's shouldn't be fused.
-      CHECK_GE(idx, max_num_threads / 2) << "Check bounds exist, can't fuse!";
+      PADDLE_ENFORCE_GE(idx,
+                        max_num_threads / 2,
+                        phi::errors::InvalidArgument(
+                            "Error! Can't find suitable split factor!"));
     } else {
       int axis = axes[index];
       int prefix = inshape[axis];
@@ -648,8 +654,10 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
           ir_sch.Split(block_name, axis, {-1, idx});
           break;
         }
-        CHECK_GT(idx, (max_num_threads / 2) / tail)
-            << "Error, it's shouldn't fuse!";
+        PADDLE_ENFORCE_GT(idx,
+                          (max_num_threads / 2) / tail,
+                          phi::errors::InvalidArgument(
+                              "Error! Can't find suitable split factor!"));
       }
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target);
@@ -819,7 +827,7 @@ std::vector<int> GetReducerDimAttr(::pir::Operation* reduce_op) {
                  .dims()
                  .size();
 
-  auto attr = reduce_op->attributes().at("dim");
+  auto attr = reduce_op->attributes().at("axis");
   auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
 
   std::vector<int> dim;
@@ -903,8 +911,14 @@ void MergeLoops(ir::Expr root,
   if (index < 0) {
     return;
   }
-  CHECK_GT(src.size(), index) << "\nindex -> " << index << "\n" << src[0];
-  CHECK_GT(dst.size(), index) << "\nindex -> " << index << "\n" << dst[0];
+  PADDLE_ENFORCE_GT(src.size(),
+                    index,
+                    phi::errors::InvalidArgument(
+                        "Error! src size is less than index, Please check!"));
+  PADDLE_ENFORCE_GT(dst.size(),
+                    index,
+                    phi::errors::InvalidArgument(
+                        "Error! dst size is less than index, Please check!"));
 
   if (src[0] == dst[0]) {
     return;
@@ -1001,7 +1015,11 @@ void MergeReduceToReduce(
             auto n_loops = ir_sch.GetLoops(n_tensor->name + "__reduce_init");
             auto m_loops = ir_sch.GetLoops(m_tensor->name + "__reduce_init");
 
-            CHECK_EQ(n_loops.size(), m_loops.size());
+            PADDLE_ENFORCE_EQ(n_loops.size(),
+                              m_loops.size(),
+                              phi::errors::InvalidArgument(
+                                  "Error! n_loops size is not equal to m_loops "
+                                  "size, Please check!"));
             MergeLoops(ir_sch.GetModule().GetExprs().at(0),
                        n_loops,
                        m_loops,
@@ -1080,7 +1098,12 @@ void MergeReduceToReduce(
 
         auto n_loops = ir_sch.GetLoops(n_tensor->name);
         auto m_loops = ir_sch.GetLoops(m_tensor->name);
-        CHECK_EQ(n_loops.size(), m_loops.size());
+        PADDLE_ENFORCE_EQ(
+            n_loops.size(),
+            m_loops.size(),
+            phi::errors::InvalidArgument(
+                "Error! n_loops size is not equal to m_loops size, "
+                "Please check!"));
 
         std::vector<ir::Var> src_vars;
         std::vector<ir::Expr> dst_vars;

@@ -30,7 +30,7 @@ void CumsumGradKernel(const Context& dev_ctx,
                       bool exclusive,
                       bool reverse,
                       DenseTensor* x_grad) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   // If the attribute of flatten is `True`, the cumsum kernel is compose of the
   // operation of flatten and cumsum, need to flatten the tensor of input
   // gradient, and last step need to unflatten the tensor

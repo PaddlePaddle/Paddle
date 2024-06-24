@@ -165,6 +165,21 @@ void CrossInferMeta(const MetaTensor& x,
                     int axis,
                     MetaTensor* out);
 
+void CrossEntropyInferMeta(const MetaTensor& x,
+                           const MetaTensor& label,
+                           bool soft_label,
+                           int ignore_index,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
+
+void CrossEntropy2InferMeta(const MetaTensor& x,
+                            const MetaTensor& label,
+                            int ignore_index,
+                            MetaTensor* out,
+                            MetaTensor* x_shape,
+                            MetaTensor* match_x,
+                            MetaConfig config = MetaConfig());
+
 void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       const MetaTensor& label,
                                       bool soft_label,
@@ -193,6 +208,11 @@ void CtcAlignInferMeta(const MetaTensor& input,
                        int padding_value,
                        MetaTensor* output,
                        MetaTensor* output_length);
+
+void CvmInferMeta(const MetaTensor& x,
+                  const MetaTensor& cvm,
+                  bool use_cvm,
+                  MetaTensor* out);
 
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
@@ -324,6 +344,11 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
 
+void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scale,
+                                   float max_range,
+                                   MetaTensor* out);
+
 void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
                                  int64_t offset,
@@ -378,6 +403,10 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void HingeLossInferMeta(const MetaTensor& logits,
+                        const MetaTensor& labels,
+                        MetaTensor* loss);
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,
@@ -427,6 +456,11 @@ void LogLossInferMeta(const MetaTensor& input,
                       float epsilon,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void LookupTableDequantInferMeta(const MetaTensor& w,
+                                 const MetaTensor& ids,
+                                 int64_t padding_idx,
+                                 MetaTensor* out);
 
 void LUUnpackInferMeta(const MetaTensor& x,
                        const MetaTensor& pivots,
@@ -615,19 +649,19 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out);
 
+void TdmChildInferMeta(const MetaTensor& x,
+                       const MetaTensor& tree_info,
+                       int child_nums,
+                       DataType dtype,
+                       MetaTensor* child,
+                       MetaTensor* leaf_mask);
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids);
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,

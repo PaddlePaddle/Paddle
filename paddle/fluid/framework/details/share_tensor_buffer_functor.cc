@@ -51,6 +51,7 @@ ShareTensorBufferFunctor::ShareTensorBufferFunctor(
       op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names),
+      in_out_vars_(),
       is_variant_scope_(is_variant_scope),
       share_dims_and_dtype_(share_dims_and_dtype) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(),

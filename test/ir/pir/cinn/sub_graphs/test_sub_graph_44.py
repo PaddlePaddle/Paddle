@@ -15,11 +15,9 @@
 # repo: PaddleDetection
 # model: configs^sparse_rcnn^sparse_rcnn_r50_fpn_3x_pro100_coco_single_dy2st_train
 # method:__getitem__||api:paddle.tensor.creation.full||method:astype||api:paddle.vision.ops.distribute_fpn_proposals||api:paddle.vision.ops.roi_align||api:paddle.vision.ops.roi_align||api:paddle.vision.ops.roi_align||api:paddle.vision.ops.roi_align||api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.gather||method:reshape||method:transpose||method:reshape
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -96,8 +94,46 @@ class LayerCase(paddle.nn.Layer):
         return var_26, var_25
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[1, 256, 192, 288], dtype=paddle.float32),
             paddle.rand(shape=[1, 256, 96, 144], dtype=paddle.float32),
@@ -106,33 +142,12 @@ class TestLayer(unittest.TestCase):
             paddle.rand(shape=[1, 100, 4], dtype=paddle.float32),
             paddle.rand(shape=[1, 100, 256], dtype=paddle.float32),
         )
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
+        self.net = LayerCase
+        self.with_train = False
+        self.atol = 1e-8
+        self.with_cinn = False
 
     # NOTE prim + cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':

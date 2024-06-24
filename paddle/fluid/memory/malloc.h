@@ -40,7 +40,7 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::CUDAPlace& place,
+extern AllocationPtr Alloc(const platform::Place& place,
                            size_t size,
                            const phi::Stream& stream);
 

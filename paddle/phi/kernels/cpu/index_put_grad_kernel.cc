@@ -79,7 +79,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                               bool accumulate,
                               DenseTensor* value_grad,
                               DenseTensor* x_grad) {
-  std::array<const int64_t*, 7> pd_indices;
+  std::array<const int64_t*, 7> pd_indices = {};
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
@@ -98,7 +98,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
     }
   }
 
-  auto out_grad_dims = out_grad.dims();
+  const auto& out_grad_dims = out_grad.dims();
   const int64_t numel = indices[0]->numel();
   auto out_grad_stride = common::stride(out_grad_dims);
 

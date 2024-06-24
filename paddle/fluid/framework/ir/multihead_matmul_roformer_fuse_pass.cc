@@ -19,10 +19,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
   if (op->IsOp() && op->Op()) {
@@ -310,7 +307,8 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
 
   return transpose2_2_out_var;
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
   AddOpCompat(OpCompat("elementwise_add"))
@@ -758,9 +756,7 @@ void MultiHeadMatmulRoformerFusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(multihead_matmul_roformer_fuse_pass,
               paddle::framework::ir::MultiHeadMatmulRoformerFusePass);

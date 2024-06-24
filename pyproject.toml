@@ -42,6 +42,9 @@ select = [
     # Pyupgrade
     "UP",
 
+    # Flake8-pyi
+    "PYI",
+
     # NumPy-specific rules
     "NPY001",
     "NPY003",
@@ -111,6 +114,10 @@ ignore = [
     "UP015",
     # It will cause the performance regression on python3.10
     "UP038",
+    # collections.namedtuple can be quickly created a inlined class
+    "PYI024",
+    # `__all__.append` is a common pattern in Paddle
+    "PYI056",
 ]
 
 [tool.ruff.lint.isort]
@@ -131,3 +138,36 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+# Ignore docstring in tensor.pyi
+"python/paddle/tensor/tensor.prototype.pyi" = ["PYI021", "PYI048"]
+
+[tool.mypy]
+python_version = "3.8"
+cache_dir = ".mypy_cache"
+# Miscellaneous strictness flags
+allow_redefinition = true
+local_partial_types = true
+strict = false
+# Untyped definitions and calls
+check_untyped_defs = true
+# Import discovery
+follow_imports = "normal"
+# Miscellaneous
+warn_unused_configs = true
+# Disallow generic without type arguments
+disallow_any_generics = true
+# Configuring warnings
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+# Configuring error messages
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "astor",
+    "cv2",
+    "scipy",
+    "xlsxwriter"
+]
+ignore_missing_imports = true

@@ -25,6 +25,8 @@ _PADDLE_DTYPE_2_NBYTES = {
     core.DataType.BFLOAT16: 2,
     core.DataType.FLOAT32: 4,
     core.DataType.FLOAT64: 8,
+    core.DataType.FLOAT8_E4M3FN: 1,
+    core.DataType.FLOAT8_E5M2: 1,
     core.DataType.INT8: 1,
     core.DataType.INT16: 2,
     core.DataType.INT32: 4,
@@ -465,7 +467,7 @@ def partition_joint_graph(
     saved_values = backward_utils.ValueSet(saved_values)
     outputs = backward_utils.ValueSet(outputs)
 
-    # 1. Analyze the program, get all forward porgram mid hold values
+    # 1. Analyze the program, get all forward program mid hold values
     mid_hold_values = analyze_mid_hold_values(
         program,
         saved_values,
@@ -694,7 +696,7 @@ def cal_value_node_size(value_node):
 
 def cal_value_nodes_dist_to_backward(all_ops, required_fw_value_nodes):
     dist_from_bw = backward_utils.ValueDict()
-    # caculate value node the shortest dist to backward graph
+    # calculate value node the shortest dist to backward graph
     for op in reversed(all_ops):
         if op.name() == "builtin.combine":
             continue
