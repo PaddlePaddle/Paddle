@@ -614,6 +614,7 @@ class SimpleSPNetWithoutBias(paddle.nn.Layer):
         x = self.embedding(x)
 
         x = paddle.transpose(x, perm=[1, 0, 2])
+        x = x.contiguous()
         x = spu.ScatterOp.apply(x)
 
         x = self.linear1(x)
