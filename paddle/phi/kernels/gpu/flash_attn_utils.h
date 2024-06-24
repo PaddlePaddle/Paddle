@@ -19,13 +19,13 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
 
 namespace phi {
 
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
 static std::pair<uint64_t, uint64_t> GenerateRNGState(
     const GPUContext& ctx,
     const paddle::optional<DenseTensor>& fixed_seed_offset,

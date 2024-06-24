@@ -5792,13 +5792,13 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
-      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-       (arch == 89) || (arch == 90)),
+      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
       true,
       phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
-
+          "Currently, arch only support 70, 75, 80, 86."));
+#endif
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
