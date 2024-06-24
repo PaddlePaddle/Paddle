@@ -13,12 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/clip_by_norm_kernel.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-#include "paddle/phi/kernels/selected_rows/clip_by_norm_kernel.h"
 
 namespace phi {
 
