@@ -1923,16 +1923,6 @@ def AutoCodeGen(
                     )
 
                 # generate op GetKernelKeyForVar function str
-                infer_symbolic_shape_define_str = ''
-                if (
-                    "paddle::dialect::InferSymbolicShapeInterface"
-                    in all_interface_list
-                ):
-                    infer_symbolic_shape_define_str = (
-                        gen_infer_symbolic_shape_str(op_class_name)
-                    )
-
-                # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
                 if dialect_name == "pd_op" or dialect_name == "onednn_op":
                     op_get_kernel_type_for_var_str = (

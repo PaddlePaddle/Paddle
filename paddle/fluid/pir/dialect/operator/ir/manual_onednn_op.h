@@ -42,7 +42,6 @@ namespace onednn {
 namespace dialect {
 
 class ExpandOp : public pir::Op<ExpandOp,
-                                paddle::dialect::InferSymbolicShapeInterface,
                                 paddle::dialect::OpYamlInfoInterface,
                                 paddle::dialect::InferMetaInterface,
                                 paddle::dialect::GetKernelTypeForVarInterface,
@@ -75,7 +74,7 @@ class ExpandOp : public pir::Op<ExpandOp,
       const phi::DataType& tensor_dtype,
       const phi::DataType& expected_kernel_dtype);
 
-  bool InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context);
+  //   bool InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context);
 
   pir::Value x() { return operand_source(0); }
   pir::Value shape() { return operand_source(1); }

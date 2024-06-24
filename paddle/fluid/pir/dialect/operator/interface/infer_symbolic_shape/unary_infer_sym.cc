@@ -325,12 +325,14 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   return true;
 }
 
-bool EinsumOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
+// bool EinsumOpInferSymbolicShape(pir::Operation *op,
+//                                 pir::InferSymbolicShapeContext
+//                                 *infer_context) {
+//   PADDLE_THROW(phi::errors::Unimplemented(
+//       op->name() + " 's InferSymbolicShape interface is NOT implemented
+//       now."));
+//   return true;
+// }
 
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
