@@ -14,6 +14,10 @@
 
 # TODO: define random functions
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.framework import _current_expected_place
@@ -39,10 +43,14 @@ from ..framework import (
     dygraph_only,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike, ShapeLike
+
 __all__ = []
 
 
-def bernoulli(x, name=None):
+def bernoulli(x: Tensor, name: str | None = None) -> Tensor:
     r"""
 
     For each element :math:`x_i` in input ``x``, take a sample from the Bernoulli distribution, also called two-point distribution, with success probability :math:`x_i`. The Bernoulli distribution with success probability :math:`x_i` is a discrete probability distribution with probability mass function
@@ -55,10 +63,10 @@ def bernoulli(x, name=None):
 
     Args:
         x (Tensor): The input Tensor, it's data type should be float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
+        Tensor, A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
 
     Examples:
         .. code-block:: python
@@ -105,7 +113,9 @@ def bernoulli(x, name=None):
 
 
 @dygraph_only
-def bernoulli_(x, p=0.5, name=None):
+def bernoulli_(
+    x: Tensor, p: float | Tensor = 0.5, name: str | None = None
+) -> Tensor:
     """
     This is the inplace version of api ``bernoulli``, which returns a Tensor filled
     with random values sampled from a bernoulli distribution. The output Tensor will
@@ -117,12 +127,12 @@ def bernoulli_(x, p=0.5, name=None):
             If ``p`` is float, all elements of the output Tensor shared the same success probability.
             If ``p`` is a Tensor, it has per-element success probabilities, and the shape should be broadcastable to ``x``.
             Default is 0.5
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor filled with random values sampled from the bernoulli distribution with success probability ``p`` .
+        Tensor, A Tensor filled with random values sampled from the bernoulli distribution with success probability ``p`` .
 
     Examples:
         .. code-block:: python
@@ -155,7 +165,7 @@ def bernoulli_(x, p=0.5, name=None):
     return x
 
 
-def binomial(count, prob, name=None):
+def binomial(count: Tensor, prob: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns a tensor filled with random number from the Binomial Distribution, which supports Tensor shape
     broadcasting. The returned Tensor's data type is int64.
@@ -169,10 +179,10 @@ def binomial(count, prob, name=None):
             data type should be int32 or int64.
         prob(Tensor): A tensor with each element specifying the probability of success in the binomial experiment.
             The input data type should be bfloat16, float16, float32, float64.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
+        name(str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A Tensor filled with binomial random values with the same shape as the broadcasted Tensors of
+        Tensor, A Tensor filled with binomial random values with the same shape as the broadcasted Tensors of
         ``count`` and ``prob``. The data type is int64.
 
     Examples:
@@ -222,7 +232,7 @@ def binomial(count, prob, name=None):
         return out
 
 
-def poisson(x, name=None):
+def poisson(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.
 
@@ -233,11 +243,11 @@ def poisson(x, name=None):
     Args:
         x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
             should be bfloat16, float16, float32, float64.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+        Tensor, A Tensor filled with random number with the same shape and dtype as ``x``.
 
     Examples:
         .. code-block:: python
@@ -268,7 +278,7 @@ def poisson(x, name=None):
         return out
 
 
-def standard_gamma(x, name=None):
+def standard_gamma(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns a tensor filled with random number from a Standard Gamma Distribution.
 
@@ -279,11 +289,11 @@ def standard_gamma(x, name=None):
     Args:
         x(Tensor):  A tensor with rate parameter of standard gamma Distribution. The data type
             should be bfloat16, float16, float32, float64.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+        Tensor, A Tensor filled with random number with the same shape and dtype as ``x``.
 
     Examples:
         .. code-block:: python
@@ -319,7 +329,12 @@ def standard_gamma(x, name=None):
         return out
 
 
-def log_normal(mean=1.0, std=2.0, shape=None, name=None):
+def log_normal(
+    mean: float | Tensor = 1.0,
+    std: float | Tensor = 2.0,
+    shape: ShapeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Returns a Tensor filled with random values sampled from a Log Normal
     Distribution, with ``mean``, ``std``.
@@ -338,15 +353,15 @@ def log_normal(mean=1.0, std=2.0, shape=None, name=None):
             If ``std`` is float, all elements of the output Tensor share the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
             Defaule is 2.0
-        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|None, optional): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
             is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
             Default is None
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
+        Tensor, A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
 
     Examples:
         .. code-block:: python
@@ -377,7 +392,9 @@ def log_normal(mean=1.0, std=2.0, shape=None, name=None):
 
 
 @dygraph_only
-def log_normal_(x, mean=1.0, std=2.0, name=None):
+def log_normal_(
+    x: Tensor, mean: float = 1.0, std: float = 2.0, name: str | None = None
+) -> Tensor:
     r"""
     This inplace version of api ``log_normal``, which returns a Tensor filled
     with random values sampled from a log normal distribution. The output Tensor will
@@ -388,12 +405,12 @@ def log_normal_(x, mean=1.0, std=2.0, name=None):
         mean (float|int, optional): Mean of the output tensor, default is 1.0.
         std (float|int, optional): Standard deviation of the output tensor, default
             is 2.0.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
+        Tensor, A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
 
     Examples:
         .. code-block:: python
@@ -411,7 +428,12 @@ def log_normal_(x, mean=1.0, std=2.0, name=None):
     return normal_(x, mean=mean, std=std).exp_()
 
 
-def multinomial(x, num_samples=1, replacement=False, name=None):
+def multinomial(
+    x: Tensor,
+    num_samples: int = 1,
+    replacement: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a Multinomical
     distribution. The input ``x`` is a tensor with probabilities for generating the
@@ -424,11 +446,11 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
             should be float32, float64.
         num_samples(int, optional): Number of samples, default is 1.
         replacement(bool, optional): Whether it is a replaceable sample, default is False.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A Tensor filled with sampled category index after ``num_samples`` times samples.
+        Tensor, A Tensor filled with sampled category index after ``num_samples`` times samples.
 
     Examples:
         .. code-block:: python
@@ -490,15 +512,15 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
 
 def uniform_random_batch_size_like(
-    input,
-    shape,
-    dtype='float32',
-    input_dim_idx=0,
-    output_dim_idx=0,
-    min=-1.0,
-    max=1.0,
-    seed=0,
-):
+    input: Tensor,
+    shape: ShapeLike,
+    dtype: DTypeLike = 'float32',
+    input_dim_idx: int = 0,
+    output_dim_idx: int = 0,
+    min: float = -1.0,
+    max: float = 1.0,
+    seed: int = 0,
+) -> Tensor:
     """
     This OP initializes a variable with random values sampled from a
     uniform distribution in the range [min, max). The input_dim_idx used to get the input dimension value which will be used to resize the output dimension.
@@ -527,16 +549,16 @@ def uniform_random_batch_size_like(
                result=[[-0.23133647, -0.84195036,  0.21441269],
                        [-0.08774924,  0.25605237, -0.09403259]]    # result.shape=[2,3]
     Args:
-        input (Variable): A Tensor. Supported data types: float32, float64.
+        input (Tensor): A Tensor. Supported data types: float32, float64.
         shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
+        dtype(np.dtype|paddle.dtype|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
         input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0.
         output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
         max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
         seed (int, optional):  Random seed used for generating samples. 0 means use a seed generated by the system.Note that if seed is not 0, this operator will always generate the same random numbers every time.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
     Returns:
-        Variable: A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
+        Tensor, A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
     Examples:
         .. code-block:: python
 
@@ -606,7 +628,14 @@ def uniform_random_batch_size_like(
     return out
 
 
-def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
+def gaussian(
+    shape: ShapeLike,
+    mean: complex = 0.0,
+    std: float = 1.0,
+    seed: int = 0,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
@@ -619,15 +648,15 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         std (float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
         seed (int, optional): Random seed of generator.
-        dtype (str|np.dtype, optional): The data type of the output Tensor.
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
             Supported data types: bfloat16, float16, float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random values sampled from a Gaussian
-        distribution, with ``shape`` and ``dtype``.
+        Tensor, A Tensor filled with random values sampled from a Gaussian
+            distribution, with ``shape`` and ``dtype``.
     """
     op_type_for_check = 'gaussian/standard_normal/randn/normal'
     supported_dtypes = [
@@ -705,7 +734,13 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
 
 
 @dygraph_only
-def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
+def gaussian_(
+    x: Tensor,
+    mean: complex = 0.0,
+    std: float = 1.0,
+    seed: int = 0,
+    name: str | None = None,
+) -> Tensor:
     """
     This is the inplace version of OP ``gaussian``, which returns a Tensor filled
     with random values sampled from a gaussian distribution. The output Tensor will
@@ -717,11 +752,11 @@ def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
         std (float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
         seed (int, optional): Random seed of generator.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: The input tensor x filled with random values sampled from a gaussian
+        Tensor, The input tensor x filled with random values sampled from a gaussian
         distribution.
     Examples:
         .. code-block:: python
@@ -755,7 +790,9 @@ def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
     return _C_ops.gaussian_inplace_(x, float(mean), float(std), int(seed))
 
 
-def standard_normal(shape, dtype=None, name=None):
+def standard_normal(
+    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a standard
     normal distribution with mean 0 and standard deviation 1, with ``shape``
@@ -765,17 +802,17 @@ def standard_normal(shape, dtype=None, name=None):
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype (str|np.dtype, optional): The data type of the output Tensor.
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random values sampled from a standard
-        normal distribution with mean 0 and standard deviation 1, with
-        ``shape`` and ``dtype``.
+        Tensor, A Tensor filled with random values sampled from a standard
+            normal distribution with mean 0 and standard deviation 1, with
+            ``shape`` and ``dtype``.
 
     Examples:
         .. code-block:: python
@@ -821,7 +858,9 @@ def standard_normal(shape, dtype=None, name=None):
     return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
-def randn(shape, dtype=None, name=None):
+def randn(
+    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a standard
     normal distribution with mean 0 and standard deviation 1, with ``shape``
@@ -831,15 +870,15 @@ def randn(shape, dtype=None, name=None):
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype (str|np.dtype, optional): The data type of the output Tensor.
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random values sampled from a standard
+        Tensor, A Tensor filled with random values sampled from a standard
         normal distribution with mean 0 and standard deviation 1, with
         ``shape`` and ``dtype``.
 
@@ -885,7 +924,12 @@ def randn(shape, dtype=None, name=None):
     return standard_normal(shape, dtype, name)
 
 
-def normal(mean=0.0, std=1.0, shape=None, name=None):
+def normal(
+    mean: complex | Tensor = 0.0,
+    std: float | Tensor = 1.0,
+    shape: ShapeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a normal
     distribution with ``mean`` and ``std`` (standard deviation) .
@@ -908,16 +952,16 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
             Default is 1.0
-        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|None, optional): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
             is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
             Default is None
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+        Tensor, A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
 
     Examples:
         .. code-block:: python
@@ -1031,7 +1075,9 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
 
 
 @dygraph_only
-def normal_(x, mean=0.0, std=1.0, name=None):
+def normal_(
+    x: Tensor, mean: complex = 0.0, std: float = 1.0, name: str | None = None
+) -> Tensor:
     """
     This is the inplace version of api ``normal``, which returns a Tensor filled
     with random values sampled from a normal distribution. The output Tensor will
@@ -1042,11 +1088,11 @@ def normal_(x, mean=0.0, std=1.0, name=None):
         mean (float|int|complex, optional): Mean of the output tensor, default is 0.0.
         std (float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+        Tensor, A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
     Examples:
         .. code-block:: python
 
@@ -1064,7 +1110,14 @@ def normal_(x, mean=0.0, std=1.0, name=None):
     return gaussian_(x, mean=mean, std=std)
 
 
-def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
+def uniform(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    min: float = -1.0,
+    max: float = 1.0,
+    seed: int = 0,
+    name: str | None = None,
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
     distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
@@ -1094,11 +1147,11 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
             it will use the seed of the global default generator (which can be set by paddle.seed).
             Note that if seed is not 0, this operator will always generate the same random numbers every
             time. Default is 0.
-        name(str, optional): Name for the operation (optional, default is None).
+        name(str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random values sampled from a uniform
+        Tensor, A Tensor filled with random values sampled from a uniform
         distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Examples:
@@ -1171,11 +1224,16 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         check_type(max, 'max', (float, int, paddle.pir.Value), 'uniform/rand')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
+        if isinstance(min, int):
+            min = float(min)
+        if isinstance(max, int):
+            max = float(max)
+
         return _C_ops.uniform(
             shape,
             dtype,
-            float(min),
-            float(max),
+            min,
+            max,
             seed,
             _current_expected_place(),
         )
@@ -1204,7 +1262,13 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
 
 @dygraph_only
-def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
+def uniform_(
+    x: Tensor,
+    min: float = -1.0,
+    max: float = 1.0,
+    seed: int = 0,
+    name: str | None = None,
+) -> Tensor:
     """
     This is the inplace version of OP ``uniform``, which returns a Tensor filled
     with random values sampled from a uniform distribution. The output Tensor will
@@ -1220,11 +1284,11 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             it will use the seed of the global default generator (which can be set by paddle.seed).
             Note that if seed is not 0, this operator will always generate the same random numbers every
             time. Default is 0.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: The input tensor x filled with random values sampled from a uniform
+        Tensor, The input tensor x filled with random values sampled from a uniform
         distribution in the range [``min``, ``max``).
     Examples:
         .. code-block:: python
@@ -1244,7 +1308,13 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
-def randint(low=0, high=None, shape=[1], dtype=None, name=None):
+def randint(
+    low: int = 0,
+    high: int = None,
+    shape: ShapeLike = [1],
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
     distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
@@ -1260,15 +1330,15 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
-        dtype (str|np.dtype, optional): The data type of the
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the
             output tensor. Supported data types: int32, int64. If ``dtype``
             is None, the data type is int64. Default is None.
-        name (str, optional): The default value is None.  Normally there is no
+        name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random integers from a discrete uniform
+        Tensor, A Tensor filled with random integers from a discrete uniform
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
     Examples:
@@ -1380,7 +1450,13 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         return out
 
 
-def randint_like(x, low=0, high=None, dtype=None, name=None):
+def randint_like(
+    x: Tensor,
+    low: int = 0,
+    high: int = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
     distribution in the range [``low``, ``high``), with the same shape as ``x``.
@@ -1393,19 +1469,19 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         low (int, optional): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
-        high (int, optional): The upper bound on the range of random values to
+        high (int|None, optional): The upper bound on the range of random values to
             generate, the ``high`` is excluded in the range. Default is None.
             If ``high`` is None, the range is [0, ``low``).
-        dtype (str|np.dtype, optional): The data type of the
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the
             output tensor. Supported data types: bool, int32, int64, float16,
             float32, float64. If ``dtype`` is None, the data type is the
             same as x's data type. Default is None.
-        name (str, optional): The default value is None.  Normally there is no
+        name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random integers from a discrete uniform
+        Tensor, A Tensor filled with random integers from a discrete uniform
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
     Examples:
@@ -1606,22 +1682,24 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         return out
 
 
-def randperm(n, dtype="int64", name=None):
+def randperm(
+    n: int, dtype: DTypeLike = "int64", name: str | None = None
+) -> Tensor:
     """
     Returns a 1-D Tensor filled with random permutation values from 0
     to n-1, with ``dtype``.
 
     Args:
         n (int): The upper bound (exclusive), and it should be greater than 0.
-        dtype (str|np.dtype, optional): The data type of
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of
             the output Tensor. Supported data types: int32, int64, float32,
             float64. Default is int64.
-        name (str, optional): The default value is None. Normally there is no
+        name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A 1-D Tensor filled with random permutation values from 0
+        Tensor, A 1-D Tensor filled with random permutation values from 0
         to n-1, with ``dtype``.
 
     Examples:
@@ -1668,7 +1746,9 @@ def randperm(n, dtype="int64", name=None):
         return out
 
 
-def rand(shape, dtype=None, name=None):
+def rand(
+    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
     distribution in the range [0, 1), with ``shape`` and ``dtype``.
@@ -1677,16 +1757,16 @@ def rand(shape, dtype=None, name=None):
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype (str|np.dtype, optional): The data type of the output Tensor.
+        dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see :ref:`get_default_dtype`
             for details).
-        name (str, optional): The default value is None. Normally there is no
+        name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor filled with random values sampled from a uniform
+        Tensor, A Tensor filled with random values sampled from a uniform
         distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
     Examples:
@@ -1731,7 +1811,9 @@ def rand(shape, dtype=None, name=None):
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
 
 
-def exponential_(x, lam=1.0, name=None):
+def exponential_(
+    x: Tensor, lam: float = 1.0, name: str | None = None
+) -> Tensor:
     r"""
     This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
 
@@ -1744,11 +1826,11 @@ def exponential_(x, lam=1.0, name=None):
     Args:
         x(Tensor):  Input tensor. The data type should be float32, float64.
         lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
-        name(str, optional): The default value is None. Normally there is no
+        name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: Input Tensor ``x``.
+        Tensor, Input Tensor ``x``.
 
     Examples:
         .. code-block:: python

@@ -311,7 +311,7 @@ class AddGroupNormFusePattern : public paddle::drr::DrrPatternBase {
               ? add1(pat.Tensor("any_tensor"), pat.Tensor("add_out"))
               : add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
     }
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::BFloat16Type>()) {
@@ -361,7 +361,7 @@ class AddGroupNormWithActPattern : public paddle::drr::DrrPatternBase {
                             &pat.Tensor("mean_out_0"),
                             &pat.Tensor("variance_out_0")});
     pat.Tensor("silu_out") = silu(pat.Tensor("group_out"));
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::BFloat16Type>()) {

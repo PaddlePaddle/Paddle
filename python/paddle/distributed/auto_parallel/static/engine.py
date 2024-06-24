@@ -283,7 +283,7 @@ class Engine:
     def _prepare_data_spec_from_dataloader(self, dataloader):
         inputs_spec = []
         labels_spec = []
-        data = next(iter(dataloader))
+        data = next(dataloader())
         if hasattr(dataloader, "batch_sampler"):
             batch_sampler = dataloader.batch_sampler
         else:
