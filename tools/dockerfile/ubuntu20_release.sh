@@ -35,6 +35,7 @@ function base_image(){
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
     sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
+    sed -i 's#CUDNN_VERSION=8.4.1#CUDNN_VERSION=8.6.0#g' ${dockerfile_name}
   elif [[ ${ref_CUDA_MAJOR} == "12.0" ]];then
     dockerfile_name="Dockerfile-120"
     sed "s#<baseimg>#nvidia/cuda:12.0.0-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.release.ubuntu20 >${dockerfile_name}
