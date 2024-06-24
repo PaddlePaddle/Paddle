@@ -347,28 +347,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   return funcs_wrapper;
 }
 
-void OpLowererImpl::InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
-  auto& name_map = name_gene_->GetNameMap();
-  for (auto it = name_map.begin(); it != name_map.end(); ++it) {
-    auto value = it->first;
-    if (!(value) || !(value.type())) {
-      return;
-    }
-
-    auto& name = it->second;
-    auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto* var = scope->Var<Tensor>(name);
-    auto& tensor = absl::get<Tensor>(*var);
-
-    std::vector<Shape::dim_t> shape;
-    for (auto i = 0; i < type_info.dims().size(); ++i) {
-      shape.push_back(Shape::dim_t(type_info.dims()[i]));
-    }
-    tensor->Resize(Shape{shape});
-    tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
-  }
-}
-
 bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
   return true;
 }
@@ -894,6 +872,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
+  std::vector<ir::Tensor> stage_tensors;
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
     // Insert the output tensor defined by Compute into the tensor_map
@@ -913,6 +892,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       // the output node_data on the graph, then there is a one-to-one
       // correspondence, and the redundant output node_data contact empty.
       (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
+
+      stage_tensors.push_back(expr.as_tensor_ref());
     }
 
     // Insert output tensors into function arg
@@ -945,8 +926,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   // 2.Do lower
   std::string lower_fn_name = CompatibleInfo::OpFuncName(*op);
-  ast_gen_ius::TensorGroup tensor_group =
-      ast_gen_ius::ConvertStageMapToTensorGroup(tmp_stages);
+
+  // using output value build tensor group
+  ast_gen_ius::TensorGroup tensor_group(stage_tensors);
   std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
       lower_fn_name, *op_func_arg_tensors, {&tensor_group}, this->target_);
   VLOG(4) << "Lower op: " << lower_fn_name << ", get " << funcs.size()

@@ -19,7 +19,7 @@ import unittest
 sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from test_attribute_var_deprecated import UnittestBase
+from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import base

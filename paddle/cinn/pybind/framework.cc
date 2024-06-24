@@ -17,8 +17,8 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
+#include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cinn_value.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -222,12 +222,5 @@ void BindFramework(pybind11::module *m) {
                       BackendAPI::MemcpyType::HostToDevice);
                 });
           });
-
-  py::class_<Instruction> instruction(*m, "Instruction");
-  instruction.def(py::init<const Target &,
-                           Scope *,
-                           const std::vector<std::string> &,
-                           const std::vector<std::string> &,
-                           const std::string &>());
 }
 }  // namespace cinn::pybind

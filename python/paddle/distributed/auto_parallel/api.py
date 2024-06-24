@@ -2654,6 +2654,7 @@ class ShardDataloader:
                 shuffle=shuffle,
                 drop_last=drop_last,
             )
+            self.batch_sampler._acc_steps = dataloader.batch_sampler._acc_steps
             self._dataloader = paddle.io.DataLoader(
                 dataset=dataloader.dataset,
                 batch_sampler=self.batch_sampler,
