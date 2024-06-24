@@ -12,28 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network
 from __future__ import annotations
 
-from typing import Literal, Sequence
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
 
-from ..._typing import (
-    DataLayout1D,
-    DataLayout1DVariant,
-    DataLayout2D,
-    DataLayout3D,
-    DynamicShapeLike,
-    PaddingMode,
-    ResampleMode,
-    ShapeLike,
-)
 from .. import functional as F
 from .layers import Layer
 
+if TYPE_CHECKING:
+    from paddle import ParamAttr, Tensor
+    from paddle._typing import (
+        DataLayout1D,
+        DataLayout1DVariant,
+        DataLayout2D,
+        DataLayout3D,
+        IntSequence,
+        ShapeLike,
+        Size2,
+        Size4,
+    )
+
+    from ..functional.common import (
+        _DropoutMode,
+        _InterpolateMode,
+        _PaddingTensorMode,
+    )
+
 __all__ = []
+
+_T_Padding = TypeVar("_T_Padding", Tensor, IntSequence)
+
+
+@overload
+def _npairs(x: _T_Padding, n: int) -> _T_Padding:
+    ...
+
+
+@overload
+def _npairs(x: int, n: int) -> int:
+    ...
 
 
 def _npairs(x, n):
@@ -83,10 +103,10 @@ class Identity(Layer):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__()
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         return input
 
 
@@ -113,17 +133,17 @@ class Linear(Layer):
     Parameters:
         in_features (int): The number of input units.
         out_features (int): The number of output units.
-        weight_attr (ParamAttr, optional): The attribute for the learnable
+        weight_attr (ParamAttr|None, optional): The attribute for the learnable
             weight of this layer. The default value is None. If the Initializer of the
             param_attr is not set, the parameter is initialized with Xavier.
             For detailed information, please refer to paddle.ParamAttr.
-        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+        bias_attr (ParamAttr|bool|None, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to paddle.ParamAttr. The default value is None and the bias will be
             initialized to zero.
-        name (str, optional): Normally there is no need for user to set this parameter.
+        name (str|None, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
 
     Attribute:
@@ -169,12 +189,16 @@ class Linear(Layer):
              [-0.05398512, -0.05398512, -0.05398512, -0.05398512]])
     """
 
+    weight: Tensor
+    bias: Tensor
+    name: str | None
+
     def __init__(
         self,
         in_features: int,
         out_features: int,
-        weight_attr: paddle.ParamAttr | None = None,
-        bias_attr: paddle.ParamAttr | bool | None = None,
+        weight_attr: ParamAttr | None = None,
+        bias_attr: ParamAttr | bool | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -195,7 +219,7 @@ class Linear(Layer):
         )
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name
         )
@@ -224,6 +248,7 @@ class Upsample(Layer):
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
+        'area' : Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
@@ -361,7 +386,7 @@ class Upsample(Layer):
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`. Has to match input size if it is either a list or a tuple or a Tensor.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear', 'area',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
@@ -370,7 +395,7 @@ class Upsample(Layer):
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of
+        data_format (str|None, optional): Specify the data format of the input, and the data format of
              the output will be consistent with that of the input. An optional string from:`"NCW"`,
              `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
              When :attr:`data_format` is not specified, it will be automatically inferred from the
@@ -380,7 +405,7 @@ class Upsample(Layer):
              When it is `"NCHW"`, the data should be stored in the order of:
              `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
              data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): The default value is None.
+        name(str|None, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
@@ -400,11 +425,19 @@ class Upsample(Layer):
 
     """
 
+    size: ShapeLike | None
+    scale_factor: ShapeLike | float | None
+    mode: _InterpolateMode
+    align_corners: bool
+    align_mode: int
+    data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D | None
+    name: str | None
+
     def __init__(
         self,
-        size: DynamicShapeLike | None = None,
-        scale_factor: DynamicShapeLike | float | None = None,
-        mode: ResampleMode = 'nearest',
+        size: ShapeLike | None = None,
+        scale_factor: ShapeLike | float | None = None,
+        mode: _InterpolateMode = 'nearest',
         align_corners: bool = False,
         align_mode: int = 0,
         data_format: (
@@ -421,7 +454,7 @@ class Upsample(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         if self.data_format is None:
             dim_size = len(x.shape)
             if dim_size == 3:
@@ -487,7 +520,7 @@ class UpsamplingNearest2D(Layer):
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): The default value is None.
+        name(str|None, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
@@ -508,10 +541,15 @@ class UpsamplingNearest2D(Layer):
             [2, 3, 12, 12]
     """
 
+    size: ShapeLike | None
+    scale_factor: ShapeLike | float | None
+    data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D
+    name: str | None
+
     def __init__(
         self,
-        size: DynamicShapeLike | None = None,
-        scale_factor: DynamicShapeLike | float | None = None,
+        size: ShapeLike | None = None,
+        scale_factor: ShapeLike | float | None = None,
         data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D = 'NCHW',
         name: str | None = None,
     ) -> None:
@@ -523,7 +561,7 @@ class UpsamplingNearest2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = F.interpolate(
             x,
             size=self.size,
@@ -579,7 +617,7 @@ class UpsamplingBilinear2D(Layer):
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): The default value is None.
+        name(str|None, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
@@ -599,10 +637,15 @@ class UpsamplingBilinear2D(Layer):
             [2, 3, 12, 12]
     """
 
+    size: ShapeLike | None
+    scale_factor: ShapeLike | float
+    data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D
+    name: str | None
+
     def __init__(
         self,
-        size: DynamicShapeLike | None = None,
-        scale_factor: DynamicShapeLike | float = None,
+        size: ShapeLike | None = None,
+        scale_factor: ShapeLike | float = None,
         data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D = 'NCHW',
         name: str | None = None,
     ) -> None:
@@ -614,7 +657,7 @@ class UpsamplingBilinear2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = F.interpolate(
             x,
             size=self.size,
@@ -660,12 +703,12 @@ class Bilinear(Layer):
        in1_features (int): The dimension of each first input(`x1`).
        in2_features (int): The dimension of each second input(`x2`).
        out_features (int): The dimension of output of this layer.
-       weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of
+       weight_attr (ParamAttr|None, optional): The parameter attribute for the learnable w, parameters/weights of
        this layer. The default value is None.
-       bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias
+       bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
            If it is set to None, the bias is initialized zero. The default value is None.
-       name (str, optional): The default value is None. Normally there is no need for user
+       name (str|None, optional): The default value is None. Normally there is no need for user
            to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Attribute:
@@ -693,13 +736,16 @@ class Bilinear(Layer):
 
     """
 
+    weight: Tensor
+    bias: Tensor
+
     def __init__(
         self,
         in1_features: int,
         in2_features: int,
         out_features: int,
-        weight_attr: paddle.ParamAttr | None = None,
-        bias_attr: paddle.ParamAttr | bool | None = None,
+        weight_attr: ParamAttr | None = None,
+        bias_attr: ParamAttr | bool | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -730,7 +776,7 @@ class Bilinear(Layer):
             is_bias=True,
         )
 
-    def forward(self, x1: paddle.Tensor, x2: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
     def extra_repr(self) -> str:
@@ -755,7 +801,7 @@ class Dropout(Layer):
 
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
-        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
+        axis (int|list|tuple|None, optional): The axis along which the dropout is performed. Default: None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                                1. upscale_in_train (default), upscale the output at training time
@@ -767,7 +813,7 @@ class Dropout(Layer):
 
                                   - train: :math:`out = input \times mask`
                                   - inference: :math:`out = input \times (1.0 - p)`
-        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -797,13 +843,16 @@ class Dropout(Layer):
              [4., 5., 6.]])
     """
 
+    p: float
+    axis: int | IntSequence | None
+    mode: _DropoutMode
+    name: str | None
+
     def __init__(
         self,
         p: float = 0.5,
-        axis: int | Sequence[int] | None = None,
-        mode: Literal[
-            "upscale_in_train", "downscale_in_infer"
-        ] = "upscale_in_train",
+        axis: int | IntSequence | None = None,
+        mode: _DropoutMode = "upscale_in_train",
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -813,7 +862,7 @@ class Dropout(Layer):
         self.mode = mode
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = F.dropout(
             input,
             p=self.p,
@@ -844,7 +893,7 @@ class Dropout2D(Layer):
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5.
         data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW`.
-        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 4-D tensor.
@@ -883,6 +932,10 @@ class Dropout2D(Layer):
               [[0.78120756, 0.32112977, 0.90572405]]]])
     """
 
+    p: float
+    data_format: DataLayout2D
+    name: str | None
+
     def __init__(
         self,
         p: float = 0.5,
@@ -895,7 +948,7 @@ class Dropout2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = F.dropout2d(
             input,
             p=self.p,
@@ -923,9 +976,9 @@ class Dropout3D(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int, optional): Probability of setting units to zero. Default: 0.5.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width]. Default: `NCDHW`.
-        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 5-D tensor.
@@ -966,6 +1019,10 @@ class Dropout3D(Layer):
                 [21., 22., 23.]]]]])
     """
 
+    p: float
+    data_format: DataLayout3D
+    name: str | None
+
     def __init__(
         self,
         p: float = 0.5,
@@ -978,7 +1035,7 @@ class Dropout3D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = F.dropout3d(
             input,
             p=self.p,
@@ -1006,8 +1063,8 @@ class AlphaDropout(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int, optional): Probability of setting units to zero. Default: 0.5
-        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -1035,12 +1092,15 @@ class AlphaDropout(Layer):
              [-1.,  1.]])
     """
 
+    p: float
+    name: str | None
+
     def __init__(self, p: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self.p = p
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = F.alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
@@ -1065,8 +1125,8 @@ class FeatureAlphaDropout(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int, optional): Probability of setting units to zero. Default: 0.5
-        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -1094,12 +1154,15 @@ class FeatureAlphaDropout(Layer):
              [-1.,  1.]])
     """
 
+    p: float
+    name: str | None
+
     def __init__(self, p: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self.p = p
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = F.feature_alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
@@ -1117,7 +1180,7 @@ class Pad1D(Layer):
     If mode is ``reflect``, pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
+        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
@@ -1130,7 +1193,7 @@ class Pad1D(Layer):
         value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``. Specify the data format of the input data.
            Default: ``'NCL'``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1155,8 +1218,8 @@ class Pad1D(Layer):
 
     def __init__(
         self,
-        padding: paddle.Tensor | list[int] | int,
-        mode: PaddingMode = 'constant',
+        padding: Tensor | IntSequence | int,
+        mode: _PaddingTensorMode = 'constant',
         value: float = 0.0,
         data_format: DataLayout1D = "NCL",
         name: str | None = None,
@@ -1168,7 +1231,7 @@ class Pad1D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1189,12 +1252,12 @@ class ZeroPad1D(Layer):
     Pads the input tensor boundaries with zero.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right).
         data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
-        name (str, optional) : The default value is None.  Normally there is no need for
+        name (str|None, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -1223,7 +1286,7 @@ class ZeroPad1D(Layer):
 
     def __init__(
         self,
-        padding: paddle.Tensor | list[int] | int,
+        padding: Tensor | IntSequence | int,
         data_format: DataLayout1D = "NCL",
         name: str | None = None,
     ) -> None:
@@ -1234,7 +1297,7 @@ class ZeroPad1D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1257,7 +1320,7 @@ class Pad2D(Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
+        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
@@ -1270,7 +1333,7 @@ class Pad2D(Layer):
         value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCHW'``, ``'NHWC'``. Specify the data format of the input data.
            Default: ``'NCHW'``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1298,8 +1361,8 @@ class Pad2D(Layer):
 
     def __init__(
         self,
-        padding: paddle.Tensor | list[int] | int,
-        mode: PaddingMode = 'constant',
+        padding: Tensor | IntSequence | int,
+        mode: _PaddingTensorMode = 'constant',
         value: float = 0.0,
         data_format: DataLayout2D = "NCHW",
         name: str | None = None,
@@ -1311,7 +1374,7 @@ class Pad2D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1332,12 +1395,12 @@ class ZeroPad2D(Layer):
     Pads the input tensor boundaries with zero.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
         data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
            Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
+        name (str|None, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -1369,7 +1432,7 @@ class ZeroPad2D(Layer):
 
     def __init__(
         self,
-        padding: paddle.Tensor | list[int] | int,
+        padding: Tensor | IntSequence | int,
         data_format: DataLayout2D = "NCHW",
         name: str | None = None,
     ) -> None:
@@ -1380,7 +1443,7 @@ class ZeroPad2D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1403,7 +1466,7 @@ class Pad3D(Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
+        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
@@ -1416,7 +1479,7 @@ class Pad3D(Layer):
         value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCDHW'``, ``'NDHWC'``. Specify the data format of the input data.
            Default:  ``'NCDHW'``。
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1444,8 +1507,8 @@ class Pad3D(Layer):
 
     def __init__(
         self,
-        padding: paddle.Tensor | list[int] | int,
-        mode: PaddingMode = 'constant',
+        padding: Tensor | IntSequence | int,
+        mode: _PaddingTensorMode = 'constant',
         value: float = 0.0,
         data_format: DataLayout3D = "NCDHW",
         name: str | None = None,
@@ -1457,7 +1520,7 @@ class Pad3D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1478,12 +1541,12 @@ class ZeroPad3D(Layer):
     Pads the input tensor boundaries with zero.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
+        name (str|None, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -1515,7 +1578,7 @@ class ZeroPad3D(Layer):
 
     def __init__(
         self,
-        padding: paddle.Tensor | list[int] | int,
+        padding: Tensor | IntSequence | int,
         data_format: DataLayout3D = "NCDHW",
         name: str | None = None,
     ) -> None:
@@ -1526,7 +1589,7 @@ class ZeroPad3D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1547,7 +1610,7 @@ class CosineSimilarity(Layer):
 
     Parameters:
         axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
-        eps(float): Small value to avoid division by zero. Default is 1e-8.
+        eps (float): Small value to avoid division by zero. Default is 1e-8.
     Returns:
         None
 
@@ -1590,7 +1653,7 @@ class CosineSimilarity(Layer):
         self._axis = axis
         self._eps = eps
 
-    def forward(self, x1: paddle.Tensor, x2: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
 
     def extra_repr(self) -> str:
@@ -1645,13 +1708,13 @@ class Embedding(Layer):
             True because sparse update is faster. But some optimizer does not support sparse update,
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
-        weight_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+        weight_attr(ParamAttr|None, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
             is used to load custom or pre-trained word vectors. See code example for details.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
 
     Attribute:
@@ -1697,13 +1760,15 @@ class Embedding(Layer):
 
     """
 
+    weight: Tensor
+
     def __init__(
         self,
         num_embeddings: int,
         embedding_dim: int,
         padding_idx: float | None = None,
         sparse: bool = False,
-        weight_attr: paddle.ParamAttr | None = None,
+        weight_attr: ParamAttr | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1751,7 +1816,7 @@ class Embedding(Layer):
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return F.embedding(
             x,
             weight=self.weight,
@@ -1797,7 +1862,7 @@ class Unfold(Layer):
         dilations(int|list|tuple, optional): The dilations of convolution kernel, should be
             [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
             For default, it will be [1, 1].
-        name(str, optional): The default value is None. Normally there is no need for user to
+        name(str|None, optional): The default value is None. Normally there is no need for user to
             set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -1815,12 +1880,18 @@ class Unfold(Layer):
 
     """
 
+    kernel_sizes: Size2
+    dilations: Size2
+    paddings: Size2 | Size4
+    strides: Size2
+    name: str | None
+
     def __init__(
         self,
-        kernel_sizes: Sequence[int] | int,
-        dilations: Sequence[int] | int = 1,
-        paddings: Sequence[int] | int = 0,
-        strides: Sequence[int] | int = 1,
+        kernel_sizes: Size2,
+        dilations: Size2 = 1,
+        paddings: Size2 | Size4 = 0,
+        strides: Size2 = 1,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1831,7 +1902,7 @@ class Unfold(Layer):
         self.strides = strides
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         return F.unfold(
             input,
             kernel_sizes=self.kernel_sizes,
@@ -1881,7 +1952,7 @@ class Fold(Layer):
         dilations(int|list|tuple, optional): The dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
-        name(str, optional): The default value is None.
+        name(str|None, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
 
@@ -1904,13 +1975,20 @@ class Fold(Layer):
             [2, 3, 4, 5]
    """
 
+    output_sizes: Size2
+    kernel_sizes: Size2
+    dilations: Size2
+    paddings: Size2 | Size4
+    strides: Size2
+    name: str | None
+
     def __init__(
         self,
-        output_sizes: list[int],
-        kernel_sizes: Sequence[int] | int,
-        dilations: Sequence[int] | int = 1,
-        paddings: Sequence[int] | int = 0,
-        strides: Sequence[int] | int = 1,
+        output_sizes: Size2,
+        kernel_sizes: Size2,
+        dilations: Size2 = 1,
+        paddings: Size2 | Size4 = 0,
+        strides: Size2 = 1,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1922,7 +2000,7 @@ class Fold(Layer):
         self.strides = strides
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         return F.fold(
             input,
             output_sizes=self.output_sizes,
@@ -1965,12 +2043,15 @@ class Flatten(Layer):
 
     """
 
+    start_axis: int
+    stop_axis: int
+
     def __init__(self, start_axis: int = 1, stop_axis: int = -1) -> None:
         super().__init__()
         self.start_axis = start_axis
         self.stop_axis = stop_axis
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = paddle.flatten(
             input, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
@@ -1989,7 +2070,7 @@ class Unflatten(Layer):
             If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
             The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
             If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         None
@@ -2010,6 +2091,10 @@ class Unflatten(Layer):
 
     """
 
+    axis: int
+    shape: ShapeLike
+    name: str | None
+
     def __init__(
         self, axis: int, shape: ShapeLike, name: str | None = None
     ) -> None:
@@ -2018,7 +2103,7 @@ class Unflatten(Layer):
         self.shape = shape
         self.name = name
 
-    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         out = paddle.unflatten(
             input, axis=self.axis, shape=self.shape, name=self.name
         )

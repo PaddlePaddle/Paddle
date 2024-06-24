@@ -14,12 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
-
-from ..._typing.basic import PaddingMode
+from typing import TYPE_CHECKING, Literal, Sequence
 
 if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
     from paddle import Tensor
+
+    _PaddingSizeMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle._typing import (
@@ -291,7 +293,7 @@ def conv1d(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size1 = 1,
-    padding: PaddingMode | Size1 | Size2 | Sequence[Size2] = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
     dilation: Size1 = 1,
     groups: int = 1,
     data_format: DataLayout1D = 'NCL',
@@ -350,7 +352,7 @@ def conv1d(
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain one integers, (stride_size). Default: 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
+        padding (int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
@@ -536,7 +538,7 @@ def conv2d(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size2 = 1,
-    padding: PaddingMode | Size2 | Size4 | Sequence[Size2] = 0,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
     dilation: Size2 = 1,
     groups: int = 1,
     data_format: DataLayout2D = "NCHW",
@@ -777,7 +779,7 @@ def conv1d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size1 = 1,
-    padding: PaddingMode | Size1 | Size2 = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
     output_padding: Size1 = 0,
     groups: int = 1,
     dilation: Size1 = 1,
@@ -1049,7 +1051,7 @@ def conv2d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size2 = 1,
-    padding: PaddingMode | Size2 | Size4 | Sequence[Size2] = 0,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
     output_padding: Size2 = 0,
     dilation: Size2 = 1,
     groups: int = 1,
@@ -1533,7 +1535,7 @@ def conv3d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size3 = 1,
-    padding: PaddingMode | Size3 | Size6 | Sequence[Size2] = 0,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
     output_padding: Size3 = 0,
     groups: int = 1,
     dilation: Size3 = 1,
