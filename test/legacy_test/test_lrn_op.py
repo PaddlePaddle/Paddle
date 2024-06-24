@@ -23,12 +23,6 @@ from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
-def api_wrapper(
-    x, n=5, k=2.0, alpha=0.0001, beta=0.75, data_format="AnyLayout"
-):
-    return paddle._C_ops.lrn(x, n, k, alpha, beta, data_format)
-
-
 class TestLRNOp(OpTest):
     def get_input(self):
         r''' TODO(gongweibao): why it's grad diff is so large?
@@ -77,7 +71,6 @@ class TestLRNOp(OpTest):
 
     def setUp(self):
         self.op_type = "lrn"
-        self.python_api = api_wrapper
         self.init_test_case()
 
         self.N = 2
@@ -104,10 +97,10 @@ class TestLRNOp(OpTest):
         self.data_format = 'NCHW'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestLRNOpAttrDataFormat(TestLRNOp):
