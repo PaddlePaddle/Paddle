@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/tensorrt/trt_op_marker_pass.h"
 
-#include <memory>
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -43,13 +42,13 @@ inline auto kCanRunTrtAttr = paddle::dialect::kCanRunTrtAttr;
     }                                                                     \
   };
 
-DEFINE_GENERAL_PATTERN(Matmul, paddle::dialect::MatmulOp);
-DEFINE_GENERAL_PATTERN(BatchNorm, paddle::dialect::BatchNormOp);
-DEFINE_GENERAL_PATTERN(BatchNorm_, paddle::dialect::BatchNorm_Op);
-DEFINE_GENERAL_PATTERN(Softmax, paddle::dialect::SoftmaxOp);
-DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp);
-DEFINE_GENERAL_PATTERN(Relu, paddle::dialect::ReluOp);
-DEFINE_GENERAL_PATTERN(FullIntArray, paddle::dialect::FullIntArrayOp);
+DEFINE_GENERAL_PATTERN(Matmul, paddle::dialect::MatmulOp)
+DEFINE_GENERAL_PATTERN(BatchNorm, paddle::dialect::BatchNormOp)
+DEFINE_GENERAL_PATTERN(BatchNorm_, paddle::dialect::BatchNorm_Op)
+DEFINE_GENERAL_PATTERN(Softmax, paddle::dialect::SoftmaxOp)
+DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
+DEFINE_GENERAL_PATTERN(Relu, paddle::dialect::ReluOp)
+DEFINE_GENERAL_PATTERN(FullIntArray, paddle::dialect::FullIntArrayOp)
 #undef DEFINE_GENERAL_PATTERN
 
 class Pool2dOpPattern
@@ -125,6 +124,26 @@ class Pool2dOpPattern
   }
 };
 
+class ReshapeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ReshapeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ReshapeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::ReshapeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    auto reshape_input = op->operand_source(1);
+    if (reshape_input) {
+      VLOG(3) << "Shape input must be null";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -134,15 +153,16 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
 
 #define ADD_PATTERN(OpName) \
   ps.Add(std::make_unique<OpName##OpPattern>(context));
-    ADD_PATTERN(Matmul);
-    ADD_PATTERN(BatchNorm);
-    ADD_PATTERN(BatchNorm_);
-    ADD_PATTERN(Softmax);
-    ADD_PATTERN(Conv2d);
-    ADD_PATTERN(Relu);
-    ADD_PATTERN(FullIntArray);
+    ADD_PATTERN(Matmul)
+    ADD_PATTERN(BatchNorm)
+    ADD_PATTERN(BatchNorm_)
+    ADD_PATTERN(Softmax)
+    ADD_PATTERN(Conv2d)
+    ADD_PATTERN(Relu)
+    ADD_PATTERN(FullIntArray)
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
+    ps.Add(std::make_unique<ReshapeOpPattern>(context));
     return ps;
   }
 };
