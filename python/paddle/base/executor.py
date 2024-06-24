@@ -944,7 +944,8 @@ class _ExecutorCache:
         )
 
     def _get_program_and_executor(self, cached_data):
-        program = cached_data.program
+        # do type promotion if necessary
+        program = process_type_promotion(cached_data.program)
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -1799,8 +1800,6 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
-            # do type promotion if necessary
-            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,

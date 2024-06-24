@@ -19,6 +19,7 @@ import pickle
 import shutil
 import tempfile
 import unittest
+import warnings
 
 import numpy as np
 
@@ -499,6 +500,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
 
     @test_with_dygraph_pir
     def test_output_same_order(self):
+        model_path = os.path.join(self.temp_dir.name, "dict_out_model")
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         model = LinearNetWithNonLexicographicalOrderDict(8, 8)
@@ -508,8 +510,13 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
         st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
-        paddle.jit.save(st_model, "./test_jit_save_load")
-        loaded_model = paddle.jit.load("./test_jit_save_load")
+        with warnings.catch_warnings(record=True) as w:
+            paddle.jit.save(st_model, model_path)
+            self.assertIn(
+                "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys.",
+                str(w[-1].message),
+            )
+        loaded_model = paddle.jit.load(model_path)
         loaded_output_seq = loaded_model(x)
 
         self.assertTrue(len(dy_output_dict) == 4)
@@ -525,21 +532,12 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
                 dy_out.numpy(), st_out.numpy(), rtol=1e-05
             )
 
-        # 2. check whether flattened output has same order of original dict
         dy_output_seq = paddle.utils.flatten(dy_output_dict)
 
         self.assertTrue(len(dy_output_seq) == 4)
-        for dy_out, flattened_dy_out in zip(
-            dy_output_dict.values(), dy_output_seq
-        ):
-            np.testing.assert_allclose(
-                dy_out.numpy(), flattened_dy_out.numpy(), rtol=1e-05
-            )
 
-        # 3. check whether flattened output of loaded static graph has same order of dynamic's
-        for dy_out, loaded_out in zip(
-            dy_output_dict.values(), loaded_output_seq
-        ):
+        # 2. check whether flattened output of loaded static graph has same order of dynamic's
+        for dy_out, loaded_out in zip(dy_output_seq, loaded_output_seq):
             np.testing.assert_allclose(
                 dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
             )
@@ -554,33 +552,33 @@ class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_nested_output_same_order(self):
+        model_path = os.path.join(self.temp_dir.name, "nested_dict_out_model")
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         model = LinearNetWithNestedNonLexicographicalOrderDict(8, 8)
 
         dy_output_dict = model(x)
+        dy_output_seq = paddle.utils.flatten(dy_output_dict)
 
         st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
-        paddle.jit.save(st_model, "./test_jit_save_load2")
-        loaded_model = paddle.jit.load("./test_jit_save_load2")
+        with warnings.catch_warnings(record=True) as w:
+            paddle.jit.save(st_model, model_path)
+            self.assertIn(
+                "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys.",
+                str(w[-1].message),
+            )
+        loaded_model = paddle.jit.load(model_path)
         loaded_output_seq = loaded_model(x)
 
         self.assertTrue(len(dy_output_dict) == 5)
         self.assertTrue(len(st_output_dict) == 5)
         self.assertTrue(len(loaded_output_seq) == 6)
 
-        # check whether flattened output of loaded static graph has same order of dynamic's
-        dy_output_tensors = []
-        for v in dy_output_dict.values():
-            if isinstance(v, dict):
-                dy_output_tensors.extend(list(v.values()))
-            else:
-                dy_output_tensors.append(v)
-
-        for dy_out, loaded_out in zip(dy_output_tensors, loaded_output_seq):
+        for dy_out, loaded_out in zip(dy_output_seq, loaded_output_seq):
             np.testing.assert_allclose(
                 dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
             )

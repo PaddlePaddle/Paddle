@@ -238,7 +238,6 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
  *  - it is the first version var. Otherwise, the var may be overwritten
  *    in the second batch, which results in wrong calculation result.
  *    It is critical especially when
- *    ExecutionStrategy::num_iteration_per_drop_scope_ > 1.
  *  - it has not reused other var's memory. It is not necessary to do memory
  *    reuse twice for the same var.
  *  - it is not a persistable var.
