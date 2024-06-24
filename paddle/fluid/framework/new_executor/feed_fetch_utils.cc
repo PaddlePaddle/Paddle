@@ -141,6 +141,8 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
   }
 
   out->resize(fetch_list[0].size());
+  std::cout << "fetch_list.size:" << fetch_list.size()
+            << " fetch_list[0].size():" << fetch_list[0].size() << std::endl;
   for (size_t i = 0; i < fetch_list[0].size(); ++i) {
     std::vector<const phi::DenseTensor*> tensors_ptr;
     for (auto micro_batch_id = 0; micro_batch_id < micro_batch_num;

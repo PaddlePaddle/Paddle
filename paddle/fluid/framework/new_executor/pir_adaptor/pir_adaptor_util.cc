@@ -748,12 +748,33 @@ void BuildScope(const pir::Block& block,
           << "(" << value_exe_info->GetScope() << ") ******\n"
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
+  std::cout << "***** [before build] scope"
+            << "(" << value_exe_info->GetScope() << ") ******\n"
+            << GenScopeTreeDebugInfo(
+                   const_cast<Scope*>(value_exe_info->GetScope()->root()))
+            << std::endl;
+  std::cout << "==== block ====" << std::endl;
+  std::ostringstream print_stream;
+  pir::IrPrinter printer(print_stream);
+  printer.PrintBlock(block);
+  std::cout << print_stream.str() << std::endl;
 
   VLOG(6) << "Start handle keyword blockargument!";
   for (auto& kwarg : block.kwargs()) {
     VLOG(6) << "link keyword blockargument in variable"
             << value_exe_info->GetScope();
     Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
+    if (var == nullptr) {
+      std::cout << "kwarg " << kwarg.first << " is not found in scope"
+                << std::endl;
+      Scope* root_scope =
+          const_cast<Scope*>(value_exe_info->GetScope()->root());
+      std::cout << GenScopeTreeDebugInfo(root_scope) << std::endl;
+      std::cout << "==== block ====" << std::endl;
+      print_stream.str("");
+      printer.PrintBlock(block);
+      std::cout << print_stream.str() << std::endl;
+    }
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s should exist", kwarg.first));
@@ -798,6 +819,11 @@ void BuildScope(const pir::Block& block,
           << "(" << value_exe_info->GetScope() << ") ******\n"
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
+  std::cout << "***** [after build] scope"
+            << "(" << value_exe_info->GetScope() << ") ******\n"
+            << GenScopeTreeDebugInfo(
+                   const_cast<Scope*>(value_exe_info->GetScope()->root()))
+            << std::endl;
 }
 
 void BuildRuntimeContext(pir::Operation* op,

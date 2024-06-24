@@ -1872,6 +1872,19 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             << " runs on " << platform::GetCurrentThreadName() << "\n"
             << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+    VLOG(2) << "==== after begin ====" << std::endl;
+    std::cout << "\nbegin: " << __func__ << " OP id:" << instr_node->Id()
+              << " name:" << instr_node->Name() << " type:"
+              << (instr_node->KernelType() == OpFuncType::kCpuSync
+                      ? "kCpuSync"
+                      : (instr_node->KernelType() == OpFuncType::kGpuSync
+                             ? "kGpuSync"
+                             : "kGpuAsync"))
+              << " runs on " << platform::GetCurrentThreadName() << "\n"
+              << "Before: " << cur_place << " "
+              << instr_node->DebugStringEx(scope_, value_exe_info_.get())
+              << std::endl;
+    std::cout << "==== after begin ====" << std::endl;
 
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_input_hookfuncs_) {
@@ -1903,6 +1916,19 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
               << " runs on " << platform::GetCurrentThreadName() << "\n"
               << "After: " << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+      VLOG(2) << "==== after done ====" << std::endl;
+      std::cout << "\ndone: " << __func__ << " OP id:" << instr_node->Id()
+                << " name:" << instr_node->Name() << " type:"
+                << (instr_node->KernelType() == OpFuncType::kCpuSync
+                        ? "kCpuSync"
+                        : (instr_node->KernelType() == OpFuncType::kGpuSync
+                               ? "kGpuSync"
+                               : "kGpuAsync"))
+                << " runs on " << platform::GetCurrentThreadName() << "\n"
+                << "After: " << cur_place << " "
+                << instr_node->DebugStringEx(scope_, value_exe_info_.get())
+                << std::endl;
+      std::cout << "==== after done ====" << std::endl;
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       memory::LogDeviceMemoryStats(cur_place, instr_node->Name());

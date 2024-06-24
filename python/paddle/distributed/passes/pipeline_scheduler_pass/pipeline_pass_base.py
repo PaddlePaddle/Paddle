@@ -19,7 +19,11 @@ from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import PassBase
-from ..pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
+from ..pass_utils import (
+    set_pir_skip_gc_vars,
+    set_skip_gc_vars,
+    shadow_var_between_sub_programs,
+)
 
 logger = get_logger(logging.INFO)
 
@@ -87,7 +91,16 @@ class PipelinePassBase(PassBase):
         context.set_attr("plan", plan)
 
     def _apply_impl(self, main_programs, startup_programs, context):
-        self._apply_pir_impl(*main_programs, context)
+        import os
+
+        enable_pir_in_executor = os.getenv("FLAGS_enable_pir_api")
+        if enable_pir_in_executor == "1":
+            self._apply_pir_impl(*main_programs, context)
+        else:
+            for main_program, startup_program in zip(
+                main_programs, startup_programs
+            ):
+                self._apply_single_impl(main_program, startup_program, context)
 
     def _apply_pir_impl(self, fwd_prog, bwd_prog, opt_prog, context):
         job_types, sub_programs = self._partial_pir_programs(
@@ -100,12 +113,18 @@ class PipelinePassBase(PassBase):
             )
 
         jobs = self._create_job_list()
-        type_to_program = set_skip_gc_vars(
+        type_to_program = set_pir_skip_gc_vars(
             self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
         )
 
         # for type in type_to_program.keys():
         #     type_to_program[type] = type_to_program[type].desc
 
+        print("===== jobs: =====")
+        print(jobs)
+        for type, program in type_to_program.items():
+            print("type: ", type)
+            print("==== program ====")
+            print(program, flush=True)
         plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)

@@ -259,6 +259,7 @@ class Engine:
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
         self._acc_steps = 1
+        self._pipeline_plan = None
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
         )["FLAGS_enable_pir_api"]
@@ -752,6 +753,8 @@ class Engine:
             paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_opt_program)
 
         remove_unuseful_comm_op_pass(dense_program)
+        print("==== original dense program ====")
+        print(dense_program)
         if self._strategy.pipeline.enable:
             remove_unuseful_comm_op_pass(dense_fwd_program)
             remove_unuseful_comm_op_pass(dense_bwd_program)
@@ -764,17 +767,32 @@ class Engine:
             self._pir_dense_bwd_progs[mode] = dense_bwd_program
             self._pir_dense_opt_progs[mode] = dense_opt_program
 
+            print("==== pir_dense_fwd_prog ====")
+            print(self._pir_dense_fwd_progs[mode])
+            print("==== pir_dense_bwd_prog ====")
+            print(self._pir_dense_bwd_progs[mode])
+            print("==== pir_dense_opt_prog ===")
+            print(self._pir_dense_opt_progs[mode])
             if self._strategy.pipeline.schedule_mode is not None:
-                plan = pipeline_pass(
+                self._pipeline_plan = pipeline_pass(
                     dense_fwd_program,
                     dense_bwd_program,
                     dense_opt_program,
-                    self._strategy.pipeline.schedule_mode,
+                    self._strategy.pipeline,
                 )
-                self._executor = self._create_executor(self.place, plan)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
+
+    def _create_executor(self, plan):
+        self._place = _get_device()
+        if isinstance(self._place, paddle.framework.CUDAPlace):
+            self._place = paddle.framework.CUDAPlace(
+                paddle.distributed.ParallelEnv().dev_id
+            )
+        executor = paddle.static.Executor(self._place)
+        executor._set_plan(plan)
+        return executor
 
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
@@ -1131,6 +1149,9 @@ class Engine:
             # 6. vpp init adaption
 
             # self._init_lr(self._pir_dense_main_progs[mode])
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
                 startup_prog = self._startup_progs[mode].clone()
@@ -1154,11 +1175,14 @@ class Engine:
                             continue
                 for del_op in del_ops:
                     del_op.erase()
+                print("==== startup prog ====")
+                print(startup_prog)
                 self._executor.run(startup_prog)
-            self.program_helper.init_pir(
-                self._pir_dist_main_progs[mode], self._place
-            )
-
+            if self._pipeline_plan is not None:
+                # pipeline scheduling should be enabled after running
+                # startup program, otherwise the startup program cannot
+                # run correctly.
+                self._executor._set_plan(self._pipeline_plan)
             return
 
         if self._strategy.seed:
@@ -1901,13 +1925,17 @@ class Engine:
             use_cache = False
             no_fetch = False  # not last rank should not fetch loss in pipeline parallel
             if self._pir_dense_fwd_progs == {}:
-                loss_value = self.main_program.get_output_value_by_name(
-                    self._loss_names[0]
-                )
+                program_for_executor = self.main_program
             else:
-                loss_value = self._pir_dense_fwd_progs[
-                    self._mode
-                ].get_output_value_by_name(self._loss_names[0])
+                # NOTE: If pipeline scheduling is enabled, The program_for_executor
+                # is used to tell the executor where to feed data and add fetch op,
+                # not the program to be executed. The ``plan`` object is already
+                # constructed, and the programs to be executed are  stored in the
+                # ``plan`` object.
+                program_for_executor = self._pir_dense_fwd_progs[self._mode]
+            loss_value = program_for_executor.get_output_value_by_name(
+                self._loss_names[0]
+            )
             if paddle.pir.is_fake_value(loss_value):
                 no_fetch = True
                 fetch_names = []
@@ -1915,6 +1943,19 @@ class Engine:
                 fetch_names = [loss_value]
             fetch_names += self._pir_fetch_values
 
+        # self._executor.plan = None
+        # if self._pir_dense_fwd_progs != {}:
+        #     print("==== run fwd ====")
+        #     outs = self._executor.run(
+        #         self._pir_dense_fwd_progs[self._mode],
+        #         feed=feed_dict,
+        #         fetch_list=fetch_names,
+        #         use_program_cache=use_cache,
+        #         return_numpy=self._strategy.return_numpy,
+        #     )
+        #     print("==== run bwd ====")
+        #     self._executor.run(self._pir_dense_bwd_progs[self._mode])
+        # else:
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1922,6 +1963,8 @@ class Engine:
             use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
+        print("==== outs in engine ====")
+        print(outs)
 
         if self._in_pir_mode:
             if no_fetch:

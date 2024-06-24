@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.distributed.passes.pass_base import PassContext, new_pass
 
 from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
@@ -330,11 +331,13 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                     paddle._C_ops.set_persistable_value(
                         bwd_ops[i].result(idx), name
                     )
-                    bwd_ops[i].result(idx).persistable = True
+                    # bwd_ops[i].result(idx).persistable = True
                     new_result_var_in_opt = opt_block.add_kwarg(
                         name, result_in_opt.type()
                     )
-                    new_result_var_in_opt.persistable = True
+                    new_result_var_in_opt.persistable = (
+                        result_in_opt.persistable
+                    )
                     opt_ops[i].result(idx).replace_all_uses_with(
                         new_result_var_in_opt
                     )
@@ -355,7 +358,7 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                         or fwd_ops[i].name() == "builtin.parameter"
                     ):
                         name = fwd_ops[i].result(idx).name
-                        fwd_ops[i].result(idx).persistable = True
+                        # fwd_ops[i].result(idx).persistable = True
                     else:
                         result_value = ops[i].result(idx)
                         used_ops = result_value.all_used_ops()
@@ -365,7 +368,7 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                                 shadow_output_op_used = used_op
                         if shadow_output_op_used is not None:
                             name = shadow_output_op_used.attrs()["output_name"]
-                            fwd_ops[i].result(idx).persistable = True
+                            # fwd_ops[i].result(idx).persistable = True
                         else:
                             name = (
                                 "var_"
@@ -379,12 +382,14 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                             paddle._C_ops.set_persistable_value(
                                 fwd_ops[i].result(idx), name
                             )
-                            fwd_ops[i].result(idx).persistable = True
+                            # fwd_ops[i].result(idx).persistable = True
                 if result_in_opt.use_empty() is False:
                     new_result_var_in_opt = opt_block.add_kwarg(
                         name, result_in_opt.type()
                     )
-                    new_result_var_in_opt.persistable = True
+                    new_result_var_in_opt.persistable = (
+                        result_in_opt.persistable
+                    )
                     opt_ops[i].result(idx).replace_all_uses_with(
                         new_result_var_in_opt
                     )
@@ -392,7 +397,9 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                     new_result_var_in_bwd = bwd_block.add_kwarg(
                         name, result_in_bwd.type()
                     )
-                    new_result_var_in_bwd.persistable = True
+                    new_result_var_in_bwd.persistable = (
+                        result_in_bwd.persistable
+                    )
                     bwd_ops[i].result(idx).replace_all_uses_with(
                         new_result_var_in_bwd
                     )
@@ -402,9 +409,7 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
     return fwd_program, bwd_program, opt_program
 
 
-def pipeline_pass(
-    fwd_program, bwd_program, opt_program, pass_name, pass_attr={}
-):
+def pipeline_pass(fwd_program, bwd_program, opt_program, pipeline_strategy):
     """
     Pipeline schedule pass for auto parallel. Enables the pipeline parallel scheduling
     strategies like FThenB, 1F1B, etc.
@@ -413,14 +418,14 @@ def pipeline_pass(
     splitting program pass on dense program instead.
     """
     import os
-    import sys
 
-    sys.path.append("../..")
-    from pass_base import PassContext, new_pass
-
+    pass_name = pipeline_strategy.schedule_mode
     assert pass_name in [
         "FThenB",
     ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
+
+    pass_attr = {}
+    pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
@@ -433,7 +438,9 @@ def pipeline_pass(
     pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
     pass_context = PassContext()
     pipeline_pass.apply(
-        [fwd_program, bwd_program, opt_program], [], pass_context
+        [fwd_program, bwd_program, opt_program],
+        [fwd_program, bwd_program, opt_program],
+        pass_context,
     )
     plan = pass_context.get_attr("plan")
     return plan

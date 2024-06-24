@@ -56,6 +56,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     ss << scope << ", ";
   }
   VLOG(6) << ss.str();
+  std::cout << ss.str() << std::endl;
 
   const auto& jobs = plan_.JobList();
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
@@ -195,6 +196,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   fetch_list_.resize(plan_.MicroBatchNum());
+  std::cout << "jobs size:" << jobs.size() << std::endl;
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
@@ -205,6 +207,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
+    std::cout << "Run job (" << job_idx << "), type = " << job_type
+              << ", micro_batch_id =" << job->MicroBatchId() << std::endl;
 
     // NOTE(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&

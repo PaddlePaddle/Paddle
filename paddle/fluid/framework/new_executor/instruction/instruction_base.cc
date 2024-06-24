@@ -36,6 +36,9 @@ static DDim GetDimsDebug(const Scope& scope,
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    std::cout << "===== tensor name: " << name << " =====" << std::endl;
+    std::cout << tensor << std::endl;
+    std::cout << "==================" << std::endl;
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {

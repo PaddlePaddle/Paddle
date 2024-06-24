@@ -229,6 +229,28 @@ def var_can_be_deleted(var_name, block):
     return var is not None and not var.persistable
 
 
+def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
+    assert num_micro_batches >= 1, "num_micro_batches needs to be >= 1"
+    type_to_var_names = {}
+    type_to_program = dict(zip(job_types, sub_programs))
+    for type, program in type_to_program.items():
+        type_to_var_names[type] = set()
+        ops = program.global_block().ops
+        for op in ops:
+            if op.name() == "builtin.shadow_output":
+                # if a value is renamed by shadow_output,
+                # it will be used by other sub_programs
+                type_to_var_names[type].add(op.attrs()["output_name"])
+
+    print("===== type_to_var_names ======")
+    print(type_to_var_names)
+    for job in jobs:
+        job_type = job.type()
+        job.set_skip_gc_vars(type_to_var_names[job_type])
+
+    return type_to_program
+
+
 def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
     """
     Set `skip_gc_vars` for every job in jobs.
@@ -243,6 +265,8 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
     # step1: Get all vars of every sub_program that are non-persistable and not in op's no_need_buffer.
     type_to_required_vars = {}
     for type, program in type_to_program.items():
+        print(f"===== {type} ======")
+        print(program)
         type_to_required_vars[type] = set()
         for block in program.blocks:
             for op in block.ops:
@@ -263,6 +287,8 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
                     ) and op_info.is_needed(arg_name):
                         type_to_required_vars[type].add(arg_name)
 
+    print("==== type_to_required_vars ====")
+    print(type_to_required_vars)
     # step2: Set `skip_gc_vars` for each job
     suffixed_required_vars = [set() for i in range(num_micro_batches)]
     num_jobs = len(jobs)
@@ -272,9 +298,12 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         required_vars = type_to_required_vars[job_type]
         micro_batch_id = job.micro_batch_id()
         skip_gc_vars = required_vars & suffixed_required_vars[micro_batch_id]
+        print("required_vars: ", required_vars)
+        print("skip_gc_vars: ", skip_gc_vars)
         logger.debug(
             f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
         )
+        print(f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}")
 
         if job_type in ["backward", "backward_w"]:
             assert (
@@ -283,6 +312,7 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
+        print("suffixed_required_vars: ", suffixed_required_vars)
 
     return type_to_program
 
