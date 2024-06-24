@@ -583,6 +583,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(custom_pass_only_);
   CP_MEMBER(pm_opt_level_);
   CP_MEMBER(ir_debug_passes_);
+  CP_MEMBER(deleted_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -1568,6 +1569,10 @@ void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
                                         bool custom_pass_only) {
   custom_passes_ = passes;
   custom_pass_only_ = custom_pass_only;
+}
+
+void AnalysisConfig::DeletePass(const std::vector<std::string> &passes) {
+  deleted_passes_ = passes;
 }
 
 void AnalysisConfig::SetOptimizationLevel(int opt_level) {

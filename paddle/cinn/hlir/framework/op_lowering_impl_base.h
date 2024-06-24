@@ -28,7 +28,7 @@ namespace hlir {
 namespace framework {
 
 struct BucketLoweredFuncsWrapper {
-  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+  std::vector<std::tuple<ir::SymbolicPredicate, ir::LoweredFunc, int>>
       predicate2funcs;
   ir::LoweredFunc infer_shape_func;
   std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>

@@ -131,6 +131,8 @@ def transpose(x, perm, name=None):
                 'uint16',
                 'complex64',
                 'complex128',
+                'float8_e5m2',
+                'float8_e4m3fn',
             ],
             'transpose',
         )
