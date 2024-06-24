@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops, _legacy_C_ops
 
@@ -26,6 +28,9 @@ from ..framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -46,7 +51,7 @@ def _convert_(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-def generate_layer_fn(op_type):
+def generate_layer_fn(op_type: str):
     """Register the Python layer for an Operator.
 
     Args:
@@ -124,7 +129,7 @@ def generate_layer_fn(op_type):
                 dtype = core.VarDesc.VarType.FP32
         return dtype
 
-    def func(*args, **kwargs):
+    def func(*args, **kwargs) -> Tensor:
         helper = LayerHelper(op_type, **kwargs)
 
         dtype = infer_and_check_dtype(op_proto, *args, **kwargs)
@@ -160,7 +165,7 @@ def generate_layer_fn(op_type):
     return func
 
 
-def generate_activation_fn(op_type):
+def generate_activation_fn(op_type: str):
     """Register the Python layer for an Operator without Attribute.
 
     Args:
@@ -171,7 +176,7 @@ def generate_activation_fn(op_type):
 
     """
 
-    def func(x, name=None):
+    def func(x, name: str | None = None) -> Tensor:
         if in_dynamic_or_pir_mode():
             if hasattr(_C_ops, op_type):
                 op = getattr(_C_ops, op_type)

@@ -116,6 +116,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : add_position_encoding
+  backward: add_position_encoding_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : addmm
   backward : addmm_grad
   inputs :
@@ -126,6 +133,13 @@
     {alpha : Alpha, beta : Beta}
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : affine_channel
+  backward: affine_channel_grad
+  inputs:
+    {x : X, scale : Scale, bias : Bias}
+  outputs:
+    out : Out
 
 - op : affine_grid
   backward : affine_grid_grad
@@ -329,6 +343,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : attention_lstm
+  backward: attention_lstm_grad
+  inputs:
+    {x : X, c0 : C0, h0 : H0, attention_weight : AttentionWeight, attention_bias : AttentionBias, attention_scalar : AttentionScalar, attention_scalar_bias : AttentionScalarBias, lstm_weight : LSTMWeight, lstm_bias : LSTMBias}
+  outputs:
+    {hidden : Hidden, cell : Cell, attentioned_x : AttentionedX, attention_fc_out : AttentionFCOut, lstm_x : LSTMX, lstm_out : LSTMOUT}
+
 - op : auc
   inputs :
     {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
@@ -421,6 +442,12 @@
       support_tensor : true
   get_expected_kernel_type :
     bincount : GetBincountExpectedKernelType
+
+- op : bipartite_match
+  inputs:
+    dist_mat : DistMat
+  outputs:
+    {col_to_row_match_indices : ColToRowMatchIndices, col_to_row_match_dist : ColToRowMatchDist}
 
 - op : bitwise_and
   inputs :
@@ -757,6 +784,13 @@
       data_type : int
       support_tensor : true
 
+- op : cvm
+  backward: cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Y
+
 - op : data_norm
   backward : data_norm_grad
   extra :
@@ -929,6 +963,9 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar :
+    p :
+      support_tensor : true
 
 - op : dropout_nd
   backward : dropout_nd_grad
@@ -1200,6 +1237,12 @@
 
 - op : feed
   outputs: {out: Out}
+
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : fft_c2c
   inputs: {x: X}
@@ -1519,6 +1562,12 @@
   outputs :
     out : Out
 
+- op : fused_embedding_fc_lstm
+  inputs:
+    {ids : Ids, embeddings : Embeddings, weight_h : WeightH, bias : Bias, h0 : H0, c0 : C0}
+  outputs:
+    {hidden : Hidden, cell : Cell, xx : XX, batched_input : BatchedInput, batched_hidden : BatchedHidden, batched_cell : BatchedCell, reordered_h0 : ReorderedH0, reordered_c0 : ReorderedC0}
+
 - op : fused_fc_elementwise_layernorm
   inputs :
     x : X
@@ -1831,6 +1880,13 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
 
+- op : hinge_loss
+  backward: hinge_loss_grad
+  inputs:
+    {logits : Logits, labels : Labels}
+  outputs:
+    loss : Loss
+
 - op : histogram
   inputs :
     input : X
@@ -1850,6 +1906,12 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
 
 - op : imag
   backward : imag_grad
@@ -2194,6 +2256,13 @@
     {x : X, mask : Mask}
   outputs :
     out : Y
+
+- op : match_matrix_tensor
+  backward: match_matrix_tensor_grad
+  inputs:
+    {x : X, y : Y, w : W}
+  outputs:
+    {out : Out, tmp : Tmp}
 
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
@@ -2721,9 +2790,9 @@
   outputs:
     out : Out
   attrs:
-    { dims : dim,  keep_dim : keep_dim}
+    { axis : dim,  keepdim : keep_dim}
   int_array:
-    dims :
+    axis :
       data_type : int
       support_tensor : true
   extra :
@@ -4159,6 +4228,12 @@
     {start: Start, stop: Stop, num: Num, base: Base}
   outputs:
     {out: Out}
+
+- op: lookup_table_dequant
+  inputs:
+    {w : W, ids : Ids}
+  outputs:
+    out : Out
 
 - op: lstm
   backward: lstm_grad

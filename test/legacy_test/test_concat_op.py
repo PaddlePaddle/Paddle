@@ -23,7 +23,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
+from paddle.pir_utils import IrGuard, test_with_pir_api
 
 
 class TestConcatOp(OpTest):
@@ -963,6 +963,19 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
 
             self.assertRaises(TypeError, test_input_same_dtype)
 
+    def test_empty_inputs_dygraph(self):
+        paddle.disable_static()
+        with self.assertRaisesRegex(ValueError, "but got empty list"):
+            paddle.concat([])
+
+    def test_empty_inputs_static(self):
+        with IrGuard(), paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            with self.assertRaisesRegex(ValueError, "but got empty list"):
+                paddle.concat([], axis=0)
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

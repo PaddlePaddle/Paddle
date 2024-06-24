@@ -16,9 +16,9 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#ifdef PADDLE_WITH_XPU_XRE5
 #include "xfa/flash_api.h"
-
+#endif
 namespace phi {
 
 template <typename T, typename Context>
@@ -43,6 +43,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_XPU_XRE5
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   // q, k, v [batch_size * seq_len, num_heads, head_dim]
   std::vector<int64_t> dims = common::vectorize(q.dims());
@@ -169,6 +170,10 @@ void FlashAttnUnpaddedKernel(
         nullptr);
     PADDLE_ENFORCE_EQ(r, 0, "xpu::qk_v_attention failed.");
   }
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnUnpaddedKernel"));
+#endif
 }
 
 template <typename T, typename Context>
@@ -187,6 +192,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_XPU_XRE5
   if (return_softmax == true) {
     PADDLE_THROW(phi::errors::Unimplemented("return_softmax should be false"));
   }
@@ -336,6 +342,10 @@ void FlashAttnKernel(const Context& ctx,
       fa_layout                                   // qkv_layout
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnKernel"));
+#endif
 }
 
 }  // namespace phi

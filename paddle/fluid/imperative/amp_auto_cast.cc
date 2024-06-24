@@ -23,8 +23,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 class VarBase;
 
@@ -587,5 +586,4 @@ template NameVarMap<VarBase> CastPureBf16Inputs<VarBase>(
 template NameVarMap<egr::EagerVariable> CastPureBf16Inputs<egr::EagerVariable>(
     const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

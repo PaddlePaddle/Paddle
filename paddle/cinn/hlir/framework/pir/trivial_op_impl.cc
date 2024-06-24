@@ -367,7 +367,8 @@ std::vector<FusibleOp> TransformReduceLoopRange(
                                        fake_reduce_iter_idx)
             : downstream_output_tensor->shape;
     ir::Tensor result = ir::Tensor(
-        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
+        downstream_load_tensor->name + "_loopalign_" +
+            std::to_string(GetTensorCounter()),
         downstream_load_tensor->type(),
         shape,
         is_trivial_downstream
@@ -507,6 +508,7 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
   VLOG(4) << "DebugPrint Op Origin: ";
+  VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
   ir::Expr trivial_compute_body =

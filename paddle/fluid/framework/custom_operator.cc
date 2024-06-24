@@ -1287,14 +1287,14 @@ void RegisterOperatorWithMetaInfoMap(
     // Register PIR op
 
     if (custom_dialect->HasRegistered(pair.first)) {
-      LOG(INFO) << "The operator `" << pair.first
-                << "` has been registered. "
-                   "Therefore, we will not repeat the registration here.";
+      VLOG(3) << "The operator `" << pair.first
+              << "` has been registered. "
+                 "Therefore, we will not repeat the registration here.";
       continue;
     }
     for (const auto& meta_info : pair.second) {
-      LOG(INFO) << "register pir custom op :"
-                << OpMetaInfoHelper::GetOpName(meta_info);
+      VLOG(3) << "register pir custom op :"
+              << OpMetaInfoHelper::GetOpName(meta_info);
       custom_dialect->RegisterCustomOp(meta_info);
     }
 

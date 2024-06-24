@@ -64,7 +64,7 @@ class Exponential(exponential_family.ExponentialFamily):
             check_type(
                 rate,
                 'rate',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Exponential',
             )
 
@@ -75,9 +75,6 @@ class Exponential(exponential_family.ExponentialFamily):
         else:
             [self.rate] = self._to_tensor(rate)
             self.dtype = paddle.get_default_dtype()
-
-        if not paddle.all(self.rate > 0):
-            raise ValueError("The arg of `rate` must be positive.")
 
         super().__init__(self.rate.shape)
 

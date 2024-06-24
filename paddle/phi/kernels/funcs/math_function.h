@@ -130,6 +130,9 @@ struct TensorSetConstantXPU {
                          phi::CPUPlace(),
                          static_cast<void*>(data_cpu.get()),
                          numel * sizeof(T));
+    } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value ||
+               std::is_same<T, phi::dtype::float8_e5m2>::value) {
+      PADDLE_THROW(phi::errors::Fatal("XPU does not support fp8"));
     } else {
       auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       using XPUType = typename XPUTypeTrait<T>::Type;

@@ -459,7 +459,7 @@ with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
-def show():
+def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
 
     Returns:
@@ -537,10 +537,10 @@ def show():
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
 
-def mkl():
+def mkl() -> str:
     return with_mkl
 
-def nccl():
+def nccl() -> str:
     """Get nccl version of paddle package.
 
     Returns:
@@ -558,7 +558,7 @@ def nccl():
     """
     return nccl_version
 
-def cuda():
+def cuda() -> str:
     """Get cuda version of paddle package.
 
     Returns:
@@ -576,7 +576,7 @@ def cuda():
     """
     return cuda_version
 
-def cudnn():
+def cudnn() -> str:
     """Get cudnn version of paddle package.
 
     Returns:
@@ -594,7 +594,7 @@ def cudnn():
     """
     return cudnn_version
 
-def xpu():
+def xpu() -> str:
     """Get xpu version of paddle package. The API is deprecated now, please use xpu_xhpc() instead.
 
     Returns:
@@ -608,7 +608,7 @@ def xpu():
     """
     return xpu_xhpc_version
 
-def xpu_xre():
+def xpu_xre() -> str:
     """Get xpu xre version of paddle package.
 
     Returns:
@@ -626,7 +626,7 @@ def xpu_xre():
     """
     return xpu_xre_version
 
-def xpu_xccl():
+def xpu_xccl() -> str:
     """Get xpu xccl version of paddle package.
 
     Returns:
@@ -644,7 +644,7 @@ def xpu_xccl():
     """
     return xpu_xccl_version
 
-def xpu_xhpc():
+def xpu_xhpc() -> str:
     """Get xpu xhpc version of paddle package.
 
     Returns:
@@ -662,7 +662,7 @@ def xpu_xhpc():
     """
     return xpu_xhpc_version
 
-def cinn():
+def cinn() -> str:
     """Get CINN version of paddle package.
 
     Returns:
@@ -1075,12 +1075,18 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
-        if env_dict.get("PHI_KERNEL_GPU_LIB"):
+        package_data['paddle.libs'] += [
+            ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
+        if (
+            env_dict.get("WITH_GPU") == "ON"
+            or env_dict.get("WITH_ROCM") == "ON"
+        ):
             package_data['paddle.libs'] += [
-                ('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu')
-                + ext_suffix
+                ('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_suffix
             ]
-            shutil.copy(env_dict.get("PHI_KERNEL_GPU_LIB"), libs_path)
+            shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1304,6 +1310,22 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_CORE_NAME")
+                    )
+                    if (
+                        env_dict.get("WITH_GPU") == "ON"
+                        or env_dict.get("WITH_ROCM") == "ON"
+                    ):
+                        commands.append(
+                            "install_name_tool -add_rpath '@loader_path' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_GPU_NAME")
+                        )
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "
@@ -1326,6 +1348,23 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_CORE_NAME")
+                    )
+                    if (
+                        env_dict.get("WITH_GPU") == "ON"
+                        or env_dict.get("WITH_ROCM") == "ON"
+                    ):
+                        commands.append(
+                            "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_GPU_NAME")
+                        )
+
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
                         "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' "
@@ -1340,7 +1379,7 @@ def get_package_data_and_package_dir():
                         raise Exception(
                             'patch '
                             + env_dict.get("FLUID_CORE_NAME")
-                            + '.%s failed' % ext_suffix,
+                            + '%s failed' % ext_suffix,
                             'command: %s' % command,
                         )
     # A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
