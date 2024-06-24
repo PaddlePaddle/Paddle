@@ -103,6 +103,7 @@ IfInstruction::IfInstruction(size_t id,
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
+  bool is_last_op = true;
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
@@ -114,6 +115,10 @@ IfInstruction::IfInstruction(size_t id,
               i,
               "if op"));
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
+    }
+    if (value.use_count() > 0) {
+      VLOG(0) << "value " << i << " use conutn != 0";
+      is_last_op = false;
     }
   }
   InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
@@ -183,6 +188,15 @@ IfInstruction::IfInstruction(size_t id,
   false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
 
   VLOG(6) << "finish process false branch interpreter";
+
+  if (op_->HasAttribute("fake_false_branch") &&
+      op_->attributes()
+          .at("fake_false_branch")
+          .dyn_cast<pir::BoolAttribute>()
+          .data() &&
+      is_last_op) {
+    has_fake_false_branch_ = true;
+  }
 }
 
 IfInstruction::~IfInstruction() {
@@ -239,6 +253,7 @@ void IfInstruction::Run() {
 #endif
     true_branch_inter_->Run({}, false);
   } else {
+    if (has_fake_false_branch_) return;
 #ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
