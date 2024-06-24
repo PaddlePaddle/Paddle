@@ -1883,26 +1883,6 @@ Stage *_StageMap_::InsertLazily(const ir::Tensor &key, Stage *stage) {
   return stage;
 }
 
-StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
-  StageMap stages;
-
-  std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
-
-  for (auto &tensor : tensors) {
-    auto used_tensors = ir::ir_utils::CollectIRNodes(
-        tensor->body(), [](const Expr *x) { return x->as_tensor(); });
-    for (const Expr &x : used_tensors) {
-      all_tensors.insert(x.as_tensor_ref());
-    }
-  }
-
-  for (auto &t : all_tensors) {
-    stages->Insert(t, ir::CreateStage(t).get());
-  }
-
-  return stages;
-}
-
 Stage *_StageMap_::Lookup(const std::string &name) const {
   auto it = data_.find(name);
   if (it == data_.end()) return nullptr;

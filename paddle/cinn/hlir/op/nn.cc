@@ -58,8 +58,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -90,8 +89,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -119,8 +117,7 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -170,8 +167,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -342,10 +338,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           PADDLE_THROW(phi::errors::InvalidArgument(
               "Only support NCHW and NHWC data layout\n"));
         }
-        auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
 
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK(out.size() == 3U || out.size() == 2U || out.size() == 5U ||
@@ -353,7 +347,6 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             << "The output tensor sizes of conv2d op in conv2d op should be 2 "
                "or 3 or 5\n";
 
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -680,16 +673,12 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
                                UniqName("T_conv2d_NCHWc_out"),
                                target);
 
-        auto stages = CreateStages({tensor_a, tensor_b});
-
         std::vector<CINNValue> res;
         CHECK(out.size() == 2U)
             << "The output tensor sizes of conv2d_NCHWc op should be 2\n";
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -946,16 +935,14 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
           "Only support NCHW and NHWC data layout\n"));
     }
 
-    auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
     std::vector<CINNValue> res;
     for (auto &t : out) {
-      stages->InsertLazily(t);
       res.push_back(CINNValue(t));
     }
     CHECK(out.size() == 2U || out.size() == 1U || out.size() == 5U)
         << "The output tensor sizes of depthwise_conv op in depthwise_conv op "
            "should be 1 or 2 or 5\n";
-    res.push_back(CINNValue(stages));
+
     *ret = CINNValuePack{res};
   });
 
@@ -1133,8 +1120,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                                epsilon,
                                out_name);
     }
-    auto stages = CreateStages({out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1253,7 +1239,6 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                               data_format,
                               tensor_name);
 
-        auto stages = CreateStages(out);
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool1d's output should be 1 or 2.";
         CHECK(!out_type.empty())
@@ -1262,7 +1247,6 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
         for (auto &t : out) {
           res.push_back(CINNValue(Expr(t.get())));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1496,9 +1480,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         auto out = pe::GlobalPool2d(A_tensor, pool_type, tensor_name);
         CHECK(out.size() == 2U)
             << "The size of pe::GlobalPool2d's output should be 2.";
-        auto stages = CreateStages({A_tensor, out[0], out[1]});
-        *ret = CINNValuePack{
-            {CINNValue(out[0]), CINNValue(out[1]), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out[0]), CINNValue(out[1])}};
       });
 
   framework::CINNSchedule global_pool2d_schedule([=](lang::Args args,
@@ -1557,17 +1539,14 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                               adaptive,
                               tensor_name);
 
-        auto stages = CreateStages({A_tensor});
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool2d's output should be 1 or 2.";
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK(!out_type.empty())
             << "Output type of Pool2d is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1801,7 +1780,6 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
                               data_format,
                               tensor_name);
 
-        auto stages = CreateStages(out);
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool3d's output should be 1 or 2.";
         CHECK(!out_type.empty())
@@ -1811,7 +1789,6 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         for (auto &t : out) {
           res.push_back(CINNValue(Expr(t.get())));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1996,7 +1973,6 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         Expr A_expr = pack_args[0];
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
-        auto stages = CreateStages({A});
         int new_axis = axis;
         if (axis == -1) {
           new_axis = A->shape.size() - 1;
@@ -2019,14 +1995,13 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
 #endif
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK_EQ(out.size(), 2U)
             << "The size of pe::Softmax's output should be 2.";
         CHECK(!out_type.empty())
             << "Output type of Softmax is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
+
         *ret = CINNValuePack{res};
       });
 
@@ -2154,8 +2129,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 
     auto out =
         pe::DropoutInfer(A, dropout_prob, dropout_implementation, tensor_name);
-    auto stages = CreateStages({A, out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2223,11 +2197,8 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
                               true_value.as_tensor_ref(),
                               false_value.as_tensor_ref(),
                               tensor_name);
-        auto stages = CreateStages({condition.as_tensor_ref(),
-                                    true_value.as_tensor_ref(),
-                                    false_value.as_tensor_ref(),
-                                    out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2286,11 +2257,7 @@ std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
                           true_value.as_tensor_ref(),
                           false_value.as_tensor_ref(),
                           tensor_name);
-    auto stages = CreateStages({condition.as_tensor_ref(),
-                                true_value.as_tensor_ref(),
-                                false_value.as_tensor_ref(),
-                                out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

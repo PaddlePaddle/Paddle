@@ -106,8 +106,7 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
         std::string tensor_name = pack_args[2].operator std::string();
 
         auto out = LogicalRightShift(A, B, target, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

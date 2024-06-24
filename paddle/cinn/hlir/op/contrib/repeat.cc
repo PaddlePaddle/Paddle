@@ -167,13 +167,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     CHECK(out.size() == 1U) << "The size of Repeat's output should be 1";
 
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({tensor_A});
     for (auto &t : out) {
-      stages->InsertLazily(t);
       res.push_back(cinn::common::CINNValue(t));
     }
 
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = cinn::common::CINNValuePack{res};
   });
 

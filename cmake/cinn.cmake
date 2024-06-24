@@ -307,13 +307,6 @@ if(PUBLISH_LIBS)
   add_custom_command(
     TARGET cinncore_static
     POST_BUILD
-    COMMAND
-      cmake -E copy ${PROJECT_SOURCE_DIR}/tools/cinn/tutorials_demo/demo.cc
-      ${CMAKE_BINARY_DIR}/dist/demo.cc
-    COMMAND
-      cmake -E copy
-      ${PROJECT_SOURCE_DIR}/tools/cinn/tutorials_demo/build_demo.sh
-      ${CMAKE_BINARY_DIR}/dist/build_demo.sh
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinncore_static.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinncore_static.a
     COMMAND

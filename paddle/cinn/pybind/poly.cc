@@ -64,8 +64,6 @@ void BindStageMap(py::module *m) {
             return *self[t];
           },
           py::return_value_policy::reference);
-
-  m->def("create_stages", &poly::CreateStages, py::arg("tensors"));
 }
 
 void BindStage(py::module *m) {
