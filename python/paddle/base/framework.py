@@ -28,9 +28,10 @@ import traceback
 import warnings
 from collections.abc import Iterable
 from types import FunctionType, MethodType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, TypeVar
 
 import numpy as np
+from typing_extensions import ParamSpec
 
 import paddle
 
@@ -43,6 +44,9 @@ from .proto import (
 )
 from .variable_index import _getitem_static, _setitem_static
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 
 if TYPE_CHECKING:
     from paddle.static.amp.fp16_utils import AmpOptions
@@ -273,10 +277,12 @@ paddle_type_to_proto_type = {
     DataType.UINT8: core.VarDesc.VarType.UINT8,
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+    DataType.FLOAT8_E4M3FN: core.VarDesc.VarType.FP8_E4M3FN,
+    DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
 }
 
 
-def in_dygraph_mode():
+def in_dygraph_mode() -> bool:
     """
 
     .. note::
@@ -309,7 +315,7 @@ def in_dygraph_mode():
     return global_var._dygraph_tracer_ is not None
 
 
-def in_pir_mode():
+def in_pir_mode() -> bool:
     """
 
     This API checks whether paddle runs in static graph mode and use pir api.
@@ -334,11 +340,11 @@ def in_pir_mode():
     return global_var._use_pir_api_ and not in_dygraph_mode()
 
 
-def use_pir_api():
+def use_pir_api() -> bool:
     return global_var._use_pir_api_
 
 
-def in_dynamic_or_pir_mode():
+def in_dynamic_or_pir_mode() -> bool:
     """
 
     This API checks whether paddle runs in dynamic graph or pir mode.
@@ -366,7 +372,7 @@ def in_dynamic_or_pir_mode():
     return global_var._dygraph_tracer_ is not None or global_var._use_pir_api_
 
 
-def in_pir_executor_mode():
+def in_pir_executor_mode() -> bool:
     """
 
     This API checks whether paddle runs in pir executor mode.
@@ -379,7 +385,7 @@ def in_pir_executor_mode():
     return flag in ("true", "1")
 
 
-def in_cinn_mode():
+def in_cinn_mode() -> bool:
     """
 
     This API checks whether paddle runs in cinn mode.
@@ -512,7 +518,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
     return call_func
 
 
-def require_version(min_version, max_version=None):
+def require_version(min_version: str, max_version: str | None = None) -> None:
     """
     Check if the installed version of PaddlePaddle is in [min_version, max_version],
     if the installed version is lower than ``min_version`` or higher than ``max_version``,
@@ -628,8 +634,10 @@ def require_version(min_version, max_version=None):
             )
 
 
-def _dygraph_not_support_(func):
-    def __impl__(*args, **kwargs):
+def _dygraph_not_support_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         assert not in_dygraph_mode(), (
             "We don't support %s in dynamic graph mode" % func.__name__
         )
@@ -638,8 +646,8 @@ def _dygraph_not_support_(func):
     return __impl__
 
 
-def _dygraph_only_(func):
-    def __impl__(*args, **kwargs):
+def _dygraph_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         assert in_dygraph_mode(), (
             "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
             % func.__name__
@@ -649,25 +657,25 @@ def _dygraph_only_(func):
     return __impl__
 
 
-def _non_static_only_(func):
-    def __impl__(*args, **kwargs):
+def _non_static_only_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         from .dygraph.base import in_to_static_mode
 
-        assert in_dygraph_mode() or in_to_static_mode(), (
-            "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
-            % func.__name__
-        )
+        assert (
+            in_dygraph_mode() or in_to_static_mode()
+        ), f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
         return func(*args, **kwargs)
 
     return __impl__
 
 
-def _static_only_(func):
-    def __impl__(*args, **kwargs):
-        assert not in_dygraph_mode(), (
-            "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
-            % func.__name__
-        )
+def _static_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        assert (
+            not in_dygraph_mode()
+        ), f"In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '{func.__name__}()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
         return func(*args, **kwargs)
 
     return __impl__
@@ -685,8 +693,10 @@ def _set_pipeline_stage(stage):
 # So, those APIs are listed under class Variable to generate docs only.
 # TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheriting
 # same base class.
-def _fake_interface_only_(func):
-    def __impl__(*args, **kwargs):
+def _fake_interface_only_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         raise AssertionError(
             f"'{func.__name__}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
             "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
@@ -702,9 +712,11 @@ def _fake_interface_only_(func):
 # introducing compatibility issues, add this decorator
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
-def deprecate_stat_dict(func):
+def deprecate_stat_dict(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if "stat_dict" in kwargs:
             warnings.warn(
                 "The argument `stat_dict` has deprecated, please change it to `state_dict`.",
@@ -1285,6 +1297,10 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
+        dtype = 'float8_e4m3fn'
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
+        dtype = 'float8_e5m2'
     else:
         dtype = np.dtype(np_dtype)
 
@@ -1292,6 +1308,10 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
         return core.VarDesc.VarType.FP64
+    elif dtype == 'float8_e4m3fn':
+        return core.VarDesc.VarType.FP8_E4M3FN
+    elif dtype == 'float8_e5m2':
+        return core.VarDesc.VarType.FP8_E5M2
     elif dtype == np.float16:
         return core.VarDesc.VarType.FP16
     elif dtype == np.int32:
@@ -4841,9 +4861,11 @@ class Block:
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
-                    lod_level=v.lod_level
-                    if v.type == core.VarDesc.VarType.LOD_TENSOR
-                    else None,
+                    lod_level=(
+                        v.lod_level
+                        if v.type == core.VarDesc.VarType.LOD_TENSOR
+                        else None
+                    ),
                     stop_gradient=p.stop_gradient,
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
@@ -5963,19 +5985,21 @@ class Program:
                             core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                         ],
                     ),
-                    "error_clip": old_var.error_clip
-                    if old_var is not None
-                    else None,
-                    "stop_gradient": old_var.stop_gradient
-                    if old_var is not None
-                    else False,
-                    "is_data": old_var.is_data
-                    if old_var is not None
-                    else False,
+                    "error_clip": (
+                        old_var.error_clip if old_var is not None else None
+                    ),
+                    "stop_gradient": (
+                        old_var.stop_gradient if old_var is not None else False
+                    ),
+                    "is_data": (
+                        old_var.is_data if old_var is not None else False
+                    ),
                     "need_check_feed": new_var_desc.need_check_feed(),
-                    "belong_to_optimizer": old_var.belong_to_optimizer
-                    if old_var is not None
-                    else False,
+                    "belong_to_optimizer": (
+                        old_var.belong_to_optimizer
+                        if old_var is not None
+                        else False
+                    ),
                 }
 
                 if isinstance(old_var, Parameter):

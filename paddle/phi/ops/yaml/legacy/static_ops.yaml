@@ -405,6 +405,16 @@
     func : matmul
   backward : matmul_grad
 
+- op : matmul_with_flatten
+  args : (Tensor x, Tensor y, int x_num_col_dims = 1, int y_num_col_dims = 1)
+  output : Tensor
+  infer_meta :
+    func : MatmulWithFlattenInferMeta
+  kernel :
+    func : matmul_with_flatten
+    data_type : x
+  backward : matmul_with_flatten_grad
+
 - op : matrix_rank
   args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
   output : Tensor(out)
@@ -554,14 +564,14 @@
   backward : pool3d_grad
 
 - op : prod
-  args : (Tensor x, IntArray dims={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase
-    param : [x, dims, keep_dim, reduce_all, out_dtype]
+    param : [x, axis, keepdim, reduce_all, out_dtype]
   kernel :
     func : prod
-    param : [x, dims, keep_dim, reduce_all, out_dtype]
+    param : [x, axis, keepdim, reduce_all, out_dtype]
     data_type : x
   backward : prod_grad
 
