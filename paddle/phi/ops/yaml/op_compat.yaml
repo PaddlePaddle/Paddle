@@ -1238,6 +1238,12 @@
 - op : feed
   outputs: {out: Out}
 
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
