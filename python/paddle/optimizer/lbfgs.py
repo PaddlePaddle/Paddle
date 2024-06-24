@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 import paddle
 
@@ -462,7 +462,7 @@ class LBFGS(Optimizer):
 
         self._numel_cache = None
 
-    def state_dict(self):
+    def state_dict(self) -> dict[str, Any]:
         r"""Returns the state of the optimizer as a :class:`dict`.
 
         Return:
@@ -563,7 +563,7 @@ class LBFGS(Optimizer):
         return loss, flat_grad
 
     @framework.non_static_only
-    def step(self, closure):
+    def step(self, closure) -> Any:
         """Performs a single optimization step.
 
         Args:
@@ -788,7 +788,7 @@ class LBFGS(Optimizer):
 
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
-    ):
+    ) -> Any:
         """Empty method. LBFGS optimizer does not use this way to minimize ``loss``. Please refer 'Examples' of LBFGS() above for usage."""
         raise NotImplementedError(
             "LBFGS optimizer does not use this way to minimize loss. Please refer 'Examples' of LBFGS() for usage."
