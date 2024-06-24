@@ -33,7 +33,7 @@ class NormalInitializer(Initializer):
     """Implements the Random Normal(Gaussian) distribution initializer
 
     Args:
-        loc (float, optional): mean of the normal distribution. Default is 0.0.
+        loc (float|complex, optional): mean of the normal distribution. Default is 0.0.
         scale (float, optional): standard deviation of the normal distribution. Default is 1.0.
         seed (int, optional): random seed. Default is 0.
 
@@ -49,6 +49,13 @@ class NormalInitializer(Initializer):
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
+        if isinstance(self._mean, complex):
+            if self._mean.real != self._mean.imag:
+                raise ValueError(
+                    "if mean is a complex number, its real part should equal imag part, ",
+                    f"but got real part: {self._mean.real} != imag part: {self._mean.imag}",
+                )
+            self._mean = self._mean.real
 
     def forward(
         self, var: paddle.Tensor, block: pir.Block | None = None
@@ -73,7 +80,14 @@ class NormalInitializer(Initializer):
         check_variable_and_dtype(
             var,
             "Out",
-            ["uint16", "float16", "float32", "float64"],
+            [
+                "uint16",
+                "float16",
+                "float32",
+                "float64",
+                "complex64",
+                "complex128",
+            ],
             "guassian_random",
         )
 
@@ -124,7 +138,7 @@ class Normal(NormalInitializer):
     """The Random Normal (Gaussian) distribution initializer.
 
     Args:
-        mean (float, optional): mean of the normal distribution. Default is 0.0.
+        mean (float|complex, optional): mean of the normal distribution. Default is 0.0.
         std (float, optional): standard deviation of the normal distribution. Default is 1.0.
         name(str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`. Default: None.

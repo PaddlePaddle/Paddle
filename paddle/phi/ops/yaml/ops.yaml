@@ -435,6 +435,16 @@
     data_type : param
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
+- op : batch_fc
+  args : (Tensor input, Tensor w, Tensor bias)
+  output : Tensor(out)
+  infer_meta:
+    func : BatchFCInferMeta
+  kernel :
+    func : batch_fc
+    data_type: input
+  backward: batch_fc_grad
+
 - op : bce_loss
   args : (Tensor input, Tensor label)
   output : Tensor
@@ -2321,6 +2331,17 @@
     func : identity_loss
   inplace: (x -> out)
   backward : identity_loss_grad
+
+- op : im2sequence
+  args: (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1})
+  output: Tensor (out)
+  infer_meta:
+    func: Im2sequenceInferMeta
+  kernel:
+    func: im2sequence
+  optional: y
+  backward: im2sequence_grad
 
 - op : imag
   args : (Tensor x)
