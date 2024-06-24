@@ -41,9 +41,9 @@ if TYPE_CHECKING:
         _PaddingTensorMode,
     )
 
-__all__ = []
+    _T_Padding = TypeVar("_T_Padding", Tensor, IntSequence)
 
-_T_Padding = TypeVar("_T_Padding", Tensor, IntSequence)
+__all__ = []
 
 
 @overload
