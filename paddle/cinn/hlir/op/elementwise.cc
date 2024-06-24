@@ -2091,7 +2091,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
       .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
+                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
