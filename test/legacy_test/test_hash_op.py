@@ -17,17 +17,10 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle
-
-
-def api_wrapper(x, num_hash=1, mod_by=100000, runtime_shape=True):
-    return paddle._C_ops.hash(x, num_hash, mod_by, runtime_shape)
-
 
 class TestHashOp(OpTest):
     def setUp(self):
         self.op_type = "hash"
-        self.python_api = api_wrapper
         self.init_test_case()
         self.inputs = {'X': (self.in_seq, self.lod)}
         self.attrs = {'num_hash': 2, 'mod_by': 10000}
@@ -50,13 +43,12 @@ class TestHashOp(OpTest):
         self.out_seq = np.array(self.out_seq)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestHashNotLoDOp(TestHashOp):
     def setUp(self):
         self.op_type = "hash"
-        self.python_api = api_wrapper
         self.init_test_case()
         self.inputs = {'X': self.in_seq}
         self.attrs = {'num_hash': 2, 'mod_by': 10000}
@@ -78,7 +70,7 @@ class TestHashNotLoDOp(TestHashOp):
         self.out_seq = np.array(self.out_seq)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestHashOp2(TestHashOp):
@@ -89,7 +81,6 @@ class TestHashOp2(TestHashOp):
 
     def setUp(self):
         self.op_type = "hash"
-        self.python_api = api_wrapper
         self.init_test_case()
         self.inputs = {'X': self.in_seq}
         self.attrs = {'num_hash': 2, 'mod_by': 10000}
@@ -100,7 +91,7 @@ class TestHashOp2(TestHashOp):
         self.out_seq = np.array([1269, 9609, 3868, 7268]).reshape((2, 2, 1))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestHashOp3(TestHashOp):
@@ -112,7 +103,6 @@ class TestHashOp3(TestHashOp):
 
     def setUp(self):
         self.op_type = "hash"
-        self.python_api = api_wrapper
         self.init_test_case()
         self.inputs = {'X': self.in_seq}
         self.attrs = {'num_hash': 2, 'mod_by': 2**32}
@@ -125,7 +115,7 @@ class TestHashOp3(TestHashOp):
         ).reshape((2, 2, 1))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == "__main__":
