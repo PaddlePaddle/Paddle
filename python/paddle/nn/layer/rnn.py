@@ -46,8 +46,7 @@ from .layers import Layer
 if TYPE_CHECKING:
     from typing import Literal
 
-    from paddle import Tensor
-    from paddle.base.param_attr import ParamAttr
+    from paddle import ParamAttr, Tensor
 
     _DirectionType = Literal["forward", "bidirect", "bidirectional"]
     _RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]
@@ -63,7 +62,7 @@ def rnn(
     sequence_length: Tensor | None = None,
     time_major: bool = False,
     is_reverse: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> tuple[Tensor | tuple[Tensor, ...], Tensor | tuple[Tensor, ...]]:
     r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
@@ -880,7 +879,7 @@ class SimpleRNNCell(RNNCellBase):
         self.activation = activation
         self._activation_fn = paddle.tanh if activation == "tanh" else F.relu
 
-    def forward(self, inputs, states=None):
+    def forward(self, inputs: Tensor, states: Tensor | None = None):
         if states is None:
             states = self.get_initial_states(inputs, self.state_shape)
         pre_h = states
@@ -1093,7 +1092,7 @@ class LSTMCell(RNNCellBase):
         self._gate_activation = F.sigmoid
         self._activation = paddle.tanh
 
-    def forward(self, inputs, states=None):
+    def forward(self, inputs: Tensor, states: Sequence[Tensor] | None = None):
         if states is None:
             states = self.get_initial_states(inputs, self.state_shape)
         pre_hidden, pre_cell = states
