@@ -40,7 +40,7 @@ namespace paddle {
 namespace pybind {
 
 template <typename T>
-inline T GetValue(const phi::DenseTensor* x) {
+inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!(x->place().GetType() == phi::AllocationType::CPU)) {
     phi::DenseTensor cpu_x;
@@ -80,10 +80,10 @@ static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   if (tensor.numel() == 1) {
     if (framework::TransToProtoVarType(tensor.type()) ==
         framework::proto::VarType::INT32) {
-      return static_cast<Py_ssize_t>(GetValue<int32_t>(&tensor));
+      return static_cast<Py_ssize_t>(GetDenseTensorValue<int32_t>(&tensor));
     } else if (framework::TransToProtoVarType(tensor.type()) ==
                framework::proto::VarType::INT64) {
-      return static_cast<Py_ssize_t>(GetValue<int64_t>(&tensor));
+      return static_cast<Py_ssize_t>(GetDenseTensorValue<int64_t>(&tensor));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently, the type of tensor in slice indices only allows "
