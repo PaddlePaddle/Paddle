@@ -549,7 +549,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
     paddle::Tensor value_tensor_tmp(
         std::make_shared<phi::DenseTensor>(),
         egr::Controller::Instance().GenerateUniqueName());
-    py::object value_obj_tmp(py::handle(value_obj), true);
+    py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     py::object value = value_obj_tmp;
     if (tensor.dtype() == phi::DataType::FLOAT32) {
       if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
@@ -595,7 +595,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
         false);
     value_tensor = value_tensor_tmp;
   } else {
-    py::object value_obj_tmp(py::handle(value_obj), true);
+    py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     // convert the value to self data type
     if (py::isinstance<py::float_>(value_obj_tmp) ||
         py::isinstance<py::int_>(value_obj_tmp) ||
