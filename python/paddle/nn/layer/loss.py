@@ -113,6 +113,11 @@ class BCEWithLogitsLoss(Layer):
 
     """
 
+    weight: Tensor | None
+    reduction: _ReduceMode
+    pos_weight: Tensor | None
+    name: str | None
+
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -401,6 +406,15 @@ class CrossEntropyLoss(Layer):
 
     """
 
+    weight: Tensor | None
+    ignore_index: int
+    reduction: _ReduceMode
+    soft_label: bool
+    axis: int
+    use_softmax: bool
+    label_smoothing: float
+    name: str | None
+
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -513,6 +527,9 @@ class HSigmoidLoss(Layer):
              [2.36135936],
              [2.97453213]])
     """
+
+    weight: Tensor
+    bias: Tensor
 
     def __init__(
         self,
@@ -633,6 +650,8 @@ class MSELoss(Layer):
 
     """
 
+    reduction: _ReduceMode
+
     def __init__(self, reduction: _ReduceMode = 'mean'):
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
@@ -733,6 +752,9 @@ class L1Loss(Layer):
 
     """
 
+    reduction: _ReduceMode
+    name: str | None
+
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -818,6 +840,10 @@ class BCELoss(Layer):
             0.65537095)
 
     """
+
+    weight: Tensor | None
+    reduction: _ReduceMode
+    name: str | None
 
     def __init__(
         self,
@@ -1147,6 +1173,9 @@ class KLDivLoss(Layer):
             True)
     """
 
+    reduction: _ReduceMode
+    log_target: bool
+
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
@@ -1214,6 +1243,10 @@ class MarginRankingLoss(Layer):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.75000000)
     """
+
+    margin: float
+    reduction: _ReduceMode
+    name: str | None
 
     def __init__(
         self,
@@ -1301,6 +1334,9 @@ class CTCLoss(Layer):
             1.13760614)
     """
 
+    blank: int
+    reduction: _ReduceMode
+
     def __init__(self, blank: int = 0, reduction: _ReduceMode = 'mean') -> None:
         super().__init__()
         self.blank = blank
@@ -1342,7 +1378,7 @@ class RNNTLoss(Layer):
         label_lengths: Tensor of (batch) containing label length of each example
 
     Returns:
-     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``logprobs``.
+        Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``logprobs``.
 
     Examples:
         .. code-block:: python
@@ -1376,6 +1412,11 @@ class RNNTLoss(Layer):
             -2.85042444)
     """
 
+    blank: int
+    fastemit_lambda: float
+    reduction: _ReduceMode
+    name: str | None
+
     def __init__(
         self,
         blank: int = 0,
@@ -1395,7 +1436,7 @@ class RNNTLoss(Layer):
         label: Tensor,
         input_lengths: Tensor,
         label_lengths: Tensor,
-    ) -> None:
+    ) -> Tensor:
         return paddle.nn.functional.rnnt_loss(
             input,
             label,
@@ -1466,6 +1507,10 @@ class SmoothL1Loss(Layer):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.08307374)
     """
+
+    reduction: _ReduceMode
+    delta: float
+    name: str | None
 
     def __init__(
         self,
@@ -1550,10 +1595,14 @@ class MultiLabelSoftMarginLoss(Layer):
                 1.54908717)
         """
 
+    weight: Tensor | None
+    reduction: _ReduceMode
+    name: str | None
+
     def __init__(
         self,
         weight: Tensor | None = None,
-        reduction: str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1658,10 +1707,14 @@ class HingeEmbeddingLoss(Layer):
             0.22222222)
     """
 
+    margin: float
+    reduction: _ReduceMode
+    name: str | None
+
     def __init__(
         self,
         margin: float = 1.0,
-        reduction: str = 'mean',
+        reduction: _ReduceMode = 'mean',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1751,6 +1804,10 @@ class CosineEmbeddingLoss(Layer):
             [0.42310387, 0.        ])
 
     """
+
+    margin: float
+    reduction: _ReduceMode
+    name: str | None
 
     def __init__(
         self,
@@ -1864,9 +1921,15 @@ class TripletMarginWithDistanceLoss(Layer):
 
     """
 
+    margin: float
+    swap: bool
+    reduction: _ReduceMode
+    distance_function: Callable[[Tensor, Tensor], Tensor] | None
+    name: str | None
+
     def __init__(
         self,
-        distance_function: Callable | None = None,
+        distance_function: Callable[[Tensor, Tensor], Tensor] | None = None,
         margin: float = 1.0,
         swap: bool = False,
         reduction: _ReduceMode = 'mean',
@@ -1975,6 +2038,13 @@ class TripletMarginLoss(Layer):
             2.40039468)
 
     """
+
+    margin: float
+    p: float
+    epsilon: float
+    swap: bool
+    reduction: _ReduceMode
+    name: str | None
 
     def __init__(
         self,
@@ -2086,6 +2156,12 @@ class MultiMarginLoss(Layer):
             1.11111104)
     """
 
+    p: int
+    margin: float
+    weight: Tensor | None
+    reduction: _ReduceMode
+    name: str | None
+
     def __init__(
         self,
         p: int = 1,
@@ -2179,6 +2255,9 @@ class SoftMarginLoss(Layer):
              [0.81927846, 0.52558369, 0.59713908, 0.83100696, 0.50811616],
              [0.82684205, 1.02064907, 0.50296995, 1.13461733, 0.93222519]])
     """
+
+    reduction: _ReduceMode
+    name: str | None
 
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
@@ -2274,6 +2353,11 @@ class GaussianNLLLoss(Layer):
         The clamping of ``variance`` is ignored with respect to autograd, and so the
         gradients are unaffected by it.
     """
+
+    full: bool
+    epsilon: float
+    reduction: _ReduceMode
+    name: str | None
 
     def __init__(
         self,
@@ -2403,6 +2487,17 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         frequent label should be represented by the index ``0``, and the least frequent label should be represented by
         the index ``n_classes - 1``. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
     """
+
+    in_features: int
+    n_classes: int
+    cutoffs: Sequence[int]
+    weight_attr: ParamAttr | None
+    bias_attr: ParamAttr | bool | None
+    div_value: float
+    head_bias: Tensor | None
+    head_weight: Tensor
+    tail_weights: list[list[Tensor]]
+    name: str | None
 
     def __init__(
         self,

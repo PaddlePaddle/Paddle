@@ -4448,7 +4448,7 @@ def adaptive_log_softmax_with_loss(
     input: Tensor,
     label: Tensor,
     head_weight: Tensor,
-    tail_weights: Sequence[Tensor],
+    tail_weights: Sequence[Sequence[Tensor]],
     cutoffs: Sequence[int | Tensor],
     head_bias: Tensor | None = None,
     name: str | None = None,
@@ -4461,7 +4461,7 @@ def adaptive_log_softmax_with_loss(
         input (Tensor): Input tensor, the data type should be float32 or float64.
         label (Tensor): Label tensor, the data type should be float32 or float64.
         head_weight (Tensor): weight tensor for linear computation, the data type should be float32 or float64, the shape should be ``[input.shape[1], shortlist_size + n_clusters]``, where ``shortlist_size`` is the first element in the cutoffs list, and ``n_clusters`` is the length of the cutoffs list minus 1.
-        tail_weights (list[Tensor]|tuple[Tensor]): weight tensor list or tuple for linear computation, the data type should be float32 or float64. The number of elements in the tail_weights depends on the value of the n_clusters, and each element contains the weights of two linear layers, their dimensions are ``[input.shape[1], hsz]`` and ``[hsz, osz]``, where ``hsz`` is the number of input features in_features divided by div_value to the power ``(i + 1)``, where i is the cyclic variable, from ``0`` to ``n_clusters - 1``, and ``osz`` is the ``(i + 1)`` The difference between the cutoff and the ith cutoff.
+        tail_weights (list|tuple): weight tensor list or tuple for linear computation, the data type should be float32 or float64. The number of elements in the tail_weights depends on the value of the n_clusters, and each element contains the weights of two linear layers, their dimensions are ``[input.shape[1], hsz]`` and ``[hsz, osz]``, where ``hsz`` is the number of input features in_features divided by div_value to the power ``(i + 1)``, where i is the cyclic variable, from ``0`` to ``n_clusters - 1``, and ``osz`` is the ``(i + 1)`` The difference between the cutoff and the ith cutoff.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
         head_bias (Tensor|None, optional): bias tensor for linear computation, the data type should be float32 or float64. Default: ``None``.
         name (str|None, optional): Name for the operation (optional, default is ``None``). For more information, please refer to :ref:`api_guide_Name`.
@@ -4480,10 +4480,17 @@ def adaptive_log_softmax_with_loss(
             >>> input = paddle.randn([3, 5], dtype=paddle.float32)
             >>> head_weight = paddle.randn([5, 3], dtype=paddle.float32)
             >>> head_bias = paddle.randn([3], dtype=paddle.float32)
-            >>> tail_weights = []
-            >>> tail_weights.append(paddle.randn([5, 2], dtype=paddle.float32))
-            >>> tail_weights.append(paddle.randn([2, 1], dtype=paddle.float32))
-            >>> out, loss = F.adaptive_log_softmax_with_loss(input, paddle.full((3,), 1, dtype='int64'), head_weight, tail_weights, cutoffs=[2], head_bias=head_bias)
+            >>> tail_weights = [[]]
+            >>> tail_weights[0].append(paddle.randn([5, 2], dtype=paddle.float32))
+            >>> tail_weights[0].append(paddle.randn([2, 1], dtype=paddle.float32))
+            >>> out, loss = F.adaptive_log_softmax_with_loss(
+            ...     input,
+            ...     paddle.full([3], 1, dtype='int64'),
+            ...     head_weight,
+            ...     tail_weights,
+            ...     cutoffs=[2],
+            ...     head_bias=head_bias
+            ... )
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.99842924, -2.27753878, -0.16740258])
