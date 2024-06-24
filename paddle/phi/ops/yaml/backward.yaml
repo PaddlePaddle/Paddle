@@ -3568,6 +3568,19 @@
     func: check_model_nan_inf
     data_type: out_grad
 
+- backward_op: im2sequence_grad
+  forward: im2sequence (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1}) -> Tensor (out)
+  args: (Tensor x, Tensor y, Tensor out_grad, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1})
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: im2sequence_grad
+  optional: y
+
 - backward_op: pyramid_hash_grad
   forward: pyramid_hash (Tensor x, Tensor w, Tensor white_list, Tensor black_list, int num_emb = 0,
     int space_len = 0, int pyramid_layer = 2, int rand_len = 0, float drop_out_percent
