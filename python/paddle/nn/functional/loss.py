@@ -34,7 +34,7 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
+    from typing import Callable, TypeAlias
 
     from paddle import Tensor
 
@@ -3770,7 +3770,7 @@ def triplet_margin_with_distance_loss(
     input: Tensor,
     positive: Tensor,
     negative: Tensor,
-    distance_function=None,
+    distance_function: Callable[[Tensor, Tensor], Tensor] | None = None,
     margin: float = 1.0,
     swap: bool = False,
     reduction: _ReduceMode = 'mean',
