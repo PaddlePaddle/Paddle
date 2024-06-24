@@ -118,10 +118,11 @@ class NormalNumpy(DistributionNumpy):
         var_ratio = self.scale / other.scale
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
-        t1 = t1 * t1
         if self._complex_gaussian:
+            t1 = t1.conj() * t1
             return var_ratio + t1 - 1 - np.log(var_ratio)
         else:
+            t1 = t1 * t1
             return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
 
 
@@ -318,6 +319,11 @@ class ComplexNormalTest(NormalTest):
         v2 = np.random.ranf(1)
         self.values_np = np.vectorize(complex)(v1, v2).astype('complex64')
 
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
+        self.init_static_data(self.batch_size, self.dims, in_pir=True)
+        self.run_pir_normal_distribution_static(sample_shape)
+
 
 class NormalTest2(NormalTest):
     def init_numpy_data(self, batch_size, dims):
@@ -340,7 +346,7 @@ class ComplexNormalTest2(NormalTest):
         m = int((np.random.ranf() - 0.5) * 8)
         self.loc_np = m + m * 1j
         self.scale_np = int((np.random.ranf() - 0.5) * 8)
-        while self.scale_np < 0:
+        while self.scale_np <= 0:
             self.scale_np = int((np.random.ranf() - 0.5) * 8)
         # used to construct another Normal object to calculate kl_divergence
         m2 = int((np.random.ranf() - 0.5) * 8)
@@ -351,6 +357,11 @@ class ComplexNormalTest2(NormalTest):
         v1 = np.random.ranf(1)
         v2 = np.random.ranf(1)
         self.values_np = np.vectorize(complex)(v1, v2).astype('complex64')
+
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
+        self.init_static_data(self.batch_size, self.dims, in_pir=True)
+        self.run_pir_normal_distribution_static(sample_shape)
 
 
 class NormalTest3(NormalTest):
@@ -964,6 +975,11 @@ class ComplexNormalTest9(NormalTest):
                 name='values', shape=[-1, dims], dtype='complex64'
             )
 
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
+        self.init_static_data(self.batch_size, self.dims, in_pir=True)
+        self.run_pir_normal_distribution_static(sample_shape)
+
 
 class NormalTest10(NormalTest):
     def init_numpy_data(self, batch_size, dims):
@@ -1044,6 +1060,11 @@ class ComplexNormalTest10(NormalTest):
                 name='values', shape=[-1, dims], dtype='complex64'
             )
 
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
+        self.init_static_data(self.batch_size, self.dims, in_pir=True)
+        self.run_pir_normal_distribution_static(sample_shape)
+
 
 def kstest(loc, scale, samples):
     # Uses the Kolmogorov-Smirnov test for goodness of fit.
@@ -1100,9 +1121,7 @@ class TestNormalSampleDygraph(unittest.TestCase):
             )
 
         batch_shape = (self.loc + self.scale).shape
-        self.assertEqual(
-            self.samples.shape, list(self.sample_shape + batch_shape)
-        )
+        self.assertEqual(self.samples.shape, self.sample_shape + batch_shape)
 
         if not self._complex_normal:
             for i in range(len(self.scale)):
@@ -1111,17 +1130,18 @@ class TestNormalSampleDygraph(unittest.TestCase):
                 )
         else:
             for i in range(len(self.scale)):
+                var_i = self.scale[i] ** 2
                 self.assertTrue(
                     kstest(
                         self.loc[i].real,
-                        self.scale[i],
+                        np.sqrt(var_i / 2.0),
                         self.samples[:, i].real,
                     )
                 )
                 self.assertTrue(
                     kstest(
                         self.loc[i].imag,
-                        self.scale[i],
+                        np.sqrt(var_i / 2.0),
                         self.samples[:, i].imag,
                     )
                 )
@@ -1194,14 +1214,19 @@ class TestNormalSampleStaic(unittest.TestCase):
                 )
         else:
             for i in range(len(self.scale)):
+                var_i = self.scale[i] ** 2
                 self.assertTrue(
                     kstest(
-                        self.loc[i].real, self.scale[i], self.samples[:, i].real
+                        self.loc[i].real,
+                        np.sqrt(var_i / 2.0),
+                        self.samples[:, i].real,
                     )
                 )
                 self.assertTrue(
                     kstest(
-                        self.loc[i].imag, self.scale[i], self.samples[:, i].imag
+                        self.loc[i].imag,
+                        np.sqrt(var_i / 2.0),
+                        self.samples[:, i].imag,
                     )
                 )
 
@@ -1217,6 +1242,7 @@ class TestNormalSampleStaic(unittest.TestCase):
 class TestNormalRSampleDygraph(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
+        self._complex_normal = self.loc.dtype in [np.complex64, np.complex128]
         self.loc = paddle.to_tensor(self.loc)
         self.scale = paddle.to_tensor(self.scale)
         self.loc.stop_gradient = False
@@ -1225,11 +1251,10 @@ class TestNormalRSampleDygraph(unittest.TestCase):
         n = 100000
         self.rsample_shape = [n]
         self.rsamples = self.paddle_normal.rsample(self.rsample_shape)
-        self._complex_normal = self.loc.dtype in [np.complex64, np.complex128]
 
     def test_rsample(self):
         rsamples_mean = self.rsamples.mean(axis=0)
-        rsamples_var = self.rsamples.var(axis=0)
+        rsamples_var = self.rsamples.numpy().var(axis=0)
         np.testing.assert_allclose(
             rsamples_mean, self.paddle_normal.mean, rtol=0.1, atol=0
         )
@@ -1262,18 +1287,19 @@ class TestNormalRSampleDygraph(unittest.TestCase):
                 )
         else:
             for i in range(len(self.scale)):
+                var_i = self.scale[i].numpy() ** 2
                 self.assertTrue(
                     kstest(
-                        self.loc[i].real,
-                        self.scale[i],
-                        self.rsamples[:, i].real(),
+                        self.loc[i].real().numpy(),
+                        np.sqrt(var_i / 2.0),
+                        self.rsamples[:, i].real().numpy(),
                     )
                 )
                 self.assertTrue(
                     kstest(
-                        self.loc[i].imag,
-                        self.scale[i],
-                        self.rsamples[:, i].imag(),
+                        self.loc[i].imag().numpy(),
+                        np.sqrt(var_i / 2.0),
+                        self.rsamples[:, i].imag().numpy(),
                     )
                 )
 
@@ -1355,17 +1381,18 @@ class TestNormalRSampleStaic(unittest.TestCase):
                 )
         else:
             for i in range(len(self.scale)):
+                var_i = self.scale[i] ** 2
                 self.assertTrue(
                     kstest(
                         self.loc[i].real,
-                        self.scale[i],
+                        np.sqrt(var_i / 2.0),
                         self.rsamples[:, i].real,
                     )
                 )
                 self.assertTrue(
                     kstest(
                         self.loc[i].imag,
-                        self.scale[i],
+                        np.sqrt(var_i / 2.0),
                         self.rsamples[:, i].imag,
                     )
                 )

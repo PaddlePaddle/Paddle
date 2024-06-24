@@ -146,39 +146,54 @@ class Normal(distribution.Distribution):
         if isinstance(scale, int):
             scale = float(scale)
 
+        if isinstance(loc, (tuple, list)):
+            loc = np.array(loc)
+            if loc.dtype == np.float64:
+                loc = loc.astype('float32')
+            if loc.dtype == np.complex128:
+                loc = loc.astype('complex64')
+
+        if isinstance(scale, (tuple, list)):
+            scale = np.array(scale)
+            if scale.dtype == np.float64:
+                scale = scale.astype('float32')
+
         if (
             isinstance(loc, complex)
-            or (isinstance(loc, (tuple, list)) and isinstance(loc[0], complex))
             or (
                 isinstance(loc, np.ndarray)
                 and loc.dtype in [np.complex64, np.complex128]
             )
-            or (
-                isinstance(loc, paddle.Tensor)
-                and loc.dtype in [paddle.complex64, paddle.complex128]
-            )
+            or (self._validate_args(loc) and loc.is_complex())
         ):
             self._complex_gaussian = True
             if isinstance(loc, complex) and isinstance(scale, float):
                 self.all_arg_is_float = True
 
             if isinstance(loc, np.ndarray):
-                self.loc = paddle.to_tensor(loc, dtype=loc.dtype)
-            elif not isinstance(loc, paddle.Tensor):
-                self.loc = paddle.to_tensor(loc, dtype='complex64')
+                real_dtype = (
+                    'float32' if loc.dtype == np.complex64 else 'float64'
+                )
+                imag_dtype = (
+                    'float32' if loc.dtype == np.complex64 else 'float64'
+                )
+                real = paddle.to_tensor(loc.real, real_dtype)
+                imag = paddle.to_tensor(loc.imag, imag_dtype)
+                self.loc = paddle.complex(real, imag)
+            elif isinstance(loc, complex):
+                real = paddle.to_tensor(loc.real, dtype='float32')
+                imag = paddle.to_tensor(loc.imag, dtype='float32')
+                self.loc = paddle.complex(real, imag)
             else:
                 self.loc = loc
 
-            if (self.loc.real() != self.loc.imag()).any():
-                raise ValueError(
-                    "if loc is complex data type, its real "
-                    f"part should equal its imag part, but got {loc}"
-                )
-
             if isinstance(scale, np.ndarray):
                 self.scale = paddle.to_tensor(scale, dtype=scale.dtype)
-            elif not isinstance(scale, paddle.Tensor):
+            elif isinstance(scale, float):
                 self.scale = paddle.to_tensor(scale, dtype='float32')
+            else:
+                self.scale = scale
+
             self.dtype = convert_dtype(self.loc.dtype)
         else:
             if self._validate_args(loc, scale):
@@ -319,20 +334,28 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        if -1 in batch_shape:
-            fill_shape = list(batch_shape)
-            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
-            fill_dtype = (self.loc + self.scale).dtype
-            zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
-        else:
-            zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
+
         if self._complex_gaussian:
+            if -1 in batch_shape:
+                fill_shape = list(batch_shape)
+                fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+                fill_dtype = self.scale.dtype
+                zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
+            else:
+                zero_tmp = paddle.full(batch_shape, 0.0, self.scale.dtype)
             return paddle.add(
                 1.0 + zero_tmp,
                 math.log(math.pi) + 2.0 * paddle.log(self.scale + zero_tmp),
                 name=name,
             )
         else:
+            if -1 in batch_shape:
+                fill_shape = list(batch_shape)
+                fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+                fill_dtype = (self.loc + self.scale).dtype
+                zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
+            else:
+                zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
             return paddle.add(
                 0.5 + zero_tmp,
                 0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),
@@ -452,12 +475,11 @@ class Normal(distribution.Distribution):
         var_ratio = self.scale / other.scale
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
-        t1 = t1 * t1
         if self._complex_gaussian:
-            return paddle.add(
-                var_ratio, (t1 - 1.0 - paddle.log(var_ratio)), name=name
-            )
+            t1 = t1.conj() * t1
+            return var_ratio + t1 - 1.0 - paddle.log(var_ratio)
         else:
+            t1 = t1 * t1
             return paddle.add(
                 0.5 * var_ratio,
                 0.5 * (t1 - 1.0 - paddle.log(var_ratio)),
