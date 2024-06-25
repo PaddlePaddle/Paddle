@@ -24,7 +24,12 @@ from typing_extensions import Self
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle._typing import DTypeLike, TensorOrTensors
+from paddle._typing import (
+    DTypeLike,
+    NestedStructure,
+    ShapeLike,
+    TensorOrTensors,
+)
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
@@ -374,7 +379,7 @@ def birnn(
     initial_states: tuple[Tensor, Tensor] | list[Tensor] | None = None,
     sequence_length: Tensor | None = None,
     time_major: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
     r"""
     birnn creates a bidirectional recurrent neural network specified by
@@ -580,16 +585,11 @@ class RNNCellBase(Layer):
     def get_initial_states(
         self,
         batch_ref: Tensor,
-        shape: (
-            list[int]
-            | tuple[int, ...]
-            | tuple[tuple[int, ...], tuple[int, ...]]
-            | None
-        ) = None,
-        dtype: DTypeLike = None,
+        shape: NestedStructure[ShapeLike] = None,
+        dtype: NestedStructure[DTypeLike] | None = None,
         init_value: float = 0.0,
         batch_dim_idx: int = 0,
-    ) -> Tensor | list[Tensor]:
+    ) -> NestedStructure[Tensor]:
         r"""
         Generate initialized states according to provided shape, data type and
         value.
@@ -1392,7 +1392,7 @@ class RNN(Layer):
         inputs: Tensor,
         initial_states: TensorOrTensors | None = None,
         sequence_length: Tensor = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         final_outputs, final_states = rnn(
             self.cell,
@@ -1480,7 +1480,7 @@ class BiRNN(Layer):
         inputs: Tensor,
         initial_states: tuple[Tensor, Tensor] | list[Tensor] | None = None,
         sequence_length: Tensor | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
         if isinstance(initial_states, (list, tuple)):
             assert (
