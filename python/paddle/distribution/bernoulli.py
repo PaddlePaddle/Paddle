@@ -149,7 +149,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
-                >>> rv = Bernoulli(paddle.full([1,], 0.3))
+                >>> rv = Bernoulli(paddle.full((1), 0.3))
                 >>> print(rv.sample([100]).shape)
                 [100, 1]
 
@@ -205,7 +205,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> paddle.seed(1)
                 >>> from paddle.distribution import Bernoulli
 
-                >>> rv = Bernoulli(paddle.full([1,], 0.3))
+                >>> rv = Bernoulli(paddle.full((1), 0.3))
                 >>> print(rv.sample([100]).shape)
                 [100, 1]
 
