@@ -8,6 +8,11 @@ cc_library(
   SRCS reducer.cc
   DEPS eager_api process_group phi common string_helper)
 
+cc_library(
+  async_load
+  SRCS async_load.cc
+  DEPS device_context place ${DEVICE_EVENT_LIBS})
+
 if(WITH_DISTRIBUTE)
   cc_library(
     process_group_gloo

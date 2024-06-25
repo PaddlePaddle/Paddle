@@ -175,7 +175,7 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 if(WITH_PYTHON)
-  set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer async_load)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
   endif()
