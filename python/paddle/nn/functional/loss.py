@@ -480,7 +480,7 @@ def edit_distance(
     input: Tensor,
     label: Tensor,
     normalized: bool = True,
-    ignored_tokens=None,
+    ignored_tokens: Sequence[int] | None = None,
     input_length: Tensor | None = None,
     label_length: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
@@ -509,11 +509,10 @@ def edit_distance(
     Parameters:
         input(Tensor): The input tensor, its rank should be equal to 2 and its data type should be int64.
         label(Tensor): The label tensor, its rank should be equal to 2 and its data type should be int64.
-        normalized(bool, default True): Indicated whether to normalize the edit distance.
-        ignored_tokens(list<int>, default None): Tokens that will be removed before
-                                     calculating edit distance.
-        input_length(Tensor): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
-        label_length(Tensor): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
+        normalized(bool, optional): Indicated whether to normalize the edit distance. Default: True.
+        ignored_tokens(list|tuple|None, optional): Tokens that will be removed before calculating edit distance. Default: None.
+        input_length(Tensor|None, optional): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
+        label_length(Tensor|None, optional): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
 
     Returns:
@@ -2667,7 +2666,7 @@ def cross_entropy(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
-    ignore_index=-100,
+    ignore_index: int = -100,
     reduction: _ReduceMode = 'mean',
     soft_label: bool = False,
     axis: int = -1,
