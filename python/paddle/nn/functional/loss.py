@@ -2318,6 +2318,7 @@ def margin_cross_entropy(
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # Multi GPU, test_margin_cross_entropy.py
+            >>> from typing import List
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> paddle.seed(2023)
@@ -2334,7 +2335,7 @@ def margin_cross_entropy(
             >>> num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
             >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64') # type: ignore
-            >>> label_list: list[paddle.Tensor] = []
+            >>> label_list: List[paddle.Tensor] = []
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
 
@@ -2342,7 +2343,7 @@ def margin_cross_entropy(
             ...     shape=[batch_size, feature_length],
             ...     dtype='float64'
             ... )
-            >>> X_list: list[Tensor] = []
+            >>> X_list: List[paddle.Tensor] = []
             >>> dist.all_gather(X_list, X)
             >>> X = paddle.concat(X_list, axis=0)
             >>> X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
@@ -4479,6 +4480,7 @@ def adaptive_log_softmax_with_loss(
     Examples:
         .. code-block:: python
 
+            >>> from typing import List
             >>> import paddle
             >>> import paddle.nn.functional as F
 
@@ -4486,7 +4488,7 @@ def adaptive_log_softmax_with_loss(
             >>> input = paddle.randn([3, 5], dtype=paddle.float32)
             >>> head_weight = paddle.randn([5, 3], dtype=paddle.float32)
             >>> head_bias = paddle.randn([3], dtype=paddle.float32)
-            >>> tail_weights: list[list[paddle.Tensor]] = [[]]
+            >>> tail_weights: List[List[paddle.Tensor]] = [[]]
             >>> tail_weights[0].append(paddle.randn([5, 2], dtype=paddle.float32))
             >>> tail_weights[0].append(paddle.randn([2, 1], dtype=paddle.float32))
             >>> out, loss = F.adaptive_log_softmax_with_loss(
