@@ -283,6 +283,9 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+PD_DEFINE_bool(cinn_check_tensor_buffer_map,
+               BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
+               "Whether to check tensor buffer mapping in cinn ir.");
 
 namespace cinn {
 namespace runtime {
@@ -377,6 +380,16 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
   PADDLE_THROW(phi::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
       "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support HygonDCU, please try to "
+      "recompile with -DWITH_ROCM."));
 #endif
 }
 

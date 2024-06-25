@@ -1527,9 +1527,6 @@ def load(program, model_path, executor=None, var_list=None):
             >>> static.save(prog, "./temp")
             >>> static.load(prog, "./temp")
     """
-    if in_pir_mode():
-        return load_pir(program, model_path, executor, var_list)
-
     assert executor is None or isinstance(executor, Executor)
 
     model_prefix = model_path
@@ -1539,6 +1536,11 @@ def load(program, model_path, executor=None, var_list=None):
         model_prefix = model_prefix[:-6]
     elif model_prefix.endswith(".pdmodel"):
         model_prefix = model_prefix[:-8]
+    elif model_prefix.endswith(".json"):
+        model_prefix = model_prefix[:-5]
+
+    if in_pir_mode():
+        return load_pir(program, model_prefix, executor, var_list)
 
     parameter_file_name = model_prefix + ".pdparams"
 
