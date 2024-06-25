@@ -34,6 +34,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/operator_fusion/cluster_interface.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -331,6 +332,22 @@ std::unordered_map<::pir::Value, size_t> BuildValueOrderByYieldOp(
   return all_output_values;
 }
 
+void UpdateTracker(std::vector<pir::Operation*> uniq_ops,
+                   fusion::FusionTrackerPtr tracker) {
+  std::map<pir::Operation*, int> op2idx;
+  for (int i = 0; i < uniq_ops.size(); ++i) {
+    op2idx[uniq_ops[i]] = i;
+  }
+  for (const auto& t : tracker->instructions_) {
+    if (t->type() == fusion::T_InitPattern) {
+      auto init_instr =
+          cinn::fusion::dynamic_cast_instr_with_err<fusion::InitPatternInstr>(
+              t);
+      init_instr->set_idx(op2idx[init_instr->op_]);
+    }
+  }
+}
+
 }  // namespace
 
 class CinnGroupClusterPattern
@@ -359,6 +376,8 @@ class CinnGroupClusterPattern
       auto output_values = GenerateOutputValue(node.ops, all_output_values);
       VLOG(4) << "cluster node output size: " << output_values.size();
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
+
+      UpdateTracker(uniq_ops, node.tracker);
 
       auto new_group_op = ReplaceWithFusionOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);

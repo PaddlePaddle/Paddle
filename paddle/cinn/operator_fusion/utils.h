@@ -87,8 +87,8 @@ static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
 }
 
-static std::optional<std::pair<pir::Value, pir::Value>>
-GetBroadcastOpInputOuputValue(pir::Operation* op);
+std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
+    pir::Operation* op);
 
 static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
     pir::Operation* op) {
@@ -125,7 +125,8 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   pir::IrPrinter printer(ss);
   for (const auto* op : ops) {
     printer.PrintOperation(const_cast<pir::Operation*>(op));
-    ss << "\n";
+    ss << "(" << op << ")"
+       << "\n";
   }
   return ss.str();
 }

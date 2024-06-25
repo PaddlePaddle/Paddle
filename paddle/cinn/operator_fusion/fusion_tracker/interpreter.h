@@ -34,13 +34,12 @@ using ScopeElementPtr = std::shared_ptr<ScopeElement>;
 
 struct FusionInterpreter {
   FusionInterpreter(const FusionTrackerPtr& tracker,
-                    const std::unordered_map<pir::Operation*, FusibleOp>&
-                        initialized_lowered_op)
-      : tracker(tracker), initialized_lowered_op(initialized_lowered_op) {
+                    const std::vector<FusibleOp>& init_fusible_op)
+      : tracker(tracker), initialized_lowered_op(init_fusible_op) {
     VLOG(4) << "Create FusionInterpreter, Tracker is:\n" << tracker->DebugStr();
   }
 
-  std::unordered_map<pir::Operation*, FusibleOp> initialized_lowered_op;
+  std::vector<FusibleOp> initialized_lowered_op;
   std::unordered_map<std::string, ScopeElementPtr> scope;
   FusionTrackerPtr tracker;
 

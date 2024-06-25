@@ -77,14 +77,30 @@ struct ReturnInstr : public FusionInstruction {
 // struct RemovePatternInstr : public FusionInstruction {};
 
 struct InitPatternInstr : public FusionInstruction {
+ private:
+  // we can't just use operation* to identify a unique op because pass change
+  // the program.
+  int idx_in_fusion_op = -1;
+
+ public:
   InitPatternInstr(pir::Operation* op, const std::string& result)
       : op_(op), result_(result) {}
+  void set_idx(int idx) { idx_in_fusion_op = idx; }
+  int get_idx() const {
+    if (idx_in_fusion_op == -1) {
+      PADDLE_THROW("Not initialized.");
+    }
+    return idx_in_fusion_op;
+  }
   virtual InstructionType type() const { return T_InitPattern; }
   pir::Operation* op_;
   std::string result_;
 
   virtual std::string DebugStr() const {
-    return "InitPatternInstr || " + op_->name() + " => " + result_;
+    std::ostringstream ss;
+    ss << "InitPatternInstr || " + op_->name() + " => " + result_ + " index = ("
+       << idx_in_fusion_op << ")";
+    return ss.str();
   }
 };
 

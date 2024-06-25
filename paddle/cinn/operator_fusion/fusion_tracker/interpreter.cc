@@ -29,13 +29,19 @@ void RunCopyInstr(const std::shared_ptr<CopyInstr>& instr,
 void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
                      FusionInterpreter* interpreter) {
   // TODO(@wuzhanfei)
+  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
+  for (const auto& name : instr->names_) {
+    const auto& to_insert = interpreter->scope[name];
+    new_pattern->Extend(to_insert->fusion_ops);
+  }
+  interpreter->scope[instr->result_] = new_pattern;
 }
 
 void RunInitPatternInstr(const std::shared_ptr<InitPatternInstr>& instr,
                          FusionInterpreter* interpreter) {
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
   new_pattern->fusion_ops.emplace_back(
-      interpreter->initialized_lowered_op.at(instr->op_));
+      interpreter->initialized_lowered_op[(instr->get_idx())]);
   interpreter->scope[instr->result_] = new_pattern;
 }
 
@@ -167,6 +173,7 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
         break;
       case T_Return:
         RunReturnInstr(dynamic_cast_instr_with_err<ReturnInstr>(instr), this);
+        break;
       default:
         PADDLE_THROW("Unsupported Fusion Instrution");
     }

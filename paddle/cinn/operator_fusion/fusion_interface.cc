@@ -25,14 +25,14 @@ std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies,
     FusionTrackerPtr fusion_tracker_ptr) {
-  std::unordered_map<::pir::Operation*, FusibleOp> initialized_lowered_op;
+  std::vector<FusibleOp> initialized_lowered_op;
   for (int i = 0; i < ops.size(); i++) {
     auto fusible_op =
         cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody(
             op_compute_bodies[i])
             ? FusibleOp(ReduceOp(op_compute_bodies[i]))
             : FusibleOp(TrivialOp(op_compute_bodies[i]));
-    initialized_lowered_op.emplace(std::make_pair(ops[i], fusible_op));
+    initialized_lowered_op.push_back(fusible_op);
   }
 
   auto interpreter =

@@ -69,9 +69,10 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
 
 std::vector<PatternNodePtr> PatternGraph::ReturnFusionResults() {
   auto sorted_nodes = SortByTopoOrder();
-  for (auto node : sorted_nodes) {
+  for (const auto& node : sorted_nodes) {
     node->set_return();
   }
+  return sorted_nodes;
 }
 
 std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
