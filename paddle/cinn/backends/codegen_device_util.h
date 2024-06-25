@@ -206,12 +206,12 @@ struct CollectBucketStrategyHostFunctionVisitor
     return a.first > b.first;
   }
   void Visit(const ir::_Module_* op, Expr* expr) {
-    if (op->functions.size() == 1 && op->predicates.size() == 0) {
-      expr->as_module()->predicates.push_back(ir::Expr(true));
+    if (op->functions.size() == 1 && op->bucket_predicates.size() == 0) {
+      expr->as_module()->bucket_predicates.push_back(ir::Expr(true));
     }
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
-        op->predicates.size(),
+        op->bucket_predicates.size(),
         phi::errors::InvalidArgument(
             "The size of functions and predicates should be equal"));
     PADDLE_ENFORCE_EQ(
@@ -224,7 +224,8 @@ struct CollectBucketStrategyHostFunctionVisitor
     std::vector<std::pair<int, std::pair<Expr, Expr>>> predicate_priority;
     VLOG(3) << "The number of the functions is " << op->functions.size();
     for (int i = 0; i < op->functions.size(); i++) {
-      auto func_pair = std::make_pair(op->functions[i], op->predicates[i]);
+      auto func_pair =
+          std::make_pair(op->functions[i], op->bucket_predicates[i]);
       func_predicate.push_back(func_pair);
       predicate_priority.push_back(
           std::make_pair(op->priorities[i], func_pair));
@@ -234,8 +235,12 @@ struct CollectBucketStrategyHostFunctionVisitor
     predicate_priority[0].second.first;
 
     for (int i = 0; i < op->functions.size(); ++i) {
-      ProcessLoweredFunc(predicate_priority[i].second.first,
-                         predicate_priority[i].second.second);
+      if (op->broadcast_predicates.size() > 0) {
+        ProcessLoweredFunc(func_predicate[i].first, func_predicate[i].second);
+      } else {
+        ProcessLoweredFunc(predicate_priority[i].second.first,
+                           predicate_priority[i].second.second);
+      }
       if (i == 0) {
         ProcessArgs(op->functions[i]);
       }
@@ -246,7 +251,34 @@ struct CollectBucketStrategyHostFunctionVisitor
         ir::Argument(kernel_args_num_, ir::Argument::IO::kInput),
         ir::Argument(kernel_stream_, ir::Argument::IO::kOutput)};
     std::vector<ir::Expr> body_stmts(arg_defs_);
-    body_stmts.insert(body_stmts.end(), buckets_.begin(), buckets_.end());
+    std::vector<ir::Expr> reduced_broadcast_predicates;
+    if (op->broadcast_predicates.size() > 0) {
+      PADDLE_ENFORCE_EQ(
+          op->functions.size(),
+          op->broadcast_predicates.size(),
+          phi::errors::InvalidArgument("The size of functions and broadcast "
+                                       "predicates should be equal"));
+      ir::Expr cur_predicate = op->broadcast_predicates[0];
+      std::vector<ir::Expr> broadcast_branch_stmts;
+      broadcast_branch_stmts.emplace_back(buckets_[0]);
+      reduced_broadcast_predicates.emplace_back(cur_predicate);
+      for (int i = 1; i < op->broadcast_predicates.size(); ++i) {
+        if (op->broadcast_predicates[i] != cur_predicate) {
+          ir::Expr broadcast_branch = ir::IfThenElse::Make(
+              cur_predicate, ir::Block::Make(broadcast_branch_stmts));
+          body_stmts.emplace_back(broadcast_branch);
+          broadcast_branch_stmts.clear();
+          cur_predicate = op->broadcast_predicates[i];
+          reduced_broadcast_predicates.emplace_back(cur_predicate);
+        }
+        broadcast_branch_stmts.emplace_back(buckets_[i]);
+      }
+      ir::Expr broadcast_branch = ir::IfThenElse::Make(
+          cur_predicate, ir::Block::Make(broadcast_branch_stmts));
+      body_stmts.emplace_back(broadcast_branch);
+    } else {
+      body_stmts.insert(body_stmts.end(), buckets_.begin(), buckets_.end());
+    }
     ir::Expr host_func =
         ir::_LoweredFunc_::Make(op->functions[0].as_lowered_func()->name,
                                 arguments,
@@ -257,20 +289,34 @@ struct CollectBucketStrategyHostFunctionVisitor
 
     // Parse LoweredFunc to infer output tensor's shape
     std::vector<ir::Expr> infer_shape_func_body_stmts(arg_defs_);
-    infer_shape_func_body_stmts.insert(
-        infer_shape_func_body_stmts.end(),
-        op->infer_shape_func.as_lowered_func()->body);
+    if (op->broadcast_predicates.size() > 0) {
+      PADDLE_ENFORCE_EQ(reduced_broadcast_predicates.size(),
+                        op->infer_shape_funcs.size(),
+                        phi::errors::InvalidArgument(
+                            "The size of reduced_broadcast_predicates and "
+                            "infer_shape_funcs should be equal"));
+      for (int i = 0; i < reduced_broadcast_predicates.size(); ++i) {
+        infer_shape_func_body_stmts.emplace_back(ir::IfThenElse::Make(
+            reduced_broadcast_predicates[i],
+            ir::Block::Make(
+                {op->infer_shape_funcs[i].as_lowered_func()->body})));
+      }
+    } else {
+      CHECK_EQ(op->infer_shape_funcs.size(), 1);
+      infer_shape_func_body_stmts.emplace_back(
+          op->infer_shape_funcs[0].as_lowered_func()->body);
+    }
 
     std::vector<ir::Argument> infer_shape_arguments = {
         ir::Argument(kernel_args_, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num_, ir::Argument::IO::kInput),
         ir::Argument(tensor_shape_args_, ir::Argument::IO::kOutput)};
 
-    ir::Expr host_infer_shape_func =
-        ir::_LoweredFunc_::Make(op->infer_shape_func.as_lowered_func()->name,
-                                infer_shape_arguments,
-                                ir::Block::Make(infer_shape_func_body_stmts),
-                                {});
+    ir::Expr host_infer_shape_func = ir::_LoweredFunc_::Make(
+        op->infer_shape_funcs[0].as_lowered_func()->name,
+        infer_shape_arguments,
+        ir::Block::Make(infer_shape_func_body_stmts),
+        {});
     host_module_builder.AddFunctionWithoutOptim(
         host_infer_shape_func.as_lowered_func_ref());
   }

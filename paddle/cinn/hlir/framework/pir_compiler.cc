@@ -65,7 +65,8 @@ static size_t GetThreadNum(size_t task_size) {
 }
 
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
-    const std::vector<pir::OpLoweringGroupPtr>& groups) {
+    const std::vector<pir::OpLoweringGroupPtr>& groups,
+    pir::OpLoweringGroupPtr broadcast_origin_group) {
   CompilationContextMapper ctx_mapper(target_, groups);
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
   auto& compilation_results = ctx_mapper.MutableCompilationResult();
@@ -76,18 +77,36 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           << groups.size() << " and compiles with " << thread_size;
   cinn::ir::InitScheduleConfig();
   if (task_size > 0) {
+    auto lowering_worker = [&](int index) {
+      LoweringTask task(&group_compilation_contexts[index]);
+      task();
+    };
+    utils::parallel_run(lowering_worker,
+                        utils::SequenceDispatcher(0, task_size),
+                        /*thread_num=*/thread_size);
+    if (broadcast_origin_group) {
+      VLOG(5) << "Do group context reduction";
+      auto reduced_ctx = ContextReduction(&group_compilation_contexts);
+      VLOG(5) << "Do reduced context compilation";
+      CompilationTask task(&reduced_ctx);
+      auto result = task();
+      const auto kernel_info = result->GetKernelInfo();
+      CompilationCache::Instance().Insert(
+          pir::FusionInfo(*broadcast_origin_group), result);
+      return {kernel_info};
+    }
     // See
     // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
     // for details.
     const auto device_id = runtime::GetArchDevice(target_);
-    auto worker_fn = [&](int index) {
+    auto compilation_worker = [&](int index) {
       runtime::SetArchDevice(target_, device_id);
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
       // Triggering llvm compilation in thread
       compilation_results[index]->GetKernelInfo();
     };
-    utils::parallel_run(worker_fn,
+    utils::parallel_run(compilation_worker,
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/thread_size);
   }

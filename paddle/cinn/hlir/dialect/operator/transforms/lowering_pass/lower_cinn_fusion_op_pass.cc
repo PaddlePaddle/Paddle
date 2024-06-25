@@ -49,12 +49,12 @@ pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
-    return CompileBroadcastTreeToConditionBlock(group,
-                                                *broadcast_tree,
-                                                value_to_dim_expr_idx,
-                                                group_inputs,
-                                                output_types,
-                                                rewriter);
+    return CompileBroadcastTree(group,
+                                *broadcast_tree,
+                                value_to_dim_expr_idx,
+                                group_inputs,
+                                output_types,
+                                rewriter);
   } else {  // no condition block
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;

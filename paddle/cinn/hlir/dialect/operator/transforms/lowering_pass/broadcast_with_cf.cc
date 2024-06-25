@@ -23,7 +23,8 @@
 
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
-using cinn::dialect::ir::details::CompileGroupAsOpAttribute;
+using BroadcastCond = cinn::hlir::framework::pir::BroadcastCond;
+using cinn::dialect::ir::details::CompileBroadcastGroupsAsOpAttribute;
 using cinn::dialect::ir::details::GetBlockOutsideInput;
 
 namespace {
@@ -52,48 +53,18 @@ static bool SameInputOutputShape(
   return x.shape() == out.shape();
 }
 
-void CompileGroupToJitKernelOp(
-    pir::PatternRewriter& rewriter,  // NOLINT
-    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
+std::unordered_map<std::string, pir::Attribute>
+CompileBroadcastGroupsToJitKernelOp(
+    const std::unordered_map<pir::Block*, OpLoweringGroupPtr>& group_map,
+    OpLoweringGroupPtr broadcast_origin_group) {
   // prepare attribute for jit_kernel_op
   std::vector<OpLoweringGroupPtr> group_list;
-  group_list.reserve(group_map->size());
-  for (const auto& [_, group] : *group_map) {
+  group_list.reserve(group_map.size());
+  for (const auto& [_, group] : group_map) {
     group_list.push_back(group);
   }
-  auto op_attr_map = CompileGroupAsOpAttribute(group_list);
-  VLOG(4) << "The size of group_map is : " << group_map->size();
-  for (auto& [block, group] : *group_map) {
-    auto& yield_op = block->back();
-    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
-    std::vector<pir::Type> output_types;
-    const auto& group_output_values = yield_op.operands_source();
-    for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
-    }
-    rewriter.set_insertion_point(&yield_op);
-    const auto& group_inputs = GetBlockOutsideInput(group->ops());
-    auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-        group_inputs, op_attr_map.at(group), output_types);
-    CHECK(jit_kernel_op.num_results() == group_output_values.size());
-    for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
-      rewriter.ReplaceAllUsesWith(group_output_values[i],
-                                  jit_kernel_op.result(i));
-    }
-
-    // Delete origin group ops
-    std::vector<pir::Operation*> group_ops;
-    for (auto iter = block->rbegin(); iter != block->rend(); iter++) {
-      if (!iter->isa<pir::YieldOp>()) {
-        group_ops.push_back(&(*iter));
-      }
-    }
-    for (auto* op : group_ops) {
-      if (op->use_empty()) {
-        op->Erase();
-      }
-    }
-  }
+  return CompileBroadcastGroupsAsOpAttribute(group_list,
+                                             broadcast_origin_group);
 }
 
 void UpdateGroupShapeExprs(
@@ -200,86 +171,20 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
   }
 }
 
-std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
-    const std::vector<pir::Value>& group_inputs,
-    pir::Builder& builder) {  // NOLINT
-  const auto& lhs_expr = broadcastable_condition->lhs;
-  const auto& rhs_expr = broadcastable_condition->rhs;
-
-  std::vector<pir::Value> lhs_minimal_inputs;
-  std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
-  cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
-  bool success =
-      cinn::dialect::MakeGenerateShapeOpAttribute(builder.ir_context(),
-                                                  ShapeOrDataDimExprs4Value,
-                                                  {lhs_expr},
-                                                  group_inputs,
-                                                  &lhs_minimal_inputs,
-                                                  &lhs_output_dim_expr_attrs,
-                                                  &lhs_symbol_bindings);
-  CHECK(success);
-  std::vector<pir::Value> rhs_minimal_inputs;
-  std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
-  cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
-  success =
-      cinn::dialect::MakeGenerateShapeOpAttribute(builder.ir_context(),
-                                                  ShapeOrDataDimExprs4Value,
-                                                  {rhs_expr},
-                                                  group_inputs,
-                                                  &rhs_minimal_inputs,
-                                                  &rhs_output_dim_expr_attrs,
-                                                  &rhs_symbol_bindings);
-  CHECK(success);
-
-  auto out_type = paddle::dialect::DenseTensorType::get(
-      builder.ir_context(),
-      pir::Int64Type::get(builder.ir_context()),
-      ::common::make_ddim({1}));
-
-  auto lhs_value =
-      builder
-          .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
-                                                 lhs_output_dim_expr_attrs,
-                                                 lhs_symbol_bindings,
-                                                 out_type)
-          .out();
-  auto rhs_value =
-      builder
-          .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
-                                                 rhs_output_dim_expr_attrs,
-                                                 rhs_symbol_bindings,
-                                                 out_type)
-          .out();
-
-  auto const_one = builder
-                       .Build<paddle::dialect::FullOp>(
-                           std::vector<int64_t>{1}, 1, phi::DataType::INT64)
-                       .out();
-  auto lhs_eq_rhs_cond =
-      builder.Build<paddle::dialect::EqualOp>(lhs_value, rhs_value).out();
-  auto lhs_eq_one_cond =
-      builder.Build<paddle::dialect::EqualOp>(lhs_value, const_one).out();
-  auto rhs_eq_one_cond =
-      builder.Build<paddle::dialect::EqualOp>(rhs_value, const_one).out();
-  return std::tuple<pir::Value, pir::Value, pir::Value>(
-      lhs_eq_rhs_cond, lhs_eq_one_cond, rhs_eq_one_cond);
-}
-
 OpLoweringGroupPtr CloneGroup(const OpLoweringGroupPtr& group,
                               pir::Block* block,
                               pir::IrMapping* ir_mapping) {
   return group->Clone(block, ir_mapping);
 }
 
-void SetLeafBlockByGroupView(
+void SetBroadcastLeafGroup(
     const OpLoweringGroupPtr& origin_group,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     pir::Builder& builder,  // NOLINT
     pir::Block* block,
-    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
+    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map,
+    const std::vector<BroadcastCond>& broadcast_conditions) {
   pir::IrMapping ir_mapping;
   auto origin_group_inputs = GetBlockOutsideInput(origin_group->ops());
   for (auto input : origin_group_inputs) {
@@ -288,6 +193,7 @@ void SetLeafBlockByGroupView(
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
   new_group->SetIsBroadcastLeaf(true);
+  new_group->SetBroadcastConditions(broadcast_conditions);
   PADDLE_ENFORCE_EQ(
       origin_group->ops().size(),
       new_group->ops().size(),
@@ -326,7 +232,7 @@ void InsertYieldOpForCondBlock(pir::Operation* cond_op,
 pir::Operation* CreateConditionBlock(
     const cinn::common::BroadcastTree& broadcast_tree,
     const OpLoweringGroupPtr& origin_group,
-    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
+    std::vector<BroadcastCond>* current_branch_conditions,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
@@ -336,29 +242,38 @@ pir::Operation* CreateConditionBlock(
   if (broadcast_tree.Has<cinn::common::BroadcastLeaf>()) {
     const auto& broadcast_leaf =
         broadcast_tree.Get<cinn::common::BroadcastLeaf>();
-    SetLeafBlockByGroupView(origin_group,
-                            broadcast_leaf,
-                            value_to_dim_expr_idx,
-                            builder,
-                            block,
-                            group_map);
+    SetBroadcastLeafGroup(origin_group,
+                          broadcast_leaf,
+                          value_to_dim_expr_idx,
+                          builder,
+                          block,
+                          group_map,
+                          *current_branch_conditions);
     return nullptr;
   } else {
     const auto& branch =
         broadcast_tree
             .Get<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
-    const auto& [lhs_eq_rhs_cond, lhs_eq_one_cond, rhs_eq_one_cond] =
-        BroadcastableToCondValue(
-            branch.Get<0>(), ShapeOrDataDimExprs4Value, group_inputs, builder);
-
+    const symbol::Broadcastable<symbol::DimExpr> broadcastable_condition =
+        branch.Get<0>();
+    // create fake if op with fake value
+    auto lhs_eq_rhs_cond =
+        builder
+            .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                            1,
+                                            phi::DataType::BOOL,
+                                            phi::CPUPlace())
+            .result(0);
     // lhs == rhs
+    current_branch_conditions->emplace_back(
+        broadcastable_condition, OpLoweringGroup::BranchType::LHS_EQ_RHS);
     auto lhs_eq_rhs_cond_op = builder.Build<paddle::dialect::IfOp>(
         lhs_eq_rhs_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_rhs_block = lhs_eq_rhs_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
     auto* lhs_eq_rhs_block_op = CreateConditionBlock(branch.Get<1>(),
                                                      origin_group,
-                                                     ShapeOrDataDimExprs4Value,
+                                                     current_branch_conditions,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -366,18 +281,29 @@ pir::Operation* CreateConditionBlock(
                                                      &lhs_eq_rhs_block,
                                                      group_map);
     InsertYieldOpForCondBlock(lhs_eq_rhs_block_op, builder);
+    current_branch_conditions->pop_back();
 
     pir::Block& lhs_not_eq_rhs_block = lhs_eq_rhs_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);
 
     // lhs != rhs && lhs == 1
+    current_branch_conditions->emplace_back(
+        broadcastable_condition, OpLoweringGroup::BranchType::LHS_EQ_ONE);
+    // create fake if op with fake value
+    auto lhs_eq_one_cond =
+        builder
+            .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                            1,
+                                            phi::DataType::BOOL,
+                                            phi::CPUPlace())
+            .result(0);
     auto lhs_eq_one_cond_op = builder.Build<paddle::dialect::IfOp>(
         lhs_eq_one_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_one_block = lhs_eq_one_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_one_block);
     auto* lhs_eq_one_block_op = CreateConditionBlock(branch.Get<2>(),
                                                      origin_group,
-                                                     ShapeOrDataDimExprs4Value,
+                                                     current_branch_conditions,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -385,13 +311,16 @@ pir::Operation* CreateConditionBlock(
                                                      &lhs_eq_one_block,
                                                      group_map);
     InsertYieldOpForCondBlock(lhs_eq_one_block_op, builder);
+    current_branch_conditions->pop_back();
 
     // lhs != rhs && rhs == 1
+    current_branch_conditions->emplace_back(
+        broadcastable_condition, OpLoweringGroup::BranchType::RHS_EQ_ONE);
     pir::Block& rhs_eq_one_block = lhs_eq_one_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&rhs_eq_one_block);
     auto* rhs_eq_one_block_op = CreateConditionBlock(branch.Get<3>(),
                                                      origin_group,
-                                                     ShapeOrDataDimExprs4Value,
+                                                     current_branch_conditions,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -399,6 +328,7 @@ pir::Operation* CreateConditionBlock(
                                                      &rhs_eq_one_block,
                                                      group_map);
     InsertYieldOpForCondBlock(rhs_eq_one_block_op, builder);
+    current_branch_conditions->pop_back();
 
     builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);
     builder.Build<pir::YieldOp>(GetOpOuputValues(lhs_eq_one_cond_op));
@@ -490,7 +420,7 @@ bool NeedBroadcastWithCF(const cinn::common::BroadcastLeaf& leaves) {
   return broadcastable_condition.has_value();
 }
 
-pir::Operation* CompileBroadcastTreeToConditionBlock(
+pir::Operation* CompileBroadcastTree(
     const OpLoweringGroupPtr& group,
     const BroadcastTree& broadcast_tree,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
@@ -504,15 +434,17 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   // 1. broadcast tree to condition op
   VLOG(4) << "broadcast tree to condition op";
   std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
-  pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
-                                                 group,
-                                                 ShapeOrDataDimExprs4Value,
-                                                 value_to_dim_expr_idx,
-                                                 group_inputs,
-                                                 output_types,
-                                                 rewriter,
-                                                 rewriter.block(),
-                                                 &group_map);
+  std::vector<BroadcastCond> current_branch_conditions;
+  pir::Operation* fake_cond_op =
+      CreateConditionBlock(broadcast_tree,
+                           group,
+                           &current_branch_conditions,
+                           value_to_dim_expr_idx,
+                           group_inputs,
+                           output_types,
+                           rewriter,
+                           rewriter.block(),
+                           &group_map);
   // 2. simply every condition block
   auto* program = group->ops().front()->GetParentProgram();
   VLOG(6) << "Before simply condition block: " << *program;
@@ -521,9 +453,21 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   VLOG(6) << "After simply condition block: " << *program;
 
   // 3. compile condition block to jit_kernel_op
-  CompileGroupToJitKernelOp(rewriter, &group_map);
+  auto op_attr = CompileBroadcastGroupsToJitKernelOp(group_map, group);
   VLOG(6) << "compile condition block to jit_kernel_op: " << *program;
 
-  return cond_op;
+  // 4. replace condition block with merged jit_kernel_op
+  // std::vector<pir::Type> output_types;
+  // const auto& group_output_values = cond_op->results();
+  // for (size_t i = 0; i < group_output_values.size(); ++i) {
+  //   output_types.push_back(group_output_values[i].type());
+  // }
+  rewriter.SetInsertionPointAfter(group->GetParentBlock()->GetParentOp());
+  auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
+      group_inputs, op_attr, output_types);
+  auto fake_full_op = fake_cond_op->operand_source(0).defining_op();
+  fake_cond_op->Erase();
+  fake_full_op->Erase();
+  return jit_kernel_op;
 }
 }  // namespace cinn::dialect::ir::details

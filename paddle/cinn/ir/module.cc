@@ -68,23 +68,29 @@ void Module::Builder::AddBuffer(ir::Buffer buffer) {
   }
 }
 
-void Module::Builder::AddPredicate(ir::Expr predicate) {
-  module_->predicates.push_back(predicate);
+void Module::Builder::AddBroadcastPredicate(ir::Expr predicate) {
+  module_->broadcast_predicates.push_back(predicate);
+}
+
+void Module::Builder::AddBucketPredicate(ir::Expr predicate) {
+  module_->bucket_predicates.push_back(predicate);
 }
 
 void Module::Builder::AddPriority(int priority) {
   module_->priorities.push_back(priority);
 }
 
-void Module::Builder::SetInferShapeFunc(ir::Expr infer_shape_func) {
-  module_->infer_shape_func = infer_shape_func;
+void Module::Builder::AddInferShapeFunc(ir::Expr infer_shape_func) {
+  module_->infer_shape_funcs.push_back(infer_shape_func);
 }
 
 void Module::Builder::Clear() {
   module_->buffers.clear();
   module_->functions.clear();
   module_->submodules.clear();
-  module_->predicates.clear();
+  module_->broadcast_predicates.clear();
+  module_->bucket_predicates.clear();
+  module_->infer_shape_funcs.clear();
 }
 
 common::Arch Module::Builder::GetTargetArch() { return module_->target.arch; }

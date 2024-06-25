@@ -35,8 +35,18 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   explicit IRCopyVisitor(bool copy_buffer_node)
       : copy_buffer_node(copy_buffer_node) {}
 
+  struct TensorNameAndShape {
+    std::string name;
+    std::vector<Expr> shape;
+    bool operator<(const TensorNameAndShape& right) const {
+      if (name < right.name) return true;
+      if (right.name < name) return false;
+      return cinn::utils::Join(shape, ",") <
+             cinn::utils::Join(right.shape, ",");
+    }
+  };
   // Use maps to unify all the copied tensors and buffers.
-  std::map<std::string, ir::_Tensor_*> tensor_map;
+  std::map<TensorNameAndShape, ir::_Tensor_*> tensor_map;
   std::map<std::string, ir::_Buffer_*> buffer_map;
   // whether to deep copy Buffer node.
   bool copy_buffer_node;
@@ -182,8 +192,8 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   }
 
   Expr Visit(const _Tensor_* op) override {
-    if (tensor_map.count(op->name)) {
-      return tensor_map[op->name];
+    if (tensor_map.count({op->name, op->shape})) {
+      return tensor_map[{op->name, op->shape}];
     }
 
     auto shape = Visit(op->shape);
@@ -211,7 +221,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     tensor->set_type(op->type());
     tensor->axis_ = op->axis_;
 
-    tensor_map[tensor->name] = tensor;
+    tensor_map[{tensor->name, tensor->shape}] = tensor;
 
     return tensor;
   }
@@ -252,9 +262,10 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> buffers;
     std::vector<Expr> functions;
     std::vector<Expr> submodules;
-    std::vector<Expr> predicates;
+    std::vector<Expr> broadcast_predicates;
+    std::vector<Expr> bucket_predicates;
     std::vector<int> priorities;
-    Expr infer_shape_func;
+    std::vector<Expr> infer_shape_funcs;
     for (auto& expr : op->buffers) {
       buffers.push_back(Visit(&expr));
     }
@@ -267,25 +278,30 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       submodules.push_back(Visit(&expr));
     }
 
-    for (auto& expr : op->predicates) {
-      predicates.push_back(Visit(&expr));
+    for (auto& expr : op->broadcast_predicates) {
+      broadcast_predicates.push_back(Visit(&expr));
+    }
+
+    for (auto& expr : op->bucket_predicates) {
+      bucket_predicates.push_back(Visit(&expr));
     }
 
     for (int priority : op->priorities) {
       priorities.push_back(priority);
     }
 
-    if (op->infer_shape_func.defined()) {
-      infer_shape_func = Visit(&op->infer_shape_func);
+    for (auto& expr : op->infer_shape_funcs) {
+      infer_shape_funcs.push_back(Visit(&expr));
     }
 
     auto res = ir::_Module_::Make(op->name, op->target);
     res->buffers = buffers;
     res->functions = functions;
     res->submodules = submodules;
-    res->predicates = predicates;
+    res->broadcast_predicates = broadcast_predicates;
+    res->bucket_predicates = bucket_predicates;
     res->priorities = priorities;
-    res->infer_shape_func = infer_shape_func;
+    res->infer_shape_funcs = infer_shape_funcs;
 
     return Expr(res);
   }

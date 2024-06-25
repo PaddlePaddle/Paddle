@@ -24,7 +24,9 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
+class LoweringTask;
 class CompilationTask;
+class GroupCompilationContext;
 
 class GroupCompilationContext {
  public:
@@ -36,15 +38,30 @@ class GroupCompilationContext {
   std::string PrintPredicate2Funcs() const;
 
  private:
+  friend class LoweringTask;
   friend class CompilationTask;
+  friend GroupCompilationContext ContextReduction(
+      std::vector<GroupCompilationContext>* contexts);
   const Target& target_;
   const pir::OpLoweringGroupPtr& group_;
-  std::vector<ir::SymbolicPredicate> predicates_;
+  std::vector<ir::SymbolicPredicate> broadcast_predicates_;
+  std::vector<ir::SymbolicPredicate> bucket_predicates_;
   std::vector<int> priorities_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
-  std::vector<ir::SymbolicPredicate> CX86_predicates_;
+  std::vector<ir::SymbolicPredicate> CX86_bucket_predicates_;
   std::vector<ir::LoweredFunc> CX86_lowered_funcs_;
-  ir::LoweredFunc infer_shape_lowered_func_;
+  std::vector<ir::LoweredFunc> infer_shape_lowered_funcs_;
+};
+
+class LoweringTask {
+ public:
+  explicit LoweringTask(GroupCompilationContext* context) : context_(context) {}
+
+  void operator()();
+
+ private:
+  void Lowering();
+  GroupCompilationContext* context_;
 };
 
 class CompilationTask {
@@ -55,7 +72,6 @@ class CompilationTask {
   std::shared_ptr<pir::CompilationResult> operator()();
 
  private:
-  void Lowering();
   std::shared_ptr<pir::CompilationResult> CodegenAndJit();
   std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
       const ir::Module& module, const ir::Module& CX86module);
