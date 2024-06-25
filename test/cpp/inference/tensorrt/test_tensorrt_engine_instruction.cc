@@ -66,7 +66,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   std::map<std::string, std::vector<int>> optim_input_shape = {
       {"x", {5, 1, 1, 1}}};
 
-  paddle::platform::TensorRTEngine::ConstructionParams params;
+  paddle::platform::EngineParams params;
   params.max_workspace_size = 1 << 10;
   params.min_input_shape = min_input_shape;
   params.max_input_shape = max_input_shape;
@@ -187,7 +187,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   std::map<std::string, std::vector<int>> optim_input_value = {
       {"shape", {18, 8, 4}}};
 
-  paddle::platform::TensorRTEngine::ConstructionParams params;
+  paddle::platform::EngineParams params;
   params.max_workspace_size = 1 << 10;
   params.min_input_shape = min_input_shape;
   params.max_input_shape = max_input_shape;

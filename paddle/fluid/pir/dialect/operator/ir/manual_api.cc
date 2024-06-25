@@ -295,7 +295,7 @@ pir::Value array_pop(pir::Value input, int index) {
 
 std::vector<pir::Value> tensorrt_engine(
     const std::vector<pir::Value>& inputs,
-    paddle::platform::TensorRTEngine::ConstructionParams trt_params,
+    paddle::platform::EngineParams trt_params,
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
     std::vector<std::vector<int64_t>> outputs_shape,

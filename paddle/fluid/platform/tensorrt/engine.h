@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/platform/tensorrt/helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -112,52 +113,6 @@ class TensorRTEngine {
   using PredictorID = int;
 
  public:
-  /*
-   * Construction parameters of TensorRTEngine.
-   */
-  struct ConstructionParams {
-    // The max memory size the engine uses.
-    int64_t max_workspace_size;
-
-    // The precision of engine.
-    phi::DataType precision{phi::DataType::FLOAT32};
-
-    // Use for engine context memory sharing.
-    bool context_memory_sharing{false};
-
-    int device_id{0};
-
-    bool use_dla{false};
-    int dla_core{0};
-
-    ShapeMapType min_input_shape;
-    ShapeMapType max_input_shape;
-    ShapeMapType optim_input_shape;
-    ShapeMapType min_shape_tensor;
-    ShapeMapType max_shape_tensor;
-    ShapeMapType optim_shape_tensor;
-
-    bool use_inspector{false};
-    std::string engine_info_path{""};
-    std::string engine_serialized_data{""};
-
-    //
-    // From tensorrt_subgraph_pass, only used for OpConverter.
-    //
-    bool use_varseqlen{false};
-    bool with_interleaved{false};
-    std::string tensorrt_transformer_posid;
-    std::string tensorrt_transformer_maskid;
-    bool enable_low_precision_io{false};
-    // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
-    // not run fp16. When running fp16, the output accuracy of the model will be
-    // affected, closing the plugin fp16 may bring some improvement on accuracy.
-    bool disable_trt_plugin_fp16{false};
-    int optimization_level{3};
-    bool use_explicit_quantization{false};
-    bool allow_build_at_runtime{false};
-  };
-
   // Weight is model parameter.
   class Weight {
    public:
@@ -183,7 +138,7 @@ class TensorRTEngine {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(const ConstructionParams& params,
+  TensorRTEngine(const EngineParams& params,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
@@ -526,7 +481,7 @@ class TensorRTEngine {
   //
   // Construction parameters.
   //
-  ConstructionParams params_;
+  EngineParams params_;
 
   //
   // The following are runtime parameters.
@@ -620,7 +575,7 @@ class TRTEngineManager {
   }
 
   TensorRTEngine* Create(const std::string& name,
-                         const TensorRTEngine::ConstructionParams& params,
+                         const EngineParams& params,
                          nvinfer1::ILogger& logger = NaiveLogger::Global()) {
     auto engine = std::make_unique<TensorRTEngine>(params, logger);
     std::lock_guard<std::mutex> lock(mutex_);

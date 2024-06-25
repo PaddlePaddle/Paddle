@@ -104,15 +104,14 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
                     phi::errors::InvalidArgument("Type of attribute: " #name \
                                                  " is not " #type))
 
-void TensorRTEngineOp::Build(
-    pir::Builder &builder,             // NOLINT
-    pir::OperationArgument &argument,  // NOLINT
-    pir::Value x,
-    paddle::platform::TensorRTEngine::ConstructionParams trt_params,
-    std::vector<std::string> input_names,
-    std::vector<std::string> output_names,
-    std::vector<std::vector<int64_t>> outputs_shape,
-    std::vector<phi::DataType> outputs_dtype) {
+void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value x,
+                             paddle::platform::EngineParams trt_params,
+                             std::vector<std::string> input_names,
+                             std::vector<std::string> output_names,
+                             std::vector<std::vector<int64_t>> outputs_shape,
+                             std::vector<phi::DataType> outputs_dtype) {
   VLOG(4) << "Start build TensorRTEngineOp";
 
   VLOG(4) << "Builder construction inputs";

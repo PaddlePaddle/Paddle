@@ -17,7 +17,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
-#include "paddle/fluid/platform/tensorrt/engine.h"
+#include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -39,15 +39,14 @@ class TensorRTEngineOp
   static constexpr uint32_t attributes_num = 12;
   static OpInfoTuple GetOpInfo();
 
-  static void Build(
-      pir::Builder &builder,             // NOLINT
-      pir::OperationArgument &argument,  // NOLINT
-      pir::Value x,
-      paddle::platform::TensorRTEngine::ConstructionParams trt_params,
-      std::vector<std::string> input_names,
-      std::vector<std::string> output_names,
-      std::vector<std::vector<int64_t>> outputs_shape,
-      std::vector<phi::DataType> outputs_dtype);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x,
+                    paddle::platform::EngineParams trt_params,
+                    std::vector<std::string> input_names,
+                    std::vector<std::string> output_names,
+                    std::vector<std::vector<int64_t>> outputs_shape,
+                    std::vector<phi::DataType> outputs_dtype);
 
   void VerifySig();
 

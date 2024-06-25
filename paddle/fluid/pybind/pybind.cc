@@ -253,7 +253,7 @@ PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 PyTypeObject *g_data_type_pytype = nullptr;
-PyTypeObject *g_tensorrt_engine_construction_params_pytype = nullptr;
+PyTypeObject *g_tensorrt_engine_params_pytype = nullptr;
 
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
@@ -3222,35 +3222,27 @@ All parameter, weight, gradient are variables in Paddle.
       .value("BFLOAT16", phi::DataType::BFLOAT16)
       .export_values();
 
-  py::class_<paddle::platform::TensorRTEngine::ConstructionParams>
-      construction_params(m, "TRTConstructionParams");
-  g_tensorrt_engine_construction_params_pytype =
-      reinterpret_cast<PyTypeObject *>(construction_params.ptr());
-  construction_params.def(py::init<>())
+  py::class_<paddle::platform::EngineParams> engine_params(m,
+                                                           "TRTEngineParams");
+  g_tensorrt_engine_params_pytype =
+      reinterpret_cast<PyTypeObject *>(engine_params.ptr());
+  engine_params.def(py::init<>())
       .def_readwrite("max_workspace_size",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         max_workspace_size)
+                     &paddle::platform::EngineParams::max_workspace_size)
       .def_readwrite("min_input_shape",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         min_input_shape)
+                     &paddle::platform::EngineParams::min_input_shape)
       .def_readwrite("max_input_shape",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         max_input_shape)
+                     &paddle::platform::EngineParams::max_input_shape)
       .def_readwrite("optim_input_shape",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         optim_input_shape)
+                     &paddle::platform::EngineParams::optim_input_shape)
       .def_readwrite("min_shape_tensor",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         min_shape_tensor)
+                     &paddle::platform::EngineParams::min_shape_tensor)
       .def_readwrite("max_shape_tensor",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         max_shape_tensor)
+                     &paddle::platform::EngineParams::max_shape_tensor)
       .def_readwrite("optim_shape_tensor",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         optim_shape_tensor)
+                     &paddle::platform::EngineParams::optim_shape_tensor)
       .def_readwrite("engine_serialized_data",
-                     &paddle::platform::TensorRTEngine::ConstructionParams::
-                         engine_serialized_data);
+                     &paddle::platform::EngineParams::engine_serialized_data);
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);

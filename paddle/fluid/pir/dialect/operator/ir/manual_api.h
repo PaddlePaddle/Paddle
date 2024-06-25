@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
-#include "paddle/fluid/platform/tensorrt/engine.h"
+#include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/value.h"
@@ -103,7 +103,7 @@ pir::Value array_pop(pir::Value input, int index);
 
 std::vector<pir::Value> tensorrt_engine(
     const std::vector<pir::Value>& inputs,
-    paddle::platform::TensorRTEngine::ConstructionParams trt_params,
+    paddle::platform::EngineParams trt_params,
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
     std::vector<std::vector<int64_t>> outputs_shape,

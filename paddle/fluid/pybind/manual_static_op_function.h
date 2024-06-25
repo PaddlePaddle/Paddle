@@ -954,7 +954,7 @@ static PyObject *static_api_array_pop(PyObject *self,
   }
 }
 
-extern PyTypeObject *g_tensorrt_engine_construction_params_pytype;
+extern PyTypeObject *g_tensorrt_engine_params_pytype;
 
 static PyObject *static_api_tensorrt_engine(PyObject *self,
                                             PyObject *args,
@@ -967,17 +967,15 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
     auto x = CastPyArg2VectorOfValue(x_obj, "tensorrt_engine", 0);
 
     PyObject *param_obj = PyTuple_GET_ITEM(args, 1);
-    if (!PyObject_TypeCheck(param_obj,
-                            g_tensorrt_engine_construction_params_pytype)) {
+    if (!PyObject_TypeCheck(param_obj, g_tensorrt_engine_params_pytype)) {
       PADDLE_THROW(platform::errors::InvalidType(
           "tensorrt_engine(): argument (position %d) must be "
-          "TensorRTEngine::ConstructionParams, but got %s",
+          "EngineParams, but got %s",
           2,
           ((PyTypeObject *)param_obj->ob_type)->tp_name));  // NOLINT
     }
     auto trt_param =
-        ::pybind11::handle(param_obj)
-            .cast<paddle::platform::TensorRTEngine::ConstructionParams>();
+        ::pybind11::handle(param_obj).cast<paddle::platform::EngineParams>();
 
     PyObject *input_names_obj = PyTuple_GET_ITEM(args, 2);
     auto input_names = CastPyArg2VectorOfString(input_names_obj, 2);

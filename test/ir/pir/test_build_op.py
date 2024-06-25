@@ -150,7 +150,7 @@ class TestBuildOp6(unittest.TestCase):
             pir_program
         ):
             # create fake tensorrt op
-            trt_params = paddle.base.libpaddle.TRTConstructionParams()
+            trt_params = paddle.base.libpaddle.TRTEngineParams()
             trt_params.min_input_shape = {"x": [1, 1]}
             trt_params.max_input_shape = {"x": [10, 1]}
             trt_params.optim_input_shape = {"x": [5, 1]}
