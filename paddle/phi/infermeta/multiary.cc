@@ -5179,6 +5179,37 @@ void SparseAttentionInferMeta(const MetaTensor& q,
   out->set_dtype(q.dtype());
 }
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& velocity,
+                             const MetaTensor& index,
+                             const MetaTensor& learning_rate,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out) {
+  auto lr_dims = common::product(learning_rate.dims());
+  PADDLE_ENFORCE_EQ(lr_dims == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        lr_dims));
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dim,
+      velocity.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Velocity of SparseMomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dim,
+          velocity.dims()));
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param_out != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,

@@ -323,14 +323,6 @@ void SequenceConvInferMeta(const MetaTensor& x,
                            int context_stride,
                            MetaTensor* out);
 
-void SparseMomentumInferMeta(const MetaTensor& param,
-                             const MetaTensor& grad,
-                             const MetaTensor& velocity,
-                             const MetaTensor& index,
-                             const MetaTensor& learning_rate,
-                             MetaTensor* param_out,
-                             MetaTensor* velocity_out,
-                             MetaTensor* master_param_out);
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,
