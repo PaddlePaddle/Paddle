@@ -154,10 +154,7 @@ class TestGRU(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        if paddle.framework.in_pir_mode():
-            with paddle.pir_utils.OldIrGuard():
-                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
-                paddle.framework.random._manual_program_seed(self.seed)
+        paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.GRUCell(self.input_size, self.hidden_size)
         self.rnn_net = paddle.nn.RNN(cell_dy, time_major=self.time_major)
 
