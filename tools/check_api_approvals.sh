@@ -142,9 +142,6 @@ if [ -n "${echo_list}" ];then
   if [ "${api_spec_diff}" != "" -o "${api_annotation_diff}" != "" ] ; then
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   fi
-  if [ "${api_spec_diff}" != "" ] ; then
-    echo "api_spec_diff: ${api_spec_diff}"
-  fi
   if [ "${api_params_diff}" != "" ] ; then
     echo "api_params_diff: ${api_params_diff}"
   fi
