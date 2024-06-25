@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
@@ -254,8 +255,7 @@ void InferSymExprForOp(Operation* op,
     PADDLE_ENFORCE_EQ(
         infer_symbolic_shape_interface.InferSymbolicShape(infer_context),
         true,
-        "InferSymbolicShape for %s failed.",
-        op->name());
+        common::errors::Fatal("InferSymbolicShape for %s failed.", op->name()));
 
     if (op->num_results() > 0) {
       // TODO(lanxianghit): deal with the ops which have more than 1
@@ -347,8 +347,8 @@ void CacheGradOpSymbolicShape(Operation* op,
         cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
             infer_context),
         true,
-        "CacheGradOpSymbolicShape for %s failed.",
-        op->name());
+        common::errors::Fatal("CacheGradOpSymbolicShape for %s failed.",
+                              op->name()));
   }
 }
 
