@@ -193,6 +193,21 @@ def get_value_hint(x):
     return hint
 
 
+def get_dtype_str(dtype):
+    if dtype == paddle.float16:
+        return "_fp16"
+    elif dtype == paddle.uint8:
+        return "_u8"
+    elif dtype == paddle.int8:
+        return "_i8"
+    elif dtype == paddle.float32:
+        return "_fp32"
+    elif dtype == paddle.bfloat16:
+        return "_bf16"
+    else:
+        raise ValueError("Not support this dtype.")
+
+
 def build_package(generated_dir, python_package_name):
     """
     Build the package, not install it.

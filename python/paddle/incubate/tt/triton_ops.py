@@ -29,6 +29,7 @@ from .triton_utils import (
     compile_file,
     extract_triton_kernel,
     find_so_path,
+    get_dtype_str,
     get_op_name_with_suffix,
     get_pointer_hint,
     get_value_hint,
@@ -1119,16 +1120,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
 
     op_name = "triton_adaptive_layer_norm"
-    if x.dtype == paddle.float16:
-        op_name += "_fp16"
-    elif x.dtype == paddle.float32:
-        op_name += "_fp32"
-    elif x.dtype == paddle.bfloat16:
-        op_name += "_bf16"
-    else:
-        raise NotImplementedError(
-            "triton_adaptive_layer_norm now supports only fp16 and fp32 dtype."
-        )
+    op_name += get_dtype_str(x.dtype)
     op_name += f"_{BLOCK_SIZE}"
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
@@ -1230,6 +1222,7 @@ rms_norm_kernel_config = [
     {'BLOCK_SIZE_M': 2, 'num_warps': 4},
     {'BLOCK_SIZE_M': 1, 'num_warps': 1},
     {'BLOCK_SIZE_M': 1, 'num_warps': 4},
+    {'BLOCK_SIZE_M': 4, 'num_warps': 8},
 ]
 
 
@@ -1250,14 +1243,14 @@ def rms_norm_kernel(
     N_npo2: tl.constexpr,
 ):
     row = tl.program_id(axis=0)
-    x_ptr += row * N * BLOCK_SIZE_M
-    y_ptr += row * N * BLOCK_SIZE_M
 
     offs_am = tl.arange(0, BLOCK_SIZE_M)
     offs_an = tl.arange(0, N_npo2)
 
     # compute var
-    all_offs = offs_am[:, None] * N + offs_an[None, :]
+    all_offs = (row * BLOCK_SIZE_M + offs_am[:, None]) % M * N + offs_an[
+        None, :
+    ]
 
     x_eles = tl.load(x_ptr + all_offs, mask=offs_an[None, :] < N, other=0.0).to(
         tl.float32
@@ -1323,16 +1316,8 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     N_npo2 = triton.next_power_of_2(N)
 
     op_name = "triton_rms_norm"
-    if x.dtype == paddle.float16:
-        op_name += "_fp16"
-    elif x.dtype == paddle.float32:
-        op_name += "_fp32"
-    elif x.dtype == paddle.bfloat16:
-        op_name += "_bf16"
-    else:
-        raise NotImplementedError(
-            "triton_rms_norm now supports only fp16 and fp32 dtype."
-        )
+    op_name += get_dtype_str(x.dtype)
+    op_name += get_value_hint()
     op_name += f"_{N_npo2}"
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
@@ -1343,7 +1328,7 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
             y,
             weight,
             bias,
-            M,
+            -1,  # M,
             N,
             epsilon,
             BLOCK_SIZE_M=2,
