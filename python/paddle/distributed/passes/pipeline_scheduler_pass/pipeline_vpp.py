@@ -369,6 +369,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                         new_op.dist_attr.execution_stream = (
                             "sharding_comm_broadcast_stream"
                         )
+                        new_op.dist_attr.stream_priority = 0
                     cur_block._sync_with_cpp()
                     new_types.append(type + self.broadcast_comm_suffix)
                     new_programs.append(new_program)
