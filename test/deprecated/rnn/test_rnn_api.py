@@ -22,7 +22,6 @@ import unittest
 import numpy as np
 
 from paddle import base
-from paddle.base import framework
 
 bidirectional_list = ["bidirectional", "bidirect"]
 
@@ -47,7 +46,10 @@ class TestSimpleRNN(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        paddle.framework.random._manual_program_seed(self.seed)
+        if paddle.framework.in_pir_mode():
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.SimpleRNNCell(self.input_size, self.hidden_size)
         self.rnn_net = paddle.nn.RNN(cell_dy, time_major=self.time_major)
 
@@ -91,9 +93,9 @@ class TestSimpleRNN(unittest.TestCase):
 
                 self.fetch_list = [st_out, st_last_h]
 
-                self.exe.run(framework.default_startup_program())
+                self.exe.run(paddle.static.default_startup_program())
 
-                self.main_program = framework.default_main_program()
+                self.main_program = paddle.static.default_main_program()
 
             paddle.disable_static(self.place)
 
@@ -152,7 +154,10 @@ class TestGRU(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        paddle.framework.random._manual_program_seed(self.seed)
+        if paddle.framework.in_pir_mode():
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.GRUCell(self.input_size, self.hidden_size)
         self.rnn_net = paddle.nn.RNN(cell_dy, time_major=self.time_major)
 
@@ -194,9 +199,9 @@ class TestGRU(unittest.TestCase):
 
                 self.fetch_list = [st_out, st_last_h]
 
-                self.exe.run(framework.default_startup_program())
+                self.exe.run(paddle.static.default_startup_program())
 
-                self.main_program = framework.default_main_program()
+                self.main_program = paddle.static.default_main_program()
 
             paddle.disable_static(self.place)
 
@@ -255,7 +260,10 @@ class TestGRUBackward(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        paddle.framework.random._manual_program_seed(self.seed)
+        if paddle.framework.in_pir_mode():
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.SimpleRNNCell(self.input_size, self.hidden_size)
         self.rnn_net = paddle.nn.RNN(cell_dy, time_major=self.time_major)
 
@@ -330,9 +338,9 @@ class TestGRUBackward(unittest.TestCase):
                         "x@GRAD",
                     ]
 
-                self.exe.run(framework.default_startup_program())
+                self.exe.run(paddle.static.default_startup_program())
 
-                self.main_program = framework.default_main_program()
+                self.main_program = paddle.static.default_main_program()
 
             paddle.disable_static(self.place)
 
