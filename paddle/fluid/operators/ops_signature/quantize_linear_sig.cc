@@ -25,7 +25,7 @@ KernelSignature QuantizeLinearOpArgumentMapping(
     return KernelSignature(
         "quantize_linear_deprecated_infer",
         {"X", "Scale", "ZeroPoint"},
-        {"quant_axis", "bit_length", "round_type", "only_observer"},
+        {"quant_axis", "bit_length", "qmin", "qmax", "round_type", "only_observer"},
         {"Y"});
   } else {
     return KernelSignature(
@@ -41,7 +41,7 @@ KernelSignature DeQuantizeLinearOpArgumentMapping(
   return KernelSignature(
       "dequantize_linear_deprecated",
       {"X", "Scale", "ZeroPoint"},
-      {"quant_axis", "bit_length", "round_type", "only_observer"},
+      {"quant_axis", "bit_length", "qmin", "qmax", "round_type", "only_observer"},
       {"Y"});
 }
 
