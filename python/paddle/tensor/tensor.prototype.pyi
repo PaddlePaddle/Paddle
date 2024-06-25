@@ -24,16 +24,18 @@ from paddle._typing import *  # noqa: F403
 
 # isort: on
 
-from typing import Any, Literal, overload
+from typing import Any, Iterator, Literal, overload
 
 import numpy.typing as npt
-from typing_extensions import TypeAlias
 
 import paddle
-from paddle import _typing
-
-# avoid same name: Tensor.slice
-_Slice: TypeAlias = slice
+from paddle import (
+    ParamAttr,  # noqa: F401
+    _typing,
+)
+from paddle.base.dygraph.tensor_patch_methods import (
+    TensorHookRemoveHelper,  # noqa: F401
+)
 
 class Tensor:
     # annotation: ${tensor_docstring}
@@ -169,25 +171,11 @@ class Tensor:
     # emulating container types
     def __getitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | _Slice
-            | tuple[None | bool | int | _Slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: _typing.TensorIndex,
     ) -> Tensor: ...
     def __setitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | _Slice
-            | tuple[None | bool | int | _Slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: _typing.TensorIndex,
         value: Tensor | npt.NDArray[Any] | complex | bool,
     ) -> None: ...
     def __len__(self) -> int: ...
@@ -280,6 +268,9 @@ class Tensor:
     def strides(self) -> list[int]: ...
     @property
     def type(self) -> Any: ...
+
+    # virtual methods
+    def __iter__(self) -> Iterator[Tensor]: ...  # For iterating over the tensor
 
     # annotation: ${tensor_alias}
     __qualname__: Literal["Tensor"]
