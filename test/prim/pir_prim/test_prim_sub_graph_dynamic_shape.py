@@ -172,6 +172,10 @@ def meshgrid_net(x, y):
     return paddle.meshgrid(x, y)
 
 
+def unbind_net(x):
+    return paddle.unbind(x)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -243,6 +247,19 @@ class TestEmbedding(TestPrimBase):
         self.x = np.random.randint(0, 10, size=self.x_shape)
         self.net = embedding_net
         self.necessary_ops = "pd_op.embedding"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestUnbind(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [4, 5, 6]
+        self.init_x_shape = [4, 5, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = unbind_net
+        self.necessary_ops = "pd_op.unbind"
         self.enable_cinn = False
         self.tol = 1e-6
 

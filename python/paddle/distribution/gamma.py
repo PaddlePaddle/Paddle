@@ -82,13 +82,13 @@ class Gamma(exponential_family.ExponentialFamily):
             check_type(
                 concentration,
                 'concentration',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Gamma',
             )
             check_type(
                 rate,
                 'rate',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Gamma',
             )
 

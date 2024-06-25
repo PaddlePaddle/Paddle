@@ -64,7 +64,7 @@ class Exponential(exponential_family.ExponentialFamily):
             check_type(
                 rate,
                 'rate',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Exponential',
             )
 

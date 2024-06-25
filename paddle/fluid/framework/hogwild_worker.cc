@@ -40,7 +40,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -254,6 +254,8 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   }
   use_cvm_ = desc.use_cvm();
   thread_barrier_ = desc.thread_barrier();
+  use_ps_gpu_ = desc.use_ps_gpu();
+  use_gpu_graph_ = desc.use_gpu_graph();
 
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
     std::string name = param_.stat_var_names(i);
@@ -271,20 +273,19 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   }
 }
 int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   auto gpu_ps = PSGPUWrapper::GetInstance();
   bool last_device = ((thread_num_ - 1) == thread_id_);
-#endif
   if (full_match) {
     auto it = params2rootid_.find(name);
     if (it == params2rootid_.end()) {
       return -1;
     }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-    if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
-      free_param_vars_.insert(name);
+    if (use_gpu_graph_ && use_ps_gpu_) {
+      if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
+        free_param_vars_.insert(name);
+      }
     }
-#endif
     if (it->second == nccl_rank_id_) {
       return 1;
     }
@@ -295,11 +296,11 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
       if (strncmp(name.c_str(), it->first.c_str(), it->first.length()) != 0) {
         continue;
       }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-      if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
-        free_param_vars_.insert(name);
+      if (use_gpu_graph_ && use_ps_gpu_) {
+        if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
+          free_param_vars_.insert(name);
+        }
       }
-#endif
       if (it->second == nccl_rank_id_) {
         return 1;
       }
@@ -307,14 +308,19 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
     }
     return -1;
   }
+#else
+  return -1;
+#endif
 }
 void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
   nccl_rank_id_ =
       static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-  auto gpu_ps = PSGPUWrapper::GetInstance();
-  nccl_rank_id_ = gpu_ps->GetNCCLRankId(nccl_rank_id_);
-  is_multi_node_ = (gpu_ps->GetRankNum() > 1);
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    auto gpu_ps = PSGPUWrapper::GetInstance();
+    nccl_rank_id_ = gpu_ps->GetNCCLRankId(nccl_rank_id_);
+    is_multi_node_ = (gpu_ps->GetRankNum() > 1);
+  }
 #endif
 
   auto &block = program.Block(0);
@@ -1001,85 +1007,91 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   } while (0)
         _ForEachDataType_(MemsetCallback);
       }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
       else if (unpersist_vars_.find(name) == unpersist_vars_.end()) {  // NOLINT
-        Variable *root_var = root_scope_->FindVar(name);
-        if (!root_var) {
-          VLOG(0) << "not found var name=" << name;
-          continue;
-        }
-        if (root_var->IsType<phi::SelectedRows>()) {
-          continue;
-        }
-        ++persist_param;
-        phi::DenseTensor *root_tensor =
-            root_var->GetMutable<phi::DenseTensor>();
-        auto var_dtype =
-            phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
-        if (root_tensor->dtype() != var_dtype) {
-          phi::DenseTensor tmp_tensor;
-          tmp_tensor.Resize(root_tensor->dims());
-          tmp_tensor.set_layout(root_tensor->layout());
-          tmp_tensor.mutable_data(root_tensor->place(), var_dtype);
-          framework::TransDataType(
-              *root_tensor, var->GetDataType(), &tmp_tensor);
-          auto holder = tmp_tensor.MoveMemoryHolder();
-          root_tensor->ResetHolderWithType(holder, var_dtype);
-          ++fp16_param;
-        }
-        if (place_ == root_tensor->place()) {
-          ++persist_share;
-          continue;
-        }
-        // reset tensor holder
-        if (persist_param_vars_.find(name) != persist_param_vars_.end()) {
-          // need offload param
-          auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-          if (IsNeedOffload(name)) {
-            // add offload names
-            offload_names_.insert(name);
-            // offload moment
-            Tensor2Pinned(root_tensor, stream);
-            ++pinned_param;
-          } else {
-            // copy one device to other device
-            auto src_place = root_tensor->place();
-            auto holder = root_tensor->MoveMemoryHolder();
-            auto dst_ptr = root_tensor->mutable_data(
-                place_, root_tensor->dtype(), holder->size());
-            memory::Copy(place_,
-                         dst_ptr,
-                         src_place,
-                         holder->ptr(),
-                         holder->size(),
-                         stream);
-            CHECK(platform::is_gpu_place(root_tensor->place()));
-            ++persist_reset;
+        if (use_gpu_graph_ && use_ps_gpu_) {
+          Variable *root_var = root_scope_->FindVar(name);
+          if (!root_var) {
+            VLOG(0) << "not found var name=" << name;
+            continue;
           }
-        } else {
-          auto *ptr = thread_scope_->Var(name);
-          CHECK(proto::VarType::LOD_TENSOR == var->GetType());
-          InitializeVariable(ptr, var->GetType());
-          phi::DenseTensor *thread_tensor = ptr->GetMutable<phi::DenseTensor>();
-          TensorCopy(*root_tensor, place_, thread_tensor);
-          need_copy_vars_.push_back(name);
-          //          VLOG(0) << "need copy var name=" << name;
-        }
-      } else {
-        if (free_param_vars_.find(name) != free_param_vars_.end()) {
-          del_var_names.push_back(name);
-          //          VLOG(0) << "unpersist need delete var name=" << name;
-        }
-        auto it = param_cast_vars_.find(name);
-        if (it == param_cast_vars_.end()) {
-          // sharding vars
-          auto *ptr = thread_scope_->Var(name);
-          InitializeVariable(ptr, var->GetType());
-          // set dims
-          auto dims = phi::make_ddim(var->GetShape());
+          if (root_var->IsType<phi::SelectedRows>()) {
+            continue;
+          }
+          ++persist_param;
+          phi::DenseTensor *root_tensor =
+              root_var->GetMutable<phi::DenseTensor>();
           auto var_dtype =
               phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
-          ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(var_dtype);
+          if (root_tensor->dtype() != var_dtype) {
+            phi::DenseTensor tmp_tensor;
+            tmp_tensor.Resize(root_tensor->dims());
+            tmp_tensor.set_layout(root_tensor->layout());
+            tmp_tensor.mutable_data(root_tensor->place(), var_dtype);
+            framework::TransDataType(
+                *root_tensor, var->GetDataType(), &tmp_tensor);
+            auto holder = tmp_tensor.MoveMemoryHolder();
+            root_tensor->ResetHolderWithType(holder, var_dtype);
+            ++fp16_param;
+          }
+          if (place_ == root_tensor->place()) {
+            ++persist_share;
+            continue;
+          }
+          // reset tensor holder
+          if (persist_param_vars_.find(name) != persist_param_vars_.end()) {
+            // need offload param
+            auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+            if (IsNeedOffload(name)) {
+              // add offload names
+              offload_names_.insert(name);
+              // offload moment
+              Tensor2Pinned(root_tensor, stream);
+              ++pinned_param;
+            } else {
+              // copy one device to other device
+              auto src_place = root_tensor->place();
+              auto holder = root_tensor->MoveMemoryHolder();
+              auto dst_ptr = root_tensor->mutable_data(
+                  place_, root_tensor->dtype(), holder->size());
+              memory::Copy(place_,
+                           dst_ptr,
+                           src_place,
+                           holder->ptr(),
+                           holder->size(),
+                           stream);
+              CHECK(platform::is_gpu_place(root_tensor->place()));
+              ++persist_reset;
+            }
+          } else {
+            auto *ptr = thread_scope_->Var(name);
+            CHECK(proto::VarType::LOD_TENSOR == var->GetType());
+            InitializeVariable(ptr, var->GetType());
+            phi::DenseTensor *thread_tensor =
+                ptr->GetMutable<phi::DenseTensor>();
+            TensorCopy(*root_tensor, place_, thread_tensor);
+            need_copy_vars_.push_back(name);
+            //          VLOG(0) << "need copy var name=" << name;
+          }
+        }
+      } else {
+        if (use_gpu_graph_ && use_ps_gpu_) {
+          if (free_param_vars_.find(name) != free_param_vars_.end()) {
+            del_var_names.push_back(name);
+            //          VLOG(0) << "unpersist need delete var name=" << name;
+          }
+          auto it = param_cast_vars_.find(name);
+          if (it == param_cast_vars_.end()) {
+            // sharding vars
+            auto *ptr = thread_scope_->Var(name);
+            InitializeVariable(ptr, var->GetType());
+            // set dims
+            auto dims = phi::make_ddim(var->GetShape());
+            auto var_dtype =
+                phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
+            ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(
+                var_dtype);
+          }
         }
       }
 #endif
@@ -1151,70 +1163,114 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
   CreateThreadScope(main_prog);
   CreateThreadOperators(main_prog);
 
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-  float *stat_ptr = sync_stat_.mutable_data<float>(place_, sizeof(float) * 3);
-  float flags[] = {0.0, 1.0, 1.0};
-  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(stat_ptr,  // output
-                                             &flags,
-                                             sizeof(float) * 3,
-                                             cudaMemcpyHostToDevice,
-                                             stream));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    float *stat_ptr = sync_stat_.mutable_data<float>(place_, sizeof(float) * 3);
+    float flags[] = {0.0, 1.0, 1.0};
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(stat_ptr,  // output
+                                               &flags,
+                                               sizeof(float) * 3,
+                                               cudaMemcpyHostToDevice,
+                                               stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+  }
 #endif
 }
 // check batch num
 bool HogwildWorker::CheckBatchNum(int flag) {
   float ret = 0.0;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-  if (flag > 1) {
-    flag = 1;
-  } else if (flag < 0) {
-    flag = 0;
-  }
-  //  g_barrier.wait();
-  float *stat_ptr = sync_stat_.data<float>();
-  int ring_id = 0;
-  platform::NCCLComm *comm = nullptr;
-  const auto &comm_context_manager =
-      phi::distributed::CommContextManager::GetInstance();
-  phi::distributed::NCCLCommContext *comm_ctx = nullptr;
-  if (FLAGS_dynamic_static_unified_comm) {
-    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "You choose to use new communication library by "
-                          "setting environment "
-                          "variable FLAGS_dynamic_static_unified_comm True. "
-                          "But ring_id(%d) is "
-                          "not found in comm_context_manager.",
-                          std::to_string(ring_id)));
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-        comm_context_manager.Get(std::to_string(ring_id)));
-    PADDLE_ENFORCE_NE(comm_ctx,
-                      nullptr,
-                      platform::errors::Unavailable(
-                          "NCCLCommContext is nullptr, collective op should "
-                          "has ring_id attr."));
-  } else {
-    comm = platform::NCCLCommContext::Instance().Get(ring_id,
-                                                     place_.GetDeviceId());
-  }
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    if (flag > 1) {
+      flag = 1;
+    } else if (flag < 0) {
+      flag = 0;
+    }
+    //  g_barrier.wait();
+    float *stat_ptr = sync_stat_.data<float>();
+    int ring_id = 0;
+    platform::NCCLComm *comm = nullptr;
+    const auto &comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+    } else {
+      comm = platform::NCCLCommContext::Instance().Get(ring_id,
+                                                       place_.GetDeviceId());
+    }
 
-  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-  if (comm_ctx) {
-    // comm_ctx->AllReduce only support allreduce on the whole tensor,
-    // single element is not supported now.
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                         &stat_ptr[2],
-                                         1,
-                                         ncclFloat32,
-                                         ncclProd,
-                                         comm_ctx->GetNcclComm(),
-                                         stream));
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+    if (comm_ctx) {
+      // comm_ctx->AllReduce only support allreduce on the whole tensor,
+      // single element is not supported now.
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclAllReduce(&stat_ptr[flag],
+                                           &stat_ptr[2],
+                                           1,
+                                           ncclFloat32,
+                                           ncclProd,
+                                           comm_ctx->GetNcclComm(),
+                                           stream));
 
-  } else {
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclAllReduce(&stat_ptr[flag],
+                                           &stat_ptr[2],
+                                           1,
+                                           ncclFloat32,
+                                           ncclProd,
+                                           comm->comm(),
+                                           stream));
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
+                                               &stat_ptr[2],
+                                               sizeof(float),
+                                               cudaMemcpyDeviceToHost,
+                                               stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+    //  g_barrier.wait();
+  }
+#endif
+  return (ret > 0.0);
+}
+
+bool HogwildWorker::GetPassEnd(int flag) {
+  float ret = 0.0;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    if (flag > 1) {
+      flag = 1;
+    } else if (flag < 0) {
+      flag = 0;
+    }
+    //  g_barrier.wait();
+    float *stat_ptr = sync_stat_.data<float>();
+    auto comm = platform::NCCLCommContext::Instance().Get(ring_id_,
+                                                          place_.GetDeviceId());
+    //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+    //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+    auto stream = comm->stream();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
                                                                 &stat_ptr[2],
                                                                 1,
@@ -1222,48 +1278,14 @@ bool HogwildWorker::CheckBatchNum(int flag) {
                                                                 ncclProd,
                                                                 comm->comm(),
                                                                 stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
+                                               &stat_ptr[2],
+                                               sizeof(float),
+                                               cudaMemcpyDeviceToHost,
+                                               stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+    // g_barrier.wait();
   }
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
-                                             &stat_ptr[2],
-                                             sizeof(float),
-                                             cudaMemcpyDeviceToHost,
-                                             stream));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-//  g_barrier.wait();
-#endif
-  return (ret > 0.0);
-}
-
-bool HogwildWorker::GetPassEnd(int flag) {
-  float ret = 0.0;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-  if (flag > 1) {
-    flag = 1;
-  } else if (flag < 0) {
-    flag = 0;
-  }
-  //  g_barrier.wait();
-  float *stat_ptr = sync_stat_.data<float>();
-  auto comm =
-      platform::NCCLCommContext::Instance().Get(ring_id_, place_.GetDeviceId());
-  //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-  //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  auto stream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                                              &stat_ptr[2],
-                                                              1,
-                                                              ncclFloat32,
-                                                              ncclProd,
-                                                              comm->comm(),
-                                                              stream));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
-                                             &stat_ptr[2],
-                                             sizeof(float),
-                                             cudaMemcpyDeviceToHost,
-                                             stream));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-// g_barrier.wait();
 #endif
   return (ret > 0.0);
 }
@@ -1291,19 +1313,26 @@ void HogwildWorker::TrainFilesWithProfiler() {
     quit_flag_.store(false);
   }
   g_barrier.wait();
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
-  bool train_mode = device_reader_->IsTrainMode();
+
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+  bool train_mode = false;
   bool is_multi_node = false;
-  auto gloo = paddle::framework::GlooWrapper::GetInstance();
-  if (gloo->Size() > 1) {
-    is_multi_node = true;
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    train_mode = device_reader_->IsTrainMode();
+    auto gloo = paddle::framework::GlooWrapper::GetInstance();
+    if (gloo->Size() > 1) {
+      is_multi_node = true;
+    }
   }
 #endif
 
   timeline.Start();
   uint64_t total_inst = 0;
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  device_reader_->InitGraphTrainResource();
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    device_reader_->InitGraphTrainResource();
+  }
 #endif
 
   std::unique_ptr<GarbageCollector> gc = nullptr;
@@ -1311,50 +1340,55 @@ void HogwildWorker::TrainFilesWithProfiler() {
   if (max_memory_size >= 0) {
     gc = CreateGarbageCollector(place_, max_memory_size);
   }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   std::unique_ptr<GPUParallelCopyer> copyer = nullptr;
-  if (!offload_vars_.empty()) {
-    copyer.reset(new GPUParallelCopyer(
-        stream, thread_id_, FLAGS_gpugraph_parallel_stream_num));
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+    if (!offload_vars_.empty()) {
+      copyer.reset(new GPUParallelCopyer(
+          stream, thread_id_, FLAGS_gpugraph_parallel_stream_num));
+    }
   }
 #endif
   bool infer_out_of_ins = false;
   while (true) {
     cur_batch = device_reader_->Next();
-#if defined(PADDLE_WITH_GPU_GRAPH)
-    if (FLAGS_gpugraph_force_device_batch_num_equal) {
-      if (!CheckBatchNum(cur_batch)) {
-        break;
-      }
-    } else if (train_mode && is_multi_node) {
-      int pass_end = device_reader_->get_pass_end();
-      bool res = GetPassEnd(pass_end);
-      VLOG(2) << "reader pass end: " << pass_end
-              << ", hogwild worker pass end: " << res;
-      if (res) {
-        device_reader_->reset_pass_end();
-        VLOG(1) << "get all pass end, train pass will exit";
-        break;
-      }
-    } else if (!train_mode && sharding_mode_) {
-      auto pass_end = cur_batch <= 0;
-      bool all_pass_end = GetPassEnd(pass_end);
-      if (all_pass_end) {
-        break;
-      }
-      if (pass_end) {
-        infer_out_of_ins = true;
-        VLOG(0) << " card " << thread_id_ << " infer_out_of_ins ";
-      }
-    } else {
-      if (FLAGS_enable_exit_when_partial_worker && train_mode) {
-        if (cur_batch <= 0) {
-          quit_flag_.store(true, std::memory_order_relaxed);
-        }
-        g_barrier.wait();
-        if (quit_flag_.load(std::memory_order_relaxed) == true) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+    if (use_gpu_graph_ && use_ps_gpu_) {
+      if (FLAGS_gpugraph_force_device_batch_num_equal) {
+        if (!CheckBatchNum(cur_batch)) {
           break;
+        }
+      } else if (train_mode && is_multi_node) {
+        int pass_end = device_reader_->get_pass_end();
+        bool res = GetPassEnd(pass_end);
+        VLOG(2) << "reader pass end: " << pass_end
+                << ", hogwild worker pass end: " << res;
+        if (res) {
+          device_reader_->reset_pass_end();
+          VLOG(1) << "get all pass end, train pass will exit";
+          break;
+        }
+      } else if (!train_mode && sharding_mode_) {
+        auto pass_end = cur_batch <= 0;
+        bool all_pass_end = GetPassEnd(pass_end);
+        if (all_pass_end) {
+          break;
+        }
+        if (pass_end) {
+          infer_out_of_ins = true;
+          VLOG(0) << " card " << thread_id_ << " infer_out_of_ins ";
+        }
+      } else {
+        if (FLAGS_enable_exit_when_partial_worker && train_mode) {
+          if (cur_batch <= 0) {
+            quit_flag_.store(true, std::memory_order_relaxed);
+          }
+          g_barrier.wait();
+          if (quit_flag_.load(std::memory_order_relaxed) == true) {
+            break;
+          }
         }
       }
     }
@@ -1390,18 +1424,24 @@ void HogwildWorker::TrainFilesWithProfiler() {
         timeline.Start();
         auto &op = ops_[i];
         VLOG(3) << "Going to run op " << op_names_[i];
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-        // offload
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         auto it = offload_vars_.find(op.get());
-        if (it != offload_vars_.end()) {
-          it->second.CopyInputs(
-              root_scope_, place_, thread_scope_, copyer.get());
+        if (use_gpu_graph_ && use_ps_gpu_) {
+          // offload
+          if (it != offload_vars_.end()) {
+            it->second.CopyInputs(
+                root_scope_, place_, thread_scope_, copyer.get());
+          }
         }
 #endif
         op->Run(*thread_scope_, place_);
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-        if (it != offload_vars_.end()) {
-          it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+        if (use_gpu_graph_ && use_ps_gpu_) {
+          if (it != offload_vars_.end()) {
+            it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
+          }
         }
 #endif
 #ifdef PADDLE_WITH_HETERPS
@@ -1498,16 +1538,22 @@ void HogwildWorker::TrainFiles() {
   platform::SetDeviceId(thread_id_);
 #endif
   // while ((cur_batch = device_reader_->Next()) > 0) {
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   bool is_multi_node = false;
-  bool train_mode = device_reader_->IsTrainMode();
-  auto gloo = paddle::framework::GlooWrapper::GetInstance();
-  if (gloo->Size() > 1) {
-    is_multi_node = true;
+  bool train_mode = false;
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    train_mode = device_reader_->IsTrainMode();
+    auto gloo = paddle::framework::GlooWrapper::GetInstance();
+    if (gloo->Size() > 1) {
+      is_multi_node = true;
+    }
   }
 #endif
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  device_reader_->InitGraphTrainResource();
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    device_reader_->InitGraphTrainResource();
+  }
 #endif
 
   std::unique_ptr<GarbageCollector> gc = nullptr;
@@ -1515,53 +1561,58 @@ void HogwildWorker::TrainFiles() {
   if (max_memory_size >= 0) {
     gc = CreateGarbageCollector(place_, max_memory_size);
   }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   std::unique_ptr<GPUParallelCopyer> copyer = nullptr;
-  if (!offload_vars_.empty()) {
-    copyer.reset(new GPUParallelCopyer(
-        stream, thread_id_, FLAGS_gpugraph_parallel_stream_num));
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+    if (!offload_vars_.empty()) {
+      copyer.reset(new GPUParallelCopyer(
+          stream, thread_id_, FLAGS_gpugraph_parallel_stream_num));
+    }
   }
 #endif
   bool infer_out_of_ins = false;
   while (true) {
     cur_batch = device_reader_->Next();
-#if defined(PADDLE_WITH_GPU_GRAPH)
-    if (FLAGS_gpugraph_force_device_batch_num_equal) {
-      if (!CheckBatchNum(cur_batch)) {
-        break;
-      }
-    } else if (train_mode && is_multi_node) {
-      bool sage_mode = device_reader_->GetSageMode();
-      if (!sage_mode) {
-        int pass_end = device_reader_->get_pass_end();
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+    if (use_gpu_graph_ && use_ps_gpu_) {
+      if (FLAGS_gpugraph_force_device_batch_num_equal) {
+        if (!CheckBatchNum(cur_batch)) {
+          break;
+        }
+      } else if (train_mode && is_multi_node) {
+        bool sage_mode = device_reader_->GetSageMode();
+        if (!sage_mode) {
+          int pass_end = device_reader_->get_pass_end();
+          bool res = GetPassEnd(pass_end);
+          VLOG(2) << "reader pass end: " << pass_end
+                  << ", hogwild worker pass end: " << res;
+          if (res) {
+            device_reader_->reset_pass_end();
+            VLOG(1) << "get all pass end, train pass will exit";
+            break;
+          }
+        }
+      } else if (!train_mode && sharding_mode_) {
+        auto pass_end = cur_batch <= 0;
         bool res = GetPassEnd(pass_end);
-        VLOG(2) << "reader pass end: " << pass_end
-                << ", hogwild worker pass end: " << res;
         if (res) {
-          device_reader_->reset_pass_end();
-          VLOG(1) << "get all pass end, train pass will exit";
           break;
         }
-      }
-    } else if (!train_mode && sharding_mode_) {
-      auto pass_end = cur_batch <= 0;
-      bool res = GetPassEnd(pass_end);
-      if (res) {
-        break;
-      }
-      if (pass_end) {
-        infer_out_of_ins = true;
-        VLOG(0) << " card " << thread_id_ << " infer_out_of_ins ";
-      }
-    } else {
-      if (FLAGS_enable_exit_when_partial_worker && train_mode) {
-        if (cur_batch <= 0) {
-          quit_flag_.store(true, std::memory_order_relaxed);
+        if (pass_end) {
+          infer_out_of_ins = true;
+          VLOG(0) << " card " << thread_id_ << " infer_out_of_ins ";
         }
-        g_barrier.wait();
-        if (quit_flag_.load(std::memory_order_relaxed) == true) {
-          break;
+      } else {
+        if (FLAGS_enable_exit_when_partial_worker && train_mode) {
+          if (cur_batch <= 0) {
+            quit_flag_.store(true, std::memory_order_relaxed);
+          }
+          g_barrier.wait();
+          if (quit_flag_.load(std::memory_order_relaxed) == true) {
+            break;
+          }
         }
       }
     }
@@ -1580,12 +1631,15 @@ void HogwildWorker::TrainFiles() {
       }
     } else {
       for (auto &op : ops_) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-        // offload
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         auto it = offload_vars_.find(op.get());
-        if (it != offload_vars_.end()) {
-          it->second.CopyInputs(
-              root_scope_, place_, thread_scope_, copyer.get());
+        if (use_gpu_graph_ && use_ps_gpu_) {
+          // offload
+          if (it != offload_vars_.end()) {
+            it->second.CopyInputs(
+                root_scope_, place_, thread_scope_, copyer.get());
+          }
         }
 #endif
         if (FLAGS_gpugraph_enable_print_op_debug) {
@@ -1593,10 +1647,13 @@ void HogwildWorker::TrainFiles() {
                   << op->DebugStringEx(thread_scope_);
         }
         op->Run(*thread_scope_, place_);
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
-        // offload
-        if (it != offload_vars_.end()) {
-          it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+        if (use_gpu_graph_ && use_ps_gpu_) {
+          // offload
+          if (it != offload_vars_.end()) {
+            it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
+          }
         }
 #endif
         if (gc) {

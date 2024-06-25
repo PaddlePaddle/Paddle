@@ -48,6 +48,13 @@ void AddmmInferMeta(const MetaTensor& input,
                     float alpha,
                     MetaTensor* out);
 
+void AffineChannelInferMeta(const MetaTensor& x,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const std::string& data_layout,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,

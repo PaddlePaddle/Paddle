@@ -221,17 +221,23 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       const std::string* key = nullptr);
 
   void EraseTensorHolders() {
-    for (const auto& allocation_stream : allocation_stream_pairs) {
+    for (const auto& allocation_stream : allocation_stream_pairs_) {
       auto holder_ptr = allocation_stream.first.lock();
       if (holder_ptr) {
         memory::EraseStream(holder_ptr, allocation_stream.second);
       }
     }
     VLOG(5) << "After task wait/synchronize, totoal "
-            << allocation_stream_pairs.size()
+            << allocation_stream_pairs_.size()
             << " tensor(s) allocation stream have been removed.";
-    allocation_stream_pairs.clear();
+    allocation_stream_pairs_.clear();
   }
+
+  virtual void StartCoalescing();
+
+  virtual void EndCoalescing(
+      std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
+          tasks_opt = std::nullopt);
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;
@@ -255,7 +261,12 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
-      allocation_stream_pairs;
+      allocation_stream_pairs_;
+
+  // For colaescing tensors processing (eg. batch_isend_irecv)
+  bool is_coalescing_{false};
+  std::vector<std::shared_ptr<phi::DenseTensor>> colaescing_tensors_;
+  std::vector<std::string> colaescing_place_keys_;
 };
 
 }  //  namespace distributed
