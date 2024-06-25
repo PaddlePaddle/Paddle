@@ -133,7 +133,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       place_to_group_key_(),
       pg_timeout_(timeout),
       nccl_comm_init_option_(nccl_comm_init_option),
-      allocation_stream_pairs() {
+      allocation_stream_pairs_() {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
@@ -225,7 +225,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
@@ -255,7 +255,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->AllReduce(
@@ -320,7 +320,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                 << ", in_size_each_rank: "
                 << string::join_strings(in_size_each_rank, ',')
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         GroupStart();
@@ -389,7 +389,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->Broadcast(out_tensor, tensor_tmp, root, stream);
       },
@@ -420,7 +420,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->Reduce(out_tensor,
                              tensor_tmp,
@@ -454,7 +454,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->ReduceScatter(
             out_tensor, tensor_tmp, ToNCCLRedType(opts.reduce_op), stream);
@@ -498,7 +498,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         int64_t numel = tensor_tmp.numel() / size_;
@@ -582,7 +582,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
             << ", ncclcomm: " << comm_context->GetNcclComm()
             << ", stream: " << stream << ", rank_in_group: " << rank_
             << ", nranks: " << size_ << ", sync_op: " << sync_op
-            << ", use_calc_stream: " << use_calc_stream << GetGroupMessage();
+            << ", use_calc_stream: " << use_calc_stream << ", "
+            << ", " << GetGroupMessage();
 
     GroupStart();
     // root receive from all devices
@@ -627,7 +628,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << ", stream: " << stream
                 << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->Recv(tensor, tensor->numel(), rank_in_group, stream);
@@ -666,7 +667,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                 << ", stream: " << stream
                 << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->Send(tensor_maybe_partial,
@@ -871,12 +872,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator ||
-        FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    if (!is_coalescing_) {
+      if (FLAGS_use_stream_safe_cuda_allocator ||
+          FLAGS_use_cuda_malloc_async_allocator) {
+        memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+      }
+      task->UpdateWaitChain(*comm_ctx);
+      allocation_stream_pairs_.emplace_back(tensor_tmp.Holder(), nccl_stream);
+    } else {
+      colaescing_tensors_.emplace_back(
+          std::make_shared<phi::DenseTensor>(tensor_tmp));
+      colaescing_place_keys_.push_back(key);
     }
-    task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -987,12 +994,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator ||
-        FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    if (!is_coalescing_) {
+      if (FLAGS_use_stream_safe_cuda_allocator ||
+          FLAGS_use_cuda_malloc_async_allocator) {
+        memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+      }
+      task->UpdateWaitChain(*comm_ctx);
+      allocation_stream_pairs_.emplace_back(tensor_tmp.Holder(), nccl_stream);
+    } else {
+      colaescing_tensors_.emplace_back(
+          std::make_shared<phi::DenseTensor>(tensor_tmp));
+      colaescing_place_keys_.push_back(key);
     }
-    task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -1042,6 +1055,57 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
                     nullptr,
                     phi::errors::Unavailable("NCCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupNCCL::StartCoalescing() {
+  PADDLE_ENFORCE_EQ(is_coalescing_,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Coalescing is on, please call EndCoalesce."));
+  is_coalescing_ = true;
+  GroupStart();
+}
+
+void ProcessGroupNCCL::EndCoalescing(
+    std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>> tasks_opt) {
+  GroupEnd();
+
+  // NOTE(shenliang03): If using calculate stream, no need to record stream and
+  // update task.
+  if (!tasks_opt.has_value() || colaescing_tensors_.empty()) {
+    is_coalescing_ = false;
+    return;
+  }
+
+  auto& tasks = tasks_opt.value();
+
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      colaescing_tensors_.size(),
+      phi::errors::PreconditionNotMet(
+          "Number of tasks[%d] do not match number of collectives[%d].",
+          tasks.size(),
+          colaescing_tensors_.size()));
+
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    auto* nccl_task = static_cast<ProcessGroupNCCL::NCCLTask*>(tasks[i].get());
+    const auto& tensor = colaescing_tensors_[i];
+    const auto& key = colaescing_place_keys_[i];
+    const auto& comm_ctx = place_to_comm_ctx_.at(key);
+    auto nccl_stream = comm_ctx->stream();
+
+    if (FLAGS_use_stream_safe_cuda_allocator ||
+        FLAGS_use_cuda_malloc_async_allocator) {
+      memory::RecordStream(tensor->Holder(), nccl_stream);
+    }
+
+    nccl_task->UpdateWaitChain(*comm_ctx);
+    allocation_stream_pairs_.emplace_back(tensor->Holder(), nccl_stream);
+  }
+
+  is_coalescing_ = false;
+  colaescing_tensors_.clear();
+  colaescing_place_keys_.clear();
 }
 
 }  // namespace paddle::distributed
