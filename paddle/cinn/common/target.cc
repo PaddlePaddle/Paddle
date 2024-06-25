@@ -200,33 +200,30 @@ std::string Target::arch_str() const {
   return oss.str();
 }
 
-static cudaDeviceProp properties;
-static bool count = true;
 std::string Target::device_name_str() const {
-  if (count) {
-    int device_idx = 0;
-    cudaError_t result = cudaGetDevice(&device_idx);
-    if (result != cudaSuccess) {
-      // Call cudaGetLastError() to clear the error bit
-      result = cudaGetLastError();
-      PADDLE_THROW(::common::errors::Unavailable(
-          " cudaGetDevice() returned error %s", cudaGetErrorString(result)));
-      return 0;
-    }
-
-    result = cudaGetDeviceProperties(&properties, device_idx);
-    if (result != cudaSuccess) {
-      // Call cudaGetLastError() to clear the error bit
-      result = cudaGetLastError();
-      PADDLE_THROW(::common::errors::Unavailable(
-          " cudaGetDeviceProperties() returned error %s",
-          cudaGetErrorString(result)));
-      return 0;
-    }
-    std::string device_name = properties.name;
-    auto device_name_1 = std::regex_replace(device_name, std::regex(" "), "_");
-    return std::regex_replace(device_name_1, std::regex("-"), "_");
+  int device_idx = 0;
+  cudaError_t result = cudaGetDevice(&device_idx);
+  if (result != cudaSuccess) {
+    // Call cudaGetLastError() to clear the error bit
+    result = cudaGetLastError();
+    PADDLE_THROW(::common::errors::Unavailable(
+        " cudaGetDevice() returned error %s", cudaGetErrorString(result)));
+    return 0;
   }
+
+  cudaDeviceProp properties;
+  result = cudaGetDeviceProperties(&properties, device_idx);
+  if (result != cudaSuccess) {
+    // Call cudaGetLastError() to clear the error bit
+    result = cudaGetLastError();
+    PADDLE_THROW(::common::errors::Unavailable(
+        " cudaGetDeviceProperties() returned error %s",
+        cudaGetErrorString(result)));
+    return 0;
+  }
+  std::string device_name = properties.name;
+  device_name = std::regex_replace(device_name, std::regex(" "), "_");
+  return std::regex_replace(device_name, std::regex("-"), "_");
 }
 
 std::ostream &operator<<(std::ostream &os, const Target &target) {
