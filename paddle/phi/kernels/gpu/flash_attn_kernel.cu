@@ -417,16 +417,16 @@ void FlashAttnBaseKernel(
     ctx.template Alloc<T>(&flashmask_maxmin);
 
     downstart_row_indices =
-        phi::Slice<int32_t>(ctx, startend_row_indices.get(), {-1}, {0}, {1});
+        phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices = phi::Slice<int32_t>(
-            ctx, startend_row_indices.get(), {-1}, {1}, {2});
+        upend_row_indices =
+            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices = phi::Slice<int32_t>(
-            ctx, startend_row_indices.get(), {-1}, {1}, {2});
+        downend_row_indices =
+            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     }
