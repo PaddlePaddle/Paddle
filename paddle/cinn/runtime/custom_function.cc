@@ -121,6 +121,9 @@ bool MemcpyToHost(void* dst,
                                "CINN_WITH_CUDA ON! Please check."));
 #endif
       },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+      },
       [&](common::X86Arch) { memcpy(dst, src, bytes); },
       [&](std::variant<common::UnknownArch, common::ARMArch>) {
         std::stringstream ss;
@@ -151,6 +154,9 @@ bool MemcpyToDevice(void* dst,
             phi::errors::Fatal("NVGPU Target only support on flag "
                                "CINN_WITH_CUDA ON! Please check."));
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
       },
       [&](common::X86Arch) {
 #ifdef CINN_WITH_CUDA
@@ -257,6 +263,9 @@ void cinn_assert_true(void* v_args,
       [&](common::NVGPUArch) {
         utils::MemcpyToDevice(
             output->memory, x->memory, numel * sizeof(bool), target, stream);
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
       },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         utils::MemcpyToHost(

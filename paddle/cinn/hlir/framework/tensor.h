@@ -72,9 +72,16 @@ class _Tensor_ : public Object {
         [&](common::X86Arch) {
           buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
         },
-        [&](std::variant<common::UnknownArch,
-                         common::NVGPUArch,
-                         common::ARMArch>) {
+        [&](common::UnknownArch) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        },
+        [&](common::NVGPUArch) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        },
+        [&](common::ARMArch) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        },
+        [&](common::HygonDCUArchHIP) {
           buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
         });
     return reinterpret_cast<void*>(buffer_->data()->memory);
@@ -87,9 +94,16 @@ class _Tensor_ : public Object {
         [&](common::X86Arch) {
           buffer_->ResizeLazy(1024, shape_.numel() * sizeof(T), target);
         },
-        [&](std::variant<common::UnknownArch,
-                         common::NVGPUArch,
-                         common::ARMArch>) {
+        [&](common::UnknownArch) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        },
+        [&](common::NVGPUArch) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        },
+        [&](common::ARMArch) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        },
+        [&](common::HygonDCUArchHIP) {
           buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
         });
     return reinterpret_cast<T*>(buffer_->data()->memory);

@@ -89,31 +89,34 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
     auto new_B = tensor_B->Reshape(new_shape_B_e, stages);
 
     std::vector<ir::Tensor> out;
-    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::X86Arch) {
+    target.arch.Match(
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-                        out = pe::MatmulMKL(new_A,
-                                            new_B,
-                                            trans_a,
-                                            trans_b,
-                                            alpha,
-                                            UniqName("MatmulMKL_output"),
-                                            target);
+          out = pe::MatmulMKL(new_A,
+                              new_B,
+                              trans_a,
+                              trans_b,
+                              alpha,
+                              UniqName("MatmulMKL_output"),
+                              target);
 #else
-                        out = pe::MatmulV2(new_A,
-                                           new_B,
-                                           trans_a,
-                                           trans_b,
-                                           alpha,
-                                           UniqName("MatmulV2_output"),
-                                           target);
+          out = pe::MatmulV2(new_A,
+                             new_B,
+                             trans_a,
+                             trans_b,
+                             alpha,
+                             UniqName("MatmulV2_output"),
+                             target);
 #endif
-                      },
-                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::NVGPUArch) {
-                        out = pe::Matmul(
-                            new_A, new_B, trans_a, trans_b, alpha, tensor_name);
-                      });
+        },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
+        },
+        [&](common::HygonDCUArchHIP) {
+          out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
+        });
 
     std::vector<CINNValue> res;
     for (auto &t : out) {
@@ -597,60 +600,73 @@ std::shared_ptr<OpStrategy> StrategyForMul(
   const auto &new_shape_B = new_shape[1];
   const auto &output_shape = new_shape[2];
 
-  framework::CINNCompute mul_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input arguments of Mul compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 2U)
-            << "at least 2 input tensors for Mul compute\n";
-        Expr A = pack_args[0];
-        Expr B = pack_args[1];
-        CHECK(A.as_tensor());
-        CHECK(B.as_tensor());
+  framework::CINNCompute mul_compute([=](lang::Args args, lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input arguments of Mul compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "at least 2 input tensors for Mul compute\n"));
+    Expr A = pack_args[0];
+    Expr B = pack_args[1];
+    PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The A is not as tensor! Please check.\n"));
+    PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The B is not as tensor! Please check.\n"));
 
-        auto A_tensor = A.as_tensor_ref();
-        auto B_tensor = B.as_tensor_ref();
-        auto stages = CreateStages({A_tensor, B_tensor});
+    auto A_tensor = A.as_tensor_ref();
+    auto B_tensor = B.as_tensor_ref();
+    auto stages = CreateStages({A_tensor, B_tensor});
 
-        auto new_shape_A_e = ToCinnExprs(new_shape_A);
-        auto new_shape_B_e = ToCinnExprs(new_shape_B);
+    auto new_shape_A_e = ToCinnExprs(new_shape_A);
+    auto new_shape_B_e = ToCinnExprs(new_shape_B);
 
-        auto new_A = A_tensor->Reshape(new_shape_A_e, stages);
-        auto new_B = B_tensor->Reshape(new_shape_B_e, stages);
+    auto new_A = A_tensor->Reshape(new_shape_A_e, stages);
+    auto new_B = B_tensor->Reshape(new_shape_B_e, stages);
 
-        std::vector<ir::Tensor> out;
-        CHECK(pack_args.back().is_string());
-        std::string tensor_name = pack_args.back().operator std::string();
+    std::vector<ir::Tensor> out;
+    PADDLE_ENFORCE_EQ(pack_args.back().is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The pack_args is not string! Please check.\n"));
+    std::string tensor_name = pack_args.back().operator std::string();
 
-        target.arch.Match(
-            [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::X86Arch) {
+    target.arch.Match(
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-              out = pe::MatmulMKL(
-                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+          out = pe::MatmulMKL(
+              new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #else
-              out = pe::MatmulV2(
-                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+          out = pe::MatmulV2(
+              new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #endif
-            },
-            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::NVGPUArch) {
-              out =
-                  pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
-            });
+        },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          out = pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
+        },
+        [&](common::HygonDCUArchHIP) {
+          out = pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
+        });
 
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          stages->InsertLazily(t);
-        }
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      stages->InsertLazily(t);
+    }
 
-        for (auto &t : out) {
-          res.push_back(CINNValue(t));
-        }
-        res.push_back(CINNValue(stages));
-        *ret = CINNValuePack{res};
-      });
+    for (auto &t : out) {
+      res.push_back(CINNValue(t));
+    }
+    res.push_back(CINNValue(stages));
+    *ret = CINNValuePack{res};
+  });
 
   framework::CINNSchedule mul_schedule([=](lang::Args args,
                                            lang::RetValue *ret) {
