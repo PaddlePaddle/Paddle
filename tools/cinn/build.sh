@@ -41,17 +41,6 @@ function onednn_off {
   onednn_config=OFF
 }
 
-
-function gpu_on {
-  cinn_whl_path=python/dist/cinn_gpu-0.0.0-py3-none-any.whl
-  cuda_config=ON
-  cudnn_config=ON
-}
-
-function cudnn_off {
-  cudnn_config=OFF
-}
-
 set +x
 OLD_HTTP_PROXY=$http_proxy &> /dev/null
 OLD_HTTPS_PROXY=$https_proxy &> /dev/null
@@ -169,19 +158,6 @@ function run_test {
     fi
 }
 
-function CI {
-    mkdir -p $build_dir
-    cd $build_dir
-    export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
-
-    prepare_ci
-    cmake_
-    build
-    run_demo
-    prepare_model
-    run_test
-}
-
 function CINNRT {
     mkdir -p $build_dir
     cd $build_dir
@@ -211,14 +187,6 @@ function main {
                 onednn_off
                 shift
                 ;;
-            gpu_on)
-                gpu_on
-                shift
-                ;;
-            cudnn_off)
-                cudnn_off
-                shift
-                ;;
             check_style)
                 codestyle_check
                 shift
@@ -233,10 +201,6 @@ function main {
                 ;;
             test)
                 run_test
-                shift
-                ;;
-            ci)
-                CI
                 shift
                 ;;
             CINNRT)
