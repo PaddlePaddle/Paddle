@@ -15,7 +15,7 @@
 import logging
 
 
-def get_logger(log_level, name="pproot"):
+def get_logger(log_level, name="paddle"):
     logger = logging.getLogger(name)
 
     # Avoid printing multiple logs
