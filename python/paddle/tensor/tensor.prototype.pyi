@@ -38,7 +38,7 @@ from paddle.base.dygraph.tensor_patch_methods import (
 )
 
 # annotation: ${eager_param_base_begin}
-class EagerParamBase_(Protocol):
+class AbstractEagerParamBase(Protocol):
     # annotation: ${eager_param_base_docstring}
 
     # annotation: ${eager_param_base_attributes}
@@ -54,7 +54,7 @@ class EagerParamBase_(Protocol):
 # annotation: ${eager_param_base_end}
 
 # annotation: ${tensor_begin}
-class Tensor_(Protocol):
+class AbstractTensor(Protocol):
     # annotation: ${tensor_docstring}
 
     # annotation: ${tensor_attributes}
@@ -294,4 +294,4 @@ class Tensor_(Protocol):
 
 # annotation: ${tensor_end}
 
-class Tensor(Tensor_, EagerParamBase_): ...
+class Tensor(AbstractTensor, AbstractEagerParamBase): ...
