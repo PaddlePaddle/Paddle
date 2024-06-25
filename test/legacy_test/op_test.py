@@ -1671,8 +1671,13 @@ class OpTest(unittest.TestCase):
                             if not shape_or_data.is_equal(
                                 expect_shape, expect_data
                             ):
+                                var_name = (
+                                    var.name
+                                    if var.persistable
+                                    else "'a not persistable'"
+                                )
                                 raise AssertionError(
-                                    f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                                    f"The shape or data whose of {var_name} Value in Operator {self.op_type} is different from expected."
                                 )
                 else:
                     # TODO(gongshaotian): raise error
