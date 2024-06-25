@@ -80,7 +80,7 @@ def graph_khop_sampler(
             >>> colptr = paddle.to_tensor(colptr, dtype="int64")
             >>> nodes = paddle.to_tensor(nodes, dtype="int64")
 
-            >>> edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            >>> edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
 
     """
 
