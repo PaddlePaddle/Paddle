@@ -34,6 +34,9 @@
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(print_ir);
+PD_DECLARE_bool(cinn_measure_kernel_time);
+PHI_DECLARE_bool(enable_cinn_compile_cache);
+PD_DECLARE_string(tile_config_policy);
 
 std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
                                                       int reduce_size) {
@@ -85,6 +88,10 @@ int get_tile_size_config(int dimension_lower) {
  * the minimum score and the best candidate configuration found.
  */
 TEST(ConfigSearcher, TestReducePipeline) {
+  FLAGS_cinn_measure_kernel_time = true;
+  FLAGS_enable_cinn_compile_cache = false;
+  FLAGS_tile_config_policy = "search";
+
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;
 
@@ -173,19 +180,11 @@ TEST(ConfigSearcher, TestReducePipeline) {
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[1] % kThreadsPerWarp == 0;
-          });
-      constraints.emplace_back(
-          [](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[1] % kThreadsPerWarp == 0 || candidate[1] == 1;
-          });
-      constraints.emplace_back(
-          [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -207,7 +206,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] % 8 == 0;
+            return candidate[2] % 8 == 0 || candidate[2] < 8;
           });
 
       // Step 5: Construct searcher and search.
@@ -229,12 +228,16 @@ TEST(ConfigSearcher, TestReducePipeline) {
                 << std::endl;
       LOG(INFO) << "min score = " << search_res.first;
       LOG(INFO) << "best candidate: "
-                << cinn::utils::Join<int>(search_res.second, ", ");
+                << cinn::utils::Join<int64_t>(search_res.second, ", ");
     }
   }
 }
 
 TEST(ConfigSearcher, TestReduceDemo) {
+  FLAGS_cinn_measure_kernel_time = true;
+  FLAGS_enable_cinn_compile_cache = false;
+  FLAGS_tile_config_policy = "search";
+
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;
 
@@ -320,7 +323,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto search_res = searcher.Search();
   LOG(INFO) << "min score = " << search_res.first;
   LOG(INFO) << "best candidate: "
-            << cinn::utils::Join<int>(search_res.second, ", ");
+            << cinn::utils::Join<int64_t>(search_res.second, ", ");
 
   // Step 6: Save the config to the file.
   cinn::ir::ScheduleConfig::TileConfig tile_config{

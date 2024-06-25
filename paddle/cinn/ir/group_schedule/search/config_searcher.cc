@@ -218,7 +218,7 @@ std::pair<ScoreType, CandidateType> ScheduleConfigSearcher::Search(
   VLOG(6) << "Candidate num = " << candidates.size();
   for (const auto& candidate : candidates) {
     ScoreType score = (*objective_func_)(candidate);
-    VLOG(6) << "Candidate: [" << utils::Join<int>(candidate, ", ") << "]";
+    VLOG(6) << "Candidate: [" << utils::Join<int64_t>(candidate, ", ") << "]";
     VLOG(6) << "Score = " << score;
     records_[score] = candidate;
   }
