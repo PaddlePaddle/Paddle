@@ -154,9 +154,7 @@ class Normal(distribution.Distribution):
                 loc = loc.astype('complex64')
 
         if isinstance(scale, (tuple, list)):
-            scale = np.array(scale)
-            if scale.dtype == np.float64:
-                scale = scale.astype('float32')
+            scale = np.array(scale, dtype=np.float32)
 
         if (
             isinstance(loc, complex)
