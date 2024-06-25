@@ -279,6 +279,15 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
 
+- op : fetch_barrier
+  args: (Tensor[] x, int trainer_id = 0, str[] endpoints = {"127.0.0.1:6164"})
+  output: Tensor[] (out){x.size()}
+  infer_meta:
+    func: FetchBarrierInferMeta
+  kernel:
+    func: fetch_barrier
+  optional: x
+
 - op : flatten2
   args: (Tensor x, int axis = 1)
   output: Tensor (out), Tensor (x_shape)
