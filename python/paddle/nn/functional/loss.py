@@ -337,7 +337,8 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
         .. code-block:: python
 
             >>> import paddle
-            >>> DATATYPE = "float32"
+            >>> from paddle._typing import DTypeLike
+            >>> DATATYPE: DTypeLike = "float32"
             >>> paddle.seed(2023)
 
             >>> anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
