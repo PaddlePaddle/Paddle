@@ -285,6 +285,10 @@ class TensorGen:
 def is_inherited_member(name: str, cls: type) -> bool:
     """Check if the member is inherited from parent class"""
 
+    # keep magic methods
+    if name.startswith("__") and name.endswith("__"):
+        return False
+
     if name in cls.__dict__:
         return False
 

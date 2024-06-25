@@ -289,6 +289,9 @@ class AbstractTensor(Protocol):
     # virtual methods
     def __iter__(self) -> Iterator[Tensor]: ...  # For iterating over the tensor
 
+    # private methods
+    def _grad_ivar(self) -> Tensor | None: ...
+
     # annotation: ${tensor_alias}
     __qualname__: Literal["Tensor"]
 
