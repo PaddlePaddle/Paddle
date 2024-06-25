@@ -615,15 +615,16 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   const int kv_hi = blockIdx.x / GQA_NUM_SUB_PARTITIONS;
   const int gqa_sub_partition_id = blockIdx.x % GQA_NUM_SUB_PARTITIONS;
 
-  const int cache_id = kv_hi;
-  float k_quant_scale =
-      static_cast<float>(params.cache_k_quant_scales[cache_id]);
-  float v_quant_scale =
-      static_cast<float>(params.cache_v_quant_scales[cache_id]);
-  float k_dequant_scale =
-      static_cast<float>(params.cache_k_dequant_scales[cache_id]);
-  float v_dequant_scale =
-      static_cast<float>(params.cache_v_dequant_scales[cache_id]);
+  float k_quant_scale;
+  float v_quant_scale;
+  float k_dequant_scale;
+  float v_dequant_scale;
+  if (CACHE_TYPE == CacheType::INT8) {
+    k_quant_scale = static_cast<float>(params.cache_k_quant_scales[kv_hi]);
+    v_quant_scale = static_cast<float>(params.cache_v_quant_scales[kv_hi]);
+    k_dequant_scale = static_cast<float>(params.cache_k_dequant_scales[kv_hi]);
+    v_dequant_scale = static_cast<float>(params.cache_v_dequant_scales[kv_hi]);
+  }
 
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;

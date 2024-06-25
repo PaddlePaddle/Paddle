@@ -427,7 +427,8 @@ void DispatchWithDtype(
   if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     // VLOGMatrix(
-    //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf before", qkv_buf.numel());
+    //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf before",
+    //     qkv_buf.numel());
     if (rope_emb) {
       if (q_num_head == kv_num_head) {
         rotary_qk_variable(dev_ctx,
@@ -459,7 +460,8 @@ void DispatchWithDtype(
       }
     }
     // VLOGMatrix(
-    //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf after", qkv_buf.numel());
+    //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf after",
+    //     qkv_buf.numel());
     VLOG(3) << "rope end";
     VLOG(3) << "causual: " << causual;
     if (!use_pre_cache) {
