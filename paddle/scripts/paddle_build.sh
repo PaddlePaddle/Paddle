@@ -2644,6 +2644,8 @@ fi
 local parallel_list
 parallel_list="^test_block_multihead_attention$|\
 ^test_fused_weight_only_linear_pass$|\
+^test_block_multihead_attention_gqa$|\
+^test_fused_flash_attn_pass$|\
 ^test_fused_multi_transformer_op$|\
 ^test_fused_multi_transformer_int8_op$|\
 ^test_flash_attention$|\
