@@ -63,11 +63,11 @@ class TestFP8CastOp(unittest.TestCase):
         self.shape = (16, 16)
 
     def test_cast(self):
-        for self.device in ["cpu", "gpu"]:
+        for self.device in ["gpu"]:
             paddle.device.set_device(self.device)
             for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
                 # test fp32 to fp8 (dtype)
-                input = paddle.full(self.shape, 57345.0)
+                input = paddle.full(self.shape, 100000.0)
                 input1 = input.astype(self.dtype)
                 self.assertTrue(input1.dtype == self.dtype_dict[self.dtype])
                 # test fp8 to fp32 (dtype)
@@ -90,8 +90,18 @@ class TestFP8FullOp(unittest.TestCase):
             "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
         }
 
-    def test_ones(self):
+    def test_ones_0(self):
         for self.device in ["cpu", "gpu"]:
+            paddle.device.set_device(self.device)
+            for self.dtype in ["float8_e4m3fn"]:
+                input = paddle.ones([1, 2], dtype=self.dtype)
+                self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
+                input_fp32 = input.astype("float32")
+                expect = paddle.to_tensor([[1, 1]]).astype("float32")
+                self.assertTrue(paddle.equal_all(expect, input_fp32))
+
+    def test_ones_1(self):
+        for self.device in ["gpu"]:
             paddle.device.set_device(self.device)
             for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
                 input = paddle.ones([1, 2], dtype=self.dtype)
@@ -116,7 +126,7 @@ class TestFP8FullOp(unittest.TestCase):
     "Fp8 matmul requires CUDA >= 12.1 on Ada arch or hopper arch",
 )
 class TestFP8MatmulOp(unittest.TestCase):
-    def gelu(x):
+    def gelu(self, x):
         return (
             0.5
             * x

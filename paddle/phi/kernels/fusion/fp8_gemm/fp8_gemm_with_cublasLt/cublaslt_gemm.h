@@ -789,6 +789,8 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                                  &epilogue,
                                                  sizeof(epilogue));
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
+  } else if (activation_type == "identity") {
+    VLOG(3) << "No activation function set, the activation type is identity";
   } else {
     PADDLE_THROW(phi::errors::Fatal(
         "Can not support this activation type, please check the act"));

@@ -79,7 +79,8 @@ class TestFP8FP16Gemm(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.test_model = FP16TestNet()
-        self.path_prefix = "./tmp_fp16_model/model"
+        self.model_path = "./tmp_fp16_model/"
+        self.path_prefix = self.model_path + "model"
         paddle.jit.save(
             self.test_model,
             self.path_prefix,
@@ -133,7 +134,7 @@ class TestFP8FP16Gemm(unittest.TestCase):
         fp8_out = self.inference()
         fp32_out = np.dot(self.x, np.transpose(self.y))
         np.testing.assert_allclose(fp8_out, fp32_out, rtol=1e-5, atol=1e-5)
-        shutil.rmtree(self.path_prefix)
+        shutil.rmtree(self.model_path)
 
 
 class BF16TestNet(paddle.nn.Layer):
@@ -159,7 +160,8 @@ class TestFP8BF16Gemm(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.test_model = BF16TestNet()
-        self.path_prefix = "./tmp_bf16_model/model"
+        self.model_path = "./tmp_fp16_model/"
+        self.path_prefix = self.model_path + "model"
         paddle.jit.save(
             self.test_model,
             self.path_prefix,
@@ -213,7 +215,7 @@ class TestFP8BF16Gemm(unittest.TestCase):
         fp8_out = self.inference()
         fp32_out = np.dot(self.x, np.transpose(self.y))
         np.testing.assert_allclose(fp8_out, fp32_out, rtol=1e-2, atol=1e-2)
-        shutil.rmtree(self.path_prefix)
+        shutil.rmtree(self.model_path)
 
 
 if __name__ == "__main__":
