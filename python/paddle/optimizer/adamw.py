@@ -121,11 +121,12 @@ class AdamW(Optimizer):
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            >>> opt = paddle.optimizer.AdamW(learning_rate=0.1,
-            ...         parameters=linear.parameters(),
-            ...         beta1=beta1,
-            ...         beta2=beta2,
-            ...         weight_decay=0.01
+            >>> opt = paddle.optimizer.AdamW(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     weight_decay=0.01
             ... )
             >>> loss.backward()
             >>> opt.step()
@@ -171,9 +172,9 @@ class AdamW(Optimizer):
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
         epsilon: float | Tensor = 1e-8,
-        parameters: Sequence[Tensor]
-        | Sequence[_AdamParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdamParameterConfig] | None
+        ) = None,
         weight_decay: float | Tensor = 0.01,
         lr_ratio: Callable[[Tensor], float] | None = None,
         apply_decay_param_fun: Callable[[str], bool] | None = None,
@@ -383,9 +384,11 @@ class AdamW(Optimizer):
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.9
-            if isinstance(self._beta1, (Variable, Value))
-            else self._beta1,
+            fill_value=(
+                0.9
+                if isinstance(self._beta1, (Variable, Value))
+                else self._beta1
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -394,9 +397,11 @@ class AdamW(Optimizer):
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.999
-            if isinstance(self._beta2, (Variable, Value))
-            else self._beta2,
+            fill_value=(
+                0.999
+                if isinstance(self._beta2, (Variable, Value))
+                else self._beta2
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -538,9 +543,11 @@ class AdamW(Optimizer):
                 "multi_precision": find_master,
                 "with_decay": with_decay,
                 "coeff": self._weight_decay,
-                "lr_ratio": 1.0
-                if self._lr_ratio is None
-                else self._lr_ratio(param_and_grad[0]),
+                "lr_ratio": (
+                    1.0
+                    if self._lr_ratio is None
+                    else self._lr_ratio(param_and_grad[0])
+                ),
             }
 
             if isinstance(self._beta1, Variable):

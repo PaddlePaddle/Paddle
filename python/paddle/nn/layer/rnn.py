@@ -28,7 +28,7 @@ from paddle.base.framework import (
     program_guard,
 )
 from paddle.common_ops_import import Variable
-from paddle.framework import core
+from paddle.framework import core, in_pir_mode
 from paddle.nn import (
     functional as F,
     initializer as I,
@@ -106,7 +106,7 @@ def rnn(
 
     """
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -230,7 +230,9 @@ def _rnn_static_graph(
     is_reverse=False,
     **kwargs,
 ):
-    check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
+    check_type(
+        inputs, 'inputs', (Variable, list, tuple, paddle.pir.Value), 'rnn'
+    )
     if isinstance(inputs, (list, tuple)):
         for i, input_x in enumerate(inputs):
             check_variable_and_dtype(
@@ -239,12 +241,15 @@ def _rnn_static_graph(
     check_type(
         initial_states,
         'initial_states',
-        (Variable, list, tuple, type(None)),
+        (Variable, list, tuple, type(None), paddle.pir.Value),
         'rnn',
     )
 
     check_type(
-        sequence_length, 'sequence_length', (Variable, type(None)), 'rnn'
+        sequence_length,
+        'sequence_length',
+        (Variable, type(None), paddle.pir.Value),
+        'rnn',
     )
 
     def _switch_grad(x, stop=False):
@@ -261,7 +266,7 @@ def _rnn_static_graph(
         inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
 
     max_seq_len = paddle.shape(paddle.utils.flatten(inputs)[0])[0]
-    if sequence_length:
+    if sequence_length is not None:
         mask = paddle.static.nn.sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
@@ -272,7 +277,11 @@ def _rnn_static_graph(
         inputs = paddle.utils.map_structure(
             lambda x: paddle.reverse(x, axis=[0]), inputs
         )
-        mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
+        mask = (
+            paddle.reverse(mask, axis=[0])
+            if sequence_length is not None
+            else None
+        )
 
     with paddle.base.framework.device_guard("cpu"):
         start_i = paddle.zeros([], dtype="int64")
@@ -303,9 +312,11 @@ def _rnn_static_graph(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
         outputs, new_states = cell(step_in, pre_state, **kwargs)
-        assert isinstance(outputs, paddle.base.framework.Variable)
+        assert isinstance(
+            outputs, (paddle.base.framework.Variable, paddle.pir.Value)
+        )
         paddle.utils.assert_same_structure(new_states, pre_state)
-        if sequence_length:
+        if sequence_length is not None:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
             # new_states = map_structure(
             #     partial(_maybe_copy, step_mask=step_mask),
@@ -1614,19 +1625,34 @@ class RNNBase(LayerList):
                 default_startup_program(), default_startup_program()
             ):
                 with paddle.no_grad():
-                    self._helper.append_op(
-                        type="coalesce_tensor",
-                        inputs={"Input": self._all_weights},
-                        outputs={
-                            "Output": self._all_weights,
-                            "FusedOutput": self._flat_weight,
-                        },
-                        attrs={
-                            "copy_data": True,
-                            "use_align": False,
-                            "dtype": params[0].dtype,
-                        },
-                    )
+                    if in_pir_mode():
+                        _C_ops.coalesce_tensor(
+                            self._all_weights,
+                            params[0].dtype,
+                            True,
+                            False,
+                            False,
+                            0.0,
+                            False,
+                            -1,
+                            -1,
+                            [],
+                            [],
+                        )
+                    else:
+                        self._helper.append_op(
+                            type="coalesce_tensor",
+                            inputs={"Input": self._all_weights},
+                            outputs={
+                                "Output": self._all_weights,
+                                "FusedOutput": self._flat_weight,
+                            },
+                            attrs={
+                                "copy_data": True,
+                                "use_align": False,
+                                "dtype": params[0].dtype,
+                            },
+                        )
 
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
@@ -1712,7 +1738,9 @@ class RNNBase(LayerList):
         else:
             initial_states = (
                 [initial_states]
-                if isinstance(initial_states, paddle.static.Variable)
+                if isinstance(
+                    initial_states, (paddle.static.Variable, paddle.pir.Value)
+                )
                 else initial_states
             )
 

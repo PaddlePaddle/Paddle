@@ -462,28 +462,27 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
-  PADDLE_ENFORCE_EQ(out_dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "flash_attn receive input with dim "
-                        "[batch_size, seq_len, num_heads, head_dim]"));
-  out_dims[3] = v.dims()[3];
+  if (out_dims.size() == 4) {
+    out_dims[3] = v.dims()[3];
+  }
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
-  auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
-  int batch_size = q.dims()[0];
-  int num_heads = q.dims()[2];
-  int seqlen_q_rounded = round_multiple(q.dims()[1]);
-  int seqlen_k_rounded = round_multiple(k.dims()[1]);
-  if (softmax) {
-    softmax->set_dtype(q.dtype());
-    softmax->set_dims(
-        {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
-  }
-  if (softmax_lse) {
-    softmax_lse->set_dtype(q.dtype());
-    softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+  softmax->set_dtype(q.dtype());
+  softmax_lse->set_dtype(q.dtype());
+  if (out_dims.size() == 4) {
+    auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
+    int batch_size = q.dims()[0];
+    int num_heads = q.dims()[2];
+    int seqlen_q_rounded = round_multiple(q.dims()[1]);
+    int seqlen_k_rounded = round_multiple(k.dims()[1]);
+    if (softmax) {
+      softmax->set_dims(
+          {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
+    }
+    if (softmax_lse) {
+      softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+    }
   }
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);

@@ -153,7 +153,7 @@ void BindModule(py::module *m) {
   builder.def(py::init<const std::string &, const cinn::common::Target &>())
       .def("add_function",
            [](ir::Module::Builder &self, ir::LoweredFunc func) {
-             self.GetTargetArch().Visit(adt::match{
+             self.GetTargetArch().Match(
                  [&](common::UnknownArch) { LOG(FATAL) << "NotImplemented"; },
                  [&](common::X86Arch) {
                    // Do nothing
@@ -168,7 +168,10 @@ void BindModule(py::module *m) {
                    optim::OptimizeExprGPU(&(func->body));
 #endif
                  },
-             });
+                 [&](common::HygonDCUArchHIP) {
+                   PADDLE_THROW(
+                       phi::errors::Unimplemented("CINN old obsolete code!"));
+                 });
              self.AddFunction(func);
            })
       .def("add_buffer", &ir::Module::Builder::AddBuffer)
