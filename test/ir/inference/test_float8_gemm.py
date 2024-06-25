@@ -62,11 +62,12 @@ class FP16TestNet(paddle.nn.Layer):
 
     def forward(self, input1, input2):
         type = "float8_e4m3fn"
-        output = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+        output = paddle.linalg.fp8_fp8_half_gemm_fused(
             paddle.cast(input1, type),
             paddle.cast(input2, type),
             transpose_x=False,
             transpose_y=True,
+            output_dtype="float16",
         )
         return paddle.cast(output, "float32")
 
@@ -143,11 +144,12 @@ class BF16TestNet(paddle.nn.Layer):
 
     def forward(self, input1, input2):
         type = "float8_e4m3fn"
-        output = paddle.linalg.fp8_fp8_bf16_gemm_fused(
+        output = paddle.linalg.fp8_fp8_half_gemm_fused(
             paddle.cast(input1, type),
             paddle.cast(input2, type),
             transpose_x=False,
             transpose_y=True,
+            output_dtype="bfloat16",
         )
         return paddle.cast(output, "float32")
 

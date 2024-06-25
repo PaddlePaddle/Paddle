@@ -26,7 +26,7 @@ namespace fusion {
 namespace cutlass_internal {
 
 template <typename InputType, typename Context>
-void fp8_fp8_fp16_gemm(
+void fp8_fp8_half_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
@@ -34,16 +34,26 @@ void fp8_fp8_fp16_gemm(
     const bool trans_x,
     const bool trans_y,
     const float scale,  // only support per-tensor quantization
+    const std::string& output_dtype,
     const std::string& activation_type,
     DenseTensor* out) {
 #if CUDA_VERSION >= 12010
   static_assert(std::is_same<Context, phi::GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
-  cublaslt_fp8_fp8_fp16_gemm<Context>(
-      dev_ctx, x, y, bias, trans_x, trans_y, scale, activation_type, out);
+  if (out->dtype() == phi::DataType::BFLOAT16) {
+    cublaslt_fp8_fp8_bf16_gemm<Context>(
+        dev_ctx, x, y, bias, trans_x, trans_y, scale, activation_type, out);
+  } else if (out->dtype() == phi::DataType::FLOAT16) {
+    cublaslt_fp8_fp8_fp16_gemm<Context>(
+        dev_ctx, x, y, bias, trans_x, trans_y, scale, activation_type, out);
+  } else {
+    PADDLE_THROW(phi::errors::Fatal(
+        "fp8_fp8_half_gemm_fused only support bfloat16 and float16 output"));
+  }
+
 #else
   PADDLE_THROW(
-      phi::errors::Fatal("fp8_fp8_fp16_gemm_fused need CUDA 12.1+ and sm_89+"));
+      phi::errors::Fatal("fp8_fp8_half_gemm_fused need CUDA 12.1+ and sm_89+"));
 #endif
 }
 
@@ -51,9 +61,9 @@ void fp8_fp8_fp16_gemm(
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fp8_fp8_fp16_gemm_fused,
+PD_REGISTER_KERNEL(fp8_fp8_half_gemm_fused,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::fp8_fp8_fp16_gemm,
+                   phi::fusion::cutlass_internal::fp8_fp8_half_gemm,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2) {}

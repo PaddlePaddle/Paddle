@@ -154,67 +154,74 @@ class TestFP8MatmulOp(unittest.TestCase):
 
                 bias_float32 = paddle.ones([64], dtype="float32")
 
-                output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                output_fp16 = paddle.linalg.fp8_fp8_half_gemm_fused(
                     input1,
                     input2,
                     transpose_x=False,
                     transpose_y=True,
+                    output_dtype="float16",
                 )
 
-                output_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
+                output_bf16 = paddle.linalg.fp8_fp8_half_gemm_fused(
                     input1,
                     input2,
                     transpose_x=False,
                     transpose_y=True,
+                    output_dtype="bfloat16",
                 )
 
-                output_bias_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
-                    input1,
-                    input2,
-                    transpose_x=False,
-                    transpose_y=True,
-                    bias=bias_fp16,
-                    scale=1.0,
-                )
-
-                output_bias_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
-                    input1,
-                    input2,
-                    transpose_x=False,
-                    transpose_y=True,
-                    bias=bias_bf16,
-                    scale=1.0,
-                )
-
-                output_gelu_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
-                    input1,
-                    input2,
-                    transpose_x=False,
-                    transpose_y=True,
-                    scale=1.0,
-                    act="gelu",
-                )
-
-                output_gelu_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
-                    input1,
-                    input2,
-                    transpose_x=False,
-                    transpose_y=True,
-                    scale=1.0,
-                    act="gelu",
-                )
-
-                output_bias_gelu_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                output_bias_fp16 = paddle.linalg.fp8_fp8_half_gemm_fused(
                     input1,
                     input2,
                     transpose_x=False,
                     transpose_y=True,
                     bias=bias_fp16,
                     scale=1.0,
-                    act="gelu",
+                    output_dtype="float16",
                 )
 
-                output_bias_gelu_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
+                output_bias_bf16 = paddle.linalg.fp8_fp8_half_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    bias=bias_bf16,
+                    scale=1.0,
+                    output_dtype="bfloat16",
+                )
+
+                output_gelu_fp16 = paddle.linalg.fp8_fp8_half_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale=1.0,
+                    act="gelu",
+                    output_dtype="float16",
+                )
+
+                output_gelu_bf16 = paddle.linalg.fp8_fp8_half_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale=1.0,
+                    act="gelu",
+                    output_dtype="bfloat16",
+                )
+
+                output_bias_gelu_fp16 = paddle.linalg.fp8_fp8_half_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    bias=bias_fp16,
+                    scale=1.0,
+                    act="gelu",
+                    output_dtype="float16",
+                )
+
+                output_bias_gelu_bf16 = paddle.linalg.fp8_fp8_half_gemm_fused(
                     input1,
                     input2,
                     transpose_x=False,
@@ -222,9 +229,10 @@ class TestFP8MatmulOp(unittest.TestCase):
                     bias=bias_bf16,
                     scale=1.0,
                     act="gelu",
+                    output_dtype="bfloat16",
                 )
 
-                output_bias_relu_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                output_bias_relu_fp16 = paddle.linalg.fp8_fp8_half_gemm_fused(
                     input1,
                     input2,
                     transpose_x=False,
@@ -232,9 +240,10 @@ class TestFP8MatmulOp(unittest.TestCase):
                     bias=bias_fp16,
                     scale=1.0,
                     act="relu",
+                    output_dtype="float16",
                 )
 
-                output_bias_relu_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
+                output_bias_relu_bf16 = paddle.linalg.fp8_fp8_half_gemm_fused(
                     input1,
                     input2,
                     transpose_x=False,
@@ -242,6 +251,7 @@ class TestFP8MatmulOp(unittest.TestCase):
                     bias=bias_bf16,
                     scale=1.0,
                     act="relu",
+                    output_dtype="bfloat16",
                 )
 
                 expect_result = np.matmul(input3, input4)
