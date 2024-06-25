@@ -54,6 +54,10 @@ def check_fp8_support() -> bool:
     return True
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "FP8 date type has some bug in CPU",
+)
 class TestFP8CastOp(unittest.TestCase):
     def setUp(self):
         self.dtype_dict = {
@@ -83,6 +87,10 @@ class TestFP8CastOp(unittest.TestCase):
                 self.assertTrue(paddle.equal_all(input2, expect))
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "FP8 date type has some bug in CPU",
+)
 class TestFP8FullOp(unittest.TestCase):
     def setUp(self):
         self.dtype_dict = {
