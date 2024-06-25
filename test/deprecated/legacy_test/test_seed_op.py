@@ -23,41 +23,26 @@ from paddle import static
 paddle.enable_static()
 
 
-def api_wrapper(
-    seed,
-    deterministic=False,
-    rng_name="",
-    force_cpu=False,
-    dtype=paddle.int32,
-    place=paddle.CPUPlace(),
-):
-    return paddle._C_ops.seed(
-        seed, deterministic, rng_name, force_cpu, dtype, place
-    )
-
-
 class TestSeedOpFixSeed(OpTest):
     def setUp(self):
         self.op_type = "seed"
-        self.python_api = api_wrapper
         self.inputs = {}
         self.attrs = {"seed": 123}
         self.outputs = {"Out": np.array([123]).astype('int')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestSeedOpDiffSeed(OpTest):
     def setUp(self):
         self.op_type = "seed"
-        self.python_api = api_wrapper
         self.inputs = {}
         self.attrs = {"seed": 0}
         self.outputs = {"Out": np.array([123]).astype('int')}
 
     def test_check_output(self):
-        self.check_output(no_check_set=["Out"])
+        self.check_output(no_check_set=["Out"], check_dygraph=False)
 
 
 class TestDropoutWithRandomSeedGenerator(unittest.TestCase):

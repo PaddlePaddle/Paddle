@@ -3718,19 +3718,6 @@
     data_type : sorted_sequence
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : seed
-  args : (int seed=0, bool deterministic=false, str rng_name="", bool force_cpu=false, DataType dtype=DataType::INT32, Place place={})
-  output : Tensor(out)
-  infer_meta:
-    func: SeedInferMeta
-    param: [seed]
-  kernel:
-    func: seed
-    param: [seed, deterministic, rng_name, force_cpu]
-    data_type: dtype
-    backend: place
-  traits : pir::SideEffectTrait
-
 - op : segment_pool
   args : (Tensor x, Tensor segment_ids, str pooltype="SUM")
   output : Tensor(out), Tensor(summed_ids)

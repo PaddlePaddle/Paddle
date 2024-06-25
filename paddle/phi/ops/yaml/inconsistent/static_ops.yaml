@@ -712,6 +712,19 @@
   optional : out
   interfaces : paddle::dialect::ParseKernelKeyInterface
 
+- op : seed
+  args : (int seed=0, bool deterministic=false, str rng_name="", bool force_cpu=false, DataType dtype=DataType::INT32, Place place={})
+  output : Tensor(out)
+  infer_meta:
+    func: SeedInferMeta
+    param: [seed]
+  kernel:
+    func: seed
+    param: [seed, deterministic, rng_name, force_cpu]
+    data_type: dtype
+    backend: place
+  traits : pir::SideEffectTrait
+
 - op : send_and_recv
   args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
   output : Tensor[](out){x.size()}

@@ -3069,6 +3069,8 @@
     out : Out
   get_expected_kernel_type :
     seed : GetSeedExpectedKernelType
+  extra :
+    attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
 - op : segment_pool
   backward : segment_pool_grad
