@@ -77,7 +77,6 @@ def check_layer_numerics(func):
         ..  code-block:: python
 
             >>> import paddle
-            >>> from paddle._typing import DTypeLike
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self, dtype):
             ...         super().__init__()
@@ -88,7 +87,7 @@ def check_layer_numerics(func):
             ...         # return 1/x * self._w + self._b   open it you will see the error log
             ...         return x @ self._w + self._b
             ...
-            >>> dtype: DTypeLike = 'float32'
+            >>> dtype = 'float32'
             >>> x = paddle.rand([10, 2, 2], dtype=dtype)
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)

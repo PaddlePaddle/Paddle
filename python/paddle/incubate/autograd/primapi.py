@@ -143,7 +143,7 @@ def grad(outputs, inputs, grad_outputs=None):
             >>> main_program = paddle.static.Program()
             >>> with paddle.static.program_guard(main_program, startup_program):
             ...     x = paddle.static.data('x', shape=[1], dtype='float32')
-            ...     x.stop_gradient = False
+            ...     x.stop_gradients = False
             ...     y = x * x
             ...     x_grad = paddle.incubate.autograd.grad(y, x)
             ...     paddle.incubate.autograd.prim2orig()
