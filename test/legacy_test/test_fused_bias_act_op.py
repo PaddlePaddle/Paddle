@@ -94,7 +94,7 @@ def fused_act_bias_wrapper(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compile_with_rocm(),
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCm",
 )
 class TestFusedBiasActOp(unittest.TestCase):
