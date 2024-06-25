@@ -22,16 +22,11 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
   if (op->IsOp() && op->Op()) {
@@ -635,7 +630,8 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
 
   return transpose2_2_out_var;
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 namespace {
 template <typename T>
@@ -1615,9 +1611,7 @@ void MultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(multihead_matmul_fuse_pass,
               paddle::framework::ir::MultiHeadMatmulFusePass);

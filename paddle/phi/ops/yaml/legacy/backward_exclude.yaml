@@ -18,7 +18,6 @@
 - fused_softmax_mask_grad
 - fused_softmax_mask_upper_triangle_grad
 - hsigmoid_loss_grad
-- logsumexp_grad
 - max_grad
 - mean_double_grad
 - mean_grad
@@ -33,7 +32,6 @@
 - repeat_interleave_grad
 - repeat_interleave_with_tensor_index_grad
 - rnn_grad
-- rrelu_grad
 - set_value_with_tensor_grad
 - slice_double_grad
 - slice_grad

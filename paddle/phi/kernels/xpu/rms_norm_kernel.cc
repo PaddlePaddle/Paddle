@@ -63,10 +63,10 @@ void RmsNormKernel(const Context& dev_ctx,
   const T* norm_weight_data = norm_weight.data<T>();
   const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
   // float* inv_var_data = nullptr;
-  if (inv_var != nullptr) {
-    // inv_var_data = dev_ctx.template Alloc<float>(inv_var);
-    PD_THROW("rms_norm in XPU kernel does not support inv_var output");
-  }
+  // if (inv_var != nullptr) {
+  // inv_var_data = dev_ctx.template Alloc<float>(inv_var);
+  // PD_THROW("rms_norm in XPU kernel does not support inv_var output");
+  // }
 
   int32_t rows = 1;
   int32_t cols = 1;
@@ -79,28 +79,6 @@ void RmsNormKernel(const Context& dev_ctx,
   }
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  float* norm_weight_data_fp32 = nullptr;
-  float* norm_bias_data_fp32 = nullptr;
-  if (std::is_same<T, float>::value == false) {
-    norm_weight_data_fp32 =
-        RAII_GUARD.alloc_l3_or_gm<float>(norm_weight.numel());
-    norm_bias_data_fp32 =
-        norm_bias ? RAII_GUARD.alloc_l3_or_gm<float>(norm_bias.get().numel())
-                  : nullptr;
-    int r = xpu::cast_v2<XPUType, float>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(norm_weight_data),
-        norm_weight_data_fp32,
-        norm_weight.numel());
-    if (norm_bias) {
-      r = xpu::cast_v2<XPUType, float>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(norm_bias_data),
-          norm_bias_data_fp32,
-          norm_bias.get().numel());
-    }
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast kernel run error");
-  }
   if (residual) {
     // Do RMSNorm(bias_add + residual + x)
     T* residual_out_data = dev_ctx.template Alloc<T>(residual_out);
@@ -129,8 +107,8 @@ void RmsNormKernel(const Context& dev_ctx,
           rows,
           cols,
           epsilon,
-          norm_weight_data_fp32,
-          norm_bias_data_fp32,
+          reinterpret_cast<const XPUType*>(norm_weight_data),
+          reinterpret_cast<const XPUType*>(norm_bias_data),
           nullptr);
     } else {
       // Quantize and output int8.
@@ -141,16 +119,16 @@ void RmsNormKernel(const Context& dev_ctx,
     if (quant_scale <= 0.0f) {
       // No Quantize.
       T* out_data = dev_ctx.template Alloc<T>(out);
-      int r =
-          xpu::rms_layer_norm<XPUType>(dev_ctx.x_context(),
-                                       reinterpret_cast<const XPUType*>(x_data),
-                                       reinterpret_cast<XPUType*>(out_data),
-                                       rows,
-                                       cols,
-                                       epsilon,
-                                       norm_weight_data_fp32,
-                                       norm_bias_data_fp32,
-                                       nullptr);
+      int r = xpu::rms_layer_norm<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x_data),
+          reinterpret_cast<XPUType*>(out_data),
+          rows,
+          cols,
+          epsilon,
+          reinterpret_cast<const XPUType*>(norm_weight_data),
+          reinterpret_cast<const XPUType*>(norm_bias_data),
+          nullptr);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_norm");
     } else {
       // Quantize and output int8.

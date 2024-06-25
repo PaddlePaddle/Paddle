@@ -117,9 +117,7 @@ COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CUDAGraphAllocator
@@ -1908,6 +1906,4 @@ void AllocatorFacade::SetDefaultStream(const platform::CustomPlace& place,
 UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =
     std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

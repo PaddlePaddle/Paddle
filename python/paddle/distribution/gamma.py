@@ -82,13 +82,13 @@ class Gamma(exponential_family.ExponentialFamily):
             check_type(
                 concentration,
                 'concentration',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Gamma',
             )
             check_type(
                 rate,
                 'rate',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Gamma',
             )
 
@@ -102,12 +102,6 @@ class Gamma(exponential_family.ExponentialFamily):
                 concentration, rate
             )
             self.dtype = paddle.get_default_dtype()
-
-        if not paddle.all(self.concentration > 0):
-            raise ValueError("The arg of `concentration` must be positive.")
-
-        if not paddle.all(self.rate > 0):
-            raise ValueError("The arg of `rate` must be positive.")
 
         super().__init__(self.concentration.shape)
 

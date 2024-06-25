@@ -27,7 +27,6 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_barrier_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
-#include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
@@ -41,9 +40,7 @@
 #include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 // TODO(panyx0718): Clean this up as well.
@@ -517,18 +514,6 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
                                                     ir::Node *node,
                                                     const std::string &og,
                                                     bool is_encoded) const {
-  const std::string GRAD_MERGE_COND_NAME = "grad_merge_cond_name";
-
-  bool is_grad_merge = node->Op()->HasAttr(GRAD_MERGE_COND_NAME);
-  std::string grad_merge_cond_name;
-  PADDLE_ENFORCE_EQ((is_encoded && is_grad_merge),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "DGC and GradMerge cannot use at same time, while "
-                        "use_dgc=%d, use_grad_merge=%d",
-                        is_encoded,
-                        is_grad_merge));
-
   auto append_allreduce_op = [&](const std::vector<Scope *> &scopes,
                                  const std::vector<platform::Place> &places)
       -> details::OpHandleBase * {
@@ -548,34 +533,6 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
           "This version of PaddlePaddle does NOT support DGC, "
           "but got DGC grad in CreateAllReduceOp. "
           "Please compile PaddlePaddle WITH_DGC first."));
-#endif
-    } else if (is_grad_merge) {
-      grad_merge_cond_name = PADDLE_GET_CONST(
-          std::string, node->Op()->GetAttr(GRAD_MERGE_COND_NAME));
-      VLOG(10) << "og=" << og << " use grad_merge_allreduce";
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::GradMergeAllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places,
-              grad_merge_cond_name,
-              multi_nccl_ctxs_));
-#elif defined(PADDLE_WITH_XPU_BKCL)
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::GradMergeAllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places,
-              grad_merge_cond_name,
-              multi_bkcl_ctxs_));
-#else
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::GradMergeAllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places,
-              grad_merge_cond_name));
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -636,39 +593,6 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
     op_handle->AddOutput(var);
     VLOG(10) << "all_reduce_op_handle add output " << og
              << ", handle:" << var->DebugString();
-
-    if (is_grad_merge) {
-      // NOTE(wangxi). grad_merge_cond_var is used by
-      // GradMergeAllReduceOpHandle, but it is not the input of
-      // grad_merge_all_reduce_op_handle. So we must add dep_var to resolve
-      // WAR data hazard, for grad_merge_all_reduce_op_handle may be
-      // executed before grad_merge_cond_op.
-      auto &grad_merge_cond_vars = result->Get<details::GraphVars>(
-          details::kGraphVars)[i][grad_merge_cond_name];
-      PADDLE_ENFORCE_EQ(
-          grad_merge_cond_vars.empty(),
-          false,
-          platform::errors::InvalidArgument(
-              "Can not find Var(%s) in Place[%d] "
-              "Paddle Can not add GradMergeAllReduce OP for Var(%s).",
-              grad_merge_cond_name,
-              i,
-              og));
-      auto &grad_merge_cond_var = grad_merge_cond_vars.back();
-      auto *cond_op = grad_merge_cond_var->GeneratedOp();
-      PADDLE_ENFORCE_NOT_NULL(
-          cond_op,
-          platform::errors::Fatal(
-              "grad_merge_cond_var(%s)'s generated op handle must not be NULL",
-              grad_merge_cond_name));
-
-      auto *dep_var =
-          new details::DummyVarHandle(result->CreateControlDepVar());
-      result->Get<details::GraphDepVars>(details::kGraphDepVars)
-          .emplace(dep_var);
-      cond_op->AddOutput(dep_var);
-      op_handle->AddInput(dep_var);
-    }
   }
 }
 
@@ -1377,9 +1301,7 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
   return 0;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 #define REGISTER_MULTI_DEVICES_PASS(pass_name, pass_class)                \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \

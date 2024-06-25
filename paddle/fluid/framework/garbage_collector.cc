@@ -24,8 +24,7 @@ COMMON_DECLARE_double(eager_delete_tensor_gb);
 COMMON_DECLARE_double(memory_fraction_of_eager_deletion);
 COMMON_DECLARE_bool(fast_eager_deletion_mode);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)
@@ -249,5 +248,4 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
   return std::unique_ptr<GarbageCollector>(gc.release());
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

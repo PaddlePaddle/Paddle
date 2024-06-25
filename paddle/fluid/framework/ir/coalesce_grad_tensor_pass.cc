@@ -20,12 +20,10 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/flags.h"
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class ProgramDesc;
 class VarDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 PADDLE_DEFINE_EXPORTED_double(
     fuse_parameter_memory_size,
@@ -46,9 +44,7 @@ PADDLE_DEFINE_EXPORTED_int32(
     "-1, it means that there are only one group. The default value is 3, it is "
     "an experimental value.");
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 // unit of the FLAGS_fuse_parameter_memory_size.
 static constexpr double kMB = 1048576.0;
 
@@ -600,9 +596,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     op_desc->SetAttr("persist_output", persistable);
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(coalesce_grad_tensor_pass,
               paddle::framework::ir::CoalesceGradTensorPass)

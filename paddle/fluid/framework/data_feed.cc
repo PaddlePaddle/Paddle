@@ -31,8 +31,7 @@ limitations under the License. */
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 COMMON_DECLARE_bool(enable_ins_parser_file);
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 DLManager& global_dlmanager_pool() {
   static DLManager manager;
@@ -2144,8 +2143,10 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetConfig(data_feed_desc);
+#if defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.SetConfig(data_feed_desc);
+  }
 #endif
   if (gpu_graph_mode_) {  // NOLINT
     train_mode_ = true;
@@ -2154,15 +2155,15 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   }
 }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::InitGraphResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
 #endif
 }
 
 void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocTrainResource(thread_id_);
 #endif
 }
@@ -2755,10 +2756,12 @@ bool SlotRecordInMemoryDataFeed::Start() {
     }));
   }
 #endif
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetFeedVec(feed_vec_);
-  // adapt for dense feature
-  gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+    // adapt for dense feature
+    gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
+  }
 #endif
   return true;
 }
@@ -2808,7 +2811,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
   } else {
     VLOG(3) << "datafeed in gpu graph mode";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
     this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
 #endif
   }
@@ -2819,28 +2822,34 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
 }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::DoWalkandSage() {
-  gpu_graph_data_generator_.DoWalkandSage();
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.DoWalkandSage();
+  }
 }
 #endif
 
 void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
                                               size_t dump_rate) {
   VLOG(3) << "INTO SlotRecordInMemoryDataFeed::DumpWalkPath";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    std::string path =
+        string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+    gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+  }
 #endif
 }
 
 void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
   VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpSampleNeighbors(path);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    std::string path =
+        string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+    gpu_graph_data_generator_.DumpSampleNeighbors(path);
+  }
 #endif
 }
 
@@ -3267,5 +3276,4 @@ void MiniBatchGpuPack::transfer_to_gpu() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

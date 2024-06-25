@@ -1398,7 +1398,7 @@ void test_cache_read1(void* _args, int32_t num_args)
   };
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) + j)]);
+      B[((32 * i) + j)] = (A_local_temp_buffer[((64 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 16; cache_ax0_0 += 1) {
@@ -1408,7 +1408,7 @@ void test_cache_read1(void* _args, int32_t num_args)
   };
   for (int32_t i = 0; i < 16; i += 1) {
     for (int32_t j = 0; j < 16; j += 1) {
-      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) + j)]);
+      C[((16 * i) + j)] = (B_local_temp_buffer[((32 * i) + j)] + 1.00000000f);
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1480,7 +1480,7 @@ void test_cache_read2(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       A_local_temp_buffer[((32 * i) + j)] = A[((32 * i) + j)];
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((32 * i) + j)]);
+      B[((32 * i) + j)] = (A_local_temp_buffer[((32 * i) + j)] * 2.00000000f);
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1553,7 +1553,7 @@ void test_cache_write1(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (A[((32 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
@@ -1563,7 +1563,7 @@ void test_cache_write1(void* _args, int32_t num_args)
   };
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (B[((32 * i) + j)] + 1.00000000f);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
@@ -1637,7 +1637,7 @@ void test_cache_write2(void* _args, int32_t num_args)
   float* B = ((float*)(_B->memory));
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)] = (2.00000000f * A[((32 * cache_ax0) + cache_ax1)]);
+      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)] = (A[((32 * cache_ax0) + cache_ax1)] * 2.00000000f);
       B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
     };
   };
@@ -1713,7 +1713,7 @@ void test_cache_read3(const float* __restrict__ A, float* __restrict__ C)
   };
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) + j)]);
+      B[((32 * i) + j)] = (A_local_temp_buffer[((64 * i) + j)] * 2.00000000f);
     };
     __syncthreads();
   };
@@ -1725,7 +1725,7 @@ void test_cache_read3(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 16; i += 1) {
     __syncthreads();
     for (int32_t j = 0; j < 16; j += 1) {
-      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) + j)]);
+      C[((16 * i) + j)] = (B_local_temp_buffer[((32 * i) + j)] + 1.00000000f);
     };
   };
 }
@@ -1794,7 +1794,7 @@ void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (A[((32 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
@@ -1805,7 +1805,7 @@ void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
   __syncthreads();
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (B[((32 * i) + j)] + 1.00000000f);
     };
   };
   __syncthreads();
@@ -1878,7 +1878,7 @@ void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (A[((32 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
@@ -1889,7 +1889,7 @@ void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
   };
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (B[((32 * i) + j)] + 1.00000000f);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
@@ -2716,7 +2716,7 @@ void test_compute_inline1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((32 * i) + ((1024 * j) + k))], 2.00000000f);
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((32 * i) + ((1024 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2790,7 +2790,7 @@ void test_compute_inline2(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((1024 * i) + ((32 * j) + k))], 2.00000000f);
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((1024 * i) + ((32 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2855,7 +2855,7 @@ void test_compute_inline3(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f * A[((32 * i) + ((1024 * j) + k))]));
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((32 * i) + ((1024 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2917,7 +2917,7 @@ void test_compute_inline4(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f * A[((1024 * i) + ((32 * j) + k))]));
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((1024 * i) + ((32 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2979,7 +2979,7 @@ void test_compute_inline1(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 64; j += 1) {
-      C[((32 * j) + i)] = fma(2.00000000f, A[((64 * i) + j)], 2.00000000f);
+      C[((32 * j) + i)] = (2.00000000f * (1.00000000f + A[((64 * i) + j)]));
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -3047,7 +3047,7 @@ void test_compute_inline1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((32 * i) + ((1024 * j) + k))] = fma(2.00000000f, A[((1024 * i) + ((32 * j) + k))], 2.00000000f);
+        C[((32 * i) + ((1024 * j) + k))] = (2.00000000f * (1.00000000f + A[((1024 * i) + ((32 * j) + k))]));
       };
     };
   };
@@ -3125,7 +3125,7 @@ void test_copytransform1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 32; k += 1) {
-            B[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (1.00000000f + A[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))]);
+            B[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (A[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] + 1.00000000f);
           };
         };
       };
@@ -3136,7 +3136,7 @@ void test_copytransform1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 32; k += 1) {
-            C[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (2.00000000f * B[((256 * i) + ((32 * i_0) + ((4096 * j) + ((1024 * j_0) + k))))]);
+            C[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (B[((256 * i) + ((32 * i_0) + ((4096 * j) + ((1024 * j_0) + k))))] * 2.00000000f);
           };
         };
       };
@@ -3214,7 +3214,7 @@ void test_copytransform2(void* _args, int32_t num_args)
     for (int32_t i_0 = 0; i_0 < 8; i_0 += 1) {
       for (int32_t j = 0; j < 64; j += 1) {
         for (int32_t k = 0; k < 128; k += 1) {
-          B[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] = (1.00000000f + A[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))]);
+          B[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] = (A[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] + 1.00000000f);
         };
       };
     };
@@ -3224,7 +3224,7 @@ void test_copytransform2(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 128; k += 1) {
-            C[((32768 * i) + ((4096 * i_0) + ((512 * j) + ((128 * j_0) + k))))] = (2.00000000f * B[((65536 * i) + ((8192 * i_0) + ((512 * j) + ((128 * j_0) + k))))]);
+            C[((32768 * i) + ((4096 * i_0) + ((512 * j) + ((128 * j_0) + k))))] = (B[((65536 * i) + ((8192 * i_0) + ((512 * j) + ((128 * j_0) + k))))] * 2.00000000f);
           };
         };
       };

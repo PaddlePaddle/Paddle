@@ -20,8 +20,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void SliceCooCompute(const Context& dev_ctx,
@@ -303,8 +302,7 @@ void SliceCsrKernel(const Context& dev_ctx,
       x_dims, &axes_vec, &starts_vec, &ends_vec);
   SliceCsrCompute<T, Context>(dev_ctx, x, axes_vec, starts_vec, ends_vec, out);
 }
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(slice_coo,
                    CPU,

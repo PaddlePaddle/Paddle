@@ -18,9 +18,7 @@
 #include "paddle/phi/kernels/funcs/jit/gen/act.h"  // for exp_float_consts ones
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void SeqPoolJitCode::genCode() {
   constexpr int block = YMM_FLOAT_BLOCK;
@@ -85,9 +83,7 @@ class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
   }
 };
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

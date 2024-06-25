@@ -128,7 +128,7 @@ void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         do_dims.size()));
-  auto dx_dims = do_dims;
+  const auto& dx_dims = do_dims;
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
 }
@@ -442,6 +442,34 @@ void CudnnLSTMGradInferMeta(
   }
   if (!weight_list_grad.empty()) {
     UnchangedMultiInferMeta(weight_list.get(), weight_list_grad);
+  }
+}
+
+void LSTMGradInferMeta(const MetaTensor& input,
+                       const MetaTensor& h0,
+                       const MetaTensor& c0,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       MetaTensor* input_grad,
+                       MetaTensor* h0_grad,
+                       MetaTensor* c0_grad,
+                       MetaTensor* weight_grad,
+                       MetaTensor* bias_grad,
+                       MetaConfig config) {
+  if (input_grad) {
+    input_grad->share_meta(input);
+  }
+  if (h0_grad) {
+    h0_grad->share_meta(h0);
+  }
+  if (c0_grad) {
+    c0_grad->share_meta(c0);
+  }
+  if (weight_grad) {
+    weight_grad->share_meta(weight);
+  }
+  if (bias_grad) {
+    bias_grad->share_meta(bias);
   }
 }
 

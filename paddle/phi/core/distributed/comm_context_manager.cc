@@ -43,8 +43,7 @@
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 int CommContextManager::device_id = -1;
 
@@ -295,5 +294,4 @@ std::vector<int> CommContextManager::GetGroupRanks(
   return pg_key_ranks_.at(pg_key);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

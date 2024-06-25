@@ -19,8 +19,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 TaskLoopThreadPool::TaskLoopThreadPool() : TaskLoopThreadPool(1) {}
 
@@ -73,5 +72,4 @@ std::vector<TaskLoop*> TaskLoopThreadPool::GetAllLoops() {
   return loops_;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

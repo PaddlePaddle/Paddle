@@ -14,9 +14,7 @@
 
 #include "paddle/fluid/operators/reader/py_reader.h"
 
-namespace paddle {
-namespace operators {
-namespace reader {
+namespace paddle::operators::reader {
 
 PyReader::PyReader(
     const std::shared_ptr<LoDTensorBlockingQueue>& queue,
@@ -44,6 +42,4 @@ void PyReader::Shutdown() { queue_->Close(); }
 
 void PyReader::Start() { queue_->ReOpen(); }
 
-}  // namespace reader
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators::reader

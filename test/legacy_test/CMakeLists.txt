@@ -422,11 +422,11 @@ function(parallel_bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
+list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
-list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -687,7 +687,7 @@ if(WITH_DISTRIBUTE)
     endif()
   endif()
 endif()
-
+py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(
   test_fuse_bn_add_act_pass
   MODULES
@@ -796,6 +796,8 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
+  set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 1200)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
 else()
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
@@ -803,6 +805,8 @@ else()
   set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
   set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op
@@ -956,6 +960,7 @@ endif()
 
 set(TEST_CINN_OPS
     test_assign_op
+    test_layer_norm_op
     test_atan2_op
     test_cast_op
     test_stack_op
@@ -1025,6 +1030,11 @@ set_tests_properties(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_adagrad_op
+    test_adamw_op
+    test_bincount_op
+    test_batch_norm_op
+    test_nce
+    test_layer_norm_op
     test_eigh_op
     test_matmul_op
     test_matmul_v2_op
@@ -1084,6 +1094,9 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
+py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
+                FLAGS_inner_op_parallelism=4)
+
 set(PIR_COVERAGE_TESTS test_fused_feedforward_pass)
 if(NOT WITH_GPU)
   list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fused_feedforward_pass)
@@ -1131,6 +1144,8 @@ set_pir_tests_properties()
 set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
+set_tests_properties(test_linalg_cholesky_inverse PROPERTIES TIMEOUT 100)
+set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_depthwise_conv
@@ -1173,3 +1188,12 @@ set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary_static_build
                      PROPERTIES TIMEOUT 120)
+set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
+set_tests_properties(test_data_norm_op PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
+set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
+set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
+set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)

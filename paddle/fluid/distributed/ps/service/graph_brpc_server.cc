@@ -24,8 +24,7 @@
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #define CHECK_TABLE_EXIST(table, request, response)        \
   if (table == NULL) {                                     \
@@ -704,5 +703,4 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

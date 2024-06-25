@@ -18,8 +18,7 @@
 
 #include "paddle/common/enforce.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 IrTensor::IrTensor(phi::DataType dtype,
                    const phi::DDim& dims,
                    phi::DataLayout layout,
@@ -70,5 +69,4 @@ void* IrTensor::AllocateFrom(phi::Allocator* allocator,
   IR_THROW("Don't use IrTensor::AllocateFrom method.");
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
