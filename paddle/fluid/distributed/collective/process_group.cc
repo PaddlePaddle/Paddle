@@ -16,6 +16,7 @@
 
 namespace paddle::distributed {
 
+// Add some useless comment here
 bool ProcessGroup::Task::IsCompleted() {
   std::lock_guard<std::mutex> lock(mutex_);
   return is_completed_;
