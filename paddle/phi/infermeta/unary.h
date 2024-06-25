@@ -33,6 +33,11 @@ struct MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out);
+
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,
@@ -260,6 +265,11 @@ void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  int round_type,
                                  MetaTensor* out,
                                  MetaTensor* out_scale);
+
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out);
 
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,

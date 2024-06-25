@@ -46,6 +46,16 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }
 }  // namespace detail
 
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,
@@ -1407,6 +1417,11 @@ void FillAnyLikeInferMeta(const MetaTensor& x,
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
   out->share_lod(x);
 }
+
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out) {}
 
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
@@ -5809,10 +5824,11 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* scale) {
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
