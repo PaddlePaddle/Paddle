@@ -1135,8 +1135,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                                    epsilon,
                                    out_name);
         }
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

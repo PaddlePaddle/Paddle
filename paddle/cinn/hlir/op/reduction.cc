@@ -180,25 +180,21 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           VLOG(3) << "Do Two Step Block Reduce Compute!";
           auto res = gpu_reduce_with_last_axis_func(
               x, reduce_axes, keepdim, tensor_name);
-          auto stages = CreateStages(res);
 
           std::vector<CINNValue> cinn_values;
           for (auto &t : res) {
             cinn_values.emplace_back(t);
           }
-          cinn_values.emplace_back(stages);
           *ret = CINNValuePack{cinn_values};
         } else {
           VLOG(3) << "Do Block Shuffle Reduce Compute!";
           auto res = gpu_reduce_without_last_axis_func(
               x, reduce_axes, keepdim, tensor_name);
-          auto stages = CreateStages(res);
 
           std::vector<CINNValue> cinn_values;
           for (auto &t : res) {
             cinn_values.emplace_back(t);
           }
-          cinn_values.emplace_back(stages);
           *ret = CINNValuePack{cinn_values};
         }
       } else {
