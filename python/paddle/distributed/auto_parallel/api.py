@@ -1340,7 +1340,10 @@ class ShardingStage3(_ShardingStageBase):
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
-                placements = param.placements
+                if isinstance(param, pir.Value):
+                    placements = get_value_placement(param)
+                else:
+                    placements = param.placements
             else:
                 placements = [
                     dist.Replicate()
