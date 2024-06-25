@@ -109,7 +109,7 @@ class Adadelta(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adadelta = paddle.optimizer.Adadelta(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
