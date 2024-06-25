@@ -118,9 +118,22 @@ void BindDistributed(py::module *m) {
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
-          .def("rank", &distributed::ProcessGroup::GetRank)
-          .def("size", &distributed::ProcessGroup::GetSize)
-          .def("name", &distributed::ProcessGroup::GetBackendName)
+          .def("rank",
+               &distributed::ProcessGroup::GetRank,
+               py::call_guard<py::gil_scoped_release>())
+          .def("size",
+               &distributed::ProcessGroup::GetSize,
+               py::call_guard<py::gil_scoped_release>())
+          .def("name",
+               &distributed::ProcessGroup::GetBackendName,
+               py::call_guard<py::gil_scoped_release>())
+          .def("_start_coalescing",
+               &distributed::ProcessGroup::StartCoalescing,
+               py::call_guard<py::gil_scoped_release>())
+          .def("_end_coalescing",
+               &distributed::ProcessGroup::EndCoalescing,
+               py::arg("tasks") = std::nullopt,
+               py::call_guard<py::gil_scoped_release>())
           .def(
               "all_reduce",
               [](distributed::ProcessGroup &self,

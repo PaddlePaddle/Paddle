@@ -24,7 +24,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"
-#include "paddle/cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/lang/packed_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
@@ -61,10 +61,6 @@ class CompilationInfoDumper {
   static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
                                       const int gidx,
                                       const int device_id);
-  static void DumpInstructionByGroupIndex(
-      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-      const int gidx,
-      const int device_id);
 
  private:
   void DumpLoweredFunc();

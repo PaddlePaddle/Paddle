@@ -3,7 +3,6 @@ if(WITH_TESTING)
 endif()
 
 add_subdirectory(adt)
-add_subdirectory(api)
 add_subdirectory(ast_gen_ius)
 add_subdirectory(auto_schedule)
 add_subdirectory(common)
@@ -16,7 +15,6 @@ add_subdirectory(lang)
 add_subdirectory(optim)
 add_subdirectory(hlir)
 add_subdirectory(pybind)
-add_subdirectory(frontend)
 add_subdirectory(operator_fusion)
 
 # Download a model
