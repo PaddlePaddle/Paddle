@@ -15,8 +15,8 @@
 include(ExternalProject)
 
 if(WITH_ROCM)
-  set(FA_REPOSITORY https://github.com/yuguo-Jack/flash-attention-hip.git)
-  set(FA_TAG "xdl")
+  set(FA_REPOSITORY https://github.com/PaddlePaddle/flash-attention.git)
+  set(FA_TAG "dcu")
   set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn_hip)
   set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
   set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/flashattn_hip)
