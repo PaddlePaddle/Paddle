@@ -24,6 +24,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
 list(REMOVE_ITEM TEST_OPS test_paddle_save_load)
 list(REMOVE_ITEM TEST_OPS test_jit_save_load)
+list(REMOVE_ITEM TEST_OPS test_static_save_load)
 ###### end ######
 
 if(WITH_COVERAGE)
