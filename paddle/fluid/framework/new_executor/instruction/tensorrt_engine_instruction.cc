@@ -247,6 +247,9 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
     }
     auto input_tensor = variable_array[i]->Get<phi::DenseTensor>();
     auto name = input_names_[i];
+    if (name == "") {
+      continue;
+    }
 
     VLOG(4) << "trt engine runtime input name(" << name << "), dims("
             << input_tensor.dims() << ")";
