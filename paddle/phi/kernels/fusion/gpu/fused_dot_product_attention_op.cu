@@ -27,7 +27,7 @@ namespace phi {
 namespace fusion {
 
 __global__ void set_rng_state(std::pair<uint64_t, uint64_t> seed_offset,
-                              int64_t *rng_state_ptr) {
+                              int64_t* rng_state_ptr) {
   rng_state_ptr[0] = static_cast<int64_t>(seed_offset.first);
   rng_state_ptr[1] = static_cast<int64_t>(seed_offset.second);
 }
@@ -44,7 +44,7 @@ const std::map<std::string, MHA_Mask_Type> kMaskTypeMap = {
     {"padding_causal", MHA_Mask_Type::PADDING_CAUSAL_MASK}};
 
 // get cuDNN data type
-cudnn_frontend::DataType_t get_cudnn_fe_dtype(const phi::DataType &t) {
+cudnn_frontend::DataType_t get_cudnn_fe_dtype(const phi::DataType& t) {
   switch (t) {
     case phi::DataType::INT32:
       return cudnn_frontend::DataType_t::INT32;
@@ -64,21 +64,21 @@ cudnn_frontend::DataType_t get_cudnn_fe_dtype(const phi::DataType &t) {
 
 template <typename T, typename Context>
 void FusedDotProductAttentionKernel(
-    const Context &dev_ctx,
-    const DenseTensor &q,
-    const DenseTensor &k,
-    const DenseTensor &v,
-    const paddle::optional<DenseTensor> &bias,
-    const paddle::optional<DenseTensor> &cu_seqlen_q,
-    const paddle::optional<DenseTensor> &cu_seqlen_kv,
+    const Context& dev_ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const paddle::optional<DenseTensor>& bias,
+    const paddle::optional<DenseTensor>& cu_seqlen_q,
+    const paddle::optional<DenseTensor>& cu_seqlen_kv,
     float scaling_factor,
     float dropout_probability,
     bool is_training,
-    const std::string &mask_type_str,
-    const std::string &bias_type_str,
-    DenseTensor *out,
-    DenseTensor *softmax_out,
-    DenseTensor *rng_state) {
+    const std::string& mask_type_str,
+    const std::string& bias_type_str,
+    DenseTensor* out,
+    DenseTensor* softmax_out,
+    DenseTensor* rng_state) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
                     phi::errors::PreconditionNotMet(
@@ -154,13 +154,13 @@ void FusedDotProductAttentionKernel(
   // support bias shape: [b,1,s,s],[b,h,s,s],[1,1,s,s]
   size_t bias_b = 0;
   size_t bias_h = 0;
-  void *bias_dev_ptr = nullptr;
+  void* bias_dev_ptr = nullptr;
   DenseTensor mask_expand;
   if (bias_type != MHA_Bias_Type::NO_BIAS) {
     bias_b = bias.get_ptr()->dims()[0];
     bias_h = bias.get_ptr()->dims()[1];
     bias_dev_ptr =
-        reinterpret_cast<void *>(const_cast<T *>(bias.get_ptr()->data<T>()));
+        reinterpret_cast<void*>(const_cast<T*>(bias.get_ptr()->data<T>()));
 
     // if bias's shape is [b,1,1,s], we treat it as an attention mask, broadcast
     // it to [b,1,s,s]
@@ -169,7 +169,7 @@ void FusedDotProductAttentionKernel(
           static_cast<int64_t>(bias_b), 1, q_seq_len, kv_seq_len};
       phi::ExpandKernel<T, Context>(
           dev_ctx, *(bias.get_ptr()), IntArray(mask_dims_vec), &mask_expand);
-      bias_dev_ptr = reinterpret_cast<void *>(mask_expand.data<T>());
+      bias_dev_ptr = reinterpret_cast<void*>(mask_expand.data<T>());
     }
   }
 
@@ -177,26 +177,26 @@ void FusedDotProductAttentionKernel(
   const int rng_elts_per_thread = 16;
   auto seed_offset = gen_cuda->IncrementOffset(rng_elts_per_thread);
   set_rng_state<<<1, 1, 0, dev_ctx.stream()>>>(
-      seed_offset, static_cast<int64_t *>(rng_state->data<int64_t>()));
+      seed_offset, static_cast<int64_t*>(rng_state->data<int64_t>()));
 
-  void *q_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(q.data<T>()));
-  void *k_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(k.data<T>()));
-  void *v_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(v.data<T>()));
-  void *out_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(out->data<T>()));
-  void *softmax_out_dev_ptr =
-      reinterpret_cast<void *>(const_cast<float *>(softmax_out->data<float>()));
+  void* q_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(q.data<T>()));
+  void* k_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(k.data<T>()));
+  void* v_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(v.data<T>()));
+  void* out_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
+  void* softmax_out_dev_ptr =
+      reinterpret_cast<void*>(const_cast<float*>(softmax_out->data<float>()));
   // rng_state: {seed, offset}
-  void *seed_dev_ptr = reinterpret_cast<void *>(
-      const_cast<int64_t *>(rng_state->data<int64_t>()));
-  void *offset_dev_ptr = reinterpret_cast<void *>(
-      const_cast<int64_t *>(rng_state->data<int64_t>()) + 1);
-  void *cu_seqlen_q_dev_ptr = nullptr;
-  void *cu_seqlen_kv_dev_ptr = nullptr;
+  void* seed_dev_ptr =
+      reinterpret_cast<void*>(const_cast<int64_t*>(rng_state->data<int64_t>()));
+  void* offset_dev_ptr = reinterpret_cast<void*>(
+      const_cast<int64_t*>(rng_state->data<int64_t>()) + 1);
+  void* cu_seqlen_q_dev_ptr = nullptr;
+  void* cu_seqlen_kv_dev_ptr = nullptr;
   if (cu_seqlen_q.get_ptr() != nullptr && cu_seqlen_kv.get_ptr() != nullptr) {
-    cu_seqlen_q_dev_ptr = reinterpret_cast<void *>(
-        const_cast<int32_t *>(cu_seqlen_q.get_ptr()->data<int32_t>()));
-    cu_seqlen_kv_dev_ptr = reinterpret_cast<void *>(
-        const_cast<int32_t *>(cu_seqlen_kv.get_ptr()->data<int32_t>()));
+    cu_seqlen_q_dev_ptr = reinterpret_cast<void*>(
+        const_cast<int32_t*>(cu_seqlen_q.get_ptr()->data<int32_t>()));
+    cu_seqlen_kv_dev_ptr = reinterpret_cast<void*>(
+        const_cast<int32_t*>(cu_seqlen_kv.get_ptr()->data<int32_t>()));
   }
   size_t workspace_size = 0;
   // call the first time to get the workspace size
@@ -260,32 +260,32 @@ void FusedDotProductAttentionKernel(
       cu_seqlen_q_dev_ptr,
       cu_seqlen_kv_dev_ptr,
       tensor_dtype,
-      reinterpret_cast<void *>(workspace.data<int8_t>()),
+      reinterpret_cast<void*>(workspace.data<int8_t>()),
       &workspace_size,
       dev_ctx);
 }
 
 template <typename T, typename Context>
 void FusedDotProductAttentionGradKernel(
-    const Context &dev_ctx,
-    const DenseTensor &q,
-    const DenseTensor &k,
-    const DenseTensor &v,
-    const paddle::optional<DenseTensor> &bias,
-    const paddle::optional<DenseTensor> &cu_seqlen_q,
-    const paddle::optional<DenseTensor> &cu_seqlen_kv,
-    const DenseTensor &O,
-    const DenseTensor &softmax_out,
-    const DenseTensor &rng_state,
-    const DenseTensor &dO,
+    const Context& dev_ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const paddle::optional<DenseTensor>& bias,
+    const paddle::optional<DenseTensor>& cu_seqlen_q,
+    const paddle::optional<DenseTensor>& cu_seqlen_kv,
+    const DenseTensor& O,
+    const DenseTensor& softmax_out,
+    const DenseTensor& rng_state,
+    const DenseTensor& dO,
     float scaling_factor,
     float dropout_probability,
-    const std::string &mask_type_str,
-    const std::string &bias_type_str,
-    DenseTensor *q_grad,
-    DenseTensor *k_grad,
-    DenseTensor *v_grad,
-    DenseTensor *bias_grad) {
+    const std::string& mask_type_str,
+    const std::string& bias_type_str,
+    DenseTensor* q_grad,
+    DenseTensor* k_grad,
+    DenseTensor* v_grad,
+    DenseTensor* bias_grad) {
   auto sm_arch = dev_ctx.GetComputeCapability();
   PADDLE_ENFORCE_GE(sm_arch,
                     80,
@@ -355,19 +355,19 @@ void FusedDotProductAttentionGradKernel(
   // bias dim: {b, h, s_q, s_kv}
   size_t bias_b = 0;
   size_t bias_h = 0;
-  void *bias_dev_ptr = nullptr;
-  void *dbias_dev_ptr = nullptr;
+  void* bias_dev_ptr = nullptr;
+  void* dbias_dev_ptr = nullptr;
   DenseTensor mask_expand;
   if (bias_type != MHA_Bias_Type::NO_BIAS) {
     bias_dev_ptr =
-        reinterpret_cast<void *>(const_cast<T *>(bias.get_ptr()->data<T>()));
+        reinterpret_cast<void*>(const_cast<T*>(bias.get_ptr()->data<T>()));
 
     if (bias_grad != nullptr) {
       bias_b = bias_grad->dims()[0];
       bias_h = bias_grad->dims()[1];
       dev_ctx.template Alloc<T>(bias_grad);
       dbias_dev_ptr =
-          reinterpret_cast<void *>(const_cast<T *>(bias_grad->data<T>()));
+          reinterpret_cast<void*>(const_cast<T*>(bias_grad->data<T>()));
     } else {
       bias_b = bias.get_ptr()->dims()[0];
       bias_h = bias.get_ptr()->dims()[1];
@@ -380,34 +380,31 @@ void FusedDotProductAttentionGradKernel(
           static_cast<int64_t>(bias_b), 1, q_seq_len, kv_seq_len};
       phi::ExpandKernel<T, Context>(
           dev_ctx, *(bias.get_ptr()), IntArray(mask_dims_vec), &mask_expand);
-      bias_dev_ptr = reinterpret_cast<void *>(mask_expand.data<T>());
+      bias_dev_ptr = reinterpret_cast<void*>(mask_expand.data<T>());
     }
   }
 
-  void *q_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(q.data<T>()));
-  void *k_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(k.data<T>()));
-  void *v_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(v.data<T>()));
-  void *dq_dev_ptr =
-      reinterpret_cast<void *>(const_cast<T *>(q_grad->data<T>()));
-  void *dk_dev_ptr =
-      reinterpret_cast<void *>(const_cast<T *>(k_grad->data<T>()));
-  void *dv_dev_ptr =
-      reinterpret_cast<void *>(const_cast<T *>(v_grad->data<T>()));
-  void *o_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(O.data<T>()));
-  void *do_dev_ptr = reinterpret_cast<void *>(const_cast<T *>(dO.data<T>()));
-  void *softmax_out_dev_ptr =
-      reinterpret_cast<void *>(const_cast<float *>(softmax_out.data<float>()));
-  void *seed_dev_ptr = reinterpret_cast<void *>(
-      const_cast<int64_t *>(rng_state.data<int64_t>()));
-  void *offset_dev_ptr = reinterpret_cast<void *>(
-      const_cast<int64_t *>(rng_state.data<int64_t>()) + 1);
-  void *cu_seqlen_q_dev_ptr = nullptr;
-  void *cu_seqlen_kv_dev_ptr = nullptr;
+  void* q_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(q.data<T>()));
+  void* k_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(k.data<T>()));
+  void* v_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(v.data<T>()));
+  void* dq_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(q_grad->data<T>()));
+  void* dk_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(k_grad->data<T>()));
+  void* dv_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(v_grad->data<T>()));
+  void* o_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(O.data<T>()));
+  void* do_dev_ptr = reinterpret_cast<void*>(const_cast<T*>(dO.data<T>()));
+  void* softmax_out_dev_ptr =
+      reinterpret_cast<void*>(const_cast<float*>(softmax_out.data<float>()));
+  void* seed_dev_ptr =
+      reinterpret_cast<void*>(const_cast<int64_t*>(rng_state.data<int64_t>()));
+  void* offset_dev_ptr = reinterpret_cast<void*>(
+      const_cast<int64_t*>(rng_state.data<int64_t>()) + 1);
+  void* cu_seqlen_q_dev_ptr = nullptr;
+  void* cu_seqlen_kv_dev_ptr = nullptr;
   if (cu_seqlen_q.get_ptr() != nullptr && cu_seqlen_kv.get_ptr() != nullptr) {
-    cu_seqlen_q_dev_ptr = reinterpret_cast<void *>(
-        const_cast<int32_t *>(cu_seqlen_q.get_ptr()->data<int32_t>()));
-    cu_seqlen_kv_dev_ptr = reinterpret_cast<void *>(
-        const_cast<int32_t *>(cu_seqlen_kv.get_ptr()->data<int32_t>()));
+    cu_seqlen_q_dev_ptr = reinterpret_cast<void*>(
+        const_cast<int32_t*>(cu_seqlen_q.get_ptr()->data<int32_t>()));
+    cu_seqlen_kv_dev_ptr = reinterpret_cast<void*>(
+        const_cast<int32_t*>(cu_seqlen_kv.get_ptr()->data<int32_t>()));
   }
 
   size_t workspace_size = 0;
@@ -480,7 +477,7 @@ void FusedDotProductAttentionGradKernel(
       cu_seqlen_q_dev_ptr,
       cu_seqlen_kv_dev_ptr,
       tensor_dtype,
-      reinterpret_cast<void *>(workspace.data<int8_t>()),
+      reinterpret_cast<void*>(workspace.data<int8_t>()),
       &workspace_size,
       dev_ctx);
 }
