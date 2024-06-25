@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 from unittest import TestCase
 
 import paddle
@@ -53,3 +54,7 @@ class TestRNNProgramClone(TestCase):
         with paddle.base.program_guard(test_program, startup_prog):
             with paddle.base.unique_name.guard():
                 bilstm = create_model()
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -104,6 +104,11 @@ if(WITH_GPU)
                                              /usr/lib /usr/lib64 REQUIRED)
 endif()
 
+if(WITH_ROCM)
+  message(STATUS "CINN Compile with ROCM support")
+  add_definitions(-DCINN_WITH_HIP)
+endif()
+
 set(cinnapi_src CACHE INTERNAL "" FORCE)
 set(core_src CACHE INTERNAL "" FORCE)
 set(core_includes CACHE INTERNAL "" FORCE)
