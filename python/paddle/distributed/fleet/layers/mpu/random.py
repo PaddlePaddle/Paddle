@@ -124,16 +124,11 @@ def model_parallel_random_seed(seed=None):
     paddle.seed(global_seed)
 
 
-def determinate_seed(rng_name):
-    assert rng_name is not None and rng_name != ""
+def determinate_seed(rng_name=None):
     helper = LayerHelper('seed', **locals())
     out = helper.create_variable_for_type_inference(dtype=paddle.int32)
     # set force_cpu to reduce sync copy from CPU->GPU->CPU, and reduce pipeline hang
-    helper.append_op(
-        type='seed',
-        outputs={'Out': out},
-        attrs={'deterministic': True, 'rng_name': rng_name, 'force_cpu': True},
-    )
+    helper.append_op(type='seed', outputs={'Out': out})
     return out
 
 
