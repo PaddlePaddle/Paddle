@@ -909,7 +909,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
 
         need_clip = False
@@ -940,28 +940,28 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
-            if (
-                auto_parallel_pp
-                and clip_input.dist_attr().process_mesh
-                != g.dist_attr().process_mesh
-            ):
-                print(
-                    "reshard: clip_input",
-                    clip_input,
-                    g.dist_attr().process_mesh,
-                    clip_input.dist_attr().dims_mapping,
-                    clip_input.dist_attr().process_mesh,
-                    clip_input.dist_attr().partial_dims,
-                )
-                clip_input = paddle.distributed.reshard(
-                    clip_input,
-                    g.dist_attr().process_mesh,
-                    to_placements(
+                if (
+                    auto_parallel_pp
+                    and clip_input.dist_attr().process_mesh
+                    != g.dist_attr().process_mesh
+                ):
+                    print(
+                        "reshard: clip_input",
+                        clip_input,
+                        g.dist_attr().process_mesh,
                         clip_input.dist_attr().dims_mapping,
                         clip_input.dist_attr().process_mesh,
                         clip_input.dist_attr().partial_dims,
-                    ),
-                )
+                    )
+                    clip_input = paddle.distributed.reshard(
+                        clip_input,
+                        g.dist_attr().process_mesh,
+                        to_placements(
+                            clip_input.dist_attr().dims_mapping,
+                            clip_input.dist_attr().process_mesh,
+                            clip_input.dist_attr().partial_dims,
+                        ),
+                    )
 
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
