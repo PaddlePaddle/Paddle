@@ -55,7 +55,7 @@ void FlashAttnUnpaddedBaseKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset,
     bool varlen_padded) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   if (!out->IsInitialized()) ctx.template Alloc<T>(out);
   if (varlen_padded) {
     std::vector<const DenseTensor*> inputs{};
@@ -228,7 +228,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   FlashAttnUnpaddedBaseKernel<T>(ctx,
                                  q,
                                  k,
@@ -306,7 +306,7 @@ void FlashAttnVarlenQKVPackedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
   sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
@@ -357,7 +357,7 @@ void FlashAttnBaseKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
@@ -582,7 +582,7 @@ void FlashAttnQKVPackedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
   sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);

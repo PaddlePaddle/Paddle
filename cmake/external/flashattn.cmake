@@ -15,6 +15,8 @@
 include(ExternalProject)
 
 if(WITH_ROCM)
+  add_definitions(-DPADDLE_WITH_FLASHATTN)
+  
   set(FA_REPOSITORY https://github.com/PaddlePaddle/flash-attention.git)
   set(FA_TAG "dcu")
   set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn_hip)

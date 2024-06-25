@@ -234,7 +234,7 @@ void FlashAttnUnpaddedGradBaseKernel(
     DenseTensor* dk,
     DenseTensor* dv,
     bool varlen_padded) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
 
@@ -485,7 +485,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   if (dq) {
     ctx.template Alloc<T>(dq);
   }
@@ -574,7 +574,7 @@ void FlashAttnVarlenQKVPackedGradKernel(
     bool causal,
     bool varlen_padded,
     DenseTensor* dqkv) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [total_*, num_heads, head_dim]
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
@@ -640,7 +640,7 @@ void FlashAttnGradBaseKernel(
     DenseTensor* dq,
     DenseTensor* dk,
     DenseTensor* dv) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
 
@@ -952,7 +952,7 @@ void FlashAttnQKVPackedGradKernel(
     float dropout,
     bool causal,
     DenseTensor* dqkv) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, head_dim]
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
