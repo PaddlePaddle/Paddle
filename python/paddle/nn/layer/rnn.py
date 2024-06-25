@@ -585,7 +585,7 @@ class RNNCellBase(Layer):
     def get_initial_states(
         self,
         batch_ref: Tensor,
-        shape: NestedStructure[ShapeLike] = None,
+        shape: NestedStructure[ShapeLike] | None = None,
         dtype: NestedStructure[DTypeLike] | None = None,
         init_value: float = 0.0,
         batch_dim_idx: int = 0,
