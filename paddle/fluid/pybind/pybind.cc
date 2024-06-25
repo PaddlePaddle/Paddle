@@ -100,6 +100,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
+#include "paddle/fluid/platform/tensorrt/engine.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
@@ -252,6 +253,7 @@ PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 PyTypeObject *g_data_type_pytype = nullptr;
+PyTypeObject *g_tensorrt_engine_params_pytype = nullptr;
 
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
@@ -3209,6 +3211,28 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT8_E4M3FN", phi::DataType::FLOAT8_E4M3FN)
       .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .export_values();
+
+  py::class_<paddle::platform::EngineParams> engine_params(m,
+                                                           "TRTEngineParams");
+  g_tensorrt_engine_params_pytype =
+      reinterpret_cast<PyTypeObject *>(engine_params.ptr());
+  engine_params.def(py::init<>())
+      .def_readwrite("max_workspace_size",
+                     &paddle::platform::EngineParams::max_workspace_size)
+      .def_readwrite("min_input_shape",
+                     &paddle::platform::EngineParams::min_input_shape)
+      .def_readwrite("max_input_shape",
+                     &paddle::platform::EngineParams::max_input_shape)
+      .def_readwrite("optim_input_shape",
+                     &paddle::platform::EngineParams::optim_input_shape)
+      .def_readwrite("min_shape_tensor",
+                     &paddle::platform::EngineParams::min_shape_tensor)
+      .def_readwrite("max_shape_tensor",
+                     &paddle::platform::EngineParams::max_shape_tensor)
+      .def_readwrite("optim_shape_tensor",
+                     &paddle::platform::EngineParams::optim_shape_tensor)
+      .def_readwrite("engine_serialized_data",
+                     &paddle::platform::EngineParams::engine_serialized_data);
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
