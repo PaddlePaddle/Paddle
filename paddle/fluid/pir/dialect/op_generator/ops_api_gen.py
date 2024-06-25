@@ -146,6 +146,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'recv_v2',
     'c_allgather',
     'qkv_unpack_mha',
+    'hash',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
