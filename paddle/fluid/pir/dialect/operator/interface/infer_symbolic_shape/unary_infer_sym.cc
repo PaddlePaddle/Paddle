@@ -370,7 +370,12 @@ bool LogcumsumexpOpInferSymbolicShape(
 bool LogsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
-  std::vector<int64_t> axis = details::GetVectorAttr(op, "axis");
+  std::vector<int> axis_in = details::GetVectorAttr<int>(op, "axis");
+  std::vector<int64_t> axis;
+  axis.reserve(axis_in.size());
+  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int &t) {
+    axis.push_back(static_cast<int64_t>(t));
+  });
   bool reduce_all = axis.size() == 0 ? true : false;
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
@@ -820,13 +825,26 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  int64_t axis = op->operand_source(1)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
+  const symbol::ShapeOrDataDimExprs &axis_shape_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  PADDLE_ENFORCE_EQ(
+      axis_shape_data.data().has_value(),
+      true,
+      phi::errors::InvalidArgument(
+          "In InferSymbolicShape, axis of SplitWithNumOp is null"));
+  const std::vector<symbol::DimExpr> &axis_data =
+      axis_shape_data.data().value();
+  PADDLE_ENFORCE_EQ(
+      axis_data.size() == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "In SplitWithNumOp, data of axis should be one dimension"));
+  if (!axis_data[0].isa<int64_t>()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of axis must be int64_t"));
+  }
+  int64_t axis = axis_data[0].dyn_cast<int64_t>();
+
   const auto &attributes = op->attributes();
   int num = attributes.at("num").dyn_cast<pir::Int32Attribute>().data();
   const auto &x_s_or_d =
@@ -970,6 +988,11 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
 
   return true;
+}
+
+bool TopkV1OpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return TopkOpInferSymbolicShape(op, infer_context);
 }
 
 bool TransposeOpInferSymbolicShape(

@@ -258,7 +258,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
     std::vector<int> axis = {1, 0};
     r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
-
+#ifdef PADDLE_WITH_XPU_XRE5
     r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                          l3_addr,
                                                          w,
@@ -283,7 +283,30 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                                                          scale_x_mode,
                                                          scale_w_mode);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+#else
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+                                                       l3_addr,
+                                                       w,
+                                                       y,
+                                                       m,
+                                                       n,
+                                                       k,
+                                                       false,
+                                                       w_trans,
+                                                       x_maxptr,
+                                                       w_maxptr,
+                                                       y_maxptr,
+                                                       k,
+                                                       ldw,
+                                                       ldy,
+                                                       alpha,
+                                                       beta,
+                                                       bias,
+                                                       act);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_fusion");
+#endif
   } else {
+#ifdef PADDLE_WITH_XPU_XRE5
     r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                          x,
                                                          w,
@@ -309,6 +332,28 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                                                          scale_w_mode);
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+#else
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+                                                       x,
+                                                       w,
+                                                       y,
+                                                       m,
+                                                       n,
+                                                       k,
+                                                       x_trans,
+                                                       w_trans,
+                                                       x_maxptr,
+                                                       w_maxptr,
+                                                       y_maxptr,
+                                                       ldx,
+                                                       ldw,
+                                                       ldy,
+                                                       alpha,
+                                                       beta,
+                                                       bias,
+                                                       act);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_fusion");
+#endif
   }
 }
 
@@ -348,6 +393,11 @@ DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeFP16)
 DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, int32_t)
 DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, tfloat32)
 
+#ifndef PADDLE_WITH_XPU_XRE5
+// disable in kl2
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(float, XPUTypeFP16)
+#endif
+
 template <typename XPUType, typename FCT, typename TGEMM_OUT>
 static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
                                    int bs,
@@ -366,6 +416,7 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
                                    int stride_y,
                                    const float* x_maxptr,
                                    const float* w_maxptr) {
+#ifdef PADDLE_WITH_XPU_XRE5
   int r = xblas::fc_batched<XPUType, XPUType, XPUType, FCT, TGEMM_OUT, 0>(
       xpu_ctx,
       bs,
@@ -384,7 +435,28 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
       stride_y,
       x_maxptr,
       w_maxptr);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batch_wrapper");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batched");
+#else
+  int r = xpu::fc_batched<XPUType, XPUType, XPUType, FCT>(
+      xpu_ctx,
+      bs,
+      trans_x,
+      trans_w,
+      m,
+      n,
+      k,
+      alpha,
+      reinterpret_cast<const XPUType*>(x),
+      stride_x,
+      reinterpret_cast<const XPUType*>(w),
+      stride_w,
+      0.0,
+      reinterpret_cast<XPUType*>(y),
+      stride_y,
+      x_maxptr,
+      w_maxptr);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xdnn_fc_batched");
+#endif
 }
 
 #define DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUType, FCT, TGEMM_OUT) \
@@ -428,6 +500,18 @@ DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32, float)
 DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t, float)
 DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t, float)
 DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t, float)
+
+#ifndef PADDLE_WITH_XPU_XRE5
+// disable in kl2
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, tfloat32, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, float, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(float, XPUTypeFP16, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(float, XPUTypeFP16, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, XPUTypeFP16, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16,
+                                           XPUTypeFP16,
+                                           XPUTypeFP16)
+#endif
 
 template <typename T>
 static void MatMulXPUFunction(

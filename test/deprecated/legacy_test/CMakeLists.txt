@@ -39,7 +39,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
@@ -405,7 +404,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
-list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
@@ -481,8 +479,6 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
-py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
-                FLAGS_inner_op_parallelism=4)
 
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
                 FLAGS_cudnn_deterministic=1)
@@ -539,8 +535,6 @@ if(WITH_DISTRIBUTE)
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_base_deprecated MODULES
-                    test_fleet_base_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_2_deprecated MODULES
                     test_fleet_base_2_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_3_deprecated MODULES
@@ -707,7 +701,6 @@ set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
@@ -755,11 +748,9 @@ set_tests_properties(test_conditional_block_deprecated
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_adamw_op
     test_adamw_op_deprecated
     test_arg_min_max_op
     test_batch_norm_op_deprecated
-    test_bincount_op
     test_decoupled_py_reader_deprecated
     test_fetch_lod_tensor_array
     test_fuse_bn_act_pass_deprecated

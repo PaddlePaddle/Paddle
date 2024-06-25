@@ -68,8 +68,6 @@ static T PyObjectCast(PyObject* obj) {
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
-bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
-bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
@@ -95,15 +93,21 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
-                           size_t arg_pos);
+                           size_t arg_pos,
+                           bool dispensable = false);
 paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
                                                      const std::string& op_type,
-                                                     size_t arg_pos);
+                                                     size_t arg_pos,
+                                                     bool dispensable = false);
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
-                                                size_t arg_pos);
+                                                size_t arg_pos,
+                                                bool dispensable = false);
 paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
-    PyObject* obj, const std::string& op_type, size_t arg_pos);
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable = false);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -500,6 +504,10 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
 void BindEagerUtils(PyObject* module);
+
+std::tuple<std::vector<int64_t>,
+           paddle::flat_hash_map<int64_t, phi::ReduceType>>
+CvtPlacements(phi::distributed::Placements placements, int ndim);
 
 }  // namespace pybind
 }  // namespace paddle

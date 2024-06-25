@@ -442,9 +442,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -454,9 +451,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -467,9 +461,6 @@ class PartialProgramLayer:
     def _train_pure_fp16_program_id(self):
         program_id = paddle.utils._hash_with_id(
             self._train_pure_fp16_program, self
-        )
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
         )
         return program_id
 

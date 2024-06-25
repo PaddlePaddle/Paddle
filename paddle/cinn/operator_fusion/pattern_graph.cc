@@ -107,11 +107,14 @@ void PatternGraph<T>::HorizontalFusion() {
                       StmtPatternGraphMatcher<ReduceTreePattern<T>>>,
                    LiftToHorizontalFusionPatternOperation>(this);
 
-  GraphTransformer<
-      NodePairPattern,
-      T,
-      And<HorizontalFusionConstrain<T>, HorizontalCheckMiddleOutputVar<T>>,
-      HorizontalFusionOperation>(this);
+  GraphTransformer<NodePairPattern,
+                   T,
+                   And<HorizontalFusionConstrain<T>,
+                       InputOutputMaximumConstrain<T>,
+                       HorizontalCheckMiddleOutputVar<T>>,  // Avoid two many
+                                                            // inputs and
+                                                            // outputs.
+                   HorizontalFusionOperation>(this);
 }
 
 template <typename T>

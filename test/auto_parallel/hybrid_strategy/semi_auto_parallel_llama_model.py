@@ -626,16 +626,18 @@ class LlamaModelAuto(nn.Layer):
             mesh,
             [dist.Replicate() for _ in range(len(mesh._shape))],
         )
-
-        if position_ids is None:
+        if not hasattr(self.config, "sep_parallel_degree"):
+            self.config.sep_parallel_degree = -1
+        if position_ids is None and self.config.sep_parallel_degree > 1:
             position_ids = paddle.arange(seq_length, dtype="int64").expand(
                 (batch_size, seq_length)
             )
-        position_ids = dist.shard_tensor(
-            position_ids,
-            mesh,
-            [dist.Replicate() for _ in range(len(mesh._shape))],
-        )
+        if position_ids is not None:
+            position_ids = dist.shard_tensor(
+                position_ids,
+                mesh,
+                [dist.Replicate() for _ in range(len(mesh._shape))],
+            )
 
         if self.config.use_flash_attention:
             is_casual = is_casual_mask(attention_mask)
@@ -663,11 +665,14 @@ class LlamaModelAuto(nn.Layer):
                 attention_mask_input = attention_mask
             else:
                 ipp = decoder_layer.ipp
-                position_ids_input = dist.reshard(
-                    position_ids,
-                    get_mesh(ipp),
-                    [dist.Replicate(), dist.Replicate()],
-                )
+                if position_ids is not None:
+                    position_ids_input = dist.reshard(
+                        position_ids,
+                        get_mesh(ipp),
+                        [dist.Replicate(), dist.Replicate()],
+                    )
+                else:
+                    position_ids_input = position_ids
                 attention_mask_input = (
                     dist.reshard(
                         attention_mask,

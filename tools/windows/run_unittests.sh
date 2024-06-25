@@ -291,8 +291,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_trt_convert_unsqueeze2$|\
 ^test_simplify_with_basic_ops_pass_autoscan$|\
 ^test_trt_convert_nearest_interp$|\
-^test_trt_pool_op$|\ 
-^test_trt_convert_clip$|\ 
+^test_trt_pool_op$|\
+^test_trt_convert_clip$|\
 ^test_trt_convert_grid_sampler$|\
 ^test_trt_convert_p_norm$|\
 ^disable_wingpu_cuda12_test$"
@@ -427,6 +427,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
+^test_cuda_graph_partial_graph_static_run$|\
 ^test_imperative_triple_grad$"
 
 
@@ -544,9 +545,9 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python ${PADDLE_ROOT}/tools/get_pr_ut.py || echo "Failed to obtain ut_list !"
     fi
-    
+
     python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
-    
+
 fi
 
 failed_test_lists=''
@@ -715,7 +716,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     done < $PADDLE_ROOT/tools/single_card_tests_new
     single_ut_endTime_s=`date +%s`
     single_ut_Time_s=`expr $single_ut_endTime_s - $single_ut_startTime_s`
-    echo "ipipe_log_param_1_TestCases_Total_Time: $single_ut_Time_s s" 
+    echo "ipipe_log_param_1_TestCases_Total_Time: $single_ut_Time_s s"
 
     multiple_ut_mem_0_startTime_s=`date +%s`
     while read line
@@ -724,8 +725,8 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
     multiple_ut_mem_0_endTime_s=`date +%s`
     multiple_ut_mem_0_Time_s=`expr $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s`
-    echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $multiple_ut_mem_0_Time_s s" 
-    
+    echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $multiple_ut_mem_0_Time_s s"
+
     multiple_ut_startTime_s=`date +%s`
     while read line
     do
@@ -749,7 +750,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
     exclusive_ut_mem_0_endTime_s=`date +%s`
     exclusive_ut_mem_0_Time_s=`expr $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s`
-    echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $exclusive_ut_mem_0_Time_s s" 
+    echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $exclusive_ut_mem_0_Time_s s"
 
     exclusive_ut_startTime_s=`date +%s`
     while read line

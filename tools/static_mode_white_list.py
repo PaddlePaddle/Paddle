@@ -603,7 +603,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_fused_multihead_matmul_op',
     'test_rank_attention_op',
     'test_fleet_base',
-    'test_fleet_base_deprecated',
     'test_fleet_meta_optimizer_base',
     'test_trt_fc_fuse_pass',
     'test_trt_quant_conv2d_dequant_fuse_pass',

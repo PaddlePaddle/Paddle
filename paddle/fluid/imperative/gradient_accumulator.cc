@@ -40,8 +40,7 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static void MoveOrCopyVar(framework::Variable* dst,
                           framework::Variable* src,
@@ -835,5 +834,4 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 }
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

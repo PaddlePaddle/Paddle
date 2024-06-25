@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops
@@ -21,6 +24,24 @@ from paddle.regularizer import L2Decay
 
 from ..base import core, framework
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
+
+    class _MomentumParameterConfig(_ParameterConfig):
+        momentum: NotRequired[float]
+        use_nesterov: NotRequired[bool]
+        rescale_grad: NotRequired[float]
+        regularization_method: NotRequired[str]
+        regularization_coeff: NotRequired[float]
+
 
 __all__ = []
 
@@ -48,23 +69,24 @@ class Momentum(Optimizer):
 
     Parameters:
 
-        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|Tensor|LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LRScheduler. The default value is 0.001.
         momentum (float): Momentum factor. The default value is 0.9.
-        parameters (list|tuple, optional): List|Tuple of ``Tensor`` to update to minimize ``loss``. \
+        parameters (list|tuple|None, optional): List|Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in parameter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+        use_nesterov(bool, optional): Enables Nesterov momentum. The default value is False.
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
             It can be a float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
@@ -72,7 +94,7 @@ class Momentum(Optimizer):
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
             Often choose to be ``1.0/batch_size``.
         use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
-        name (str, optional): The default value is None. Normally there is no need for user
+        name (str|None, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
 
@@ -86,9 +108,11 @@ class Momentum(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
-            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
-            >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            >>> momentum = paddle.optimizer.Momentum(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     weight_decay=0.01
+            ... )
             >>> back = out.backward()
             >>> momentum.step()
             >>> momentum.clear_grad()
@@ -102,7 +126,7 @@ class Momentum(Optimizer):
             >>> loss = paddle.mean(out)
             >>> momentum = paddle.optimizer.Momentum(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{ # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -117,21 +141,24 @@ class Momentum(Optimizer):
             >>> momentum.clear_grad()
 
     """
+
     _velocity_acc_str = "velocity"
 
     def __init__(
         self,
-        learning_rate=0.001,
-        momentum=0.9,
-        parameters=None,
-        use_nesterov=False,
-        weight_decay=None,
-        grad_clip=None,
-        multi_precision=False,
-        rescale_grad=1.0,
-        use_multi_tensor=False,
-        name=None,
-    ):
+        learning_rate: float | Tensor | LRScheduler = 0.001,
+        momentum: float = 0.9,
+        parameters: (
+            Sequence[Tensor] | Sequence[_MomentumParameterConfig] | None
+        ) = None,
+        use_nesterov: bool = False,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        multi_precision: bool = False,
+        rescale_grad: float = 1.0,
+        use_multi_tensor: bool = False,
+        name: str | None = None,
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         if momentum is None:
