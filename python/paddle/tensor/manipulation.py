@@ -2125,6 +2125,7 @@ def stack(
                 Out.shape = [0, 2, 1, 2]
                 Out.data = []
 
+
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
                                      must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
