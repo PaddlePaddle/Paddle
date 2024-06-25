@@ -853,14 +853,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 auto_parallel_pp
                 and sum_square.dist_attr().process_mesh != pp_stage0_mesh
             ):
-                print(
-                    "reshard: sum_square",
-                    sum_square,
-                    pp_stage0_mesh,
-                    sum_square.dist_attr().dims_mapping,
-                    sum_square.dist_attr().process_mesh,
-                    sum_square.dist_attr().partial_dims,
-                )
                 sum_square = paddle.distributed.reshard(
                     sum_square,
                     pp_stage0_mesh,
@@ -923,9 +915,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
             clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
-        print("clip_var: ", clip_var)
-        print("max_global_norm: ", max_global_norm)
-        print("global_norm_var: ", global_norm_var)
 
         for p, g in params_grads:
             if g is None:
@@ -945,14 +934,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     and clip_input.dist_attr().process_mesh
                     != g.dist_attr().process_mesh
                 ):
-                    print(
-                        "reshard: clip_input",
-                        clip_input,
-                        g.dist_attr().process_mesh,
-                        clip_input.dist_attr().dims_mapping,
-                        clip_input.dist_attr().process_mesh,
-                        clip_input.dist_attr().partial_dims,
-                    )
                     clip_input = paddle.distributed.reshard(
                         clip_input,
                         g.dist_attr().process_mesh,
