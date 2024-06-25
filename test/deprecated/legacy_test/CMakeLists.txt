@@ -10,6 +10,7 @@ set(dist_ENVS http_proxy="" https_proxy="")
 # The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_imperative_base)
+list(REMOVE_ITEM TEST_OPS test_static_save_load)
 ###### end ######
 
 file(
@@ -654,7 +655,6 @@ set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated
                        PROPERTIES TIMEOUT 1200)
