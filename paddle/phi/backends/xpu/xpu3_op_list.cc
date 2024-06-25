@@ -183,7 +183,9 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
       {"check_finite_and_unscale",
-       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16})},
       {"clip",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
@@ -429,7 +431,6 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT64,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},
-#ifdef PADDLE_WITH_XPU_XHPC
       {"flash_attn_grad",
        XPUKernelSet({phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT32,
@@ -438,7 +439,6 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16})},
-#endif
       {"flatten2_grad",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,

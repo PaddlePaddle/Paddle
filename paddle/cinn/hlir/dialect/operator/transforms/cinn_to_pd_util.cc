@@ -53,12 +53,8 @@ const auto& handler_reduce_sum_op =
   auto attrs = op->attributes();
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"axis", attr_axis});
-  attrs.insert({"dtype", attrs["dtype"]});
-  attrs.insert({"keepdim", attrs["keep_dim"]});
-  attrs.erase("dim");
-  attrs.erase("keep_dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::SumOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -78,11 +74,8 @@ const auto& handler_reduce_max_op =
   // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
   // Normalization
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"axis", attr_axis});
-  attrs.insert({"keepdim", attrs["keep_dim"]});
-  attrs.erase("dim");
-  attrs.erase("keep_dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::MaxOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -100,11 +93,8 @@ const auto& handler_reduce_min_op =
   auto attrs = op->attributes();
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"axis", attr_axis});
-  attrs.insert({"keepdim", attrs["keep_dim"]});
-  attrs.erase("dim");
-  attrs.erase("keep_dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::MinOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -122,9 +112,8 @@ const auto& handler_reduce_prod_op =
   auto attrs = op->attributes();
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"dims", attr_axis});
-  attrs.erase("dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::ProdOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -265,6 +254,20 @@ const auto& handler_reduce_prod_op =
       rtol,
       atol,
       equal_nan);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertYieldStoreOp(
+    ::pir::Operation* op,
+    ::pir::IrMapping& ir_mapping,        // NOLINT
+    ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& attrs = op->attributes();
+  auto pd_op = rewriter.Build<paddle::dialect::ShareData_Op>(
+      ir_mapping.Lookup(op->operand_source(0)));
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -433,6 +436,10 @@ REGISTER_TRANSFORM_RULES(pool2d_op,
 REGISTER_TRANSFORM_RULES(isclose_op,
                          cinn::dialect::IscloseOp::name(),
                          cinn::dialect::details::ConvertIscloseOp);
+
+REGISTER_TRANSFORM_RULES(yield_store,
+                         cinn::dialect::YieldStoreOp::name(),
+                         cinn::dialect::details::ConvertYieldStoreOp);
 
 REGISTER_TRANSFORM_RULES(
     expand_op,

@@ -45,19 +45,21 @@ int GetMaxLen(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void qkv_split_rope_kernel(const Context& xpu_ctx,
-                           const DenseTensor& qkv_input,
-                           const DenseTensor& rotary_emb,
-                           const DenseTensor& seq_lens,
-                           const baidu::xpu::api::VectorParam<int32_t>& lods,
-                           int bsz,
-                           int max_seq_len,
-                           int token_num,
-                           int num_head,
-                           int dim_head,
-                           DenseTensor* q_out,
-                           DenseTensor* k_out,
-                           DenseTensor* v_out) {
+void qkv_split_rope_kernel(
+    const Context& xpu_ctx,
+    const DenseTensor& qkv_input,
+    const DenseTensor& rotary_emb,
+    const DenseTensor& seq_lens,
+    const baidu::xpu::api::VectorParam<int32_t>& lods,
+    const baidu::xpu::api::VectorParam<int32_t>& pos_emb_offset,
+    int bsz,
+    int max_seq_len,
+    int token_num,
+    int num_head,
+    int dim_head,
+    DenseTensor* q_out,
+    DenseTensor* k_out,
+    DenseTensor* v_out) {
   xpu::ctx_guard RAII_GUARD(xpu_ctx.x_context());
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto q_data = reinterpret_cast<XPUType*>(q_out->data<T>());
@@ -85,7 +87,7 @@ void qkv_split_rope_kernel(const Context& xpu_ctx,
       num_head,
       dim_head,
       "BLHD",
-      {},
+      pos_emb_offset,
       "NORMAL",
       -1);
   PD_CHECK(r == 0, "baidu::xpu::api::vsl_rotary_neox_embedding failed.");
@@ -260,11 +262,14 @@ void BlockMultiheadAttentionXPUKernel(
   }
   if (max_enc_len_this_time_data > 0) {
     // const int* sequence_lengths_data = seq_lens_encoder.data<int>();
+    xpu::VectorParam<int32_t> pos_emb_offset =
+        xpu::VectorParam<int32_t>{nullptr, 0, nullptr};
     qkv_split_rope_kernel<T, Context>(dev_ctx,
                                       qkv,
                                       rope_emb.get(),
                                       seq_lens_encoder,
                                       lods,
+                                      pos_emb_offset,
                                       bsz,
                                       rope_emb.get().dims()[2],
                                       token_num,
@@ -401,21 +406,15 @@ void BlockMultiheadAttentionXPUKernel(
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not supports cache_k_quant_scales or cachekv_quant_mode now."));
     }
-
-    qkv_split_rope_kernel<T, Context>(dev_ctx,
-                                      qkv,
-                                      rope_emb.get(),
-                                      seq_lens_encoder,
-                                      lods,
-                                      bsz,
-                                      rope_emb.get().dims()[2],
-                                      token_num,
-                                      num_head,
-                                      dim_head,
-                                      &unpadding_q,
-                                      &unpadding_k,
-                                      &unpadding_v);
-
+    std::vector<int> lods_decoder_cpu(bsz + 1, 0);
+    xpu_wait(xpu_context->xpu_stream);
+    xpu_memcpy(lods_decoder_cpu.data() + 1,
+               seq_lens_decoder.data<int>(),
+               sizeof(int32_t) * bsz,
+               XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+    for (int i = 1; i < bsz + 1; i++) {
+      lods_decoder_cpu[i] += lods_decoder_cpu[i - 1];
+    }
     std::vector<int32_t> kv_seq_lod_dec(bsz + 1, 0);
     std::iota(kv_seq_lod_dec.begin(), kv_seq_lod_dec.end(), 0);
     xpu::VectorParam<int32_t> kv_seq_lod_dec_VP =
@@ -425,13 +424,27 @@ void BlockMultiheadAttentionXPUKernel(
             .to_xpu(RAII_GUARD);
     std::vector<int32_t> start_token_ctx(bsz, 0);
     for (int i = 0; i < bsz; i++) {
-      start_token_ctx[i] = lods_cpu[i + 1] - lods_cpu[i];
+      start_token_ctx[i] = lods_decoder_cpu[i + 1] - lods_decoder_cpu[i];
     }
     xpu::VectorParam<int32_t> start_token_ctx_VP =
         xpu::VectorParam<int32_t>{start_token_ctx.data(),
                                   static_cast<int64_t>(start_token_ctx.size()),
                                   nullptr}
             .to_xpu(RAII_GUARD);
+    qkv_split_rope_kernel<T, Context>(dev_ctx,
+                                      qkv,
+                                      rope_emb.get(),
+                                      seq_lens_encoder,
+                                      lods,
+                                      start_token_ctx_VP,
+                                      bsz,
+                                      rope_emb.get().dims()[2],
+                                      token_num,
+                                      num_head,
+                                      dim_head,
+                                      &unpadding_q,
+                                      &unpadding_k,
+                                      &unpadding_v);
 
     std::vector<int32_t> ordered_index_ctx(bsz, 0);
     std::iota(ordered_index_ctx.begin(), ordered_index_ctx.end(), 0);
@@ -541,19 +554,10 @@ void BlockMultiheadAttentionXPUKernel(
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "findmax");
 
     VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
-    std::vector<int> lods_decoder_cpu(bsz + 1, 0);
-    xpu_wait(xpu_context->xpu_stream);
-    xpu_memcpy(lods_decoder_cpu.data() + 1,
-               seq_lens_decoder.data<int>(),
-               sizeof(int32_t) * bsz,
-               XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-    for (int i = 1; i < bsz + 1; i++) {
-      lods_decoder_cpu[i] += lods_decoder_cpu[i - 1];
-    }
     std::vector<int32_t> qkvlod_dec(2 * (bsz + 1), 0);
     for (int bs = 0; bs < bsz; bs++) {
       qkvlod_dec[bs + 1] = bs + 1;
-      qkvlod_dec[bsz + 1 + bs + 1] = lods_decoder_cpu[bs + 1] + 1;
+      qkvlod_dec[bsz + 1 + bs + 1] = lods_decoder_cpu[bs + 1] + bs + 1;
     }
     auto qkvlod_dec_vp =
         xpu::VectorParam<int32_t>{

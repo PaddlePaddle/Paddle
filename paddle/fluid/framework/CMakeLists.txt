@@ -81,9 +81,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-if(WITH_CINN)
-  add_subdirectory(paddle2cinn)
-endif()
+
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -883,20 +881,20 @@ target_link_libraries(
   pylayer_op_helper)
 
 cc_library(
-  parallel_executor
-  SRCS parallel_executor.cc
-  DEPS ssa_graph_executor graph build_strategy collective_helper
-       variable_helper)
-
-cc_library(
   compiled_program
   SRCS compiled_program.cc
-  DEPS graph build_strategy)
+  DEPS graph
+       build_strategy
+       reference_count_pass
+       eager_deletion_pass
+       buffer_shared_inplace_op_pass
+       buffer_shared_cross_op_memory_reuse_pass
+       inplace_addto_op_pass)
 
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor pir_transforms pir)
+  DEPS pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
@@ -962,7 +960,8 @@ cc_library(
        phi
        common
        imperative_flag
-       layer)
+       layer
+       op_dialect_vjp)
 
 cc_library(
   type_info

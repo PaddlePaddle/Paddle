@@ -122,5 +122,7 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
                 return StepInfoManager().collect_info(
                     impl_dynamic, impl_sot, *args, **kwargs
                 )
+            else:
+                raise RuntimeError("Unknown state.")
 
     return impl

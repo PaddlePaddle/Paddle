@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Sequence
+
 import paddle
 from paddle import _C_ops
 
@@ -22,6 +27,9 @@ from ...base.framework import (
     in_pir_mode,
 )
 from .initializer import Initializer
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 __all__ = []
 
@@ -38,19 +46,21 @@ class NumpyArrayInitializer(Initializer):
 
     """
 
-    def __init__(self, value):
+    def __init__(self, value: npt.NDArray[Any]) -> None:
         import numpy
 
         assert isinstance(value, numpy.ndarray)
         super().__init__()
         self._value = value
 
-    def forward(self, var, block=None):
+    def forward(
+        self, var: paddle.Tensor, block: paddle.pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with Numpy array.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
@@ -172,7 +182,7 @@ class Assign(NumpyArrayInitializer):
 
     Args:
         value (Tensor|numpy.ndarray|list|tuple): numpy array, list, tuple, or tensor to initialize the parameter.
-        name(str, optional): Normally there is no need for user to set this
+        name(str|None, optional): Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -239,7 +249,11 @@ class Assign(NumpyArrayInitializer):
             [6.]
     """
 
-    def __init__(self, value, name=None):
+    def __init__(
+        self,
+        value: npt.NDArray[Any] | Sequence[int] | paddle.Tensor,
+        name: str | None = None,
+    ) -> None:
         import numpy
 
         check_type(

@@ -290,9 +290,18 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       MetaTensor* value_cache_out) {
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
-  const int num_head = key_cache_dims[1];
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
 
+  PADDLE_ENFORCE_EQ(
+      q_num_head % kv_num_head,
+      0,
+      errors::InvalidArgument(
+          "The q num_head (%d) must be divisible by kv num_head (%d)",
+          q_num_head,
+          kv_num_head));
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       2UL,
@@ -302,12 +311,12 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       4UL,
       errors::InvalidArgument("The input(key_cache) must be a 4D Tensor."));
   PADDLE_ENFORCE_EQ(
-      3 * num_head * dim_head,
+      (2 * kv_num_head + q_num_head) * dim_head,
       input_dims[1],
-      errors::InvalidArgument(
-          "The input_dims[1] must be equal to 3 * num_head * dim_head"));
+      errors::InvalidArgument("The input_dims[1] must be equal to (2 * "
+                              "kv_num_head + q_num_head) * dim_head"));
 
-  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  fmha_out->set_dims({input_dims[0], q_num_head * dim_head});
   qkv_out->set_dims(qkv.dims());
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
@@ -371,7 +380,11 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       FBADtypeCheck(qkv, "qkv", compute_dtype);
     }
     if (out_scale > 0) {
-      fmha_out->set_dtype(phi::DataType::INT8);
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
       fmha_out->set_dtype(qkv.dtype());
     }
@@ -4683,4 +4696,216 @@ void FusedElemwiseActivationGradInferMeta(
   }
 }
 
+void FP8OutHalfGemmFusedInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& bias,
+    const bool trans_x,
+    const bool trans_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& output_dtype,
+    const std::string& activation_type,
+    MetaTensor* out) {
+  std::vector<int64_t> dims_x = common::vectorize(x.dims());
+  std::vector<int64_t> dims_y = common::vectorize(y.dims());
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(x) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(y) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+
+  bool x_broadcasted = false, y_broadcasted = false;
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
+  }
+
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M = 0, N = 0;
+  if (trans_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (trans_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);  // NOLINT
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);  // NOLINT
+  }
+
+  auto ddim_out = common::make_ddim(new_dims);
+
+  out->set_dims(ddim_out);
+  out->set_layout(x.layout());
+  if (output_dtype == "bfloat16") {
+    out->set_dtype(phi::DataType::BFLOAT16);
+  } else if (output_dtype == "float16") {
+    out->set_dtype(phi::DataType::FLOAT16);
+  } else {
+    PADDLE_THROW(phi::errors::Fatal(
+        "fp8_fp8_half_gemm_fused only support bfloat16 and float16 output"));
+  }
+}
+
+void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
+                                   const MetaTensor& embeddings,
+                                   const MetaTensor& weight_h,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& h0,
+                                   const MetaTensor& c0,
+                                   bool use_peepholes,
+                                   bool is_reverse,
+                                   bool use_seq,
+                                   const std::string& gate_activation,
+                                   const std::string& cell_activation,
+                                   const std::string& candidate_activation,
+                                   MetaTensor* hidden,
+                                   MetaTensor* cell,
+                                   MetaTensor* xx,
+                                   MetaTensor* batched_input,
+                                   MetaTensor* batched_hidden,
+                                   MetaTensor* batched_cell,
+                                   MetaTensor* reordered_h0,
+                                   MetaTensor* reordered_c0) {
+  const auto& table_dims = embeddings.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Embeddings's rank should be 2, but received value is:%d.",
+          table_dims.size()));
+  PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The last dimension of the 'Ids' tensor must be 1, but "
+                        "received value is:%d.",
+                        ids_dims[ids_rank - 1]));
+
+  const auto& x_dims = ids.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(Ids)'s rank must be 2, but received value is:%d.",
+          x_dims.size()));
+
+  if (h0.initialized()) {
+    PADDLE_ENFORCE_EQ(c0.initialized(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(Cell) and Input(Hidden) of LSTM should exist "
+                          "at the same time."));
+    const auto& h_dims = h0.dims();
+    const auto& c_dims = c0.dims();
+    PADDLE_ENFORCE_EQ(
+        h_dims,
+        c_dims,
+        phi::errors::InvalidArgument(
+            "The dimension of Input(H0) and Input(C0) "
+            "should be the same, but received H0 dim is:[%s], C0 dim is[%s]",
+            h_dims,
+            c_dims));
+  }
+
+  const auto& wh_dims = weight_h.dims();
+  int frame_size = static_cast<int>(wh_dims[1] / 4);
+  PADDLE_ENFORCE_EQ(
+      wh_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(WeightH) should be 2, but received value is:%d.",
+          wh_dims.size()));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(WeightH) should equal to "
+                        "frame size:%d, but received value is:%d.",
+                        frame_size,
+                        wh_dims[0]));
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(WeightH) should equal "
+                        "to 4 * %d, but received value is:%d.",
+                        frame_size,
+                        wh_dims[1]));
+
+  const auto& b_dims = bias.dims();
+  PADDLE_ENFORCE_EQ(
+      b_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(Bias) should be 2, but received value is:%d.",
+          b_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      b_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dimension of Input(Bias) "
+                                   "should be 1, but received value is:%d.",
+                                   b_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      b_dims[1],
+      (use_peepholes ? 7 : 4) * frame_size,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(Bias) should be "
+          "7 * %d if enable peepholes connection or"
+          "4 * %d if disable peepholes, bias dim is:%d, use_peepholes:%d",
+          frame_size,
+          frame_size,
+          b_dims[1],
+          use_peepholes));
+
+  phi::DDim out_dims({x_dims[0], frame_size});
+  hidden->set_dims(out_dims);
+  cell->set_dims(out_dims);
+  hidden->share_lod(ids);
+  cell->share_lod(ids);
+  hidden->set_dtype(embeddings.dtype());
+  cell->set_dtype(embeddings.dtype());
+  if (!use_seq) {
+    batched_input->set_dims({x_dims[0], wh_dims[1]});
+    batched_hidden->set_dims(out_dims);
+    batched_cell->set_dims(out_dims);
+    batched_input->set_dtype(embeddings.dtype());
+    batched_hidden->set_dtype(embeddings.dtype());
+    batched_cell->set_dtype(embeddings.dtype());
+  }
+  xx->set_dims({x_dims[0], wh_dims[1]});
+  xx->share_lod(ids);
+  xx->set_dtype(embeddings.dtype());
+}
 }  // namespace phi

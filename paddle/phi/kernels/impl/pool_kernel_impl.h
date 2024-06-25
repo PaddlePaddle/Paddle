@@ -61,6 +61,7 @@ void PoolRawKernel(const Context& ctx,
                    bool global_pooling,
                    bool adaptive,
                    const std::string& padding_algorithm,
+                   const float norm_type,
                    DenseTensor* out) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int> paddings_ = paddings;
@@ -74,6 +75,15 @@ void PoolRawKernel(const Context& ctx,
   } else {
     data_dims = slice_ddim(x_dims, 2, x_dims.size());
   }
+
+  std::string true_type;
+  if (norm_type == INFINITY)
+    true_type = "max";
+  else
+    true_type = pooling_type;
+  if (true_type == "lp" && norm_type == 0)
+    PADDLE_THROW(
+        errors::InvalidArgument("norm_type of LPPool op cannot be 0."));
 
   funcs::UpdatePadding(&paddings_,
                        global_pooling,
@@ -95,7 +105,7 @@ void PoolRawKernel(const Context& ctx,
 
   switch (kernel_size_.size()) {
     case 2: {
-      if (pooling_type == "max") {
+      if (true_type == "max") {
         funcs::Pool2dFunctor<Context, funcs::MaxPool<T>, T> pool2d_forward;
         funcs::MaxPool<T> pool_process;
         pool2d_forward(ctx,
@@ -109,7 +119,7 @@ void PoolRawKernel(const Context& ctx,
                        out,
                        pool_process);
 
-      } else if (pooling_type == "avg") {
+      } else if (true_type == "avg") {
         std::vector<int> reduce_dim;
         int reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
         if (reduce_num > 0 &&
@@ -146,10 +156,24 @@ void PoolRawKernel(const Context& ctx,
                          out,
                          pool_process);
         }
+      } else {  // lp_pool2d
+        funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
+        funcs::LPPool<T> pool_process;
+        pool_process.setNormType(norm_type);
+        pool2d_forward(ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
       }
     } break;
     case 3: {
-      if (pooling_type == "max") {
+      if (true_type == "max") {
         funcs::Pool3dFunctor<Context, funcs::MaxPool<T>, T> pool3d_forward;
         funcs::MaxPool<T> pool_process;
         pool3d_forward(ctx,
@@ -162,7 +186,7 @@ void PoolRawKernel(const Context& ctx,
                        false,
                        out,
                        pool_process);
-      } else if (pooling_type == "avg") {
+      } else if (true_type == "avg") {
         funcs::Pool3dFunctor<Context, funcs::AvgPool<T>, T> pool3d_forward;
         funcs::AvgPool<T> pool_process;
         pool3d_forward(ctx,
@@ -175,6 +199,9 @@ void PoolRawKernel(const Context& ctx,
                        adaptive,
                        out,
                        pool_process);
+      } else {  // lp_pool3d
+        PADDLE_THROW(
+            errors::InvalidArgument("LPPool op only supports 2D input."));
       }
     } break;
     default: {
@@ -249,6 +276,39 @@ void Pool2dKernel(const Context& ctx,
                             global_pooling,
                             adaptive,
                             padding_algorithm,
+                            0,
+                            out);
+}
+
+template <typename T, typename Context>
+void LPPool2dKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const IntArray& kernel_size,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& paddings,
+                    bool ceil_mode UNUSED,
+                    bool exclusive,
+                    const std::string& data_format,
+                    const std::string& pooling_type,
+                    bool global_pooling,
+                    bool adaptive,
+                    const std::string& padding_algorithm,
+                    const float norm_type,
+                    DenseTensor* out) {
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
+  PoolRawKernel<T, Context>(ctx,
+                            x,
+                            kernel_size_val,
+                            strides,
+                            paddings,
+                            exclusive,
+                            data_format,
+                            pooling_type,
+                            global_pooling,
+                            adaptive,
+                            padding_algorithm,
+                            norm_type,
                             out);
 }
 
@@ -298,6 +358,7 @@ void Pool3dKernel(const Context& ctx,
                             global_pooling,
                             adaptive,
                             padding_algorithm,
+                            0,
                             out);
 }
 

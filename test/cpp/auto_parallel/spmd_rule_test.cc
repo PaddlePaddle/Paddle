@@ -1908,13 +1908,14 @@ TEST(Flatten, Ctor) {
   check_dim_mapping(spmd4.second[0], {-1, -1});
   check_dim_mapping(spmd4.second[1], {-1, -1, -1, -1, -1, -1});  // x_shape
 
-  auto out_grad = build_input({2, 1024, 1024}, {-1, -1, -1});
-  auto xshape = build_input({0, 2, 1024, 4, 1024 / 4}, {-1, 0, 1, -1, -1});
+  auto out_grad = build_input({2, 1024, 1024}, {0, -1, 1});
+  auto xshape = build_input({0, 2, 1024, 4, 1024 / 4}, {-1, 0, -1, 1, -1});
   auto spmd_grad = FlattenGradInferSpmd(xshape, out_grad);
-  EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(2));
   EXPECT_EQ(spmd_grad.second.size(), static_cast<size_t>(1));
-  check_dim_mapping(spmd_grad.first[0], {0, 1, -1});
-  check_dim_mapping(spmd_grad.second[0], {0, 1, -1, -1});
+  check_dim_mapping(spmd_grad.first[0], {-1, 0, -1, 1, -1});
+  check_dim_mapping(spmd_grad.first[1], {0, -1, 1});
+  check_dim_mapping(spmd_grad.second[0], {0, -1, 1, -1});
 }
 
 }  // namespace auto_parallel
