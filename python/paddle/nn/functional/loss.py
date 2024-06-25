@@ -3934,7 +3934,7 @@ def triplet_margin_loss(
     positive: Tensor,
     negative: Tensor,
     margin: float = 1.0,
-    p: float = 2.0,
+    p: float = 2,
     epsilon: float = 1e-06,
     swap: bool = False,
     reduction: _ReduceMode = 'mean',
