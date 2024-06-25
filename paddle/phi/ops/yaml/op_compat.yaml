@@ -1238,6 +1238,12 @@
 - op : feed
   outputs: {out: Out}
 
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -1900,6 +1906,12 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
 
 - op : imag
   backward : imag_grad

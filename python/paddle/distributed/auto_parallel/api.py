@@ -2251,9 +2251,11 @@ class DistModel:
         ).state_dict(mode)
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
         mapping_names = [
-            self._parameter_to_structured_name[k]
-            if k in self._parameter_to_structured_name
-            else k
+            (
+                self._parameter_to_structured_name[k]
+                if k in self._parameter_to_structured_name
+                else k
+            )
             for k in dist_state_dict.keys()
         ]
         dist_state_dict = dict(
@@ -2881,6 +2883,8 @@ def shard_dataloader(
         .. code-block:: python
             :name: example-1
 
+            >>> import os
+            >>> import numpy as np
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset

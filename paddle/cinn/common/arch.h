@@ -30,10 +30,13 @@ struct ARMArch {};
 
 struct NVGPUArch {};
 
+struct HygonDCUArchHIP {};
+
 /**
  * The architecture used by the target. Determines the instruction set to use.
  */
-using ArchBase = std::variant<UnknownArch, X86Arch, ARMArch, NVGPUArch>;
+using ArchBase =
+    std::variant<UnknownArch, X86Arch, ARMArch, NVGPUArch, HygonDCUArchHIP>;
 struct Arch final : public ArchBase {
   using ArchBase::ArchBase;
 
