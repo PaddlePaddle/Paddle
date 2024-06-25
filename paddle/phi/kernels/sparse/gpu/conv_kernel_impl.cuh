@@ -5,16 +5,7 @@
 #include <cuda_fp16.h>
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_memory_utils.cuh"
-
-// Pack two half values.
-static inline __device__ __host__ unsigned
-__pack_half2(const half x, const half y)
-{
-  unsigned v0 = *((unsigned short *)&x);
-  unsigned v1 = *((unsigned short *)&y);
-  return (v1 << 16) | v0;
-}
-
+#include "paddle/phi/kernels/sparse/gpu/conv_kernel_impl_utils.cuh"
 
 // conv_forward_cuda_m128n16k16_m64n16k16_m16n16k16_f16f16f32
 template <int K_ld_factor, int N_ld_factor, bool K_ld_check, bool N_ld_check>
