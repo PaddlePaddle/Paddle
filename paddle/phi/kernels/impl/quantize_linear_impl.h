@@ -216,22 +216,20 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   auto* in = &x;
   auto* in_scale = scale.get_ptr();
   dev_ctx.template Alloc<float>(out);
-  int bin_cnt = std::pow(2, bit_length - 1) - 1;
-  if(qmax == 448 || qmax == 57344) {bin_cnt = qmax;}
 
   if (quant_axis < 0) {
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
-          dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
+          dev_ctx, *in, *in_scale, qmax, round_type, out);
     }
   } else {
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
-          dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
+          dev_ctx, *in, *in_scale, qmax, round_type, quant_axis, out);
     }
   }
 }
