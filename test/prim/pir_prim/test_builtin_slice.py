@@ -24,50 +24,44 @@ from paddle.framework import core
 paddle.enable_static()
 
 
-def batch_norm_net1(x, r_m, r_v, w, b):
-    return paddle.nn.functional.batch_norm(x, r_m, r_v, w, b, training=False)
+def meshgrid_net(x1, x2, x3, x4):
+    return paddle.meshgrid(x1, x2, x3, x4)
 
 
 class TestBuildOp(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [1, 64, 512, 1024]
         self.c_shape = [64]
-        self.dtype_x = "float32"
         self.init_x_shape = [1, 64, 512, 1024]
-        self.x = np.random.random(self.x_shape).astype(self.dtype_x)
-        self.r_m = np.random.random(self.x_shape[1]).astype(self.dtype)
-        self.r_v = np.random.random(self.x_shape[1]).astype(self.dtype)
-        self.w = np.random.random(self.x_shape[1]).astype(self.dtype)
-        self.b = np.random.random(self.x_shape[1]).astype(self.dtype)
-        self.net = batch_norm_net1
-        self.necessary_ops = "pd_op.batch_norm"
-        self.enable_cinn = False
-        self.tol = 5e-6
+        self.x1 = np.random.random(self.c_shape).astype(self.dtype)
+        self.x2 = np.random.random(self.c_shape).astype(self.dtype)
+        self.x3 = np.random.random(self.c_shape).astype(self.dtype)
+        self.x4 = np.random.random(self.c_shape).astype(self.dtype)
+        self.net = meshgrid_net
 
     def get_ir_program(self):
         paddle.enable_static()
-        x = paddle.randn([4, 4])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x = paddle.static.data('x', self.x_shape, x.dtype)
-            x.stop_gradients = False
-            r_m = paddle.static.data('r_m', self.c_shape, x.dtype)
-            r_v = paddle.static.data('r_v', self.c_shape, x.dtype)
-            w = paddle.static.data('w', self.c_shape, x.dtype)
-            b = paddle.static.data('b', self.c_shape, x.dtype)
-            y = batch_norm_net1(x, r_m, r_v, w, b)
-            res = paddle.tanh(y)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+        with paddle.pir_utils.OldIrGuard():
+            main_program, start_program = (
+                paddle.static.Program(),
+                paddle.static.Program(),
+            )
+            with paddle.static.program_guard(main_program, start_program):
+                x1 = paddle.static.data('x1', self.c_shape, self.dtype)
+                x2 = paddle.static.data('x2', self.c_shape, self.dtype)
+                x3 = paddle.static.data('x3', self.c_shape, self.dtype)
+                x4 = paddle.static.data('x4', self.c_shape, self.dtype)
+                y = meshgrid_net(x1, x2, x3, x4)
+                res1 = paddle.tanh(y[0])
+                res2 = paddle.sin(y[1])
+                res3 = paddle.cos(y[2])
+            pir_program = pir.translate_to_pir(main_program.desc)
+            return pir_program
 
     def test_build_op(self):
         pir_program = self.get_ir_program()
-        y = pir_program.global_block().ops[-2].results()
+        y = pir_program.global_block().ops[-1].results()
         orig_shape = y[0].shape
         with paddle.pir_utils.IrGuard():
             core._set_prim_forward_enabled(True)
@@ -78,7 +72,7 @@ class TestBuildOp(unittest.TestCase):
                 orig_shape == new_shape
             ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
             op_name_list = [op.name() for op in pir_program.global_block().ops]
-            assert "pd_op.batch_norm_" not in op_name_list
+            assert "pd_op.meshgrid" not in op_name_list
 
 
 if __name__ == "__main__":
