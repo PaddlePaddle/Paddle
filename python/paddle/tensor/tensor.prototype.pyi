@@ -24,7 +24,7 @@ from paddle._typing import *  # noqa: F403
 
 # isort: on
 
-from typing import Any, Literal, overload
+from typing import Any, Literal, Protocol, overload
 
 import numpy.typing as npt
 
@@ -37,7 +37,24 @@ from paddle.base.dygraph.tensor_patch_methods import (
     TensorHookRemoveHelper,  # noqa: F401
 )
 
-class Tensor:
+# annotation: ${eager_param_base_begin}
+class EagerParamBase_(Protocol):
+    # annotation: ${eager_param_base_docstring}
+
+    # annotation: ${eager_param_base_attributes}
+
+    # annotation: ${eager_param_base_methods}
+    @property
+    def trainable(self) -> bool: ...
+    @trainable.setter
+    def trainable(self, trainable: bool) -> None: ...
+
+    # annotation: ${eager_param_base_alias}
+
+# annotation: ${eager_param_base_end}
+
+# annotation: ${tensor_begin}
+class Tensor_(Protocol):
     # annotation: ${tensor_docstring}
 
     # annotation: ${tensor_attributes}
@@ -271,3 +288,7 @@ class Tensor:
 
     # annotation: ${tensor_alias}
     __qualname__: Literal["Tensor"]
+
+# annotation: ${tensor_end}
+
+class Tensor(Tensor_, EagerParamBase_): ...
