@@ -15,7 +15,6 @@
 #pragma once
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -41,6 +40,7 @@ class GroupCompilationContext {
   const Target& target_;
   const pir::OpLoweringGroupPtr& group_;
   std::vector<ir::SymbolicPredicate> predicates_;
+  std::vector<int> priorities_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   std::vector<ir::SymbolicPredicate> CX86_predicates_;
   std::vector<ir::LoweredFunc> CX86_lowered_funcs_;

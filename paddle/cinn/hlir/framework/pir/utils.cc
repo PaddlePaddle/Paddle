@@ -136,6 +136,8 @@ class OpTransInfo {
                                                     "dropout",
                                                     "pool2d",
                                                     "pool2d_grad",
+                                                    "pool3d",
+                                                    "pool3d_grad"
                                                     "split",
                                                     "matmul",
                                                     "matmul_grad",

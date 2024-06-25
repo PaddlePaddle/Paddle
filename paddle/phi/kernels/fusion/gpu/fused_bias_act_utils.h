@@ -23,14 +23,28 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
+#endif
 // for windows build
 #define M_SQRT1_2 0.70710678118654752440
 
 namespace phi {
 namespace fusion {
 
+template <typename T>
+struct FastGeluFunctor {
+  inline __device__ T operator()(const T x) const {
+#ifdef PADDLE_WITH_HIP
+    assert(0 && "ROCM does not support FastGelu");
+#else
+    return phi::GeluFwd<T, true>(x);
+#endif
+  }
+};
+
+#ifndef PADDLE_WITH_HIP
 template <typename T>
 struct GeluComputeType;
 
@@ -105,31 +119,6 @@ struct ReluFunctor {
   }
 };
 
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-    return phi::GeluFwd<T, true>(x);
-  }
-};
-
-#ifdef PADDLE_WITH_HIP
-inline hipError_t GetNumBlocks(int64_t n, int *num_blocks) {
-  constexpr int kBlockSize = 128;
-  constexpr int kNumWaves = 16;
-
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-  const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMultiProcessors(device_id);
-
-  *num_blocks =
-      std::max<int>(1,
-                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
-                                      sm_count * max_thread_per_multiprocessor /
-                                          kBlockSize * kNumWaves));
-  return hipSuccess;
-}
-#else
 inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;

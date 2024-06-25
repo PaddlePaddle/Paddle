@@ -135,7 +135,8 @@ list(APPEND HIP_CXX_FLAGS -Wno-deprecated-copy-with-user-provided-copy)
 list(APPEND HIP_CXX_FLAGS -Wno-unused-local-typedef)
 list(APPEND HIP_CXX_FLAGS -Wno-missing-braces)
 list(APPEND HIP_CXX_FLAGS -Wno-sometimes-uninitialized)
-
+list(APPEND HIP_CXX_FLAGS -Wno-deprecated-copy)
+list(APPEND HIP_CXX_FLAGS -Wno-pessimizing-move)
 list(APPEND HIP_CXX_FLAGS -std=c++17)
 list(APPEND HIP_CXX_FLAGS --gpu-max-threads-per-block=1024)
 

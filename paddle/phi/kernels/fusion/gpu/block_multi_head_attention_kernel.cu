@@ -121,6 +121,19 @@ __forceinline__ __device__ int8_t quant_helper(const data_t input,
 }
 
 template <typename data_t>
+__forceinline__ __device__ phi::dtype::float8_e4m3fn fp8_quant_helper(
+    const data_t input,
+    const float scale,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  float quant_value = max_bound * scale * static_cast<float>(input);
+  quant_value = quant_value > max_bound ? max_bound : quant_value;
+  quant_value = quant_value < min_bound ? min_bound : quant_value;
+  return static_cast<phi::dtype::float8_e4m3fn>(quant_value);
+}
+
+template <typename data_t>
 __global__ void QuantKernel(const data_t* input,
                             char4* output,
                             const float scale,
@@ -145,6 +158,34 @@ __global__ void QuantKernel(const data_t* input,
         input[m_id * n + n_id + 3], scale, round_type, max_bound, min_bound);
 
     output[(m_id * n + n_id) >> 2] = tmp;
+  }
+}
+
+template <typename data_t>
+__global__ void FP8QuantKernel(const data_t* input,
+                               phi::dtype::float8_e4m3fn* output,
+                               const float scale,
+                               const int m,
+                               const int n,
+                               const int round_type,
+                               const float max_bound,
+                               const float min_bound) {
+  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
+  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  bool check = ((m_id < m) && (n_id < n));
+
+  if (check) {
+#pragma unroll
+    for (int i = 0; i < 4; ++i) {
+      output[m_id * n + n_id] = fp8_quant_helper(
+          input[m_id * n + n_id], scale, round_type, max_bound, min_bound);
+      output[m_id * n + n_id + 1] = fp8_quant_helper(
+          input[m_id * n + n_id + 1], scale, round_type, max_bound, min_bound);
+      output[m_id * n + n_id + 2] = fp8_quant_helper(
+          input[m_id * n + n_id + 2], scale, round_type, max_bound, min_bound);
+      output[m_id * n + n_id + 3] = fp8_quant_helper(
+          input[m_id * n + n_id + 3], scale, round_type, max_bound, min_bound);
+    }
   }
 }
 
@@ -273,25 +314,32 @@ void DispatchWithDtype(
   phi::DenseTensor fmha_buf;
 
   VLOG(1) << "fmha_out " << fmha_out->dims();
-  if (out_scale <= 0) {
-    dev_ctx.template Alloc<T>(fmha_out);
-    fmha_buf = *fmha_out;
-  } else {
+  if (fmha_out->dtype() == phi::DataType::INT8) {
     fmha_buf.Resize(fmha_out->dims());
     dev_ctx.template Alloc<T>(&fmha_buf);
     dev_ctx.template Alloc<int8_t>(fmha_out);
+  } else if (fmha_out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    fmha_buf.Resize(fmha_out->dims());
+    dev_ctx.template Alloc<T>(&fmha_buf);
+    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(fmha_out);
+  } else {
+    dev_ctx.template Alloc<T>(fmha_out);
+    fmha_buf = *fmha_out;
   }
 
   InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
-  const int num_head = key_cache_dims[1];
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
   const int bsz = cum_offsets.dims()[0];
   const int max_block_per_seq = block_tables.dims()[1];
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
-          << " num_head: " << num_head << " dim_head: " << dim_head
+          << " q_num_head: " << q_num_head << " kv_num_head: " << kv_num_head
+          << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
 
@@ -347,7 +395,11 @@ void DispatchWithDtype(
 
   phi::DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time_data > 0) {
-    qkv_out_decoder.Resize({{bsz, 3, num_head, dim_head}});
+    if (q_num_head == kv_num_head) {
+      qkv_out_decoder.Resize({{bsz, 3, q_num_head, dim_head}});
+    } else {
+      qkv_out_decoder.Resize({{bsz, q_num_head + 2 * kv_num_head, dim_head}});
+    }
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
   }
@@ -357,24 +409,25 @@ void DispatchWithDtype(
   phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
   if (max_enc_len_this_time_data > 0) {
     if (!use_pre_cache) {
-      unpadding_q.Resize({{token_num, num_head, dim_head}});
-      unpadding_k.Resize({{token_num, num_head, dim_head}});
-      unpadding_v.Resize({{token_num, num_head, dim_head}});
+      unpadding_q.Resize({{token_num, q_num_head, dim_head}});
+      unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
+      unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
 
       dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
     } else {
-      q_trans.Resize({{bsz, num_head, max_enc_len_this_time_data, dim_head}});
+      q_trans.Resize({{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
       k_trans.Resize({{bsz,
-                       num_head,
+                       kv_num_head,
                        max_enc_len_this_time_data + pre_cache_length,
                        dim_head}});
       v_trans.Resize({{bsz,
-                       num_head,
+                       kv_num_head,
                        max_enc_len_this_time_data + pre_cache_length,
                        dim_head}});
-      qktv_out.Resize({{bsz, num_head, max_enc_len_this_time_data, dim_head}});
+      qktv_out.Resize(
+          {{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
 
       dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
@@ -419,18 +472,32 @@ void DispatchWithDtype(
   if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     if (rope_emb) {
-      rotary_qk_variable(dev_ctx,
-                         qkv_buf.data<T>(),
-                         qkv_buf.data<T>(),
-                         rope_emb.get().data<float>(),
-                         padding_offsets.data<int>(),
-                         sequence_lengths_data,
-                         token_num,
-                         num_head,
-                         max_seq_len,
-                         rope_emb.get().dims()[2],
-                         dim_head,
-                         use_neox_style);
+      if (q_num_head == kv_num_head) {
+        rotary_qk_variable(dev_ctx,
+                           qkv_buf.data<T>(),
+                           qkv_buf.data<T>(),
+                           rope_emb.get().data<float>(),
+                           padding_offsets.data<int>(),
+                           sequence_lengths_data,
+                           token_num,
+                           q_num_head,
+                           max_seq_len,
+                           rope_emb.get().dims()[2],
+                           dim_head);
+      } else {
+        gqa_rotary_qk_variable(dev_ctx,
+                               qkv_buf.data<T>(),
+                               qkv_buf.data<T>(),
+                               rope_emb.get().data<float>(),
+                               padding_offsets.data<int>(),
+                               sequence_lengths_data,
+                               token_num,
+                               q_num_head,
+                               kv_num_head,
+                               max_seq_len,
+                               rope_emb.get().dims()[2],
+                               dim_head);
+      }
     }
     VLOG(3) << "rope end";
     VLOG(3) << "causual: " << causual;
@@ -444,14 +511,15 @@ void DispatchWithDtype(
                              sequence_lengths_data,
                              token_num,
                              bsz,
-                             num_head,
+                             q_num_head,
+                             kv_num_head,
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
       // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
-      // q,k,v,out all in 3-D [token_num, num_head, dim_head].
+      // q,k,v,out all in 3-D [token_num, q_num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();
-      fmha_buf.Resize({token_num, num_head, dim_head});
+      fmha_buf.Resize({token_num, q_num_head, dim_head});
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -475,28 +543,7 @@ void DispatchWithDtype(
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
       fmha_buf.Resize(fmha_shape);
     } else {
-#ifdef PADDLE_WITH_HIP
-      phi::DenseTensor q_trans_tmp, k_trans_tmp, v_trans_tmp, qktv_out_tmp;
-
-      q_trans_tmp.Resize(
-          {{bsz, max_enc_len_this_time_data, num_head, dim_head}});
-      k_trans_tmp.Resize({{bsz,
-                           max_enc_len_this_time_data + pre_cache_length,
-                           num_head,
-                           dim_head}});
-      v_trans_tmp.Resize({{bsz,
-                           max_enc_len_this_time_data + pre_cache_length,
-                           num_head,
-                           dim_head}});
-      qktv_out_tmp.Resize(
-          {{bsz, max_enc_len_this_time_data, num_head, dim_head}});
-
-      dev_ctx.template Alloc<T>(&q_trans_tmp, q_trans_tmp.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&k_trans_tmp, k_trans_tmp.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&v_trans_tmp, v_trans_tmp.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&qktv_out_tmp,
-                                qktv_out_tmp.numel() * sizeof(T));
-#endif
+      // NOTE: not support gqa
       qkv_transpose_split<T>(
           dev_ctx,
           q_trans.data<T>(),
@@ -509,7 +556,7 @@ void DispatchWithDtype(
           sequence_lengths_data,
           token_num,
           bsz,
-          num_head,
+          q_num_head,
           max_enc_len_this_time_data,
           max_seq_len,
           pre_cache_length,
@@ -527,30 +574,6 @@ void DispatchWithDtype(
           /*causual*/ false,
           pre_cache_length,
           &qktv_out);
-#elif defined(PADDLE_WITH_HIP)
-      const bool is_precache_infer = true;
-      std::vector<int> axis = {0, 2, 1, 3};
-      funcs::Transpose<Context, T, 4> trans;
-      trans(dev_ctx, q_trans, &q_trans_tmp, axis);
-      trans(dev_ctx, k_trans, &k_trans_tmp, axis);
-      trans(dev_ctx, v_trans, &v_trans_tmp, axis);
-      phi::FlashAttnKernel<T>(
-          dev_ctx,
-          q_trans_tmp,
-          k_trans_tmp,
-          v_trans_tmp,
-          paddle::none /*fixed_seed_offset*/,
-          paddle::none /*mask*/,
-          0.0,
-          is_precache_infer ? true : causual /*precache_infer_casual*/,
-          false,
-          is_precache_infer /*is_test*/,
-          "" /*rng_name*/,
-          &qktv_out_tmp,
-          &softmax_out,
-          &softmax_lse,
-          &seed_offset);
-      trans(dev_ctx, qktv_out_tmp, &qktv_out, axis);
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
@@ -560,7 +583,7 @@ void DispatchWithDtype(
                                       sequence_lengths_data,
                                       fmha_buf.data<T>(),
                                       bsz,
-                                      num_head,
+                                      q_num_head,
                                       max_enc_len_this_time_data,
                                       max_seq_len,
                                       dim_head,
@@ -582,7 +605,8 @@ void DispatchWithDtype(
                                  pre_key_cache,
                                  pre_value_cache,
                                  bsz,
-                                 num_head,
+                                 q_num_head,
+                                 kv_num_head,
                                  dim_head,
                                  max_seq_len,
                                  pre_cache_length,
@@ -600,7 +624,8 @@ void DispatchWithDtype(
                      cache_v_quant_scales,
                      bsz,
                      token_num,
-                     num_head,
+                     q_num_head,
+                     kv_num_head,
                      dim_head,
                      max_seq_len,
                      pre_cache_length,
@@ -612,6 +637,7 @@ void DispatchWithDtype(
     }
     VLOG(3) << "cache end";
   }
+  // VLOGMatrix(qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf", qkv_buf.numel());
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
   if (max_dec_len_this_time_data > 0) {
@@ -623,7 +649,8 @@ void DispatchWithDtype(
                         nullptr,
                         token_num,
                         bsz,
-                        num_head,
+                        q_num_head,
+                        kv_num_head,
                         max_seq_len,
                         dim_head);
     VLOG(3) << "qkv_out_decoder: " << qkv_out_decoder.dims();
@@ -635,6 +662,10 @@ void DispatchWithDtype(
         cachekv_quant_mode = 1;
       }
     }
+    // VLOGMatrix(qkv_out_decoder.data<T>(),
+    //            qkv_out_decoder.numel(),
+    //            "qkv_out_decoder",
+    //            qkv_out_decoder.numel());
     VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
     blha<T>(dev_ctx,
             qkv_out_decoder,
@@ -652,7 +683,8 @@ void DispatchWithDtype(
             block_size,
             max_seq_len,
             pre_cache_length,
-            num_head,
+            q_num_head,
+            kv_num_head,
             dim_head,
             max_dec_len_this_time_data,
             rope_emb ? 1 : 0,
@@ -673,16 +705,13 @@ void DispatchWithDtype(
             cachekv_quant_mode);
     VLOG(3) << "blha end";
   }
+  // VLOGMatrix(
+  //     fmha_buf.data<T>(), fmha_buf.numel(), "fmha_buf", fmha_buf.numel());
   if (out_scale > 0) {
     int m = fmha_out->dims()[0];
     int n = fmha_out->dims()[1];
-#ifdef PADDLE_WITH_HIP
-    dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
-    dim3 block(64, 8);
-#else
     dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
-#endif
     if (out_shift && out_smooth) {
       QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
           fmha_buf.data<T>(),
@@ -696,15 +725,27 @@ void DispatchWithDtype(
           quant_max_bound,
           quant_min_bound);
     } else {
-      QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          fmha_buf.data<T>(),
-          reinterpret_cast<char4*>(fmha_out->data<int8_t>()),
-          out_scale,
-          m,
-          n,
-          quant_round_type,
-          quant_max_bound,
-          quant_min_bound);
+      if (fmha_out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+        FP8QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+            fmha_buf.data<T>(),
+            fmha_out->data<phi::dtype::float8_e4m3fn>(),
+            out_scale,
+            m,
+            n,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound);
+      } else {
+        QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+            fmha_buf.data<T>(),
+            reinterpret_cast<char4*>(fmha_out->data<int8_t>()),
+            out_scale,
+            m,
+            n,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound);
+      }
     }
     VLOG(3) << "decoder done";
   }

@@ -83,6 +83,10 @@ class XPUTestRangeOp(XPUOpTestWrapper):
         def init_config(self):
             self.case = (10, -10, -11)
 
+    class TestRangeOpCase5(TestRangeOp):
+        def init_config(self):
+            self.case = (0, 1, 1)
+
 
 support_types = get_xpu_op_support_types("range")
 for stype in support_types:
