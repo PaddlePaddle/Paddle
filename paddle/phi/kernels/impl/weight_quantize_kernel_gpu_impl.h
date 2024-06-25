@@ -351,9 +351,6 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
           float scaled_weight = roundf(weight_elt);
           int int_weight = static_cast<int>(scaled_weight);
           int8_t clipped_weight = max(-7, min(7, int_weight));
-          if (k == 12 && (vector_index == 8 || vector_index == 9)) {
-              printf("gpu: %d\n", clipped_weight);
-          }
           packed_int4s |= ((clipped_weight & 0x0F) << (4 * pack));
         }
         quanted_weight[i] = packed_int4s;
