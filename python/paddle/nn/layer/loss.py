@@ -374,9 +374,9 @@ class CrossEntropyLoss(Layer):
             1.14554912)
 
 
-
             >>> # case2: soft labels with label_smoothing
             >>> import paddle
+            >>> from typing import Optional
             >>> paddle.seed(2023)
             >>> axis = -1
             >>> N = 4
@@ -384,7 +384,7 @@ class CrossEntropyLoss(Layer):
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction='mean'
-            >>> weight = None
+            >>> weight: Optional[paddle.Tensor]  = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')

@@ -357,12 +357,13 @@ def npair_loss(
         .. code-block:: python
 
             >>> import paddle
-            >>> DATATYPE = "float32"
+            >>> from typing import Literal
             >>> paddle.seed(2023)
+            >>> dtype: Literal["float32"] = "float32"
 
-            >>> anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
-            >>> positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
-            >>> labels = paddle.rand(shape=(18,), dtype=DATATYPE)
+            >>> anchor = paddle.rand(shape=(18, 6), dtype=dtype)
+            >>> positive = paddle.rand(shape=(18, 6), dtype=dtype)
+            >>> labels = paddle.rand(shape=(18,), dtype=dtype)
 
             >>> npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
             >>> print(npair_loss)
@@ -2332,15 +2333,16 @@ def margin_cross_entropy(
             >>> num_class_per_card = [4, 8]
             >>> num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
-            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
-            >>> label_list = []
+            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64') # type: ignore
+            >>> label_list: list[paddle.Tensor] = []
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
 
             >>> X = paddle.randn(
             ...     shape=[batch_size, feature_length],
-            ...     dtype='float64')
-            >>> X_list = []
+            ...     dtype='float64'
+            ... )
+            >>> X_list: list[Tensor] = []
             >>> dist.all_gather(X_list, X)
             >>> X = paddle.concat(X_list, axis=0)
             >>> X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
@@ -2876,23 +2878,25 @@ def cross_entropy(
             >>> # soft labels
             >>> # case1: soft labels without label_smoothing
             >>> import paddle
+            >>> from typing import Optional
             >>> paddle.seed(99999)
             >>> axis = -1
             >>> N = 4
             >>> C = 3
             >>> shape = [N, C]
             >>> reduction='mean'
-            >>> weight = None
+            >>> weight: Optional[paddle.Tensor] = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
             >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(
-            ...                                                         logits,
-            ...                                                         labels,
-            ...                                                         soft_label=True,
-            ...                                                         axis=axis,
-            ...                                                         weight=weight,
-            ...                                                         reduction=reduction)
+            ...     logits,
+            ...     labels,
+            ...     soft_label=True,
+            ...     axis=axis,
+            ...     weight=weight,
+            ...     reduction=reduction
+            ... )
             >>> print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                    1.12801195)
@@ -2900,6 +2904,7 @@ def cross_entropy(
 
             >>> # case2: soft labels with label_smoothing
             >>> import paddle
+            >>> from typing import Optional
             >>> paddle.seed(99999)
             >>> axis = -1
             >>> N = 4
@@ -2907,19 +2912,20 @@ def cross_entropy(
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction='mean'
-            >>> weight = None
+            >>> weight: Optional[paddle.Tensor] = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> # integer labels
             >>> paddle_integer_loss_mean = paddle.nn.functional.cross_entropy(
-            ...                                                         logits,
-            ...                                                         integer_labels,
-            ...                                                         axis=axis,
-            ...                                                         weight=weight,
-            ...                                                         label_smoothing=label_smoothing,
-            ...                                                         reduction=reduction)
+            ...     logits,
+            ...     integer_labels,
+            ...     axis=axis,
+            ...     weight=weight,
+            ...     label_smoothing=label_smoothing,
+            ...     reduction=reduction
+            ... )
             >>> print(paddle_integer_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             1.08317309)
@@ -4480,7 +4486,7 @@ def adaptive_log_softmax_with_loss(
             >>> input = paddle.randn([3, 5], dtype=paddle.float32)
             >>> head_weight = paddle.randn([5, 3], dtype=paddle.float32)
             >>> head_bias = paddle.randn([3], dtype=paddle.float32)
-            >>> tail_weights = [[]]
+            >>> tail_weights: list[list[paddle.Tensor]] = [[]]
             >>> tail_weights[0].append(paddle.randn([5, 2], dtype=paddle.float32))
             >>> tail_weights[0].append(paddle.randn([2, 1], dtype=paddle.float32))
             >>> out, loss = F.adaptive_log_softmax_with_loss(
