@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from paddle import ParamAttr
 from typing import Any, Literal, Sequence
 
 from typing_extensions import TypeAlias
@@ -37,6 +36,7 @@ import numpy as np
 import paddle
 
 from paddle import get_flags
+from paddle import ParamAttr
 
 from ...device import (
     get_cudnn_version,
