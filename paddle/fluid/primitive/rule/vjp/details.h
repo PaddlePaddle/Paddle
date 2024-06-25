@@ -127,7 +127,7 @@ void divide_grad(const Tensor& x,
   if (dx) {
     // dx = (1/y) * dout
     Tensor one_tensor;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(x.shape())) {
       one_tensor = backend::full_with_tensor<T>(shape<T>(y), 1.0, y.dtype());
       auto dx_res = one_tensor / y * out_grad;
       auto dx_tmp = reduce_as<T>(dx_res, x);
