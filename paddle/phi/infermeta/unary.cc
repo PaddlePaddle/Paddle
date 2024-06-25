@@ -213,6 +213,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
     dims[axis] = -1;
   }
   out->set_dims(dims);
+  out->set_dtype(x.dtype());
   out_index->set_dtype(DataType::INT32);
   out_index->set_dims(common::make_ddim({-1}));
 }
@@ -1391,6 +1392,11 @@ void FillAnyLikeInferMeta(const MetaTensor& x,
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
   out->share_lod(x);
 }
+
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out) {}
 
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {

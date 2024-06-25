@@ -73,6 +73,18 @@ Expr Optimize(Expr e,
         CudaSyncThreadsDropIfThenElse(&copied);
     // CudaTransBufferWithDynamicShape(&copied);
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
+#endif
       });
 
   SimplifyBlocks(&copied);

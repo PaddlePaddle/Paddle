@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,27 +14,17 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
+namespace dialect {
+class ForwardOnlyTrait : public pir::OpTraitBase<ForwardOnlyTrait> {
+ public:
+  explicit ForwardOnlyTrait(pir::Operation *op)
+      : pir::OpTraitBase<ForwardOnlyTrait>(op) {}
+};
+
+}  // namespace dialect
 }  // namespace paddle
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class Graph;
-
-void InitReaderQueueDeviceCount(Graph *graph,
-                                const Scope &scope,
-                                size_t dev_cnt);
-
-void SetReaderOpDeviceInfo(Graph *graph, size_t dev_cnt, size_t dev_idx = -1UL);
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ForwardOnlyTrait)

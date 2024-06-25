@@ -50,6 +50,7 @@ TensorIndex: TypeAlias = Union[
 _T = TypeVar("_T")
 
 NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
+NestedList = Union[_T, List["NestedList[_T]"]]
 NestedStructure = Union[
     _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
 ]
