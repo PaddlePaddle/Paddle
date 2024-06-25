@@ -171,6 +171,12 @@ void BlockMultiheadAttentionInferXPUMeta(
     MetaTensor* key_cache_out,
     MetaTensor* value_cache_out);
 
+void GemmDequantInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& dequant_out_scales,
+                          bool bfloat16_out,
+                          MetaTensor* out);
+
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,

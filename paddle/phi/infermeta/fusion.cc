@@ -474,6 +474,45 @@ void BlockMultiheadAttentionInferXPUMeta(
                                    value_cache_out);
 }
 
+void GemmDequantInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& dequant_out_scales,
+                          bool bfloat16_out,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_GT(x.dims().size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(x) has not been initialized properly. The "
+                        "shape of Input(x) = [%s].",
+                        x.dims()));
+  std::vector<int64_t> x_dims = common::vectorize(x.dims());
+  PADDLE_ENFORCE_GT(y.dims().size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(y) has not been initialized properly. The "
+                        "shape of Input(y) = [%s].",
+                        y.dims()));
+  std::vector<int64_t> y_dims = common::vectorize(y.dims());
+
+  int64_t M = 0, N = 0;
+  M = x_dims[x_dims.size() - 2];
+  N = y_dims[y_dims.size() - 2];
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      y_dims[y_dims.size() - 1],
+      phi::errors::InvalidArgument(
+          "Ensure that x is not transposed and y is transposed."));
+
+  auto ddim_out = common::make_ddim({M, N});
+  out->set_dims(ddim_out);
+  if (bfloat16_out) {
+    out->set_dtype(DataType::BFLOAT16);
+  } else {
+    out->set_dtype(DataType::FLOAT16);
+  }
+}
+
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,

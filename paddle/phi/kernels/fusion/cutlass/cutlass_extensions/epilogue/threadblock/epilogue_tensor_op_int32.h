@@ -75,6 +75,7 @@ limitations under the License. */
 #include "cutlass/epilogue/warp/tile_iterator_tensor_op.h"
 #include "cutlass/epilogue/warp/tile_iterator_tensor_op_mixed.h"
 
+#include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
 #include "cutlass/epilogue/threadblock/epilogue.h"
 #include "cutlass/epilogue/threadblock/interleaved_epilogue.h"
 
@@ -117,7 +118,6 @@ struct DefaultIteratorsTensorOp<cutlass::half_t,
 
 /// Partial specialization for bfloat16_t <= int32_t x 8 epilogues avoids shared
 /// memory bank conflicts.
-#ifdef PADDLE_CUDA_BF16
 template <typename ThreadblockShape,
           typename WarpShape,
           typename InstructionShape,
@@ -140,7 +140,7 @@ struct DefaultIteratorsTensorOp<cutlass::bfloat16_t,
 
   static int const kFragmentsPerIteration = 1;
 };
-#endif
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 }  // namespace detail
@@ -151,7 +151,7 @@ struct DefaultIteratorsTensorOp<cutlass::bfloat16_t,
 ///
 /// Satisfies: ReadableTileIterator
 ///
-template <typename ThreadMap_  ///< Thread map (concept: OutputTileThreadMap)
+template <typename ThreadMap_  ///< Thread map (conept: OutputTileThreadMap)
           >
 class SharedLoadIteratorMixed<ThreadMap_, int32_t, 32, 16, 8, 8> {
  public:
@@ -301,6 +301,98 @@ class SharedLoadIteratorMixed<ThreadMap_, int32_t, 32, 16, 8, 8> {
   void load(Fragment& frag) const {  // NOLINT
     load_with_pointer_offset(frag, 0);
   }
+};
+
+template <typename Shape_,
+          typename WarpMmaTensorOp_,
+          int PartitionsK,
+          typename OutputOp_,
+          int ElementsPerAccess,
+          bool ScatterD = false,
+          typename PermuteDLayout = layout::NoPermute>
+struct DequantEpilogueTensorOp {
+  using Shape = Shape_;
+  using WarpMmaTensorOp = WarpMmaTensorOp_;
+  static int const kPartitionsK = PartitionsK;
+  using OutputOp = OutputOp_;
+  static int const kElementsPerAccess = ElementsPerAccess;
+
+  using ElementOutput = typename OutputOp::ElementOutput;
+  using LayoutC = typename WarpMmaTensorOp::LayoutC;
+  using ElementAccumulator = typename WarpMmaTensorOp::ElementC;
+
+  //
+  // Thread map
+  //
+
+  using OutputTileThreadMap =
+      typename cutlass::epilogue::threadblock::DefaultThreadMapTensorOp<
+          Shape,
+          typename WarpMmaTensorOp::Shape,
+          kPartitionsK,
+          ElementOutput,
+          kElementsPerAccess>::Type;
+
+  static bool const UseCUDAStore =
+      platform::is_same<ElementOutput, double>::value;
+
+  using OutputTileIterator =
+      cutlass::epilogue::threadblock::PredicatedTileIterator<
+          OutputTileThreadMap,
+          ElementOutput,
+          ScatterD,
+          PermuteDLayout,
+          UseCUDAStore>;
+
+  using AccumulatorFragmentIterator = typename platform::conditional<
+      is_complex<ElementOutput>::value,
+      cutlass::epilogue::warp::FragmentIteratorComplexTensorOp<
+          typename WarpMmaTensorOp::Shape,
+          typename WarpMmaTensorOp::Policy::Operator::Shape,
+          typename WarpMmaTensorOp::Policy::Operator::ElementC,
+          typename WarpMmaTensorOp::Policy::Operator::FragmentC,
+          LayoutC>,
+      cutlass::epilogue::warp::FragmentIteratorTensorOp<
+          typename WarpMmaTensorOp::Shape,
+          typename WarpMmaTensorOp::Policy::Operator::Shape,
+          typename WarpMmaTensorOp::Policy::Operator::ElementC,
+          typename WarpMmaTensorOp::Policy::Operator::FragmentC,
+          LayoutC>>::type;
+
+  /// Support several implementations depending on structure of epilogue
+  using DefaultIterators = detail::DefaultIteratorsTensorOp<
+      ElementOutput,
+      ElementAccumulator,
+      kElementsPerAccess,
+      Shape,
+      typename WarpMmaTensorOp::Shape,
+      typename WarpMmaTensorOp::Policy::Operator::Shape,
+      typename OutputTileThreadMap::CompactedThreadMap>;
+
+  using WarpTileIterator = typename DefaultIterators::WarpTileIterator;
+  using SharedLoadIterator = typename DefaultIterators::SharedLoadIterator;
+
+  /// Hard-coded padding elements added
+  using Padding =
+      cutlass::MatrixShape<0, 64 / sizeof_bits<ElementAccumulator>::value * 4>;
+
+  static int const kFragmentsPerIteration =
+      (kPartitionsK == 1 ? DefaultIterators::kFragmentsPerIteration : 1);
+
+  //
+  // Define the epilogue
+  //
+  using Epilogue =
+      cutlass::epilogue::threadblock::Epilogue<Shape,
+                                               WarpMmaTensorOp,
+                                               kPartitionsK,
+                                               OutputTileIterator,
+                                               AccumulatorFragmentIterator,
+                                               WarpTileIterator,
+                                               SharedLoadIterator,
+                                               OutputOp,
+                                               Padding,
+                                               kFragmentsPerIteration>;
 };
 
 }  // namespace threadblock

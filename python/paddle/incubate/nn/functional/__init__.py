@@ -37,6 +37,7 @@ from .fused_transformer import (
     fused_multi_head_attention,
     fused_multi_transformer,
 )
+from .gemm_dequant import gemm_dequant
 from .masked_multihead_attention import masked_multihead_attention
 from .swiglu import swiglu
 from .variable_length_memory_efficient_attention import (
@@ -60,5 +61,6 @@ __all__ = [
     "masked_multihead_attention",
     "blha_get_max_len",
     "block_multihead_attention",
+    "gemm_dequant",
     "swiglu",
 ]

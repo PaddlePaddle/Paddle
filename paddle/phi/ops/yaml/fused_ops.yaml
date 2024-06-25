@@ -528,6 +528,16 @@
     func : fusion_transpose_flatten_concat
     data_type : x
 
+- op : gemm_dequant
+  args : (Tensor x, Tensor y, Tensor dequant_out_scales, bool bfloat16_out = true)
+  output : Tensor(out)
+  infer_meta :
+    func : GemmDequantInferMeta
+  kernel :
+    func : gemm_dequant
+    data_type : x
+  support_dygraph_mode : true
+
 - op : gemm_epilogue
   args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false)
   output : Tensor(out)
