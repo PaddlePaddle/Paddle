@@ -519,7 +519,7 @@ __global__ void masked_multihead_attention_kernel(
   // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
-  for (int ti = tid; ti <= end_seq - start_seq; ti += THREADS_PER_BLOCK) {
+  for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
     convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
   }
 
@@ -613,26 +613,25 @@ __global__ void masked_multihead_attention_kernel(
 
   // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
+    int vo_blk = vo - start_seq;  // vo id of current block
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2;
          active_groups /= 2) {
       int midpoint = active_groups / 2;
-      if ((vo - start_seq) >= midpoint && (vo - start_seq) < active_groups &&
+      if (vo_blk >= midpoint && vo_blk < active_groups &&
           (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-        convert_from_float(
-            *reinterpret_cast<V_vec *>(
-                &out_smem[(vo - start_seq - midpoint) * Dh + vi]),
-            out);
+        convert_from_float(*reinterpret_cast<V_vec *>(
+                               &out_smem[(vo_blk - midpoint) * Dh + vi]),
+                           out);
 #else
-        *reinterpret_cast<V_vec *>(
-            &out_smem[(vo - start_seq - midpoint) * Dh + vi]) = out;
+        *reinterpret_cast<V_vec *>(&out_smem[(vo_blk - midpoint) * Dh + vi]) =
+            out;
 #endif
       }
       __syncthreads();
-      if ((vo - start_seq) < midpoint && (Dh == Dh_MAX || vi < Dh)) {
-        out = add(*reinterpret_cast<const V_vec *>(
-                      &out_smem[(vo - start_seq) * Dh + vi]),
+      if (vo_blk < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+        out = add(*reinterpret_cast<const V_vec *>(&out_smem[vo_blk * Dh + vi]),
                   out);
       }
       __syncthreads();
