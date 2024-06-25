@@ -18,7 +18,6 @@
 #include <stack>
 
 #include "paddle/cinn/common/graph_utils.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"

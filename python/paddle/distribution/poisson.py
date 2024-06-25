@@ -173,16 +173,35 @@ class Poisson(distribution.Distribution):
         Returns:
             Tensor: the bounded approximation of the support
         """
-        s_max = (
-            paddle.sqrt(paddle.max(rate))
-            if paddle.greater_equal(
-                paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+        if paddle.framework.in_dynamic_mode():
+            s_max = (
+                paddle.sqrt(paddle.max(rate))
+                if paddle.greater_equal(
+                    paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+                )
+                else paddle.ones_like(rate, dtype=self.dtype)
             )
-            else paddle.ones_like(rate, dtype=self.dtype)
-        )
-        upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
-        values = paddle.arange(0, upper, dtype=self.dtype)
-        return values
+            upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+            values = paddle.arange(0, upper, dtype=self.dtype)
+            return values
+        else:
+
+            def true_func():
+                return paddle.sqrt(paddle.max(rate))
+
+            def false_func():
+                return paddle.to_tensor(1.0, dtype=self.dtype)
+
+            s_max = paddle.static.nn.cond(
+                paddle.greater_equal(
+                    paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+                ),
+                true_func,
+                false_func,
+            )
+            upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+            values = paddle.arange(0, upper, dtype=self.dtype)
+            return values
 
     def log_prob(self, value):
         """Log probability density/mass function.

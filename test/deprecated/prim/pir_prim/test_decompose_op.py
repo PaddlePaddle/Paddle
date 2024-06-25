@@ -53,6 +53,7 @@ def get_pir_program_and_param_map():
         tmp7 = paddle.nn.functional.dropout(tmp6, p=0.5)
         tmp8 = paddle.add(x, tmp7)
         tmp9 = paddle.concat(tmp8)
+
         test = paddle.rand([5, 1, 10])
         tmp_test_1 = paddle.squeeze(test, axis=1)
         out = paddle.mean(tmp9)
@@ -80,7 +81,7 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         pir_ops = pir_program.global_block().ops
-        fetch_list = [pir_ops[11].result(0)]
+        fetch_list = [pir_ops[12].result(0)]
 
         if flag == "decompose":
             core._set_prim_forward_enabled(True)

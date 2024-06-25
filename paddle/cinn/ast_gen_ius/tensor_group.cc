@@ -237,23 +237,5 @@ void StageMapShareMemory(const poly::StageMap& stages) {
   }
 }
 
-TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map) {
-  std::vector<ir::Tensor> stage_tensors;
-  std::set<ir::Tensor> reshape_tensors;
-  for (auto iter = stage_map.begin(); iter != stage_map.end(); ++iter) {
-    if (iter->second->has_expression()) {
-      const std::string& tensor_name = iter->first;
-      stage_tensors.push_back(ir::Tensor(iter->second->tensor()));
-      if (utils::EndsWith(tensor_name, "_reshape")) {
-        reshape_tensors.insert(ir::Tensor(iter->second->tensor()));
-      }
-    }
-  }
-
-  ast_gen_ius::TensorGroup tensor_group(stage_tensors);
-  StageMapShareMemory(stage_map);
-  return tensor_group;
-}
-
 }  // namespace ast_gen_ius
 }  // namespace cinn
