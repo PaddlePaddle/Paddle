@@ -72,12 +72,6 @@ class AbsmaxObserverLayer(BaseObserver):
             )
         return 0, abs_max_val
 
-    def min_value(self) -> float:
-        return 0.0
-
-    def max_value(self) -> float:
-        return self._max
-
     def bit_length(self):
         return self._quant_bits
 
@@ -98,6 +92,4 @@ class AbsmaxObserverLayer(BaseObserver):
 
     def zero_points(self):
         """Return output zero points."""
-        if self._zero_point is None:
-            self.cal_thresholds()
         return self._zero_point
