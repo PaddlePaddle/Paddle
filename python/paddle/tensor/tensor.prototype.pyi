@@ -24,7 +24,7 @@ from paddle._typing import *  # noqa: F403
 
 # isort: on
 
-from typing import Any, Literal, overload
+from typing import Any, Iterator, Literal, overload
 
 import numpy.typing as npt
 
@@ -268,6 +268,9 @@ class Tensor:
     def strides(self) -> list[int]: ...
     @property
     def type(self) -> Any: ...
+
+    # virtual methods
+    def __iter__(self) -> Iterator[Tensor]: ...  # For iterating over the tensor
 
     # annotation: ${tensor_alias}
     __qualname__: Literal["Tensor"]
