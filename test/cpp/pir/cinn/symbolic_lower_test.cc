@@ -20,10 +20,10 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -39,6 +39,7 @@
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
+using cinn::hlir::framework::pir::CompatibleInfo;
 using cinn::hlir::framework::pir::OpLoweringGroup;
 using cinn::hlir::framework::pir::OpLoweringGroupPtr;
 
@@ -88,9 +89,11 @@ BuildGroupProgramForLowering() {
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
   std::vector<OpLoweringGroupPtr> groups;
-  groups.emplace_back(
-      std::make_shared<OpLoweringGroup>(std::vector<::pir::Operation*>(
-          {exp.operation(), reshape.operation(), sub.operation()})));
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      std::vector<::pir::Operation*>(
+          {exp.operation(), reshape.operation(), sub.operation()}),
+      CompatibleInfo::GroupOpsName(std::vector<::pir::Operation*>(
+          {exp.operation(), reshape.operation(), sub.operation()}))));
   groups[0]->mut_output_ops().insert(groups[0]->ops().back());
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_data;
@@ -176,9 +179,11 @@ BuildBroadcastGroupProgramForLowering() {
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
   std::vector<OpLoweringGroupPtr> groups;
-  groups.emplace_back(
-      std::make_shared<OpLoweringGroup>(std::vector<::pir::Operation*>(
-          {x_broadcast.operation(), sub.operation()})));
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      std::vector<::pir::Operation*>(
+          {x_broadcast.operation(), sub.operation()}),
+      CompatibleInfo::GroupOpsName(std::vector<::pir::Operation*>(
+          {x_broadcast.operation(), sub.operation()}))));
   groups[0]->mut_output_ops().insert(groups[0]->ops().back());
 
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>

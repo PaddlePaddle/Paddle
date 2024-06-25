@@ -139,13 +139,13 @@ std::vector<std::vector<pir::Value>> {{class_name}}::DecompVjp(pir::Operation* o
     auto stop_gradients_attr = op->attribute(kAttrStopGradients)
                                    .dyn_cast<pir::ArrayAttribute>()
                                    .AsVector();
-    {% for k in range(outputs|length) %}         
+    {% for k in range(outputs|length) %}
     stop_gradients[{{k}}].push_back(
         stop_gradients_attr[{{k}}].dyn_cast<pir::BoolAttribute>().data());
-    {% endfor %} 
+    {% endfor %}
     VLOG(4) << " stop_gradients is set ";
   } else {
-    {% for k in range(outputs|length) %} 
+    {% for k in range(outputs|length) %}
     stop_gradients[{{k}}].push_back(false);
     {% endfor %}
     VLOG(4) << " stop_gradients is not set ";
@@ -160,7 +160,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::DecompVjp(pir::Operation* o
   VLOG(4) << "Call Pir Decomposed backward op {{fwd_name}}";
 
 
-  {% for k in range(outputs|length) %} 
+  {% for k in range(outputs|length) %}
   paddle::Tensor* {{outputs[k].name}} = !stop_gradients[{{k}}][0] ? &tensor_res[{{k}}][0] : nullptr;
   {% endfor %}
 

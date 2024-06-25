@@ -64,7 +64,7 @@ class TransformFlag {
   // trans_data_type_ can be setted by api[data_transform->support_trans_dtype]
   // in the yaml file.
   // trans_data_type_ only affect the non complex types,
-  // the complex is always transferd, except stop_transform_ is true.
+  // the complex is always transfered, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
   // trans_backend_ and trans_layout_ are true defaultly,

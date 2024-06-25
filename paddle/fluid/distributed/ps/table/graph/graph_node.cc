@@ -15,8 +15,7 @@
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 
 #include <cstring>
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 GraphNode::~GraphNode() {
   if (sampler != nullptr) {
@@ -122,5 +121,4 @@ void FeatureNode::recover_from_buffer(char* buffer) {
     feature.push_back(str);  // NOLINT
   }
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

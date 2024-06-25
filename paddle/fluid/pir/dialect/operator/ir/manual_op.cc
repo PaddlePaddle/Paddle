@@ -56,8 +56,7 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -3356,6 +3355,15 @@ std::vector<pir::Type> ExpandOp::InferMeta(
         auto tmp = ParseValueShape(item, is_from_tensor);
         vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
       }
+    } else if (shape.isa<pir::OpResult>() &&
+               shape.defining_op()->isa<paddle::dialect::ShapeOp>()) {
+      // tensor_shape may come from shape op
+      // x0.shape = [-1,3]
+      // tensor_shape = shape(x0)
+      // y = reshape(x, tensor_shape)
+      pir::Value inputs = shape.defining_op()->operand_source(0);
+      vec_shape = common::vectorize(
+          inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     } else if (shape.type().isa<pir::VectorType>()) {
       size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
       vec_shape = std::vector<int64_t>(shape_size, -2);
@@ -3363,6 +3371,45 @@ std::vector<pir::Type> ExpandOp::InferMeta(
     } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
       common::DDim shape_dim =
           shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+
+      if (shape.isa<pir::OpResult>() &&
+          shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
+        // tensor_shape may come from concat
+        // tensor_shape = concat([full(1), full(2)])
+        // y = reshape(x, tensor_shape)
+        const std::vector<pir::Value> &inputs = shape.defining_op()
+                                                    ->operand_source(0)
+                                                    .defining_op()
+                                                    ->operands_source();
+
+        if (shape_dim.size() == 1 &&
+            shape_dim[0] == static_cast<int64_t>(inputs.size())) {
+          for (auto item : inputs) {
+            if (item.defining_op()->isa<paddle::dialect::ShapeOp>()) {
+              pir::Value shape_input = item.defining_op()->operand_source(0);
+              int64_t value = shape_input.type()
+                                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                                  .dims()[0];
+              vec_shape.push_back(value);
+
+            } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+              auto shape_item = shape.defining_op()
+                                    ->dyn_cast<paddle::dialect::FullOp>()
+                                    .attribute("value")
+                                    .dyn_cast<pir::FloatAttribute>()
+                                    .data();
+              vec_shape.push_back(static_cast<int64_t>(shape_item));
+
+            } else {
+              vec_shape.push_back(-1);
+            }
+            // From expand infermeta, -2 means this dim from tensor var.
+            std::replace(vec_shape.begin(), vec_shape.end(), -1, -2);
+          }
+          return vec_shape;
+        }
+      }
+
       size_t shape_size = common::product(shape_dim);
       if (common::contain_unknown_dim(shape_dim)) {
         shape_size = 1;
@@ -3867,6 +3914,7 @@ void AssignOut_Op::Build(pir::Builder &builder,
   std::vector<pir::Type> argument_outputs =
       AssignOut_Op::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   constexpr char kStopGradientAttrName[] = "stop_gradient";
   auto stop_gradient0 =
       argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
@@ -3971,6 +4019,22 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // Auto Parallel condition
+  if (auto dist_type = input_values[1].type().dyn_cast<DistTypeInterface>()) {
+    ProcessMeshAttribute op_mesh = dist_type.process_mesh_attr();
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs{
+        dist_type.tensor_dist_attr(),
+        dist_type.tensor_dist_attr(),
+    },
+        dist_result_attrs{dist_type.tensor_dist_attr()};
+    argument_outputs.push_back(dist_type);
+    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
   argument_outputs.push_back(out_dense_tensor_type);
 
   return argument_outputs;
@@ -4513,8 +4577,7 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

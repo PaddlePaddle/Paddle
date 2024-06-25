@@ -41,8 +41,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
@@ -465,6 +464,8 @@ void ProgramTranslator::TranslateIfOperation(
     }
     false_region.front().push_back(
         pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
+    if_op->set_attribute("fake_false_branch",
+                         pir::BoolAttribute::get(ctx_, true));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -824,5 +825,4 @@ ProgramTranslator::VarDesc2Value() {
   return var_desc_2_value;
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

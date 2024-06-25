@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class TrainerDesc;
 
@@ -248,6 +247,5 @@ void SectionWorker::TrainFiles() {
   ++batch_id_;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 #endif

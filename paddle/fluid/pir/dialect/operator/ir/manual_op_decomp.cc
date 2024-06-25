@@ -191,25 +191,18 @@ std::vector<std::vector<pir::Value>> BatchNorm_Op::Decomp(pir::Operation* op) {
                        std::get<2>(op_res).impl())
                        ->value());
   if (std::get<3>(op_res).initialized()) {
-    VLOG(0) << "Decomp call batch_norm's decomp saved_mean 1**";
     res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                          std::get<3>(op_res).impl())
                          ->value());
   } else {
-    VLOG(0) << "Decomp call batch_norm's decomp saved_mean 2**";
-
     pir::Value saved_mean;
     res[3].push_back(saved_mean);
   }
   if (std::get<4>(op_res).initialized()) {
-    VLOG(0) << "Decomp call batch_norm's decomp saved_mean 1**";
-
     res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                          std::get<4>(op_res).impl())
                          ->value());
   } else {
-    VLOG(0) << "Decomp call batch_norm's decomp saved_mean 2**";
-
     pir::Value saved_var;
     res[4].push_back(saved_var);
   }

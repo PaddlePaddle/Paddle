@@ -81,9 +81,9 @@ def get_cudnn_version():
     else:
         return 'False'
 
-def get_xpu_version():
+def get_xpu_xre_version():
     if '@WITH_XPU@' == 'ON':
-        return '@XPU_BASE_DATE@'
+        return '@XPU_XRE_BASE_VERSION@'
     else:
         return 'False'
 
@@ -128,7 +128,7 @@ nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
-xpu_version      = '%(xpu)s'
+xpu_xre_version  = '%(xpu_xre)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
 is_tagged          = %(is_tagged)s
@@ -137,9 +137,9 @@ with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
-__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
-def show():
+def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
 
     Returns:
@@ -160,7 +160,7 @@ def show():
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
 
-        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+        xpu_xre: the xpu xre version of package. It will return `False` if non-XPU version paddle package is installed
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
@@ -183,7 +183,7 @@ def show():
             rc: 0
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -195,7 +195,7 @@ def show():
             commit: cfa357e984bfd2ffa16820e354020529df434f7d
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -213,15 +213,15 @@ def show():
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
     print('nccl:', nccl_version)
-    print('xpu:', xpu_version)
+    print('xpu_xre:', xpu_xre_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
 
-def mkl():
+def mkl() -> str:
     return with_mkl
 
-def nccl():
+def nccl() -> str:
     """Get nccl version of paddle package.
 
     Returns:
@@ -239,7 +239,7 @@ def nccl():
     """
     return nccl_version
 
-def cuda():
+def cuda() -> str:
     """Get cuda version of paddle package.
 
     Returns:
@@ -257,7 +257,7 @@ def cuda():
     """
     return cuda_version
 
-def cudnn():
+def cudnn() -> str:
     """Get cudnn version of paddle package.
 
     Returns:
@@ -275,8 +275,22 @@ def cudnn():
     """
     return cudnn_version
 
-def xpu():
-    """Get xpu version of paddle package.
+def xpu() -> str:
+    """Get xpu version of paddle package. The API is deprecated now, please use xpu_xhpc() instead.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> paddle.version.xpu()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20230114'
+    """
+    return xpu_xhpc_version
+
+def xpu_xre() -> str:
+    """Get xpu xre version of paddle package.
 
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
@@ -286,14 +300,14 @@ def xpu():
 
             >>> import paddle
 
-            >>> paddle.version.xpu()
+            >>> paddle.version.xpu_xre()
             >>> # doctest: +SKIP('Different environments yield different output.')
-            '20230114'
+            '4.32.0.1'
 
     """
-    return xpu_version
+    return xpu_xre_version
 
-def xpu_xccl():
+def xpu_xccl() -> str:
     """Get xpu xccl version of paddle package.
 
     Returns:
@@ -311,7 +325,7 @@ def xpu_xccl():
     """
     return xpu_xccl_version
 
-def xpu_xhpc():
+def xpu_xhpc() -> str:
     """Get xpu xhpc version of paddle package.
 
     Returns:
@@ -329,7 +343,7 @@ def xpu_xhpc():
     """
     return xpu_xhpc_version
 
-def cinn():
+def cinn() -> str:
     """Get CINN version of paddle package.
 
     Returns:
@@ -367,7 +381,7 @@ def cinn():
             'version': '${PADDLE_VERSION}',
             'cuda': get_cuda_version(),
             'cudnn': get_cudnn_version(),
-            'xpu': get_xpu_version(),
+            'xpu_xre': get_xpu_xre_version(),
             'xpu_xccl': get_xpu_xccl_version(),
             'xpu_xhpc': get_xpu_xhpc_version(),
             'commit': commit,
@@ -710,6 +724,11 @@ package_data['paddle.libs']= []
 if('${WITH_SHARED_PHI}' == 'ON'):
     package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
+    package_data['paddle.libs'] += [('libphi_core' if os.name != 'nt' else 'phi_core') + ext_name]
+    shutil.copy('${PHI_CORE_LIB}', libs_path)
+    if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+        package_data['paddle.libs'] += [('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_name]
+        shutil.copy('${PHI_GPU_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
     package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
@@ -823,6 +842,15 @@ if '${WITH_XPU}' == 'ON':
     for xpu_rt_lib_file in xpu_rt_lib_list:
         shutil.copy(xpu_rt_lib_file, libs_path)
         package_data['paddle.libs']+=[os.path.basename(xpu_rt_lib_file)]
+    xpu_cuda_lib_list = glob.glob('${XPU_CUDA_LIB}*')
+    for xpu_cuda_lib_file in xpu_cuda_lib_list:
+        shutil.copy(xpu_cuda_lib_file, libs_path)
+        package_data['paddle.libs'] += [os.path.basename(xpu_cuda_lib_file)]
+
+    shutil.copy('${XPU_XBLAS_LIB}', libs_path)
+    package_data['paddle.libs'] += ['${XPU_XBLAS_LIB_NAME}']
+    shutil.copy('${XPU_XFA_LIB}', libs_path)
+    package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
 
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
@@ -835,12 +863,6 @@ if '${WITH_XPU_XFT}' == 'ON':
 if '${WITH_XPTI}' == 'ON':
     shutil.copy('${XPU_XPTI_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_XPTI_LIB_NAME}']
-
-if '${WITH_XPU_XHPC}' == 'ON':
-    shutil.copy('${XPU_XBLAS_LIB}', libs_path)
-    package_data['paddle.libs'] += ['${XPU_XBLAS_LIB_NAME}']
-    shutil.copy('${XPU_XFA_LIB}', libs_path)
-    package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
@@ -862,6 +884,9 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+                    commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
@@ -870,6 +895,10 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
+
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
@@ -1054,6 +1083,36 @@ if '${WITH_STRIP}' == 'ON':
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
+
+def check_build_dependency():
+    missing_modules = '''Missing build dependency: {dependency}
+Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
+'''.strip()
+
+    with open('${PADDLE_SOURCE_DIR}' + '/python/requirements.txt') as f:
+        build_dependencies = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
+
+    python_dependencies_module = []
+    installed_packages = []
+
+    for dependency in build_dependencies:
+        python_dependencies_module.append(
+            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
+        )
+    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+
+    for r in reqs.split():
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
+
+    for dependency in python_dependencies_module:
+        if dependency.lower() not in installed_packages:
+            raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
 def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     """install cpp distribution and build test target
 
@@ -1095,6 +1154,9 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     subprocess.check_call(["cmake", "--build", paddle_lib_test_dir])
 
 
+# check build dependency
+check_build_dependency()
+
 # install cpp distribution
 if '${WITH_CPP_DIST}' == 'ON':
     paddle_install_dir = '${PADDLE_INSTALL_DIR}'
@@ -1110,6 +1172,28 @@ package_data['paddle.base'] = package_data.get('paddle.base', []) + [
     '*.pyi'
 ]
 package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + ['tensor.pyi']
+
+
+def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
+    print('-'*2, 'Generate stub file tensor.pyi ... ')
+    script_path = paddle_source_dir + '/tools/'
+    sys.path.append(script_path)
+    import gen_tensor_stub
+
+    gen_tensor_stub.generate_stub_file(
+        input_file=paddle_source_dir
+        + '/python/paddle/tensor/tensor.prototype.pyi',
+        output_file=paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+
+    shutil.copy(
+        paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+        paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+    print('-'*2, 'End Generate stub file tensor.pyi ... ')
+
+# generate stub file `tensor.pyi`
+generate_tensor_stub('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
 
 
 with redirect_stdout():

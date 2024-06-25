@@ -76,47 +76,5 @@ class TestCompiledProgram(unittest.TestCase):
             np.testing.assert_array_equal(float(loss_data), self.loss)
 
 
-class TestCompiledProgramError(unittest.TestCase):
-    def test_program_or_graph_error(self):
-        self.assertRaises(TypeError, base.CompiledProgram, "program")
-
-    def build_simple_model(self):
-        img = paddle.static.data(
-            name='image', shape=[-1, 1, 28, 28], dtype='float32'
-        )
-        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        prediction = paddle.static.nn.fc(x=img, size=10, activation='softmax')
-        loss = paddle.nn.functional.cross_entropy(
-            input=prediction, label=label, reduction='none', use_softmax=False
-        )
-        avg_loss = paddle.mean(loss)
-
-    def compile_program(self):
-        with base.program_guard(base.Program()):
-            # build model
-            self.build_simple_model()
-            # compile program
-            program = base.default_main_program()
-            compiled_program = base.CompiledProgram(program)
-            scope = base.global_scope()
-            place = base.CPUPlace()
-            compiled_program._compile(scope, place)
-            return compiled_program, scope, place
-
-    def test_compile_scope_error(self):
-        compiled_program, _, place = self.compile_program()
-        new_scope = core.Scope()
-        with self.assertRaises(ValueError):
-            compiled_program._compile(new_scope, place)
-
-    def test_compile_place_error(self):
-        # need create different place
-        if core.is_compiled_with_cuda():
-            compiled_program, scope, _ = self.compile_program()
-            new_place = base.CUDAPlace(0)
-            with self.assertRaises(ValueError):
-                compiled_program._compile(scope, new_place)
-
-
 if __name__ == '__main__':
     unittest.main()

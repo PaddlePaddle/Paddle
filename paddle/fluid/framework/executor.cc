@@ -33,8 +33,7 @@ limitations under the License. */
 PD_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 namespace {
 // block id starts from 0. This id is used to represent the codeblock
 // wrapping the first block 0.
@@ -609,5 +608,4 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

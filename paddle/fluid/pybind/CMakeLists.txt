@@ -14,7 +14,6 @@ set(PYBIND_DEPS
     pass
     generate_pass
     pass_builder
-    parallel_executor
     compiled_program
     profiler
     layer
@@ -130,7 +129,6 @@ set(PYBIND_SRCS
     protobuf.cc
     exception.cc
     op_function_common.cc
-    parallel_executor.cc
     compiled_program.cc
     tensor.cc
     place.cc
@@ -310,18 +308,12 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
-  if(NOT WIN32)
-    add_executable(kernel_signature_generator kernel_signature_generator.cc)
-    target_link_libraries(kernel_signature_generator
-                          ${OP_FUNCTION_GENERATOR_DEPS})
-  endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_legacy_op_function_generator
                         ${os_dependency_modules})
   if(WITH_ROCM)
     target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
-    target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
@@ -371,6 +363,16 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi_core.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
+        DEPENDS phi)
+      if(WITH_GPU OR WITH_ROCM)
+        add_custom_command(
+          OUTPUT ${op_impl_path}/phi_gpu.dll
+          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
+          DEPENDS phi)
+      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 

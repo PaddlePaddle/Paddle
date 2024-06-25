@@ -69,6 +69,18 @@ class SToRReshardFunction(ReshardFunction):
         return out_type
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
+        if src_dist_attr.process_mesh.size == 1:
+            dst_value = paddle._C_ops.share_data_(src_value)
+            share_data_op = dst_value.get_defining_op()
+            # set dist type and dist attr
+            dst_value.set_type(dst_type)
+            share_data_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    src_dist_attr.process_mesh, [src_dist_attr], [dst_dist_attr]
+                )
+            )
+            return dst_value
+
         def get_split_axis_with_dims_mapping(dims_mapping):
             split_axis = {}
             for idx, v in enumerate(dims_mapping):
@@ -102,8 +114,7 @@ class SToRReshardFunction(ReshardFunction):
             return new_value
         else:
             # TODO(ywt01) support unbalanced split
-            pass
-        return None
+            raise NotImplementedError("unbalanced split is not implemented")
 
     def reshard_s_to_r_with_padding(
         self,
@@ -116,8 +127,8 @@ class SToRReshardFunction(ReshardFunction):
     ):
         src_mesh = src_dist_attr.process_mesh
         num_of_process = len(src_mesh.process_ids)
-        dtype = src_value.dtype
-        group = new_process_group(src_mesh.process_ids)
+
+        group = new_process_group(sorted(src_mesh.process_ids))
         allgather_value = paddle._C_ops.c_allgather(
             src_value, group.id, num_of_process, True
         )
@@ -138,11 +149,32 @@ class SToRReshardFunction(ReshardFunction):
 
         if split_axis != 0 or padding_num != 0:
             allgather_op = allgather_value.get_defining_op()
-            paddle.pir.set_insertion_point_after(allgather_op)
-            split_value = paddle._C_ops.split_with_num(
+            split_values = paddle._C_ops.split_with_num(
                 allgather_op.result(0), num_of_process, 0
             )
-            concat_value = paddle._C_ops.concat(split_value, split_axis)
+            builtin_split_op = split_values[0].get_defining_op()
+            pd_splite_op = builtin_split_op.operand_source(0).get_defining_op()
+
+            # fix the split_with_num dist attribtue.
+            new_inner_types = []
+            for sub_value in split_values:
+                new_inner_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    sub_value.type(), allgather_value.dist_attr()
+                )
+                new_inner_types.append(new_inner_type)
+                sub_value.set_type(new_inner_type)
+            vec_type = paddle.base.libpaddle.pir.create_vec_type(
+                new_inner_types
+            )
+            pd_splite_op.result(0).set_type(vec_type)
+
+            concat_value = paddle._C_ops.concat(split_values, split_axis)
+            # fold builtin.split op and builtin.combine op
+            concat_op = concat_value.get_defining_op()
+            builtin_combine_op = concat_op.operand_source(0).get_defining_op()
+            concat_op.operand(0).set_source(pd_splite_op.result(0))
+            builtin_combine_op.erase()
+            builtin_split_op.erase()
             return concat_value
         return allgather_value
 
@@ -183,16 +215,11 @@ class SToRReshardFunctionCrossMesh(ReshardFunction):
         out_value = same_status_func.reshard(
             src_dist_attr, tmp_dist_attr, src_value, tmp_dst_type
         )
-        if out_value is None:
-            return None
 
-        curr_global_rank = paddle.distributed.get_rank()
-        if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
-            s_to_r_func = SToRReshardFunction()
-            assert s_to_r_func.is_suitable(
-                tmp_dist_attr, dst_dist_attr
-            ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
-            return s_to_r_func.reshard(
-                tmp_dist_attr, dst_dist_attr, out_value, dst_type
-            )
-        return None
+        s_to_r_func = SToRReshardFunction()
+        assert s_to_r_func.is_suitable(
+            tmp_dist_attr, dst_dist_attr
+        ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+        return s_to_r_func.reshard(
+            tmp_dist_attr, dst_dist_attr, out_value, dst_type
+        )

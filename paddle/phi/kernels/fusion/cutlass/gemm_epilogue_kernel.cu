@@ -204,6 +204,5 @@ PD_REGISTER_KERNEL(gemm_epilogue,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::GemmEpilogueKernel,
-                   float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}

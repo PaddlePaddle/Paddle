@@ -22,7 +22,6 @@
 - c_sync_calc_stream
 - c_sync_comm_stream
 - cast
-- channel_shuffle
 - conv2d_transpose
 - conv2d_transpose_bias
 - copy_to
@@ -53,7 +52,6 @@
 - increment
 - linspace
 - logspace
-- logsumexp
 - matrix_rank
 - matrix_rank_tol
 - max
@@ -75,7 +73,6 @@
 - repeat_interleave
 - repeat_interleave_with_tensor_index
 - rnn
-- rrelu
 - sequence_mask
 - set_value_with_tensor
 - slice

@@ -150,7 +150,6 @@ class MultivariateNormal(distribution.Distribution):
                 batch_shape
                 + [precision_matrix.shape[-2], precision_matrix.shape[-1]]
             )
-        self._check_constraints()
         self.loc = loc.expand(
             batch_shape
             + [
@@ -171,91 +170,6 @@ class MultivariateNormal(distribution.Distribution):
             )
 
         super().__init__(batch_shape, event_shape)
-
-    def _check_lower_triangular(self, value):
-        """Check whether the input is a lower triangular matrix
-
-        Args:
-            value (Tensor): input matrix
-
-        Return:
-            Tensor: indicator for lower triangular matrix
-        """
-        tril = paddle.tril(value)
-        is_lower_triangular = paddle.cast(
-            (tril == value).reshape(
-                value.shape[:-2]
-                + [
-                    -1,
-                ]
-            ),
-            dtype=self.dtype,
-        ).min(-1, keepdim=True)[0]
-        is_positive_diag = paddle.cast(
-            (value.diagonal(axis1=-2, axis2=-1) > 0), dtype=self.dtype
-        ).min(-1, keepdim=True)[0]
-        return is_lower_triangular and is_positive_diag
-
-    def _check_positive_definite(self, value):
-        """Check whether the input is a positive definite matrix
-
-        Args:
-            value (Tensor): input matrix
-
-        Return:
-            Tensor: indicator for positive definite matrix
-        """
-        is_square = paddle.full(
-            shape=value.shape[:-2],
-            fill_value=(value.shape[-2] == value.shape[-1]),
-            dtype="bool",
-        ).all()
-        if not is_square:
-            raise ValueError(
-                "covariance_matrix or precision_matrix must be a square matrix"
-            )
-        new_perm = list(range(len(value.shape)))
-        new_perm[-1], new_perm[-2] = new_perm[-2], new_perm[-1]
-        is_symmetric = paddle.isclose(
-            value, value.transpose(new_perm), atol=1e-6
-        ).all()
-        if not is_symmetric:
-            raise ValueError(
-                "covariance_matrix or precision_matrix must be a symmetric matrix"
-            )
-        is_positive_definite = (
-            paddle.cast(paddle.linalg.eigvalsh(value), dtype=self.dtype) > 0
-        ).all()
-        return is_positive_definite
-
-    def _check_constraints(self):
-        """Check whether the matrix satisfy corresponding constraint
-
-        Return:
-            Tensor: indicator for the pass of constraints check
-        """
-        if self.scale_tril is not None:
-            check = self._check_lower_triangular(self.scale_tril)
-            if not check:
-                raise ValueError(
-                    "scale_tril matrix must be a lower triangular matrix with positive diagonals"
-                )
-        elif self.covariance_matrix is not None:
-            is_positive_definite = self._check_positive_definite(
-                self.covariance_matrix
-            )
-            if not is_positive_definite:
-                raise ValueError(
-                    "covariance_matrix must be a symmetric positive definite matrix"
-                )
-        else:
-            is_positive_definite = self._check_positive_definite(
-                self.precision_matrix
-            )
-            if not is_positive_definite:
-                raise ValueError(
-                    "precision_matrix must be a symmetric positive definite matrix"
-                )
 
     @property
     def mean(self):

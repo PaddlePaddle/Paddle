@@ -213,7 +213,7 @@ class TestImperativeQatLSQ(unittest.TestCase):
             print('eval_acc_top1', eval_acc_top1)
         self.assertTrue(
             eval_acc_top1 > 0.9,
-            msg="The test acc {%f} is less than 0.9." % eval_acc_top1,
+            msg=f"The test acc {{{eval_acc_top1:f}}} is less than 0.9.",
         )
 
     def test_qat(self):

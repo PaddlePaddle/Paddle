@@ -26,6 +26,8 @@ struct GroupInfo;
 
 namespace ir {
 
+using IterSpaceType = std::vector<std::pair<std::string, std::string>>;
+
 struct ScheduleConfig {
   struct BaseInfo {
     std::vector<int64_t> reduce_axis;
@@ -37,14 +39,12 @@ struct ScheduleConfig {
     bool has_dynamic_spatial{false};
     bool has_dynamic_reduce{false};
     bool is_reduce_all{false};
+    IterSpaceType iter_space_type;
 
     std::set<std::string> reduce_tensor_names;
     std::set<std::string> temp_var_names;
     std::set<std::string> shared_var_names;
     std::set<std::string> direct_output_var_names;
-
-    std::unordered_map<std::string, BroadcastInfo> broadcast_info;
-    std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
   };
 
   struct TileConfig {
@@ -59,27 +59,61 @@ struct ScheduleConfig {
 };
 
 struct BucketInfo {
-  int64_t sp_lower_bound = 1;
-  int64_t sp_upper_bound = INT64_MAX;
-  int64_t rb_lower_bound = 1;
-  int64_t rb_upper_bound = INT64_MAX;
+  struct Dimension {
+    int lower_bound;
+    int upper_bound;
+    std::string iter_type;
+    bool is_dynamic;
+    Dimension()
+        : lower_bound(0),
+          upper_bound(INT_MAX),
+          iter_type("S"),
+          is_dynamic(false) {}
+    Dimension(int low, int upper, std::string iter_type, bool is_dynamic)
+        : lower_bound(low),
+          upper_bound(upper),
+          iter_type(iter_type),
+          is_dynamic(is_dynamic) {}
+  };
+  std::vector<Dimension> space;
+  int bucket_priority = 100;
 
-  bool operator==(const BucketInfo& other) const {
-    return this->sp_lower_bound == other.sp_lower_bound &&
-           this->sp_upper_bound == other.sp_upper_bound &&
-           this->rb_lower_bound == other.rb_lower_bound &&
-           this->rb_upper_bound == other.rb_upper_bound;
-  }
+  std::string ToString() const;
+  BucketInfo() = default;
+  BucketInfo(int sp_lower_bound,
+             int sp_upper_bound,
+             int rb_lower_bound,
+             int rb_upper_bound,
+             bool sp_is_dynamic,
+             bool rb_is_dynamic);
+  explicit BucketInfo(size_t size) : space(std::vector<Dimension>(size)) {}
+  explicit BucketInfo(const std::vector<Dimension>& dims);
+  bool operator==(const BucketInfo& other) const;
 };
 
 struct BucketInfoHash {
   std::size_t operator()(const BucketInfo& bucket_info) const noexcept {
-    std::size_t hash_spl = std::hash<uint64_t>{}(bucket_info.sp_lower_bound);
-    std::size_t hash_spu = std::hash<uint64_t>{}(bucket_info.sp_upper_bound);
-    std::size_t hash_rbl = std::hash<uint64_t>{}(bucket_info.rb_lower_bound);
-    std::size_t hash_rbu = std::hash<uint64_t>{}(bucket_info.rb_upper_bound);
-    return adt::hash_combine(adt::hash_combine(hash_spl, hash_spu),
-                             adt::hash_combine(hash_rbl, hash_rbu));
+    PADDLE_ENFORCE_GT(
+        bucket_info.space.size(),
+        0,
+        ::common::errors::InvalidArgument(
+            "Bucketinfo 's dimension number should be more than 0"));
+
+    std::size_t hash_past_dims = adt::hash_combine(
+        std::hash<uint64_t>{}(bucket_info.space[0].lower_bound),
+        std::hash<uint64_t>{}(bucket_info.space[0].upper_bound));
+    int dims = bucket_info.space.size();
+    if (dims == 1) {
+      return hash_past_dims;
+    } else {
+      for (int i = 1; i < dims; i++) {
+        std::size_t hash_temp_dim = adt::hash_combine(
+            std::hash<uint64_t>{}(bucket_info.space[i].lower_bound),
+            std::hash<uint64_t>{}(bucket_info.space[i].upper_bound));
+        hash_past_dims = adt::hash_combine(hash_past_dims, hash_temp_dim);
+      }
+      return hash_past_dims;
+    }
   }
 };
 

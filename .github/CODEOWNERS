@@ -2,6 +2,7 @@
 # Code owners are expected to take responsibility for review patches to respective file.
 
 /CMakeLists.txt @wanghuancoder @Aurelius84 @XiaoguangHu01 @qili93
+paddle/fluid/distributed/collective @sneaxiy @ForFishes
 paddle/fluid/eager/autograd_meta.cc @JiabinYang @phlrain
 paddle/fluid/eager/autograd_meta.h @JiabinYang @phlrain
 paddle/fluid/eager/backward.cc @JiabinYang @phlrain
@@ -53,7 +54,6 @@ python/paddle/base/compiler.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
 python/paddle/base/dygraph/layers.py @JiabinYang @phlrain
 python/paddle/base/framework.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
 python/paddle/base/__init__.py @phlrain @Aurelius84 @qili93
-python/paddle/base/parallel_executor.py @Xreki @zhhsplendid @Aurelius84
 python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py @Aurelius84 @phlrain
 python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py @Aurelius84 @phlrain
 python/paddle/base/tests/unittests/white_list/check_shape_white_list.py @hong19860320 @Aurelius84 @phlrain

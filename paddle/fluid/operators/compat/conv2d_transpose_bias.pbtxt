@@ -8,7 +8,7 @@ def {
   }
   inputs {
     name: "Bias"
-  }  
+  }
   outputs {
     name: "Output"
   }

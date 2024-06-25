@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/fused_elemwise_activation_functor.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace phi {
@@ -289,9 +290,18 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       MetaTensor* value_cache_out) {
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
-  const int num_head = key_cache_dims[1];
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
 
+  PADDLE_ENFORCE_EQ(
+      q_num_head % kv_num_head,
+      0,
+      errors::InvalidArgument(
+          "The q num_head (%d) must be divisible by kv num_head (%d)",
+          q_num_head,
+          kv_num_head));
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       2UL,
@@ -301,12 +311,12 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       4UL,
       errors::InvalidArgument("The input(key_cache) must be a 4D Tensor."));
   PADDLE_ENFORCE_EQ(
-      3 * num_head * dim_head,
+      (2 * kv_num_head + q_num_head) * dim_head,
       input_dims[1],
-      errors::InvalidArgument(
-          "The input_dims[1] must be equal to 3 * num_head * dim_head"));
+      errors::InvalidArgument("The input_dims[1] must be equal to (2 * "
+                              "kv_num_head + q_num_head) * dim_head"));
 
-  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  fmha_out->set_dims({input_dims[0], q_num_head * dim_head});
   qkv_out->set_dims(qkv.dims());
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
@@ -370,11 +380,98 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       FBADtypeCheck(qkv, "qkv", compute_dtype);
     }
     if (out_scale > 0) {
-      fmha_out->set_dtype(phi::DataType::INT8);
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
       fmha_out->set_dtype(qkv.dtype());
     }
   }
+}
+
+void BlockMultiheadAttentionInferXPUMeta(
+    const MetaTensor& qkv,
+    const MetaTensor& key_cache,
+    const MetaTensor& value_cache,
+    const MetaTensor& seq_lens_encoder,
+    const MetaTensor& seq_lens_decoder,
+    const MetaTensor& seq_lens_this_time,
+    const MetaTensor& padding_offsets,
+    const MetaTensor& cum_offsets,
+    const MetaTensor& cu_seqlens_q,
+    const MetaTensor& cu_seqlens_k,
+    const MetaTensor& cache_k_per_batch_maxs,
+    const MetaTensor& cache_v_per_batch_maxs,
+    const MetaTensor& block_tables,
+    const MetaTensor& pre_key_cache,
+    const MetaTensor& pre_value_cache,
+    const MetaTensor& rope_emb,
+    const MetaTensor& mask,
+    const MetaTensor& tgt_mask,
+    const MetaTensor& cache_k_quant_scales,
+    const MetaTensor& cache_v_quant_scales,
+    const MetaTensor& cache_k_dequant_scales,
+    const MetaTensor& cache_v_dequant_scales,
+    const MetaTensor& qkv_out_scale,
+    const MetaTensor& qkv_bias,
+    const MetaTensor& out_shift,
+    const MetaTensor& out_smooth,
+    const MetaTensor& max_enc_len_this_time,
+    const MetaTensor& max_dec_len_this_time,
+    int max_seq_len,
+    int block_size,
+    bool use_neox_style,
+    bool dynamic_cachekv_quant,
+    const int quant_round_type,
+    const float quant_max_bound,
+    const float quant_min_bound,
+    const float out_scale,
+    const std::string& compute_dtype,
+    MetaTensor* fmha_out,
+    MetaTensor* qkv_out,
+    MetaTensor* key_cache_out,
+    MetaTensor* value_cache_out) {
+  BlockMultiheadAttentionInferMeta(qkv,
+                                   key_cache,
+                                   value_cache,
+                                   seq_lens_encoder,
+                                   seq_lens_decoder,
+                                   seq_lens_this_time,
+                                   padding_offsets,
+                                   cum_offsets,
+                                   cu_seqlens_q,
+                                   cu_seqlens_k,
+                                   block_tables,
+                                   pre_key_cache,
+                                   pre_value_cache,
+                                   rope_emb,
+                                   mask,
+                                   tgt_mask,
+                                   cache_k_quant_scales,
+                                   cache_v_quant_scales,
+                                   cache_k_dequant_scales,
+                                   cache_v_dequant_scales,
+                                   qkv_out_scale,
+                                   qkv_bias,
+                                   out_shift,
+                                   out_smooth,
+                                   max_enc_len_this_time,
+                                   max_dec_len_this_time,
+                                   max_seq_len,
+                                   block_size,
+                                   use_neox_style,
+                                   dynamic_cachekv_quant,
+                                   quant_round_type,
+                                   quant_max_bound,
+                                   quant_min_bound,
+                                   out_scale,
+                                   compute_dtype,
+                                   fmha_out,
+                                   qkv_out,
+                                   key_cache_out,
+                                   value_cache_out);
 }
 
 void Conv1dXPUInferMeta(const MetaTensor& x,
@@ -4483,4 +4580,250 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   cls_inds->set_dtype(DataType::INT64);
 }
 
+void FusedElemwiseActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out,
+    MetaConfig config) {
+  const auto& x_dim = x.dims();
+  const auto& y_dim = y.dims();
+
+  // Whether the shape of Y is a continuous subsequence of X,
+  // For more information please refer to the op's introduction.
+  bool bcast_y = phi::funcs::IsBcastY(x_dim, y_dim);
+
+  const auto& out_dim = bcast_y ? x_dim : y_dim;
+  const auto& out_lod = bcast_y ? x : y;
+  auto out_dtype = bcast_y ? x.dtype() : y.dtype();
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_EQ(
+        intermediate_out->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "Output(IntermediateOut) of FusedElemwiseActivationOp "
+            "should not be null."));
+
+    if (phi::funcs::IsUnaryCompound(functor_list)) {
+      // for Unary(Binary(X, Y)), the shape and lod of out and
+      // intermediate_out are the same.
+      intermediate_out->set_dims(out_dim);
+      // set the lod of intermediate_out
+      intermediate_out->share_lod(out_lod);
+      intermediate_out->set_dtype(out_dtype);
+    } else {
+      // for Binary(X, Unary(Y)), the shape and lod of Y and
+      // intermediate_out are the same.
+      intermediate_out->set_dims(y_dim);
+      // set the lod of intermediate_out
+      intermediate_out->share_lod(y);
+      intermediate_out->set_dtype(y.dtype());
+    }
+  }
+  out->set_dims(out_dim);
+  out->share_lod(out_lod);
+  out->set_dtype(out_dtype);
+}
+
+void FusedElemwiseActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad,
+    MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      out_grad.initialized(),
+      true,
+      phi::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_EQ(intermediate_out.initialized(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(IntermediateOut) should not be null."));
+  } else {
+    if (!phi::funcs::InputXCanBeAbsent(functor_list)) {
+      PADDLE_ENFORCE_EQ(
+          x.initialized(),
+          true,
+          phi::errors::InvalidArgument("Input(X) should not be null."));
+    }
+  }
+
+  if (x_grad != nullptr) {
+    if (x.initialized()) {
+      x_grad->set_dims(x.dims());
+      x_grad->share_lod(x);
+      x_grad->set_dtype(x.dtype());
+    } else {
+      // Currently, only when Binary is elementwise_add or elementwise_sub,
+      // the "X" could be absent.
+      PADDLE_ENFORCE_EQ(
+          phi::funcs::InputXCanBeAbsent(functor_list),
+          true,
+          phi::errors::InvalidArgument(
+              "Only when BinaryFunctor is elementwise_add, the 'X' "
+              "could be absent."));
+
+      // Node: If "X" is absence, the shape of Y should be a continuous
+      // subsequence of X, otherwise, we could not infer the shape of dx.
+      x_grad->set_dims(out_grad.dims());
+      x_grad->share_lod(out_grad);
+      x_grad->set_dtype(out_grad.dtype());
+    }
+  }
+
+  if (y_grad != nullptr) {
+    PADDLE_ENFORCE_EQ(
+        y.initialized(),
+        true,
+        phi::errors::InvalidArgument("Input(Y) should not be null."));
+    y_grad->set_dims(y.dims());
+    y_grad->share_lod(y);
+    y_grad->set_dtype(y.dtype());
+  }
+}
+
+void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
+                                   const MetaTensor& embeddings,
+                                   const MetaTensor& weight_h,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& h0,
+                                   const MetaTensor& c0,
+                                   bool use_peepholes,
+                                   bool is_reverse,
+                                   bool use_seq,
+                                   const std::string& gate_activation,
+                                   const std::string& cell_activation,
+                                   const std::string& candidate_activation,
+                                   MetaTensor* hidden,
+                                   MetaTensor* cell,
+                                   MetaTensor* xx,
+                                   MetaTensor* batched_input,
+                                   MetaTensor* batched_hidden,
+                                   MetaTensor* batched_cell,
+                                   MetaTensor* reordered_h0,
+                                   MetaTensor* reordered_c0) {
+  const auto& table_dims = embeddings.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Embeddings's rank should be 2, but received value is:%d.",
+          table_dims.size()));
+  PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The last dimension of the 'Ids' tensor must be 1, but "
+                        "received value is:%d.",
+                        ids_dims[ids_rank - 1]));
+
+  const auto& x_dims = ids.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(Ids)'s rank must be 2, but received value is:%d.",
+          x_dims.size()));
+
+  if (h0.initialized()) {
+    PADDLE_ENFORCE_EQ(c0.initialized(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(Cell) and Input(Hidden) of LSTM should exist "
+                          "at the same time."));
+    const auto& h_dims = h0.dims();
+    const auto& c_dims = c0.dims();
+    PADDLE_ENFORCE_EQ(
+        h_dims,
+        c_dims,
+        phi::errors::InvalidArgument(
+            "The dimension of Input(H0) and Input(C0) "
+            "should be the same, but received H0 dim is:[%s], C0 dim is[%s]",
+            h_dims,
+            c_dims));
+  }
+
+  const auto& wh_dims = weight_h.dims();
+  int frame_size = static_cast<int>(wh_dims[1] / 4);
+  PADDLE_ENFORCE_EQ(
+      wh_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(WeightH) should be 2, but received value is:%d.",
+          wh_dims.size()));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(WeightH) should equal to "
+                        "frame size:%d, but received value is:%d.",
+                        frame_size,
+                        wh_dims[0]));
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(WeightH) should equal "
+                        "to 4 * %d, but received value is:%d.",
+                        frame_size,
+                        wh_dims[1]));
+
+  const auto& b_dims = bias.dims();
+  PADDLE_ENFORCE_EQ(
+      b_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(Bias) should be 2, but received value is:%d.",
+          b_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      b_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dimension of Input(Bias) "
+                                   "should be 1, but received value is:%d.",
+                                   b_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      b_dims[1],
+      (use_peepholes ? 7 : 4) * frame_size,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(Bias) should be "
+          "7 * %d if enable peepholes connection or"
+          "4 * %d if disable peepholes, bias dim is:%d, use_peepholes:%d",
+          frame_size,
+          frame_size,
+          b_dims[1],
+          use_peepholes));
+
+  phi::DDim out_dims({x_dims[0], frame_size});
+  hidden->set_dims(out_dims);
+  cell->set_dims(out_dims);
+  hidden->share_lod(ids);
+  cell->share_lod(ids);
+  hidden->set_dtype(embeddings.dtype());
+  cell->set_dtype(embeddings.dtype());
+  if (!use_seq) {
+    batched_input->set_dims({x_dims[0], wh_dims[1]});
+    batched_hidden->set_dims(out_dims);
+    batched_cell->set_dims(out_dims);
+    batched_input->set_dtype(embeddings.dtype());
+    batched_hidden->set_dtype(embeddings.dtype());
+    batched_cell->set_dtype(embeddings.dtype());
+  }
+  xx->set_dims({x_dims[0], wh_dims[1]});
+  xx->share_lod(ids);
+  xx->set_dtype(embeddings.dtype());
+}
 }  // namespace phi

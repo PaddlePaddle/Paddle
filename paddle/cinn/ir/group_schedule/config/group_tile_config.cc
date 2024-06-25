@@ -20,6 +20,68 @@ namespace ir {
 
 const int kMaxNumel = INT32_MAX;
 
+BucketInfo::BucketInfo(int sp_lower_bound,
+                       int sp_upper_bound,
+                       int rb_lower_bound,
+                       int rb_upper_bound,
+                       bool sp_is_dynamic = false,
+                       bool rb_is_dynamic = false) {
+  if (sp_is_dynamic || sp_lower_bound != 1 || sp_upper_bound != 1) {
+    BucketInfo::Dimension sp_dimension(
+        sp_lower_bound, sp_upper_bound, "S", sp_is_dynamic);
+    this->space.push_back(sp_dimension);
+  }
+  if (rb_is_dynamic || rb_lower_bound != 1 || rb_upper_bound != 1) {
+    BucketInfo::Dimension rb_dimension(
+        rb_lower_bound, rb_upper_bound, "R", rb_is_dynamic);
+    this->space.push_back(rb_dimension);
+  }
+  if (this->space.empty()) {
+    this->space.emplace_back(1, 1, "S", /* is_dynamic = */ false);
+  }
+}
+
+BucketInfo::BucketInfo(const std::vector<BucketInfo::Dimension>& dims) {
+  for (auto& dim : dims) {
+    if (dim.is_dynamic || dim.lower_bound != 1 || dim.upper_bound != 1) {
+      this->space.push_back(dim);
+    }
+  }
+  if (this->space.empty()) {
+    this->space.emplace_back(1, 1, "S", /* is_dynamic = */ false);
+  }
+}
+
+bool BucketInfo::operator==(const BucketInfo& other) const {
+  if (this->bucket_priority != other.bucket_priority) {
+    return false;
+  }
+  if (this->space.size() != other.space.size()) {
+    return false;
+  }
+  int length = this->space.size();
+  for (int i = 0; i < length; i++) {
+    if (this->space[i].is_dynamic != other.space[i].is_dynamic ||
+        this->space[i].iter_type != other.space[i].iter_type ||
+        this->space[i].lower_bound != other.space[i].lower_bound ||
+        this->space[i].upper_bound != other.space[i].upper_bound) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::string BucketInfo::ToString() const {
+  std::stringstream ss;
+  ss << "BucketInfo: [";
+  for (const auto& dim : space) {
+    ss << dim.iter_type << "(" << dim.lower_bound << " - " << dim.upper_bound
+       << "), ";
+  }
+  ss << "]";
+  return ss.str();
+}
+
 int64_t Next2Power(int64_t n) {
   if (n == 1) {
     return 1;
@@ -34,8 +96,6 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->reduce_tensor_names = group_info->reduce_var_names;
   base_info->shared_var_names = group_info->shared_var_names;
   base_info->direct_output_var_names = group_info->direct_output_var_names;
-  base_info->broadcast_info = group_info->broadcast_info;
-  base_info->broadcast_to_elementwise = group_info->broadcast_to_elementwise;
   base_info->data_rank = group_info->data_space.size();
   base_info->raw_data_rank = group_info->raw_data_rank;
 
@@ -70,6 +130,23 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->is_reduce_all =
       (base_info->reduce_axis.size() == base_info->data_rank);
 
+  for (int64_t i = 0; i < group_info->data_space.size(); ++i) {
+    if (group_info->data_space[i] == 1) continue;
+    std::string iter_type = reduce_dim_loc.count(i) > 0 ? "R" : "S";
+    std::string static_or_dynamic =
+        group_info->data_space[i] == -1 ? "dynamic" : "static";
+    if (base_info->iter_space_type.empty() ||
+        base_info->iter_space_type.back().first != iter_type) {
+      base_info->iter_space_type.push_back({iter_type, static_or_dynamic});
+    } else {
+      if (static_or_dynamic == "dynamic") {
+        base_info->iter_space_type.back().second = "dynamic";
+      }
+    }
+  }
+  if (base_info->iter_space_type.empty()) {
+    base_info->iter_space_type.push_back({"S", "static"});
+  }
   return base_info;
 }
 
@@ -78,7 +155,18 @@ BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
   if (base_info->spatial_numel == 1) {  // reduce all
-    if (base_info->reduce_numel <= 256) {
+    if (base_info->reduce_numel == 1) {
+      BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                             /* sp_upper_bound = */ 1,
+                             /* rb_lower_bound = */ 1,
+                             /* rb_upper_bound = */ 1};
+      ScheduleConfig::TileConfig tile_config{
+          /* warp_num = */ 1,
+          /* tree_reduce_num = */ 1,
+          /* spatial_inner_num = */ 1,
+          /* reduce_method = */ NoneReduceMethod()};
+      return {{bucket_info, tile_config}};
+    } else if (base_info->reduce_numel <= 256) {
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
                              /* rb_lower_bound = */ 1,
@@ -190,7 +278,9 @@ BuildStaticSpatialConfig(
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ 1,
                            /* rb_lower_bound = */ 1,
-                           /* rb_upper_bound = */ kMaxNumel};
+                           /* rb_upper_bound = */ kMaxNumel,
+                           /* sp_is_dynamic = */ false,
+                           /* rb_is_dynamic = */ true};
     ScheduleConfig::TileConfig tile_config{
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 256,
@@ -201,7 +291,9 @@ BuildStaticSpatialConfig(
     BucketInfo bucket_info_1_256{/* sp_lower_bound = */ 1,
                                  /* sp_upper_bound = */ kMaxNumel,
                                  /* rb_lower_bound = */ 1,
-                                 /* rb_upper_bound = */ 256};
+                                 /* rb_upper_bound = */ 256,
+                                 /* sp_is_dynamic = */ false,
+                                 /* rb_is_dynamic = */ true};
     ScheduleConfig::TileConfig tile_config_1_256{
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 32,
@@ -211,7 +303,9 @@ BuildStaticSpatialConfig(
     BucketInfo bucket_info_257_2048{/* sp_lower_bound = */ 1,
                                     /* sp_upper_bound = */ kMaxNumel,
                                     /* rb_lower_bound = */ 257,
-                                    /* rb_upper_bound = */ 2048};
+                                    /* rb_upper_bound = */ 2048,
+                                    /* sp_is_dynamic = */ false,
+                                    /* rb_is_dynamic = */ true};
     ScheduleConfig::TileConfig tile_config_257_2048{
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 128,
@@ -221,7 +315,9 @@ BuildStaticSpatialConfig(
     BucketInfo bucket_info_2049_INF{/* sp_lower_bound = */ 1,
                                     /* sp_upper_bound = */ kMaxNumel,
                                     /* rb_lower_bound = */ 2049,
-                                    /* rb_upper_bound = */ kMaxNumel};
+                                    /* rb_upper_bound = */ kMaxNumel,
+                                    /* sp_is_dynamic = */ false,
+                                    /* rb_is_dynamic = */ true};
     ScheduleConfig::TileConfig tile_config_2049_INF{
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 256,
@@ -242,7 +338,9 @@ BuildStaticReduceConfig(
     BucketInfo bucket_info__1_1023{/* sp_lower_bound = */ 1,
                                    /* sp_upper_bound = */ 1023,
                                    /* rb_lower_bound = */ 1,
-                                   /* rb_upper_bound = */ 1};
+                                   /* rb_upper_bound = */ 1,
+                                   /* sp_is_dynamic = */ true,
+                                   /* rb_is_dynamic = */ false};
     ScheduleConfig::TileConfig tile_config__1_1023{
         /* warp_num = */ -1,
         /* tree_reduce_num = */ 1,
@@ -251,7 +349,9 @@ BuildStaticReduceConfig(
     BucketInfo bucket_info__1024_1M{/* sp_lower_bound = */ 1024,
                                     /* sp_upper_bound = */ 1024 * 1024 - 1,
                                     /* rb_lower_bound = */ 1,
-                                    /* rb_upper_bound = */ 1};
+                                    /* rb_upper_bound = */ 1,
+                                    /* sp_is_dynamic = */ true,
+                                    /* rb_is_dynamic = */ false};
     ScheduleConfig::TileConfig tile_config__1024_1M{
         /* warp_num = */ 32,
         /* tree_reduce_num = */ 1,
@@ -260,7 +360,9 @@ BuildStaticReduceConfig(
     BucketInfo bucket_info__1M_INF{/* sp_lower_bound = */ 1024 * 1024,
                                    /* sp_upper_bound = */ kMaxNumel,
                                    /* rb_lower_bound = */ 1,
-                                   /* rb_upper_bound = */ 1};
+                                   /* rb_upper_bound = */ 1,
+                                   /* sp_is_dynamic = */ true,
+                                   /* rb_is_dynamic = */ false};
     ScheduleConfig::TileConfig tile_config__1M_INF{
         /* warp_num = */ 32,
         /* tree_reduce_num = */ 1,
@@ -273,7 +375,9 @@ BuildStaticReduceConfig(
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 2,
-                           /* rb_upper_bound = */ 256};
+                           /* rb_upper_bound = */ 256,
+                           /* sp_is_dynamic = */ true,
+                           /* rb_is_dynamic = */ false};
     ScheduleConfig::TileConfig tile_config{
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 32,
@@ -290,7 +394,9 @@ BuildStaticReduceConfig(
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 257,
-                           /* rb_upper_bound = */ 2048};
+                           /* rb_upper_bound = */ 2048,
+                           /* sp_is_dynamic = */ true,
+                           /* rb_is_dynamic = */ false};
     ScheduleConfig::TileConfig tile_config{
         /* warp_num = */ warp_num,
         /* tree_reduce_num = */ tree_reduce_num,
@@ -304,7 +410,9 @@ BuildStaticReduceConfig(
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 2049,
-                           /* rb_upper_bound = */ kMaxNumel};
+                           /* rb_upper_bound = */ kMaxNumel,
+                           /* sp_is_dynamic = */ true,
+                           /* rb_is_dynamic = */ false};
     ScheduleConfig::TileConfig tile_config{
         /* warp_num = */ warp_num,
         /* tree_reduce_num = */ tree_reduce_num,
@@ -324,7 +432,9 @@ BuildDynamicShapeConfig(
   BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                          /* sp_upper_bound = */ kMaxNumel,
                          /* rb_lower_bound = */ 1,
-                         /* rb_upper_bound = */ kMaxNumel};
+                         /* rb_upper_bound = */ kMaxNumel,
+                         /* sp_is_dynamic = */ true,
+                         /* rb_is_dynamic = */ true};
   ScheduleConfig::TileConfig tile_config{
       /* warp_num = */ warp_num,
       /* tree_reduce_num = */ tree_reduce_num,

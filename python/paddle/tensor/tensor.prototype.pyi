@@ -12,20 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The `Tensor` template for `tools/gen_tensor_stub.py` generates the stub file `tensor.pyi`.
-# Add docstring, attributes, methods and alias with type annotaions for `Tensor`
+# The `Tensor` template `tensor.prototype.pyi` for `tools/gen_tensor_stub.py` to generate the stub file `tensor.pyi`.
+# Add docstring, attributes, methods and alias with type annotaions for `Tensor` in `tensor.prototype.pyi`
 # if not conveniently coding in original place (like c++ source file).
 
-from typing import Any, overload
+# Import common typings for generated methods
+# isort: off
+from typing import *  # noqa: F403
+from typing_extensions import *  # type: ignore # noqa: F403
+from paddle._typing import *  # noqa: F403
+
+# isort: on
+
+from typing import Any, Iterator, Literal, overload
 
 import numpy.typing as npt
-from typing_extensions import TypeAlias
 
 import paddle
-from paddle import _typing
-
-# avoid same name: Tensor.slice
-_Slice: TypeAlias = slice
+from paddle import (
+    ParamAttr,  # noqa: F401
+    _typing,
+)
+from paddle.base.dygraph.tensor_patch_methods import (
+    TensorHookRemoveHelper,  # noqa: F401
+)
 
 class Tensor:
     # annotation: ${tensor_docstring}
@@ -144,11 +154,11 @@ class Tensor:
     def __pow__(self, y: _typing.TensorLike) -> Tensor: ...
     def __and__(self, y: _typing.TensorLike) -> Tensor: ...
     def __div__(self, y: _typing.TensorLike) -> Tensor: ...
-    def __radd__(self, y: _typing.TensorLike) -> Tensor: ...
-    def __rsub__(self, y: _typing.TensorLike) -> Tensor: ...
-    def __rmul__(self, y: _typing.TensorLike) -> Tensor: ...
-    def __rtruediv__(self, y: _typing.TensorLike) -> Tensor: ...
-    def __rpow__(self, y: _typing.TensorLike) -> Tensor: ...
+    def __radd__(self, y: _typing.TensorLike) -> Tensor: ...  # type: ignore
+    def __rsub__(self, y: _typing.TensorLike) -> Tensor: ...  # type: ignore
+    def __rmul__(self, y: _typing.TensorLike) -> Tensor: ...  # type: ignore
+    def __rtruediv__(self, y: _typing.TensorLike) -> Tensor: ...  # type: ignore
+    def __rpow__(self, y: _typing.TensorLike) -> Tensor: ...  # type: ignore
     def __rdiv__(self, y: _typing.TensorLike) -> Tensor: ...
 
     # type cast
@@ -161,26 +171,12 @@ class Tensor:
     # emulating container types
     def __getitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | _Slice
-            | tuple[None | bool | int | _Slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: _typing.TensorIndex,
     ) -> Tensor: ...
     def __setitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | _Slice
-            | tuple[None | bool | int | _Slice, ...]
-            | list[Tensor | bool | int]
-        ),
-        value: Tensor | npt.NDArray[Any] | int | float | complex | bool,
+        item: _typing.TensorIndex,
+        value: Tensor | npt.NDArray[Any] | complex | bool,
     ) -> None: ...
     def __len__(self) -> int: ...
 
@@ -201,6 +197,8 @@ class Tensor:
     def crows(self) -> Tensor: ...
     @property
     def data(self) -> Tensor: ...
+    @data.setter
+    def data(self, value: Tensor) -> None: ...
     def data_ptr(self) -> int: ...
     def detach(self) -> Tensor: ...
     def detach_(self) -> Tensor: ...
@@ -213,8 +211,12 @@ class Tensor:
     def get_tensor(self) -> Tensor: ...
     @property
     def grad(self) -> Tensor | None: ...
+    @grad.setter
+    def grad(self, value: Tensor) -> None: ...
     @property
     def grad_(self) -> Tensor | None: ...
+    @grad_.setter
+    def grad_(self, value: Tensor) -> None: ...
     @property
     def grad_fn(self) -> Any: ...
     def is_contiguous(self) -> bool: ...
@@ -231,6 +233,8 @@ class Tensor:
     def layout(self) -> _typing.DataLayoutND: ...
     @property
     def name(self) -> str: ...
+    @name.setter
+    def name(self, value: str) -> None: ...
     @property
     def ndim(self) -> int: ...
     def nnz(self) -> int: ...
@@ -241,6 +245,8 @@ class Tensor:
     def offset(self) -> int: ...
     @property
     def persistable(self) -> bool: ...
+    @persistable.setter
+    def persistable(self, value: bool) -> None: ...
     @property
     def place(self) -> paddle.core.Place: ...
     @property
@@ -255,9 +261,16 @@ class Tensor:
     @property
     def size(self) -> int: ...
     @property
+    def stop_gradient(self) -> bool: ...
+    @stop_gradient.setter
+    def stop_gradient(self, value: bool) -> None: ...
+    @property
     def strides(self) -> list[int]: ...
     @property
     def type(self) -> Any: ...
 
+    # virtual methods
+    def __iter__(self) -> Iterator[Tensor]: ...  # For iterating over the tensor
+
     # annotation: ${tensor_alias}
-    __qualname__ = "Tensor"
+    __qualname__: Literal["Tensor"]

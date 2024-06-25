@@ -17,8 +17,7 @@
 #include <utility>
 #include "paddle/common/enforce.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 IrSelectedRows::IrSelectedRows(phi::DataType dtype,
                                const phi::DDim& dims,
                                phi::DataLayout layout,
@@ -71,5 +70,4 @@ void* IrSelectedRows::AllocateFrom(phi::Allocator* allocator,
   IR_THROW("Don't use IrSelectedRows::AllocateFrom method.");
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

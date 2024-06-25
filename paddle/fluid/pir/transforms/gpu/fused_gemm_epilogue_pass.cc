@@ -317,8 +317,8 @@ class FusedGemmEpiloguePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<FusedLinearGradPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearPattern>(context));
+    ps.Add(paddle::drr::Create<FusedLinearGradPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearGeluPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearReluPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearGeluGradPattern>(context));

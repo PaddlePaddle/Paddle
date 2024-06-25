@@ -34,9 +34,7 @@ PD_BUILD_OP(custom_op)
         "bools_attr: std::vector<bool>",
     });
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 TEST(CustomPluginCreater, StaticShapePlugin) {
   framework::ProgramDesc prog;
@@ -204,8 +202,6 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   converter.ConvertBlock(
       *block->Proto(), {}, scope, engine_.get() /*TensorRTEngine*/);
 }
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 USE_TRT_CONVERTER(custom_plugin_creater)
