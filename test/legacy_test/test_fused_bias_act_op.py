@@ -94,7 +94,8 @@ def fused_act_bias_wrapper(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() and not core.is_compile_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
 )
 class TestFusedBiasActOp(unittest.TestCase):
     def setUp(self):
@@ -168,7 +169,6 @@ class TestWithComTypeFP16(TestFusedBiasActOp):
         self.compute_dtype = 'fp16'
 
 
-@unittest.skipIf(core.is_compiled_with_rocm(), "ROCM does not support FastGelu")
 class TestFastGeluFP16(TestFusedBiasActOp):
     def use_fast_math(self, enabled):
         paddle.set_flags({'FLAGS_use_fast_math': enabled})
@@ -641,7 +641,8 @@ class TestQuantSwigluBF16(TestQuantBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
 )
 class TestAssert(unittest.TestCase):
     def setUp(self):
@@ -704,7 +705,8 @@ class TestAssert(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
 )
 class TestWithoutBias(unittest.TestCase):
     def setUp(self):

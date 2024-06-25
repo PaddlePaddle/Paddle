@@ -34,11 +34,7 @@ namespace fusion {
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
-#ifdef PADDLE_WITH_HIP
-    assert(0 && "ROCM does not support FastGelu");
-#else
     return phi::GeluFwd<T, true>(x);
-#endif
   }
 };
 
@@ -116,8 +112,7 @@ struct ReluFunctor {
   }
 };
 
-#if defined(PADDLE_WITH_CUDA)
-inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
+inline gpuError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
@@ -131,26 +126,8 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
                     std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
                                       sm_count * max_thread_per_multiprocessor /
                                           kBlockSize * kNumWaves));
-  return cudaSuccess;
+  return gpuSuccess;
 }
-#elif defined(PADDLE_WITH_HIP)
-inline hipError_t GetNumBlocks(int64_t n, int *num_blocks) {
-  constexpr int kBlockSize = 128;
-  constexpr int kNumWaves = 16;
-
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-  const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMultiProcessors(device_id);
-
-  *num_blocks =
-      std::max<int>(1,
-                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
-                                      sm_count * max_thread_per_multiprocessor /
-                                          kBlockSize * kNumWaves));
-  return hipSuccess;
-}
-#endif
 
 }  // namespace fusion
 }  // namespace phi
