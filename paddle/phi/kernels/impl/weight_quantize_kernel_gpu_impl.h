@@ -310,7 +310,8 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
   if (n < total_vec_n) {
     const int4* vec_weight_data_ptr =
         reinterpret_cast<const int4*>(weight_data);
-    int* vec_quanted_weight_data = reinterpret_cast<int*>(quanted_weight_data);
+    int* vec_quanted_weight_data =
+        reinterpret_cast<int*>(quanted_weight_data);
     phi::AlignedVector<float, VectorSize> abs_max;
 #pragma unroll
     for (int i = 0; i < VectorSize; ++i) {
@@ -344,11 +345,15 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
         int8_t packed_int4s = 0;
         for (int pack = 0; pack < 2; ++pack) {
           int vector_index = i * 2 + pack;
-          float scaled_weight = (static_cast<float>(weight[vector_index]) /
-                                 static_cast<float>(abs_max[vector_index])) *
-                                static_cast<float>(7.0);
-          int8_t clipped_weight = static_cast<int8_t>(
-              lroundf(fmaxf(-7.0f, fminf(7.0f, scaled_weight))));
+          const float r_scale = 1 / static_cast<float>(scale[vector_index]);
+          const float weight_elt =
+              static_cast<float>(weight[vector_index]) * r_scale;
+          float scaled_weight = roundf(weight_elt);
+          int int_weight = static_cast<int>(scaled_weight);
+          int8_t clipped_weight = max(-7, min(7, int_weight));
+          if (k == 12 && (vector_index == 8 || vector_index == 9)) {
+              printf("gpu: %d\n", clipped_weight);
+          }
           packed_int4s |= ((clipped_weight & 0x0F) << (4 * pack));
         }
         quanted_weight[i] = packed_int4s;
