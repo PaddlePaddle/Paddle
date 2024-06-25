@@ -649,7 +649,7 @@ def prim2orig(block=None, blacklist=None):
             >>> enable_prim()
 
             >>> x = paddle.ones(shape=[2, 2], dtype='float32')
-            >>> x.stop_gradient = False
+            >>> x.stop_gradients = False
             >>> y = x * x
             >>> dy_dx = paddle.static.gradients(y, x)
             >>> if prim_enabled():

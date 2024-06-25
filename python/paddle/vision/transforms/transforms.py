@@ -1604,35 +1604,23 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
             [3, 256, 300]
     """
 
-    degrees: float | list[float] | tuple[float, float]
-    translate: list[float] | tuple[float, float] | None
-    scale: list[float] | tuple[float, float] | None
-    shear: (
-        float
-        | list[float]
-        | tuple[float, float]
-        | tuple[float, float, float, float]
-        | None
-    )
+    degrees: Sequence[float]
+    translate: tuple[float, float] | None
+    scale: tuple[float, float] | None
+    shear: float | Sequence[float] | None
     interpolation: _InterpolationPil | _InterpolationCv2
     fill: Size3
-    center: list[float] | tuple[float, float]
+    center: tuple[float, float]
 
     def __init__(
         self,
-        degrees: float | list[float] | tuple[float, float],
-        translate: list[float] | tuple[float, float] | None = None,
-        scale: list[float] | tuple[float, float] | None = None,
-        shear: (
-            float
-            | list[float]
-            | tuple[float, float]
-            | tuple[float, float, float, float]
-            | None
-        ) = None,
+        degrees: float | Sequence[float],
+        translate: tuple[float, float] | None = None,
+        scale: tuple[float, float] | None = None,
+        shear: float | Sequence[float] | None = None,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         fill: Size3 = 0,
-        center: list[float] | tuple[float, float] = None,
+        center: tuple[float, float] = None,
         keys: _TransformInputKeys | None = None,
     ) -> None:
         self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2,))

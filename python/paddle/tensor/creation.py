@@ -1739,14 +1739,12 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> list[paddle.Tensor]:
+) -> paddle.Tensor:
     ...
 
 
 @overload
-def meshgrid(
-    *args: paddle.Tensor, name: str | None = None
-) -> list[paddle.Tensor]:
+def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     ...
 
 
