@@ -23,42 +23,48 @@ paddle.enable_static()
 
 def get_ir_divide_program():
     paddle.enable_static()
-    main_program, start_program = (
-        paddle.static.Program(),
-        paddle.static.Program(),
-    )
-    with paddle.static.program_guard(main_program, start_program):
-        x = paddle.tensor.fill_constant(
-            shape=[1, 4], dtype='float32', value=2.0
+    with paddle.pir_utils.OldIrGuard():
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
         )
-        x.stop_gradient = False
-        y = paddle.tensor.fill_constant(shape=[4], dtype='float32', value=1.0)
-        y.stop_gradient = False
-        dout = paddle.tensor.fill_constant(
-            shape=[1, 4], dtype='float32', value=1.0
-        )
-        dout.stop_gradient = False
-        out = paddle.divide(x, y)
-    pir_program = pir.translate_to_pir(main_program.desc)
-    return pir_program
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.tensor.fill_constant(
+                shape=[1, 4], dtype='float32', value=2.0
+            )
+            x.stop_gradient = False
+            y = paddle.tensor.fill_constant(
+                shape=[4], dtype='float32', value=1.0
+            )
+            y.stop_gradient = False
+            dout = paddle.tensor.fill_constant(
+                shape=[1, 4], dtype='float32', value=1.0
+            )
+            dout.stop_gradient = False
+            out = paddle.divide(x, y)
+        pir_program = pir.translate_to_pir(main_program.desc)
+        return pir_program
 
 
 def get_ir_sum_program():
     paddle.enable_static()
-    main_program, start_program = (
-        paddle.static.Program(),
-        paddle.static.Program(),
-    )
-    with paddle.static.program_guard(main_program, start_program):
-        x = paddle.tensor.fill_constant(
-            shape=[4, 5], dtype='float32', value=2.0
+    with paddle.pir_utils.OldIrGuard():
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
         )
-        x.stop_gradient = False
-        dout = paddle.tensor.fill_constant(shape=[], dtype='float32', value=1.0)
-        dout.stop_gradient = False
-        out = paddle.sum(x)
-    pir_program = pir.translate_to_pir(main_program.desc)
-    return pir_program
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.tensor.fill_constant(
+                shape=[4, 5], dtype='float32', value=2.0
+            )
+            x.stop_gradient = False
+            dout = paddle.tensor.fill_constant(
+                shape=[], dtype='float32', value=1.0
+            )
+            dout.stop_gradient = False
+            out = paddle.sum(x)
+        pir_program = pir.translate_to_pir(main_program.desc)
+        return pir_program
 
 
 class TestVjpPrim(unittest.TestCase):
