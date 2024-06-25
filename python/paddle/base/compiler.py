@@ -203,7 +203,7 @@ class CompiledProgram:
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+        # self._build_strategy.is_distribution = _is_pserver_mode(self._program)
 
         # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.

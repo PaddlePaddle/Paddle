@@ -20,7 +20,3 @@ cc_library(
   add_reader_dependency_pass
   SRCS add_reader_dependency_pass.cc
   DEPS graph graph_helper pass)
-cc_library(
-  fix_op_run_order_pass
-  SRCS fix_op_run_order_pass.cc
-  DEPS graph graph_helper pass)

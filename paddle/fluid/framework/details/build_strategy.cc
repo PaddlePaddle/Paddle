@@ -228,9 +228,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
     if (strategy_.async_mode_) {
-      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
+      // multi_devices_pass = AppendPass("async_multi_devices_pass").get();
     } else if (strategy_.is_distribution_) {
-      multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
+      // multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       switch (strategy_.reduce_) {
         case BuildStrategy::ReduceStrategy::kAllReduce:
@@ -340,7 +340,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(8) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
