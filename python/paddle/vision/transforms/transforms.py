@@ -698,7 +698,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
         )
 
     def _apply_image(self, img):
-        if paddle.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_or_pir_mode():
             i, j, h, w = self._dynamic_get_param(img)
         else:
             i, j, h, w, counter = self._static_get_param(img)
@@ -797,7 +797,7 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
         self.prob = prob
 
     def _apply_image(self, img):
-        if paddle.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_or_pir_mode():
             return self._dynamic_apply_image(img)
         else:
             return self._static_apply_image(img)
@@ -860,7 +860,7 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
         self.prob = prob
 
     def _apply_image(self, img):
-        if paddle.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_or_pir_mode():
             return self._dynamic_apply_image(img)
         else:
             return self._static_apply_image(img)
@@ -1398,7 +1398,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
         if w == tw and h == th:
             return 0, 0, h, w
 
-        if paddle.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_or_pir_mode():
             i = random.randint(0, h - th)
             j = random.randint(0, w - tw)
         else:
@@ -1813,7 +1813,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
         self.fill = fill
 
     def _get_param(self, degrees):
-        if paddle.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_or_pir_mode():
             angle = random.uniform(degrees[0], degrees[1])
         else:
             angle = paddle.uniform(
@@ -2314,7 +2314,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
 
     def _apply_image(self, img):
-        if paddle.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_or_pir_mode():
             return self._dynamic_apply_image(img)
         else:
             return paddle.static.nn.cond(
