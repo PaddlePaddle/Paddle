@@ -21,7 +21,7 @@ elseif(WITH_ROCM)
   hip_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 else()
   nv_test(
     tensor_util_test
