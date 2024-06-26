@@ -30,7 +30,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.framework import Program, convert_np_dtype_to_dtype_
+from paddle.base.framework import Program, convert_np_dtype_to_proto_type
 
 
 class XPUOpTest(OpTest):
@@ -352,7 +352,7 @@ class XPUOpTest(OpTest):
                 inputs={"X": cast_inputs},
                 outputs={"Out": cast_outputs},
                 attrs={
-                    "in_dtype": convert_np_dtype_to_dtype_(self.dtype),
+                    "in_dtype": convert_np_dtype_to_proto_type(self.dtype),
                     "out_dtype": core.VarDesc.VarType.FP32,
                 },
             )
@@ -374,7 +374,7 @@ class XPUOpTest(OpTest):
                 outputs={"Out": recast_loss},
                 attrs={
                     "in_dtype": core.VarDesc.VarType.FP32,
-                    "out_dtype": convert_np_dtype_to_dtype_(self.dtype),
+                    "out_dtype": convert_np_dtype_to_proto_type(self.dtype),
                 },
             )
             recast_op.desc.infer_var_type(block.desc)
