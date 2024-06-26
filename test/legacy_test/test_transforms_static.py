@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.vision.transforms import transforms
 
 SEED = 2022
@@ -58,6 +59,7 @@ class TestTransformUnitTestBase(unittest.TestCase):
         paddle.disable_static()
         return res[0]
 
+    @test_with_pir_api
     def test_transform(self):
         dy_res = self.dynamic_transform()
         if isinstance(dy_res, paddle.Tensor):
