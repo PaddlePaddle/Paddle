@@ -12,13 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/bilateral_slice_kernel_impl.h"
-
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 

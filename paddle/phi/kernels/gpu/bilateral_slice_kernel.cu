@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/bilateral_slice_kernel_impl.cu.h"
-#include "paddle/phi/kernels/impl/bilateral_slice_kernel_impl.h"
 
 namespace phi {
 
