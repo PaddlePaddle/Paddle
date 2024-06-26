@@ -1074,6 +1074,17 @@ void FusedElemwiseActivationGradInferMeta(
     MetaTensor* y_grad,
     MetaConfig config = MetaConfig());
 
+void FP8OutHalfGemmFusedInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& bias,
+    const bool trans_x,
+    const bool trans_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& output_dtype,
+    const std::string& activation_type,
+    MetaTensor* out);
+
 void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
                                    const MetaTensor& embeddings,
                                    const MetaTensor& weight_h,
