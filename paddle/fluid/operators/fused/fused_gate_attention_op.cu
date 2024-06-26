@@ -21,10 +21,16 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using FlashAttnWithGating = phi::fusion::FlashAttnWithGating;
-using FMHAGateRef = phi::fusion::FMHAGateRef;
-using GateAttentionConfig = phi::fusion::GateAttentionConfig;
-using GateAttentionGradConfig = phi::fusion::GateAttentionGradConfig;
+template <typename T>
+using FlashAttnWithGating = phi::fusion::FlashAttnWithGating<T>;
+template <typename T>
+using FMHAGateRef = phi::fusion::FMHAGateRef<T>;
+template <typename T>
+using GateAttentionConfig = phi::fusion::GateAttentionConfig<T>;
+template <typename T>
+using GateAttentionGradConfig = phi::fusion::GateAttentionGradConfig<T>;
+template <typename T>
+using AllocWithDebugInfo = phi::fusion::AllocWithDebugInfo<T>;
 
 template <typename T>
 struct SigmoidMultiplyFunctor {

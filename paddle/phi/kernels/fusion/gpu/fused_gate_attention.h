@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
 
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -37,11 +38,11 @@ __global__ void SimleScaleKernel(int64_t numel, float scale, T* inout) {
 }
 
 inline std::string MemoryDebugString(const phi::DenseTensor& t) {
-  int device_id = platform::GetCurrentDeviceId();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
   int64_t allocated =
-      memory::DeviceMemoryStatCurrentValue("Allocated", device_id);
+      memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
   int64_t reserved =
-      memory::DeviceMemoryStatCurrentValue("Reserved", device_id);
+      memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
 
   std::stringstream ss;
   ss << "shape=[" << t.dims()
