@@ -393,8 +393,6 @@ class TestGRUBackward(unittest.TestCase):
     def runTest(self):
         self.test_base(True)
         self.test_base()
-        self.test_base()
-        self.test_base(True)
 
 
 if __name__ == "__main__":
