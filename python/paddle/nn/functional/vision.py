@@ -394,7 +394,7 @@ def pixel_shuffle(
 def pixel_unshuffle(
     x: Tensor,
     downscale_factor: int,
-    data_format: DataLayout2D | str = 'NCHW',
+    data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
 ) -> Tensor:
     """
@@ -462,7 +462,7 @@ def pixel_unshuffle(
 def channel_shuffle(
     x: Tensor,
     groups: int,
-    data_format: DataLayout2D | str = 'NCHW',
+    data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
 ) -> Tensor:
     """
