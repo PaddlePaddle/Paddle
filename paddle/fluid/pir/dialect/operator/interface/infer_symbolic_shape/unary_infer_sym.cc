@@ -853,7 +853,7 @@ bool SplitWithNumOpInferSymbolicShape(
   int rank = x_s_or_d.shape().size();
 
   const auto &out_s_d = [&](int64_t split_axis, int64_t res_num) {
-    symbol::DimExpr input_axis_dim = x_s_or_d.shape().at(axis);
+    symbol::DimExpr input_axis_dim = x_s_or_d.shape().at(split_axis);
     symbol::DimExpr axis_shape = input_axis_dim / symbol::DimExpr{res_num};
 
     std::vector<symbol::DimExpr> res_s_d;
