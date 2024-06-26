@@ -176,7 +176,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
       // Step 4: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 1}, {1, 1}, {1, 1}};   // {1, 8}, {1, 256}, {1, 256}
+          {1, 1}, {1, 1}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -242,13 +242,13 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   std::vector<std::vector<int64_t>> shapes = {
-      {1, 1, 4096},         // 0
-      {1, 13, 4096},        // 1
-      {128 * 12, 128, 128}, // 2
-      {128, 128, 768},      // 3
-      {2048, 32, 128},      // 4
-      {2048, 8, 96},        // 5
-      {13 * 2048, 32, 128}  // 6
+      {1, 1, 4096},          // 0
+      {1, 13, 4096},         // 1
+      {128 * 12, 128, 128},  // 2
+      {128, 128, 768},       // 3
+      {2048, 32, 128},       // 4
+      {2048, 8, 96},         // 5
+      {13 * 2048, 32, 128}   // 6
   };
   auto shape = shapes[0];
   int shape0 = shape[0], shape1 = shape[1], shape2 = shape[2];
@@ -285,7 +285,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 4: Construct config candidate range and constraints.
   std::vector<std::pair<int, int>> candidate_range{
-      {1, 1}, {32, 32}, {1, 1}};   // {1, 8}, {1, 256}, {1, 256}
+      {1, 1}, {32, 32}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
