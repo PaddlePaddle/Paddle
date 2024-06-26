@@ -42,6 +42,7 @@ from paddle.framework import (
     in_pir_mode,
 )
 from paddle.tensor.creation import full
+from paddle.utils import deprecated
 
 from ...base.data_feeder import (
     check_dtype,
