@@ -114,16 +114,22 @@ static void check_cat_sparse_dims(const SparseCooTensor* t,
                     t->dense_dim());
 }
 
+#define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
+
+#define MAX_SIZE 128
+
+__constant__ int64_t constant_nnz_offset[MAX_SIZE];
+
 template <typename IndexT, typename DarrayWrapperT>
 __global__ void ConcatCooSetIndicesKernel(const IndexT out_nnz,
                                           const IndexT axis,
                                           const IndexT in_num,
                                           DarrayWrapperT indice_offsets,
-                                          DarrayWrapperT d_nnz_offsets,
+
                                           IndexT* out_indices) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, out_nnz, IndexT) {
     IndexT index = phi::funcs::UpperBound<IndexT, IndexT>(
-        d_nnz_offsets.d_array, in_num + 1, tid_x);
+        constant_nnz_offset, in_num + 1, tid_x);
     index--;
     out_indices[axis * out_nnz + tid_x] += indice_offsets[index];
   }
@@ -524,6 +530,10 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
     std::vector<int64_t> nnz_offsets;
     nnz_offsets.push_back(0);
     indice_offsets.push_back(0);
+
+    int d_constant_nnz_offset[MAX_SIZE];
+    d_constant_nnz_offset[0] = 0;
+    int i = 0;
     for (const auto* t : x) {
       indices.emplace_back(t->indices());
       values.emplace_back(t->values());
@@ -531,6 +541,8 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
       nnz_offsets.push_back(out_nnz);
       out_cols += t->dims()[axis];
       indice_offsets.push_back(out_cols);
+
+      d_constant_nnz_offset[i++] = t->nnz();
     }
 
     DenseTensor out_indices;
@@ -545,25 +557,43 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
     phi::Allocator::AllocationPtr dev_indice_offsets_ptr{nullptr};
     DArray<int64_t> d_indice_offsets(
         dev_ctx, indice_offsets, &dev_indice_offsets_ptr);
-    phi::Allocator::AllocationPtr dev_nnz_offsets_ptr{nullptr};
-    DArray<int64_t> d_nnz_offsets(dev_ctx, nnz_offsets, &dev_nnz_offsets_ptr);
+    // phi::Allocator::AllocationPtr dev_nnz_offsets_ptr{nullptr};
+    // DArray<int64_t> d_nnz_offsets(dev_ctx, nnz_offsets,
+    // &dev_nnz_offsets_ptr);
+    cudaMemcpyToSymbol(
+        constant_nnz_offset, d_constant_nnz_offset, MAX_SIZE * sizeof(int64_t));
 
     phi::sparse::ConcatFunctor<int64_t, Context>(
         dev_ctx, indices, static_cast<int>(1), &out_indices);
     phi::sparse::ConcatFunctor<T, Context>(
         dev_ctx, values, static_cast<int>(0), &out_values);
 
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
+    // auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz,
+    // 1); 测试 手动设置对应的blocksize 测试占用率
+    constexpr size_t theory_sm_threads = 1024;
+    auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    auto sm_count = max_threads / theory_sm_threads;
+    size_t tile_size = 0;
+    dim3 grids;
+    dim3 blocks;
+
+    auto ComputeKernelParameter = [&](size_t length) {
+      if (length >= max_threads)
+        tile_size = 1024;
+      else if (length < max_threads && length > sm_count * 128)
+        tile_size = 512;
+      else if (length <= sm_count * 128)
+        tile_size = 256;
+      grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
+      blocks = dim3(tile_size, 1, 1);
+    };
+    ComputeKernelParameter(out_nnz);
+    VLOG(3) << "Get 1-D launch config: numel=" << out_nnz << ", vec_size=" << 1
+            << ", block_size=" << blocks.x << ", grid_size=" << grids.x
+            << ", limit_threads=" << theory_sm_threads;
     ConcatCooSetIndicesKernel<int64_t, DArray<int64_t>>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(out_nnz,
-                               axis,
-                               in_num,
-                               d_indice_offsets,
-                               d_nnz_offsets,
-                               out_indices_data);
+        <<<grids, blocks, 0, dev_ctx.stream()>>>(
+            out_nnz, axis, in_num, d_indice_offsets, out_indices_data);
     out->SetMember(out_indices, out_values, out_dims, x[0]->coalesced());
   } else {
     int64_t values_dim = axis - sparse_dim + 1;
