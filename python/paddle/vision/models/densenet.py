@@ -14,7 +14,9 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Unpack
+from typing import TYPE_CHECKING
+
+from typing_extensions import Unpack
 
 import paddle
 from paddle import nn
