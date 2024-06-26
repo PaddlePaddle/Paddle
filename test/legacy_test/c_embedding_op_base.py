@@ -213,6 +213,7 @@ class TestCEmbeddingOpBF16(TestCEmbeddingOpBase):
 
         self.inputs = {'W': table_bf16, 'Ids': ids}
         np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
+        np_out = convert_float_to_uint16(np_out)
         self.outputs = {'Out': np_out.reshape((2, 4, 64))}
         self.attrs = {'start_index': self.start_index}
 
@@ -222,7 +223,7 @@ class TestCEmbeddingOpBF16(TestCEmbeddingOpBase):
             self.__class__.exist_fp64_check_grad = True
 
     def init_dtype(self):
-        self.dtype = "uint16"
+        self.dtype = np.uint16
         self.ids_dtype = "int32"
 
 
