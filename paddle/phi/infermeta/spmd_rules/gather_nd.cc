@@ -37,7 +37,7 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
 
-  int index_axis = index_shape[index_shape.size() - 1];
+  int index_axis = index_shape[index_ndim - 1];
   index_dims_mapping[index_ndim - 1] = -1;
 
   for (int axis = 0; axis < index_axis; axis++) {
