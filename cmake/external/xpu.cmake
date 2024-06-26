@@ -118,13 +118,7 @@ set(XPU_XFT_GET_DEPENCE_URL
     CACHE STRING "" FORCE)
 
 if(WITH_XPTI)
-  set(XPU_XPTI_URL
-      "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz"
-      CACHE STRING "" FORCE)
-else()
-  set(XPU_XPTI_URL
-      ""
-      CACHE STRING "" FORCE)
+  set(XPU_XPTI_URL "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz")
 endif()
 
 set(XPU_XHPC_URL
