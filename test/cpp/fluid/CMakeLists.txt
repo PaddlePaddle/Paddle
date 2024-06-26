@@ -5,9 +5,6 @@ add_subdirectory(platform)
 
 add_subdirectory(controlflow)
 
-if(WITH_DLNNE)
-  add_subdirectory(dlnne)
-endif()
 add_subdirectory(elementwise)
 add_subdirectory(fused)
 add_subdirectory(math)
