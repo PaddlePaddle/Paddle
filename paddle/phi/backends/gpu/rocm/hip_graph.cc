@@ -106,7 +106,7 @@ void CUDAGraph::Reset() {
   for (auto iter = cudagraph_post_reset_callbacks_.rbegin();
        iter != cudagraph_post_reset_callbacks_.rend();
        ++iter) {
-    (*iter)();
+    (*iter)(*this);
   }
   cudagraph_post_reset_callbacks_.clear();
   is_reset_ = true;
