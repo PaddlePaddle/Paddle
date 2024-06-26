@@ -136,6 +136,7 @@
   extra_args : str mkldnn_data_type="float32"
 
 - op : gaussian
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : gelu
   extra_args : str mkldnn_data_type="float32"
@@ -228,6 +229,7 @@
 
 - op : prior_box
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : relu
 
@@ -253,6 +255,7 @@
 
 - op : shape
   extra_args : str mkldnn_data_type="float32"
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : shuffle_channel
 

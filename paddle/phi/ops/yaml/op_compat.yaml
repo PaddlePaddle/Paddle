@@ -1238,6 +1238,12 @@
 - op : feed
   outputs: {out: Out}
 
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -1863,6 +1869,14 @@
   outputs :
     out : Out
 
+- op : hash
+  inputs:
+    x : X
+  attrs :
+    runtime_shape : ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE
+  outputs:
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   inputs :
@@ -1900,6 +1914,12 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
 
 - op : imag
   backward : imag_grad

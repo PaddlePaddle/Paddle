@@ -94,8 +94,8 @@ def fused_act_bias_wrapper(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
 )
 class TestFusedBiasActOp(unittest.TestCase):
     def setUp(self):
@@ -641,8 +641,8 @@ class TestQuantSwigluBF16(TestQuantBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
 )
 class TestAssert(unittest.TestCase):
     def setUp(self):
@@ -705,8 +705,8 @@ class TestAssert(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
 )
 class TestWithoutBias(unittest.TestCase):
     def setUp(self):

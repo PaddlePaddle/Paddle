@@ -26,7 +26,7 @@ COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
-#if defined(__NVCC__) || defined(PADDLE_WITH_HIP)
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <bool FastMode>
 static __device__ __forceinline__ float FP32FastTanh(float x) {
 #if __CUDA_ARCH__ >= 750 && CUDA_VERSION >= 11000

@@ -32,6 +32,13 @@ namespace phi {
 namespace fusion {
 
 template <typename T>
+struct FastGeluFunctor {
+  inline __device__ T operator()(const T x) const {
+    return phi::GeluFwd<T, true>(x);
+  }
+};
+
+template <typename T>
 struct GeluComputeType;
 
 template <>
@@ -105,15 +112,7 @@ struct ReluFunctor {
   }
 };
 
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-    return phi::GeluFwd<T, true>(x);
-  }
-};
-
-#ifdef PADDLE_WITH_HIP
-inline hipError_t GetNumBlocks(int64_t n, int *num_blocks) {
+inline gpuError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
@@ -127,26 +126,8 @@ inline hipError_t GetNumBlocks(int64_t n, int *num_blocks) {
                     std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
                                       sm_count * max_thread_per_multiprocessor /
                                           kBlockSize * kNumWaves));
-  return hipSuccess;
+  return gpuSuccess;
 }
-#else
-inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
-  constexpr int kBlockSize = 128;
-  constexpr int kNumWaves = 16;
-
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-  const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMultiProcessors(device_id);
-
-  *num_blocks =
-      std::max<int>(1,
-                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
-                                      sm_count * max_thread_per_multiprocessor /
-                                          kBlockSize * kNumWaves));
-  return cudaSuccess;
-}
-#endif
 
 }  // namespace fusion
 }  // namespace phi

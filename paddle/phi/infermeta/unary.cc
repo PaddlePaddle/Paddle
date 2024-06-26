@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/flatten2_utils.h"
+#include "paddle/phi/kernels/funcs/hash_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -213,6 +214,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
     dims[axis] = -1;
   }
   out->set_dims(dims);
+  out->set_dtype(x.dtype());
   out_index->set_dtype(DataType::INT32);
   out_index->set_dims(common::make_ddim({-1}));
 }
@@ -1392,6 +1394,11 @@ void FillAnyLikeInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out) {}
+
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -2046,6 +2053,23 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out) {
   UnchangedInferMetaCheckAxis(x, axis, out);
+}
+
+void HashInferMeta(const MetaTensor& x,
+                   int num_hash,
+                   int64_t mod_by,
+                   MetaTensor* out) {
+  const auto& dims = x.dims();
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The input of hash_op's dimensions must be 2"));
+  std::vector<int64_t> out_dims;
+  phi::funcs::HashOutputSize(dims, out_dims, num_hash);
+
+  out->set_dims(common::make_ddim(out_dims));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void HistogramInferMeta(
