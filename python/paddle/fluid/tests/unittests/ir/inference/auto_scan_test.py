@@ -451,7 +451,10 @@ class PassAutoScanTest(AutoScanTest):
                 successful_ran_programs
             )
         )
-        if successful_ran_programs < min_success_num:
+        is_success = (
+            self.num_invalid_programs == 0 and self.num_ignore_tests == 0
+        )
+        if (not is_success) and successful_ran_programs < min_success_num:
             logging.warning(
                 "satisfied_programs = ran_programs - num_ignore_tests / num_predictor_kinds"
             )

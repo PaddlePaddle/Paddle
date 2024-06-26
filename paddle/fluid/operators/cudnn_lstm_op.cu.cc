@@ -112,6 +112,30 @@ void LSTMInferece(const bool &has_seq_length,
                   T *last_c_data,
                   phi::DenseTensor *workspace_data,
                   const size_t &workspace_size) {
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 90000
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cudnnRNNForward(handle,
+                                    rnn->rnn_desc(),
+                                    CUDNN_FWD_MODE_INFERENCE,
+                                    nullptr,
+                                    rnn->x_seq_desc(),
+                                    x_data,
+                                    rnn->y_seq_desc(),
+                                    out_data,
+                                    rnn->init_h_desc(),
+                                    init_h_data,
+                                    last_h_data,
+                                    rnn->init_c_desc(),
+                                    init_c_data,
+                                    last_c_data,
+                                    rnn->weights_size(),
+                                    w_data,
+                                    workspace_size,
+                                    workspace_data->data<uint8_t>(),
+                                    0,
+                                    nullptr));
+
+#else
   if (!has_seq_length) {
 // for inference
 // This interface is used when the input/output is unpadded.
@@ -197,6 +221,7 @@ void LSTMInferece(const bool &has_seq_length,
         "the version of cudnn is larger than 7.2.1"));
 #endif
   }
+#endif  // end CUDNN_VERSION >= 90000
 }
 
 template <typename T, typename DeviceContext>
@@ -342,6 +367,29 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
                       &workspace_data_,
                       workspace_size);
     } else {
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 90000
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cudnnRNNForward(handle,
+                                        rnn.rnn_desc(),
+                                        CUDNN_FWD_MODE_TRAINING,
+                                        nullptr,
+                                        rnn.x_seq_desc(),
+                                        x_data,
+                                        rnn.y_seq_desc(),
+                                        out_data,
+                                        rnn.init_h_desc(),
+                                        init_h_data,
+                                        last_h_data,
+                                        rnn.init_c_desc(),
+                                        init_c_data,
+                                        last_c_data,
+                                        rnn.weights_size(),
+                                        w_data,
+                                        workspace_size,
+                                        workspace_data_.data<uint8_t>(),
+                                        reserve_size,
+                                        reserve_data));
+#else
       if (!has_seq_length) {
 // for train
 // This interface is used when the input/output is unpadded.
@@ -432,6 +480,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
             "the version of cudnn is larger than 7.2.1"));
 #endif
       }
+#endif  // end CUDNN_VERSION >= 90000
     }
   }
 };
@@ -564,6 +613,50 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     workspace_data_.mutable_data<uint8_t>(
         {static_cast<int64_t>(workspace_size)}, ctx.GetPlace());
     const uint8_t *reserve_data = reserve->data<uint8_t>();
+
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardData_v8(
+        handle,
+        rnn.rnn_desc(),
+        nullptr,
+        rnn.y_seq_desc(),
+        out_data,
+        out_grad_data,
+        rnn.x_seq_desc(),
+        in_grad_data,
+        rnn.init_h_desc(),
+        init_h_data,
+        last_h_grad_data,
+        init_h_grad_data,
+        rnn.init_c_desc(),
+        init_c_data,
+        last_c_grad_data,
+        init_c_grad_data,
+        rnn.weights_size(),
+        weight_data,
+        workspace_size,
+        workspace_data_.data<uint8_t>(),
+        reserve_size,
+        const_cast<uint8_t *>(reserve_data)));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardWeights_v8(
+        handle,
+        rnn.rnn_desc(),
+        CUDNN_WGRAD_MODE_ADD,
+        nullptr,
+        rnn.x_seq_desc(),
+        input->data<T>(),
+        rnn.init_h_desc(),
+        init_h->data<T>(),
+        rnn.y_seq_desc(),
+        out->data<T>(),
+        rnn.weights_size(),
+        weight_grad_data,
+        workspace_size,
+        workspace_data_.data<uint8_t>(),
+        reserve_size,
+        const_cast<uint8_t *>(reserve_data)));
+#else
 
     if (!has_seq_length) {
 // This interface is used when the input/output is unpadded.
@@ -718,6 +811,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
           "of cudnn is larger than 7.2.1"));
 #endif
     }
+#endif  // end CUDNN_VERSION >= 90000
   }
 };
 
