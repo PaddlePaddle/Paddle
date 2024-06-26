@@ -452,7 +452,6 @@ class ConcatOpPattern
     auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
     int axis = static_cast<int>(
         full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
-    std::cout << *op->GetParentProgram() << std::endl;
     auto input_ops = op->operand_source(0)
                          .defining_op()
                          ->dyn_cast<pir::CombineOp>()
