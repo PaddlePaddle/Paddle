@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Sequence
 if TYPE_CHECKING:
     from paddle import Tensor
 
-    from .pooling import _PaddingSizeMode
+    from .common import _PaddingSizeMode
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle._typing import (

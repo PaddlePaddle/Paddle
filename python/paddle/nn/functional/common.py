@@ -64,6 +64,9 @@ if TYPE_CHECKING:
     _PaddingTensorMode: TypeAlias = Literal[
         "constant", "reflect", "replicate", "circular"
     ]
+    _PaddingSizeMode: TypeAlias = Literal[  # noqa: PYI047
+        'valid', 'same', 'VALID', 'SAME'
+    ]
 
 __all__ = []
 

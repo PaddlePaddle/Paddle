@@ -38,14 +38,10 @@ from ...utils import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal
-
-    from typing_extensions import TypeAlias
-
     from paddle import Tensor
     from paddle._typing import Size1, Size2
 
-    _PaddingSizeMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']
+    from .common import _PaddingSizeMode
 
 __all__ = []
 
