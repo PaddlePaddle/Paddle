@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/sparse_momentum_op.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/common/float16.h"
-
-namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SparseMomentumOpKernel,
-                          float,
-                          double,
-                          phi::dtype::float16) {}
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/dgc_clip_by_norm_kernel_impl.h"
+PD_REGISTER_KERNEL(
+    dgc_clip_by_norm, GPU, ALL_LAYOUT, phi::DGCClipByNormKernel, float) {}
