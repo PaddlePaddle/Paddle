@@ -48,7 +48,6 @@ list(
   clip_op.cc
   gather_op.cc
   index_select_op.cc
-  anchor_generator_op.cc
   yolo_box_op.cc
   yolo_box_head_op.cc
   arg_max_op.cc

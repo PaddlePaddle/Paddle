@@ -13,7 +13,6 @@ list(
   qkv_to_context_plugin.cu
   hard_swish_op_plugin.cu
   stack_op_plugin.cu
-  anchor_generator_op_plugin.cu
   yolo_box_op_plugin.cu
   yolo_box_head_op_plugin.cu
   roi_align_op_plugin.cu
