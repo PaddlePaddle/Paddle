@@ -17,8 +17,8 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
+#include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cinn_value.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -26,6 +26,9 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/flags.h"
+
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn::pybind {
 
@@ -99,6 +102,14 @@ void BindFramework(pybind11::module *m) {
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
+                 },
+                 [&](common::HygonDCUArchHIP arch) {
+                   BackendAPI::get_backend(arch)->memcpy(
+                       mutable_data,
+                       reinterpret_cast<void *>(
+                           t->mutable_data(target, t->type())),
+                       t->shape().numel() * t->type().bytes(),
+                       BackendAPI::MemcpyType::DeviceToHost);
                  });
              return array;
            })
@@ -146,6 +157,13 @@ void BindFramework(pybind11::module *m) {
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
+                 },
+                 [&](common::HygonDCUArchHIP arch) {
+                   BackendAPI::get_backend(arch)->memcpy(
+                       array_data,
+                       self->data<void>(),
+                       self->shape().numel() * self->type().bytes(),
+                       BackendAPI::MemcpyType::DeviceToHost);
                  });
              return array;
            })
@@ -195,14 +213,14 @@ void BindFramework(pybind11::module *m) {
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
+                },
+                [&](common::HygonDCUArchHIP arch) {
+                  BackendAPI::get_backend(arch)->memcpy(
+                      reinterpret_cast<void *>(data),
+                      reinterpret_cast<const void *>(array.data()),
+                      self->shape().numel() * self->type().bytes(),
+                      BackendAPI::MemcpyType::HostToDevice);
                 });
           });
-
-  py::class_<Instruction> instruction(*m, "Instruction");
-  instruction.def(py::init<const Target &,
-                           Scope *,
-                           const std::vector<std::string> &,
-                           const std::vector<std::string> &,
-                           const std::string &>());
 }
 }  // namespace cinn::pybind

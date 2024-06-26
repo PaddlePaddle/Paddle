@@ -206,7 +206,7 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   auto* calc_ctx = static_cast<phi::XPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
-  auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  auto comm_ctx = std::make_unique<XPUDeviceContext>(place, true);
   // comm_ctx does not require a pre-allocated GM buffer
   comm_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
   auto bkcl_comm_ctx = this->GetCommContext();
@@ -216,8 +216,9 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place)
                              .get());
-  // comm context creates a separate XPU stream for communication
-  comm_ctx->CreateStream();
+  // Note(lijin23): XPU use calc stream for communication now, so we disable the
+  // creation of comm stream to reduce the total number of streams used.
+  // comm_ctx->CreateStream();
 
   place_to_calc_ctx_[place_key] = calc_ctx;
   place_to_comm_ctx_[place_key] = std::move(comm_ctx);
@@ -237,6 +238,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
     CommType op_type,
     bool sync_op,
     bool use_calc_stream) {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
@@ -264,7 +271,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
-    task->comm_event_->Record(*comm_ctx.get());
+    if (!is_coalescing_) {
+      task->comm_event_->Record(*comm_ctx.get());
+    } else {
+      colaescing_place_keys_.push_back(key);
+    }
   }
 
   if (sync_op) {
@@ -281,6 +292,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   auto tensor_tmp =
       paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
   const auto& place = tensor_tmp.place();
@@ -310,7 +327,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
-    task->comm_event_->Record(*comm_ctx.get());
+    if (!is_coalescing_) {
+      task->comm_event_->Record(*comm_ctx.get());
+    } else {
+      colaescing_place_keys_.push_back(key);
+    }
   }
 
   if (sync_op) {
@@ -512,6 +533,12 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
 
 phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
@@ -546,6 +573,47 @@ phi::distributed::BKCLCommContext* ProcessGroupBKCL::GetCommContext() {
                     nullptr,
                     phi::errors::Unavailable("BKCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupBKCL::StartCoalescing() {
+  PADDLE_ENFORCE_EQ(is_coalescing_,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Coalescing is on, please call EndCoalesce."));
+  is_coalescing_ = true;
+  GroupStart();
+}
+
+void ProcessGroupBKCL::EndCoalescing(
+    std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>> tasks_opt) {
+  GroupEnd();
+
+  // NOTE(shenliang03): If using calculate stream, no need to record stream and
+  // update task.
+  if (!tasks_opt.has_value() | colaescing_place_keys_.empty()) {
+    is_coalescing_ = false;
+    return;
+  }
+
+  auto& tasks = tasks_opt.value();
+
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      colaescing_place_keys_.size(),
+      phi::errors::PreconditionNotMet(
+          "Number of tasks[%d] do not match number of collectives[%d].",
+          tasks.size(),
+          colaescing_place_keys_.size()));
+
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    auto* task = static_cast<ProcessGroupBKCL::BKCLTask*>(tasks[i].get());
+    const auto& key = colaescing_place_keys_[i];
+    const auto& comm_ctx = place_to_comm_ctx_.at(key);
+    task->comm_event_->Record(*comm_ctx.get());
+  }
+
+  is_coalescing_ = false;
+  colaescing_place_keys_.clear();
 }
 
 }  //  namespace distributed

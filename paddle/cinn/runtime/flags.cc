@@ -56,7 +56,7 @@ PD_DEFINE_string(cinn_kernel_execution_label,
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
                  StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./config/"),
+                               "./tile_file/"),
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
@@ -283,6 +283,9 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+PD_DEFINE_bool(cinn_check_tensor_buffer_map,
+               BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
+               "Whether to check tensor buffer mapping in cinn ir.");
 
 namespace cinn {
 namespace runtime {
@@ -377,6 +380,16 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
   PADDLE_THROW(phi::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
       "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support HygonDCU, please try to "
+      "recompile with -DWITH_ROCM."));
 #endif
 }
 
