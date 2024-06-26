@@ -242,9 +242,9 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   std::vector<std::vector<int64_t>> shapes = {
-      {1, 1, 4096},
-      {1, 13, 4096},
-      {128 * 12, 128, 128},
+      {1, 1, 4096},         // 0
+      {1, 13, 4096},        // 1
+      {128 * 12, 128, 128}, // 2
       {128, 128, 768},      // 3
       {2048, 32, 128},      // 4
       {2048, 8, 96},        // 5
