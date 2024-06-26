@@ -648,7 +648,6 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
-set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
