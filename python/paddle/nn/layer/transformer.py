@@ -14,9 +14,8 @@
 
 from __future__ import annotations
 
-import collections
 import copy
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, NamedTuple, Sequence, overload
 
 import numpy as np
 
@@ -173,8 +172,21 @@ class MultiHeadAttention(Layer):
             [2, 4, 128]
     """
 
-    Cache = collections.namedtuple("Cache", ["k", "v"])
-    StaticCache = collections.namedtuple("StaticCache", ["k", "v"])
+    class Cache(NamedTuple):
+        k: Tensor
+        v: Tensor
+
+    class StaticCache(NamedTuple):
+        k: Tensor
+        v: Tensor
+
+    embed_dim: int
+    kdim: int
+    vdim: int
+    num_heads: int
+    head_dim: int
+    dropout: float
+    need_weights: bool
 
     def __init__(
         self,
@@ -627,6 +639,9 @@ class TransformerEncoderLayer(Layer):
             [2, 4, 128]
     """
 
+    activation = Layer
+    normalize_before: bool
+
     def __init__(
         self,
         d_model: int,
@@ -814,6 +829,9 @@ class TransformerEncoder(Layer):
             [2, 4, 128]
     """
 
+    num_layers: int
+    norm = LayerNorm | None
+
     def __init__(
         self,
         encoder_layer: TransformerEncoderLayer,
@@ -996,6 +1014,9 @@ class TransformerDecoderLayer(Layer):
             [2, 4, 128]
     """
 
+    normalize_before: bool
+    activation: Layer
+
     def __init__(
         self,
         d_model: int,
@@ -1007,7 +1028,7 @@ class TransformerDecoderLayer(Layer):
         act_dropout: float | None = None,
         normalize_before: bool = False,
         weight_attr: ParamAttr | Sequence[ParamAttr] | None = None,
-        bias_attr: ParamAttr | list | tuple | bool | None = None,
+        bias_attr: ParamAttr | Sequence[ParamAttr] | bool | None = None,
         layer_norm_eps: float = 1e-5,
     ) -> None:
         self._config = locals()
@@ -1246,8 +1267,14 @@ class TransformerDecoder(Layer):
             [2, 4, 128]
     """
 
+    num_layers: int
+    norm: LayerNorm | None
+
     def __init__(
-        self, decoder_layer: TransformerDecoderLayer, num_layers: int, norm=None
+        self,
+        decoder_layer: TransformerDecoderLayer,
+        num_layers: int,
+        norm: LayerNorm | None = None,
     ) -> None:
         super().__init__()
         self.layers = LayerList(
@@ -1522,6 +1549,11 @@ class Transformer(Layer):
             >>> print(output.shape)
             [2, 6, 128]
     """
+
+    encoder: Layer
+    decoder: Layer
+    d_model: int
+    nhead: int
 
     def __init__(
         self,
