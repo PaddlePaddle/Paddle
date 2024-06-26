@@ -1287,12 +1287,14 @@ void masked_select_grad(const Tensor& x,
 template <typename T>
 void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto condition = greater_than<T>(
-        out, full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
-    auto res =
-        where<T>(condition,
-                 out_grad,
-                 full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
+    Tensor zeros;
+    if (has_dynamic_shape(out.shape())) {
+      zeros = backend::full_with_tensor<T>(shape<T>(out), 0.0, out.dtype());
+    } else {
+      zeros = full<T>(common::vectorize(out.dims()), 0.0, out.dtype());
+    }
+    auto mask = greater_than<T>(out, zeros);
+    auto res = cast<T>(mask, out.dtype()) * out_grad;
     set_output<T>(res, x_grad);
   }
 }
