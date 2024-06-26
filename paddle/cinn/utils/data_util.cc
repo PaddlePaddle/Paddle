@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 #include "iostream"
 
@@ -46,6 +48,13 @@ void SetRandInt(hlir::framework::Tensor tensor,
 #else
         CINN_NOT_IMPLEMENTED;
 #endif
+      },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data,
+            random_data.data(),
+            num_ele * sizeof(int),
+            BackendAPI::MemcpyType::HostToDevice);
       },
       [&](common::X86Arch) {
         std::copy(random_data.begin(), random_data.end(), data);
@@ -83,6 +92,13 @@ void SetRandData<int>(hlir::framework::Tensor tensor,
         CINN_NOT_IMPLEMENTED;
 #endif
       },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data,
+            random_data.data(),
+            num_ele * sizeof(float),
+            BackendAPI::MemcpyType::HostToDevice);
+      },
       [&](common::X86Arch) {
         std::copy(random_data.begin(), random_data.end(), data);
       },
@@ -119,6 +135,13 @@ void SetRandData<float>(hlir::framework::Tensor tensor,
         CINN_NOT_IMPLEMENTED;
 #endif
       },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data,
+            random_data.data(),
+            num_ele * sizeof(float),
+            BackendAPI::MemcpyType::HostToDevice);
+      },
       [&](common::X86Arch) {
         std::copy(random_data.begin(), random_data.end(), data);
       },
@@ -142,6 +165,13 @@ std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
 #else
         CINN_NOT_IMPLEMENTED;
 #endif
+      },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data.data(),
+            static_cast<const void*>(tensor->data<T>()),
+            size * sizeof(T),
+            BackendAPI::MemcpyType::DeviceToHost);
       },
       [&](common::X86Arch) {
         std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
