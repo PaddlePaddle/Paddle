@@ -91,12 +91,19 @@ __global__ void ClipAndQuantKernel(const T *in,
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = qmax_t * inv_s * x;
-      if(qmax_t == static_cast<ComputeDataType>(448)) {x = float8_e4m3fn(x);}
-      else if(qmax_t == static_cast<ComputeDataType>(57344)) {x = float8_e5m2(x);}
-      else {x = roundWithTiesToEven(x);}
+      if (qmax_t == static_cast<ComputeDataType>(448)) {
+        x = float8_e4m3fn(x);
+      } else if (qmax_t == static_cast<ComputeDataType>(57344)) {
+        x = float8_e5m2(x);
+      } else {
+        x = roundWithTiesToEven(x);
+      }
       ComputeDataType max_bound = qmax_t;
       ComputeDataType min_bound = -qmax_t - static_cast<ComputeDataType>(1);
-      if(qmax_t == static_cast<ComputeDataType>(448) || qmax_t == static_cast<ComputeDataType>(57344)) {min_bound = -qmax_t;}
+      if (qmax_t == static_cast<ComputeDataType>(448) ||
+          qmax_t == static_cast<ComputeDataType>(57344)) {
+        min_bound = -qmax_t;
+      }
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out[i] = static_cast<T>(x);

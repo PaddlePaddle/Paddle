@@ -94,7 +94,7 @@ class LinearQuanter(Layer):
                 )
         else:
             self._qmax = (1 << (self._bit_length - 1)) - 1
-            self._qmin = -1 * self._qmax -1
+            self._qmin = -1 * self._qmax - 1
         if isinstance(self._bit_length, tuple):
             self._bit_length = self._bit_length[0] + self._bit_length[1] + 1
 
@@ -201,7 +201,7 @@ class LinearDequanter(Layer):
                 )
         else:
             self._qmax = (1 << (self._bit_length - 1)) - 1
-            self._qmin = -1 * self._qmax -1
+            self._qmin = -1 * self._qmax - 1
         if isinstance(self._bit_length, tuple):
             self._bit_length = self._bit_length[0] + self._bit_length[1] + 1
 
@@ -211,7 +211,9 @@ class LinearDequanter(Layer):
                 new_s = paddle.repeat_interleave(
                     self._scales, self._group_size, 0
                 )
-                quant_dequant_weight = input.cast('float32') / self._qmax * new_s
+                quant_dequant_weight = (
+                    input.cast('float32') / self._qmax * new_s
+                )
                 return quant_dequant_weight.cast(input.dtype)
 
             return _C_ops.dequantize_linear(

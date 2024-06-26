@@ -59,12 +59,18 @@ class QuantTensorFunctor {
       : qmax_(qmax), inv_s_(inv_s) {}
   HOSTDEVICE T operator()(const T x) const {
     T out = qmax_ * inv_s_ * x;
-    if(qmax_ == static_cast<T>(448)) {out = float8_e4m3fn(out);}
-    else if(qmax_ == static_cast<T>(57344)) {out = float8_e5m2(out);}
-    else {out = roundWithTiesToEven(out);}
+    if (qmax_ == static_cast<T>(448)) {
+      out = float8_e4m3fn(out);
+    } else if (qmax_ == static_cast<T>(57344)) {
+      out = float8_e5m2(out);
+    } else {
+      out = roundWithTiesToEven(out);
+    }
     T max_bound = qmax_;
     T min_bound = -qmax_ - static_cast<T>(1);
-    if(qmax_ == static_cast<T>(448) || qmax_ == static_cast<T>(57344)) {min_bound = -qmax_;}
+    if (qmax_ == static_cast<T>(448) || qmax_ == static_cast<T>(57344)) {
+      min_bound = -qmax_;
+    }
     out = out > max_bound ? max_bound : out;
     out = out < min_bound ? min_bound : out;
     return out;
