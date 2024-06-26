@@ -173,8 +173,9 @@ ExternalProject_Add(
     ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} && bash ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh
-    ${XPU_XPTI_URL} ${XPU_XPTI_DIR_NAME}
+    ${XPU_XFT_DIR_NAME} && bash
+    ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
+    ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
