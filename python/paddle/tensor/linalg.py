@@ -503,6 +503,7 @@ def vector_norm(
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
     Returns the vector norm (the 1-norm, the Euclidean or 2-norm, and in general the p-norm)
     of a given tensor.
+
     Args:
         x (Tensor): Tensor, data type float32, float64.
         p (int|float, optional): None for porder=2.0. Default None.
@@ -510,11 +511,14 @@ def vector_norm(
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor: results of vector_norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import numpy as np
             >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
@@ -586,6 +590,7 @@ def vector_norm(
                     'reduce_all': reduce_all,
                 },
             )
+
             return reduce_out
 
     def vector_norm_axis_tuple(
