@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Unpack
+from typing import TYPE_CHECKING
+
+from typing_extensions import Unpack
 
 import paddle
 from paddle import nn
@@ -114,11 +116,11 @@ class BasicBlock(nn.Layer):
         inplanes: int,
         planes: int,
         stride: Size2 = 1,
-        downsample: nn.Sequential | None = None,
+        downsample: nn.Layer | None = None,
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: type[nn.BatchNorm2D] | None = None,
+        norm_layer: type[nn.Layer] | None = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -166,11 +168,11 @@ class BottleneckBlock(nn.Layer):
         inplanes: int,
         planes: int,
         stride: Size2 = 1,
-        downsample=None,
+        downsample: nn.Layer | None = None,
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: type[nn.BatchNorm2D] | None = None,
+        norm_layer: type[nn.Layer] | None = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:
