@@ -168,7 +168,9 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "is_parameter",
                                             "need_clip",
                                             "parameter_name",
-                                            "persistable"};
+                                            "persistable",
+                                            "stop_gradient",
+                                            "trainable"};
 
   for (auto attr : op.attributes()) {
     auto attr_name = attr.first;
