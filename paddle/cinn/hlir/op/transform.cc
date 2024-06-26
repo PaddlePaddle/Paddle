@@ -2229,7 +2229,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForMatMul))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForMatMul))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForMatMul))
 #endif
@@ -2249,7 +2249,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSplit))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSplit))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForSplit))
 #endif
@@ -2271,7 +2271,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConcat))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConcat))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConcat))
 #endif
@@ -2291,7 +2291,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForReverse))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForLayoutTransform))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForReverse))
 #endif
@@ -2311,7 +2311,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForTranspose))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForLayoutTransform))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForTranspose))
 #endif
@@ -2329,7 +2329,7 @@ CINN_REGISTER_HELPER(transform_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForMul)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForMul))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForMul))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForMul))
 #endif
@@ -2377,7 +2377,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForLayoutTransform))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForLayoutTransform))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForLayoutTransform))
 #endif
@@ -2397,7 +2397,7 @@ CINN_REGISTER_HELPER(transform_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSlice))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSlice))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForSlice))
 #endif
