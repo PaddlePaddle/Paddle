@@ -46,10 +46,11 @@ class TestSimpleRNN(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        if paddle.framework.in_pir_mode():
+        if paddle.framework.use_pir_api():
             with paddle.pir_utils.OldIrGuard():
                 # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
                 paddle.framework.random._manual_program_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
         else:
             paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.SimpleRNNCell(self.input_size, self.hidden_size)
@@ -156,10 +157,11 @@ class TestGRU(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        if paddle.framework.in_pir_mode():
+        if paddle.framework.use_pir_api():
             with paddle.pir_utils.OldIrGuard():
                 # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
                 paddle.framework.random._manual_program_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
         else:
             paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.GRUCell(self.input_size, self.hidden_size)
@@ -264,10 +266,11 @@ class TestGRUBackward(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(self.place)
         paddle.seed(self.seed)
-        if paddle.framework.in_pir_mode():
+        if paddle.framework.use_pir_api():
             with paddle.pir_utils.OldIrGuard():
                 # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
                 paddle.framework.random._manual_program_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
         else:
             paddle.framework.random._manual_program_seed(self.seed)
         cell_dy = paddle.nn.SimpleRNNCell(self.input_size, self.hidden_size)
