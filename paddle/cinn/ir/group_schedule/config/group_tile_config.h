@@ -76,6 +76,7 @@ struct BucketInfo {
           is_dynamic(is_dynamic) {}
   };
   std::vector<Dimension> space;
+  int bucket_priority = 100;
 
   std::string ToString() const;
   BucketInfo() = default;

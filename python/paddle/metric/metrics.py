@@ -85,6 +85,8 @@ class Metric(metaclass=abc.ABCMeta):
         .. code-block:: python
             :name: code-compute-example
 
+            >>> import paddle
+
             >>> def compute(pred, label):
             ...     # sort prediction and slice the top-5 scores
             ...     pred = paddle.argsort(pred, descending=True)[:, :5]

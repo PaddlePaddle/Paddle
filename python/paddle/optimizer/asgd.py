@@ -94,7 +94,12 @@ class ASGD(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> asgd = paddle.optimizer.ASGD(learning_rate=0.001, batch_num=10, parameters=linear.parameters(), weight_decay=0.01)
+            >>> asgd = paddle.optimizer.ASGD(
+            ...     learning_rate=0.001,
+            ...     batch_num=10,
+            ...     parameters=linear.parameters(),
+            ...     weight_decay=0.01
+            ... )
             >>> out.backward()
             >>> asgd.step()
             >>> asgd.clear_grad()

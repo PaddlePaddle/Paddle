@@ -218,6 +218,7 @@ TileConfigMap FileTileConfigDatabase::GetConfigs(
       vector_dim_info[i].is_dynamic = its.dimension(i).is_dynamic();
     }
     auto bucket_info = BucketInfo(vector_dim_info);
+    bucket_info.bucket_priority = 0;
     //  Step 2.2: Convert proto tile_config to source tile_config
     ScheduleConfig::TileConfig tconfig;
     tconfig.tree_reduce_num = piece_tileconfig.tile_config().tree_reduce_num();
