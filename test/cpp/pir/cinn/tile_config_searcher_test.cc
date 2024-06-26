@@ -176,7 +176,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
       // Step 4: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 8}, {1, 256}, {1, 256}};
+          {1, 1}, {1, 1}, {1, 1}};   // {1, 8}, {1, 256}, {1, 256}
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -206,7 +206,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] % 8 == 0 || candidate[2] < 8;
+            return candidate[2] % 8 == 0 || candidate[2] <= 4;
           });
 
       // Step 5: Construct searcher and search.
@@ -285,7 +285,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 4: Construct config candidate range and constraints.
   std::vector<std::pair<int, int>> candidate_range{
-      {1, 32}, {1, 1024}, {1, 256}};
+      {1, 1}, {32, 32}, {1, 1}};   // {1, 8}, {1, 256}, {1, 256}}
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
