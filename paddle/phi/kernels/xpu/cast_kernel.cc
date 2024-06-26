@@ -110,6 +110,9 @@ void CastKernel(const Context& dev_ctx,
     case DataType::FLOAT64:
       CastXPUKernelImpl<T, double, Context>(dev_ctx, x, out);
       break;
+    case DataType::INT16:
+      CastXPUKernelImpl<T, int16_t, Context>(dev_ctx, x, out);
+      break;
     default:
       PADDLE_THROW(phi::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
