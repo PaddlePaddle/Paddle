@@ -23,6 +23,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/os_info.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"

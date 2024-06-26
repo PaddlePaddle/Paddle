@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace Eigen {
@@ -34,6 +33,7 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
+class DenseTensor;
 class XPUContext : public DeviceContext,
                    public TypeInfoTraits<DeviceContext, XPUContext> {
  public:
