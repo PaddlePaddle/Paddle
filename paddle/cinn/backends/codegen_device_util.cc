@@ -122,6 +122,10 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
 #ifdef CINN_WITH_CUDA
         shared_mem_bytes = CalculateSharedMemory(func);
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
       });
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
@@ -139,6 +143,10 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::NVGPUArch) {
         call_kernel = runtime::intrinsic::call_cuda_kernel;
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
       });
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
