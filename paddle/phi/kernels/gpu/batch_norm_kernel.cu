@@ -571,11 +571,11 @@ void BatchNormKernel(const Context &ctx,
   }
 
 #ifdef PADDLE_WITH_HIP
-  auto compute_format = data_layout == DataLayout::kNHWC
-                            ? (FLAGS_cudnn_batchnorm_spatial_persistent == true
-                                   ? DataLayout::kNCHW
-                                   : DataLayout::kNHWC)
-                            : DataLayout::kNCHW;
+  auto compute_format =
+      data_layout == DataLayout::kNHWC
+          ? (FLAGS_batch_norm_use_miopen == true ? DataLayout::kNCHW
+                                                 : DataLayout::kNHWC)
+          : DataLayout::kNCHW;
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // HIP do not support compute format of NHWC
@@ -744,7 +744,7 @@ void BatchNormKernel(const Context &ctx,
     const int block_size = 256;
     const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
     if (compute_format == DataLayout::kNCHW) {
-      if (FLAGS_cudnn_batchnorm_spatial_persistent == true) {
+      if (FLAGS_batch_norm_use_miopen == true) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::miopenBatchNormalizationForwardInference(
                 handle,
@@ -924,7 +924,7 @@ void BatchNormKernel(const Context &ctx,
       const int max_blocks = std::max(max_threads / block, 1);
       const int grid = std::min(C, max_blocks);
       if (compute_format == DataLayout::kNCHW) {
-        if (FLAGS_cudnn_batchnorm_spatial_persistent == true) {
+        if (FLAGS_batch_norm_use_miopen == true) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               phi::dynload::miopenBatchNormalizationForwardTraining(
                   handle,

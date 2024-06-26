@@ -588,11 +588,11 @@ void BatchNormGradFunctor(const Context &ctx,
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 #ifdef PADDLE_WITH_HIP
-  auto compute_format = data_layout == DataLayout::kNHWC
-                            ? (FLAGS_cudnn_batchnorm_spatial_persistent == true
-                                   ? DataLayout::kNCHW
-                                   : DataLayout::kNHWC)
-                            : DataLayout::kNCHW;
+  auto compute_format =
+      data_layout == DataLayout::kNHWC
+          ? (FLAGS_batch_norm_use_miopen == true ? DataLayout::kNCHW
+                                                 : DataLayout::kNHWC)
+          : DataLayout::kNCHW;
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // HIP do not support compute format of NHWC
@@ -758,7 +758,7 @@ void BatchNormGradFunctor(const Context &ctx,
     if (d_x && d_scale && d_bias) {
 #ifdef PADDLE_WITH_HIP
       if (compute_format == DataLayout::kNCHW) {
-        if (FLAGS_cudnn_batchnorm_spatial_persistent == true) {
+        if (FLAGS_batch_norm_use_miopen == true) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               phi::dynload::miopenBatchNormalizationBackward(
                   ctx.cudnn_handle(),
