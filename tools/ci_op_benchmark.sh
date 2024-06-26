@@ -277,7 +277,7 @@ function check_CHANGE_OP_MAP {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (zhangting2020(Recommend)) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (zhangting2020(Recommend), Xreki) approval to pass this PR."
     exit ${exit_code}
   fi
 }
