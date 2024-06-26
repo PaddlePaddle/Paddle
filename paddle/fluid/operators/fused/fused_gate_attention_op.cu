@@ -14,13 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/fused_gate_attention.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_gate_attention.h"
 
 namespace paddle {
 namespace operators {
+using FlashAttnWithGating = phi::fusion::FlashAttnWithGating;
+using FMHAGateRef = phi::fusion::FMHAGateRef;
+using GateAttentionConfig = phi::fusion::GateAttentionConfig;
+using GateAttentionGradConfig = phi::fusion::GateAttentionGradConfig;
 
 template <typename T>
 struct SigmoidMultiplyFunctor {
