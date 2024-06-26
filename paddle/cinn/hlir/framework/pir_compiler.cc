@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/arch_device.h"
@@ -73,6 +74,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
+  cinn::ir::InitScheduleConfig();
   if (task_size > 0) {
     // See
     // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/

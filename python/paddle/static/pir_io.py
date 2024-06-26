@@ -635,7 +635,7 @@ def save_pir(program, model_path, protocol=4, **configs):
 
 
 @static_only
-def load_pir(program, model_path, executor=None, var_list=None):
+def load_pir(program, model_prefix, executor=None, var_list=None):
     """
     :api_attr: PIR Static Graph
 
@@ -648,7 +648,7 @@ def load_pir(program, model_path, executor=None, var_list=None):
 
     Args:
         program(Program): The program to be loaded
-        model_path(str): The file prefix to store the program
+        model_prefix(str): The file prefix to store the program
         executor(Executor, optional): The executor used for initializing the parameter
                                       when startup program is not run.
         var_list(list|tuple, optional): The Tensor list/tuple to load a single model file saved with
@@ -660,14 +660,6 @@ def load_pir(program, model_path, executor=None, var_list=None):
     """
 
     assert executor is None or isinstance(executor, Executor)
-
-    model_prefix = model_path
-    if model_prefix.endswith(".pdparams"):
-        model_prefix = model_prefix[:-9]
-    elif model_prefix.endswith(".pdopt"):
-        model_prefix = model_prefix[:-6]
-    elif model_prefix.endswith(".json"):
-        model_prefix = model_prefix[:-5]
 
     parameter_file_name = model_prefix + ".pdparams"
 

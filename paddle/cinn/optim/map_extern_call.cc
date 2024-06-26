@@ -74,8 +74,7 @@ void DealWithIntrinsicsImpl(common::X86Arch, ir::Call *node, Expr *expr) {
 void DealWithIntrinsicsImpl(common::ARMArch, ir::Call *node, Expr *expr) {
   DealWithCpuIntrinsics(node, expr);
 }
-
-void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
+void DealWithIntrinsicsNvHygon(ir::Call *node, Expr *expr) {
   auto arg_size = node->read_args.size();
   if (arg_size == 0UL) {
     // some node like __syncthreads hasn't arguments
@@ -93,6 +92,16 @@ void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
   std::string extern_func =
       hlir::GetExternFuncName(cinn::common::DefaultDeviceTarget(), dtype, name);
   *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
+}
+
+void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
+  DealWithIntrinsicsNvHygon(node, expr);
+}
+
+void DealWithIntrinsicsImpl(common::HygonDCUArchHIP,
+                            ir::Call *node,
+                            Expr *expr) {
+  DealWithIntrinsicsNvHygon(node, expr);
 }
 
 void DealWithIntrinsics(common::Arch arch, ir::Call *node, Expr *expr) {
