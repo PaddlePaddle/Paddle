@@ -549,7 +549,11 @@ void BindProgram(py::module *m) {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
                }
              }
-           });
+           })
+      .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
+      });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -669,10 +673,15 @@ void BindBlock(py::module *m) {
              }
              return param_list;
            })
-      .def("refresh_stopgradient", [](Block &self) {
-        for (auto &op : self) {
-          RefreshOpStopgradients(&op);
-        }
+      .def("refresh_stopgradient",
+           [](Block &self) {
+             for (auto &op : self) {
+               RefreshOpStopgradients(&op);
+             }
+           })
+      .def("_sync_with_cpp", [](const Block &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
       });
 }
 
@@ -1113,7 +1122,8 @@ pir::Value apply(Value self, py::object func) {
           return py::cast<py::none>(Py_None);                                \
         }                                                                    \
         auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
-        py::object obj = py::object(py::handle(py_data), true);              \
+        py::object obj =                                                     \
+            py::reinterpret_borrow<py::object>(py::handle(py_data));         \
         return obj;                                                          \
       },                                                                     \
       [](Value self, py::object obj) {                                       \
@@ -2549,7 +2559,48 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
            return_value_policy::reference)
       .def("data",
            &symbol::ShapeOrDataDimExprs::data,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("is_equal",
+           [](symbol::ShapeOrDataDimExprs &self,
+              std::vector<int64_t> expect_shape,
+              std::vector<int64_t> expect_data = {}) -> bool {
+             VLOG(3) << "Start compare shape and data.";
+
+             const auto &compare_func =
+                 [&](const std::vector<int64_t> &expect,
+                     const std::vector<symbol::DimExpr> &actual) -> bool {
+               if (actual.size() != expect.size()) {
+                 LOG(ERROR) << "expect size " << expect.size()
+                            << " is not equal to actual size " << actual.size()
+                            << " .";
+                 return false;
+               } else if (actual.empty()) {
+                 return true;
+               }
+               for (size_t i = 0; i < actual.size(); i++) {
+                 if (!actual.at(i).isa<int64_t>()) {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "In OpTest, only supports cases where the type of "
+                       "DimExpr "
+                       "is int64_t."));
+                   return false;
+                 }
+                 if (actual.at(i) != expect.at(i)) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
+                              << " is not equal to actual[" << i
+                              << "]: " << actual.at(i) << " .";
+                   return false;
+                 }
+               }
+               return true;
+             };
+
+             // compare shape
+             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+
+             // TODO(gongshaotian): compare data
+             return compare_func(expect_shape, actual_shape);
+           });
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {

@@ -164,7 +164,9 @@ struct XPUContext::Impl {
     std::vector<std::vector<Allocator::AllocationPtr>> allocations_to_free_;
   };
 
-  void Init(int64_t gm_default_size = 1024, int64_t l3_default_size = 1024) {
+  void Init(int64_t gm_default_size = 1024,
+            int64_t l3_default_size = 1024,
+            bool is_comm_context = false) {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     LOG_FIRST_N(WARNING, 1)
@@ -172,7 +174,8 @@ struct XPUContext::Impl {
 
     context_ = xpu::create_context();
 
-    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr &&
+        !is_comm_context) {
       XPUStream s;
       xpu_stream_create(&s);
       context_->set_stream(s);
@@ -327,7 +330,7 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
   if (is_comm_context) {
     // for communication context init, with gm_size=1 and l3_size=1
     impls_.push_back(std::make_unique<Impl>(place));
-    impls_[0]->Init(0, 0);
+    impls_[0]->Init(0, 0, true);
   } else if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
     int default_num_stream = 4;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {

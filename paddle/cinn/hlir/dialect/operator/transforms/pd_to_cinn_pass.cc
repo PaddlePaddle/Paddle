@@ -53,6 +53,24 @@ std::vector<T> GetVectorFromIntArrayAttribute(
   return result;
 }
 
+template <typename OpT>
+void ReplaceWithCinnReshapeOp(OpT op,
+                              pir::PatternRewriter &rewriter,  // NOLINT
+                              const std::vector<int> &out_shape) {
+  PADDLE_ENFORCE_EQ(
+      op->num_results(),
+      2U,
+      ::common::errors::PreconditionNotMet(
+          "The size of source op outputs must be 2, but received %d.",
+          op->num_results()));
+  auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+      op->operand_source(0), out_shape);
+  auto generate_xshape =
+      rewriter.Build<cinn::dialect::GenerateXShapeOp>(op->operand_source(0));
+  rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+  rewriter.ReplaceAllUsesWith(op.result(1), generate_xshape.result(0));
+}
+
 }  // namespace
 
 class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
@@ -74,14 +92,14 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
     // get attribute value from full_int_array op
     const std::vector<int64_t> axis = GetVectorFromIntArrayAttribute<int64_t>(
         full_int_array_op.attribute("value").dyn_cast<pir::ArrayAttribute>());
-    const bool keep_dim =
+    const bool keepdim =
         op.attribute("keepdim").dyn_cast<::pir::BoolAttribute>().data();
     const auto &dtype = op.attribute("dtype")
                             .dyn_cast<paddle::dialect::DataTypeAttribute>()
                             .data();
 
     auto cinn_reduce = rewriter.Build<cinn::dialect::ReduceSumOp>(
-        op->operand_source(0), axis, keep_dim, dtype);
+        op->operand_source(0), axis, keepdim, dtype);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (full_int_array_op->use_empty()) {
@@ -110,12 +128,12 @@ class ReduceMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
     const std::vector<int64_t> axis = GetVectorFromIntArrayAttribute<int64_t>(
         full_int_array_op.attribute("value")
             .template dyn_cast<pir::ArrayAttribute>());
-    const bool keep_dim = op.attribute("keepdim")
-                              .template dyn_cast<::pir::BoolAttribute>()
-                              .data();
+    const bool keepdim = op.attribute("keepdim")
+                             .template dyn_cast<::pir::BoolAttribute>()
+                             .data();
 
     auto cinn_reduce =
-        rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keep_dim);
+        rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keepdim);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (full_int_array_op->use_empty()) {
@@ -143,13 +161,13 @@ class ProdOpPattern : public pir::OpRewritePattern<paddle::dialect::ProdOp> {
     // get attribute value from full_int_array op
     const std::vector<int64_t> axis = GetVectorFromIntArrayAttribute<int64_t>(
         full_int_array_op.attribute("value").dyn_cast<pir::ArrayAttribute>());
-    const bool keep_dim =
-        op.attribute("keep_dim").dyn_cast<::pir::BoolAttribute>().data();
+    const bool keepdim =
+        op.attribute("keepdim").dyn_cast<::pir::BoolAttribute>().data();
     const bool reduce_all =
         op.attribute("reduce_all").dyn_cast<::pir::BoolAttribute>().data();
 
     auto cinn_reduce = rewriter.Build<cinn::dialect::ReduceProdOp>(
-        op->operand_source(0), axis, keep_dim, reduce_all);
+        op->operand_source(0), axis, keepdim, reduce_all);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (full_int_array_op->use_empty()) {
@@ -246,11 +264,7 @@ class ReshapeOpPattern
             out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
       }
     }
-
-    auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-        op->operand_source(0), vec_out_shape);
-    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
-    rewriter.ReplaceAllUsesWith(op.result(1), cinn_reshape.result(1));
+    ReplaceWithCinnReshapeOp(op, rewriter, vec_out_shape);
     rewriter.EraseOp(op);
   }
 };
@@ -891,12 +905,7 @@ class SqueezeOpPattern
         }
       }
 
-      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-          op->operand_source(0), output_shape);
-
-      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
-      rewriter.ReplaceAllUsesWith(op.result(1), cinn_reshape.result(1));
-
+      ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 
       return true;
@@ -939,12 +948,7 @@ class UnsqueezeOpPattern
         }
       }
 
-      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-          op->operand_source(0), output_shape);
-
-      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
-      rewriter.ReplaceAllUsesWith(op.result(1), cinn_reshape.result(1));
-
+      ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 
       return true;
