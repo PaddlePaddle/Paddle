@@ -206,6 +206,12 @@
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
 
+- op : anchor_generator
+  inputs:
+    input : Input
+  outputs:
+    {anchors : Anchors, variances_out : Variances}
+
 - op : angle
   backward : angle_grad
   inputs :
