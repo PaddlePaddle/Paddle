@@ -69,7 +69,13 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
       }
       auto padding_algorithm = match_ctx.Attr<std::string>("padding_algorithm");
       auto groups = match_ctx.Attr<int>("groups");
+      auto filter_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
       if (!cutlass_pattern_) {
+        if (!(filter_dtype.isa<pir::Float16Type>() ||
+              filter_dtype.isa<pir::Float32Type>() ||
+              filter_dtype.isa<pir::Float64Type>())) {
+          return false;
+        }
         if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
             padding_algorithm != "VALID") {
           return false;
@@ -83,8 +89,6 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
           return false;
         }
       } else {
-        auto filter_dtype =
-            pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
         auto filter_shape = pir::GetShapeFromValue(match_ctx.Tensor("filter"));
         auto strides_shape = match_ctx.Attr<std::vector<int>>("strides");
         auto dilations_shape = match_ctx.Attr<std::vector<int>>("dilations");
@@ -97,6 +101,11 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
         int kh = filter_shape[2];
         int kw = filter_shape[3];
         if (sm_version_ < 80 && !filter_dtype.isa<pir::Float16Type>()) {
+          return false;
+        }
+        if (!(filter_dtype.isa<pir::Float16Type>() ||
+              filter_dtype.isa<pir::Float32Type>() ||
+              filter_dtype.isa<pir::BFloat16Type>())) {
           return false;
         }
         if (padding_algorithm != "EXPLICIT") {

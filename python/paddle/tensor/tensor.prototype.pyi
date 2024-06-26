@@ -24,18 +24,37 @@ from paddle._typing import *  # noqa: F403
 
 # isort: on
 
-from typing import Any, Literal, overload
+from typing import Any, Iterator, Literal, Protocol, overload
 
 import numpy.typing as npt
-from typing_extensions import TypeAlias
 
 import paddle
-from paddle import _typing
+from paddle import (
+    ParamAttr,  # noqa: F401
+    _typing,
+)
+from paddle.base.dygraph.tensor_patch_methods import (
+    TensorHookRemoveHelper,  # noqa: F401
+)
 
-# avoid same name: Tensor.slice
-_Slice: TypeAlias = slice
+# annotation: ${eager_param_base_begin}
+class AbstractEagerParamBase(Protocol):
+    # annotation: ${eager_param_base_docstring}
 
-class Tensor:
+    # annotation: ${eager_param_base_attributes}
+
+    # annotation: ${eager_param_base_methods}
+    @property
+    def trainable(self) -> bool: ...
+    @trainable.setter
+    def trainable(self, trainable: bool) -> None: ...
+
+    # annotation: ${eager_param_base_alias}
+
+# annotation: ${eager_param_base_end}
+
+# annotation: ${tensor_begin}
+class AbstractTensor(Protocol):
     # annotation: ${tensor_docstring}
 
     # annotation: ${tensor_attributes}
@@ -169,25 +188,11 @@ class Tensor:
     # emulating container types
     def __getitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | _Slice
-            | tuple[None | bool | int | _Slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: _typing.TensorIndex,
     ) -> Tensor: ...
     def __setitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | _Slice
-            | tuple[None | bool | int | _Slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: _typing.TensorIndex,
         value: Tensor | npt.NDArray[Any] | complex | bool,
     ) -> None: ...
     def __len__(self) -> int: ...
@@ -281,5 +286,15 @@ class Tensor:
     @property
     def type(self) -> Any: ...
 
+    # virtual methods
+    def __iter__(self) -> Iterator[Tensor]: ...  # For iterating over the tensor
+
+    # private methods
+    def _grad_ivar(self) -> Tensor | None: ...
+
     # annotation: ${tensor_alias}
     __qualname__: Literal["Tensor"]
+
+# annotation: ${tensor_end}
+
+class Tensor(AbstractTensor, AbstractEagerParamBase): ...
