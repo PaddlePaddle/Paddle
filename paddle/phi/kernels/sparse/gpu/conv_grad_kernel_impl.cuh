@@ -355,6 +355,7 @@ __global__ void __launch_bounds__(32) conv_backward_cuda_setting1_mode0_f16f16f3
 }
 
 // conv_backward_cuda_m32n64k64_m32n32k64_m16n16k16_f16f16f32
+template <typename IntT>
 __global__ void __launch_bounds__(64) conv_backward_cuda_setting2_mode0_f16f16f32(int M_fwd, int K_original, int N, int kernel_volume, int split_k_iters, half *__restrict__ A, half *__restrict__ B, int *__restrict__ out_in_map, half *__restrict__ C)
 {
   int j_factors1 = N / 16 / 4;
@@ -908,6 +909,7 @@ __global__ void __launch_bounds__(32) conv_backward_cuda_setting1_mode0_f32f32f3
 }
 
 // conv_backward_cuda_m32n64k64_f32f32f32
+template <typename IntT>
 __global__ void __launch_bounds__(64) conv_backward_cuda_setting2_mode0_f32f32f32(int M_fwd, int K_original, int N, int kernel_volume, int split_k_iters, float *__restrict__ A, float *__restrict__ B, int *__restrict__ out_in_map, float *__restrict__ C)
 {
 
@@ -1079,7 +1081,7 @@ __global__ void __launch_bounds__(64) conv_backward_cuda_setting2_mode0_f32f32f3
 }
 
 
-
+template <typename IntT>
 void conv_backward_wgrad_implicit_gemm_cuda(
     const phi::GPUContext& dev_ctx,
     const phi::DenseTensor& _in_feats, const phi::DenseTensor& _kernel,
@@ -1116,7 +1118,7 @@ void conv_backward_wgrad_implicit_gemm_cuda(
       // threadIdx.x: 32
       // threadIdx.y: i_factors[2] * j_factors[2]
       dim3 threads_per_block(32, 2);
-      conv_backward_cuda_setting2_mode0_f16f16f32<<<num_blocks, threads_per_block, 0, dev_ctx.stream()>>>(
+      conv_backward_cuda_setting2_mode0_f16f16f32<IntT><<<num_blocks, threads_per_block, 0, dev_ctx.stream()>>>(
           _kernel.dims()[0], num_in_channels, num_out_channels, kernel_volume, split_k_iters, in_feats, kernel, out_in_map, out_feats);
     }
     else
@@ -1282,7 +1284,7 @@ void conv_backward_wgrad_implicit_gemm_cuda(
 
       dim3 num_blocks(block_num_M * block_num_N * split_k_iters);
       dim3 threads_per_block(64);
-      conv_backward_cuda_setting2_mode0_f32f32f32<<<num_blocks, threads_per_block, 0, dev_ctx.stream()>>>(
+      conv_backward_cuda_setting2_mode0_f32f32f32<IntT><<<num_blocks, threads_per_block, 0, dev_ctx.stream()>>>(
           _kernel.dims()[0], num_in_channels, num_out_channels, kernel_volume, split_k_iters, in_feats, kernel, out_in_map, out_feats);
     }
     else

@@ -54,6 +54,8 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
                     phi::errors::InvalidArgument(
                         "The group must be 1, but received %d.", groups));
 
+  const bool is_params_freezing = kernel_grad == nullptr;
+  const bool is_input_freezing = x_grad == nullptr;
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   const bool is2D = x_dims.size() == 4 ? true : false;
@@ -110,26 +112,25 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
   int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
 
-  // int rank = is2D ? 4 : 5;
-  // std::vector<int> out_dims_vec(rank, 1);
-  // DDim out_dims = common::make_ddim(out_dims_vec);
-
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
   }
 
   // Set the x_grad tensor
-  if (subm) {
-    DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-    int tmpidx = is2D ? 2 : 3;
-    DenseTensor x_grad_values =
-        phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[tmpidx]});
-    phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
-    x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), false);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "The subm must be true, but received %s.", subm ? "true" : "false"));
+  if (!is_input_freezing) {
+    if (subm) {
+      DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+      int tmpidx = is2D ? 2 : 3;
+      DenseTensor x_grad_values =
+          phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[tmpidx]});
+      phi::Copy(
+          dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
+      x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), false);
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "The subm must be true, but received %s.", subm ? "true" : "false"));
+    }
   }
 
   auto* out_kmap_cache_ptr = out.GetKmapCache(key);
@@ -155,7 +156,6 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
       dev_ctx, kernel, perm1, &kernel_transpose);
 
   // kernel_volume in_channels out_channels --> kernel_volume out_channels
-  // in_channels
   DenseTensor kernel_transpose2 =
       phi::EmptyLike<T, GPUContext>(dev_ctx, kernel_transpose);
   std::vector<int> perm2;
@@ -168,31 +168,37 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
       dev_ctx, kernel_transpose, perm2, &kernel_transpose2);
 
 #ifdef PADDLE_WITH_CUDA
-  conv_forward_implicit_gemm_cuda(dev_ctx,
-                                  out_grad.values(),
-                                  kernel_transpose2,
-                                  *(out_in_map_bwd),
-                                  x.dims()[0],
-                                  x.dims()[1],
-                                  *(x_grad->mutable_values()));
+  if (!is_input_freezing) {
+    conv_forward_implicit_gemm_cuda<IntT>(dev_ctx,
+                                          out_grad.values(),
+                                          kernel_transpose2,
+                                          *(out_in_map_bwd),
+                                          x.dims()[0],
+                                          x.dims()[1],
+                                          *(x_grad->mutable_values()));
+  }
 
-  DenseTensor kernel_grad_out =
-      phi::Empty<T>(dev_ctx, {32, out_channels * kernel_volume, in_channels});
-  conv_backward_wgrad_implicit_gemm_cuda(dev_ctx,
-                                         out_grad.values(),
-                                         x.values(),
-                                         *(out_in_map_bwd),
-                                         32,
-                                         kernel_grad_out);
+  if (!is_params_freezing) {
+    DenseTensor kernel_grad_out =
+        phi::Empty<T>(dev_ctx, {32, out_channels * kernel_volume, in_channels});
+    conv_backward_wgrad_implicit_gemm_cuda<IntT>(dev_ctx,
+                                                 out_grad.values(),
+                                                 x.values(),
+                                                 *(out_in_map_bwd),
+                                                 32,
+                                                 kernel_grad_out);
 
-  DenseTensor kernel_grad_sum;
-  kernel_grad_sum = phi::Sum<T>(
-      dev_ctx, kernel_grad_out, {0}, kernel_grad_out.dtype(), false);
-  kernel_grad_sum.Resize({kernel_volume, out_channels, in_channels});
-  std::vector<int> perm3 = {0, 2, 1};
-  phi::funcs::TransposeGPUKernelDriver<T>(
-      dev_ctx, kernel_grad_sum, perm3, kernel_grad);
-  kernel_grad->Resize(kernel.dims());
+    DenseTensor kernel_grad_sum;
+    kernel_grad_sum = phi::Sum<T>(
+        dev_ctx, kernel_grad_out, {0}, kernel_grad_out.dtype(), false);
+    kernel_grad_sum.Resize({kernel_volume, out_channels, in_channels});
+    *kernel_grad =
+        phi::Empty<T>(dev_ctx, {kernel_volume, in_channels, out_channels});
+    std::vector<int> perm3 = {0, 2, 1};
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx, kernel_grad_sum, perm3, kernel_grad);
+    kernel_grad->Resize(kernel.dims());
+  }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
       "conv_forward_implicit_gemm_cuda is only supported on CUDA."));
