@@ -820,8 +820,7 @@ class PipelineParallel(MetaParallelBase):
                 for idx, loss_fn in enumerate(self._layers._loss_fn):
                     loss_tensor = loss_fn(output_tensor, labels)
                     assert isinstance(
-                        loss_tensor,
-                        (paddle.Tensor, framework.core.eager.Tensor),
+                        loss_tensor, paddle.Tensor
                     ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                     with paddle.amp.auto_cast(enable=False):

@@ -482,6 +482,9 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
       case phi::AllocationType::XPU:
         new_backend = phi::Backend::XPU;
         break;
+      case phi::AllocationType::CUSTOM:
+        new_backend = phi::Backend::CUSTOM;
+        break;
       default:
         new_backend = phi::Backend::CPU;
         break;
@@ -491,7 +494,8 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   std::unordered_map<std::string, pir::Attribute> op_attribute;
   if ((src_place.GetType() == phi::AllocationType::CPU) &&
       (dst_place.GetType() == phi::AllocationType::GPU ||
-       dst_place.GetType() == phi::AllocationType::XPU)) {
+       dst_place.GetType() == phi::AllocationType::XPU ||
+       dst_place.GetType() == phi::AllocationType::CUSTOM)) {
     copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
     op_attribute = {
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_h2d")},
@@ -499,7 +503,8 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
   } else if ((src_place.GetType() == phi::AllocationType::GPU ||
-              src_place.GetType() == phi::AllocationType::XPU) &&
+              src_place.GetType() == phi::AllocationType::XPU ||
+              src_place.GetType() == phi::AllocationType::CUSTOM) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
     copy_kernel_key.set_backend(place2backend(src_place.GetType()));
 
@@ -513,8 +518,10 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 0)}};
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support cpu to gpu and gpu to cpu"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support cpu to gpu and gpu to cpu, src=%s, dst=%s.",
+        src_place,
+        dst_place));
   }
 
   pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
@@ -1396,6 +1403,15 @@ void HandleForIfOp(
         ConvertOpTypeToKernelType(ctx, old_ifop.result(i).type(), place));
   }
   auto new_ifop = builder.Build<IfOp>(new_cond, std::move(new_ifop_outputs));
+
+  if (op_item->HasAttribute("fake_false_branch") &&
+      op_item->attributes()
+          .at("fake_false_branch")
+          .dyn_cast<pir::BoolAttribute>()
+          .data()) {
+    new_ifop->set_attribute("fake_false_branch",
+                            op_item->attribute("fake_false_branch"));
+  }
 
   // process true block
   auto& true_block = new_ifop.true_block();

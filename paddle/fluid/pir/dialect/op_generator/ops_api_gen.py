@@ -146,6 +146,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'recv_v2',
     'c_allgather',
     'qkv_unpack_mha',
+    'hash',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -189,12 +190,14 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elementwise_div',
     'fused_elementwise_mul',
     'fused_elementwise_sub',
+    'fused_embedding_fc_lstm',
     'fusion_group',
     'fusion_lstm',
     'fusion_seqpool_cvm_concat',
     'nce',
     'lars_momentum',
     'lars_momentum_',
+    'lrn',
     'max_pool2d_v2',
     'partial_sum',
     'pull_gpups_sparse',
