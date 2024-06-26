@@ -62,7 +62,7 @@ class PToSReshardFunction(ReshardFunction):
                 dst_dist_attr, new_dims_mapping=tmp_dims_mapping
             )
 
-            global_dst_attr = dst_type.dist_attr()
+            global_dst_attr = dst_type.as_dist_type().dist_attr()
             global_dims_mapping = global_dst_attr.dims_mapping
             axis = global_dims_mapping[0]
             global_dims_mapping[0] = global_dims_mapping[split_axis]

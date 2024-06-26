@@ -827,23 +827,9 @@ def shard_layer(
         )
 
 
-def get_value_placement(value):
-    dist_attr = value.dist_attr()
-    assert dist_attr is not None, "Can't get placement for a dense value."
-    mesh = dist_attr.process_mesh
-    dims_mapping = dist_attr.dims_mapping
-    partial_status = dist_attr.partial_status
-    palcements = to_placements(dims_mapping, mesh, partial_status)
-    return palcements
-
-
 def get_placement_with_sharding(param, sharding_mesh_axis):
     shard_axis = -1
-    if isinstance(param, pir.Value):
-        placements = get_value_placement(param)
-    else:
-        placements = param.placements
-    for placement in placements:
+    for placement in param.placements:
         if isinstance(placement, dist.Shard):
             # the parameter can't be shard twice with sharding on different mesh now
             # for example, [Shard(0), Shard(1)], assert here in case
@@ -858,7 +844,7 @@ def get_placement_with_sharding(param, sharding_mesh_axis):
             placement_with_sharding = dist.Shard(dim)
             break
 
-    new_placements = placements
+    new_placements = param.placements
     if placement_with_sharding is not None:
         new_placements[sharding_mesh_axis] = placement_with_sharding
 
@@ -1340,10 +1326,7 @@ class ShardingStage3(_ShardingStageBase):
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
-                if isinstance(param, pir.Value):
-                    placements = get_value_placement(param)
-                else:
-                    placements = param.placements
+                placements = param.placements
             else:
                 placements = [
                     dist.Replicate()

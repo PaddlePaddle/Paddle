@@ -1306,16 +1306,6 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
-      .def("dist_attr",
-           [](Value self) -> py::object {
-             auto type = self.type();
-             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
       .def("update_dist_attr",
@@ -1375,14 +1365,6 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
-      .def("dist_attr",
-           [](Type self) -> py::object {
-             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       .def_property(
           "_local_shape",
           [](Type self) {
@@ -1401,6 +1383,13 @@ void BindType(py::module *m) {
            [](Type self) -> py::object {
              if (auto vec_type = self.dyn_cast<VectorType>()) {
                return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_dist_type",
+           [](Type &self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type);
              }
              return py::cast<py::none>(Py_None);
            })
