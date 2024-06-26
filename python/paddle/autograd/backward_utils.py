@@ -47,6 +47,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.subtract",
     "pd_op.concat",
     "pd_op.split",
+    "pd_op.multiply",
 ]
 
 
