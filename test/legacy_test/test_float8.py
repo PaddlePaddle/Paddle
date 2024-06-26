@@ -55,7 +55,7 @@ def check_fp8_support() -> bool:
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or not get_cuda_version() >= 11080,
     "FP8 date type has some bug in CPU",
 )
 class TestFP8CastOp(unittest.TestCase):
@@ -90,7 +90,7 @@ class TestFP8CastOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or not get_cuda_version() >= 11080,
     "FP8 date type has some bug in CPU",
 )
 class TestFP8FullOp(unittest.TestCase):
