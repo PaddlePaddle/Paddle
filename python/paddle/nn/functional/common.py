@@ -1886,7 +1886,7 @@ def pad(
     update_to="paddle.nn.ZeroPad2D",
     level=1,
     reason="Please use class ZeroPad2D",
- )
+)
 def zeropad2d(
     x: Tensor,
     padding: ShapeLike,
