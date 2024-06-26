@@ -11,6 +11,7 @@ endforeach()
 
 set_tests_properties(test_composite_batch_norm_deprecated PROPERTIES TIMEOUT
                                                                      120)
+set_tests_properties(test_composite_mean_grad_deprecated PROPERTIES TIMEOUT 120)
 if(LINUX)
   set_tests_properties(test_composite_batch_norm_grad_deprecated
                        PROPERTIES TIMEOUT 120)
