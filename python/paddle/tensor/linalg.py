@@ -2278,8 +2278,8 @@ def histogram(
     bins: int = 100,
     min: int = 0,
     max: int = 0,
-    weight=None,
-    density=False,
+    weight: Tensor | None = None,
+    density: bool = False,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -2292,7 +2292,8 @@ def histogram(
         bins (int, optional): number of histogram bins. Default: 100.
         min (int, optional): lower end of the range (inclusive). Default: 0.
         max (int, optional): upper end of the range (inclusive). Default: 0.
-        weight (Tensor, optional): If provided, it must have the same shape as input.
+        weight (Tensor, optional): If provided, it must have the same shape as input. Each value in input contributes its associated
+            weight towards the bin count (instead of 1). Default: None.
         density (bool, optional): If False, the result will contain the count (or total weight) in each bin. If True, the result is the
         value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2349,7 +2350,13 @@ def histogram(
         return out
 
 
-def histogram_bin_edges(input, bins=100, min=0, max=0, name=None):
+def histogram_bin_edges(
+    input: Tensor,
+    bins: int = 100,
+    min: float = 0,
+    max: float = 0,
+    name: str | None = None,
+):
     """
     Computes only the edges of the bins used by the histogram function.
     If min and max are both zero, the minimum and maximum values of the data are used.
