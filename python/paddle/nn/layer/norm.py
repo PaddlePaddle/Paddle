@@ -171,7 +171,7 @@ class InstanceNorm1D(_InstanceNormBase):
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
             If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         data_format(str, optional): Specify the input data format, may be "NC", "NCL". Default "NCL".
-        name(str|str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
+        name(str|None, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
 
     Shape:
