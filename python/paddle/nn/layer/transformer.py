@@ -639,7 +639,7 @@ class TransformerEncoderLayer(Layer):
             [2, 4, 128]
     """
 
-    activation = Layer
+    activation: Layer
     normalize_before: bool
 
     def __init__(
@@ -830,7 +830,7 @@ class TransformerEncoder(Layer):
     """
 
     num_layers: int
-    norm = LayerNorm | None
+    norm: LayerNorm | None
 
     def __init__(
         self,
