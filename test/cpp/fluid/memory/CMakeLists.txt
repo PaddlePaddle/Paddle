@@ -116,13 +116,12 @@ if(WITH_TESTING AND TEST cuda_managed_memory_test)
   if(NOT CURRENT_ENV)
     set(CURRENT_ENV "")
   endif()
-  string(APPEND CURRENT_ENV ";FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth")
-  set_tests_properties(
-    cuda_managed_memory_test
-    PROPERTIES
-      ENVIRONMENT
-      "${CURRENT_ENV}"
-      TIMEOUT 50)
+  string(
+    APPEND CURRENT_ENV
+    ";FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth")
+
+  set_tests_properties(cuda_managed_memory_test
+                       PROPERTIES ENVIRONMENT "${CURRENT_ENV}" TIMEOUT 50)
 endif()
 
 if(WITH_GPU AND WITH_TESTING)
