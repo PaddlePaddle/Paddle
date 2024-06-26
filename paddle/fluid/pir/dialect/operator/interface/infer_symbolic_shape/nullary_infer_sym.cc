@@ -107,6 +107,8 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
       symbol::DimExpr dim_expr;
       if (dim == pir::ShapedTypeInterface::kDynamic) {
         symbol::DimExpr symbolic_dim_expr(infer_context->GetNextSymName());
+        VLOG(3) << "create symbolic dim expr from dynamic dim"
+                << symbolic_dim_expr;
         dim_expr = symbolic_dim_expr;
       } else {
         symbol::DimExpr numeric_dim_expr(dim);
@@ -151,7 +153,8 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(sym_dims)};
     }
   }();
-
+  VLOG(3) << "DataOpInferSymbolicShape: shape_or_data.shape: "
+          << shape_or_data.shape().at(0);
   infer_context->SetShapeOrDataForValue(op->result(0), shape_or_data);
 
   return true;
@@ -226,6 +229,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> shape(shape_vec.begin(), shape_vec.end());
     return shape;
   }();
+  VLOG(3) << "FullOpInferSymbolicShape shape: " << shape.at(0);
 
   const auto shape_data = [&]() -> symbol::TensorShapeOrDataDimExprs {
     // NOTE(Aurelius84): to<int64_t> is a risky operation when Scalar's dtype is

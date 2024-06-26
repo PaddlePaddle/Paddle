@@ -191,21 +191,23 @@ struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-    const auto& shape_data_list =
+    VLOG(3) << "Start, SplitOpInferSymbolicShapeInterfaceModel";
+    const symbol::TensorListShapeOrDataDimExprs& shape_data_list =
         infer_context->GetShapeOrDataForValue(op->operand_source(0))
             .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
     for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
-      PADDLE_ENFORCE_EQ(
-          shape_data_list[rst_idx].data().has_value(),
-          false,
-          paddle::platform::errors::InvalidArgument(
-              "Currently InferSymbolicShape of SplitOp only support "
-              "input without value."));
+      // PADDLE_ENFORCE_EQ(
+      //     shape_data_list.at(rst_idx).data().has_value(),
+      //     false,
+      //     paddle::platform::errors::InvalidArgument(
+      //         "Currently InferSymbolicShape of SplitOp only support "
+      //         "input without value."));
       infer_context->SetShapeOrDataForValue(
           op->result(rst_idx),
-          symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
+          symbol::ShapeOrDataDimExprs{shape_data_list.at(rst_idx)});
     }
+    VLOG(3) << "End, SplitOpInferSymbolicShapeInterfaceModel";
     return true;
   }
 
