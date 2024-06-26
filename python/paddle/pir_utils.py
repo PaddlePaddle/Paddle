@@ -194,6 +194,8 @@ def test_with_pir_api(func):
         if not skip_pir:
             with IrGuard():
                 func(*args, **kwargs)
+        else:
+            raise ValueError("skip_pir")
 
     return impl
 
