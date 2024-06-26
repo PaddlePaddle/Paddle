@@ -860,7 +860,7 @@ function(hip_test TARGET_NAME)
       TEST ${TARGET_NAME}
       PROPERTY
         ENVIRONMENT
-        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$LD_LIBRARY_PATH"
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$ENV{LD_LIBRARY_PATH}"
     )
   endif()
 endfunction()

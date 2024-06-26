@@ -112,11 +112,16 @@ if(WITH_ROCM)
 endif()
 
 if(WITH_TESTING AND TEST cuda_managed_memory_test)
+  get_test_property(cuda_managed_memory_test ENVIRONMENT CURRENT_ENV)
+  if(NOT CURRENT_ENV)
+    set(CURRENT_ENV "")
+  endif()
+  string(APPEND CURRENT_ENV ";FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth")
   set_tests_properties(
     cuda_managed_memory_test
     PROPERTIES
       ENVIRONMENT
-      "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth"
+      "${CURRENT_ENV}"
       TIMEOUT 50)
 endif()
 
