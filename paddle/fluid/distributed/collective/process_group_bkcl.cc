@@ -206,7 +206,7 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   auto* calc_ctx = static_cast<phi::XPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
-  auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  auto comm_ctx = std::make_unique<XPUDeviceContext>(place, true);
   // comm_ctx does not require a pre-allocated GM buffer
   comm_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
   auto bkcl_comm_ctx = this->GetCommContext();
@@ -216,8 +216,9 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place)
                              .get());
-  // comm context creates a separate XPU stream for communication
-  comm_ctx->CreateStream();
+  // Note(lijin23): XPU use calc stream for communication now, so we disable the
+  // creation of comm stream to reduce the total number of streams used.
+  // comm_ctx->CreateStream();
 
   place_to_calc_ctx_[place_key] = calc_ctx;
   place_to_comm_ctx_[place_key] = std::move(comm_ctx);
@@ -237,6 +238,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
     CommType op_type,
     bool sync_op,
     bool use_calc_stream) {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
@@ -285,6 +292,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   auto tensor_tmp =
       paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
   const auto& place = tensor_tmp.place();
@@ -520,6 +533,12 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
 
 phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
