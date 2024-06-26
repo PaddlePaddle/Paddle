@@ -65,7 +65,7 @@ class Pool2dOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      VLOG(3) << "Pool2dOp already has kCanRunTrtAttr set to true. Skipping "
+      VLOG(3) << "Pool2d already has kCanRunTrtAttr set to true. Skipping "
                  "rewrite.";
       return false;
     }
@@ -140,7 +140,7 @@ class Conv2dOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      VLOG(3) << "Conv2dOp already has kCanRunTrtAttr set to true. Skipping "
+      VLOG(3) << "conv2d already has kCanRunTrtAttr set to true. Skipping "
                  "rewrite.";
       return false;
     }
@@ -179,7 +179,7 @@ class Conv2dTransposeOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      VLOG(3) << "Conv2dTransposeOp already has kCanRunTrtAttr set to true. "
+      VLOG(3) << "conv2d_transpose already has kCanRunTrtAttr set to true. "
                  "Skipping rewrite.";
       return false;
     }
@@ -213,7 +213,7 @@ class FusedConv2dAddActOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      VLOG(3) << "FusedConv2dAddActOp already has kCanRunTrtAttr set to true. "
+      VLOG(3) << "fused_conv2d_add_act already has kCanRunTrtAttr set to true. "
                  "Skipping rewrite.";
       return false;
     }
@@ -247,12 +247,12 @@ class DepthwiseConv2dOpPattern
     : public pir::OpRewritePattern<paddle::dialect::DepthwiseConv2dOp> {
  public:
   using pir::OpRewritePattern<
-      paddle::dialect::FusedConv2dAddActOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::FusedConv2dAddActOp op,
+      paddle::dialect::DepthwiseConv2dOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::DepthwiseConv2dOp op,
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      VLOG(3) << "DepthwiseConv2dOp already has kCanRunTrtAttr set to true. "
+      VLOG(3) << "depthwise_conv2d already has kCanRunTrtAttr set to true. "
                  "Skipping rewrite.";
       return false;
     }
@@ -292,7 +292,7 @@ class DepthwiseConv2dTransposeOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      VLOG(3) << "DepthwiseConv2dTransposeOp already has kCanRunTrtAttr set to "
+      VLOG(3) << "depthwise_conv2d_transpose already has kCanRunTrtAttr set to "
                  "true. Skipping rewrite.";
       return false;
     }
