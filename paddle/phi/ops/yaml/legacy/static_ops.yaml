@@ -390,6 +390,16 @@
     param: [x, num_hash, mod_by]
     data_type: x
 
+- op : legacy_expand
+  args : (Tensor x, IntArray shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : legacy_expand
+    data_type : x
+  backward : legacy_expand_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)

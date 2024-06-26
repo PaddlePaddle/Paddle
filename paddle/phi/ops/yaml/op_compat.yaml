@@ -2079,6 +2079,23 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : legacy_expand (expand)
+  backward : legacy_expand_grad (expand_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : expand_times
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : ExpandTimes
+      tensors_name : expand_times_tensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [legacy_expand, legacy_expand_grad]
+
 - op : lerp
   backward : lerp_grad
   inputs :
