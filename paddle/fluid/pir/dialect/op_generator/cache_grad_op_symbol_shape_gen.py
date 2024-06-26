@@ -247,9 +247,6 @@ def ParseArguments():
     parser.add_argument('--op_yaml_files', type=str)
     parser.add_argument('--op_compat_yaml_file', type=str)
     parser.add_argument('--cache_grad_op_symbol_shape_file', type=str)
-    # parser.add_argument('--op_yaml_files', type=str, default="/home/workspace/dev1/Paddle/build/paddle/phi/ops/yaml/ops.parsed.yaml,/home/workspace/dev1/Paddle/build/paddle/phi/ops/yaml/backward.parsed.yaml")
-    # parser.add_argument('--op_compat_yaml_file', type=str, default="/home/workspace/dev1/Paddle/paddle/phi/ops/yaml/op_compat.yaml")
-    # parser.add_argument('--cache_grad_op_symbol_shape_file', type=str, default="/home/workspace/dev1/Paddle/build/cache_grad_op_symbol_shape.cc")
     return parser.parse_args()
 
 
