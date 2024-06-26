@@ -1882,10 +1882,10 @@ def pad(
 
 
 @deprecated(
-     since="3.0.0",
-     update_to="paddle.nn.ZeroPad2D",
-     level=1,
-     reason="Please use class ZeroPad2D",
+    since="3.0.0",
+    update_to="paddle.nn.ZeroPad2D",
+    level=1,
+    reason="Please use class ZeroPad2D",
  )
 def zeropad2d(
     x: Tensor,
