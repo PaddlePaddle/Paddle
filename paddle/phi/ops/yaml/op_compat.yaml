@@ -4469,10 +4469,12 @@
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  attrs:
+    axis: axis
   scalar:
-   axis:
-     datatype : int
-     tensor_name : Axis
+    axis:
+      data_type : int
+      tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
