@@ -880,6 +880,12 @@
   outputs :
     out : Out
 
+- op : dgc_clip_by_norm
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : dgc_momentum
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
