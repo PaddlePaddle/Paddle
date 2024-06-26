@@ -1594,6 +1594,7 @@ def _append_backward_ops_(
         grad_var_to_var = distop_context.grad_var_to_var[
             program._appending_grad_times
         ]
+
     # sum parameter's gradients' var given multiple var gradient
     if os.environ.get("FLAGS_program_topo_reorder", "False") in [
         'True',
