@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
@@ -136,11 +135,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
+  CheckTensorContiguous(tensor);
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& tensor_maybe_partial =
-      numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
+      numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
   return Point2Point(
       [&](phi::distributed::BKCLCommContext* comm_context,
@@ -264,7 +262,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
-    task->comm_event_->Record(*comm_ctx.get());
+    if (!is_coalescing_) {
+      task->comm_event_->Record(*comm_ctx.get());
+    } else {
+      colaescing_place_keys_.push_back(key);
+    }
   }
 
   if (sync_op) {
@@ -281,9 +283,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
-  const auto& place = tensor_tmp.place();
+  CheckTensorContiguous(tensor);
+
+  const auto& place = tensor.place();
 
   int p2p_target_rank = peer;
   std::string key = GetKeyFromPlace(place);
@@ -310,7 +312,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
-    task->comm_event_->Record(*comm_ctx.get());
+    if (!is_coalescing_) {
+      task->comm_event_->Record(*comm_ctx.get());
+    } else {
+      colaescing_place_keys_.push_back(key);
+    }
   }
 
   if (sync_op) {
@@ -326,15 +332,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
         VLOG(3) << "bkcl_all_reduce"
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
                 << ", redop: " << ToBKCLRedType(opts.reduce_op)
                 << ", bkcl_comm: " << comm_context->GetBKCLComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
@@ -342,9 +348,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
                 << ", use_calc_stream: " << use_calc_stream;
 
         comm_context->AllReduce(
-            out_tensor, tensor_tmp, ToBKCLRedType(opts.reduce_op), stream);
+            out_tensor, in_tensor, ToBKCLRedType(opts.reduce_op), stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::ALLREDUCE,
       sync_op,
       use_calc_stream);
@@ -356,25 +362,26 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
         int root = opts.source_rank + opts.source_root;
 
         VLOG(3) << "bkcl_broadcast "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
                 << ", root: " << root
                 << ", bkcl_comm: " << comm_context->GetBKCLComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        comm_context->Broadcast(out_tensor, tensor_tmp, root, stream);
+        comm_context->Broadcast(out_tensor, in_tensor, root, stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::BROADCAST,
       sync_op,
       use_calc_stream);
@@ -387,10 +394,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+
   const phi::DenseTensor& in_tensor_maybe_partial =
-      numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
+      numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
   phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
                                                      in_tensor_maybe_partial,
                                                      /*dst_rank*/ rank_,
@@ -425,15 +432,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
         VLOG(3) << "bkcl_reduce "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
                 << ", redop: "
                 << BKCLRedTypeToString(ToBKCLRedType(opts.reduce_op))
                 << ", root: " << opts.root_rank
@@ -442,12 +450,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
         comm_context->Reduce(out_tensor,
-                             tensor_tmp,
+                             in_tensor,
                              ToBKCLRedType(opts.reduce_op),
                              opts.root_rank,
                              stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::REDUCE,
       sync_op,
       use_calc_stream);
@@ -459,15 +467,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
         VLOG(3) << "bkcl_reduce_scatter "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
                 << ", redop: "
                 << BKCLRedTypeToString(ToBKCLRedType(opts.reduce_op))
                 << ", bkcl_comm: " << comm_context->GetBKCLComm()
@@ -475,9 +484,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
         comm_context->ReduceScatter(
-            out_tensor, tensor_tmp, ToBKCLRedType(opts.reduce_op), stream);
+            out_tensor, in_tensor, ToBKCLRedType(opts.reduce_op), stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::REDUCE_SCATTER,
       sync_op,
       use_calc_stream);
@@ -546,6 +555,47 @@ phi::distributed::BKCLCommContext* ProcessGroupBKCL::GetCommContext() {
                     nullptr,
                     phi::errors::Unavailable("BKCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupBKCL::StartCoalescing() {
+  PADDLE_ENFORCE_EQ(is_coalescing_,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Coalescing is on, please call EndCoalesce."));
+  is_coalescing_ = true;
+  GroupStart();
+}
+
+void ProcessGroupBKCL::EndCoalescing(
+    std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>> tasks_opt) {
+  GroupEnd();
+
+  // NOTE(shenliang03): If using calculate stream, no need to record stream and
+  // update task.
+  if (!tasks_opt.has_value() | colaescing_place_keys_.empty()) {
+    is_coalescing_ = false;
+    return;
+  }
+
+  auto& tasks = tasks_opt.value();
+
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      colaescing_place_keys_.size(),
+      phi::errors::PreconditionNotMet(
+          "Number of tasks[%d] do not match number of collectives[%d].",
+          tasks.size(),
+          colaescing_place_keys_.size()));
+
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    auto* task = static_cast<ProcessGroupBKCL::BKCLTask*>(tasks[i].get());
+    const auto& key = colaescing_place_keys_[i];
+    const auto& comm_ctx = place_to_comm_ctx_.at(key);
+    task->comm_event_->Record(*comm_ctx.get());
+  }
+
+  is_coalescing_ = false;
+  colaescing_place_keys_.clear();
 }
 
 }  //  namespace distributed
