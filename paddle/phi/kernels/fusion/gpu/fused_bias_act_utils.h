@@ -23,10 +23,8 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
-#endif
 // for windows build
 #define M_SQRT1_2 0.70710678118654752440
 
@@ -36,15 +34,10 @@ namespace fusion {
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
-#ifdef PADDLE_WITH_HIP
-    assert(0 && "ROCM does not support FastGelu");
-#else
     return phi::GeluFwd<T, true>(x);
-#endif
   }
 };
 
-#ifndef PADDLE_WITH_HIP
 template <typename T>
 struct GeluComputeType;
 
@@ -119,7 +112,7 @@ struct ReluFunctor {
   }
 };
 
-inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
+inline gpuError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
@@ -133,9 +126,8 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
                     std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
                                       sm_count * max_thread_per_multiprocessor /
                                           kBlockSize * kNumWaves));
-  return cudaSuccess;
+  return gpuSuccess;
 }
-#endif
 
 }  // namespace fusion
 }  // namespace phi

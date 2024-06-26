@@ -122,6 +122,10 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
 #ifdef CINN_WITH_CUDA
         shared_mem_bytes = CalculateSharedMemory(func);
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
       });
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
@@ -139,6 +143,10 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::NVGPUArch) {
         call_kernel = runtime::intrinsic::call_cuda_kernel;
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
       });
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
@@ -158,7 +166,14 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                      ir::CallType::Extern,
                      ir::FunctionRef(),
                      0);
-  buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
+  if (buckets_.empty()) {
+    buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
+  } else {
+    auto false_expr = buckets_.back();
+    buckets_.pop_back();
+    buckets_.emplace_back(
+        ir::IfThenElse::Make(predicate, call_extern_api, false_expr));
+  }
 }
 
 void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(
