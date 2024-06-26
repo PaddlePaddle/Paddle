@@ -37,18 +37,18 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
 
-  int64_t index_axis = index_shape[index_shape.size() - 1];
-  index_dims_mapping[index_dims_mapping.size() - 1] = -1;
+  int index_axis = index_shape[index_shape.size() - 1];
+  index_dims_mapping[index_ndim - 1] = -1;
 
-  for (size_t axis = 0; axis < index_axis; axis++) {
+  for (int axis = 0; axis < index_axis; axis++) {
     x_dims_mapping[axis] = -1;
   }
 
   std::vector<int64_t> out_dims_mapping;
-  for (int i = 0; i < index_dims_mapping.size() - 1; ++i) {
+  for (int i = 0; i < index_ndim - 1; ++i) {
     out_dims_mapping.emplace_back(index_dims_mapping[i]);
   }
-  for (int64_t i = index_axis; i < x_dims_mapping.size(); ++i) {
+  for (int i = index_axis; i < x_ndim; ++i) {
     out_dims_mapping.emplace_back(x_dims_mapping[i]);
   }
 
@@ -59,13 +59,11 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(index_dist_attr_src);
   index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
 
-  const std::vector<int64_t> out_shape;
-  for (int i = 0; i < index_shape.size() - 1; ++i) {
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < index_ndim - 1; ++i) {
     out_shape.emplace_back(index_shape[i]);
   }
-  for (int i = static_cast<int>(index_shape[index_shape.size() - 1]);
-       i < x_shape.size();
-       ++i) {
+  for (int i = static_cast<int>(index_shape[index_ndim - 1]); i < x_ndim; ++i) {
     out_shape.emplace_back(x_shape[i]);
   }
 
@@ -93,16 +91,16 @@ SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
   std::vector<int64_t> out_dims_mapping(out_dims_mapping_src);
 
-  for (int64_t axis = 0; axis < index_ndim - 1; ++axis) {
+  for (int axis = 0; axis < index_ndim - 1; ++axis) {
     index_dims_mapping[axis] = out_dims_mapping[axis];
   }
   index_dims_mapping[index_ndim - 1] = -1;
 
-  int64_t index_axis = index_shape[index_ndim - 1];
-  for (size_t axis = 0; axis < index_axis; axis++) {
+  int index_axis = index_shape[index_ndim - 1];
+  for (int axis = 0; axis < index_axis; axis++) {
     x_dims_mapping[axis] = -1;
   }
-  for (size_t axis = x_ndim - 1; axis >= index_axis; axis--) {
+  for (int axis = x_ndim - 1; axis >= index_axis; axis--) {
     x_dims_mapping[axis] = out_dims_mapping[out_ndim + (axis - x_ndim)];
   }
 
