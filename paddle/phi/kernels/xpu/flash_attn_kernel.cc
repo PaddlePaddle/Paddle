@@ -43,7 +43,6 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#ifdef PADDLE_WITH_XPU_XRE5
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   // q, k, v [batch_size * seq_len, num_heads, head_dim]
   std::vector<int64_t> dims = common::vectorize(q.dims());
@@ -170,10 +169,6 @@ void FlashAttnUnpaddedKernel(
         nullptr);
     PADDLE_ENFORCE_EQ(r, 0, "xpu::qk_v_attention failed.");
   }
-#else
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnUnpaddedKernel"));
-#endif
 }
 
 template <typename T, typename Context>
@@ -273,7 +268,18 @@ void FlashAttnKernel(const Context& ctx,
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   float* softmax_lse_data = softmax_lse->data<float>();
   const float* bias_data = nullptr;
+  int64_t fa_layout = AttnQKVLayout_t::ATTN_BLHD;
   if (attn_mask.get_ptr() != nullptr) {
+    const auto& mask_dims = attn_mask->dims();
+    if (mask_dims.size() == 3 || (mask_dims[1] == 1 && mask_dims.size() == 4)) {
+      fa_layout |= AttnQKVLayout_t::BIAS_BLL;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          mask_dims.size(),
+          4,
+          phi::errors::InvalidArgument("flash_attn_fwd requires mask's shape "
+                                       "like [b,l,l] or [b, h, l, l]"));
+    }
     if (attn_mask->dtype() == phi::DataType::FLOAT32) {
       bias_data = attn_mask->data<float>();
     } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
@@ -322,7 +328,13 @@ void FlashAttnKernel(const Context& ctx,
       static_cast<int32_t>(seed_offset_data[0]),  // seed
       causal,                                     // is_causal
       nullptr,                                    // attn_mask
-      bias_data                                   // bias
+      bias_data,                                  // bias
+      nullptr,                                    // q_maxptr
+      nullptr,                                    // k_maxptr
+      nullptr,                                    // v_maxptr
+      nullptr,                                    // o_maxptr
+      false,                                      // is_qkv_fusion
+      fa_layout                                   // qkv_layout
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
 #else

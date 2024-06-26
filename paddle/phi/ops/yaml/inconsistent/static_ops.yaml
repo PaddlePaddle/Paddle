@@ -61,21 +61,13 @@
     backend: place>
     data_type : dtype
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : barrier
   args : (Tensor x, int ring_id=0)
   output : Tensor(out)
   kernel :
     func : barrier
-
-- op : batch_fc
-  args : (Tensor input, Tensor w, Tensor bias)
-  output : Tensor(out)
-  infer_meta:
-    func : BatchFCInferMeta
-  kernel :
-    func : batch_fc
-    data_type: input
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
@@ -211,6 +203,7 @@
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : distributed_fused_lamb
   args : (Tensor[] param, Tensor[] grad, Tensor fp32_fused_param, Tensor fp32_fused_grad, Tensor fp16_fused_param, Tensor fp16_fused_grad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fused_param_offsets, Tensor fp32_shard_fused_param_offsets, Tensor fp16_shard_fused_param_offsets, Tensor param_info, Tensor param_order, Tensor learning_rate, Tensor global_scale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, int[] ring_ids= {}, int acc_steps = 1, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, bool use_hierarchical_allreduce = false)
@@ -306,6 +299,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : feed
   args : (str name, int col)
@@ -335,6 +329,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -386,6 +381,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -398,6 +394,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hardswish
   args : (Tensor x)
@@ -408,6 +405,17 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
+
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+    param: [x, num_hash, mod_by]
+  kernel:
+    func: hash
+    param: [x, num_hash, mod_by]
+    data_type: x
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -420,6 +428,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -432,6 +441,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : load_combine
   args : (str file_path, bool load_as_fp16, bool model_from_memory)
@@ -446,14 +456,15 @@
   output : Tensor(out)
 
 - op : lrn
-  args : (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
-  output : Tensor(out), Tensor(mid_out)
-  infer_meta :
-    func : LrnInferMeta
+  args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
+  output: Tensor (out), Tensor (mid_out)
+  infer_meta:
+    func: LrnInferMeta
     param : [x, n]
-  kernel :
-    func : lrn
-  backward : lrn_grad
+  kernel:
+    func: lrn
+    data_type: x
+  backward: lrn_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -560,6 +571,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : partial_allgather
   args : (Tensor x, int nranks, int rank, int ring_id = 0, bool use_calc_stream = false)
@@ -589,7 +601,7 @@
     func : print_kernel
     param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : pull_box_sparse
   args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
@@ -680,6 +692,7 @@
     support_trans_dtype : x, y
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : reshape
   args : (Tensor x, IntArray shape)
@@ -785,6 +798,7 @@
     func: share_data
     param: [x]
   inplace : (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)

@@ -103,6 +103,11 @@ cinn_buffer_t *CreateBufferFromNumpyImpl(common::NVGPUArch, py::array data) {
 #endif
 }
 
+cinn_buffer_t *CreateBufferFromNumpyImpl(common::HygonDCUArchHIP,
+                                         py::array data) {
+  PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+}
+
 cinn_buffer_t *InterfaceCreateBufferFromNumpy(common::Arch arch,
                                               py::array data) {
   return std::visit(

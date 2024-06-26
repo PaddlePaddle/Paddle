@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -58,6 +59,7 @@ class ProcessGroup {
     }
     virtual void Synchronize() {}
     virtual void UpdateWaitChain(const phi::DeviceContext& ctx UNUSED) {}
+
     bool IsSync() const { return sync_op_; }
 
     // TODO(sunyilun): methods below will be removed later
@@ -113,6 +115,12 @@ class ProcessGroup {
         "ProcessGroup%s does not support get device_context.",
         GetBackendName()));
   }
+
+  virtual void StartCoalescing() {}
+
+  virtual void EndCoalescing(
+      std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
+          tasks_opt = std::nullopt) {}
 
   // without stream APIs
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
