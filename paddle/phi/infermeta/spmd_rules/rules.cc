@@ -651,6 +651,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdReverseBase));
 
+PD_REGISTER_SPMD_RULE(
+    gather_nd,
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmd),
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmdReverse));
+
 // one_hot
 PD_REGISTER_SPMD_RULE(one_hot,
                       PD_INFER_SPMD(phi::distributed::OneHotInferSpmd),

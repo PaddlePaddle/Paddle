@@ -29,6 +29,7 @@ from . import (  # noqa: F401
     dist_fused_feedforward,
     dist_fused_rms_norm,
     dist_fused_rope,
+    dist_gather_nd,
     dist_layer_norm,
     dist_matmul,
     dist_pnorm,
