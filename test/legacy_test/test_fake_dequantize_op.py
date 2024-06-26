@@ -272,11 +272,15 @@ class TestDequantizeOp(OpTest):
         ydq = dequantize_max_abs(yq, scale, self.max_range)
         scale = np.array(scale).astype(self.data_type)
         zero_point = np.zeros(scale.shape, dtype="int32")
+        self._qmax = (1 << (self.bit_length - 1)) - 1
+        self._qmin = -1 * self._qmax - 1
 
         self.inputs = {'X': yq, 'Scale': scale, 'ZeroPoint': zero_point}
         self.attrs = {
             'bit_length': self.bit_length,
             'quant_axis': self.quant_axis,
+            'qmin': self._qmin,
+            'qmax': self._qmax,
         }
         self.outputs = {'Y': ydq}
 
