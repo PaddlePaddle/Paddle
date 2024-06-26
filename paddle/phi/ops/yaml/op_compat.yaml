@@ -1875,6 +1875,14 @@
   outputs :
     out : Out
 
+- op : hash
+  inputs:
+    x : X
+  attrs :
+    runtime_shape : ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE
+  outputs:
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   inputs :

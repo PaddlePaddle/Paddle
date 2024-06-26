@@ -379,6 +379,17 @@
     param : [x]
   backward : hardswish_grad
 
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+    param: [x, num_hash, mod_by]
+  kernel:
+    func: hash
+    param: [x, num_hash, mod_by]
+    data_type: x
+
 - op : less_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -415,6 +426,17 @@
     func : linspace
     param: [start, stop, number, dtype]
     data_type : dtype
+
+- op : lrn
+  args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
+  output: Tensor (out), Tensor (mid_out)
+  infer_meta:
+    func: LrnInferMeta
+    param : [x, n]
+  kernel:
+    func: lrn
+    data_type: x
+  backward: lrn_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
