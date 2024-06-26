@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Unpack
 
 import paddle
 from paddle import nn
@@ -32,7 +32,7 @@ from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
-    from typing import Literal, TypedDict
+    from typing import Literal, NotRequired, TypedDict
 
     from paddle import Tensor
 
@@ -44,11 +44,11 @@ if TYPE_CHECKING:
         "densenet264",
     ]
 
-    class _DenseNetKwargs(TypedDict):
-        bn_size: int
-        dropout: float
-        num_classes: int
-        with_pool: bool
+    class _DenseNetOptions(TypedDict):
+        bn_size: NotRequired[int]
+        dropout: NotRequired[float]
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
 
 
 __all__ = []
@@ -372,7 +372,7 @@ def _densenet(
     arch: _DenseNetArch,
     layers: int,
     pretrained: bool,
-    **kwargs: _DenseNetKwargs,
+    **kwargs: Unpack[_DenseNetOptions],
 ) -> DenseNet:
     model = DenseNet(layers=layers, **kwargs)
     if pretrained:
@@ -390,7 +390,7 @@ def _densenet(
 
 
 def densenet121(
-    pretrained: bool = False, **kwargs: _DenseNetKwargs
+    pretrained: bool = False, **kwargs: Unpack[_DenseNetOptions]
 ) -> DenseNet:
     """DenseNet 121-layer model from
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
@@ -425,7 +425,7 @@ def densenet121(
 
 
 def densenet161(
-    pretrained: bool = False, **kwargs: _DenseNetKwargs
+    pretrained: bool = False, **kwargs: Unpack[_DenseNetOptions]
 ) -> DenseNet:
     """DenseNet 161-layer model from
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
@@ -460,7 +460,7 @@ def densenet161(
 
 
 def densenet169(
-    pretrained: bool = False, **kwargs: _DenseNetKwargs
+    pretrained: bool = False, **kwargs: Unpack[_DenseNetOptions]
 ) -> DenseNet:
     """DenseNet 169-layer model from
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
@@ -495,7 +495,7 @@ def densenet169(
 
 
 def densenet201(
-    pretrained: bool = False, **kwargs: _DenseNetKwargs
+    pretrained: bool = False, **kwargs: Unpack[_DenseNetOptions]
 ) -> DenseNet:
     """DenseNet 201-layer model from
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
@@ -529,7 +529,7 @@ def densenet201(
 
 
 def densenet264(
-    pretrained: bool = False, **kwargs: _DenseNetKwargs
+    pretrained: bool = False, **kwargs: Unpack[_DenseNetOptions]
 ) -> DenseNet:
     """DenseNet 264-layer model from
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
