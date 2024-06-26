@@ -29,19 +29,22 @@ namespace {
 
 inline auto kCanRunTrtAttr = paddle::dialect::kCanRunTrtAttr;
 
-#define DEFINE_GENERAL_PATTERN(OpName, OpType)                            \
-  class OpName##OpPattern : public pir::OpRewritePattern<OpType> {        \
-   public:                                                                \
-    using pir::OpRewritePattern<OpType>::OpRewritePattern;                \
-    bool MatchAndRewrite(OpType op,                                       \
-                         pir::PatternRewriter &rewriter) const override { \
-      if (op->HasAttribute(kCanRunTrtAttr) &&                             \
-          op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {     \
-        return false;                                                     \
-      }                                                                   \
-      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));        \
-      return true;                                                        \
-    }                                                                     \
+#define DEFINE_GENERAL_PATTERN(OpName, OpType)                              \
+  class OpName##OpPattern : public pir::OpRewritePattern<OpType> {          \
+   public:                                                                  \
+    using pir::OpRewritePattern<OpType>::OpRewritePattern;                  \
+    bool MatchAndRewrite(OpType op,                                         \
+                         pir::PatternRewriter &rewriter) const override {   \
+      if (op->HasAttribute(kCanRunTrtAttr) &&                               \
+          op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {       \
+        VLOG(3)                                                             \
+            << "Op " << #OpName                                             \
+            << "already has kCanRunTrtAttr set to true. Skipping rewrite."; \
+        return false;                                                       \
+      }                                                                     \
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));          \
+      return true;                                                          \
+    }                                                                       \
   };
 
 DEFINE_GENERAL_PATTERN(Matmul, paddle::dialect::MatmulOp)
@@ -62,10 +65,12 @@ class Pool2dOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "Pool2dOp already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
       return false;
     }
     auto padding_attr = op->attribute<pir::ArrayAttribute>("padding");
-    std::vector<int> paddings;
+    std::vector<int32_t> paddings;
     for (const auto &attr : padding_attr.AsVector()) {
       paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
     }
@@ -104,7 +109,7 @@ class Pool2dOpPattern
             } else {
               auto attr_value =
                   full_int_array_op->attribute<pir::ArrayAttribute>("value");
-              std::vector<int> kernel_size;
+              std::vector<int32_t> kernel_size;
               for (const auto &attr : attr_value.AsVector()) {
                 kernel_size.push_back(
                     attr.dyn_cast<pir::Int32Attribute>().data());
@@ -135,6 +140,8 @@ class Conv2dOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "Conv2dOp already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
       return false;
     }
 #if IS_TRT_VERSION_LT(7000)
@@ -143,7 +150,7 @@ class Conv2dOpPattern
           op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
       if (padding_algorithm == "SAME" && op->HasAttribute("strides")) {
         auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
-        std::vector<int> strides;
+        std::vector<int32_t> strides;
         for (const auto &attr : strides_attr.AsVector()) {
           strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
         }
@@ -158,6 +165,155 @@ class Conv2dOpPattern
       }
     }
 #endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class Conv2dTransposeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Conv2dTransposeOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::Conv2dTransposeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::Conv2dTransposeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "Conv2dTransposeOp already has kCanRunTrtAttr set to true. "
+                 "Skipping rewrite.";
+      return false;
+    }
+    if (!op->HasAttribute("dilations")) {
+      VLOG(3) << "In conv2d_transpose, dilations attribute does not exist";
+      return false;
+    } else {
+      auto dilation_attr = op->attribute<pir::ArrayAttribute>("dilations");
+      std::vector<int32_t> dilations;
+      for (const auto &attr : dilation_attr.AsVector()) {
+        dilations.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      }
+      if (dilations[0] != 1 || dilations[1] != 1) {
+        VLOG(3) << "In conv2d_transpose, Dilations must be (1, 1) for "
+                   "tensorRT, but given ("
+                << dilations[0] << ", " << dilations[1] << ")";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class FusedConv2dAddActOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FusedConv2dAddActOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FusedConv2dAddActOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FusedConv2dAddActOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "FusedConv2dAddActOp already has kCanRunTrtAttr set to true. "
+                 "Skipping rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(7000)
+    if (op->HasAttribute("padding_algorithm")) {
+      std::string padding_algorithm =
+          op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+      if (padding_algorithm == "SAME" && op->HasAttribute("strides")) {
+        auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
+        std::vector<int32_t> strides;
+        for (const auto &attr : strides_attr.AsVector()) {
+          strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+        }
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); ++i) {
+            if (strides[i] > 1) {
+              VLOG(3) << "The stride size should be 1 or less than 1";
+              return false;
+            }
+          }
+        }
+      }
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class DepthwiseConv2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::DepthwiseConv2dOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FusedConv2dAddActOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FusedConv2dAddActOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "DepthwiseConv2dOp already has kCanRunTrtAttr set to true. "
+                 "Skipping rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(7000)
+    if (op->HasAttribute("padding_algorithm")) {
+      std::string padding_algorithm =
+          op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+      if (padding_algorithm == "SAME" && op->HasAttribute("strides")) {
+        auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
+        std::vector<int32_t> strides;
+        for (const auto &attr : strides_attr.AsVector()) {
+          strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+        }
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); ++i) {
+            if (strides[i] > 1) {
+              VLOG(3) << "The stride size should be 1 or less than 1";
+              return false;
+            }
+          }
+        }
+      }
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class DepthwiseConv2dTransposeOpPattern
+    : public pir::OpRewritePattern<
+          paddle::dialect::DepthwiseConv2dTransposeOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::DepthwiseConv2dTransposeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::DepthwiseConv2dTransposeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "DepthwiseConv2dTransposeOp already has kCanRunTrtAttr set to "
+                 "true. Skipping rewrite.";
+      return false;
+    }
+    if (!op->HasAttribute("dilations")) {
+      VLOG(3) << "In depthwise_conv2d_transpose, dilations attribute does not "
+                 "exist";
+      return false;
+    } else {
+      auto dilation_attr = op->attribute<pir::ArrayAttribute>("dilations");
+      std::vector<int32_t> dilations;
+      for (const auto &attr : dilation_attr.AsVector()) {
+        dilations.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      }
+      if (dilations[0] != 1 || dilations[1] != 1) {
+        VLOG(3)
+            << "In depthwise_conv2d_transpose, Dilations must be (1, 1) for "
+               "tensorRT, but given ("
+            << dilations[0] << ", " << dilations[1] << ")";
+        return false;
+      }
+    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -183,6 +339,10 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dOpPattern>(context));
+    ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
+    ps.Add(std::make_unique<FusedConv2dAddActOpPattern>(context));
+    ps.Add(std::make_unique<DepthwiseConv2dOpPattern>(context));
+    ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
     return ps;
   }
 };
