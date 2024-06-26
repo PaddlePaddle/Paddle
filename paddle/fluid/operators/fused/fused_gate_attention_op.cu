@@ -29,8 +29,6 @@ template <typename T>
 using GateAttentionConfig = phi::fusion::GateAttentionConfig<T>;
 template <typename T>
 using GateAttentionGradConfig = phi::fusion::GateAttentionGradConfig<T>;
-template <typename T>
-using AllocWithDebugInfo = phi::fusion::AllocWithDebugInfo<T>;
 
 template <typename T>
 struct SigmoidMultiplyFunctor {
@@ -391,11 +389,11 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-    AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
+    phi::fusion::AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
     if (has_gating) {
-      AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
+      phi::fusion::AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
     }
-    AllocWithDebugInfo<T>(dev_ctx, "out", out);
+    phi::fusion::AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
     // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
     GateAttentionConfig<T> config(dev_ctx,
@@ -429,7 +427,8 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
                                                      config.num_heads,
                                                      config.head_dim}));
       }
-      AllocWithDebugInfo<T>(dev_ctx, "qkv_transpose_out", qkv_transpose_out);
+      phi::fusion::AllocWithDebugInfo<T>(
+          dev_ctx, "qkv_transpose_out", qkv_transpose_out);
     } else {
       // 1. Separated QKV Matmul
       phi::DenseTensor *query_out = config.GetQueryOut();
@@ -438,9 +437,12 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       ComputeSeparatedQKVMatmulForward<T>(
           ctx, config, query, key, query_out, key_out, value_out);
 
-      AllocWithDebugInfo<T>(dev_ctx, "q_transpose_out", q_transpose_out);
-      AllocWithDebugInfo<T>(dev_ctx, "k_transpose_out", k_transpose_out);
-      AllocWithDebugInfo<T>(dev_ctx, "v_transpose_out", v_transpose_out);
+      phi::fusion::AllocWithDebugInfo<T>(
+          dev_ctx, "q_transpose_out", q_transpose_out);
+      phi::fusion::AllocWithDebugInfo<T>(
+          dev_ctx, "k_transpose_out", k_transpose_out);
+      phi::fusion::AllocWithDebugInfo<T>(
+          dev_ctx, "v_transpose_out", v_transpose_out);
     }
 
     // 2. FMHA
@@ -455,7 +457,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
                                   &config);
     } else {
       auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
-      AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
+      phi::fusion::AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
 
       auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
       fmha_compute.ComputeForward(nonbatched_bias,
@@ -517,7 +519,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-    AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
+    phi::fusion::AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
     GateAttentionGradConfig<T> config(dev_ctx,
                                       query,
@@ -530,12 +532,14 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor fmha_out_grad;
     fmha_out_grad.Resize(config.gate_out_dims);
-    AllocWithDebugInfo<T>(dev_ctx, "fmha_out_grad", &fmha_out_grad);
+    phi::fusion::AllocWithDebugInfo<T>(
+        dev_ctx, "fmha_out_grad", &fmha_out_grad);
     if (has_gating) {
       // 1. Gradient of Output Linear: out = Linear(gate_out)
       phi::DenseTensor gate_out_grad;
       gate_out_grad.Resize(config.gate_out_dims);
-      AllocWithDebugInfo<T>(dev_ctx, "gate_out_grad", &gate_out_grad);
+      phi::fusion::AllocWithDebugInfo<T>(
+          dev_ctx, "gate_out_grad", &gate_out_grad);
       ComputeOutputLinearBackward<T>(
           ctx, config, gate_out, &gate_out_grad, use_fused_matmul_bias);
 
@@ -557,7 +561,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     // 3. Gradient of FMHA
     if (nonbatched_bias_grad) {
-      AllocWithDebugInfo<T>(
+      phi::fusion::AllocWithDebugInfo<T>(
           dev_ctx, "nonbatched_bias_grad", nonbatched_bias_grad);
     }
 
@@ -603,7 +607,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       auto *key_grad =
           ctx.Output<phi::DenseTensor>(framework::GradVarName("Key"));
       if (key_grad) {
-        AllocWithDebugInfo<T>(dev_ctx, "key_grad", key_grad);
+        phi::fusion::AllocWithDebugInfo<T>(dev_ctx, "key_grad", key_grad);
       }
       phi::DenseTensor *query_out_grad = config.GetQueryOutGrad();
       phi::DenseTensor *key_out_grad = config.GetKeyOutGrad();
