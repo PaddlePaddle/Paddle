@@ -1631,6 +1631,13 @@
   outputs :
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
 
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
+
 - op : fused_transpose
   inputs:
     {x : X}
