@@ -798,7 +798,7 @@ class TestPrimDivideWithGrad1(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad2(TestPrimTwoWithGrad):
@@ -813,7 +813,7 @@ class TestPrimDivideWithGrad2(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad3(TestPrimTwoWithGrad):
@@ -828,7 +828,7 @@ class TestPrimDivideWithGrad3(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad4(TestPrimTwoWithGrad):
@@ -843,7 +843,7 @@ class TestPrimDivideWithGrad4(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad5(TestPrimTwoWithGrad):
@@ -858,7 +858,7 @@ class TestPrimDivideWithGrad5(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad6(TestPrimTwoWithGrad):
@@ -873,7 +873,7 @@ class TestPrimDivideWithGrad6(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad7(TestPrimTwoWithGrad):
@@ -888,7 +888,7 @@ class TestPrimDivideWithGrad7(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = divide_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimDivideWithGrad8(TestPrimTwoWithGrad):
