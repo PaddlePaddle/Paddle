@@ -373,6 +373,7 @@ class CustomPrinter : public IrPrinter {
  public:
   explicit CustomPrinter(std::ostream& os, const PrintHooks& hooks)
       : IrPrinter(os), hooks_(hooks) {}
+  ~CustomPrinter() {}
   void PrintType(Type type) override {
     if (hooks_.type_print_hook) {
       hooks_.type_print_hook(type, *this);

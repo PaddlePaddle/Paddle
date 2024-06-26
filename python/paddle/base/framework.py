@@ -1798,6 +1798,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
