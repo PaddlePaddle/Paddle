@@ -38,6 +38,15 @@
     param: [x, reduce_type]
   inplace : (x -> out)
 
+- op : anchor_generator
+  args: (Tensor input, float[] anchor_sizes, float[] aspect_ratios, float[] variances, float[] stride={16.0, 16.0}, float offset=0.5)
+  output: Tensor (anchors), Tensor (variances_out)
+  infer_meta:
+    func: AnchorGeneratorInferMeta
+  kernel:
+    func: anchor_generator
+    data_type: input
+
 - op : assign
   args : (Tensor x)
   output : Tensor
