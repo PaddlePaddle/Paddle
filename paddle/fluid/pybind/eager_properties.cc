@@ -411,6 +411,7 @@ Examples:
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
         >>> import paddle.distributed as dist
+        >>> from paddle.base import core
 
         >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
 
