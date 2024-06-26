@@ -14,14 +14,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
-
     from paddle import Tensor
 
-    _PaddingSizeMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']
+    from .pooling import _PaddingSizeMode
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle._typing import (

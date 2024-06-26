@@ -1144,9 +1144,8 @@ class Pad1D(Layer):
 
             >>> input_shape = (1, 2, 3)
             >>> pad = [1, 2]
-            >>> mode = "constant"
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.Pad1D(padding=pad, mode=mode)
+            >>> my_pad = nn.Pad1D(padding=pad, mode="constant")
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1284,9 +1283,8 @@ class Pad2D(Layer):
 
             >>> input_shape = (1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2]
-            >>> mode = "constant"
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.Pad2D(padding=pad, mode=mode)
+            >>> my_pad = nn.Pad2D(padding=pad, mode="constant")
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1430,9 +1428,8 @@ class Pad3D(Layer):
 
             >>> input_shape = (1, 1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2, 0, 0]
-            >>> mode = "constant"
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.Pad3D(padding=pad, mode=mode)
+            >>> my_pad = nn.Pad3D(padding=pad, mode="constant")
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
