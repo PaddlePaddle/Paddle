@@ -130,28 +130,36 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
       } else if (utils::EndsWith(tensor->buffer->name, "_write_cache") ||
                  utils::EndsWith(tensor->buffer->name, "_read_cache") ||
                  utils::EndsWith(tensor->buffer->name, "_temp_buffer")) {
+        auto setNvHygon = [&] {
+          auto axis_names = stages_[tensor]->axis_names();
+          auto compute_ats = stages_[tensor]->GetComputeAts();
+          if (compute_ats.size() == 1) {
+            int level_tmp;
+            for (auto &i : compute_ats) {
+              level_tmp = i.second.level;
+            }
+            std::vector<Var> replace_vars;
+            for (int j = 0; j <= level_tmp; j++) {
+              if (var_to_extent.count(axis_names[j]) == 0) continue;
+              replace_vars.push_back(
+                  Var(var_to_extent[axis_names[j]], axis_names[j]));
+            }
+            replace_var.push_back(replace_vars);
+            tensor_names.push_back(tensor->buffer->name);
+          }
+        };
         cinn::common::DefaultDeviceTarget().arch.Match(
             [&](std::variant<common::UnknownArch,
                              common::X86Arch,
                              common::ARMArch>) {},
             [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-              auto axis_names = stages_[tensor]->axis_names();
-              auto compute_ats = stages_[tensor]->GetComputeAts();
-              if (compute_ats.size() == 1) {
-                int level_tmp;
-                for (auto &i : compute_ats) {
-                  level_tmp = i.second.level;
-                }
-                std::vector<Var> replace_vars;
-                for (int j = 0; j <= level_tmp; j++) {
-                  if (var_to_extent.count(axis_names[j]) == 0) continue;
-                  replace_vars.push_back(
-                      Var(var_to_extent[axis_names[j]], axis_names[j]));
-                }
-                replace_var.push_back(replace_vars);
-                tensor_names.push_back(tensor->buffer->name);
-              }
+              setNvHygon();
+#endif
+            },
+            [&](common::HygonDCUArchHIP arch) {
+#ifdef CINN_WITH_HIP
+              setNvHygon();
 #endif
             });
         bool keep_buffer = temp_buffer;
