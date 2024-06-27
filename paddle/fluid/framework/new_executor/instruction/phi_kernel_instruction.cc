@@ -171,6 +171,11 @@ PhiKernelInstruction::PhiKernelInstruction(
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
+
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, value_exec_info_, this);
+  }
 }
 
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
@@ -181,6 +186,13 @@ void PhiKernelInstruction::Run() {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  for (auto& pair : this->InplaceInfo()) {
+    const auto& in = paddle::framework::GetTensorFromVar(pair.first);
+    auto* out = paddle::framework::GetMutableTensorFromVar(pair.second);
+    if (in.dims() == out->dims()) {
+      out->ShareBufferWith(in);
+    }
+  }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";

@@ -173,6 +173,11 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
+
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, value_exec_info_, this);
+  }
 }
 
 LegacyKernelInstruction::~LegacyKernelInstruction() {
@@ -184,6 +189,13 @@ void LegacyKernelInstruction::Run() {
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  }
+  for (auto& pair : this->InplaceInfo()) {
+    const auto& in = paddle::framework::GetTensorFromVar(pair.first);
+    auto* out = paddle::framework::GetMutableTensorFromVar(pair.second);
+    if (in.dims() == out->dims()) {
+      out->ShareBufferWith(in);
+    }
   }
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));

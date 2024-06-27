@@ -65,5 +65,28 @@ void InsertInplacedExternalInputsToOuts(
 
 bool GetCondData(const phi::DenseTensor& cond);
 
+inline const phi::DenseTensor& GetTensorFromVar(const Variable* var) {
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->Get<phi::DenseTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of phi::DenseTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
+  }
+}
+
+inline phi::DenseTensor* GetMutableTensorFromVar(Variable* var) {
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->GetMutable<phi::DenseTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of phi::DenseTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
+  }
+}
+
+void HandleForInplaceOp(pir::Operation* op,
+                        const ValueExecutionInfo* value_exe_info,
+                        InstructionBase* instr);
 }  // namespace framework
 }  // namespace paddle

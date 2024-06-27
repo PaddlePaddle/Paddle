@@ -274,12 +274,12 @@ const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
 
 void InstructionBase::ClearEagerGCVars() { eager_gc_vars_.clear(); }
 
-const std::vector<std::pair<Variable*, Variable*>>&
+const std::vector<std::pair<const Variable*, Variable*>>&
 InstructionBase::InplaceInfo() const {
   return vec_inplace_in_to_out_;
 }
 
-void InstructionBase::AddInplace(Variable* in, Variable* out) {
+void InstructionBase::AddInplace(const Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
 
