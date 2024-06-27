@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/op_registry.h"
+
 namespace paddle::operators {
 
 using BlockDesc = framework::BlockDesc;
