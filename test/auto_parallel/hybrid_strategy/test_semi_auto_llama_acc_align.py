@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
 import collective.test_communication_api_base as test_base
 
@@ -40,3 +41,7 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
                 "semi_auto_llama_acc_align.py",
                 user_defined_envs=envs,
             )
+
+
+if __name__ == "__main__":
+    unittest.main()  # python run

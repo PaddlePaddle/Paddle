@@ -42,6 +42,7 @@ from paddle.framework import (
     in_pir_mode,
 )
 from paddle.tensor.creation import full
+from paddle.utils import deprecated
 
 from ...base.data_feeder import (
     check_dtype,
@@ -1880,6 +1881,12 @@ def pad(
     return out
 
 
+@deprecated(
+    since="3.0.0",
+    update_to="paddle.nn.ZeroPad2D",
+    level=1,
+    reason="Please use class ZeroPad2D",
+)
 def zeropad2d(
     x: Tensor,
     padding: ShapeLike,

@@ -1454,7 +1454,7 @@ MatmulJudgeDtypeKernel(const Context& ctx,
 }
 
 #if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 12100
+#if CUDA_VERSION >= 12010
 template <typename Context>
 typename std::enable_if<std::is_same<Context, phi::GPUContext>::value>::type
 DispatchMatmulFP8Kernel(const Context& ctx,

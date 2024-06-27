@@ -89,6 +89,8 @@ struct Target {
 
   std::string arch_str() const;
 
+  std::string device_name_str() const;
+
   bool operator==(const Target& other) const;
   bool operator!=(const Target& other) const { return !(*this == other); }
   friend std::ostream& operator<<(std::ostream& os, const Target& target);

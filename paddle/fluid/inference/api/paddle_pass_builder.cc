@@ -518,6 +518,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
+      "map_op_to_another_pass",
       // "quant_dequant_xpu_pass", open this pass when use old int8 model
       "delete_quant_dequant_linear_op_pass",
       "delete_weight_dequant_linear_op_pass",
@@ -635,7 +636,9 @@ const std::vector<std::string> kPirXpuPasses{
     // Operator fusion pass
     "add_layernorm_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
-    "group_norm_silu_fuse_pass"};
+    "conv2d_add_xpu_fuse_pass",
+    "group_norm_silu_fuse_pass",
+    "fc_xpu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses {
   "delete_quant_dequant_linear_op_pass", "delete_weight_dequant_linear_op_pass",

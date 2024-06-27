@@ -65,11 +65,17 @@ class LinearQuanter(Layer):
             shape=scales.shape, attr=scale_attr, dtype="float32"
         )
         self._scales.set_value(scales)
-        self._zero_point = (
-            paddle.zeros([1], dtype="float32")
-            if zero_point is None
-            else paddle.to_tensor(zero_point)
+        zero_point = zero_point if zero_point is not None else zero_point
+        zero_point = paddle.to_tensor(zero_point, dtype="float32")
+        zp_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
         )
+        self._zero_point = self.create_parameter(
+            shape=zero_point.shape, attr=zp_attr, dtype="float32"
+        )
+        self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
@@ -172,10 +178,15 @@ class LinearDequanter(Layer):
             shape=scales.shape, attr=scale_attr, dtype="float32"
         )
         self._scales.set_value(scales)
-        self._zero_point = (
-            paddle.zeros([1], dtype="float32")
-            if zero_point is None
-            else paddle.to_tensor(zero_point)
+        zero_point = zero_point if zero_point is not None else zero_point
+        zero_point = paddle.to_tensor(zero_point, dtype="float32")
+        zp_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
+        )
+        self._zero_point = self.create_parameter(
+            shape=zero_point.shape, attr=zp_attr, dtype="float32"
         )
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
@@ -320,9 +331,8 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
 
     def _convert_quanter_to_qdq(self, quanter_name) -> LinearQuanterDequanter:
         r"""Convert quanter to an instance of LinearQuanterDequanter."""
-        assert hasattr(
-            self, quanter_name
-        ), f"{quanter_name} is not attribute of current layer."
+        if not hasattr(self, quanter_name):
+            return None
         quanter = getattr(self, quanter_name)
         if quanter is None:
             return None

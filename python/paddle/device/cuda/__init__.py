@@ -164,7 +164,7 @@ def empty_cache():
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 
-            >>> tensor = paddle.randn([512, 512, 512], "float")
+            >>> tensor = paddle.randn([512, 512, 512], "float64")
             >>> del tensor
             >>> paddle.device.cuda.empty_cache()
     '''
