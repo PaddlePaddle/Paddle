@@ -304,17 +304,17 @@ class NormalTest(unittest.TestCase):
 class ComplexNormalTest(NormalTest):
     def init_numpy_data(self, batch_size, dims):
         # loc is 'complex' and scale is 'float'
-        m = int((np.random.ranf() - 0.5) * 8)
+        m = int((np.random.ranf() - 0.5) * 4)
         self.loc_np = m + m * 1j
         self.scale_np = (np.random.ranf() - 0.5) * 4
         while self.scale_np < 0:
             self.scale_np = (np.random.ranf() - 0.5) * 4
         # used to construct another Normal object to calculate kl_divergence
-        m2 = int((np.random.ranf() - 0.5) * 8)
+        m2 = int((np.random.ranf() - 0.5) * 4)
         self.other_loc_np = m2 + m2 * 1j
-        self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
+        self.other_scale_np = int((np.random.ranf() - 0.5) * 4)
         while self.other_scale_np < 0:
-            self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
+            self.other_scale_np = int((np.random.ranf() - 0.5) * 4)
         v1 = np.random.ranf(1)
         v2 = np.random.ranf(1)
         self.values_np = np.vectorize(complex)(v1, v2).astype('complex64')
@@ -351,9 +351,9 @@ class ComplexNormalTest2(NormalTest):
         # used to construct another Normal object to calculate kl_divergence
         m2 = int((np.random.ranf() - 0.5) * 8)
         self.other_loc_np = m2 + m2 * 1j
-        self.other_scale_np = (np.random.ranf() - 0.5) * 4
+        self.other_scale_np = (np.random.ranf() - 0.5) * 8
         while self.other_scale_np < 0:
-            self.other_scale_np = (np.random.ranf() - 0.5) * 4
+            self.other_scale_np = (np.random.ranf() - 0.5) * 8
         v1 = np.random.ranf(1)
         v2 = np.random.ranf(1)
         self.values_np = np.vectorize(complex)(v1, v2).astype('complex64')
@@ -377,7 +377,7 @@ class NormalTest3(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
@@ -413,7 +413,7 @@ class ComplexNormalTest3(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
@@ -445,7 +445,7 @@ class NormalTest4(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
@@ -481,7 +481,7 @@ class ComplexNormalTest4(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
@@ -513,7 +513,7 @@ class NormalTest5(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
@@ -557,7 +557,7 @@ class ComplexNormalTest5(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
@@ -599,7 +599,7 @@ class NormalTest6(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
@@ -650,7 +650,7 @@ class ComplexNormalTest6(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float32'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float32'
             )
@@ -697,7 +697,7 @@ class NormalTest7(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
@@ -752,7 +752,7 @@ class ComplexNormalTest7(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
@@ -805,7 +805,7 @@ class NormalTest8(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
@@ -860,7 +860,7 @@ class ComplexNormalTest8(NormalTest):
         self.other_scale_np = np.random.randn(batch_size, dims).astype(
             'float64'
         )
-        while not np.all(self.scale_np > 0):
+        while not np.all(self.other_scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size, dims).astype(
                 'float64'
             )
