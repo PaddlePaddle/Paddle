@@ -32,11 +32,15 @@ KernelSignature QuantizeLinearOpArgumentMapping(
                             "only_observer"},
                            {"Y"});
   } else {
-    return KernelSignature(
-        "quantize_linear_deprecated_train",
-        {"X", "Scale", "ZeroPoint", "InAccum", "InState"},
-        {"quant_axis", "bit_length", "round_type", "only_observer"},
-        {"Y", "OutState", "OutAccum", "OutScale"});
+    return KernelSignature("quantize_linear_deprecated_train",
+                           {"X", "Scale", "ZeroPoint", "InAccum", "InState"},
+                           {"quant_axis",
+                            "bit_length",
+                            "qmin",
+                            "qmax",
+                            "round_type",
+                            "only_observer"},
+                           {"Y", "OutState", "OutAccum", "OutScale"});
   }
 }
 
