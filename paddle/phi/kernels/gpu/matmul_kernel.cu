@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if CUDA_VERSION >= 12100 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 890
+#if CUDA_VERSION >= 12010 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 890
 PD_REGISTER_KERNEL(matmul,
                    GPU,
                    ALL_LAYOUT,

@@ -24,6 +24,9 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/external_func_names.h"
 #include "paddle/common/enforce.h"
+
+const int default_priority = 100;
+
 namespace cinn {
 namespace ir {
 
@@ -166,7 +169,7 @@ StaticShapeGroupScheduler::GetIRs() {
 }
 
 std::vector<int> StaticShapeGroupScheduler::GetPriorities() {
-  std::vector<int> priorities = {100};
+  std::vector<int> priorities = {default_priority};
   return priorities;
 }
 

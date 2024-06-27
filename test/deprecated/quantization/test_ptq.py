@@ -91,6 +91,7 @@ class TestPTQ(unittest.TestCase):
         quant_model, ptq = self._get_model_for_ptq()
 
         image = paddle.rand([1, 1, 32, 32], dtype="float32")
+        out = quant_model(image)
         converted_model = ptq.convert(quant_model)
         out = converted_model(image)
         self.assertIsNotNone(out)
@@ -132,6 +133,7 @@ class TestPTQ(unittest.TestCase):
         quant_model, ptq = self._get_model_for_ptq()
 
         image = paddle.rand([1, 1, 32, 32], dtype="float32")
+        out = quant_model(image)
         converted_model = ptq.convert(quant_model)
         converted_model = ptq.convert(converted_model)
         out = converted_model(image)

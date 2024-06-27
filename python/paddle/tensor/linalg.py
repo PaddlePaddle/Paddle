@@ -324,6 +324,110 @@ def matmul(
         return out
 
 
+def fp8_fp8_half_gemm_fused(
+    x,
+    y,
+    transpose_x=False,
+    transpose_y=False,
+    bias=None,
+    scale=1.0,
+    output_dtype="float16",
+    act="identity",
+    name=None,
+):
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fp8_fp8_half_gemm_fused(
+            x, y, bias, transpose_x, transpose_y, scale, output_dtype, act
+        )
+    else:
+        attrs = {
+            'transpose_x': transpose_x,
+            'transpose_y': transpose_y,
+            'scale': scale,
+            'output_dtype': output_dtype,
+            'act': act,
+        }
+        if bias is None:
+
+            def __check_input(x, y):
+                var_names = {'x': x, 'y': y}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(
+                        val,
+                        name,
+                        [
+                            'float8_e5m2',
+                            'float8_e4m3fn',
+                        ],
+                        'fp8_fp8_half_gemm_fused',
+                    )
+
+            __check_input(x, y)
+
+            helper = LayerHelper('fp8_fp8_half_gemm_fused', **locals())
+            if output_dtype == 'float16':
+                out = helper.create_variable_for_type_inference(dtype='float16')
+            elif output_dtype == 'bfloat16':
+                out = helper.create_variable_for_type_inference(
+                    dtype='bfloat16'
+                )
+            else:
+                raise ValueError("The output_dtype must be float16 or bfloa16")
+
+            helper.append_op(
+                type='fp8_fp8_half_gemm_fused',
+                inputs={'x': x, 'y': y},
+                outputs={'out': out},
+                attrs=attrs,
+            )
+            return out
+        else:
+
+            def __check_input(x, y):
+                var_names = {'x': x, 'y': y}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(
+                        val,
+                        name,
+                        [
+                            'float8_e5m2',
+                            'float8_e4m3fn',
+                        ],
+                        'fp8_fp8_half_gemm_fused',
+                    )
+
+            __check_input(x, y)
+            if output_dtype == 'float16':
+                check_variable_and_dtype(
+                    bias, 'bias', ['float16'], 'fp8_fp8_half_gemm_fused'
+                )
+            elif output_dtype == 'bfloat16':
+                check_variable_and_dtype(
+                    bias, 'bias', ['bfloat16'], 'fp8_fp8_half_gemm_fused'
+                )
+            else:
+                raise ValueError("The output_dtype must be float16 or bfloa16")
+
+            helper = LayerHelper('fp8_fp8_half_gemm_fused', **locals())
+
+            if output_dtype == 'float16':
+                out = helper.create_variable_for_type_inference(dtype='float16')
+            elif output_dtype == 'bfloat16':
+                out = helper.create_variable_for_type_inference(
+                    dtype='bfloat16'
+                )
+            else:
+                raise ValueError("The output_dtype must be float16 or bfloa16")
+
+            helper.append_op(
+                type='fp8_fp8_half_gemm_fused',
+                inputs={'x': x, 'y': y, 'bias': bias},
+                outputs={'out': out},
+                attrs=attrs,
+            )
+            return out
+
+
 def vector_norm(
     x: Tensor,
     p: float = 2.0,

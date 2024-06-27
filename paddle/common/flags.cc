@@ -1745,6 +1745,11 @@ PHI_DEFINE_EXPORTED_int32(
     -1,
     "Max count of eliminate redundant computation in CSE, for debug usage");
 
+PHI_DEFINE_EXPORTED_bool(
+    use_xqa_optim,
+    false,
+    "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
