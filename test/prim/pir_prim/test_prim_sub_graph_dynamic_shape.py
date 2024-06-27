@@ -86,6 +86,10 @@ def bce_loss_net(x, label):
     return paddle._C_ops.bce_loss(x, label)
 
 
+def one_hot_net(x):
+    return paddle.nn.functional.one_hot(x, 10)
+
+
 def swiglu_net1(x, y):
     return paddle.incubate.nn.functional.swiglu(x, y)
 
@@ -286,6 +290,29 @@ class TestPrimStack(TestPrimBase):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = stack_net
         self.necessary_ops = "pd_op.stack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimOneHot(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [10]
+        self.dtype_x = "int32"
+        self.init_x_shape = [None]
+        self.depth = 10
+        self.x = (
+            np.array(
+                [
+                    np.random.randint(0, self.depth - 1)
+                    for i in range(self.depth)
+                ]
+            )
+            .astype(self.dtype_x)
+            .reshape([self.depth])
+        )
+        self.net = one_hot_net
+        self.necessary_ops = "pd_op.one_hot"
         self.enable_cinn = False
         self.tol = 1e-6
 
