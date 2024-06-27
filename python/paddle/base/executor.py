@@ -944,7 +944,8 @@ class _ExecutorCache:
         )
 
     def _get_program_and_executor(self, cached_data):
-        program = cached_data.program
+        # do type promotion if necessary
+        program = process_type_promotion(cached_data.program)
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -1173,6 +1174,8 @@ class _ExecutorCache:
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
                 decomp.decompose_dist_program(program)
+        if in_cinn_mode():
+            apply_cinn_pass(program)
         return program, new_exe, data_op_infos
 
 
@@ -1799,8 +1802,6 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
-            # do type promotion if necessary
-            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,

@@ -49,4 +49,14 @@ void ResidualAddRmsNormWrapper(const Context& ctx,
                                T* residual_output,
                                T* output);
 
+template <typename T, typename Context>
+void RmsNormWrapper(const Context& ctx,
+                    const T* x,
+                    const T* weight,
+                    const T* bias,
+                    const float epsilon,
+                    const int rows,
+                    const int cols,
+                    T* output);
+
 }  // namespace phi
