@@ -156,12 +156,20 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
       dev_ctx, kernel, perm1, &kernel_transpose);
 
   // kernel_volume in_channels out_channels --> kernel_volume out_channels
-  DenseTensor kernel_transpose2 =
-      phi::EmptyLike<T, GPUContext>(dev_ctx, kernel_transpose);
+  DenseTensor kernel_transpose2;
   std::vector<int> perm2;
   if (is2D) {
+    kernel_transpose2 = phi::Empty<T>(
+        dev_ctx,
+        {kernel_dims[0], kernel_dims[1], kernel_dims[3], kernel_dims[2]});
     perm2 = {0, 1, 3, 2};
   } else {
+    kernel_transpose2 = phi::Empty<T>(dev_ctx,
+                                      {kernel_dims[0],
+                                       kernel_dims[1],
+                                       kernel_dims[2],
+                                       kernel_dims[4],
+                                       kernel_dims[3]});
     perm2 = {0, 1, 2, 4, 3};
   }
   phi::funcs::TransposeGPUKernelDriver<T>(
@@ -173,8 +181,8 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
                                           out_grad.values(),
                                           kernel_transpose2,
                                           *(out_in_map_bwd),
-                                          x.dims()[0],
-                                          x.dims()[1],
+                                          x.nnz(),
+                                          in_channels,
                                           *(x_grad->mutable_values()));
   }
 
@@ -192,16 +200,26 @@ void Conv3dGradImplicitGemmGPUKernel(const GPUContext& dev_ctx,
     kernel_grad_sum = phi::Sum<T>(
         dev_ctx, kernel_grad_out, {0}, kernel_grad_out.dtype(), false);
     kernel_grad_sum.Resize({kernel_volume, out_channels, in_channels});
-    *kernel_grad =
+    DenseTensor kernel_grad_transpose =
         phi::Empty<T>(dev_ctx, {kernel_volume, in_channels, out_channels});
     std::vector<int> perm3 = {0, 2, 1};
     phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx, kernel_grad_sum, perm3, kernel_grad);
-    kernel_grad->Resize(kernel.dims());
+        dev_ctx, kernel_grad_sum, perm3, &kernel_grad_transpose);
+    kernel_grad_transpose.Resize(kernel_transpose.dims());
+
+    *kernel_grad = phi::EmptyLike<T, GPUContext>(dev_ctx, kernel);
+    std::vector<int> perm4;
+    if (is2D) {
+      perm4 = {1, 0, 2, 3};
+    } else {
+      perm4 = {2, 1, 0, 3, 4};
+    }
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx, kernel_grad_transpose, perm4, kernel_grad);
   }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      "conv_forward_implicit_gemm_cuda is only supported on CUDA."));
+      "conv_implicit_gemm is only supported on CUDA."));
 #endif
 }
 
