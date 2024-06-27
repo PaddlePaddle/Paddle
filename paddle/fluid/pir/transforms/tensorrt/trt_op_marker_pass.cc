@@ -55,6 +55,7 @@ DEFINE_GENERAL_PATTERN(Relu, paddle::dialect::ReluOp)
 DEFINE_GENERAL_PATTERN(FullIntArray, paddle::dialect::FullIntArrayOp)
 DEFINE_GENERAL_PATTERN(Reshape, paddle::dialect::ReshapeOp)
 DEFINE_GENERAL_PATTERN(Dropout, paddle::dialect::DropoutOp)
+DEFINE_GENERAL_PATTERN(bmm, paddle::dialect::BmmOp)
 #undef DEFINE_GENERAL_PATTERN
 
 class Pool2dOpPattern
@@ -100,26 +101,31 @@ class Pool2dOpPattern
       if (pool_type == "avg") {
         if (op->HasAttribute("global_pooling")) {
           if (!op->attribute<pir::BoolAttribute>("global_pooling").data()) {
-            paddle::dialect::FullIntArrayOp full_int_array_op =
-                pir::GetDefiningOpForInput(op, 1)
-                    ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-            if (!full_int_array_op) {
-              VLOG(3) << "Cannot find FullIntArrayOp";
-              return false;
-            } else {
-              auto attr_value =
-                  full_int_array_op->attribute<pir::ArrayAttribute>("value");
-              std::vector<int32_t> kernel_size;
-              for (const auto &attr : attr_value.AsVector()) {
-                kernel_size.push_back(
-                    attr.dyn_cast<pir::Int32Attribute>().data());
-              }
-              for (size_t i = 0; i < kernel_size.size(); ++i) {
-                if (kernel_size[i] <= paddings[i]) {
-                  VLOG(3) << "the padding size should be less than the "
-                             "filter size "
-                             "for exclusive-counting pooling.";
+            if (op->HasAttribute("exclusive")) {
+              if (op->attribute<pir::BoolAttribute>("exclusive").data()) {
+                paddle::dialect::FullIntArrayOp full_int_array_op =
+                    pir::GetDefiningOpForInput(op, 1)
+                        ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+                if (!full_int_array_op) {
+                  VLOG(3) << "Cannot find FullIntArrayOp";
                   return false;
+                } else {
+                  auto attr_value =
+                      full_int_array_op->attribute<pir::ArrayAttribute>(
+                          "value");
+                  std::vector<int32_t> kernel_size;
+                  for (const auto &attr : attr_value.AsVector()) {
+                    kernel_size.push_back(
+                        attr.dyn_cast<pir::Int32Attribute>().data());
+                  }
+                  for (size_t i = 0; i < kernel_size.size(); ++i) {
+                    if (kernel_size[i] <= paddings[i]) {
+                      VLOG(3) << "the padding size should be less than the "
+                                 "filter size "
+                                 "for exclusive-counting pooling.";
+                      return false;
+                    }
+                  }
                 }
               }
             }
@@ -319,6 +325,94 @@ class DepthwiseConv2dTransposeOpPattern
   }
 };
 
+class DeformableConvOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::DeformableConvOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::DeformableConvOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::DeformableConvOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "deformable_conv already has kCanRunTrtAttr set to "
+                 "true. Skipping rewrite.";
+      return false;
+    }
+    if (!op->HasAttribute("groups") || !op->HasAttribute("strides") ||
+        !op->HasAttribute("paddings")) {
+      VLOG(3) << "In deformable_conv, groups or strides or paddings attributes "
+                 "do not exist";
+      return false;
+    }
+    pir::Value input = op.operand_source(0);
+    auto input_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto input_shape = input_type.dims();
+    if (input_shape.size() != 4) {
+      VLOG(3) << "Input of deformable conv should be 4-D Tensor, but got "
+              << input_shape.size() << "-D Tensor";
+      return false;
+    }
+    pir::Value filter = op.operand_source(2);
+    auto filter_type =
+        filter.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto filter_shape = filter_type.dims();
+    int groups = op->attribute<pir::Int32Attribute>("groups").data();
+    if (input_shape[1] != filter_shape[1] * groups) {
+      VLOG(3) << "The number of input channels should be equal to filter "
+              << "channels * groups. But got input channels " << input_shape[1]
+              << "filter channels " << filter_shape[1];
+      return false;
+    }
+    std::vector<int32_t> strides;
+    auto stride_attr = op->attribute<pir::ArrayAttribute>("strides");
+    for (const auto &attr : stride_attr.AsVector()) {
+      strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    if (strides.size() != 2) {
+      VLOG(3) << "The size of strides should be 2, but got " << strides.size();
+      return false;
+    }
+    std::vector<int32_t> paddings;
+    auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
+    for (const auto &attr : padding_attr.AsVector()) {
+      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    if (paddings.size() != 2) {
+      VLOG(3) << "The size of paddings should be 2, but got "
+              << paddings.size();
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class ArangeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ArangeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ArangeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::ArangeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "arange already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    pir::Value start = op.operand_source(0);
+    auto start_type = pir::GetDataTypeFromValue(start);
+    if (!start_type.isa<pir::Float32Type>() ||
+        !start_type.isa<pir::Float64Type>()) {
+      VLOG(3) << "The type of start is not float32 or float64";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -336,6 +430,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(FullIntArray)
     ADD_PATTERN(Reshape)
     ADD_PATTERN(Dropout)
+    ADD_PATTERN(bmm)
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dOpPattern>(context));
@@ -343,6 +438,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<FusedConv2dAddActOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
+    ps.Add(std::make_unique<DeformableConvOpPattern>(context));
+    ps.Add(std::make_unique<ArangeOpPattern>(context)
     return ps;
   }
 };
