@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include <iostream>
 
 #include "./cutlass_kernels/fp8_fp8_dual_gemm_scale_bias_act.h"

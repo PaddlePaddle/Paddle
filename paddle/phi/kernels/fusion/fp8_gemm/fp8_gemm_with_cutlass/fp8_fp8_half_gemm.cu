@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include <iostream>
 
 #include "./cutlass_kernels/fp8_fp8_gemm_scale_bias_act.h"
@@ -37,14 +38,15 @@ void fp8_fp8_half_gemm(
     const bool trans_x,
     const bool trans_y,
     const float scale,  // only support per-tensor quantization
+    const std::string& output_dtype,
     const std::string& activation_type,
     DenseTensor* out) {
   static_assert(std::is_same<Context, phi::GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
 
-  VLOG(3) << "fp8_fp8_half_gemm_fused of cutlass start run: "
+  VLOG(3) << "fp8_fp8_half_gemm_fused of cutlass start run: ";
 
-      void out_ptr = nullptr;
+  void* out_ptr = nullptr;
   if (out->dtype() == phi::DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
     out_ptr = reinterpret_cast<void*>(out->data<phi::dtype::bfloat16>());
@@ -97,14 +99,22 @@ void fp8_fp8_half_gemm(
 
   std::string input_dtype =
       (x.dtype() == phi::DataType::FLOAT8_E4M3FN) ? "e4m3" : "e5m2";
-  std::string output_dtype = "bf16";
+  std::string cutlass_output_dtype = "";
+  if (output_dtype == "bfloat16") {
+    cutlass_output_dtype = std::string("bf16");
+  } else if (output_dtype == "float16") {
+    cutlass_output_dtype = std::string("fp16");
+  } else {
+    PADDLE_THROW(phi::errors::Fatal(
+        "fp8_fp8_half_gemm_fused only support bfloat16 and float16 output"));
+  }
   std::string isbias = bias ? "bias_" : "";
   std::string act = (activation_type == "" || activation_type == "identity")
                         ? "identity"
                         : activation_type;
 
   std::string gemm_config =
-      input_dtype + "_" + output_dtype + "_" + isbias + act;
+      input_dtype + "_" + cutlass_output_dtype + "_" + isbias + act;
 
   void* bias_data = nullptr;
   std::vector<int64_t> bias_dims{};
