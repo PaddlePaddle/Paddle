@@ -2485,7 +2485,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
+      (contain_unknown_dim(scale_dim) || contain_unknown_dim(bias_dim))) {
     check = false;
   }
 

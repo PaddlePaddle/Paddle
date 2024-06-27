@@ -912,13 +912,16 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
 
   bool check = true;
-  if (!scale || !bias ||
-      ((!config.is_runtime) && (common::product(scale.dims()) <= 0 ||
-                                common::product(bias.dims()) <= 0))) {
+  if (!scale || !bias) {
     check = false;
   }
 
-  if (check && config.is_runtime) {
+  if ((!config.is_runtime) &&
+      (contain_unknown_dim(scale.dims()) || contain_unknown_dim(bias.dims()))) {
+    check = false;
+  }
+
+  if (check) {
     PADDLE_ENFORCE_EQ(scale.dims()[0],
                       C,
                       phi::errors::InvalidArgument(
@@ -4947,7 +4950,7 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(x_dims) <= 0 || common::product(labels_dims) <= 0)) {
+      (contain_unknown_dim(x_dims) || contain_unknown_dim(labels_dims))) {
     check = false;
   }
 

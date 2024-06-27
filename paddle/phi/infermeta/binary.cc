@@ -236,7 +236,7 @@ void BCELossInferMeta(const MetaTensor& input,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(input_dims) <= 0 || common::product(label_dims) <= 0)) {
+      (contain_unknown_dim(input_dims) || contain_unknown_dim(label_dims))) {
     check = false;
   }
 
