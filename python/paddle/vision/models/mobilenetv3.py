@@ -70,8 +70,8 @@ class SqueezeExcitation(nn.Layer):
         self,
         input_channels: int,
         squeeze_channels: int,
-        activation: type[nn.Layer] = nn.ReLU,
-        scale_activation: type[nn.Layer] = nn.Sigmoid,
+        activation: nn.Layer = nn.ReLU,
+        scale_activation: nn.Layer = nn.Sigmoid,
     ) -> None:
         super().__init__()
         self.avgpool = nn.AdaptiveAvgPool2D(1)
