@@ -172,13 +172,8 @@ class MultiHeadAttention(Layer):
             [2, 4, 128]
     """
 
-    class Cache(NamedTuple):
-        k: Tensor
-        v: Tensor
-
-    class StaticCache(NamedTuple):
-        k: Tensor
-        v: Tensor
+    Cache = collections.namedtuple("Cache", ["k", "v"])
+    StaticCache = collections.namedtuple("StaticCache", ["k", "v"])
 
     embed_dim: int
     kdim: int
@@ -1709,7 +1704,7 @@ class Transformer(Layer):
                 values. When the data type is float, the unwanted positions have
                 `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
-            memory_mask (Tensor|NOne, optional): A tensor used in decoder-encoder
+            memory_mask (Tensor|None, optional): A tensor used in decoder-encoder
                 cross attention to prevents attention to some unwanted positions,
                 usually the paddings. It is a tensor with shape broadcasted to
                 `[batch_size, n_head, target_length, source_length]`. When the
