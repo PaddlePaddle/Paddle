@@ -3089,8 +3089,8 @@ class ReplaceFakeQuantDequantPass:
             if op.op().has_attr("bit_length")
             else self._quant_bits
         )
-        qmin = op.op().attr("qmin")
-        qmax = op.op().attr("qmax")
+        qmax = (1 << (bit_length - 1)) - 1
+        qmin = -1 * qmax - 1
 
         zero_point_node = None
         quanted_node = x_node
