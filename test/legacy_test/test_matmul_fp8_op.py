@@ -44,7 +44,7 @@ def check_fp8_support() -> bool:
     # Device compute capability 8.9 or higher required for FP8 execution.
     if gpu_arch < 89:  # pre-ada
         return False
-    if get_cuda_version() < 12100:
+    if get_cuda_version() < 12010:
         return False
     return True
 
