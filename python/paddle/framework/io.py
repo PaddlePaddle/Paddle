@@ -783,7 +783,7 @@ def save(obj, path, protocol=4, **configs):
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            ...     d_model=100, warmup_steps=100, verbose=True)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
             ...     parameters=emb.parameters())
@@ -1044,7 +1044,7 @@ def load(path, **configs):
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            ...     d_model=100, warmup_steps=100, verbose=True)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
             ...     parameters=emb.parameters())

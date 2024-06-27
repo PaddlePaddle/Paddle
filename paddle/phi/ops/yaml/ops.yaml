@@ -435,6 +435,16 @@
     data_type : param
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
+- op : batch_fc
+  args : (Tensor input, Tensor w, Tensor bias)
+  output : Tensor(out)
+  infer_meta:
+    func : BatchFCInferMeta
+  kernel :
+    func : batch_fc
+    data_type: input
+  backward: batch_fc_grad
+
 - op : bce_loss
   args : (Tensor input, Tensor label)
   output : Tensor
@@ -1252,6 +1262,18 @@
   optional: param
   data_transform :
     skip_transform : current_step, nranks
+
+- op : dgc_clip_by_norm
+  args: (Tensor x, Tensor current_step, float max_norm, float rampup_begin_step = -1.0)
+  output: Tensor(out)
+  infer_meta:
+    func: ClipByNormInferMeta
+    param: [x, max_norm]
+  kernel:
+    func: dgc_clip_by_norm {dense, dense -> dense}
+          dgc_clip_by_norm_sr {selected_rows, dense -> selected_rows}
+  data_transform :
+    skip_transform : current_step
 
 - op : dgc_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
