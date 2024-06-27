@@ -1,4 +1,5 @@
-paddle_test(test_builtin_parameter SRCS test_builtin_parameter.cc)
+paddle_test(test_builtin_parameter SRCS test_builtin_parameter.cc DEPS
+            pir_save_load)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
