@@ -109,7 +109,8 @@ std::string IterSpaceTypeToDir(const common::Target target,
   checkexist(root_path);
   checkexist(root_path + target_str);
   checkexist(root_path + target_str + "/" + dirname);
-  VLOG(3) << "Dump_path is " << root_path + dirname + "/" + filename + ".json";
+  VLOG(3) << "Dump_path is "
+          << root_path + target_str + "/" + dirname + "/" + filename + ".json";
   return root_path + target_str + "/" + dirname + "/" + filename + ".json";
 }
 
