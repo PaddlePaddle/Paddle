@@ -428,8 +428,7 @@ class ConcatOpPattern
 
   bool Match(paddle::dialect::ConcatOp op) const override {
     const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
-    auto axis_gen_op = op->operand_source(1).defining_op();
-    return !is_denied && axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+    return !is_denied && PatternConstraint(op);
   }
 
   void Rewrite(paddle::dialect::ConcatOp op,
@@ -438,7 +437,6 @@ class ConcatOpPattern
     auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
     int axis = static_cast<int>(
         full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
-
     auto input_ops = op->operand_source(0)
                          .defining_op()
                          ->dyn_cast<pir::CombineOp>()
@@ -447,6 +445,14 @@ class ConcatOpPattern
     auto cinn_concat = rewriter.Build<cinn::dialect::ConcatOp>(input_ops, axis);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_concat.result(0));
     rewriter.EraseOp(op);
+  }
+
+ private:
+  bool PatternConstraint(paddle::dialect::ConcatOp op) const {
+    const pir::Operation *inputs_gen_op = op->operand_source(0).defining_op();
+    const pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
+    return axis_gen_op->isa<paddle::dialect::FullOp>() &&
+           inputs_gen_op->isa<pir::CombineOp>();
   }
 };
 
@@ -520,13 +526,8 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SplitOp op) const override {
-    auto sections_gen_op = op->operand_source(1)
-                               .defining_op()
-                               ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    auto axis_gen_op = op->operand_source(2)
-                           .defining_op()
-                           ->dyn_cast<paddle::dialect::FullOp>();
-    return sections_gen_op && axis_gen_op;
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied && PatternConstraint(op);
   }
 
   void Rewrite(paddle::dialect::SplitOp op,
@@ -548,6 +549,23 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   }
 
  private:
+  bool PatternConstraint(paddle::dialect::SplitOp op) const {
+    const auto &OnlyUsedBySplitOrSlice = [&]() -> bool {
+      for (auto it = op.out().use_begin(); it != op.out().use_end();) {
+        const pir::Operation *downstream_op = (it++)->owner();
+        if (!downstream_op->isa<::pir::SliceOp>() ||
+            !downstream_op->isa<::pir::SplitOp>()) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const pir::Operation *sections_gen_op = op->operand_source(1).defining_op();
+    const pir::Operation *axis_gen_op = op->operand_source(2).defining_op();
+    return sections_gen_op->isa<paddle::dialect::FullIntArrayOp>() &&
+           axis_gen_op->isa<paddle::dialect::FullOp>() &&
+           OnlyUsedBySplitOrSlice();
+  }
   int GetAxis(paddle::dialect::SplitOp op) const {
     auto axis_gen_op = op->operand_source(2).defining_op();
     auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
