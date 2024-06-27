@@ -578,7 +578,8 @@ void LayerNormKernel(const Context &dev_ctx,
                                    VecSize,                                  \
                                    WARPS_M,                                  \
                                    WARPS_N,                                  \
-                                   BYTES_PER_LDG>                            \
+                                   BYTES_PER_LDG,                            \
+                                   feature_size>                             \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \
@@ -605,8 +606,7 @@ void LayerNormKernel(const Context &dev_ctx,
   if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
        feature_size == 4096) &&
       scale != nullptr && bias != nullptr) {
-    // can_call_fast_kernel = true;
-    can_call_fast_kernel = false;
+    can_call_fast_kernel = true;
   }
 
   if (can_call_fast_kernel) {
