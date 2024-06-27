@@ -38,5 +38,7 @@ message(STATUS "gemm kernel files:\n" ${CMAKE_CURRENT_SOURCE_DIR})
 
 cuda_add_library(cutlassFP8FP8GemmFused SHARED ${cutlass_fp8_fp8_gemm_fused})
 
+message(STATUS "PADDLE_LIB:\n" ${PADDLE_LIB})
+
 target_link_libraries(cutlassFP8FP8GemmFused
-                      "${PADDLE_LIB}/paddle/lib/libphi.so")
+                      "${PADDLE_LIB}/paddle/lib/libphi_core.so")
