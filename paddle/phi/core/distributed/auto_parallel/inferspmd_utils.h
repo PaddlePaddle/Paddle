@@ -40,8 +40,7 @@ class InferSpmdContext {
   InferSpmdContext() = default;
   InferSpmdContext(
       paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs,
-      paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs)
-      : inputs_(std::move(inputs)), attrs_(std::move(attrs)) {}
+      paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs);
 
   void EmplaceBackInput(DistMetaTensor input);
   void EmplaceBackAttr(Attribute attr);
