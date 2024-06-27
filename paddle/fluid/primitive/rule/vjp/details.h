@@ -126,14 +126,12 @@ void divide_grad(const Tensor& x,
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
-    Tensor one_tensor;
-    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(x.shape())) {
-      one_tensor = backend::full_with_tensor<T>(shape<T>(y), 1.0, y.dtype());
+    Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
+    if (has_dynamic_shape(x.shape())) {
       auto dx_res = one_tensor / y * out_grad;
       auto dx_tmp = reduce_as<T>(dx_res, x);
       set_output<T>(dx_tmp, dx);
     } else {
-      one_tensor = full<T>(y.shape(), 1.0, y.dtype());
       auto dx_res = one_tensor / y * out_grad;
       if (out_grad.dims() != x.dims()) {
         auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
