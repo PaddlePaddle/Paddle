@@ -16,23 +16,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-    from paddle.distributed.communication.group import Group
-
 import numpy
 
 import paddle
 from paddle import _C_ops, pir
-from paddle._typing import (
-    DataLayout2D,
-    DataLayout3D,
-    DataLayoutND,
-    IntSequence,
-    ShapeLike,
-    Size2,
-    Size4,
-)
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
@@ -42,6 +29,7 @@ from paddle.framework import (
     in_pir_mode,
 )
 from paddle.tensor.creation import full
+from paddle.utils import deprecated
 
 from ...base.data_feeder import (
     check_dtype,
@@ -54,6 +42,33 @@ from ...tensor.creation import zeros
 # TODO: define the common functions to build a neural network
 from ...tensor.manipulation import squeeze, unsqueeze
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1DVariant,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+        IntSequence,
+        ShapeLike,
+        Size2,
+        Size4,
+    )
+    from paddle.distributed.communication.group import Group
+
+    _InterpolateMode: TypeAlias = Literal[
+        'linear', 'area', 'nearest', 'bilinear', 'bicubic', 'trilinear'
+    ]
+    _DropoutMode: TypeAlias = Literal['upscale_in_train', 'downscale_in_infer']
+    _PaddingTensorMode: TypeAlias = Literal[
+        "constant", "reflect", "replicate", "circular"
+    ]
+    _PaddingSizeMode: TypeAlias = Literal[  # noqa: PYI047
+        'valid', 'same', 'VALID', 'SAME'
+    ]
+
 __all__ = []
 
 
@@ -61,7 +76,7 @@ def unfold(
     x: Tensor,
     kernel_sizes: Size2,
     strides: Size2 = 1,
-    paddings: Size4 = 0,
+    paddings: Size2 | Size4 = 0,
     dilations: Size2 = 1,
     name: str | None = None,
 ) -> Tensor:
@@ -202,14 +217,12 @@ def unfold(
 def interpolate(
     x: Tensor,
     size: ShapeLike | None = None,
-    scale_factor: ShapeLike | None = None,
-    mode: Literal[
-        'linear', 'area', 'nearest', 'bilinear', 'bicubic', 'trilinear'
-    ] = 'nearest',
+    scale_factor: ShapeLike | float | None = None,
+    mode: _InterpolateMode = 'nearest',
     align_corners: bool = False,
     align_mode: int = 0,
     data_format: (
-        Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"] | None
+        DataLayout1DVariant | DataLayout2D | DataLayout3D | None
     ) = None,
     name: str | None = None,
 ) -> Tensor:
@@ -762,12 +775,12 @@ def upsample(
     x: Tensor,
     size: ShapeLike | None = None,
     scale_factor: ShapeLike | None = None,
-    mode: Literal[
-        'linear', 'nearest', 'bilinear', 'bicubic', 'trilinear'
-    ] = 'nearest',
+    mode: _InterpolateMode = 'nearest',
     align_corners: bool = False,
     align_mode: int = 0,
-    data_format: Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"] = None,
+    data_format: (
+        DataLayout1DVariant | DataLayout2D | DataLayout3D | None
+    ) = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -788,6 +801,7 @@ def upsample(
     - 'trilinear' : Trilinear interpolation
     - 'nearest' : Nearest neighbor interpolation
     - 'bicubic' : Bicubic interpolation
+    - 'area': Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
@@ -920,7 +934,7 @@ def upsample(
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if
              it is either a list or a tuple or a Tensor. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              Default: None.
-        mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear',
+        mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear', 'area',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool, optional) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
@@ -1028,9 +1042,7 @@ def dropout(
     p: float = 0.5,
     axis: int | IntSequence | None = None,
     training: bool = True,
-    mode: Literal[
-        'upscale_in_train', 'downscale_in_infer'
-    ] = "upscale_in_train",
+    mode: _DropoutMode = "upscale_in_train",
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1609,7 +1621,7 @@ def alpha_dropout(
 def pad(
     x: Tensor,
     pad: ShapeLike,
-    mode: Literal["constant", "reflect", "replicate", "circular"] = 'constant',
+    mode: _PaddingTensorMode = 'constant',
     value: float = 0.0,
     data_format: DataLayoutND = "NCHW",
     name: str | None = None,
@@ -1880,6 +1892,12 @@ def pad(
     return out
 
 
+@deprecated(
+    since="3.0.0",
+    update_to="paddle.nn.ZeroPad2D",
+    level=1,
+    reason="Please use class ZeroPad2D",
+)
 def zeropad2d(
     x: Tensor,
     padding: ShapeLike,
@@ -2264,7 +2282,7 @@ def class_center_sample(
         >>> # num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
         >>> num_classes_list = [10, 10]
         >>> num_classes = paddle.sum(paddle.to_tensor(num_classes_list))
-        >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
+        >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64') # type: ignore
         >>> label_list = [] # type: ignore
         >>> dist.all_gather(label_list, label)
         >>> label = paddle.concat(label_list, axis=0)

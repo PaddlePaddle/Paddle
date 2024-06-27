@@ -12,14 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 from collections.abc import Sequence
 from functools import partial, reduce
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from typing_extensions import Self
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
+from paddle._typing import (
+    DTypeLike,
+    NestedStructure,
+    ShapeLike,
+    TensorOrTensors,
+)
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
@@ -38,18 +48,27 @@ from paddle.tensor.manipulation import tensor_array_to_tensor
 from .container import LayerList
 from .layers import Layer
 
+if TYPE_CHECKING:
+    from typing import Literal
+
+    from paddle import ParamAttr, Tensor
+
+    _DirectionType = Literal["forward", "bidirect", "bidirectional"]
+    _RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]
+    _ActivationType = Literal["tanh", "relu"]
+
 __all__ = []
 
 
 def rnn(
-    cell,
-    inputs,
-    initial_states=None,
-    sequence_length=None,
-    time_major=False,
-    is_reverse=False,
-    **kwargs,
-):
+    cell: RNNCellBase,
+    inputs: Tensor,
+    initial_states: TensorOrTensors | None = None,
+    sequence_length: Tensor | None = None,
+    time_major: bool = False,
+    is_reverse: bool = False,
+    **kwargs: Any,
+) -> tuple[Tensor | tuple[Tensor, ...], Tensor | tuple[Tensor, ...]]:
     r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
     which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`)
@@ -65,7 +84,7 @@ def rnn(
             rnn cell. Tensor or a possibly nested structure of tensors. If not
             provided, `cell.get_initial_states` would be called to produce
             the initial state. Defaults to None.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64
+        sequence_length (Tensor|None, optional): shape `[batch_size]`, dtype: int64
             or int32. The valid lengths of input sequences. Defaults to None.
             If `sequence_length` is not None, the inputs are treated as
             padded sequences. In each input sequence, elements whose time step
@@ -129,18 +148,18 @@ def rnn(
 
 
 class ArrayWrapper:
-    def __init__(self, x):
+    def __init__(self, x: Tensor) -> None:
         self.array = [x]
 
-    def append(self, x):
+    def append(self, x: Tensor) -> Self:
         self.array.append(x)
         return self
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> Tensor:
         return self.array.__getitem__(item)
 
 
-def _maybe_copy(state, new_state, step_mask):
+def _maybe_copy(state: Tensor, new_state: Tensor, step_mask: Tensor) -> Tensor:
     """update rnn state or just pass the old state through"""
     new_state = paddle.tensor.math._multiply_with_axis(
         new_state, step_mask, axis=0
@@ -148,7 +167,7 @@ def _maybe_copy(state, new_state, step_mask):
     return new_state
 
 
-def _transpose_batch_time(x):
+def _transpose_batch_time(x: Tensor) -> Tensor:
     perm = [1, 0] + list(range(2, len(x.shape)))
     return paddle.transpose(x, perm)
 
@@ -365,14 +384,14 @@ def _rnn_static_graph(
 
 
 def birnn(
-    cell_fw,
-    cell_bw,
-    inputs,
-    initial_states=None,
-    sequence_length=None,
-    time_major=False,
-    **kwargs,
-):
+    cell_fw: RNNCellBase,
+    cell_bw: RNNCellBase,
+    inputs: Tensor,
+    initial_states: tuple[Tensor, Tensor] | list[Tensor] | None = None,
+    sequence_length: Tensor | None = None,
+    time_major: bool = False,
+    **kwargs: Any,
+) -> tuple[Tensor, tuple[Tensor, Tensor]]:
     r"""
     birnn creates a bidirectional recurrent neural network specified by
     RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()`
@@ -387,11 +406,11 @@ def birnn(
             If time_major is True, the shape is
             `[time_steps, batch_size, input_size]`
             else the shape is `[batch_size, time_steps, input_size]`.
-        initial_states(tuple, optional): A tuple of initial states of
+        initial_states(tuple|None, optional): A tuple of initial states of
             `cell_fw` and `cell_bw`.
             If not provided, `cell.get_initial_states` would be called to
             produce initial state for each cell. Defaults to None.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64
+        sequence_length (Tensor|None, optional): shape `[batch_size]`, dtype: int64
             or int32. The valid lengths of input sequences. Defaults to None.
             If `sequence_length` is not None, the inputs are treated as
             padded sequences. In each input sequence, elements whose time step
@@ -464,7 +483,11 @@ def birnn(
     return outputs, final_states
 
 
-def split_states(states, bidirectional=False, state_components=1):
+def split_states(
+    states: TensorOrTensors,
+    bidirectional: bool = False,
+    state_components: int = 1,
+) -> list[Tensor] | list[list[Tensor]]:
     r"""
     Split states of RNN network into possibly nested list or tuple of
     states of each RNN cells of the RNN network.
@@ -517,7 +540,11 @@ def split_states(states, bidirectional=False, state_components=1):
             return list(zip(states[::2], states[1::2]))
 
 
-def concat_states(states, bidirectional=False, state_components=1):
+def concat_states(
+    states: Sequence[Tensor],
+    bidirectional: bool = False,
+    state_components: int = 1,
+) -> Tensor | tuple[Tensor, Tensor]:
     r"""
     Concatenate a possibly nested list or tuple of RNN cell states into a
     compact form.
@@ -567,8 +594,13 @@ class RNNCellBase(Layer):
     """
 
     def get_initial_states(
-        self, batch_ref, shape=None, dtype=None, init_value=0.0, batch_dim_idx=0
-    ):
+        self,
+        batch_ref: Tensor,
+        shape: NestedStructure[ShapeLike] | None = None,
+        dtype: NestedStructure[DTypeLike] | None = None,
+        init_value: float = 0.0,
+        batch_dim_idx: int = 0,
+    ) -> NestedStructure[Tensor]:
         r"""
         Generate initialized states according to provided shape, data type and
         value.
@@ -578,12 +610,12 @@ class RNNCellBase(Layer):
                 determine the batch size, which is used to generate initial
                 states. For `batch_ref`'s shape d, `d[batch_dim_idx]` is
                 treated as batch size.
-            shape (list|tuple, optional): A (possibly nested structure of) shape[s],
+            shape (list|tuple|None, optional): A (possibly nested structure of) shape[s],
                 where a shape is a list/tuple of integer. `-1` (for batch size)
                 will be automatically prepended if a shape does not starts with
                 it. If None, property `state_shape` will be used. Defaults to
                 None.
-            dtype (str|list|tuple, optional): A (possibly nested structure of)
+            dtype (str|list|tuple|None, optional): A (possibly nested structure of)
                 data type[s]. The structure must be same as that of `shape`,
                 except when all tensors' in states has the same data type, a
                 single data type can be used. If None and property `cell.state_shape`
@@ -673,7 +705,7 @@ class RNNCellBase(Layer):
         return init_states
 
     @property
-    def state_shape(self):
+    def state_shape(self) -> None:
         r"""
         Abstract method (property).
         Used to initialize states.
@@ -689,7 +721,7 @@ class RNNCellBase(Layer):
         )
 
     @property
-    def state_dtype(self):
+    def state_dtype(self) -> None:
         r"""
         Abstract method (property).
         Used to initialize states.
@@ -727,15 +759,15 @@ class SimpleRNNCell(RNNCellBase):
         hidden_size (int): The hidden size.
         activation (str, optional): The activation in the SimpleRNN cell.
             It can be `tanh` or `relu`. Defaults to `tanh`.
-        weight_ih_attr (ParamAttr, optional): The parameter attribute for
+        weight_ih_attr (ParamAttr|None, optional): The parameter attribute for
             :math:`weight_ih`. Default: None.
-        weight_hh_attr(ParamAttr, optional): The parameter attribute for
+        weight_hh_attr(ParamAttr|None, optional): The parameter attribute for
             :math:`weight_hh`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
+        bias_ih_attr (ParamAttr|None, optional): The parameter attribute for the
             :math:`bias_ih`. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
+        bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             :math:`bias_hh`. Default: None.
-        name (str, optional): Name for the operation (optional, default is
+        name (str|None, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Variables:
@@ -773,15 +805,15 @@ class SimpleRNNCell(RNNCellBase):
 
     def __init__(
         self,
-        input_size,
-        hidden_size,
-        activation="tanh",
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        name=None,
-    ):
+        input_size: int,
+        hidden_size: int,
+        activation: _ActivationType | str = "tanh",
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
@@ -858,7 +890,7 @@ class SimpleRNNCell(RNNCellBase):
         self.activation = activation
         self._activation_fn = paddle.tanh if activation == "tanh" else F.relu
 
-    def forward(self, inputs, states=None):
+    def forward(self, inputs: Tensor, states: Tensor | None = None):
         if states is None:
             states = self.get_initial_states(inputs, self.state_shape)
         pre_h = states
@@ -872,10 +904,10 @@ class SimpleRNNCell(RNNCellBase):
         return h, h
 
     @property
-    def state_shape(self):
+    def state_shape(self) -> tuple[int]:
         return (self.hidden_size,)
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         s = '{input_size}, {hidden_size}'
         if self.activation != "tanh":
             s += ', activation={activation}'
@@ -919,18 +951,18 @@ class LSTMCell(RNNCellBase):
     Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
-        weight_ih_attr(ParamAttr, optional): The parameter attribute for
+        weight_ih_attr(ParamAttr|None, optional): The parameter attribute for
             `weight_ih`. Default: None.
-        weight_hh_attr(ParamAttr, optional): The parameter attribute for
+        weight_hh_attr(ParamAttr|None, optional): The parameter attribute for
             `weight_hh`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
+        bias_ih_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_ih`. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
+        bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_hh`. Default: None.
         proj_size (int, optional): If specified, the output hidden state
             will be projected to `proj_size`. `proj_size` must be smaller than
             `hidden_size`. Default: None.
-        name (str, optional): Name for the operation (optional, default is
+        name (str|None, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Variables:
@@ -978,15 +1010,15 @@ class LSTMCell(RNNCellBase):
 
     def __init__(
         self,
-        input_size,
-        hidden_size,
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        proj_size=0,
-        name=None,
-    ):
+        input_size: int,
+        hidden_size: int,
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        proj_size: int = 0,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
@@ -1071,7 +1103,7 @@ class LSTMCell(RNNCellBase):
         self._gate_activation = F.sigmoid
         self._activation = paddle.tanh
 
-    def forward(self, inputs, states=None):
+    def forward(self, inputs: Tensor, states: Sequence[Tensor] | None = None):
         if states is None:
             states = self.get_initial_states(inputs, self.state_shape)
         pre_hidden, pre_cell = states
@@ -1095,7 +1127,7 @@ class LSTMCell(RNNCellBase):
         return h, (h, c)
 
     @property
-    def state_shape(self):
+    def state_shape(self) -> tuple[tuple[int], tuple[int]]:
         r"""
         The `state_shape` of LSTMCell is a tuple with two shapes:
         `((hidden_size, ), (hidden_size,))`. (-1 for batch size would be
@@ -1104,7 +1136,7 @@ class LSTMCell(RNNCellBase):
         """
         return ((self.hidden_size,), (self.proj_size or self.hidden_size,))
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return '{input_size}, {hidden_size}'.format(**self.__dict__)
 
 
@@ -1136,15 +1168,15 @@ class GRUCell(RNNCellBase):
     Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
-        weight_ih_attr(ParamAttr, optional): The parameter attribute for
+        weight_ih_attr(ParamAttr|None, optional): The parameter attribute for
             `weight_ih`. Default: None.
-        weight_hh_attr(ParamAttr, optional): The parameter attribute for
+        weight_hh_attr(ParamAttr|None, optional): The parameter attribute for
             `weight_hh`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
+        bias_ih_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_ih`. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
+        bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_hh`. Default: None.
-        name (str, optional): Name for the operation (optional, default is
+        name (str|None, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Variables:
@@ -1188,14 +1220,14 @@ class GRUCell(RNNCellBase):
 
     def __init__(
         self,
-        input_size,
-        hidden_size,
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        name=None,
-    ):
+        input_size: int,
+        hidden_size: int,
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
@@ -1266,7 +1298,9 @@ class GRUCell(RNNCellBase):
         self._gate_activation = F.sigmoid
         self._activation = paddle.tanh
 
-    def forward(self, inputs, states=None):
+    def forward(
+        self, inputs: Tensor, states: Tensor | None = None
+    ) -> tuple[Tensor, Tensor]:
         if states is None:
             states = self.get_initial_states(inputs, self.state_shape)
 
@@ -1289,7 +1323,7 @@ class GRUCell(RNNCellBase):
         return h, h
 
     @property
-    def state_shape(self):
+    def state_shape(self) -> tuple[int]:
         r"""
         The `state_shape` of GRUCell is a shape `[hidden_size]` (-1 for batch
         size would be automatically inserted into shape). The shape corresponds
@@ -1297,7 +1331,7 @@ class GRUCell(RNNCellBase):
         """
         return (self.hidden_size,)
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return '{input_size}, {hidden_size}'.format(**self.__dict__)
 
 
@@ -1350,7 +1384,12 @@ class RNN(Layer):
 
     """
 
-    def __init__(self, cell, is_reverse=False, time_major=False):
+    def __init__(
+        self,
+        cell: RNNCellBase,
+        is_reverse: bool = False,
+        time_major: bool = False,
+    ) -> None:
         super().__init__()
         self.cell = cell
         if not hasattr(self.cell, "call"):
@@ -1360,7 +1399,11 @@ class RNN(Layer):
         self.time_major = time_major
 
     def forward(
-        self, inputs, initial_states=None, sequence_length=None, **kwargs
+        self,
+        inputs: Tensor,
+        initial_states: TensorOrTensors | None = None,
+        sequence_length: Tensor = None,
+        **kwargs: Any,
     ):
         final_outputs, final_states = rnn(
             self.cell,
@@ -1389,8 +1432,8 @@ class BiRNN(Layer):
 
     Inputs:
         - **inputs** (Tensor): the input sequences of both RNN. If time_major is True, the shape of is `[time_steps, batch_size, input_size]`, else the shape is `[batch_size, time_steps, input_size]`, where input_size is the input size of both cells.
-        - **initial_states** (list|tuple, optional): A tuple/list of the initial states of the forward cell and backward cell. Defaults to None. If not provided, `cell.get_initial_states` would be called to produce the initial states for each cell. Defaults to None.
-        - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
+        - **initial_states** (list|tuple|None, optional): A tuple/list of the initial states of the forward cell and backward cell. Defaults to None. If not provided, `cell.get_initial_states` would be called to produce the initial states for each cell. Defaults to None.
+        - **sequence_length** (Tensor|None, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
         - **kwargs**: Additional keyword arguments. Arguments passed to `forward` for each cell.
 
     Outputs:
@@ -1423,7 +1466,12 @@ class BiRNN(Layer):
 
     """
 
-    def __init__(self, cell_fw, cell_bw, time_major=False):
+    def __init__(
+        self,
+        cell_fw: RNNCellBase,
+        cell_bw: RNNCellBase,
+        time_major: bool = False,
+    ) -> None:
         super().__init__()
         self.cell_fw = cell_fw
         self.cell_bw = cell_bw
@@ -1439,8 +1487,12 @@ class BiRNN(Layer):
         self.time_major = time_major
 
     def forward(
-        self, inputs, initial_states=None, sequence_length=None, **kwargs
-    ):
+        self,
+        inputs: Tensor,
+        initial_states: tuple[Tensor, Tensor] | list[Tensor] | None = None,
+        sequence_length: Tensor | None = None,
+        **kwargs: Any,
+    ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
         if isinstance(initial_states, (list, tuple)):
             assert (
                 len(initial_states) == 2
@@ -1466,21 +1518,21 @@ class RNNBase(LayerList):
 
     def __init__(
         self,
-        mode,
-        input_size,
-        hidden_size,
-        num_layers=1,
-        direction="forward",
-        time_major=False,
-        dropout=0.0,
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        proj_size=0,
-    ):
+        mode: _RNNType | str,
+        input_size: int,
+        hidden_size: int,
+        num_layers: int = 1,
+        direction: _DirectionType | str = "forward",
+        time_major: bool = False,
+        dropout: float = 0.0,
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        proj_size: int = 0,
+    ) -> None:
         super().__init__()
-        bidirectional_list = ["bidirectional", "bidirect"]
+        bidirectional_list: list[str] = ["bidirectional", "bidirect"]
         self.mode = mode
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -1490,7 +1542,7 @@ class RNNBase(LayerList):
         self.num_layers = num_layers
         self.state_components = 2 if mode == "LSTM" else 1
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "weight_ih_attr": weight_ih_attr,
             "weight_hh_attr": weight_hh_attr,
             "bias_ih_attr": bias_ih_attr,
@@ -1550,8 +1602,8 @@ class RNNBase(LayerList):
         # requires these params are added to current layer for `jit.save`.
         param_names = []
         for layer in range(self.num_layers):
-            for direction in range(self.num_directions):
-                suffix = '_reverse' if direction == 1 else ''
+            for num in range(self.num_directions):
+                suffix = '_reverse' if num == 1 else ''
                 param_names.extend(['weight_ih_l{}{}', 'weight_hh_l{}{}'])
                 if bias_ih_attr is not False:
                     param_names.append('bias_ih_l{}{}')
@@ -1563,7 +1615,7 @@ class RNNBase(LayerList):
 
         self.flatten_parameters()
 
-    def flatten_parameters(self):
+    def flatten_parameters(self) -> None:
         """
         Resets parameter data pointer to address in continuous memory block for
         cudnn usage.
@@ -1654,7 +1706,12 @@ class RNNBase(LayerList):
                             },
                         )
 
-    def _cudnn_impl(self, inputs, initial_states, sequence_length):
+    def _cudnn_impl(
+        self,
+        inputs: Tensor,
+        initial_states: TensorOrTensors | None,
+        sequence_length: int | None,
+    ) -> tuple[Tensor, Tensor | tuple[Tensor, Tensor]]:
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
@@ -1717,7 +1774,12 @@ class RNNBase(LayerList):
         )
         return out, tuple(state) if len(state) > 1 else state[0]
 
-    def forward(self, inputs, initial_states=None, sequence_length=None):
+    def forward(
+        self,
+        inputs: Tensor,
+        initial_states: TensorOrTensors | None = None,
+        sequence_length: int | None = None,
+    ) -> tuple[Tensor, Tensor | tuple[Tensor, Tensor]]:
         batch_index = 1 if self.time_major else 0
         dtype = inputs.dtype
         if initial_states is None:
@@ -1772,7 +1834,7 @@ class RNNBase(LayerList):
         )
         return outputs, final_states
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = '{input_size}, {hidden_size}'
         if self.num_layers != 1:
             main_str += ', num_layers={num_layers}'
@@ -1820,15 +1882,15 @@ class SimpleRNN(RNNBase):
             dropout from 0 to 1. Defaults to 0.
         activation (str, optional): The activation in each SimpleRNN cell. It can be
             `tanh` or `relu`. Defaults to `tanh`.
-        weight_ih_attr (ParamAttr, optional): The parameter attribute for
+        weight_ih_attr (ParamAttr|None, optional): The parameter attribute for
             `weight_ih` of each cell. Defaults to None.
-        weight_hh_attr (ParamAttr, optional): The parameter attribute for
+        weight_hh_attr (ParamAttr|None, optional): The parameter attribute for
             `weight_hh` of each cell. Defaults to None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
+        bias_ih_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_ih` of each cells. Defaults to None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
+        bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_hh` of each cells. Defaults to None.
-        name (str, optional): Name for the operation (optional, default is
+        name (str|None, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
@@ -1870,19 +1932,19 @@ class SimpleRNN(RNNBase):
 
     def __init__(
         self,
-        input_size,
-        hidden_size,
-        num_layers=1,
-        direction="forward",
-        time_major=False,
-        dropout=0.0,
-        activation="tanh",
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        name=None,
-    ):
+        input_size: int,
+        hidden_size: int,
+        num_layers: int = 1,
+        direction: _DirectionType | str = "forward",
+        time_major: bool = False,
+        dropout: float = 0.0,
+        activation: _ActivationType | str = "tanh",
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        name: str | None = None,
+    ) -> None:
         if activation == "tanh":
             mode = "RNN_TANH"
         elif activation == "relu":
@@ -1958,18 +2020,18 @@ class LSTM(RNNBase):
         dropout (float, optional): The dropout probability. Dropout is applied
             to the input of each layer except for the first layer. The range of
             dropout from 0 to 1. Defaults to 0.
-        weight_ih_attr (ParamAttr, optional): The parameter attribute for
+        weight_ih_attr (ParamAttr|None, optional): The parameter attribute for
             `weight_ih` of each cell. Default: None.
-        weight_hh_attr (ParamAttr, optional): The parameter attribute for
+        weight_hh_attr (ParamAttr|None, optional): The parameter attribute for
             `weight_hh` of each cell. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
+        bias_ih_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_ih` of each cells. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
+        bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_hh` of each cells. Default: None.
         proj_size (int, optional): If specified, the output hidden state of each layer
             will be projected to `proj_size`. `proj_size` must be smaller than `hidden_size`.
             Default: 0.
-        name (str, optional): Name for the operation (optional, default is
+        name (str|None, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
@@ -2014,19 +2076,19 @@ class LSTM(RNNBase):
 
     def __init__(
         self,
-        input_size,
-        hidden_size,
-        num_layers=1,
-        direction="forward",
-        time_major=False,
-        dropout=0.0,
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        proj_size=0,
-        name=None,
-    ):
+        input_size: int,
+        hidden_size: int,
+        num_layers: int = 1,
+        direction: _DirectionType | str = "forward",
+        time_major: bool = False,
+        dropout: float = 0.0,
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        proj_size: int = 0,
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             "LSTM",
             input_size,
@@ -2085,15 +2147,15 @@ class GRU(RNNBase):
         dropout (float, optional): The dropout probability. Dropout is applied
             to the input of each layer except for the first layer. The range of
             dropout from 0 to 1. Defaults to 0.
-        weight_ih_attr (ParamAttr, optional): The parameter attribute for
+        weight_ih_attr (ParamAttr|None, optional): The parameter attribute for
             `weight_ih` of each cell. Default: None.
-        weight_hh_attr (ParamAttr, optional): The parameter attribute for
+        weight_hh_attr (ParamAttr|None, optional): The parameter attribute for
             `weight_hh` of each cell. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
+        bias_ih_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_ih` of each cells. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
+        bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_hh` of each cells. Default: None.
-        name (str, optional): Name for the operation (optional, default is
+        name (str|None, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
@@ -2135,18 +2197,18 @@ class GRU(RNNBase):
 
     def __init__(
         self,
-        input_size,
-        hidden_size,
-        num_layers=1,
-        direction="forward",
-        time_major=False,
-        dropout=0.0,
-        weight_ih_attr=None,
-        weight_hh_attr=None,
-        bias_ih_attr=None,
-        bias_hh_attr=None,
-        name=None,
-    ):
+        input_size: int,
+        hidden_size: int,
+        num_layers: int = 1,
+        direction: _DirectionType | str = "forward",
+        time_major: bool = False,
+        dropout: float = 0.0,
+        weight_ih_attr: ParamAttr | None = None,
+        weight_hh_attr: ParamAttr | None = None,
+        bias_ih_attr: ParamAttr | None = None,
+        bias_hh_attr: ParamAttr | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             "GRU",
             input_size,
