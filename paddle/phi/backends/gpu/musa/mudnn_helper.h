@@ -309,6 +309,42 @@ class ScopedSoftmaxDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
 
+class ScopedMatMulDescriptor {
+ public:
+  ScopedMatMulDescriptor() {}
+  ~ScopedMatMulDescriptor() PADDLE_MAY_THROW {}
+
+  inline dynload::MatMul& descriptor(const bool trans_left,
+                                     const bool trans_right) {
+    desc_.SetTranspose(trans_left, trans_right);
+    return desc_;
+  }
+
+  dynload::MatMul& desc() { return desc_; }
+
+ private:
+  dynload::MatMul desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedMatMulDescriptor);
+};
+
+class ScopedBatchMatmulDescriptor {
+ public:
+  ScopedBatchMatmulDescriptor() {}
+  ~ScopedBatchMatmulDescriptor() PADDLE_MAY_THROW {}
+
+  inline dynload::BatchMatMul& descriptor(const bool trans_left,
+                                          const bool trans_right) {
+    desc_.SetTranspose(trans_left, trans_right);
+    return desc_;
+  }
+
+  dynload::BatchMatMul& desc() { return desc_; }
+
+ private:
+  dynload::BatchMatMul desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedBatchMatmulDescriptor);
+};
+
 static void Coalesce1ToLastDims(std::vector<int>& tensor_dims) {
   const int ndims = tensor_dims.size();
   if (ndims < 3) return;

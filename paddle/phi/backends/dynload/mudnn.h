@@ -20,9 +20,11 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
+using ::musa::dnn::BatchMatMul;
 using ::musa::dnn::BatchNorm;
 using ::musa::dnn::Convolution;
 using ::musa::dnn::Handle;
+using ::musa::dnn::MatMul;
 using ::musa::dnn::MemoryHandler;
 using ::musa::dnn::Pooling;
 using ::musa::dnn::Softmax;
