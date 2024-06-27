@@ -327,7 +327,6 @@ void DispatchWithDtype(
     fmha_buf = *fmha_out;
   }
 
-  InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
