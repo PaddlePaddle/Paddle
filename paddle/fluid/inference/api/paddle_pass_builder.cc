@@ -170,7 +170,6 @@ const std::vector<std::string> kDlnneSubgraphPasses({
     "conv_bn_fuse_pass",             //
     "depthwise_conv_bn_fuse_pass",   //
     "shuffle_channel_detect_pass",   //
-    "dlnne_subgraph_pass",           //
 });
 
 // TODO(inference): Most of the existing pass fusion operators do not
