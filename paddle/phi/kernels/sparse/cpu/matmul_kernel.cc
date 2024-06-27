@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 // TODO(zhouwei25): implement CPU kernel of " CSR @ DENSE -> DENSE"
 template <typename T, typename Context>
@@ -41,8 +40,7 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx UNUSED,
       "Not support CPU kernel of 'sparse.masked_matmul' now."));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(matmul_csr_dense,
                    CPU,

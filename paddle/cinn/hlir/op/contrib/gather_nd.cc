@@ -168,8 +168,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
 
   framework::CINNSchedule gather_nd_schedule([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of gather_nd_schedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument("The input argument of gather_nd_schedule "
+                                     "is empty! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -178,7 +181,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_EQ(
+        !vec_ast.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The vec_ast of gather_nd_schedule is empty! Please check.\n"));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -187,7 +194,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      target.arch.Visit(adt::match{
+      target.arch.Match(
           [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::X86Arch) {
             pe::IRScheduleInjectiveCPU(
@@ -197,7 +204,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
           [&](common::NVGPUArch) {
             pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
           },
-      });
+          [&](common::HygonDCUArchHIP) {
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
+          });
     }
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};

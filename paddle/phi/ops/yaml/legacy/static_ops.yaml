@@ -5,6 +5,7 @@
     func : ReduceInferMetaBase
   kernel :
     func : all
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : all_gather
   args : (Tensor x, int ring_id = 0, int nranks=0)
@@ -67,6 +68,7 @@
   kernel :
     func : any_raw
     param : [x, axis, keepdim, reduce_all]
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : arange
   args : (Tensor start, Tensor end, Tensor step)
@@ -99,6 +101,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
@@ -252,6 +255,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : exponential_
   args : (Tensor x, float lam = 1.0f)
@@ -275,6 +279,15 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
 
+- op : fetch_barrier
+  args: (Tensor[] x, int trainer_id = 0, str[] endpoints = {"127.0.0.1:6164"})
+  output: Tensor[] (out){x.size()}
+  infer_meta:
+    func: FetchBarrierInferMeta
+  kernel:
+    func: fetch_barrier
+  optional: x
+
 - op : flatten2
   args: (Tensor x, int axis = 1)
   output: Tensor (out), Tensor (x_shape)
@@ -294,6 +307,7 @@
     func : ElementwiseRawInferMeta
   kernel :
     func : floor_divide
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
@@ -314,6 +328,7 @@
     func : full_like
     param : [x, value, dtype]
     data_type : dtype > x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : gaussian
   args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
@@ -325,6 +340,7 @@
     func : gaussian
     param : [shape, mean, std, seed, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -337,6 +353,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_than
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -349,6 +366,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hardswish
   args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
@@ -361,6 +379,17 @@
     param : [x]
   backward : hardswish_grad
 
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+    param: [x, num_hash, mod_by]
+  kernel:
+    func: hash
+    param: [x, num_hash, mod_by]
+    data_type: x
+
 - op : less_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -372,6 +401,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : less_than
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -384,6 +414,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
@@ -396,6 +427,17 @@
     param: [start, stop, number, dtype]
     data_type : dtype
 
+- op : lrn
+  args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
+  output: Tensor (out), Tensor (mid_out)
+  infer_meta:
+    func: LrnInferMeta
+    param : [x, n]
+  kernel:
+    func: lrn
+    data_type: x
+  backward: lrn_grad
+
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
@@ -404,6 +446,16 @@
   kernel :
     func : matmul
   backward : matmul_grad
+
+- op : matmul_with_flatten
+  args : (Tensor x, Tensor y, int x_num_col_dims = 1, int y_num_col_dims = 1)
+  output : Tensor
+  infer_meta :
+    func : MatmulWithFlattenInferMeta
+  kernel :
+    func : matmul_with_flatten
+    data_type : x
+  backward : matmul_with_flatten_grad
 
 - op : matrix_rank
   args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
@@ -478,6 +530,7 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : one_hot
   args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
@@ -487,6 +540,7 @@
   kernel :
     func : one_hot_raw
     data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : p_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
@@ -554,14 +608,14 @@
   backward : pool3d_grad
 
 - op : prod
-  args : (Tensor x, IntArray dims={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase
-    param : [x, dims, keep_dim, reduce_all, out_dtype]
+    param : [x, axis, keepdim, reduce_all, out_dtype]
   kernel :
     func : prod
-    param : [x, dims, keep_dim, reduce_all, out_dtype]
+    param : [x, axis, keepdim, reduce_all, out_dtype]
     data_type : x
   backward : prod_grad
 
@@ -584,6 +638,7 @@
     func : randint
     param : [low, high, shape, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : randperm
   args : (int n, DataType dtype = DataType::INT64)
@@ -624,6 +679,7 @@
   kernel :
     func : remainder
   inplace : (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
@@ -667,6 +723,17 @@
   inplace : (x -> out)
   backward : softmax_grad
 
+- op : sparse_momentum
+  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func: SparseMomentumInferMeta
+    param: [param, grad, velocity, index, learning_rate]
+  kernel:
+    func: sparse_momentum
+    data_type: param
+  optional: master_param, master_param_out
+
 - op : strided_slice
   args : (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={})
   output : Tensor
@@ -698,6 +765,25 @@
   kernel :
     func : swish
   backward : swish_grad
+
+- op : topk_v1
+  args : (Tensor x, Scalar(int) k = 1)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopkV1InferMeta
+  kernel :
+    func : topk_v1
+    data_type : x
+  backward : topk_v1_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : transfer_layout
+  args: (Tensor x, int src_layout = -1, int dst_layout=-1)
+  output: Tensor (out)
+  infer_meta:
+    func: TransferLayoutInferMeta
+  kernel:
+    func: transfer_layout
 
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
@@ -751,6 +837,7 @@
     func : uniform
     param: [shape, dtype, min, max, seed]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)

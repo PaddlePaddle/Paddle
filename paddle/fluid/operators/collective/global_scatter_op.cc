@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class GlobalScatterOp : public framework::OperatorWithKernel {
  public:
@@ -104,8 +103,7 @@ class GlobalScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

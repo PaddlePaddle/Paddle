@@ -15,12 +15,21 @@
 decorator to deprecate a function or class
 """
 
+from __future__ import annotations
+
 import functools
 import inspect
 import sys
 import warnings
+from typing import Callable, TypeVar
+
+from typing_extensions import ParamSpec
 
 import paddle
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
+
 
 __all__ = []
 
@@ -34,10 +43,13 @@ class VisibleDeprecationWarning(UserWarning):
     See more details from https://peps.python.org/pep-0565/
     """
 
-    ...
 
-
-def deprecated(update_to="", since="", reason="", level=0):
+def deprecated(
+    update_to: str = "",
+    since: str = "",
+    reason: str = "",
+    level: int = 0,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     """Decorate a function to signify its deprecation.
 
     This function wraps a method that will soon be removed and does two things:
@@ -59,7 +71,7 @@ def deprecated(update_to="", since="", reason="", level=0):
         decorator: decorated function or class.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
@@ -93,8 +105,12 @@ def deprecated(update_to="", since="", reason="", level=0):
         if level == 0:
             return func
 
+        def parse_version(version: str):
+            # Split the version string and convert numeric parts to integers
+            return [int(part) for part in version.split(".") if part.isdigit()]
+
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             """deprecated warning should be fired in 3 circumstances:
             1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
             2. since version is empty, in this case, API is deprecated in all versions.
@@ -111,9 +127,9 @@ def deprecated(update_to="", since="", reason="", level=0):
             if sys.platform.lower() == 'win32':
                 warningmsg = "\nWarning:\n%s " % (msg)
 
-            v_current = [int(i) for i in paddle.__version__.split(".")]
+            v_current = parse_version(paddle.__version__)
             v_current += [0] * (4 - len(v_current))
-            v_since = [int(i) for i in _since.split(".")]
+            v_since = parse_version(since)
             v_since += [0] * (4 - len(v_since))
             if (
                 paddle.__version__ == "0.0.0"

@@ -40,6 +40,29 @@
     data_type : out_grad
   support_dygraph_mode : true
 
+- backward_op : fused_elemwise_activation_grad
+  forward: fused_elemwise_activation (Tensor x, Tensor y, str[] functor_list, int axis = -1, float scale = 0.0, bool save_intermediate_out
+    = false) -> Tensor (out), Tensor (intermediate_out)
+  args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, int axis = -1, float scale = 0.0, bool save_intermediate_out = false)
+  output: Tensor (x_grad), Tensor (y_grad)
+  infer_meta:
+    func: FusedElemwiseActivationGradInferMeta
+  kernel:
+    func: fused_elemwise_activation_grad
+    data_type: out_grad
+
+- backward_op : fused_elemwise_add_activation_grad
+  forward: fused_elemwise_add_activation (Tensor x, Tensor y, str[] functor_list, int axis = -1, float scale = 0.0, bool save_intermediate_out = false) -> Tensor (out), Tensor (intermediate_out)
+  args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, int axis = -1, float scale = 0.0, bool save_intermediate_out = false)
+  output: Tensor (x_grad), Tensor (y_grad)
+  infer_meta:
+    func: FusedElemwiseActivationGradInferMeta
+  kernel:
+    func: fused_elemwise_add_activation_grad
+    data_type: out_grad
+  optional: x, intermediate_out
+  no_need_buffer: x, y
+
 - backward_op : fused_rotary_position_embedding_grad
   forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style, bool time_major, float rotary_emb_base) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
   args : (Tensor sin, Tensor cos, Tensor position_ids, Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad, bool use_neox_rotary_style, bool time_major, float rotary_emb_base)
@@ -52,6 +75,18 @@
     func : fused_rotary_position_embedding_grad
     data_type : out_q_grad
   support_dygraph_mode : true
+
+- backward_op : fused_seqpool_cvm_grad
+  forward: fused_seqpool_cvm(Tensor[] x, Tensor cvm, str pooltype = "SUM", float pad_value = 0.0, bool
+    use_cvm = true, int cvm_offset = 2) -> Tensor[] (out)
+  args: (Tensor[] x, Tensor cvm, Tensor[] out_grad, str pooltype = "SUM", float pad_value = 0.0, bool
+    use_cvm = true, int cvm_offset = 2)
+  output: Tensor[] (x_grad){x.size()}, Tensor (cvm_grad)
+  infer_meta:
+    func: FusedSeqpoolCvmGradInferMeta
+  kernel:
+    func: fused_seqpool_cvm_grad
+    data_type: x
 
 - backward_op : max_pool2d_v2_grad
   forward : max_pool2d_v2(Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, str data_format = "NCHW", bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(saved_idx)

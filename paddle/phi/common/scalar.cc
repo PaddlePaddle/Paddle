@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 // The Tensor must have one dim
 template <>
@@ -54,5 +53,4 @@ bool operator!=(const Scalar& lhs, const Scalar& rhs) {
 std::ostream& operator<<(std::ostream& os, const Scalar& s) {
   return os << s.ToString();
 }
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

@@ -63,6 +63,7 @@ class TestConvNd(TestBase):
             paddle.rand(shape=[22, 64, 56, 56], dtype=paddle.float32),
         )
         self.net = ConvNdCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

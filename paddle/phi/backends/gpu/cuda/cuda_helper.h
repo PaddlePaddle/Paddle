@@ -43,7 +43,7 @@ namespace gpu {
  *    this time, the cycle condition `i < (n)` is still satisfied, so it
  *    will cause illegal access to cuda memory.
  *
- *    Here is a real example in ERINE, it will trigger above error.
+ *    Here is a real example in ERNIE, it will trigger above error.
  *    The related data are:
  *      - blockIdx.x = 2172938
  *      - blockDim.x = 512

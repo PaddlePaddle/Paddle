@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
-#include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/api/backward/backward_api.h"
@@ -1325,16 +1324,6 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
   auto device_type = dev_type.c_str();
   /* see [Why use single type kernel] */
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      run_program,
-      device_type,
-      paddle::operators::
-          RunProgramOpKernel<float, paddle::platform::CustomDeviceContext>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      run_program_grad,
-      device_type,
-      paddle::operators ::
-          RunProgramGradOpKernel<float, paddle::platform::CustomDeviceContext>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       save_combine,
       device_type,
       paddle::operators ::
@@ -1366,7 +1355,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           float>,
       paddle::operators::CConcatOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CConcatOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_split,
       device_type,
@@ -1378,7 +1370,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           int>,
       paddle::operators::CSplitOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CSplitOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding,
       device_type,

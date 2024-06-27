@@ -1,4 +1,10 @@
 set(TEST_PRIM_PURE_PIR_CASES
+    test_custom_vjp_trait
+    test_decomp_op
+    test_decompose_op
+    test_vjp_prim
+    test_batch_norm_shape_check
+    test_builtin_slice
     test_prim_program
     test_prim_simpnet
     test_prim_custom_vjp
@@ -12,7 +18,11 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_auto_recompute
     test_auto_recompute_dy2static
     test_prim_sub_graph_dynamic_shape
-    test_decompose_control_flow)
+    test_prim_sub_graph_backward_dynamic_shape
+    test_decompose_control_flow
+    test_decomp_whole_program
+    test_dynamic_combine1
+    test_dynamic_combine2)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(
@@ -52,6 +62,7 @@ if(WITH_CINN)
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true
+      FLAGS_prim_vjp_skip_default_ops=false
       FLAGS_cinn_bucket_compile=True
       FLAGS_pir_apply_shape_optimization_pass=1)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=CINN")

@@ -49,14 +49,6 @@
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
-- op : assign_pos
-  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
-  output : Tensor(out)
-  infer_meta :
-    func : AssignPosInferMeta
-  kernel :
-    func : assign_pos
-
 - op : assign_value
   args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
@@ -69,21 +61,13 @@
     backend: place>
     data_type : dtype
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : barrier
   args : (Tensor x, int ring_id=0)
   output : Tensor(out)
   kernel :
     func : barrier
-
-- op : batch_fc
-  args : (Tensor input, Tensor w, Tensor bias)
-  output : Tensor(out)
-  infer_meta:
-    func : BatchFCInferMeta
-  kernel :
-    func : batch_fc
-    data_type: input
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
@@ -196,15 +180,6 @@
     data_type : dtype
   inplace: (input -> output)
 
-- op : decayed_adagrad
-  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
-  output : Tensor(param_out), Tensor(moment_out)
-  infer_meta :
-    func : DecayedAdagradInferMeta
-  kernel :
-    func : decayed_adagrad
-    data_type : param
-
 - op : dequantize_linear
   args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
@@ -228,6 +203,7 @@
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : distributed_fused_lamb
   args : (Tensor[] param, Tensor[] grad, Tensor fp32_fused_param, Tensor fp32_fused_grad, Tensor fp16_fused_param, Tensor fp16_fused_grad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fused_param_offsets, Tensor fp32_shard_fused_param_offsets, Tensor fp16_shard_fused_param_offsets, Tensor param_info, Tensor param_order, Tensor learning_rate, Tensor global_scale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, int[] ring_ids= {}, int acc_steps = 1, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, bool use_hierarchical_allreduce = false)
@@ -323,6 +299,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : feed
   args : (str name, int col)
@@ -352,6 +329,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -403,6 +381,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -415,6 +394,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hardswish
   args : (Tensor x)
@@ -425,6 +405,17 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
+
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+    param: [x, num_hash, mod_by]
+  kernel:
+    func: hash
+    param: [x, num_hash, mod_by]
+    data_type: x
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -437,6 +428,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -449,6 +441,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : load_combine
   args : (str file_path, bool load_as_fp16, bool model_from_memory)
@@ -463,14 +456,15 @@
   output : Tensor(out)
 
 - op : lrn
-  args : (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
-  output : Tensor(out), Tensor(mid_out)
-  infer_meta :
-    func : LrnInferMeta
+  args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
+  output: Tensor (out), Tensor (mid_out)
+  infer_meta:
+    func: LrnInferMeta
     param : [x, n]
-  kernel :
-    func : lrn
-  backward : lrn_grad
+  kernel:
+    func: lrn
+    data_type: x
+  backward: lrn_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -577,6 +571,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : partial_allgather
   args : (Tensor x, int nranks, int rank, int ring_id = 0, bool use_calc_stream = false)
@@ -606,16 +601,7 @@
     func : print_kernel
     param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
-
-- op : prune_gate_by_capacity
-  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert, int64_t n_worker)
-  output : Tensor(new_gate_idx)
-  infer_meta :
-    func : PruneGateByCapacityInferMeta
-  kernel :
-    func : prune_gate_by_capacity
-    data_type : gate_idx
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : pull_box_sparse
   args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
@@ -706,6 +692,7 @@
     support_trans_dtype : x, y
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : reshape
   args : (Tensor x, IntArray shape)
@@ -811,17 +798,7 @@
     func: share_data
     param: [x]
   inplace : (x -> out)
-
-- op : shuffle_batch
-  args : (Tensor x, Tensor seed, int startup_seed=0)
-  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
-  infer_meta:
-     func: ShuffleBatchInferMeta
-  kernel:
-     func: shuffle_batch
-     data_type: x
-  backward : shuffle_batch_grad
-  traits : pir::SideEffectTrait
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)
@@ -845,6 +822,17 @@
   backward : softmax_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : sparse_momentum
+  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func: SparseMomentumInferMeta
+    param: [param, grad, velocity, index, learning_rate]
+  kernel:
+    func: sparse_momentum
+    data_type: param
+  optional: master_param, master_param_out
+
 - op : subtract
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -858,16 +846,6 @@
     support_trans_dtype : x, y
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : tdm_sampler
-  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
-  output: Tensor(out), Tensor(labels), Tensor(mask)
-  infer_meta:
-    func : TdmSamplerInferMeta
-  kernel:
-    func : tdm_sampler
-    data_type : x
-  optional : labels
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
@@ -906,24 +884,6 @@
     data_type : logits
   backward: c_softmax_with_cross_entropy_grad
 
-- op: dpsgd
-  args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
-  output: Tensor(param_out)
-  infer_meta:
-     func: DpsgdInferMeta
-  kernel:
-     func: dpsgd
-     data_type: param
-
-- op: ftrl
-  args: (Tensor param, Tensor squared_accumulator, Tensor linear_accumulator, Tensor grad, Tensor learning_rate, float l1=0.0f, float l2=0.0f, float lr_power=-0.5f)
-  output: Tensor(param_out), Tensor(squared_accum_out), Tensor(linear_accum_out)
-  infer_meta:
-    func: FtrlInferMeta
-  kernel:
-    func: ftrl
-    data_type: param
-
 - op: fused_attention
   args: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias, Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale_2, Tensor ln_bias_2, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)
   output: Tensor(ln_mean), Tensor(ln_var), Tensor(ln_out), Tensor(qkv_out), Tensor(qkv_bias_out), Tensor(transpose_out_2), Tensor(qk_out), Tensor(qktv_out), Tensor(softmax_out), Tensor(attn_dropout_mask_out), Tensor(attn_dropout_out), Tensor(src_mask_out), Tensor(fmha_out), Tensor(out_linear_out), Tensor(dropout_mask_out), Tensor(ln_mean_2), Tensor(ln_var_2), Tensor(bias_dropout_residual_out), Tensor(cache_kv_out), Tensor(out)
@@ -934,16 +894,6 @@
     func: FusedAttentionInferMeta
   optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2, ln_var_2, bias_dropout_residual_out, cache_kv_out
   backward: fused_attention_grad
-
-- op: fused_elemwise_add_activation
-  args: (Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
-  output: Tensor(out), Tensor(intermediate_out)
-  kernel:
-    func: fused_elemwise_add_activation
-  infer_meta:
-    func : FusedElemwiseAddActivationInferMeta
-  backward: fused_elemwise_add_activation_grad
-  intermediate: intermediate_out
 
 - op: fused_feedforward
   args: (Tensor x, Tensor dropout1_seed, Tensor dropout2_seed, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale, Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)
@@ -969,15 +919,6 @@
   optional: master_param, master_param_out
   inplace : master_param -> master_param_out
 
-- op: match_matrix_tensor
-  args: (Tensor x, Tensor y, Tensor w, int dim_t=1)
-  output: Tensor(out), Tensor(tmp)
-  infer_meta:
-     func: MatchMatrixTensorInferMeta
-  kernel:
-     func: match_matrix_tensor
-  backward: match_matrix_tensor_grad
-
 - op: moving_average_abs_max_scale
   args: (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false)
   output: Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
@@ -1001,15 +942,6 @@
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
   backward: nce_grad
 
-- op: number_count
-  args: (Tensor numbers, int upper_range)
-  output: Tensor(out)
-  infer_meta:
-     func: NumberCountInferMeta
-  kernel:
-     func: number_count
-     data_type: numbers
-
 - op: onednn_to_paddle_layout
   args: (Tensor x, int dst_layout)
   output: Tensor(out)
@@ -1028,14 +960,3 @@
   kernel:
     func: partial_send
     param: [x, ring_id, peer, use_calc_stream, num, id]
-
-- op: sparse_momentum
-  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
-  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
-  infer_meta:
-    func: SparseMomentumInferMeta
-    param: [param, learning_rate, velocity]
-  kernel:
-    func: sparse_momentum
-    data_type: param
-  optional: master_param, master_param_out

@@ -79,10 +79,10 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
-namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
@@ -91,6 +91,8 @@ using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
+using paddle::dialect::SparseCooTensorType;
+using paddle::dialect::SparseCsrTensorType;
 using paddle::dialect::WhileOp;
 using pir::TuplePopOp;
 
@@ -258,15 +260,22 @@ void SetValueName(Value value, const std::string name) {
   }
 }
 
+bool IsUsedByShadowOutput(const pir::Value &value) {
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool HasValueName(const Value &value) {
   if (IsFakeValue(value)) {
     return false;
   }
   if (value.defining_op()->isa<::pir::ParameterOp>() ||
       value.defining_op()->isa<paddle::dialect::DataOp>() ||
-      value.isa<BlockArgument>() ||
-      (value.first_use() &&
-       (value.first_use().owner()->isa<::pir::ShadowOutputOp>()))) {
+      value.isa<BlockArgument>() || IsUsedByShadowOutput(value)) {
     return true;
   } else {
     return false;
@@ -284,15 +293,15 @@ std::string GetValueName(Value value) {
     } else {
       return "arg_" + std::to_string(block_arg.index());
     }
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<StrAttribute>("output_name").AsString();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only get name of Value which is "
-          "shadowoutput "));
+  } else if (IsUsedByShadowOutput(value)) {
+    for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+      if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+        return iter->owner()->attribute<StrAttribute>("output_name").AsString();
+      }
     }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value which is "
+        "shadowoutput "));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get name of Value that "
@@ -457,6 +466,17 @@ void BindProgram(py::module *m) {
              SetProgramInt64Attr(self, "random_seed", random_seed);
            })
       .def_property_readonly(
+          "num_blocks",
+          [](const std::shared_ptr<Program> &self) {
+            size_t num_blocks = 0;
+            auto top_level_op = self->module_op();
+            for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
+              auto &region = top_level_op->region(i);
+              num_blocks += region.size();
+            }
+            return num_blocks;
+          })
+      .def_property_readonly(
           "blocks",
           [](const std::shared_ptr<Program> &self) {
             // Note: We only return global block currently.
@@ -529,7 +549,11 @@ void BindProgram(py::module *m) {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
                }
              }
-           });
+           })
+      .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
+      });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -649,10 +673,15 @@ void BindBlock(py::module *m) {
              }
              return param_list;
            })
-      .def("refresh_stopgradient", [](Block &self) {
-        for (auto &op : self) {
-          RefreshOpStopgradients(&op);
-        }
+      .def("refresh_stopgradient",
+           [](Block &self) {
+             for (auto &op : self) {
+               RefreshOpStopgradients(&op);
+             }
+           })
+      .def("_sync_with_cpp", [](const Block &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
       });
 }
 
@@ -983,6 +1012,12 @@ phi::DataType GetTensorDtype(Type type) {
   }
   if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
     return dialect::TransToPhiDataType(dense_tensor_type.dtype());
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(sparse_coo_tensor_type.dtype());
+  } else if (auto sparse_csr_tensor_type =
+                 type.dyn_cast<SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(sparse_csr_tensor_type.dtype());
   } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
     return dialect::TransToPhiDataType(select_rows.dtype());
   } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
@@ -990,7 +1025,8 @@ phi::DataType GetTensorDtype(Type type) {
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DenseTensorArrayType."));
+        "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
+        "SparseCsrTensorType."));
   }
 }
 phi::DataType GetValueDtype(Value value) {
@@ -1006,6 +1042,12 @@ const phi::DDim &GetTensorDims(Type type) {
     return dense_type.dims();
   } else if (auto select_rows_type = type.dyn_cast<SelectedRowsType>()) {
     return select_rows_type.dims();
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    return sparse_coo_tensor_type.dims();
+  } else if (auto sparse_csr_tensr_type =
+                 type.dyn_cast<SparseCsrTensorType>()) {
+    return sparse_csr_tensr_type.dims();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get shape for dense and selsect rows type."));
@@ -1041,7 +1083,7 @@ pir::Value apply(Value self, py::object func) {
   if (res == Py_None) {
     return self;
   }
-  auto out = CastPyArg2Value(res, "", 0);
+  auto out = CastPyArg2Value(res, "", 0, false);
   Py_DECREF(py_func);
   Py_DECREF(res);
   return out;
@@ -1080,7 +1122,8 @@ pir::Value apply(Value self, py::object func) {
           return py::cast<py::none>(Py_None);                                \
         }                                                                    \
         auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
-        py::object obj = py::object(py::handle(py_data), true);              \
+        py::object obj =                                                     \
+            py::reinterpret_borrow<py::object>(py::handle(py_data));         \
         return obj;                                                          \
       },                                                                     \
       [](Value self, py::object obj) {                                       \
@@ -1206,6 +1249,10 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",
            [](Value self) { return self.type().isa<SelectedRowsType>(); })
+      .def("is_sparse_coo_tensor_type",
+           [](Value self) { return self.type().isa<SparseCooTensorType>(); })
+      .def("is_sparse_csr_tensor_type",
+           [](Value self) { return self.type().isa<SparseCsrTensorType>(); })
       .def("is_dense_tensor_array_type",
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("is_dist_dense_tensor_type",
@@ -2500,6 +2547,86 @@ void BindPassManager(pybind11::module *m) {
            [](PassManager &self) { self.EnablePrintStatistics(); });
 }
 
+void BindShapeOrDataDimExprs(pybind11::module *m) {
+  py::class_<symbol::ShapeOrDataDimExprs,
+             std::shared_ptr<symbol::ShapeOrDataDimExprs>>
+      shape_or_data_dim_exprs(*m, "ShapeOrDataDimExprs", R"DOC(
+      A class that store the shape or data of value.
+    )DOC");
+  shape_or_data_dim_exprs
+      .def("shape",
+           &symbol::ShapeOrDataDimExprs::shape,
+           return_value_policy::reference)
+      .def("data",
+           &symbol::ShapeOrDataDimExprs::data,
+           return_value_policy::reference)
+      .def("is_equal",
+           [](symbol::ShapeOrDataDimExprs &self,
+              std::vector<int64_t> expect_shape,
+              std::vector<int64_t> expect_data = {}) -> bool {
+             VLOG(3) << "Start compare shape and data.";
+
+             const auto &compare_func =
+                 [&](const std::vector<int64_t> &expect,
+                     const std::vector<symbol::DimExpr> &actual) -> bool {
+               if (actual.size() != expect.size()) {
+                 LOG(ERROR) << "expect size " << expect.size()
+                            << " is not equal to actual size " << actual.size()
+                            << " .";
+                 return false;
+               } else if (actual.empty()) {
+                 return true;
+               }
+               for (size_t i = 0; i < actual.size(); i++) {
+                 if (!actual.at(i).isa<int64_t>()) {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "In OpTest, only supports cases where the type of "
+                       "DimExpr "
+                       "is int64_t."));
+                   return false;
+                 }
+                 if (actual.at(i) != expect.at(i)) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
+                              << " is not equal to actual[" << i
+                              << "]: " << actual.at(i) << " .";
+                   return false;
+                 }
+               }
+               return true;
+             };
+
+             // compare shape
+             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+
+             // TODO(gongshaotian): compare data
+             return compare_func(expect_shape, actual_shape);
+           });
+}
+
+void BindShapeConstraintIRAnalysis(pybind11::module *m) {
+  m->def(
+      "get_shape_constraint_ir_analysis",
+      [](const pir::Program *program) -> pir::ShapeConstraintIRAnalysis & {
+        return pir::ShapeAnalysisManager::Instance().Get(program);
+      },
+      return_value_policy::reference);
+
+  py::class_<pir::ShapeConstraintIRAnalysis,
+             std::shared_ptr<pir::ShapeConstraintIRAnalysis>>
+      shape_constraint_ir_analysis(*m, "ShapeConstraintIRAnalysis", R"DOC(
+      A class that store the shape information of all operators.
+    )DOC");
+  shape_constraint_ir_analysis
+      .def("get_shape_or_data_for_var",
+           &pir::ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
+           return_value_policy::reference)
+      .def("set_shape_or_data_for_var",
+           &pir::ShapeConstraintIRAnalysis::SetShapeOrDataForValue)
+      .def("register_symbol_cstr_from_shape_analysis",
+           &pir::ShapeConstraintIRAnalysis::
+               RegisterSymbolConstraintFromShapeAnalysis);
+}
+
 void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
@@ -2517,6 +2644,8 @@ void BindPir(pybind11::module *module) {
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
   BindControlFlowApi(&ir_module);
+  BindShapeOrDataDimExprs(&ir_module);
+  BindShapeConstraintIRAnalysis(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
   BindIrParser(&ir_module);

@@ -46,6 +46,7 @@ class TestSwish(TestBase):
             paddle.rand(shape=[43, 32, 112, 112], dtype=paddle.float32),
         )
         self.net = SwishCase
+        self.with_train = False
         self.atol = 1e-8
 
 

@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
@@ -47,8 +46,7 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   out->set_meta(x.meta());
   dev_ctx.template Alloc<T>(out_values);
 }
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(empty_like_coo,
                    CPU,

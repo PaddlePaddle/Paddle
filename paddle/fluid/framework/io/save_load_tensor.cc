@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/common/port.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SaveTensor(const phi::DenseTensor& x,
                 const std::string& file_path,
@@ -54,5 +53,4 @@ void LoadTensor(const std::string& file_path, phi::DenseTensor* out) {
 
   framework::DeserializeFromStream(fin, out);
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

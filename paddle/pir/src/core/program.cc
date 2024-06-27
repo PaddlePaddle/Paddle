@@ -13,13 +13,48 @@
 // limitations under the License.
 
 #include "paddle/pir/include/core/program.h"
+#include <limits>
+#include <mutex>
+#include <random>
+#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/pir/include/core/ir_context.h"
 
 namespace pir {
 
+namespace {
+
+int64_t GetRandomId() {
+  std::random_device rd{};
+  std::mt19937_64 gen(rd());
+  std::uniform_int_distribution<int64_t> dis(
+      0, std::numeric_limits<int64_t>::max());
+  return dis(gen);
+}
+
+bool InsertGlobalStorageSuccess(int64_t random_id) {
+  static std::unordered_set<int64_t> storage;
+  static std::mutex mutex;
+  std::unique_lock<std::mutex> lock(mutex);
+  return storage.emplace(random_id).second;
+}
+
+int64_t GetUniqueRandomId() {
+  int kLimit = 100;
+  for (int i = 0; i < kLimit; ++i) {
+    int64_t random_id = GetRandomId();
+    if (InsertGlobalStorageSuccess(random_id)) {
+      return random_id;
+    }
+  }
+  LOG(FATAL) << "Fatal bug occured in GetUniqueRandomId().";
+}
+
+}  // namespace
+
 Program::Program(IrContext* context) {
   module_ = ModuleOp::Create(context, this);
+  id_ = GetUniqueRandomId();
 }
 
 Program::~Program() {
@@ -49,7 +84,7 @@ void Program::CopyToBlock(IrMapping& ir_mapping, Block* insert_block) const {
         break;
       }
     }
-    if (skip_op) {
+    if (skip_op || op.isa<pir::ShadowOutputOp>()) {
       continue;
     }
 

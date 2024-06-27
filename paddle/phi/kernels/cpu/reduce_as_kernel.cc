@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -28,9 +28,16 @@ void ReduceAsKernel(const Context& dev_ctx,
                     const DenseTensor& target,
                     DenseTensor* out) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
-  bool reduce_all = recompute_reduce_all(x, reduce_dim);
-  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, reduce_dim, false, out->type(), out);
+  if (reduce_dim.size() != 0) {
+    MetaTensor meta_out(out);
+    SumInferMeta(x, reduce_dim, out->dtype(), false, &meta_out);
+    phi::SumKernel<T, Context>(
+        dev_ctx, x, reduce_dim, out->dtype(), false, out);
+    out->Resize(target.dims());
+  } else {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  }
 }
 
 }  // namespace phi

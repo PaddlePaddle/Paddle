@@ -28,7 +28,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 using namespace ir;  // NOLINT
@@ -37,6 +37,9 @@ Expr AutoSimplify(
     Expr u,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   VLOG(7) << "Begin AutoSimplify: " << u;
+  if (u.type().is_float()) {
+    return u;
+  }
   u = detail::ConvertCinnToCAS(u);
   absl::flat_hash_map<std::string, CasInterval> s_var_intervals;
   for (auto& item : var_intervals) {
@@ -136,7 +139,8 @@ namespace detail {
 // Is a Divisible to b.
 // @{
 bool IsDivisible(int64_t a, int64_t b) {
-  CHECK_NE(b, 0);
+  PADDLE_ENFORCE_NE(
+      b, 0, phi::errors::InvalidArgument("The divisor %d should not be 0.", b));
   return a % b == 0;
 }
 bool IsDivisible(const Sum* a, int b);
@@ -1074,6 +1078,7 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
   }
   return cinn::common::DefaultDeviceTarget().arch.Match(
       [&](common::NVGPUArch) { return false; },
+      [&](common::HygonDCUArchHIP) { return false; },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         int const_value = 0;
         Expr lower_bound;
@@ -1482,7 +1487,10 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   if (!right_mod || (!left_mul && !left_div)) {
     return tmp;
   }
-  CHECK_GE(right_mod->operands().size(), 2U);
+  PADDLE_ENFORCE_GE(right_mod->operands().size(),
+                    2U,
+                    phi::errors::InvalidArgument(
+                        "right_mod's operands size should be greater than 2"));
   Expr mod_left = right_mod->operand(0);
   Expr mod_right = right_mod->operand(1);
   if (!mod_left->type().is_integer() || !mod_right->type().is_integer()) {
@@ -1492,7 +1500,10 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     // case 1: (m / n) * n + m % n = m (m, n's type is int)
     // case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1,
     // n2, n3's type is int)
-    CHECK_GE(left_mul->operands().size(), 2U);
+    PADDLE_ENFORCE_GE(left_mul->operands().size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "left_mul's operands size should be greater than 2"));
     Expr mul_left = left_mul->operand(0);
     Expr mul_right = left_mul->operand(1);
 
@@ -1509,7 +1520,10 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     if (!div) {
       return tmp;
     }
-    CHECK_GE(div->operands().size(), 2U);
+    PADDLE_ENFORCE_GE(div->operands().size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "div's operands size should be greater than 2"));
     Expr div_left = div->operand(0);
     Expr div_right = div->operand(1);
     if (!div_left->type().is_integer() || !div_right->type().is_integer()) {

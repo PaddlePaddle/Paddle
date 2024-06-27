@@ -40,19 +40,25 @@ function add_failed(){
 
 api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec`
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
+api_annotation_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.annotations  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.annotations`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
+    echo_line="You must have one RD (XiaoguangHu01, jeff41404 or qingqing01) approval for API change.\n"
 
-    check_approval 1 XiaoguangHu01 jeff41404 lanxianghit qingqing01
+    check_approval 1 XiaoguangHu01 jeff41404 qingqing01
+fi
+
+if [ "$api_annotation_diff" != "" ]; then
+    echo_line="You must have one member of Typing group (SigureMo, megemini, zrr1999, sunzhongkai588, luotao1) approval for API annotation change.\n"
+    check_approval 1 SigureMo megemini zrr1999 sunzhongkai588 luotao1
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
 if [ "$api_yaml_diff" != "" ]; then
     echo_line="API's name and params should be consistent with op's name and params in yaml.
                 The API or Yaml file you changed may cause inconsistent.\n"
-    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, chenwhql, phlrain) review and approve.\n"
+    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, phlrain) review and approve.\n"
     echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
-    check_approval 1 YuanRisheng zyfncg chenwhql phlrain
+    check_approval 1 YuanRisheng zyfncg phlrain
 fi
 
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5`
@@ -71,16 +77,16 @@ fi
 
 op_kernel_dtype_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_PR.spec`
 if [ "$op_kernel_dtype_spec_diff" != "" ]; then
-    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (lanxianghit (Recommend) or chenwhql) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
-    check_approval 1 lanxianghit chenwhql
+    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (Aurelius84 or zyfncg) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
+    check_approval 1 Aurelius84 zyfncg
 fi
 
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`
 inference_approve=`echo "$op_desc_diff" | grep "need inference to review" -`
 slim_approve=`echo "$op_desc_diff" | grep "need slim to review" -`
 if [ "$op_desc_diff" != "" ]; then
-    echo_line="You must have one RD (inference[ vivienfanghuagood(Recommend), yuanlehome, qingqing01 ] or slim[ wanghaoshuang(Recommend), qingqing01 ] or train[ chenwhql(Recommend), phlrain ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
-    check_approval 1 vivienfanghuagood yuanlehome qingqing01 wanghaoshuang chenwhql phlrain
+    echo_line="You must have one RD (inference[ vivienfanghuagood(Recommend), yuanlehome, qingqing01 ] or slim[ wanghaoshuang(Recommend), qingqing01 ] or train[ phlrain ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
+    check_approval 1 vivienfanghuagood yuanlehome qingqing01 wanghaoshuang phlrain
 fi
 
 if [ "$slim_approve" != "" ]; then
@@ -120,8 +126,8 @@ if [ "$OUTPUT_LOG" != "" ];then
     fi
 
     if [ "$sample_status" == 1 ] || [ "$samplecode" == "" ] ;then
-        echo_line="print or std::cout is not recommended for direct use, please use logging or VLOG. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 review and approve.\n"
-        check_approval 1 tianshuo78520a zhangbo9674
+        echo_line="print or std::cout is not recommended for direct use, please use logging or VLOG. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 or SigureMo review and approve.\n"
+        check_approval 1 tianshuo78520a zhangbo9674 SigureMo
     fi
 fi
 
@@ -133,7 +139,7 @@ if [ -n "${echo_list}" ];then
   echo "**************************************************************"
 
   # L40 L48 L62 has fetch the result out, but there are splitted.
-  if [ "${api_spec_diff}" != "" -o "${api_doc_spec_diff}" != "" ] ; then
+  if [ "${api_spec_diff}" != "" -o "${api_annotation_diff}" != "" ] ; then
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   fi
   if [ "${api_params_diff}" != "" ] ; then

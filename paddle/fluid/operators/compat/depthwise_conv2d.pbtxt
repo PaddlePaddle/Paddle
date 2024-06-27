@@ -42,7 +42,7 @@ extra {
   attrs {
     name: "quantization_type"
     type: STRING
-  } 
+  }
   attrs {
     name: "bit_length"
     type: INT

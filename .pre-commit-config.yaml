@@ -20,7 +20,6 @@ repos:
     -   id: sort-simple-yaml
         files: (ops|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
-        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.5.1
     hooks:
@@ -55,7 +54,6 @@ repos:
     rev: 23.3.0
     hooks:
     -   id: black
-        files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.5
     hooks:

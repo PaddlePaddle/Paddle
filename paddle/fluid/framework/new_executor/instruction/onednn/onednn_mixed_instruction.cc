@@ -58,6 +58,7 @@ OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
 }
 
 void OneDNNMixedPhiKernelInstruction::Run() {
+  std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   // Step1. Mixed Dynamic Choose Kernel
   if (!has_choose_kernel_) {
     has_choose_kernel_ = true;
@@ -76,9 +77,11 @@ void OneDNNMixedPhiKernelInstruction::Run() {
   if (use_onednn_kernel_) {
     OneDNNPhiKernelInstruction::Run();
   } else {
+    auto tmp_kernel_context = kernel_context_;
+    auto tmp_infer_meta_context_ = infer_meta_context_;
     // TransLayout first
-    auto inputs = kernel_context_.InputsBetween<phi::DenseTensor>(
-        size_t(0), kernel_context_.InputsSize());
+    auto inputs = tmp_kernel_context.InputsBetween<phi::DenseTensor>(
+        size_t(0), tmp_kernel_context.InputsSize());
 
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto input = inputs[i];
@@ -89,30 +92,66 @@ void OneDNNMixedPhiKernelInstruction::Run() {
         // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
         // data_transfer.cc
         if (!input->IsInitialized() && tmp_layout == DataLayout::NHWC) {
-          auto transed_tensor = const_cast<phi::DenseTensor*>(input);
+          tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
+          auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
               transed_tensor, phi::DataLayout::ONEDNN, tmp_layout);
+          dnnl::memory::desc out_mem_desc =
+              phi::funcs::make_memory_desc(*transed_tensor, tmp_layout);
+          transed_tensor->set_mem_desc(out_mem_desc);
+          tmp_kernel_context.UpdataInput(i, transed_tensor);
+          auto meta_tensor = phi::MetaTensor(transed_tensor);
+          auto input_meta_tensor = phi::MetaTensor(input);
+          if (tmp_infer_meta_context_.InputsSize() > i &&
+              tmp_infer_meta_context_.InputAt(i).is_same_tensor(
+                  input_meta_tensor)) {
+            tmp_infer_meta_context_.UpdataInput(i, meta_tensor);
+          } else {
+            for (size_t j = 0; j < tmp_infer_meta_context_.InputsSize(); ++j) {
+              if (tmp_infer_meta_context_.InputAt(j).is_same_tensor(
+                      input_meta_tensor)) {
+                tmp_infer_meta_context_.UpdataInput(j, meta_tensor);
+                break;
+              }
+            }
+          }
         } else {
-          phi::DenseTensor transed_tensor;
-          transed_tensor.set_meta(input->meta());
+          tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>());
+          auto transed_tensor = tmp_holders.back().get();
+          transed_tensor->set_meta(input->meta());
           phi::funcs::TransDataLayoutFromOneDNN(phi::DataLayout::ONEDNN,
                                                 tmp_layout,
                                                 *input,
-                                                &transed_tensor,
+                                                transed_tensor,
                                                 phi::CPUPlace());
-          *(const_cast<phi::DenseTensor*>(input)) = transed_tensor;
+          tmp_kernel_context.UpdataInput(i, transed_tensor);
+          auto meta_tensor = phi::MetaTensor(transed_tensor);
+          auto input_meta_tensor = phi::MetaTensor(input);
+          if (tmp_infer_meta_context_.InputsSize() > i &&
+              tmp_infer_meta_context_.InputAt(i).is_same_tensor(
+                  input_meta_tensor)) {
+            tmp_infer_meta_context_.UpdataInput(i, meta_tensor);
+          } else {
+            for (size_t j = 0; j < tmp_infer_meta_context_.InputsSize(); ++j) {
+              if (tmp_infer_meta_context_.InputAt(j).is_same_tensor(
+                      input_meta_tensor)) {
+                tmp_infer_meta_context_.UpdataInput(j, meta_tensor);
+                break;
+              }
+            }
+          }
         }
       }
     }
 
     VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
     if (infer_meta_interface_) {
-      infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+      infer_meta_interface_->infer_meta_(&(tmp_infer_meta_context_));
     }
     VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
     VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
-    (*(phi_kernel_))(&(kernel_context_));
+    (*(phi_kernel_))(&(tmp_kernel_context));
     VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
   }
 }

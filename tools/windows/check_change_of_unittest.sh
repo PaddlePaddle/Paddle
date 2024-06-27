@@ -19,7 +19,7 @@ GITHUB_API_TOKEN=$GITHUB_API_TOKEN
 GIT_PR_ID=$AGILE_PULL_ID
 BRANCH=$BRANCH
 if [ "${GITHUB_API_TOKEN}" == "" ] || [ "${GIT_PR_ID}" == "" ];then
-    exit 0 
+    exit 0
 fi
 
 unittest_spec_diff=$(cat $PADDLE_ROOT/deleted_ut | sed 's/^/ - /g')

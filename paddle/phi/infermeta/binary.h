@@ -209,6 +209,11 @@ void CtcAlignInferMeta(const MetaTensor& input,
                        MetaTensor* output,
                        MetaTensor* output_length);
 
+void CvmInferMeta(const MetaTensor& x,
+                  const MetaTensor& cvm,
+                  bool use_cvm,
+                  MetaTensor* out);
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
@@ -398,6 +403,10 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void HingeLossInferMeta(const MetaTensor& logits,
+                        const MetaTensor& labels,
+                        MetaTensor* loss);
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,
@@ -409,6 +418,15 @@ void IdentityLossGradInferMeta(const MetaTensor& x,
                                const MetaTensor& out_grad,
                                const int reduction,
                                MetaTensor* x_grad);
+
+void Im2sequenceInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const std::vector<int>& kernels,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& out_stride,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
 
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
@@ -447,6 +465,11 @@ void LogLossInferMeta(const MetaTensor& input,
                       float epsilon,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void LookupTableDequantInferMeta(const MetaTensor& w,
+                                 const MetaTensor& ids,
+                                 int64_t padding_idx,
+                                 MetaTensor* out);
 
 void LUUnpackInferMeta(const MetaTensor& x,
                        const MetaTensor& pivots,
@@ -635,19 +658,19 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out);
 
+void TdmChildInferMeta(const MetaTensor& x,
+                       const MetaTensor& tree_info,
+                       int child_nums,
+                       DataType dtype,
+                       MetaTensor* child,
+                       MetaTensor* leaf_mask);
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids);
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,

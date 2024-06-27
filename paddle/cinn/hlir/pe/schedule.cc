@@ -30,7 +30,7 @@
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 namespace cinn {
 namespace hlir {
@@ -53,6 +53,8 @@ ParamsT CreateParamsImpl(common::ARMArch) {
 }
 
 ParamsT CreateParamsImpl(common::NVGPUArch) { return CreateCudaParams(); }
+
+ParamsT CreateParamsImpl(common::HygonDCUArchHIP) { return CreateCudaParams(); }
 
 ParamsT CreateParams(common::Arch arch) {
   return std::visit([](const auto &impl) { return CreateParamsImpl(impl); },
@@ -156,10 +158,15 @@ void ScheduleInjectiveCPU1(poly::Stage *stage,
                            bool vectorizable) {
   int dims = stage->n_out_dims();
   if (dims > 1) {
-    CHECK_EQ(stage->n_out_dims(), stage->n_in_dims())
-        << "The dims of op are not equal";
-    CHECK_EQ(stage->n_out_dims(), output_shape.size())
-        << "The origin stage out dims should be same with output_shape sizes";
+    PADDLE_ENFORCE_EQ(stage->n_out_dims(),
+                      stage->n_in_dims(),
+                      phi::errors::InvalidArgument(
+                          "The dims of stage in and out are not equal"));
+    PADDLE_ENFORCE_EQ(
+        stage->n_out_dims(),
+        output_shape.size(),
+        phi::errors::InvalidArgument(
+            "The dims of stage out and output_shape's size are not equal"));
     poly::Iterator fused = stage->axis(dims - 1);
     int target_native_vector_bits = target.get_target_bits() * 8;
     int type_bits = stage->tensor()->type().bits();
@@ -223,7 +230,10 @@ void MatmulScheduleCPU(poly::StageMap stages,
                        const ir::Tensor &output,
                        const ir::Tensor &packedB,
                        const cinn::common::Target &target) {
-  CHECK_EQ(output->type(), packedB->type());
+  PADDLE_ENFORCE_EQ(output->type(),
+                    packedB->type(),
+                    phi::errors::InvalidArgument(
+                        "output and packedB's type should be the same"));
   int basic_split_factor = GetBasicFactor(packedB->type(), target);
   // packedB
   int packedB_dims = stages[packedB]->axis_names().size();
@@ -243,7 +253,10 @@ void MatmulScheduleCPU(poly::StageMap stages,
   int bm = GetArrayPackingFactor(M, output->type(), target);
   int bn = GetArrayPackingFactor(N, output->type(), target);
   int out_axis_dims = stages[output]->axis_names().size();
-  CHECK_GE(out_axis_dims, 3U) << "output tensor's size should be at least 3";
+  PADDLE_ENFORCE_GE(out_axis_dims,
+                    3U,
+                    phi::errors::InvalidArgument(
+                        "output tensor's size should be at least 3"));
   poly::Iterator i_axis = stages[output]->axis(out_axis_dims - 3);
   poly::Iterator j_axis = stages[output]->axis(out_axis_dims - 2);
   poly::Iterator i_outer, i_inner, j_outer, j_inner;
@@ -301,7 +314,10 @@ void MatmulScheduleCPU(poly::StageMap stages,
     all_axes.push_back(all_axes_inner[i]);
   }
   // int axes
-  CHECK_EQ(all_axes.size(), out_axis_dims);
+  PADDLE_ENFORCE_EQ(all_axes.size(),
+                    out_axis_dims,
+                    phi::errors::InvalidArgument(
+                        "all_axes's size should be equal to out_axis_dims"));
   if (is_k_splited) {
     if (is_m_splited || is_n_splited) {
       // swap k_inner and j_inner/i_inner
@@ -321,7 +337,10 @@ void MatmulScheduleCPU(poly::StageMap stages,
       poly::isl_set_get_axis_range(out_domain.get(), out_axis_dims - 1);
   auto &min = std::get<0>(range);
   auto &max = std::get<1>(range);
-  CHECK_EQ(min.get_num_si(), 0) << "axis range should begin from zero";
+  PADDLE_ENFORCE_EQ(
+      min.get_num_si(),
+      0,
+      phi::errors::InvalidArgument("axis range should begin from zero"));
   int out_last_dim = max.get_num_si() + 1;
   int output_split_factor =
       GetBetterSplitFactor(out_last_dim, basic_split_factor);
@@ -339,8 +358,14 @@ void MulScheduleCPU(poly::StageMap stages,
   auto out_reduce_axis = output->reduce_axis;
   std::vector<Expr> reduce_first_shape = reduce_first->shape;
   std::vector<Expr> output_shape = output->shape;
-  CHECK_EQ(reduce_first_shape.size(), 3U);
-  CHECK_EQ(output_shape.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      reduce_first_shape.size(),
+      3U,
+      phi::errors::InvalidArgument("reduce_first_shape's size should be 3"));
+  PADDLE_ENFORCE_EQ(
+      output_shape.size(),
+      2U,
+      phi::errors::InvalidArgument("output_shape's size should be 2"));
 
   // reduce_first init
   auto reduce_first_init = reduce_first->GetInitTensor(stages, target);
@@ -608,7 +633,10 @@ void SoftmaxScheduleCPU(poly::StageMap stage,
   for (int i = 1; i < axis; i++) {
     fused = stage[output]->Fuse(0, 1);
   }
-  CHECK_GT(stage[output]->n_out_dims(), 1);
+  PADDLE_ENFORCE_GT(
+      stage[output]->n_out_dims(),
+      1,
+      phi::errors::InvalidArgument("output's dims should be greater than 1"));
   stage[temp]->ComputeAt(stage[output], 0);
 }
 
@@ -628,7 +656,10 @@ void GlobalPoolScheduleGPU(poly::StageMap stages,
 void PoolScheduleCPU(poly::StageMap stages,
                      const ir::Tensor &output,
                      const cinn::common::Target &target) {
-  CHECK_GE(stages[output]->n_out_dims(), 2);
+  PADDLE_ENFORCE_GE(
+      stages[output]->n_out_dims(),
+      2,
+      phi::errors::InvalidArgument("output's dims should be greater than 2"));
   stages[output]->Fuse({0, 1});
   stages[output]->Parallel(0);
 }
@@ -636,7 +667,10 @@ void PoolScheduleCPU(poly::StageMap stages,
 void PoolScheduleGPU(poly::StageMap stages,
                      const ir::Tensor &output,
                      const cinn::common::Target &target) {
-  CHECK_GE(stages[output]->axis_names().size(), 4);
+  PADDLE_ENFORCE_GE(
+      stages[output]->axis_names().size(),
+      4,
+      phi::errors::InvalidArgument("output's dims should be greater than 4"));
   stages[output]->Fuse({0, 1, 2, 3});
   stages[output]->Split(0, 1024);
   stages[output]->Bind(0, "blockIdx.x");
@@ -889,8 +923,10 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
   CHECK(input_pad.defined());
   auto type = packed_out->type();
   absl::flat_hash_map<std::string, int> conv2d_factors;
-  CHECK_EQ(packed_out->shape.size(), 5U)
-      << "packed_out's shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      packed_out->shape.size(),
+      5U,
+      phi::errors::InvalidArgument("packed_out's shape size should be 5"));
   Expr h_out = cinn::common::AutoSimplify(packed_out->shape[2]);
   Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int oh = h_out.as_int32();
@@ -901,7 +937,10 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
   int ow_bn_size = conv2d_factors["ow_bn"];
 
   auto input_shape = input_pad->shape;
-  CHECK_EQ(input_shape.size(), 5U) << "input shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      input_shape.size(),
+      5U,
+      phi::errors::InvalidArgument("input shape size should be 5"));
   Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
   Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
@@ -913,15 +952,19 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
 
   // data
   if (data.defined()) {
-    CHECK_GE(stages[data]->n_out_dims(), 3U)
-        << "data's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(
+        stages[data]->n_out_dims(),
+        3U,
+        phi::errors::InvalidArgument("data's out_dims should be more than 3"));
     stages[data]->Fuse({0, 1, 2});
     stages[data]->ComputeInline();
   }
   // input_pad
   if (do_padding) {
-    CHECK_GE(stages[input_pad]->n_out_dims(), 3U)
-        << "input_pad's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[input_pad]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "input_pad's out_dims should be more than 3"));
     stages[input_pad]->Fuse({0, 1, 2});
     stages[input_pad]->Vectorize(stages[input_pad]->n_out_dims() - 1,
                                  input_pad->shape.back().as_int32());
@@ -931,8 +974,10 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
 
   // weights
   if (weights_dilation.defined()) {
-    CHECK_GE(stages[weights_dilation]->n_out_dims(), 3U)
-        << "weights_dilation's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[weights_dilation]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "weights_dilation's out_dims should be more than 3"));
     // oc_outer, ic_outer, oh, ow, ic_inner, oc_inner -> oc_outer, oh, ic_outer,
     // ow, ic_inner, oc_inner
     stages[weights_dilation]->Reorder({2, 1});
@@ -1038,8 +1083,10 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
   CHECK(input_pad.defined());
   auto type = packed_out->type();
   absl::flat_hash_map<std::string, int> conv2d_factors;
-  CHECK_EQ(packed_out->shape.size(), 5U)
-      << "packed_out's shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      packed_out->shape.size(),
+      5U,
+      phi::errors::InvalidArgument("packed_out's shape size should be 5"));
   Expr h_out = cinn::common::AutoSimplify(packed_out->shape[2]);
   Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int oh = h_out.as_int32();
@@ -1051,7 +1098,10 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
 
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
-  CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      shape_size,
+      5U,
+      phi::errors::InvalidArgument("input shape size should be 5"));
   Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
   Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
@@ -1066,8 +1116,10 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
   }
   // weights
   if (weights_dilation.defined()) {
-    CHECK_GE(stages[weights_dilation]->n_out_dims(), 3U)
-        << "weights_dilation's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[weights_dilation]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "weights_dilation's out_dims should be more than 3"));
     // Reorder: [oc_outer, ic_outer, oh, ow, ic_inner, oc_inner] ->
     // [oc_outer, oh, ic_outer, ow, ic_inner, oc_inner]
     stages[weights_dilation]->Reorder({2, 1});
@@ -1160,8 +1212,10 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
   CHECK(input_pad.defined());
   auto type = packed_out->type();
   absl::flat_hash_map<std::string, int> conv2d_factors;
-  CHECK_EQ(packed_out->shape.size(), 5U)
-      << "packed_out's shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      packed_out->shape.size(),
+      5U,
+      phi::errors::InvalidArgument("packed_out's shape size should be 5"));
   Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int ow = w_out.as_int32();
   int basic_split_factor = GetBasicFactor(type, target);
@@ -1170,7 +1224,10 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
 
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
-  CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      shape_size,
+      5U,
+      phi::errors::InvalidArgument("input shape size should be 5"));
   Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
   Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
@@ -1185,8 +1242,10 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
   }
   // weights
   if (weights_dilation.defined()) {
-    CHECK_GE(stages[weights_dilation]->n_out_dims(), 3U)
-        << "weights_dilation's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[weights_dilation]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "weights_dilation's out_dims should be more than 3"));
     // Reorder: [oc_outer, ic_outer, oh, ow, ic_inner, oc_inner] ->
     // [oc_outer, oh, ic_outer, ow, ic_inner, oc_inner]
     stages[weights_dilation]->Reorder({2, 1});
@@ -1266,13 +1325,18 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
   auto type = packed_out->type();
-  CHECK_EQ(packed_out->shape.size(), 5U)
-      << "packed_out's shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      packed_out->shape.size(),
+      5U,
+      phi::errors::InvalidArgument("packed_out's shape size should be 5"));
   Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int ow = w_out.as_int32();
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
-  CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      shape_size,
+      5U,
+      phi::errors::InvalidArgument("input shape size should be 5"));
   Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
   Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
@@ -1291,15 +1355,19 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
   VLOG(3) << "unroll_kw " << unroll_kw;
   // data
   if (data.defined()) {
-    CHECK_GE(stages[data]->n_out_dims(), 3U)
-        << "data's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(
+        stages[data]->n_out_dims(),
+        3U,
+        phi::errors::InvalidArgument("data's out_dims should be more than 3"));
     stages[data]->Fuse({0, 1, 2});
     stages[data]->ComputeInline();
   }
   // input_pad
   if (do_padding) {
-    CHECK_GE(stages[input_pad]->n_out_dims(), 3U)
-        << "input_pad's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[input_pad]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "input_pad's out_dims should be more than 3"));
     stages[input_pad]->Fuse({0, 1, 2});
     stages[input_pad]->Vectorize(stages[input_pad]->n_out_dims() - 1,
                                  input_pad->shape.back().as_int32());
@@ -1308,8 +1376,10 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
   }
   // weights
   if (weights_dilation.defined()) {
-    CHECK_GE(stages[weights_dilation]->n_out_dims(), 3U)
-        << "weights_dilation's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[weights_dilation]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "weights_dilation's out_dims should be more than 3"));
     // oc_outer, ic_outer, oh, ow, ic_inner, oc_inner -> oc_outer, oh, ic_outer,
     // ow, ic_inner, oc_inner
     stages[weights_dilation]->Reorder({2, 1});
@@ -1399,8 +1469,10 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
   CHECK(input_pad.defined());
   auto type = packed_out->type();
   absl::flat_hash_map<std::string, int> conv2d_factors;
-  CHECK_EQ(packed_out->shape.size(), 5U)
-      << "packed_out's shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      packed_out->shape.size(),
+      5U,
+      phi::errors::InvalidArgument("packed_out's shape size should be 5"));
   Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int ow = w_out.as_int32();
   int basic_split_factor = GetBasicFactor(type, target);
@@ -1409,7 +1481,10 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
 
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
-  CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
+  PADDLE_ENFORCE_EQ(
+      shape_size,
+      5U,
+      phi::errors::InvalidArgument("input shape size should be 5"));
   Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
   Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
@@ -1428,8 +1503,10 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
   }
   // weights
   if (weights_dilation.defined()) {
-    CHECK_GE(stages[weights_dilation]->n_out_dims(), 3U)
-        << "weights_dilation's out_dims should be more than 3";
+    PADDLE_ENFORCE_GE(stages[weights_dilation]->n_out_dims(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "weights_dilation's out_dims should be more than 3"));
     // Reorder: [oc_outer, ic_outer, oh, ow, ic_inner, oc_inner] ->
     // [oc_outer, oh, ic_outer, ow, ic_inner, oc_inner]
     stages[weights_dilation]->Reorder({2, 1});
@@ -1504,7 +1581,9 @@ inline void InputDirectConvCudaParam(
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
-  CHECK_EQ(int_data.size(), 6UL);
+  PADDLE_ENFORCE_EQ(int_data.size(),
+                    6UL,
+                    phi::errors::InvalidArgument("int_data size should be 6"));
   absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["ry"] = int_data[1];
@@ -1523,7 +1602,9 @@ inline void InputWinogradConvCudaParam(
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
-  CHECK_EQ(int_data.size(), 4UL);
+  PADDLE_ENFORCE_EQ(int_data.size(),
+                    4UL,
+                    phi::errors::InvalidArgument("int_data size should be 4"));
   absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["x"] = int_data[1];
@@ -2369,7 +2450,9 @@ void CudaScheduleConv(poly::StageMap stages,
     thread_z = thread_z / 2;
     f_inner = f_inner * 2;
   }
-  CHECK_LE(w * thread_z, 1024) << "Wrong Param of Conv2d!";
+  PADDLE_ENFORCE_LE(w * thread_z,
+                    1024,
+                    phi::errors::InvalidArgument("The thread_z is too large!"));
   auto OL = stages[output]->CacheWrite("local", stages, output);
 
   auto tx = stages[output]->axis(3);
@@ -2557,7 +2640,9 @@ void CudaScheduleWinogradConv(poly::StageMap wino_stages,
       std::to_string(wino_conv->shape[2].as_int32()) + " " +
       std::to_string(wino_conv->shape[3].as_int32());
   VLOG(1) << "Key in CudaScheduleWinogradConv is : " << key;
-  CHECK_GT(res.count(key), 0);
+  PADDLE_ENFORCE_GT(res.count(key),
+                    0,
+                    phi::errors::InvalidArgument("Didn't find saved param"));
   auto &rc_param = res[key]["rc"];
   auto &x_param = res[key]["x"];
   auto &y_param = res[key]["y"];
@@ -2672,7 +2757,11 @@ int gcd(int a, int b) {
 }
 
 int MaxFactorLessThan(int a, int b) {
-  CHECK_GT(a, b);
+  PADDLE_ENFORCE_GT(
+      a,
+      b,
+      phi::errors::InvalidArgument(
+          "The first argument should be greater than the second argument"));
   int res = 1;
   for (int i = 2; i <= static_cast<int>(sqrt(static_cast<double>(a))); i++) {
     if (a % i == 0) {
@@ -2758,8 +2847,10 @@ void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
 void CudaScheduleInjective(poly::Stage *stage,
                            const std::vector<int> &output_shape,
                            const cinn::common::Target &target) {
-  CHECK_EQ(stage->n_out_dims(), stage->n_in_dims())
-      << "The dims of op are not equal";
+  PADDLE_ENFORCE_EQ(
+      stage->n_out_dims(),
+      stage->n_in_dims(),
+      phi::errors::InvalidArgument("The dims of op are not equal"));
   if (FLAGS_cinn_use_cuda_vectorize) {
     CudaScheduleInjectiveWithVectorize(stage, output_shape, target);
     return;
@@ -2786,7 +2877,10 @@ void CudaScheduleInjective(poly::Stage *stage,
     PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
-  CHECK_GT(prod_size, new_num_thread);
+  PADDLE_ENFORCE_GT(prod_size,
+                    new_num_thread,
+                    phi::errors::InvalidArgument(
+                        "The prod_size should be greater than new_num_thread"));
   stage->Split(0, new_num_thread);
   stage->Bind(0, "blockIdx.x");
   stage->Bind(1, "threadIdx.x");
@@ -2823,21 +2917,29 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) {},
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) {
-        if (fused_shape > target.max_num_threads()) {
-          stages[last_output]->Split(0, target.max_num_threads());
-          stages[last_output]->Bind(0, "blockIdx.x");
-          stages[last_output]->Bind(1, "threadIdx.x");
-          compute_at_level++;
-        } else {
-          stages[last_output]->Bind(0, "threadIdx.x");
-        }
-      },
-  });
+  target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::X86Arch) {},
+                    [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::NVGPUArch) {
+                      if (fused_shape > target.max_num_threads()) {
+                        stages[last_output]->Split(0, target.max_num_threads());
+                        stages[last_output]->Bind(0, "blockIdx.x");
+                        stages[last_output]->Bind(1, "threadIdx.x");
+                        compute_at_level++;
+                      } else {
+                        stages[last_output]->Bind(0, "threadIdx.x");
+                      }
+                    },
+                    [&](common::HygonDCUArchHIP) {
+                      if (fused_shape > target.max_num_threads()) {
+                        stages[last_output]->Split(0, target.max_num_threads());
+                        stages[last_output]->Bind(0, "blockIdx.x");
+                        stages[last_output]->Bind(1, "threadIdx.x");
+                        compute_at_level++;
+                      } else {
+                        stages[last_output]->Bind(0, "threadIdx.x");
+                      }
+                    });
 
   for (int i = 0; i < out_tensors.size() - 1; i++) {
     stages[out_tensors[i]]->ComputeAt2(stages[last_output], compute_at_level);

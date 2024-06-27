@@ -17,6 +17,8 @@ import sys
 import tempfile
 import unittest
 
+from paddle.framework import use_pir_api
+
 sys.path.append("../../legacy_test")
 
 import numpy as np
@@ -536,6 +538,7 @@ class TestTensorAxis(unittest.TestCase):
         )
         np.testing.assert_allclose(np_out, pd_out.numpy())
 
+    @test_with_pir_api
     def test_static_and_infer(self):
         paddle.enable_static()
         np_x = np.random.randn(9, 10, 11).astype('float32')
@@ -559,9 +562,17 @@ class TestTensorAxis(unittest.TestCase):
 
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            config = paddle_infer.Config(
-                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-            )
+            if use_pir_api():
+                config = paddle_infer.Config(
+                    self.save_path + '.json', self.save_path + '.pdiparams'
+                )
+                config.enable_new_ir()
+                config.enable_new_executor()
+                config.use_optimized_model(True)
+            else:
+                config = paddle_infer.Config(
+                    self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+                )
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             else:

@@ -18,6 +18,7 @@ import numpy as np
 from utils import compare_legacy_with_pt
 
 import paddle
+from paddle.pir_utils import test_with_dygraph_pir
 
 devices = ['cpu']
 if paddle.device.get_device() != "cpu":
@@ -178,6 +179,7 @@ class TestSparseSumStatic(unittest.TestCase):
             paddle.disable_static()
 
     @compare_legacy_with_pt
+    @test_with_dygraph_pir
     def test_sum(self):
         # 1d
         self.check_result_coo([5], None, False)

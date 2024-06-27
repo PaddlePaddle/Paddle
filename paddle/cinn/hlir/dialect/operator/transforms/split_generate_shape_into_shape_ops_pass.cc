@@ -136,10 +136,10 @@ struct CachedDimExprToValueConverter {
           ->Build<paddle::dialect::FlattenOp>(value, 0, dims.size() - 1)
           .out();
     };
-    if (tensor_dim.value.type()
-            .dyn_cast<paddle::dialect::DenseTensorType>()
-            .dims()
-            .size() == 0) {
+    const auto& ddim = tensor_dim.value.type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims();
+    if (ddim.size() == 0 || (ddim.size() == 1 && ddim[0] == 1)) {
       return CastToInt64IfNeed(tensor_dim.value);
     }
     return CastToInt64IfNeed(rewriter
@@ -372,9 +372,35 @@ pir::Value GetValueOfRewrittenOps(const std::vector<symbol::DimExpr>& dim_exprs,
   const std::vector<pir::Value>& values_from_dim_exprs =
       GetValuesOfRewrittenOps(dim_exprs, converter);
   if (values_from_dim_exprs.size() == 1) return values_from_dim_exprs.at(0);
-  pir::Value vec =
-      converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs).out();
-  return converter->rewriter->Build<paddle::dialect::ConcatOp>(vec).out();
+
+  auto IsZeroDim = [](const pir::Value& value) {
+    return value.type()
+               .dyn_cast<paddle::dialect::DenseTensorType>()
+               .dims()
+               .size() == 0;
+  };
+  pir::Value combine_values = [&] {
+    const int zero_dim_value_count = std::count_if(
+        values_from_dim_exprs.begin(), values_from_dim_exprs.end(), IsZeroDim);
+    if (zero_dim_value_count != 0 &&
+        zero_dim_value_count != values_from_dim_exprs.size()) {
+      std::vector<pir::Value> new_values = values_from_dim_exprs;
+      for (size_t i = 0; i < new_values.size(); ++i) {
+        if (IsZeroDim(new_values[i])) {
+          new_values[i] = converter->rewriter
+                              ->Build<paddle::dialect::ReshapeOp>(
+                                  new_values[i], std::vector<int64_t>{1})
+                              .out();
+        }
+      }
+      return converter->rewriter->Build<pir::CombineOp>(new_values).out();
+    }
+    return converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs)
+        .out();
+  }();
+
+  return converter->rewriter->Build<paddle::dialect::ConcatOp>(combine_values)
+      .out();
 }
 
 std::optional<pir::Value> GetOutReplacement(cinn::dialect::GenerateShapeOp op,

@@ -151,6 +151,26 @@ void ASGDInferMeta(const MetaTensor& param,
                    MetaTensor* y_out,
                    MetaTensor* master_param_out);
 
+void AttentionLstmInferMeta(const MetaTensor& x,
+                            const MetaTensor& c0,
+                            const MetaTensor& h0,
+                            const MetaTensor& attention_weight,
+                            const MetaTensor& attention_bias,
+                            const MetaTensor& attention_scalar,
+                            const MetaTensor& attention_scalar_bias,
+                            const MetaTensor& lstm_weight,
+                            const MetaTensor& lstm_bias,
+                            const std::string& gate_activation,
+                            const std::string& cell_activation,
+                            const std::string& candidate_activation,
+                            MetaTensor* hidden,
+                            MetaTensor* cell,
+                            MetaTensor* attentioned_x,
+                            MetaTensor* attention_fc_out,
+                            MetaTensor* lstm_x,
+                            MetaTensor* lstm_out,
+                            MetaConfig config = MetaConfig());
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -212,6 +232,18 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                              MetaTensor* mean_out,
                              MetaTensor* variance_out,
                              MetaConfig config = MetaConfig());
+
+void BeamSearchInferMeta(const MetaTensor& pre_ids,
+                         const MetaTensor& pre_scores,
+                         const MetaTensor& ids,
+                         const MetaTensor& scores,
+                         int level,
+                         int beam_size,
+                         int end_id,
+                         bool is_accumulated,
+                         MetaTensor* selected_ids,
+                         MetaTensor* selected_scores,
+                         MetaTensor* parent_idx);
 
 void BilinearInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
@@ -291,6 +323,23 @@ void CudnnLSTMInferMeta(
     MetaTensor* last_c,
     MetaTensor* reserve,
     MetaTensor* state_out);
+
+void LSTMInferMeta(const MetaTensor& input,
+                   const MetaTensor& h0,
+                   const MetaTensor& c0,
+                   const MetaTensor& weight,
+                   const MetaTensor& bias,
+                   bool use_peepholes,
+                   bool is_reverse,
+                   bool is_test,
+                   const std::string& gate_activation,
+                   const std::string& cell_activation,
+                   const std::string& candidate_activation,
+                   MetaTensor* hidden,
+                   MetaTensor* cell,
+                   MetaTensor* batch_gate,
+                   MetaTensor* batch_cell_pre_act,
+                   MetaConfig config = MetaConfig());
 
 void DecayedAdagradInferMeta(const MetaTensor& param,
                              const MetaTensor& grad,
@@ -926,6 +975,15 @@ void SparseAttentionInferMeta(const MetaTensor& q,
                               MetaTensor* sparse_dot_sdd,
                               MetaTensor* softmax);
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& velocity,
+                             const MetaTensor& index,
+                             const MetaTensor& learning_rate,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out);
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,
@@ -1154,5 +1212,17 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out);
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
+                           int seed,
+                           int k,
+                           const std::string& mode,
+                           MetaTensor* out,
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids);
 
 }  // namespace phi
