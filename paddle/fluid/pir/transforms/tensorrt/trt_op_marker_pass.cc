@@ -413,6 +413,26 @@ class ArangeOpPattern
   }
 };
 
+class SignOpPattern : public pir::OpRewritePattern<paddle::dialect::SignOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SignOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SignOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "sign already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8200)
+    VLOG(3) << "sign op is only supported by tensorrt8.2 above ";
+    return false;
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -439,7 +459,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<DepthwiseConv2dOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DeformableConvOpPattern>(context));
-    ps.Add(std::make_unique<ArangeOpPattern>(context)
+    ps.Add(std::make_unique<ArangeOpPattern>(context));
+    ps.Add(std::make_unique<SignOpPattern>(context));
     return ps;
   }
 };
