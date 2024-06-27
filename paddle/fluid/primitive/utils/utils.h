@@ -16,9 +16,9 @@
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
