@@ -1107,6 +1107,17 @@
     data_type : x
   no_need_buffer : x
 
+- backward_op : matmul_amp_grad
+  forward : matmul_amp (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false, int dx_type=22, int dy_type=22) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false, int dx_type=22, int dy_type=22)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : MatmulAMPGradInferMeta
+    param: [x, y, transpose_x, transpose_y, dx_type, dy_type]
+  kernel :
+    func : matmul_amp_grad
+    data_type : x
+
 - backward_op : matrix_power_grad
   forward : matrix_power (Tensor x, int n) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int n)

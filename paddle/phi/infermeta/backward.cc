@@ -664,6 +664,52 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void MatmulAMPGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            bool transpose_x,
+                            bool transpose_y,
+                            int dx_type,
+                            int dy_type,
+                            MetaTensor* dx,
+                            MetaTensor* dy) {
+  PADDLE_ENFORCE_EQ(
+      (dx_type == 22 || dx_type == 5),
+      true,
+      phi::errors::InvalidArgument(
+          "The attribute of dx_type in matmul_amp must be [%s] or [%s], but "
+          "received [%s]",
+          DataTypeToString(DataType::BFLOAT16),
+          DataTypeToString(DataType::FLOAT32),
+          DataTypeToString(phi::TransToPhiDataType(dx_type))));
+
+  PADDLE_ENFORCE_EQ(
+      (dy_type == 22 || dy_type == 5),
+      true,
+      phi::errors::InvalidArgument(
+          "The attribute of dy_type in matmul_amp must be [%s] or [%s], but "
+          "received [%s]",
+          DataTypeToString(DataType::BFLOAT16),
+          DataTypeToString(DataType::FLOAT32),
+          DataTypeToString(phi::TransToPhiDataType(dy_type))));
+
+  if (dx) {
+    dx->set_dims(x.dims());
+    if (dx_type == 22) {
+      dx->set_dtype(DataType::BFLOAT16);
+    } else if (dx_type == 5) {
+      dx->set_dtype(DataType::FLOAT32);
+    }
+  }
+  if (dy) {
+    dy->set_dims(y.dims());
+    if (dy_type == 22) {
+      dy->set_dtype(DataType::BFLOAT16);
+    } else if (dy_type == 5) {
+      dy->set_dtype(DataType::FLOAT32);
+    }
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

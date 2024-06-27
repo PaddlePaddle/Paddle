@@ -1009,4 +1009,374 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
   }
 }
 
+template <typename Context, typename InT, typename OutT>
+void MatmulAmpFunction(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out,
+                       bool transpose_x,
+                       bool transpose_y) {
+  const std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  const std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  const int x_ndim = x_dims.size();
+  const int y_ndim = y_dims.size();
+  bool flag = false;
+
+  // Get data ptr
+  const InT* x_data = x.data<InT>();
+  const InT* y_data = y.data<InT>();
+
+  auto blas = phi::funcs::GetBlas<Context, InT>(ctx);
+
+  if (x_ndim == 1) {
+    const int N = x.numel();
+    if (transpose_y) {
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 1],
+          N,
+          phi::errors::InvalidArgument("Input(Y) has error dim."
+                                       "Y'dims[%d] must be equal to %d"
+                                       "But received Y'dims[%d] is %d",
+                                       y_ndim - 1,
+                                       N,
+                                       y_ndim - 1,
+                                       y_dims[y_ndim - 1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 2],
+          N,
+          phi::errors::InvalidArgument("Input(Y) has error dim."
+                                       "Y'dims[%d] must be equal to %d"
+                                       "But received Y'dims[%d] is %d",
+                                       y_ndim - 2,
+                                       N,
+                                       y_ndim - 2,
+                                       y_dims[y_ndim - 2]));
+    }
+    std::vector<std::int64_t> out_dims(y_ndim - 1);
+    if (transpose_y) {
+      std::copy_n(y_dims.cbegin(), y_ndim - 1, out_dims.begin());
+    } else {
+      std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
+      out_dims.back() = y_dims.back();
+    }
+    out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    ctx.template Alloc<OutT>(out);
+    if (transpose_y) {
+      const int M = y.numel() / N;
+      VLOG(3) << "MatMul's case 2";
+      blas.GEMVWrapper(false,
+                       M,
+                       N,
+                       static_cast<OutT>(1),
+                       y_data,
+                       x_data,
+                       static_cast<OutT>(flag),
+                       ctx.template Alloc<OutT>(out));
+    } else {
+      const int M = y_dims[y_ndim - 1];
+      const int batch_size = y.numel() / (M * N);
+      if (batch_size == 1) {
+        VLOG(3) << "MatMul's case 3";
+        blas.GEMVWrapper(true,
+                         N,
+                         M,
+                         static_cast<OutT>(1),
+                         y_data,
+                         x_data,
+                         static_cast<OutT>(flag),
+                         ctx.template Alloc<OutT>(out));
+      } else {
+        VLOG(3) << "MatMul's case 4";
+        blas.BatchedGEMMWrapper(CblasTrans,
+                                CblasNoTrans,
+                                M,
+                                1,
+                                N,
+                                static_cast<OutT>(1),
+                                y_data,
+                                x_data,
+                                static_cast<OutT>(flag),
+                                ctx.template Alloc<OutT>(out),
+                                batch_size,
+                                M * N,
+                                0);
+      }
+    }
+    return;
+  }
+
+  if (y_ndim == 1) {
+    const int N = y.numel();
+    if (transpose_x) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[x_ndim - 2],
+          N,
+          phi::errors::InvalidArgument("Input(X) has error dim."
+                                       "X'dims[%d] must be equal to %d"
+                                       "But received X'dims[%d] is %d",
+                                       x_ndim - 2,
+                                       N,
+                                       x_ndim - 2,
+                                       x_dims[x_ndim - 2]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          x_dims[x_ndim - 1],
+          N,
+          phi::errors::InvalidArgument("Input(X) has error dim."
+                                       "X'dims[%d] must be equal to %d"
+                                       "But received X'dims[%d] is %d",
+                                       x_ndim - 1,
+                                       N,
+                                       x_ndim - 1,
+                                       x_dims[x_ndim - 1]));
+    }
+    std::vector<std::int64_t> out_dims(x_ndim - 1);
+    if (transpose_x) {
+      std::copy_n(x_dims.cbegin(), x_ndim - 2, out_dims.begin());
+      out_dims.back() = x_dims.back();
+    } else {
+      std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
+    }
+    out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    ctx.template Alloc<OutT>(out);
+
+    if (transpose_x) {
+      const int M = x_dims[x_ndim - 1];
+      const int batch_size = x.numel() / (M * N);
+      if (batch_size == 1) {
+        VLOG(3) << "MatMul's case 5";
+        blas.GEMVWrapper(true,
+                         N,
+                         M,
+                         static_cast<OutT>(1),
+                         x_data,
+                         y_data,
+                         static_cast<OutT>(flag),
+                         ctx.template Alloc<OutT>(out));
+      } else {
+        VLOG(3) << "MatMul's case 6";
+        blas.BatchedGEMMWrapper(CblasTrans,
+                                CblasNoTrans,
+                                M,
+                                1,
+                                N,
+                                static_cast<OutT>(1),
+                                x_data,
+                                y_data,
+                                static_cast<OutT>(flag),
+                                ctx.template Alloc<OutT>(out),
+                                batch_size,
+                                M * N,
+                                0);
+      }
+    } else {
+      const int M = x.numel() / N;
+      VLOG(3) << "MatMul's case 7";
+      blas.GEMVWrapper(false,
+                       M,
+                       N,
+                       static_cast<OutT>(1),
+                       x_data,
+                       y_data,
+                       static_cast<OutT>(flag),
+                       ctx.template Alloc<OutT>(out));
+    }
+    return;
+  }
+
+  const int M = transpose_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int K = transpose_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  if (transpose_y) {
+    PADDLE_ENFORCE_EQ(
+        y_dims[y_ndim - 1],
+        K,
+        phi::errors::InvalidArgument("Input(Y) has error dim."
+                                     "Y'dims[%d] must be equal to %d"
+                                     "But received Y'dims[%d] is %d",
+                                     y_ndim - 1,
+                                     K,
+                                     y_ndim - 1,
+                                     y_dims[y_ndim - 1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        y_dims[y_ndim - 2],
+        K,
+        phi::errors::InvalidArgument("Input(Y) has error dim."
+                                     "Y'dims[%d] must be equal to %d"
+                                     "But received Y'dims[%d] is %d",
+                                     y_ndim - 2,
+                                     K,
+                                     y_ndim - 2,
+                                     y_dims[y_ndim - 2]));
+  }
+  const int N = transpose_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+  const int ndim = (std::max)(x_ndim, y_ndim);
+  std::vector<std::int64_t> x_broadcast_dims(ndim);
+  std::vector<std::int64_t> y_broadcast_dims(ndim);
+  std::vector<std::int64_t> out_broadcast_dims(ndim);
+
+  GetBroadcastFromDims(x_ndim - 2,
+                       x_dims.data(),
+                       y_ndim - 2,
+                       y_dims.data(),
+                       x_broadcast_dims.data(),
+                       y_broadcast_dims.data(),
+                       out_broadcast_dims.data());
+  out_broadcast_dims[ndim - 2] = M;
+  out_broadcast_dims[ndim - 1] = N;
+
+  out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
+  ctx.template Alloc<float>(out);
+
+  const int batch_dim = ndim - 2;
+  // broadcast message
+  const bool is_broadcast_dims =
+      !std::equal(x_broadcast_dims.cbegin(),
+                  x_broadcast_dims.cbegin() + batch_dim,
+                  y_broadcast_dims.cbegin());
+
+  const std::int64_t x_batch_size =
+      std::accumulate(x_broadcast_dims.cbegin(),
+                      x_broadcast_dims.cbegin() + batch_dim,
+                      1LL,
+                      std::multiplies<std::int64_t>());
+  const std::int64_t y_batch_size =
+      std::accumulate(y_broadcast_dims.cbegin(),
+                      y_broadcast_dims.cbegin() + batch_dim,
+                      1LL,
+                      std::multiplies<std::int64_t>());
+  const std::int64_t out_batch_size =
+      std::accumulate(out_broadcast_dims.cbegin(),
+                      out_broadcast_dims.cbegin() + batch_dim,
+                      1LL,
+                      std::multiplies<std::int64_t>());
+  if (out_batch_size == 0) return;
+  if (x_batch_size == 1 && y_batch_size == 1) {
+    VLOG(3) << "MatMul's case 8";
+    blas.GEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                     transpose_y ? CblasTrans : CblasNoTrans,
+                     M,
+                     N,
+                     K,
+                     static_cast<OutT>(1),
+                     x_data,
+                     y_data,
+                     static_cast<OutT>(flag),
+                     ctx.template Alloc<OutT>(out));
+  } else if (x_batch_size == 1) {
+    if (M == 1 && transpose_y) {
+      VLOG(3) << "MatMul's case 9";
+      blas.GEMVWrapper(false,
+                       y_batch_size * N,
+                       K,
+                       static_cast<OutT>(1),
+                       y_data,
+                       x_data,
+                       static_cast<OutT>(flag),
+                       ctx.template Alloc<OutT>(out));
+    } else {
+      VLOG(3) << "MatMul's case 10";
+      blas.BatchedGEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                              transpose_y ? CblasTrans : CblasNoTrans,
+                              M,
+                              N,
+                              K,
+                              static_cast<OutT>(1),
+                              x_data,
+                              y_data,
+                              static_cast<OutT>(flag),
+                              ctx.template Alloc<OutT>(out),
+                              out_batch_size,
+                              0,
+                              K * N);
+    }
+  } else if (y_batch_size == 1) {
+    if (!transpose_x) {
+      VLOG(3) << "MatMul's case 11";
+      blas.GEMMWrapper(CblasNoTrans,
+                       transpose_y ? CblasTrans : CblasNoTrans,
+                       x_batch_size * M,
+                       N,
+                       K,
+                       static_cast<OutT>(1),
+                       x_data,
+                       y_data,
+                       static_cast<OutT>(flag),
+                       ctx.template Alloc<OutT>(out));
+    } else {
+      VLOG(3) << "MatMul's case 12";
+      blas.BatchedGEMMWrapper(CblasTrans,
+                              transpose_y ? CblasTrans : CblasNoTrans,
+                              M,
+                              N,
+                              K,
+                              static_cast<OutT>(1),
+                              x_data,
+                              y_data,
+                              static_cast<OutT>(flag),
+                              ctx.template Alloc<OutT>(out),
+                              out_batch_size,
+                              M * K,
+                              0);
+    }
+  } else if (!is_broadcast_dims) {
+    VLOG(3) << "MatMul's case 13";
+    blas.BatchedGEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                            transpose_y ? CblasTrans : CblasNoTrans,
+                            M,
+                            N,
+                            K,
+                            static_cast<OutT>(1),
+                            x_data,
+                            y_data,
+                            static_cast<OutT>(flag),
+                            ctx.template Alloc<OutT>(out),
+                            out_batch_size,
+                            M * K,
+                            K * N);
+  } else {
+    // in the case, can't use stridedgemm
+    std::vector<const InT*> x_ptr(out_batch_size);
+    std::vector<const InT*> y_ptr(out_batch_size);
+    std::vector<OutT*> out_ptr(out_batch_size);
+    std::vector<std::int64_t> index(batch_dim, 0);
+    for (std::int64_t i = 0; i < out_batch_size; ++i) {
+      // using the index to get offset
+      const std::int64_t x_index =
+          GetIndexMessage(batch_dim, x_broadcast_dims.data(), index.data());
+      const std::int64_t y_index =
+          GetIndexMessage(batch_dim, y_broadcast_dims.data(), index.data());
+
+      x_ptr[i] = x_data + x_index * M * K;
+      y_ptr[i] = y_data + y_index * K * N;
+      out_ptr[i] = ctx.template Alloc<OutT>(out) + i * M * N;
+      IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
+    }
+    VLOG(3) << "MatMul's case 14";
+    blas.BatchedGEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                            transpose_y ? CblasTrans : CblasNoTrans,
+                            M,
+                            N,
+                            K,
+                            static_cast<OutT>(1),
+                            x_ptr.data(),
+                            y_ptr.data(),
+                            static_cast<OutT>(flag),
+                            out_ptr.data(),
+                            out_batch_size);
+  }
+}
+
+template <typename T, typename Context>
+void MatmulAMPKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     bool transpose_x,
+                     bool transpose_y,
+                     DenseTensor* out) {
+  MatmulAmpFunction<Context, T, float>(
+      ctx, x, y, out, transpose_x, transpose_y);
+}
+
 }  // namespace phi

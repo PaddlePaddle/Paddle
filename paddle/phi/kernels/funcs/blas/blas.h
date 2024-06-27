@@ -93,6 +93,18 @@ class Blas {
             T beta,
             T* C) const;
 
+  template <typename Ta, typename Tb, typename Tc>
+  void GEMMWrapper(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int M,
+                   int N,
+                   int K,
+                   Tc alpha,
+                   const Ta* A,
+                   const Tb* B,
+                   Tc beta,
+                   Tc* C) const;
+
   template <typename T>
   void GEMM(bool transA,
             bool transB,
@@ -265,6 +277,16 @@ class Blas {
             T beta,
             T* C) const;
 
+  template <typename Ta, typename Tb, typename Tc>
+  void GEMVWrapper(bool trans_a,
+                   int M,
+                   int N,
+                   Tc alpha,
+                   const Ta* A,
+                   const Tb* B,
+                   Tc beta,
+                   Tc* C) const;
+
   template <typename T>
   T DOT(int n, const T* x, const T* y) const;
 
@@ -301,6 +323,34 @@ class Blas {
                    T beta,
                    T** C,
                    int batchCount) const;
+
+  template <typename Ta, typename Tb, typename Tc>
+  void BatchedGEMMWrapper(CBLAS_TRANSPOSE transA,
+                          CBLAS_TRANSPOSE transB,
+                          int M,
+                          int N,
+                          int K,
+                          Tc alpha,
+                          const Ta* A,
+                          const Tb* B,
+                          Tc beta,
+                          Tc* C,
+                          int batchCount,
+                          int64_t strideA,
+                          int64_t strideB) const;
+
+  template <typename Ta, typename Tb, typename Tc>
+  void BatchedGEMMWrapper(CBLAS_TRANSPOSE transA,
+                          CBLAS_TRANSPOSE transB,
+                          int M,
+                          int N,
+                          int K,
+                          Tc alpha,
+                          const Ta** A,
+                          const Tb** B,
+                          Tc beta,
+                          Tc** C,
+                          int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
@@ -340,6 +390,15 @@ class Blas {
               T alpha,
               T* mat_out,
               T beta) const;
+
+  template <typename Ta, typename Tb, typename Tc>
+  void MatMulWrapper(const Ta* mat_a,
+                     const MatDescriptor& dim_a,
+                     const Tb* mat_b,
+                     const MatDescriptor& dim_b,
+                     Tc alpha,
+                     Tc* mat_out,
+                     Tc beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
@@ -419,6 +478,11 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GEMM<T>(args...);
   }
 
+  template <typename... ARGS>
+  void GEMMWrapper(ARGS... args) const {
+    Base()->template GEMMWrapper(args...);
+  }
+
 #ifdef PADDLE_WITH_MKLML  // @{ Group MKLML: class BlasT
   template <typename... ARGS>
   T* GEMM_ALLOC(ARGS... args) const {
@@ -456,6 +520,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void MatMul(ARGS... args) const {
     Base()->template MatMul<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void MatMulWrapper(ARGS... args) const {
+    Base()->template MatMulWrapper(args...);
   }
 
   template <typename... ARGS>
@@ -509,6 +578,11 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void GEMVWrapper(ARGS... args) const {
+    Base()->template GEMVWrapper(args...);
+  }
+
+  template <typename... ARGS>
   T DOT(ARGS... args) const {
     return Base()->template DOT<T>(args...);
   }
@@ -526,6 +600,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void BatchedGEMM(ARGS... args) const {
     Base()->template BatchedGEMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedGEMMWrapper(ARGS... args) const {
+    Base()->template BatchedGEMMWrapper(args...);
   }
 
   template <typename... ARGS>

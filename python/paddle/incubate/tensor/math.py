@@ -14,7 +14,7 @@
 
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.utils import deprecated
 
@@ -280,3 +280,52 @@ def segment_max(data, segment_ids, name=None):
         attrs={"pooltype": "MAX"},
     )
     return out
+
+
+def matmul(
+    x,
+    y,
+    transpose_x=False,
+    transpose_y=False,
+    dx_type='bfloat16',
+    dy_type='bfloat16',
+    name=None,
+):
+    dx_type = convert_np_dtype_to_dtype_(dx_type)
+    dy_type = convert_np_dtype_to_dtype_(dy_type)
+    if in_dygraph_mode():
+        return _C_ops.matmul_amp(
+            x, y, transpose_x, transpose_y, dx_type, dy_type
+        )
+    else:
+        attrs = {
+            'transpose_x': transpose_x,
+            'transpose_y': transpose_y,
+            'dx_type': dx_type,
+            'dy_type': dy_type,
+        }
+
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val,
+                    name,
+                    [
+                        'uint16',
+                        'float32',
+                    ],
+                    'matmul_amp',
+                )
+
+        __check_input(x, y)
+
+        helper = LayerHelper('matmul_amp', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='matmul_amp',
+            inputs={'X': x, 'Y': y},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out

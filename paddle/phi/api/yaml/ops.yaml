@@ -1244,6 +1244,17 @@
     data_type : x
   backward : masked_select_grad
 
+- op : matmul_amp
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false, int dx_type = 22, int dy_type = 22)
+  output : Tensor
+  infer_meta :
+    func : MatmulAmpInferMeta
+    param: [x, y, transpose_x, transpose_y]
+  kernel :
+    func : matmul_amp
+    param: [x, y, transpose_x, transpose_y]
+  backward : matmul_amp_grad
+
 - op : matrix_nms
   args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2., int background_label = 0, bool normalized = true)
   output : Tensor(out), Tensor(index), Tensor(roisnum)
