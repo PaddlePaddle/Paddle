@@ -100,7 +100,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     static SpmdInfo Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
                     "InferSpmd's Input should appear before Attributes.");
-      const std::pair<int, int> range = ctx.InputRangeAt(range.first);
+      const std::pair<int, int> range = ctx.InputRangeAt(in_idx);
       const DistMetaTensor& arg = ctx.InputAt(range.first);
       return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
                                                            attr_idx>(
