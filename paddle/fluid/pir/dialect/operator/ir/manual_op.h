@@ -571,6 +571,7 @@ class ExpandOp : public pir::Op<ExpandOp,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+  void CacheGradOpSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class IncrementOp
@@ -702,6 +703,7 @@ class AssignOut_Op
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+  void CacheGradOpSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
   static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
