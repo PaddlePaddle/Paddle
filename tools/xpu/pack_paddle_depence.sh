@@ -73,9 +73,9 @@ function xhpc_prepare() {
 
   check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
 
-  # remove '#include "xpu/flash_impl.h"' in kv_cache_utils.h
+  # remove '#include "xpu/flash_impl.h"' in flash_api.h
   # TODO(houj04): remove this hack when compile issue is resolved in XHPC
-  sed -i '4d' ${XHPC_DIR_NAME}/xfa/include/xpu/kv_cache_utils.h
+  sed -i '3d' ${XHPC_DIR_NAME}/xfa/include/flash_api.h
 
   cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
   cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
