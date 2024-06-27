@@ -43,6 +43,8 @@ inline void CompareAllKernelImpl(const Context& ctx,
                        const DenseTensor& y,                       \
                        int axis,                                   \
                        DenseTensor* out) {                         \
+    std::cout<<"{function_name : compare, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, { y, type: <class 'paddle.Tensor'>, shape: " << y.dims() << "} }"; \
+    std::cout<<", params: [ "<<"axis: "<<axis<<"]}"<<std::endl; \
     CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
         ctx, x, y, axis, out);                                     \
   }                                                                \

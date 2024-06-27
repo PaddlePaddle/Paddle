@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.framework import in_dygraph_mode
@@ -451,7 +452,7 @@ def ceil(x, name=None):
         helper.append_op(type='ceil', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+@paddle.utils.print_utils.print_args
 def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -529,7 +530,7 @@ def cosh(x, name=None):
         helper.append_op(type='cosh', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+@paddle.utils.print_utils.print_args
 def exp(x, name=None):
     """
 
@@ -741,7 +742,7 @@ def round(x, name=None):
         helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+@paddle.utils.print_utils.print_args
 def rsqrt(x, name=None):
     """
     Rsqrt Activation Operator.
@@ -818,7 +819,7 @@ def sigmoid(x, name=None):
         helper.append_op(type='sigmoid', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+@paddle.utils.print_utils.print_args
 def sin(x, name=None):
     """
     Sine Activation Operator.
@@ -893,6 +894,7 @@ def sinh(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def sqrt(x, name=None):
     """
     Sqrt Activation Operator.
@@ -931,7 +933,7 @@ def sqrt(x, name=None):
         helper.append_op(type='sqrt', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+@paddle.utils.print_utils.print_args
 def square(x, name=None):
     """
     Square each elements of the inputs.

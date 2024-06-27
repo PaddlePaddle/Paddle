@@ -52,6 +52,7 @@ DenseTensor SliceKernel(const Context& ctx,
                         const IntArray& ends,
                         const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis) {
+
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   SliceRawInferMeta(

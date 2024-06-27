@@ -23,6 +23,7 @@ g_use_flash_attn_v1 = (
 )
 
 
+@paddle.utils.print_utils.print_args
 def flash_attention(
     query,
     key,

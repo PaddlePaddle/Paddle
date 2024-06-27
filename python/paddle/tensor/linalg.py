@@ -36,6 +36,7 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
+@paddle.utils.print_utils.print_args
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -137,6 +138,7 @@ def transpose(x, perm, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -356,6 +358,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             #                  [4., 3., 2., 1.]])
     """
 
+    @paddle.utils.print_utils.print_args
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
@@ -393,7 +396,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 attrs=attrs,
             )
             return out
-
+    
+    @paddle.utils.print_utils.print_args
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
     ):
@@ -941,6 +945,7 @@ def cond(x, p=None, name=None):
             )
             return out
 
+    @paddle.utils.print_utils.print_args
     def svd_norm(input, porder, axis=[-1]):
         """
         NOTE:
@@ -1534,6 +1539,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.
@@ -2582,7 +2588,7 @@ def eigh(x, UPLO='L', name=None):
         )
         return out_value, out_vector
 
-
+@paddle.utils.print_utils.print_args
 def pinv(x, rcond=1e-15, hermitian=False, name=None):
     r"""
     Calculate pseudo inverse via SVD(singular value decomposition)

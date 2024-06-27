@@ -78,6 +78,7 @@ class mp_allreduce_eager(PyLayer):
         )
 
 
+@paddle.utils.print_utils.print_args
 def _c_identity(tensor, group=None):
     """
     Return a copy of the tensor, mainly used with model parallel.
@@ -121,6 +122,7 @@ def _c_identity(tensor, group=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
@@ -183,6 +185,7 @@ def _c_concat(tensor, group=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
@@ -438,6 +441,7 @@ def _c_softmax_with_cross_entropy(
         return loss
 
 
+@paddle.utils.print_utils.print_args
 def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear

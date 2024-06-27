@@ -139,6 +139,7 @@ def elu_(x, alpha=1.0, name=None):
     return _legacy_C_ops.elu_(x, 'alpha', alpha)
 
 
+@paddle.utils.print_utils.print_args
 def gelu(x, approximate=False, name=None):
     r"""
     gelu activation.
@@ -949,6 +950,7 @@ def selu(
         return out
 
 
+@paddle.utils.print_utils.print_args
 def silu(x, name=None):
     r"""
     silu activation
@@ -988,6 +990,7 @@ def silu(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def softmax(x, axis=-1, dtype=None, name=None):
     r"""
     This operator implements the softmax layer. The calculation process is as follows:

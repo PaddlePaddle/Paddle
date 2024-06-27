@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -112,6 +113,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
     return padding, padding_algorithm
 
 
+@paddle.utils.print_utils.print_args
 def _conv_nd(
     x,
     weight,
@@ -276,7 +278,7 @@ def _conv_nd(
             out = pre_bias
     return out
 
-
+@paddle.utils.print_utils.print_args
 def conv1d(
     x,
     weight,
@@ -532,7 +534,7 @@ def conv1d(
     out = squeeze(out, axis=[squeeze_aixs])
     return out
 
-
+@paddle.utils.print_utils.print_args
 def conv2d(
     x,
     weight,
@@ -1383,7 +1385,7 @@ def conv2d_transpose(
 
     return out
 
-
+@paddle.utils.print_utils.print_args
 def conv3d(
     x,
     weight,
