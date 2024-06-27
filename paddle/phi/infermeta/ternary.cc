@@ -593,7 +593,7 @@ void InstanceNormInferMeta(const MetaTensor& x,
             "of scale is [%d]",
             scale_dim,
             scale_dim.size()));
-    bool check = config.is_runtime || (common::product(scale_dim) > 0);
+    bool check = config.is_runtime || contain_unknown_dim(scale_dim);
     if (check) {
       PADDLE_ENFORCE_EQ(scale_dim[0],
                         C,
