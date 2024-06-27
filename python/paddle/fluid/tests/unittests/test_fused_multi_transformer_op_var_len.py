@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
+from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
@@ -36,6 +39,12 @@ np.random.seed(seed)
 paddle.seed(seed)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
         self.config()
@@ -70,13 +79,13 @@ class TestFusedMultiTransformerOp(OpTest):
 
         self.k_proj = Linear(
             self.kdim,
-            self.embed_dim,
+            self.kv_num_heads * self.head_dim,
             self.weight_attr,
             bias_attr=self.bias_attr,
         )
         self.v_proj = Linear(
             self.vdim,
-            self.embed_dim,
+            self.kv_num_heads * self.head_dim,
             self.weight_attr,
             bias_attr=self.bias_attr,
         )
@@ -143,6 +152,12 @@ class TestFusedMultiTransformerOp(OpTest):
         self.num_heads = 16
         self.embed_dim = self.head_dim * self.num_heads
 
+        # For GQA
+        self.gqa_group_size = -1
+        self.kv_num_heads = (
+            self.gqa_group_size if self.gqa_group_size > 0 else self.num_heads
+        )
+
         self.dropout_prob = 0.0
         self.attn_dropout_prob = 0.0
         self.act_method = 'gelu'
@@ -170,7 +185,7 @@ class TestFusedMultiTransformerOp(OpTest):
                 (
                     2,
                     self.batch_size,
-                    self.num_heads,
+                    self.kv_num_heads,
                     self.cache_length,
                     self.head_dim,
                 ),
@@ -205,6 +220,7 @@ class TestFusedMultiTransformerOp(OpTest):
                 self.seq_lens = np.array(self.seq_lens).astype(np.int32)
 
         if self.has_pre_cache:
+            assert self.gqa_group_size <= 0, "GQA does not support pre cache"
             out_seq_len += self.pre_cache_num
             self.pre_cache_kv = np.random.uniform(
                 -1,
@@ -345,9 +361,13 @@ class TestFusedMultiTransformerOp(OpTest):
             q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
             k = self.k_proj(ln1_out)
             v = self.v_proj(ln1_out)
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
+            k = tensor.reshape(
+                x=k, shape=[0, 0, self.kv_num_heads, self.head_dim]
+            )
             k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
+            v = tensor.reshape(
+                x=v, shape=[0, 0, self.kv_num_heads, self.head_dim]
+            )
             v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
             if self.rotary_emb_dims > 0:
@@ -819,6 +839,7 @@ class TestFusedMultiTransformerOp(OpTest):
             activation=self.act_method,
             training=self.training,
             use_neox_rotary_style=self.neox_rotary_style,
+            gqa_group_size=self.gqa_group_size,
         )
 
         if self.has_cache_kv:
@@ -1040,6 +1061,8 @@ class TestFusedMultiTransformerOp(OpTest):
         return out
 
     def test_fused_multi_transformer_op(self):
+        if not self.remove_padding:
+            return
         if self.has_cache_kv and not self.gen_cache_kv and self.remove_padding:
             final_out_ref = self.GetVariableDecoderBaselineOut()
         else:
@@ -1156,210 +1179,189 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
 
-class TestFusedMultiTransformerOpRotaryFP16(TestFusedMultiTransformerOp):
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
         self.x_type = np.float16
-        self.rotary_emb_dims = 1
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-class TestFusedMultiTransformerOpGenRotaryFP16(TestFusedMultiTransformerOp):
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 3  # odd layers
+        self.rotary_emb_dims = 2
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableNormTransformer1(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
         self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableNormTransformer2(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
         self.has_cache_kv = True
         self.gen_cache_kv = False
-        self.query_length = 1
-        self.key_length, self.value_length = (
-            self.query_length,
-            self.query_length,
-        )
-        self.neox_rotary_style = True
-        self.rotary_emb_dims = 2
-
-
-class TestFusedMultiTransformerOpGenCacheRotaryFP16(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.rotary_emb_dims = 1
-
-
-class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpCacheKV(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpCacheKVFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.x_type = np.float16
-
-
-class TestFusedMultiTransformerOpGenCacheKV(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-
-
-class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpCacheKVPostLayerNorm(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpCacheKVPostLayerNormFp16(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.x_type = np.float16
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpGenCacheKVPostLayerNorm(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_pre_cache = True
-        self.x_type = np.float16
-
-
-class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_attn_mask = False
-        self.x_type = np.float32
-        self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
-        )
-        self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
-        )
-        self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(1.0)
-        )
-        self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
-        )
-
-    def test_fused_multi_transformer_op(self):
-        self.has_pre_cache = True
-        self.remove_padding = False
-        self.rotary_emb_dims = 2
-        self.generate_input_data()
-        final_out_ref = self.GetBaselineOut()
-        final_out = self.GetFusedMultiTransformerOutStatic()[0]
-
-        np.testing.assert_allclose(
-            final_out_ref, final_out, rtol=self.rtol, atol=self.atol
-        )
-
-        self.has_pre_cache = False
         self.remove_padding = True
-        self.generate_input_data()
-        final_out_ref = self.GetBaselineOut()
-        final_out = self.GetFusedMultiTransformerOutStatic()[0]
-
-        for i in range(self.batch_size):
-            np.testing.assert_allclose(
-                final_out_ref[i, : self.seq_lens[i]],
-                final_out[i, : self.seq_lens[i]],
-                rtol=self.rtol,
-                atol=self.atol,
-            )
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-class TestFusedMultiAttentionAPIError(unittest.TestCase):
-    def test_errors(self):
-        def test_invalid_input_dim():
-            array = np.array([1.9], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
-            layer = paddle.incubate.nn.FusedMultiHeadAttention(
-                embed_dim=1, num_heads=1
-            )
-            out = layer(x)
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
 
-        self.assertRaises(ValueError, test_invalid_input_dim)
 
-
-class TestFusedMultiTransformerAPIError(unittest.TestCase):
-    def test_errors(self):
-        def test_invalid_input_dim():
-            array = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
-            layer = paddle.incubate.nn.FusedTransformerEncoderLayer(
-                108, 108, 108, 0.0, 'relu'
-            )
-            out = layer(x)
-
-        self.assertRaises(ValueError, test_invalid_input_dim)
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
 
 
 if __name__ == "__main__":

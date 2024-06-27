@@ -2745,22 +2745,33 @@ void TriangularSolveInferMeta(const MetaTensor& x,
 void TopPSamplingInferMeta(const MetaTensor& x,
                            const MetaTensor& ps,
                            const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
                            int random_seed,
+                           int k,
+                           const std::string& mode,
                            MetaTensor* out,
-                           MetaTensor* ids) {
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids) {
   auto x_dims = x.dims();
+  int bsz = x_dims[0];
   auto ps_dims = ps.dims();
-  PADDLE_ENFORCE_EQ(x_dims[0],
+  PADDLE_ENFORCE_GE(x_dims[0],
                     ps_dims[0],
                     phi::errors::InvalidArgument(
-                        "The x_dims[0] must be equal to ps_dims[0] "
+                        "The x_dims[0] must be >= ps_dims[0] "
                         "But received x_dims[0] = %d and ps_dims[0] = %d.",
                         x_dims[0],
                         ps_dims[0]));
-  ids->set_dims(phi::make_ddim({x_dims[0], 1}));
+
+  ids->set_dims(phi::make_ddim({bsz, 1}));
   ids->set_dtype(DataType::INT64);
-  out->set_dims(phi::make_ddim({x_dims[0], 1}));
+  out->set_dims(phi::make_ddim({bsz, 1}));
   out->set_dtype(x.dtype());
+  topk_ids->set_dims(phi::make_ddim({bsz, k}));
+  topk_ids->set_dtype(DataType::INT64);
+  topk_scores->set_dims(phi::make_ddim({bsz, k}));
+  topk_scores->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,
