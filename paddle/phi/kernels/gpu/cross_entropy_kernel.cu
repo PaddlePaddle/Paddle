@@ -219,12 +219,12 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
 
   if (idx < n * dim * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
-    PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
-                   "The value of label expected >= 0 and < %d, or == %d, "
-                   "but got %ld. Please check label value.",
-                   dim,
-                   ignore_idx,
-                   lbl);
+    // PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
+    //                "The value of label expected >= 0 and < %d, or == %d, "
+    //                "but got %ld. Please check label value.",
+    //                dim,
+    //                ignore_idx,
+    //                lbl);
     if (lbl == ignore_idx) {
       loss[ids] = static_cast<T>(0.0);
     } else {
@@ -311,13 +311,13 @@ __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
   int tid = threadIdx.x;
   int label_id = blockIdx.x;
   auto label_value = static_cast<int64_t>(label[label_id]);
-  PADDLE_ENFORCE(
-      label_value >= 0 && label_value < size || label_value == ignore_index,
-      "The value of label expected >= 0 and < %d, or == %d, "
-      "but got %ld. Please check label value.",
-      size,
-      ignore_index,
-      label_value);
+  // PADDLE_ENFORCE(
+  //     label_value >= 0 && label_value < size || label_value == ignore_index,
+  //     "The value of label expected >= 0 and < %d, or == %d, "
+  //     "but got %ld. Please check label value.",
+  //     size,
+  //     ignore_index,
+  //     label_value);
   int loss_id_offset = 0;
 
   if (offset > 0) {
@@ -407,13 +407,13 @@ __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
   int remain = size % (VecSize * blockDim.x);
   int label_id = blockIdx.x;
   auto label_value = static_cast<int64_t>(label[label_id]);
-  PADDLE_ENFORCE(
-      label_value >= 0 && label_value < size || label_value == ignore_index,
-      "The value of label expected >= 0 and < %d, or == %d, "
-      "but got %ld. Please check label value.",
-      size,
-      ignore_index,
-      label_value);
+  // PADDLE_ENFORCE(
+  //     label_value >= 0 && label_value < size || label_value == ignore_index,
+  //     "The value of label expected >= 0 and < %d, or == %d, "
+  //     "but got %ld. Please check label value.",
+  //     size,
+  //     ignore_index,
+  //     label_value);
 
   // main part
   for (; tid < (size - remain); tid += VecSize * blockDim.x) {

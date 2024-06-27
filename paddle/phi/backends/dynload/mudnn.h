@@ -29,7 +29,7 @@ using ::musa::dnn::MemoryHandler;
 using ::musa::dnn::Pooling;
 using ::musa::dnn::Softmax;
 using ::musa::dnn::Tensor;
-
+using ::musa::dnn::ScaledDotProductAttention;
 extern bool HasCUDNN();
 
 void mudnnCreate(Handle** handle, int device);

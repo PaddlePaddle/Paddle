@@ -1767,7 +1767,7 @@ void cinn_call_triangular_solve_nvgpu(void *v_args,
                                   << " float data type for triangular solve";
 
   std::string debug_info =
-      "triangular solve op: left_side=" + std::to_string(left_side) +
+       solve op: left_side=" + std::to_string(left_side) +
       ", upper=" + std::to_string(uplo) +
       ", transpose_a=" + std::to_string(transa) +
       ", unit_diagonal=" + std::to_string(unit_diagonal) +

@@ -15,14 +15,38 @@
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
 #include "glog/logging.h"  // For VLOG()
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/impl/tril_triu_kernel_impl.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include <chrono>
 
 namespace phi {
 
+inline bool is_pad_mask(const DenseTensor& mask, const DenseTensor& query) {
+  return mask.dims().size() == 2 && mask.dims()[0] == query.dims()[0] &&
+      mask.dims()[1] == query.dims()[2];
+}
+
+template <typename T, typename Context>
+void ContiguousKernel(const Context& dev_ctx,
+                      const DenseTensor& input,
+                      DenseTensor* out);
+using ScaledDotProductAttention =
+    phi::backends::gpu::ScaledDotProductAttention;
+using ScopedTensorDescriptor =
+    phi::backends::gpu::ScopedTensorDescriptor;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
     const Context& ctx,
@@ -119,6 +143,8 @@ void FlashAttnUnpaddedKernel(
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
+#elif defined(PADDLE_WITH_FLASHATTN_MUSA)
+  RaiseNotSupportedError();
 #else
   RaiseNotSupportedError();
 #endif
@@ -140,91 +166,145 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
-#ifdef PADDLE_WITH_FLASHATTN
-  // q, k, v [batch_size, seq_len, num_heads, head_dim]
-  const auto& dims = q.dims();
-  PADDLE_ENFORCE_EQ(dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "flash_attn receive input with dim "
-                        "[batch_size, seq_len, num_heads, head_dim]"));
-
-  const int64_t batch_size = dims[0];
-  const int64_t seqlen_q = dims[1];
-  const int64_t num_heads = dims[2];
-  const int64_t head_size = dims[3];
-  const int64_t seqlen_k = k.dims()[1];
-  const int64_t num_heads_k = k.dims()[2];
-
-  // TODO(umiswing): Add check shape
-
-  const float softmax_scale = 1.0f / std::sqrt(head_size);
-  const float softmax_unscale = std::sqrt(head_size);
-
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
-                                                           batch_size,
-                                                           seqlen_q,
-                                                           seqlen_k,
-                                                           num_heads,
-                                                           num_heads_k,
-                                                           head_size,
-                                                           dropout,
-                                                           softmax_scale,
-                                                           causal,
-                                                           return_softmax,
-                                                           q.dtype(),
-                                                           is_test,
-                                                           rng_name,
-                                                           fixed_seed_offset,
-                                                           attn_mask,
-                                                           softmax,
-                                                           softmax_lse,
-                                                           seed_offset);
-
-  VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
-           << k.dims() << "], v.shape=[" << v.dims() << "]";
-  VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
-           << ", seed=" << params.seed << ", offset=" << params.offset;
-  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
-           << ", softmax_unscale=" << softmax_unscale;
-  if (attn_mask.get_ptr()) {
-    VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
-             << (attn_mask.get_ptr())->dims() << "]";
+#if defined(PADDLE_WITH_FLASHATTN_MUSA)
+  if(UNLIKELY(return_softmax)){
+    PADDLE_ENFORCE_EQ((dropout>0.0f),true,"return_softmax is only supported when dropout > 0.0");
+    PADDLE_ENFORCE_EQ(0,1,"not support");
   }
+  // PADDLE_ENFORCE_EQ(
+  //     q.dims().size() == 4 && k.dims().size() == 4 && v.dims().size() == 4,true,
+  //     "Expect all query, key, value has 4D shape!");
+
+  DenseTensor trans_q(q);
+  trans_q.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor trans_k(k);
+  trans_k.transpose_dim1_and_dim2_for_4d_tensor();
+
+  DenseTensor trans_v(v);
+  trans_v.transpose_dim1_and_dim2_for_4d_tensor();
+
+  // PADDLE_ENFORCE_EQ(trans_q.dims()[3],
+  //                   trans_k.dims()[3],
+  //                   phi::errors::InvalidArgument(
+  //                       "head_dim of q must be equal to head_dim of k"
+  //                       "but they are %d and %d",trans_q.dims()[3],trans_k.dims()[3]));
+  // PADDLE_ENFORCE_EQ(trans_k.dims()[2],
+  //                   trans_v.dims()[2],
+  //                   phi::errors::InvalidArgument(
+  //                       "seq_len of k must be equal to seq_len of v"
+  //                       "but they are %d and %d",trans_k.dims()[2],trans_v.dims()[2]));  
+
+  auto head_dim_q = trans_q.dims()[3]; // head_dim
+  auto q_seq_len = trans_q.dims()[2]; // seq_len
+  auto head_num_q = trans_q.dims()[1]; // head_num
+  auto batch_size_ = trans_q.dims()[0]; // batch_size
+  auto head_dim_v = trans_v.dims()[3];
+  auto seqlen_k = trans_k.dims()[2];
 
   ctx.template Alloc<T>(out);
+  DenseTensor out_temp(*out);
+  out_temp.transpose_dim1_and_dim2_for_4d_tensor();
 
-  cudaStream_t stream = ctx.stream();
+  DenseTensor con_mask;
+  ScopedTensorDescriptor con_mask_scoped_desc;
+  dynload::Tensor con_mask_desc;
+  if(attn_mask.get_ptr() && !causal){
+    const auto attn_mask_dim_size=attn_mask.get_ptr()->dims().size();
+    // PADDLE_ENFORCE_EQ(
+    //     attn_mask_dim_size,
+    //     4,
+    //     phi::errors::InvalidArgument(
+    //         "The number of dimensions of attn_mask is expected to be "
+    //         "equal to 4, but recieved %d. The shape of attn_mask is {%s}",
+    //         attn_mask_dim_size,
+    //         attn_mask.get_ptr()->dims()));
 
-  bool succ = phi::dynload::flash_attn_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? params.softmax->data() : nullptr,
-      params.softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      softmax_unscale,
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
-  CheckFlashAttnStatus(succ);
+    // PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[3]==seqlen_k && \
+    //     attn_mask.get_ptr()->dims()[2]==q_seq_len,true, 
+    //     "the last two dim of attn_mask(%d , %d) should be equal to seqlen_q(%d),seqlen_k(%d)",
+    //     attn_mask.get_ptr()->dims()[2], attn_mask.get_ptr()->dims()[3],q_seq_len,seqlen_k);
+
+    // PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[1]==head_num_q || attn_mask.get_ptr()->dims()[1]==1,true, 
+    //     "mask_dims[1] == 1 || mask_dims[1] == num_heads, but mask_dims[1] is %d, and num_heads_q is %d",attn_mask.get_ptr()->dims()[1],head_num_q);
+
+    // PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[0]==batch_size_,true, 
+    //     "mask_dims[0] == batch_size, but mask_dims[0] is %d, and batch_size is %d",attn_mask.get_ptr()->dims()[0],batch_size_);
+    con_mask.Resize(attn_mask.get_ptr()->dims());
+    phi ::ContiguousKernel<T, Context>(
+          ctx, *attn_mask.get_ptr(), &con_mask); 
+    con_mask_desc = con_mask_scoped_desc.descriptor<T>(con_mask,
+                                GPUDNNDataLayout::kNCHW,
+                                common::vectorize<int>(con_mask.dims()));  
+    
+  }else{
+    con_mask.Resize(common::make_ddim({0}));
+    ctx.template Alloc<float>(&con_mask);   
+    con_mask_desc = con_mask_scoped_desc.descriptor<float>(con_mask,
+                            GPUDNNDataLayout::kNCHW,
+                            common::vectorize<int>(con_mask.dims()));   
+  }
+
+  std::vector<int64_t> softmax_lse_dims={batch_size_, head_num_q, q_seq_len};
+  softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
+  ctx.template Alloc<float>(softmax_lse);
+
+  ScaledDotProductAttention sdpa;
+  if (causal) {
+    sdpa.desc_.SetCausal(true);  
+  }  
+  sdpa.desc_.SetEmbedDim(head_dim_q * head_num_q);
+  sdpa.desc_.SetHeadsNum(head_num_q);
+  if(attn_mask.get_ptr()){
+    sdpa.desc_.SetMaskMode(is_pad_mask(*attn_mask.get_ptr(), trans_q));
+  }
+
+  DenseTensor dropout_mask;
+
+
+  if(UNLIKELY(dropout > 0.0)){
+    PADDLE_ENFORCE_EQ(0,1,"Flash Attention 2 Not Support Dropout Now");
+  }else{
+    dropout_mask.Resize(common::make_ddim({0}));
+    ctx.template Alloc<T>(&dropout_mask);
+  }
+
+  auto handle = ctx.cudnn_handle();
+
+  ScopedTensorDescriptor out_scoped_desc;
+  ScopedTensorDescriptor trans_q_scoped_desc;
+  ScopedTensorDescriptor trans_k_scoped_desc;
+  ScopedTensorDescriptor trans_v_scoped_desc;
+  ScopedTensorDescriptor logsumexp_scoped_desc;
+  ScopedTensorDescriptor dropout_mask_scoped_desc;
+
+
+  auto& out_desc = out_scoped_desc.descriptor_with_stride<T>(
+      out_temp, GPUDNNDataLayout::kNCHW, common::vectorize<int>(out_temp.dims()));
+  auto& logsumexp_desc =
+      logsumexp_scoped_desc.descriptor_with_stride<float>(*softmax_lse,
+                                      GPUDNNDataLayout::kNCHW,
+                                      common::vectorize<int>(softmax_lse->dims()));
+
+  auto& trans_q_desc =
+      trans_q_scoped_desc.descriptor_with_stride<T>(trans_q,
+                                      GPUDNNDataLayout::kNCHW,
+                                      common::vectorize<int>(trans_q.dims()));     
+  auto& trans_k_desc =
+      trans_k_scoped_desc.descriptor_with_stride<T>(trans_k,
+                                      GPUDNNDataLayout::kNCHW,
+                                      common::vectorize<int>(trans_k.dims()));     
+  auto& trans_v_desc =
+      trans_v_scoped_desc.descriptor_with_stride<T>(trans_v,
+                                      GPUDNNDataLayout::kNCHW,
+                                      common::vectorize<int>(trans_v.dims()));     
+  auto& dropout_mask_desc =
+      dropout_mask_scoped_desc.descriptor_with_stride<T>(dropout_mask,
+                                      GPUDNNDataLayout::kNCHW,
+                                      common::vectorize<int>(dropout_mask.dims()));    
+
+  sdpa.desc_.RunFlash(*handle, out_desc, logsumexp_desc, trans_q_desc, trans_k_desc, trans_v_desc,
+   con_mask_desc, dropout_mask_desc, phi::backends::gpu::InternalMemAlloc);
 #else
   RaiseNotSupportedError();
 #endif

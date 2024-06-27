@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -139,6 +140,12 @@ class CudnnDataType<double> {
   }
 };
 
+template <>
+class CudnnDataType<bool> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::BOOL;
+};
+
 inline dynload::Tensor::Format GetCudnnTensorFormat(
     const DataLayout& order) {  // Not use
   switch (order) {
@@ -209,6 +216,26 @@ class ScopedTensorDescriptor {
                                      const int groups = 1) {
     desc_.SetAddr(tensor.data());
     descriptor<T>(order, dims, groups);
+    return desc_;
+  }
+
+  template <typename T>
+  inline dynload::Tensor& descriptor_with_stride(const phi::DenseTensor& tensor,
+                                     const DataLayout& order,
+                                     const std::vector<int>& dims,
+                                     const int groups = 1) {
+    desc_.SetAddr(tensor.data());
+
+    std::vector<int64_t> strides(common::vectorize(tensor.strides()));
+    std::vector<int64_t> dims_with_group(dims.begin(), dims.end());
+    if (groups > 1) {
+      dims_with_group[1] = dims_with_group[1] / groups;
+    }
+    desc_.SetNdInfo(static_cast<int>(dims_with_group.size()),
+                    dims_with_group.data(),
+                    strides.data());
+    desc_.SetType(CudnnDataType<T>::type);
+    desc_.SetFormat(dynload::Tensor::Format::NCHW);
     return desc_;
   }
 
@@ -343,6 +370,15 @@ class ScopedBatchMatmulDescriptor {
  private:
   dynload::BatchMatMul desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedBatchMatmulDescriptor);
+};
+
+class ScaledDotProductAttention{
+  public:
+  ScaledDotProductAttention(){}
+  ~ScaledDotProductAttention() PADDLE_MAY_THROW{}
+  dynload::ScaledDotProductAttention desc_;
+ private:
+  DISABLE_COPY_AND_ASSIGN(ScaledDotProductAttention);
 };
 
 static void Coalesce1ToLastDims(std::vector<int>& tensor_dims) {
