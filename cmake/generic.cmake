@@ -477,7 +477,7 @@ function(cc_test_run TARGET_NAME)
         FLAGS_cpu_deterministic=true
         FLAGS_init_allocated_mem=true
         FLAGS_cudnn_deterministic=true
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
     )
     # No unit test should exceed 2 minutes.
     if(WIN32)
