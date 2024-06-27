@@ -35,7 +35,9 @@ from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
-    from typing import Literal, NotRequired, TypedDict
+    from typing import Literal, TypedDict
+
+    from typing_extensions import NotRequired
 
     from paddle import Tensor
 
