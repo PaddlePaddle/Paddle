@@ -18,6 +18,7 @@ from collections import defaultdict
 
 import paddle
 from paddle import framework
+from paddle.fluid.core import set_nccl_channels
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
@@ -39,6 +40,10 @@ from .pp_utils import p2p_communication as p2p
 __all__ = []
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_enable_nccl_channel_shrink = int(
+    os.environ.get("FLAGS_enable_nccl_channel_shrink", 0)
+)
+nccl_channel_num_for_overlap_comm = 1 if g_enable_nccl_channel_shrink else 0
 
 
 def get_action(is_dp, shard_split_param=False):
@@ -884,16 +889,22 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 chunk_idx = self._virtual_pp_world_size - (
                     sync_step // self.num_stages
                 )
+                old_value = set_nccl_channels(nccl_channel_num_for_overlap_comm)
                 for buffer in self._chunk_2_comm_buffers[chunk_idx]:
                     buffer.comm_grads()
+                set_nccl_channels(old_value)
 
             if self.stage_id != 0:
                 if (
                     self._backward_step_count
                     == self.num_stages * self.num_model_chunks
                 ):
+                    old_value = set_nccl_channels(
+                        nccl_channel_num_for_overlap_comm
+                    )
                     for buffer in self._chunk_2_comm_buffers[0]:
                         buffer.comm_grads()
+                    set_nccl_channels(old_value)
 
     def _sync_overlap_grads(self):
         if self._comm_overlap:
@@ -1463,8 +1474,10 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             chunk_idx = self._virtual_pp_world_size - (
                 sync_step // self.accumulate_steps
             )
+            old_value = set_nccl_channels(nccl_channel_num_for_overlap_comm)
             for buffer in self._chunk_2_comm_buffers[chunk_idx]:
                 buffer.comm_grads()
+            set_nccl_channels(old_value)
 
         if self.stage_id == 0:
             return
@@ -1473,8 +1486,10 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             self._backward_step_count
             == self.accumulate_steps * self._virtual_pp_world_size
         ):
+            old_value = set_nccl_channels(nccl_channel_num_for_overlap_comm)
             for buffer in self._chunk_2_comm_buffers[0]:
                 buffer.comm_grads()
+            set_nccl_channels(old_value)
 
     def _sync_overlap_grads(self):
         if not self._comm_overlap:
