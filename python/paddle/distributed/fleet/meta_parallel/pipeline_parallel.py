@@ -16,6 +16,8 @@ import sys
 import time
 import warnings
 from collections import defaultdict
+from enum import Enum
+from typing import Callable, Dict, List
 
 import paddle
 from paddle import framework
@@ -144,6 +146,84 @@ class FakeMicroDataset:
             "batch_size = %d, micro_batch_size = %d, accumulate_steps = %d."
             % (batch_size, self._micro_batch_size, self._acc_steps)
         )
+
+
+# Enum for specifying the pipeline parallel micro-step locations.
+class PipelineParallelMicroStepLocations(Enum):
+    FORWARD_BEGIN = 'forward_begin'
+    FORWARD_END = 'forward_end'
+    BACKWARD_BEGIN = 'backward_begin'
+    BACKWARD_END = 'backward_end'
+
+
+# A callback class for managing hooks at different stages of a pipeline parallel process.
+class PipelineParallelMicroStepCallback:
+    def __init__(self):
+        # Initializes a dictionary to store hooks for each micro-step location in the pipeline.
+        self.hooks: Dict[PipelineParallelMicroStepLocations, List[Callable]] = {
+            PipelineParallelMicroStepLocations.FORWARD_BEGIN: [],
+            PipelineParallelMicroStepLocations.FORWARD_END: [],
+            PipelineParallelMicroStepLocations.BACKWARD_BEGIN: [],
+            PipelineParallelMicroStepLocations.BACKWARD_END: [],
+        }
+
+    def register_hook(
+        self, location: PipelineParallelMicroStepLocations, hook: Callable
+    ):
+        """
+        Registers a hook function to be called at a specified pipeline parallel micro-step location.
+
+        Args:
+            location (PipelineParallelMicroStepLocations): The micro-step location where the hook should be registered.
+            hook (Callable): The hook function to be registered. The function should accept the following optional keyword arguments:
+                - input_tensor (paddle.Tensor): The input tensor to the current micro-step.
+                - output_tensor (paddle.Tensor): The output tensor from the current micro-step.
+                - input_tensor_grad (paddle.Tensor): The gradient of the input tensor.
+                - output_tensor_grad (paddle.Tensor): The gradient of the output tensor.
+                - step_id (paddle.Tensor): An identifier for the current step in the pipeline.
+
+        Raises:
+            AssertionError: If the specified location is not a valid micro-step location.
+        """
+        assert (
+            location in self.hooks
+        ), f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+        self.hooks[location].append(hook)
+
+    def on_location(
+        self, location: PipelineParallelMicroStepLocations, **kwargs
+    ):
+        """
+        Triggers all registered hooks at a specified pipeline parallel micro-step location.
+
+        Args:
+            location (PipelineParallelMicroStepLocations): The micro-step location where the hooks should be triggered.
+            kwargs: Additional keyword arguments to be passed to the hook functions.
+
+        Raises:
+            AssertionError: If the specified location is not a valid micro-step location.
+        """
+        assert (
+            location in self.hooks
+        ), f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+        for hook in self.hooks[location]:
+            hook(**kwargs)
+
+
+pipeline_parallel_callbacks_ = PipelineParallelMicroStepCallback()
+
+
+# It is typically very difficult for us to directly access the PipelineParallel object.
+# Users may use fleet.distributed_model to wrap a model into a pipeline parallel model (PP model).
+# We may not have access to the wrapped model when we want to register hooks, for example, when using PaddleNLP trainer to wrap around the PP model.
+# Additionally, we usually have only one `PipelineParallel` model, so the callbacks are registered globally.
+def register_global_pipeline_parallel_hook(
+    location: PipelineParallelMicroStepLocations, hook: Callable
+):
+    """
+    Registering global hooks for pipeline parallelism.
+    """
+    pipeline_parallel_callbacks_.register_hook(location, hook)
 
 
 class PipelineParallel(MetaParallelBase):
@@ -299,6 +379,7 @@ class PipelineParallel(MetaParallelBase):
         self.loss_fn_idx = 0
 
         self._compute_loss = True
+        self.callbacks = pipeline_parallel_callbacks_
 
         logger.info(
             f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
@@ -324,6 +405,11 @@ class PipelineParallel(MetaParallelBase):
             self.register_allreduce_overlap_hook(
                 self._layers, self.dp_group, self.accumulate_steps, True
             )
+
+    def register_hook(
+        self, location: PipelineParallelMicroStepLocations, hook: Callable
+    ):
+        self.callbacks.register_hook(location, hook)
 
     def is_pipeline_first_stage(self, ignore_virtual=False):
         if not ignore_virtual:
