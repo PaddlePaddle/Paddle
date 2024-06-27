@@ -91,6 +91,14 @@ def multiply_net(x, y):
     return x * y
 
 
+def relu_net(x):
+    return paddle.nn.functional.relu(x)
+
+
+def sigmoid_net(x):
+    return paddle.nn.functional.sigmoid(x)
+
+
 def divide_net(x, y):
     return x / y
 
@@ -784,6 +792,30 @@ class TestPrimMultiplyWithGrad9(TestPrimTwoWithGrad):
         self.net = multiply_net
         self.enable_cinn = False
         self.tol = 1e-5
+
+
+class TestPrimReluWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = relu_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSigmoidWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = sigmoid_net
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimDivideWithGrad1(TestPrimTwoWithGrad):

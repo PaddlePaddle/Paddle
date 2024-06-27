@@ -30,8 +30,7 @@ limitations under the License. */
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class CompileTimeInferShapeContext : public InferShapeContext {
  public:
@@ -1373,5 +1372,4 @@ std::vector<std::string> AttrVarNames(const Attribute &attr) {
   return vars_name;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -48,6 +48,8 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.concat",
     "pd_op.split",
     "pd_op.multiply",
+    "pd_op.relu",
+    "pd_op.sigmoid",
     "pd_op.divide",
 ]
 
