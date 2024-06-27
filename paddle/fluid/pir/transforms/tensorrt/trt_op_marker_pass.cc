@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/tensorrt/trt_op_marker_pass.h"
 #include <glog/logging.h>
-
+#include <bitset>
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -56,6 +56,8 @@ DEFINE_GENERAL_PATTERN(FullIntArray, paddle::dialect::FullIntArrayOp)
 DEFINE_GENERAL_PATTERN(Reshape, paddle::dialect::ReshapeOp)
 DEFINE_GENERAL_PATTERN(Dropout, paddle::dialect::DropoutOp)
 DEFINE_GENERAL_PATTERN(bmm, paddle::dialect::BmmOp)
+DEFINE_GENERAL_PATTERN(concat, paddle::dialect::ConcatOp)
+DEFINE_GENERAL_PATTERN(flatten, paddle::dialect::FlattenOp)
 #undef DEFINE_GENERAL_PATTERN
 
 class Pool2dOpPattern
@@ -433,6 +435,168 @@ class SignOpPattern : public pir::OpRewritePattern<paddle::dialect::SignOp> {
   }
 };
 
+class LogicalNotOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::LogicalNotOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::LogicalNotOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::LogicalNotOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "logical_not already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+    VLOG(3) << "logical_not op is only supported by tensorrt8.4 above because "
+               "of cast op ";
+    return false;
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class GroupNormOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GroupNormOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GroupNormOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GroupNormOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "group_norm already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+    if (!op->HasAttribute("epsilon") || !op->HasAttribute("groups") ||
+        !op->HasAttribute("data_layout")) {
+      VLOG(3) << "In group_norm, epsilon or groups or data_layout attributes "
+                 "do not exist";
+      return false;
+    }
+    std::string layout_str =
+        op->attribute<pir::StrAttribute>("data_layout").AsString();
+    if (layout_str != "NCHW") {
+      VLOG(3) << "Group norm trt plugin only support NCHW layout, but got "
+              << layout_str;
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class TransposeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::TransposeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::TransposeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::TransposeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "transpose already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+    int dims = x_shape.size();
+    std::vector<int> perm;
+    auto perm_attr = op->attribute<pir::ArrayAttribute>("perm");
+    for (const auto &attr : perm_attr.AsVector()) {
+      perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    auto is_valid_permutation = [&](int dims,
+                                    const std::vector<int> &permutation) {
+      std::bitset<nvinfer1::Dims::MAX_DIMS> found;
+      for (int i = 0; i < dims; ++i) {
+        const int x = permutation[i];
+        if ((x < 0) || (x >= dims) || found[x])
+          return false;  // Out of bounds or duplicate
+        found.set(x);
+      }
+      return true;
+    };
+    if (!is_valid_permutation(dims, perm)) {
+      VLOG(3) << "Invalid permutation dimensions for trt transpose op "
+                 "converter: duplicate or out of bound.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class GatherOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GatherOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GatherOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "gather already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+    pir::Value axis = op.operand_source(2);
+    if (!axis) {
+      VLOG(3) << "axis is empty. Skipping rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(7000)
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+    if (x_shape.size() == 1) {
+      VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class GatherNdOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GatherNdOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GatherNdOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GatherNdOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      VLOG(3) << "gather_nd already has kCanRunTrtAttr set to true. Skipping "
+                 "rewrite.";
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8200)
+    pir::Value index_var_name = op.operand_source(1);
+    auto index_var_name_type =
+        index_var_name.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto index_shape = index_var_name_type.dims();
+    pir::Value x_var_name = op.operand_source(0);
+    auto x_var_name_type =
+        x_var_name.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_var_name_type.dims();
+    if (x_shape.size() <= 2) {
+      VLOG(3) << "gather_nd op requires the input's dimension to be greater "
+                 "than 2";
+      return false;
+    }
+    if (x_shape.size() != index_shape.size()) {
+      VLOG(3) << "gather_nd op Index input dims size [" << index_shape.size()
+              << " ] not equal to x dims size [" << x_shape.size() << "]";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -451,6 +615,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Reshape)
     ADD_PATTERN(Dropout)
     ADD_PATTERN(bmm)
+    ADD_PATTERN(concat)
+    ADD_PATTERN(flatten)
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dOpPattern>(context));
@@ -461,6 +627,11 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<DeformableConvOpPattern>(context));
     ps.Add(std::make_unique<ArangeOpPattern>(context));
     ps.Add(std::make_unique<SignOpPattern>(context));
+    ps.Add(std::make_unique<LogicalNotOpPattern>(context));
+    ps.Add(std::make_unique<GroupNormOpPattern>(context));
+    ps.Add(std::make_unique<TransposeOpPattern>(context));
+    ps.Add(std::make_unique<GatherOpPattern>(context));
+    ps.Add(std::make_unique<GatherNdOpPattern>(context));
     return ps;
   }
 };
