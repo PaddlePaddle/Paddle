@@ -187,6 +187,17 @@
     data_type : x
   optional : bias, x_max, scale_max, out_max_in
 
+- op : fp8_fp8_half_gemm_fused
+  args : (Tensor x, Tensor y, Tensor bias, bool transpose_x = false, bool transpose_y = false, float scale = 1.0f, str output_dtype = "float16", str activation_type = "identity")
+  output : Tensor(out)
+  infer_meta :
+    func : FP8OutHalfGemmFusedInferMeta
+  kernel :
+    func : fp8_fp8_half_gemm_fused
+    data_type : x
+  optional : bias
+  support_dygraph_mode : true
+
 - op : fused_bias_act
   args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
   output : Tensor(out)
@@ -426,6 +437,17 @@
   kernel :
     func : fused_scale_bias_relu_conv_bn
     data_type : x
+
+- op : fused_seqpool_cvm
+  args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", float pad_value = 0.0, bool
+    use_cvm = true, int cvm_offset = 2)
+  output: Tensor[] (out){x.size()}
+  infer_meta:
+    func: FusedSeqpoolCvmInferMeta
+  kernel:
+    func: fused_seqpool_cvm
+    data_type: x
+  backward: fused_seqpool_cvm_grad
 
 - op : fused_token_prune
   args: (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token

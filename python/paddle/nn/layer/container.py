@@ -100,7 +100,7 @@ class LayerDict(Layer):
     def __len__(self) -> int:
         return len(self._sub_layers)
 
-    def __iter__(self) -> Iterator[Layer]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._sub_layers)
 
     def __contains__(self, key: str) -> bool:
