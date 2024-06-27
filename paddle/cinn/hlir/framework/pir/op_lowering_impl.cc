@@ -54,6 +54,7 @@ PD_DECLARE_bool(cinn_enable_map_expr_schedule);
 PD_DECLARE_bool(cinn_bucket_compile);
 PD_DECLARE_bool(cinn_new_group_scheduler);
 PD_DECLARE_bool(cinn_check_tensor_buffer_map);
+const int default_priority = 100;
 
 namespace cinn {
 namespace hlir {
@@ -192,7 +193,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
-    return {{std::make_tuple(ir::Expr(1), LowerCustomCall(group)[0], 100)},
+    return {{std::make_tuple(
+                ir::Expr(1), LowerCustomCall(group)[0], default_priority)},
             ir::LoweredFunc()};
   }
   auto X86Expr = LowerX86(group, ops, apply_op_schedule);
@@ -281,7 +283,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   } else {
     cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
-    priorities.emplace_back(100);
+    priorities.emplace_back(default_priority);
   }
 
   // The last func is stored as a kernel on x86
@@ -345,28 +347,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   VLOG(4) << "End This function.";
   return funcs_wrapper;
-}
-
-void OpLowererImpl::InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
-  auto& name_map = name_gene_->GetNameMap();
-  for (auto it = name_map.begin(); it != name_map.end(); ++it) {
-    auto value = it->first;
-    if (!(value) || !(value.type())) {
-      return;
-    }
-
-    auto& name = it->second;
-    auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto* var = scope->Var<Tensor>(name);
-    auto& tensor = absl::get<Tensor>(*var);
-
-    std::vector<Shape::dim_t> shape;
-    for (auto i = 0; i < type_info.dims().size(); ++i) {
-      shape.push_back(Shape::dim_t(type_info.dims()[i]));
-    }
-    tensor->Resize(Shape{shape});
-    tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
-  }
 }
 
 bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
@@ -742,6 +722,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             optim::EliminateCommonGlobalMemoryRead(&(func_body));
             optim::OptimizeExprGPU(&(func_body));
 #endif
+          },
+          [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+            optim::EliminateCommonGlobalMemoryRead(&(func_body));
+            optim::OptimizeExprGPU(&(func_body));
+#endif
           });
     }
 
@@ -888,6 +874,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
+  std::vector<ir::Tensor> stage_tensors;
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
     // Insert the output tensor defined by Compute into the tensor_map
@@ -907,6 +894,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       // the output node_data on the graph, then there is a one-to-one
       // correspondence, and the redundant output node_data contact empty.
       (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
+
+      stage_tensors.push_back(expr.as_tensor_ref());
     }
 
     // Insert output tensors into function arg
@@ -924,6 +913,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
                          common::ARMArch>) {
           op_func_arg_tensors->push_back(expr.as_tensor_ref());
           expr.as_tensor_ref()->WithBuffer();
+        },
+        [&](common::HygonDCUArchHIP) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          } else {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          }
         });
   }
 
@@ -931,8 +928,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   // 2.Do lower
   std::string lower_fn_name = CompatibleInfo::OpFuncName(*op);
-  ast_gen_ius::TensorGroup tensor_group =
-      ast_gen_ius::ConvertStageMapToTensorGroup(tmp_stages);
+
+  // using output value build tensor group
+  ast_gen_ius::TensorGroup tensor_group(stage_tensors);
   std::vector<ir::LoweredFunc> funcs = lang::LowerToAstVec(
       lower_fn_name, *op_func_arg_tensors, {&tensor_group}, this->target_);
   VLOG(4) << "Lower op: " << lower_fn_name << ", get " << funcs.size()

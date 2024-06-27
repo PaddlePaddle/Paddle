@@ -112,20 +112,6 @@ void CompilationInfoDumper::DumpPtxCodeByGroupIndex(
       FLAGS_cinn_dump_group_ptx, gidx, device_id, "source_ptx.ptx", source_ptx);
 }
 
-void CompilationInfoDumper::DumpInstructionByGroupIndex(
-    const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-    const int gidx,
-    const int device_id) {
-  if (FLAGS_cinn_dump_group_instruction.empty() || instr.get() == nullptr) {
-    return;
-  }
-  Dump(FLAGS_cinn_dump_group_instruction,
-       gidx,
-       device_id,
-       "instruction.txt",
-       instr->DumpInstruction());
-}
-
 void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
@@ -177,25 +163,6 @@ void CompilationInfoDumper::DumpPtxCode() {
     }
     Dump(
         FLAGS_cinn_dump_group_ptx, idx, device_id_, "source_ptx.ptx", dump_str);
-  }
-}
-
-void CompilationInfoDumper::DumpInstruction() {
-  if (FLAGS_cinn_dump_group_instruction.empty()) {
-    return;
-  }
-  for (int idx = 0; idx < info_.RuntimeInstructions().size(); ++idx) {
-    std::string dump_str;
-    if (info_.RuntimeInstruction(idx).get() != nullptr) {
-      dump_str = info_.RuntimeInstruction(idx)->DumpInstruction();
-    } else {
-      dump_str = "[No instruction generated]\n\n" + info_.Message(idx);
-    }
-    Dump(FLAGS_cinn_dump_group_instruction,
-         idx,
-         device_id_,
-         "instruction.txt",
-         dump_str);
   }
 }
 
@@ -267,7 +234,8 @@ void Compiler::Build(const Module& module,
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module, end); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) { CompileCudaModule(module, code, end); }};
+      [&](common::NVGPUArch) { CompileCudaModule(module, code, end); },
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code, end); }};
   return std::visit(PatternMatch, target_.arch.variant());
 }
 
@@ -294,14 +262,20 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
+      },
+      [&](common::HygonDCUArchHIP) -> std::string {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
       });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                     [&](common::X86Arch) { CompileX86Module(module); },
-                     [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                     [&](common::NVGPUArch) { CompileCudaModule(module); });
+  target_.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { CompileX86Module(module); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) { CompileCudaModule(module); },
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module); });
 }
 
 namespace {
@@ -379,6 +353,13 @@ void Compiler::CompileCudaModule(const Module& module,
 #else
   CINN_NOT_IMPLEMENTED
 #endif
+}
+
+void Compiler::CompileHipModule(const Module& module,
+                                const std::string& code,
+                                bool add_module) {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
 }
 
 void Compiler::CompileX86Module(const Module& module, bool add_module) {
