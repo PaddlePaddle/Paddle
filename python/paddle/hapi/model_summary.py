@@ -22,7 +22,7 @@ import numpy as np
 from typing_extensions import TypedDict
 
 import paddle
-from paddle import nn
+from paddle import Tensor, nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
 
@@ -35,17 +35,16 @@ class ModelSummary(TypedDict):
 
 
 def summary(
-    net: paddle.nn.Layer,
-    input_size: int
-    | tuple[int, ...]
-    | InputSpec
-    | list[tuple[int, ...] | InputSpec]
-    | None = None,
+    net: nn.Layer,
+    input_size: (
+        int
+        | tuple[int, ...]
+        | InputSpec
+        | list[tuple[int, ...] | InputSpec]
+        | None
+    ) = None,
     dtypes: str | Sequence[str] | None = None,
-    input: paddle.Tensor
-    | Sequence[paddle.Tensor]
-    | dict[str, paddle.Tensor]
-    | None = None,
+    input: Tensor | Sequence[Tensor] | dict[str, Tensor] | None = None,
 ) -> ModelSummary:
     """Prints a string summary of the network.
 
