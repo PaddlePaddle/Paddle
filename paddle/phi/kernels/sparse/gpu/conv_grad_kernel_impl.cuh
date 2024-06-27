@@ -3,7 +3,6 @@
 #ifdef PADDLE_WITH_CUDA
 
 #include <cuda_fp16.h>
-#include <stdexcept>
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_memory_utils.cuh"
 #include "paddle/phi/kernels/sparse/gpu/conv_kernel_impl_utils.cuh"
