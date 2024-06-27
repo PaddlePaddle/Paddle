@@ -162,7 +162,10 @@ static void GetFCInfo(const phi::DDim& x_dims,
       mat_dim_a.batch_size_ = 0;
     } else {
       mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
-      mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
+      // TODO(lilujia): support all shapes like CPU
+      if (!(x_dims.size() == 3 && y_dims.size() == 2)) {
+        mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
+      }
     }
   }
 
