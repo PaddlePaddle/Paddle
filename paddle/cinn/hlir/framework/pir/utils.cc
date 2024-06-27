@@ -317,21 +317,31 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 // For op supports AttributeTensor but has handled in
 // pd_to_cinn_pass. Such as cinn_op.reshape, except pd_op.reshape;
 const std::unordered_set<std::string> TOCINN_OPS = {
+    PD_OP_NAME(ScaleOp),
     PD_OP_NAME(SumOp),
     PD_OP_NAME(MaxOp),
     PD_OP_NAME(MinOp),
     PD_OP_NAME(ProdOp),
+    PD_OP_NAME(ReshapeOp),
     PD_OP_NAME(PowOp),
-    PD_OP_NAME(ScaleOp),
-    PD_OP_NAME(Pool2dOp),
-    PD_OP_NAME(IscloseOp),
-    // PD_OP_NAME(SliceOp),
     PD_OP_NAME(ConcatOp),
-    PD_OP_NAME(SplitOp),
-    PD_OP_NAME(SplitWithNumOp),
+    // PD_OP_NAME(SliceOp),
     PD_OP_NAME(AddNOp),
-    PD_OP_NAME(UniformOp),
+    PD_OP_NAME(SplitWithNumOp),
+    PD_OP_NAME(SplitOp),
+    PD_OP_NAME(ExpandOp),
+    PD_OP_NAME(FlipOp),
+    PD_OP_NAME(IscloseOp),
+    PD_OP_NAME(ElementwisePowOp),
+    PD_OP_NAME(FullWithTensorOp),
+    // PD_OP_NAME(RefreshCombineOp),
+    PD_OP_NAME(SqueezeOp),
+    PD_OP_NAME(UnsqueezeOp),
+    PD_OP_NAME(SigmoidOp),
     PD_OP_NAME(GatherOp),
+    PD_OP_NAME(FlattenOp),
+    PD_OP_NAME(Pool2dOp),
+    PD_OP_NAME(UniformOp),
 };
 #undef PD_OP_NAME
 
