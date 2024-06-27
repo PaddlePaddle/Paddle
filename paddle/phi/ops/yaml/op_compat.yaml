@@ -880,6 +880,12 @@
   outputs :
     out : Out
 
+- op : dgc_clip_by_norm
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : dgc_momentum
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
@@ -1237,6 +1243,12 @@
 
 - op : feed
   outputs: {out: Out}
+
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : fft_c2c
   inputs: {x: X}
@@ -1619,6 +1631,13 @@
   outputs :
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
 
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
+
 - op : fused_transpose
   inputs:
     {x : X}
@@ -1863,6 +1882,14 @@
   outputs :
     out : Out
 
+- op : hash
+  inputs:
+    x : X
+  attrs :
+    runtime_shape : ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE
+  outputs:
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   inputs :
@@ -1900,6 +1927,12 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
 
 - op : imag
   backward : imag_grad
@@ -4443,10 +4476,12 @@
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  attrs:
+    axis: axis
   scalar:
-   axis:
-     datatype : int
-     tensor_name : Axis
+    axis:
+      data_type : int
+      tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
