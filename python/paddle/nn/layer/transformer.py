@@ -14,8 +14,9 @@
 
 from __future__ import annotations
 
+import collections
 import copy
-from typing import TYPE_CHECKING, Literal, NamedTuple, Sequence, overload
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import numpy as np
 
