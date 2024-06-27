@@ -312,6 +312,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
     bool use_calc_stream) {
   const phi::DDim& out_dim = out_tensor->dims();
   const phi::DDim& in_dim = in_tensor.dims();
+  VLOG(3) << "[AllToAll] start";
   CheckSizeOnEachRank(out_dim, out_size_each_rank, size_);
   CheckSizeOnEachRank(in_dim, in_size_each_rank, size_);
 
@@ -319,21 +320,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
   // simply be covered by static checks. Factors are set to 0 here to skip the
   // shape check. Its shape check will be done by dynamic checks with
   // FLAGS_enable_nccl_dynamic_check.
-  phi::distributed::CommStaticCheck::CheckShape(*out_tensor,
-                                                in_tensor,
-                                                /*dst_rank*/ rank_,
-                                                /*cur_rank*/ rank_,
-                                                size_,
-                                                /*out_size_factor*/ 0,
-                                                /*in_size_factor*/ 0);
+  if (out_tensor->numel()==0)
+    VLOG(3) << "[AllToAll] rank[" << rank_ << "] do not recv data";
+
+  if (in_tensor.numel()==0)
+    VLOG(3) << "[AllToAll] rank[" << rank_ << "] do not send data";
+
+  if (out_tensor->numel() != 0 && in_tensor.numel() != 0){
+    phi::distributed::CommStaticCheck::CheckShape(*out_tensor,
+                                                  in_tensor,
+                                                  /*dst_rank*/ rank_,
+                                                  /*cur_rank*/ rank_,
+                                                  size_,
+                                                  /*out_size_factor*/ 0,
+                                                  /*in_size_factor*/ 0);
+  }
   return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
               *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm);
         }
-        int64_t in_row_size = in_tensor.numel() / in_dim[0],
-                out_row_size = out_tensor->numel() / out_dim[0];
+        int64_t in_row_size = in_dim[0] != 0 ? in_tensor.numel() / in_dim[0] : 0;
+        int64_t out_row_size = out_dim[0] != 0 ? out_tensor->numel() / out_dim[0]: 0;
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
@@ -354,26 +363,32 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
-          input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
-          NCCL_CHECK(
-              phi::dynload::ncclSend(input_partial.data(),
-                                     in_numel,
-                                     phi::ToNCCLDataType(input_partial.dtype()),
-                                     i,
-                                     comm,
-                                     stream));
-          in_offset += in_numel;
+          if (in_numel != 0){
+            input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
+            VLOG(3) << "[AllToAll] skip send empty data to rank:" << i;
+            NCCL_CHECK(
+                phi::dynload::ncclSend(input_partial.data(),
+                                      in_numel,
+                                      phi::ToNCCLDataType(input_partial.dtype()),
+                                      i,
+                                      comm,
+                                      stream));
+            in_offset += in_numel;
+          }
 
           out_numel = out_size_each_rank[i] * out_row_size;
-          output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
-          NCCL_CHECK(phi::dynload::ncclRecv(
-              output_partial.data(),
-              out_numel,
-              phi::ToNCCLDataType(output_partial.dtype()),
-              i,
-              comm,
-              stream));
-          out_offset += out_numel;
+          if (out_numel != 0){
+            output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
+            VLOG(3) << "[AllToAll] skip recv empty data from rank:" << i;
+            NCCL_CHECK(phi::dynload::ncclRecv(
+                output_partial.data(),
+                out_numel,
+                phi::ToNCCLDataType(output_partial.dtype()),
+                i,
+                comm,
+                stream));
+            out_offset += out_numel;
+          }
         }
         GroupEnd();
       },
