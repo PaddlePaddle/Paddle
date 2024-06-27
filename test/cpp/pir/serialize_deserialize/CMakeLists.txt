@@ -1,0 +1,1 @@
+paddle_test(test_builtin_parameter SRCS test_builtin_parameter.cc)
