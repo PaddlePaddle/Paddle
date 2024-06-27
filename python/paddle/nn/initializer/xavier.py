@@ -120,6 +120,16 @@ class XavierInitializer(Initializer):
         if in_dygraph_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
+                print(
+                    "{{function_name: uniform, inputs: {{ }} , params: [shape: {}, low: {}, high: {}, seed: {}, dtype: {} ] }}".format(
+                        str(out_var.shape),
+                        str(-limit),
+                        str(limit),
+                        str(self._seed),
+                        str(out_dtype),
+                    ),
+                    flush=True,
+                )
                 out_var = _C_ops.uniform(
                     out_var.shape,
                     out_dtype,
@@ -132,6 +142,17 @@ class XavierInitializer(Initializer):
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
                 place = _current_expected_place()
+
+                print(
+                    "{{function_name: guassian, inputs: {{ }} , params: [shape: {}, mean: {}, std: {}, seed: {}, dtype: {} ] }}".format(
+                        str(out_var.shape),
+                        str(0.0),
+                        str(std),
+                        str(self._seed),
+                        str(out_dtype),
+                    ),
+                    flush=True,
+                )
                 out_var = _C_ops.gaussian(
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
                 )

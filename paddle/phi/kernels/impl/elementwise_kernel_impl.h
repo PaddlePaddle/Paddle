@@ -54,6 +54,12 @@ namespace phi {
                        const DenseTensor& y,                         \
                        int axis,                                     \
                        DenseTensor* out) {                           \
+    std::cout << "{function_name : "#name", inputs: { { x, type: <class " \
+               "'paddle.Tensor'>, shape: " \
+            << x.dims() << " }, "; \
+    std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims() \
+            << "}, }" \
+            << ", params: [ ]}" << std::endl; \
     std::vector<const DenseTensor*> inputs;                          \
     inputs.reserve(2);                                               \
     std::vector<DenseTensor*> outputs;                               \

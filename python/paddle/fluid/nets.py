@@ -404,7 +404,7 @@ def glu(input, dim=-1):
     out = paddle.multiply(x=a, y=act_b)
     return out
 
-
+@paddle.utils.print_utils.print_args
 def scaled_dot_product_attention(
     queries, keys, values, num_heads=1, dropout_rate=0.0
 ):

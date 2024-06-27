@@ -26,6 +26,7 @@ from . import cpp_extension  # noqa: F401
 from . import dlpack
 from . import layers_utils  # noqa: F401
 
+from .print_utils import print_args
 from .layers_utils import convert_to_list  # noqa: F401
 from .layers_utils import is_sequence  # noqa: F401
 from .layers_utils import to_sequence  # noqa: F401
@@ -53,4 +54,4 @@ from .layers_utils import _is_symmetric_padding  # noqa: F401
 from .layers_utils import _contain_var  # noqa: F401
 from .layers_utils import _convert_to_tensor_list  # noqa: F401
 
-__all__ = ['deprecated', 'run_check', 'require_version', 'try_import']  # noqa
+__all__ = ['deprecated', 'run_check', 'require_version', 'try_import', 'print_args']  # noqa

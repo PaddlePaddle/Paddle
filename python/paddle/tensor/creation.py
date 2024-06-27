@@ -270,6 +270,7 @@ def create_tensor(dtype, name=None, persistable=False):
     )
 
 
+@paddle.utils.print_utils.print_args
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
     Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
@@ -787,6 +788,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
+@paddle.utils.print_utils.print_args
 def full_like(x, fill_value, dtype=None, name=None):
     """
 
@@ -865,6 +867,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dygraph_mode():
         place = _current_expected_place()
@@ -1239,6 +1242,7 @@ def full(shape, fill_value, dtype=None, name=None):
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
+@paddle.utils.print_utils.print_args
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
     Returns a 1-D Tensor with spaced values within a given interval.
