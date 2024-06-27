@@ -2122,8 +2122,8 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                                const phi::DDim& in_dims) {
   const int64_t in_size = common::product(in_dims);
   auto in_dims_vec = common::vectorize(in_dims);
-  std::vector<int64_t> output_shape(shape.size(), 0);
-  int64_t capacity = 1;
+  std::vector<int64_t> output_shape(shape.size() == 0 ? 1 : shape.size(), 0);
+  int64_t capacity = shape.size() == 0 ? 0 : 1;
   int unk_dim_idx = -1;
 
   for (size_t i = 0; i < shape.size(); ++i) {
