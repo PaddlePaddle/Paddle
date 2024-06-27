@@ -245,13 +245,7 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(write_to_array,
-                  ops::WriteToArrayOp,
-                  ops::WriteToArrayInferShape,
-                  ops::WriteToArrayOpProtoMaker,
-                  ops::WriteToArrayGradMaker<paddle::framework::OpDesc>,
-                  ops::WriteToArrayGradMaker<paddle::imperative::OpBase>,
-                  ops::WriteToArrayInferVarType);
+
 REGISTER_OPERATOR(read_from_array,
                   ops::ReadFromArrayOp,
                   ops::ReadFromArrayInferShape,
