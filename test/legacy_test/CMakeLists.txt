@@ -22,6 +22,8 @@ endif()
 # The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
+list(REMOVE_ITEM TEST_OPS test_paddle_save_load)
+list(REMOVE_ITEM TEST_OPS test_jit_save_load)
 ###### end ######
 
 if(WITH_COVERAGE)

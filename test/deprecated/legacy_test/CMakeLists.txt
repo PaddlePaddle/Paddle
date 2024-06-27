@@ -10,6 +10,7 @@ set(dist_ENVS http_proxy="" https_proxy="")
 # The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_imperative_base)
+list(REMOVE_ITEM TEST_OPS test_static_save_load)
 ###### end ######
 
 file(
