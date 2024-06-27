@@ -49,7 +49,7 @@ class TestProfiler(unittest.TestCase):
             targets=[profiler.ProfilerTarget.CPU],
         ) as prof:
             y = x / 2.0
-
+        prof = None
         self.assertEqual(utils._is_profiler_used, False)
         with profiler.RecordEvent(name='test'):
             y = x / 2.0
@@ -61,6 +61,7 @@ class TestProfiler(unittest.TestCase):
             with profiler.RecordEvent(name='test'):
                 y = x / 2.0
 
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=profiler.make_scheduler(
@@ -69,7 +70,7 @@ class TestProfiler(unittest.TestCase):
             on_trace_ready=my_trace_back,
         ) as prof:
             y = x / 2.0
-
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=profiler.make_scheduler(
@@ -80,7 +81,7 @@ class TestProfiler(unittest.TestCase):
             for i in range(3):
                 y = x / 2.0
                 prof.step()
-
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=lambda x: profiler.ProfilerState.RECORD_AND_RETURN,
@@ -111,6 +112,7 @@ class TestProfiler(unittest.TestCase):
             else:
                 return profiler.ProfilerState.CLOSED
 
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=lambda x: profiler.ProfilerState.RECORD_AND_RETURN,
@@ -119,7 +121,7 @@ class TestProfiler(unittest.TestCase):
             for i in range(2):
                 y = x / 2.0
                 prof.step()
-
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=my_scheduler,
@@ -128,14 +130,14 @@ class TestProfiler(unittest.TestCase):
             for i in range(5):
                 y = x / 2.0
                 prof.step()
-
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU], scheduler=my_scheduler1
         ) as prof:
             for i in range(5):
                 y = x / 2.0
                 prof.step()
-
+        prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=profiler.make_scheduler(
@@ -154,7 +156,7 @@ class TestProfiler(unittest.TestCase):
         prof.export(path=path, format='pb')
         prof.summary()
         result = profiler.utils.load_profiler_result(path)
-
+        prof = None
         dataset = RandomDataset(10 * 4)
         simple_net = SimpleNet()
         opt = paddle.optimizer.SGD(
@@ -175,7 +177,7 @@ class TestProfiler(unittest.TestCase):
             prof.step()
         prof.stop()
         prof.summary()
-
+        prof = None
         dataset = RandomDataset(10 * 4)
         simple_net = SimpleNet()
         loader = DataLoader(dataset, batch_size=4, shuffle=True, drop_last=True)
