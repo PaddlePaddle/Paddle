@@ -946,7 +946,7 @@ def full_like(
 def fill_constant(
     shape: ShapeLike,
     dtype: DTypeLike,
-    value: float | paddle.Tensor,
+    value: bool | float | paddle.Tensor,
     force_cpu: bool = False,
     out: paddle.Tensor | None = None,
     name: str | None = None,
@@ -1019,6 +1019,8 @@ def fill_constant(
                 'complex64',
                 'complex128',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'fill_constant',
         )
@@ -1737,12 +1739,14 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> paddle.Tensor:
+) -> list[paddle.Tensor]:
     ...
 
 
 @overload
-def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+def meshgrid(
+    *args: paddle.Tensor, name: str | None = None
+) -> list[paddle.Tensor]:
     ...
 
 
