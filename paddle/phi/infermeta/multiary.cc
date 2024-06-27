@@ -918,7 +918,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     check = false;
   }
 
-  if (check) {
+  if (check && config.is_runtime) {
     PADDLE_ENFORCE_EQ(scale.dims()[0],
                       C,
                       phi::errors::InvalidArgument(
