@@ -188,10 +188,10 @@ def test_with_pir_api(func):
     def impl(*args, **kwargs):
         skip_old_ir = os.environ.get("FLAGS_CI_skip_old_ir", "False")
         skip_pir = os.environ.get("FLAGS_CI_skip_pir", "False")
-        if not skip_old_ir:
+        if skip_old_ir == "False" or not skip_old_ir:
             with OldIrGuard():
                 func(*args, **kwargs)
-        if not skip_pir:
+        if skip_pir == "False" or not skip_pir:
             with IrGuard():
                 func(*args, **kwargs)
 
