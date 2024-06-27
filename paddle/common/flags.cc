@@ -290,7 +290,7 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
  * Example:
  * Note: Use MIOpen batch norm instead of native
  */
-PHI_DEFINE_EXPORTED_bool(FLAGS_batch_norm_use_miopen,
+PHI_DEFINE_EXPORTED_bool(batch_norm_use_miopen,
                          false,
                          "Whether use MIOpen batch norm or not, "
                          "default is false, not use miopen bn");

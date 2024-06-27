@@ -36,6 +36,9 @@
 #endif
 
 COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+#ifdef PADDLE_WITH_HIP
+COMMON_DECLARE_bool(batch_norm_use_miopen);
+#endif
 namespace phi {
 
 template <typename T>
