@@ -39,20 +39,18 @@ from ...utils import (
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import Size1, Size2
-
-    from ..._typing import (
+    from paddle._typing import (
         DataLayout1D,
         DataLayout2D,
         DataLayout3D,
-        PaddingMode,
         Size1,
         Size2,
         Size3,
         Size4,
         Size6,
     )
-    from .common import _PaddingSizeMode as PaddingMode
+
+    from .common import _PaddingSizeMode
 
 __all__ = []
 
@@ -317,7 +315,7 @@ def avg_pool2d(
     x: Tensor,
     kernel_size: Size2,
     stride: Size2 | None = None,
-    padding: PaddingMode | Size2 | Size4 = 0,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
     ceil_mode: bool = False,
     exclusive: bool = True,
     divisor_override: float | None = None,
@@ -449,7 +447,7 @@ def avg_pool3d(
     x,
     kernel_size: Size3,
     stride: Size3 | None = None,
-    padding: PaddingMode | Size3 | Size6 = 0,
+    padding: _PaddingSizeMode | Size3 | Size6 = 0,
     ceil_mode: bool = False,
     exclusive: bool = True,
     divisor_override: float | None = None,
@@ -577,7 +575,7 @@ def max_pool1d(
     x: Tensor,
     kernel_size: Size1,
     stride: Size1 | None = None,
-    padding: PaddingMode | Size1 | Size2 = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
     return_mask: bool = False,
     ceil_mode: bool = False,
     name: str | None = None,
@@ -752,7 +750,7 @@ def max_unpool1d(
     indices: Tensor,
     kernel_size: Size1,
     stride: Size1 | None = None,
-    padding: PaddingMode | Size1 | Size2 = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
     data_format: DataLayout1D = 'NCL',
     output_size: Sequence[int] | None = None,
     name: str | None = None,
@@ -871,7 +869,7 @@ def max_unpool2d(
     indices: Tensor,
     kernel_size: Size2,
     stride: Size2 | None = None,
-    padding: PaddingMode | Size2 | Size4 = 0,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
     data_format: DataLayout2D = 'NCHW',
     output_size: Sequence[int] | None = None,
     name: str | None = None,
@@ -1003,7 +1001,7 @@ def max_unpool3d(
     indices: Tensor,
     kernel_size: Size3,
     stride: Size3 | None = None,
-    padding: PaddingMode | Size3 | Size6 = 0,
+    padding: _PaddingSizeMode | Size3 | Size6 = 0,
     data_format: DataLayout3D = 'NCDHW',
     output_size: Sequence[int] | None = None,
     name: str | None = None,
@@ -1131,7 +1129,7 @@ def max_pool2d(
     x: Tensor,
     kernel_size: Size2,
     stride: Size2 | None = None,
-    padding: PaddingMode | Size2 | Size4 = 0,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout2D = 'NCHW',
@@ -1293,7 +1291,7 @@ def max_pool3d(
     x: Tensor,
     kernel_size: Size3,
     stride: Size3 | None = None,
-    padding: PaddingMode | Size3 | Size6 = 0,
+    padding: _PaddingSizeMode | Size3 | Size6 = 0,
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout3D = 'NCDHW',
@@ -2398,7 +2396,7 @@ def lp_pool1d(
     norm_type: float,
     kernel_size: Size1,
     stride: Size1 | None = None,
-    padding: PaddingMode | Size1 | Size2 = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
     ceil_mode: bool = False,
     data_format: DataLayout1D = "NCL",
     name: str | None = None,
@@ -2529,7 +2527,7 @@ def lp_pool2d(
     norm_type: float,
     kernel_size: Size2,
     stride: Size2 | None = None,
-    padding: PaddingMode | Size2 | Size4 = 0,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
     ceil_mode: bool = False,
     data_format: DataLayout2D = "NCHW",
     name: str | None = None,
