@@ -417,7 +417,7 @@ Examples:
 
         >>> a = paddle.to_tensor([[1,2,3],
         ...                       [5,6,7]])
-        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
+        >>> d_tensor = dist.shard_tensor(a, mesh, [core.Shard(0), core.Shard(1)])
 
         >>> print(d_tensor.process_mesh)
 
@@ -464,7 +464,7 @@ Examples:
 
         >>> a = paddle.to_tensor([[1,2,3],
         ...                       [5,6,7]])
-        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
+        >>> d_tensor = dist.shard_tensor(a, mesh, [core.Shard(0), core.Shard(1)])
 
         >>> print(d_tensor.placements)
 
