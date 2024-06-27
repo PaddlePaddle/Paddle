@@ -605,7 +605,7 @@ class Sequential(Layer):
             for idx, layer in enumerate(layers):
                 self.add_sublayer(str(idx), layer)
 
-    def __getitem__(self, name: str) -> Layer:
+    def __getitem__(self, name: str | slice | int) -> Layer:
         if isinstance(name, slice):
             return self.__class__(*(list(self._sub_layers.values())[name]))
         elif isinstance(name, str):

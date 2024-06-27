@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator.h"
+#pragma once
 
-namespace paddle::memory::allocation {
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/cache_grad_op_symbolic_shape.h"
 
-void Allocator::FreeImpl(phi::Allocation* allocation) {
-  static_cast<Allocation*>(allocation)
-      ->TopDecoratedAllocator()
-      ->Free(allocation);
-}
+namespace paddle::dialect {
+using CacheGradOpSymbolicShapeInterface =
+    pir::CacheGradOpSymbolicShapeInterface;
 
-}  // namespace paddle::memory::allocation
+}  // namespace paddle::dialect

@@ -182,7 +182,6 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -651,7 +650,6 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
-set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
