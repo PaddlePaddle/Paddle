@@ -41,7 +41,10 @@ void fp8_fp8_half_gemm(
     DenseTensor* out) {
   static_assert(std::is_same<Context, phi::GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
-  void out_ptr = nullptr;
+
+  VLOG(3) << "fp8_fp8_half_gemm_fused of cutlass start run: "
+
+      void out_ptr = nullptr;
   if (out->dtype() == phi::DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
     out_ptr = reinterpret_cast<void*>(out->data<phi::dtype::bfloat16>());

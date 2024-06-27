@@ -44,7 +44,8 @@ void fp8_fp8_fp8_dual_gemm(
     const std::string& activation_type,
     DenseTensor* out) {
   static_assert(std::is_same<Context, phi::GPUContext>::value,
-                "fp8_fp8_gemm must be in GPU");
+                "fp8_fp8_fp8_dual_gemm_fused must be in GPU");
+  VLOG(3) << "fp8_fp8_fp8_dual_gemm_fused of cutlass start run: ";
 
   dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
   auto place = dev_ctx.GetPlace();
