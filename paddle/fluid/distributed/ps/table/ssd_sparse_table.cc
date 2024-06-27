@@ -29,8 +29,7 @@ PADDLE_DEFINE_EXPORTED_string(rocksdb_path,
                               "database",
                               "path of sparse table rocksdb file");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int32_t SSDSparseTable::Initialize() {
   MemorySparseTable::Initialize();
@@ -3099,5 +3098,4 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

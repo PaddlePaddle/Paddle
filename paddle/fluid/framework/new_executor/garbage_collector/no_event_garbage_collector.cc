@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/garbage_collector/no_event_garbage_collector.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCoreNoEventGarbageCollector::InterpreterCoreNoEventGarbageCollector()
     : queue_(nullptr), ctxs_() {
@@ -135,5 +134,4 @@ void InterpreterCoreNoEventGarbageCollector::Add(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

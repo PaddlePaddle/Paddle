@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/framework/program_desc.h"
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
            const std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>&
@@ -92,6 +90,4 @@ void Plan::SetIrProgram(const std::string& job_type,
 
 int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

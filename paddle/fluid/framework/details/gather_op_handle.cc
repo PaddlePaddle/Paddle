@@ -24,9 +24,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 GatherOpHandle::GatherOpHandle(ir::Node *node,
                                const std::vector<Scope *> &local_scopes,
@@ -141,6 +139,4 @@ void GatherOpHandle::RunImpl() {
 }
 
 std::string GatherOpHandle::Name() const { return "gather"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

@@ -17,8 +17,7 @@
 
 #include "paddle/fluid/operators/transpose_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusedTransposeOpMaker : public Transpose2OpMaker {
  protected:
@@ -48,8 +47,7 @@ class FusedTransposeOpMaker : public Transpose2OpMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

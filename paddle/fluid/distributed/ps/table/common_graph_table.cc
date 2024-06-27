@@ -58,8 +58,7 @@ PHI_DEFINE_EXPORTED_int32(graph_edges_debug_node_num,
                           2,
                           "graph debug node num");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::Load_to_ssd(const std::string &path,
@@ -3727,5 +3726,4 @@ void GraphTable::build_node_iter_type_keys() {
   VLOG(0) << "finish build_node_iter_type_keys";
 }
 
-}  // namespace distributed
-};  // namespace paddle
+}  // namespace paddle::distributed

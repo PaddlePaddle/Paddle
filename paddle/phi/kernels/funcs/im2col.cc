@@ -19,8 +19,7 @@ namespace phi {
 class CPUContext;
 }  // namespace phi
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -361,5 +360,4 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              phi::dtype::complex<double>>;
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

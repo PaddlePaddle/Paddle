@@ -14,10 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_proto.h"
 
-namespace paddle {
-namespace framework {
-namespace compatible {
-namespace pb {
+namespace paddle::framework::compatible::pb {
 const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
   static std::unordered_map<std::string, uint32_t> op_versions = {
       {"not_equal", 1},
@@ -103,7 +100,4 @@ const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
       {"equal", 1}};
   return op_versions;
 }
-}  // namespace pb
-}  // namespace compatible
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::compatible::pb

@@ -24,9 +24,7 @@ namespace phi {
 class DeviceCodePool;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -173,9 +171,7 @@ void FusionGroupPass::InsertFusionGroupOp(
   GraphSafeRemoveNodes(graph, internal_nodes);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fusion_group_pass, paddle::framework::ir::FusionGroupPass)
     .RequirePassAttr("use_gpu");

@@ -18,8 +18,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 constexpr EventsWaiter::EventId kEmptyEventId = 0;
 
@@ -215,5 +214,4 @@ std::string EventsWaiter::GetEventName(const EventId& id) {
   return iter->second.name;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
