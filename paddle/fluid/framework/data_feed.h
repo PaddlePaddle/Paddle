@@ -1199,7 +1199,7 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey UNUSED) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge UNUSED) {}
   virtual void SetCurrentPhase(int current_phase UNUSED) {}
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
   virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
@@ -1226,82 +1226,145 @@ class DataFeed {
     batch_size_ = batch_size;
   }
   virtual int GetCurBatchSize() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.GetGraphBatchsize();
+    if (gpu_graph_mode_) {
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+      return gpu_graph_data_generator_.GetGraphBatchsize();
 #else
-    return batch_size_;
+      // gpu_graph_mode_ set true only when
+      // PADDLE_WITH_HETERPS=ON and PADDLE_WITH_PSCORE=ON
+      VLOG(1) << "Error: GetCurBatchSize() gpu_graph_mode_ "
+              << "set true only when "
+              << "PADDLE_WITH_HETERPS=ON and PADDLE_WITH_PSCORE=ON";
+      return 0;
 #endif
+    } else {
+      return batch_size_;
+    }
   }
   virtual void SetNewBatchsize(int batch_num) {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    gpu_graph_data_generator_.SetNewBatchsize(batch_num);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      gpu_graph_data_generator_.SetNewBatchsize(batch_num);
+    }
 #endif
   }
   virtual bool GetSageMode() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.GetSageMode();
+    if (gpu_graph_mode_) {
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+      return gpu_graph_data_generator_.GetSageMode();
 #else
-    return 0;
+      return 0;
 #endif
+    } else {
+      return 0;
+    }
   }
   virtual bool GetMultiNodeMode() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.GetMultiNodeMode();
+    if (gpu_graph_mode_) {
+#if defined(PADDLE_WITH_HETERPS)
+      return gpu_graph_data_generator_.GetMultiNodeMode();
 #else
-    return 0;
+      return 0;
 #endif
+    } else {
+      return 0;
+    }
   }
   virtual int GetGraphPathNum() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.GetPathNum();
+    if (gpu_graph_mode_) {
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+      return gpu_graph_data_generator_.GetPathNum();
 #else
-    return 0;
+      return 0;
 #endif
+    } else {
+      return 0;
+    }
   }
   virtual bool GetTrainState() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.GetTrainState();
+    if (gpu_graph_mode_) {
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+      return gpu_graph_data_generator_.GetTrainState();
 #else
-    return 0;
+      return 0;
 #endif
+    } else {
+      return 0;
+    }
   }
   virtual int GetTrainMemoryDataSize() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.GetTrainMemoryDataSize();
+    if (gpu_graph_mode_) {
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+      return gpu_graph_data_generator_.GetTrainMemoryDataSize();
 #else
-    return 0;
+      return 0;
 #endif
+    } else {
+      return 0;
+    }
   }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   virtual std::vector<uint64_t>* GetHostVec() {
-    return &(gpu_graph_data_generator_.GetHostVec());
+    if (gpu_graph_mode_) {
+      return &(gpu_graph_data_generator_.GetHostVec());
+    } else {
+      return nullptr;
+    }
   }
 
   virtual std::vector<uint32_t>* GetHostRanks() {
-    return &(gpu_graph_data_generator_.GetHostRanks());
+    if (gpu_graph_mode_) {
+      return &(gpu_graph_data_generator_.GetHostRanks());
+    } else {
+      return nullptr;
+    }
   }
 
-  virtual void clear_gpu_mem() { gpu_graph_data_generator_.clear_gpu_mem(); }
+  virtual void clear_gpu_mem() {
+    if (gpu_graph_mode_) {
+      gpu_graph_data_generator_.clear_gpu_mem();
+    }
+  }
 
   virtual bool get_epoch_finish() {
-    return gpu_graph_data_generator_.get_epoch_finish();
+    if (gpu_graph_mode_) {
+      return gpu_graph_data_generator_.get_epoch_finish();
+    } else {
+      return 0;
+    }
   }
 
   virtual int get_pass_end() {
-    return gpu_graph_data_generator_.get_pass_end();
+    if (gpu_graph_mode_) {
+      return gpu_graph_data_generator_.get_pass_end();
+    } else {
+      return 0;
+    }
   }
 
-  virtual void reset_pass_end() { gpu_graph_data_generator_.reset_pass_end(); }
+  virtual void reset_pass_end() {
+    if (gpu_graph_mode_) {
+      gpu_graph_data_generator_.reset_pass_end();
+    }
+  }
 
-  virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }
+  virtual void ResetPathNum() {
+    if (gpu_graph_mode_) {
+      gpu_graph_data_generator_.ResetPathNum();
+    }
+  }
 
   virtual void ClearSampleState() {
-    gpu_graph_data_generator_.ClearSampleState();
+    if (gpu_graph_mode_) {
+      gpu_graph_data_generator_.ClearSampleState();
+    }
   }
 
   virtual void ResetEpochFinish() {
-    gpu_graph_data_generator_.ResetEpochFinish();
+    if (gpu_graph_mode_) {
+      gpu_graph_data_generator_.ResetEpochFinish();
+    }
   }
 
   virtual void DoWalkandSage() {
@@ -1310,7 +1373,11 @@ class DataFeed {
   }
 
   std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() {
-    return gpu_graph_data_generator_.GetKeys2RankTable();
+    if (gpu_graph_mode_) {
+      return gpu_graph_data_generator_.GetKeys2RankTable();
+    } else {
+      return nullptr;
+    }
   }
 
 #endif
@@ -1408,7 +1475,7 @@ class DataFeed {
   // The input type of pipe reader, 0 for one sample, 1 for one batch
   int input_type_;
   int gpu_graph_mode_ = 0;
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   GraphDataGenerator gpu_graph_data_generator_;
 #endif
   bool train_mode_;
@@ -1961,7 +2028,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      cudaStream_t stream);
 #endif
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource(void);
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();

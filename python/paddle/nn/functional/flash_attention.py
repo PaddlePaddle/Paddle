@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Generator, Literal, overload
+
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
@@ -23,9 +27,16 @@ g_enable_math = None
 g_enable_flash = None
 g_enable_mem_efficient = None
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 @signature_safe_contextmanager
-def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
+def sdp_kernel(
+    enable_math: bool = False,
+    enable_flash: bool = True,
+    enable_mem_efficient: bool = True,
+) -> Generator[None, None, None]:
     r"""
     With the sdp_kernel context manager, different algorithm implementations can
     be selected for scaled_dot_product_attention.
@@ -47,12 +58,51 @@ def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
 
 
 # special for XPU device
-def get_triangle_upper_mask(x):
+def get_triangle_upper_mask(x: Tensor) -> Tensor:
     mask = paddle.full_like(x, -1e4)
     mask.stop_gradient = True
     mask = paddle.triu(mask, diagonal=1)
     mask.stop_gradient = True
     return mask
+
+
+@overload
+def _math_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout_rate: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    training: bool = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def _math_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout_rate: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    training: bool = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def _math_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout_rate: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    training: bool = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
 
 
 def _math_attention(
@@ -98,14 +148,14 @@ def _math_attention(
     return out, weights if return_softmax else None
 
 
-def _select_sdp_cuda(head_dim):
+def _select_sdp_cuda(head_dim: int) -> str:
     if head_dim <= 256:
         return "flash_attn"
     else:
         return "mem_efficient"
 
 
-def _select_sdp(head_dim):
+def _select_sdp(head_dim: int) -> str:
     r"""
     There are currently three different implementation options available for
     scaled dot product attention, and the chosen approach depends on whether it
@@ -142,6 +192,57 @@ def _select_sdp(head_dim):
     if g_enable_flash is True:
         return "flash_attn"
     return "mem_efficient"
+
+
+@overload
+def flash_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
 
 
 def flash_attention(
@@ -187,10 +288,10 @@ def flash_attention(
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
-        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        fixed_seed_offset(Tensor|None, optional): With fixed seed, offset for dropout mask.
         training(bool): Whether it is in the training phase.
         rng_name(str): The name to select Generator.
-        name(str, optional): The default value is None. Normally there is no need for user
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
@@ -300,6 +401,51 @@ def flash_attention(
             )
 
 
+@overload
+def flash_attn_qkvpacked(
+    qkv: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attn_qkvpacked(
+    qkv: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attn_qkvpacked(
+    qkv: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
 def flash_attn_qkvpacked(
     qkv,
     dropout=0.0,
@@ -334,10 +480,10 @@ def flash_attn_qkvpacked(
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
-        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        fixed_seed_offset(Tensor|None, optional): With fixed seed, offset for dropout mask.
         training(bool): Whether it is in the training phase.
         rng_name(str): The name to select Generator.
-        name(str, optional): The default value is None. Normally there is no need for user
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
@@ -452,6 +598,69 @@ def flash_attn_qkvpacked(
             )
 
 
+@overload
+def flash_attn_unpadded(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attn_unpadded(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attn_unpadded(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
 def flash_attn_unpadded(
     query,
     key,
@@ -465,7 +674,7 @@ def flash_attn_unpadded(
     causal=False,
     return_softmax=False,
     fixed_seed_offset=None,
-    rng_name="",
+    rng_name='',
     training=True,
     name=None,
 ):
@@ -503,19 +712,19 @@ def flash_attn_unpadded(
         max_seqlen_q(int): Maximum sequence length of query in the batch.
         max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         scale(float): The scaling of QK^T before applying softmax.
-        dropout(float): The dropout ratio.
-        causal(bool): Whether enable causal mode.
-        return_softmax(bool): Whether to return softmax.
-        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
-        rng_name(str): The name to select Generator.
-        training(bool): Whether it is in the training phase.
-        name(str, optional): The default value is None. Normally there is no need for user
+        dropout(float, optional): The dropout ratio.
+        causal(bool, optional): Whether enable causal mode.
+        return_softmax(bool, optional): Whether to return softmax.
+        fixed_seed_offset(Tensor|None, optional): With fixed seed, offset for dropout mask.
+        rng_name(str, optional): The name to select Generator.
+        training(bool, optional): Whether it is in the training phase.
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
     Returns:
         out(Tensor): The attention tensor.
-                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+                    3-D tensor with shape: [total_seq_len, num_heads, head_dim].
                     The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
@@ -591,6 +800,66 @@ def flash_attn_unpadded(
     return out, softmax if return_softmax else None
 
 
+@overload
+def flash_attn_varlen_qkvpacked(
+    qkv: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    varlen_padded: bool = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]:
+    ...
+
+
+@overload
+def flash_attn_varlen_qkvpacked(
+    qkv: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    varlen_padded: bool = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def flash_attn_varlen_qkvpacked(
+    qkv: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    max_seqlen_q: int,
+    max_seqlen_k: int,
+    scale: float,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: bool = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    varlen_padded: bool = ...,
+    training: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor | None]:
+    ...
+
+
 def flash_attn_varlen_qkvpacked(
     qkv,
     cu_seqlens_q,
@@ -633,13 +902,13 @@ def flash_attn_varlen_qkvpacked(
         max_seqlen_q(int): Maximum sequence length of query in the batch. Note it's the padding length, not the max actual seqlen
         max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         scale(float): The scaling of QK^T before applying softmax.
-        dropout(float): The dropout ratio.
-        causal(bool): Whether enable causal mode.
-        return_softmax(bool): Whether to return softmax.
-        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
-        rng_name(str): The name to select Generator.
-        training(bool): Whether it is in the training phase.
-        name(str, optional): The default value is None. Normally there is no need for user
+        dropout(float, optional): The dropout ratio.
+        causal(bool, optional): Whether enable causal mode.
+        return_softmax(bool, optional): Whether to return softmax.
+        fixed_seed_offset(Tensor|None, optional): With fixed seed, offset for dropout mask.
+        rng_name(str, optional): The name to select Generator.
+        training(bool, optional): Whether it is in the training phase.
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
@@ -720,15 +989,15 @@ def flash_attn_varlen_qkvpacked(
 
 
 def scaled_dot_product_attention(
-    query,
-    key,
-    value,
-    attn_mask=None,
-    dropout_p=0.0,
-    is_causal=False,
-    training=True,
-    name=None,
-):
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    attn_mask: Tensor | None = None,
+    dropout_p: float = 0.0,
+    is_causal: bool = False,
+    training: bool = True,
+    name: str | None = None,
+) -> Tensor:
     r"""
     The equation is:
 
@@ -756,12 +1025,12 @@ def scaled_dot_product_attention(
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float61 or bfloat16.
-        attn_mask(Tensor,optional): A float mask of the same type as query,
+        attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-        dropout_p(float): The dropout ratio.
-        is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase.
-        name(str, optional): The default value is None. Normally there is no need for user
+        dropout_p(float, optional): The dropout ratio.
+        is_causal(bool, optional): Whether enable causal mode.
+        training(bool, optional): Whether it is in the training phase.
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
@@ -787,7 +1056,7 @@ def scaled_dot_product_attention(
         return out
     else:
         if in_dynamic_or_pir_mode():
-            fixed_seed_offset = (None,)
+            fixed_seed_offset = None
             return_softmax = False
             rng_name = ""
             out, _, _, _ = _C_ops.flash_attn(
@@ -842,19 +1111,19 @@ def scaled_dot_product_attention(
 
 
 def flash_attention_with_sparse_mask(
-    query,
-    key,
-    value,
-    attn_mask_start_row_indices,
-    attn_mask_start_row=0,
-    dropout_p=0.0,
-    is_causal=False,
-    return_softmax=False,
-    return_softmax_lse=False,
-    return_seed_offset=False,
-    training=True,
-    name=None,
-):
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    attn_mask_start_row_indices: Tensor,
+    attn_mask_start_row: int = 0,
+    dropout_p: float = 0.0,
+    is_causal: bool = False,
+    return_softmax: bool = False,
+    return_softmax_lse: bool = False,
+    return_seed_offset: bool = False,
+    training: bool = True,
+    name: str | None = None,
+) -> Tensor:
     r"""
     The equation is:
 
@@ -885,14 +1154,14 @@ def flash_attention_with_sparse_mask(
                         indices tensor, the shape is [batch_size, num_head, seq_len],
                         The value of each element indicates the row index where the
                         mask starts in score matrix. The dtype must be int32.
-        attn_mask_start_row(int,optional): When `attn_mask_start_row_indices` is passed
+        attn_mask_start_row(int, optional): When `attn_mask_start_row_indices` is passed
                         in and the minimum row number is known to be greater than 0,
                         it can set `attn_mask_start_row` for performance improvement.
                         The default value is 0.
-        dropout_p(float): The dropout ratio.
-        is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase.
-        name(str, optional): The default value is None. Normally there is no need for user
+        dropout_p(float, optional): The dropout ratio.
+        is_causal(bool, optional): Whether enable causal mode.
+        training(bool, optional): Whether it is in the training phase.
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
     Returns:
@@ -929,7 +1198,7 @@ def flash_attention_with_sparse_mask(
             >>>     dropout_p=0.9,
             >>>     is_causal=True,
             >>> )
-            >>> print(output)
+            >>> print(out)
             >>> # doctest: -SKIP
     """
 

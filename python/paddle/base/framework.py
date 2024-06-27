@@ -277,6 +277,8 @@ paddle_type_to_proto_type = {
     DataType.UINT8: core.VarDesc.VarType.UINT8,
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+    DataType.FLOAT8_E4M3FN: core.VarDesc.VarType.FP8_E4M3FN,
+    DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
 }
 
 
@@ -1295,6 +1297,10 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
+        dtype = 'float8_e4m3fn'
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
+        dtype = 'float8_e5m2'
     else:
         dtype = np.dtype(np_dtype)
 
@@ -1302,6 +1308,10 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
         return core.VarDesc.VarType.FP64
+    elif dtype == 'float8_e4m3fn':
+        return core.VarDesc.VarType.FP8_E4M3FN
+    elif dtype == 'float8_e5m2':
+        return core.VarDesc.VarType.FP8_E5M2
     elif dtype == np.float16:
         return core.VarDesc.VarType.FP16
     elif dtype == np.int32:
@@ -1788,6 +1798,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
                 >>> import numpy as np

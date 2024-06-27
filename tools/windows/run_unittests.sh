@@ -98,7 +98,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_dygraph_multi_forward$|\
 ^test_instance_norm_op_v2$|\
 ^test_rnn_op$|\
-^test_composite_batch_norm$|\
+^test_composite_batch_norm_deprecated$|\
 ^test_prim_amp$|\
 ^test_cumprod_op$|\
 ^test_elementwise_sub_op$|\

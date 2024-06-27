@@ -18,9 +18,8 @@ import os
 import numpy as np
 
 import paddle
-from paddle import framework
 from paddle.distributed.communication.batch_isend_irecv import (
-    _with_batch_p2p_guard,
+    _coalescing_manager,
 )
 from paddle.distributed.communication.group import (
     _get_global_group,
@@ -139,7 +138,7 @@ class SendRecvMeta:
     def send_meta(self, tensor, group):
         dst_rank = _hcg._get_p2p_next_rank()
 
-        if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
+        if isinstance(tensor, paddle.Tensor):
             tensor_type = paddle.to_tensor([0])
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
@@ -154,21 +153,17 @@ class SendRecvMeta:
             paddle.distributed.send(nums, dst=dst_rank, group=group)
 
             for d in tensor:
-                assert isinstance(
-                    d, (paddle.Tensor, framework.core.eager.Tensor)
-                )
+                assert isinstance(d, paddle.Tensor)
                 self._send_dims_shape_dtype(d, group=group)
 
     def _obtain_send_message(self, tensor):
-        if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
+        if isinstance(tensor, paddle.Tensor):
             return tensor.shape, paddle_2_number(tensor.dtype)
         else:
             shapes = []
             dtypes = []
             for d in tensor:
-                assert isinstance(
-                    d, (paddle.Tensor, framework.core.eager.Tensor)
-                )
+                assert isinstance(d, paddle.Tensor)
                 if d.stop_gradient:
                     continue
                 shape, dtype = self._obtain_send_message(d)
@@ -296,7 +291,8 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
         return
     group = _get_global_group() if group is None else group
     backend = group.backend
-    with _with_batch_p2p_guard(backend):
+    tasks = []
+    with _coalescing_manager(group, tasks):
         for p2p_op in p2p_op_list:
             op = p2p_op.op
             tensor = p2p_op.tensor

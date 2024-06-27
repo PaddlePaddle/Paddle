@@ -21,17 +21,25 @@ from paddle import _C_ops
 from ..base import core, framework
 from ..base.dygraph import no_grad
 from ..base.framework import name_scope
-from .adam import _AdamParameterConfig
 from .optimizer import Optimizer
 
-__all__ = []
-
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.regularizer import WeightDecayRegularizer
 
     from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
+
+    class _AdamaxParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float | Tensor]
+
+
+__all__ = []
 
 
 class Adamax(Optimizer):
@@ -69,7 +77,7 @@ class Adamax(Optimizer):
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        epsilon (float|Tensor, optional): A small float value for numerical stability.
             The default value is 1e-08.
         parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
@@ -109,15 +117,16 @@ class Adamax(Optimizer):
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            >>> adam = paddle.optimizer.Adamax(learning_rate=0.1,
-            ...         parameters=linear.parameters(),
-            ...         beta1=beta1,
-            ...         beta2=beta2,
-            ...         weight_decay=0.01
+            >>> adamax = paddle.optimizer.Adamax(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     weight_decay=0.01
             ... )
             >>> out.backward()
-            >>> adam.step()
-            >>> adam.clear_grad()
+            >>> adamax.step()
+            >>> adamax.clear_grad()
 
 
             >>> # Note that the learning_rate of linear_2 is 0.01.
@@ -127,7 +136,7 @@ class Adamax(Optimizer):
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adamax(
+            >>> adamax = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
             ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
@@ -141,9 +150,10 @@ class Adamax(Optimizer):
             ...     beta1=0.9
             ... )
             >>> out.backward()
-            >>> adam.step()
-            >>> adam.clear_grad()
+            >>> adamax.step()
+            >>> adamax.clear_grad()
     """
+
     type: str
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -154,10 +164,10 @@ class Adamax(Optimizer):
         learning_rate: float | LRScheduler = 0.001,
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
-        epsilon: float = 1e-8,
-        parameters: Sequence[Tensor]
-        | Sequence[_AdamParameterConfig]
-        | None = None,
+        epsilon: float | Tensor = 1e-8,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdamaxParameterConfig] | None
+        ) = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
