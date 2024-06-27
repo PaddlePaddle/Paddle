@@ -1199,6 +1199,10 @@ def flashmask_attention(
     assert (
         startend_row_indices.shape[2] == key.shape[1]
     ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+    assert startend_row_indices.shape[1] in [
+        1,
+        key.shape[2],
+    ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
 
     if causal:
         if startend_row_indices.shape[-1] in [1, 2]:
