@@ -11,6 +11,7 @@ if(WITH_GPU)
       test_sub_graph_add
       test_sub_graph_chunk
       test_sub_graph_mul_method
+      test_sub_graph_squeeze_unsqueeze
       test_sub_graph_52
       test_sub_graph_56
       test_sub_graph_61
@@ -22,6 +23,7 @@ if(WITH_GPU)
       test_sub_graph_79
       test_sub_graph_80
       test_sub_graph_82
+      test_sub_graph_85
       test_sub_graph_86
       test_sub_graph_87)
 
