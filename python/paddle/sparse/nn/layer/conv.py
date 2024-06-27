@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import numpy as np
 
 from paddle.nn import Layer
@@ -20,6 +24,13 @@ from paddle.nn.initializer import Normal
 from paddle.utils import convert_to_list
 
 from .. import functional as F
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    _ConvPaddingMode: TypeAlias = Literal[
+        "zero", "reflect", "replicate", "circular"
+    ]
 
 __all__ = []
 
@@ -36,7 +47,7 @@ class _Conv3D(Layer):
         groups=1,
         subm=False,
         key=None,
-        padding_mode='zeros',
+        padding_mode: _ConvPaddingMode = 'zeros',
         weight_attr=None,
         bias_attr=None,
         data_format="NDHWC",

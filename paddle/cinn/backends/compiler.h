@@ -61,10 +61,6 @@ class CompilationInfoDumper {
   static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
                                       const int gidx,
                                       const int device_id);
-  static void DumpInstructionByGroupIndex(
-      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-      const int gidx,
-      const int device_id);
 
  private:
   void DumpLoweredFunc();
@@ -130,6 +126,10 @@ class Compiler final {
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "",
                          bool add_module = true);
+
+  void CompileHipModule(const ir::Module& module,
+                        const std::string& code = "",
+                        bool add_module = true);
 
   void CompileX86Module(const ir::Module& module, bool add_module = true);
 

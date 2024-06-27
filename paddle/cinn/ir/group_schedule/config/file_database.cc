@@ -24,6 +24,8 @@
 
 PD_DECLARE_string(cinn_tile_config_filename_label);
 
+const int priority_of_best_config = 0;
+
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 static bool PathExists(const std::string& path) {
   struct stat statbuf;
@@ -103,12 +105,12 @@ std::string IterSpaceTypeToDir(const common::Target target,
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  std::string target_str = target.arch_str() + "_" + target.device_name_str();
   checkexist(root_path);
-  checkexist(root_path + target.arch_str());
-  checkexist(root_path + target.arch_str() + "/" + dirname);
+  checkexist(root_path + target_str);
+  checkexist(root_path + target_str + "/" + dirname);
   VLOG(3) << "Dump_path is " << root_path + dirname + "/" + filename + ".json";
-  return root_path + target.arch_str() + "/" + dirname + "/" + filename +
-         ".json";
+  return root_path + target_str + "/" + dirname + "/" + filename + ".json";
 }
 
 bool FileTileConfigDatabase::ToFile(const common::Target& target,
@@ -218,6 +220,7 @@ TileConfigMap FileTileConfigDatabase::GetConfigs(
       vector_dim_info[i].is_dynamic = its.dimension(i).is_dynamic();
     }
     auto bucket_info = BucketInfo(vector_dim_info);
+    bucket_info.bucket_priority = priority_of_best_config;
     //  Step 2.2: Convert proto tile_config to source tile_config
     ScheduleConfig::TileConfig tconfig;
     tconfig.tree_reduce_num = piece_tileconfig.tile_config().tree_reduce_num();

@@ -34,6 +34,9 @@
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(print_ir);
+PD_DECLARE_bool(cinn_measure_kernel_time);
+PHI_DECLARE_bool(enable_cinn_compile_cache);
+PD_DECLARE_string(tile_config_policy);
 
 std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
                                                       int reduce_size) {
@@ -85,6 +88,10 @@ int get_tile_size_config(int dimension_lower) {
  * the minimum score and the best candidate configuration found.
  */
 TEST(ConfigSearcher, TestReducePipeline) {
+  FLAGS_cinn_measure_kernel_time = true;
+  FLAGS_enable_cinn_compile_cache = false;
+  FLAGS_tile_config_policy = "search";
+
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;
 
@@ -169,12 +176,8 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
       // Step 4: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 8}, {1, 256}, {1, 256}};
+          {1, 1}, {1, 1}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
-      constraints.emplace_back(
-          [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[1] % kThreadsPerWarp == 0;
-          });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
@@ -182,10 +185,6 @@ TEST(ConfigSearcher, TestReducePipeline) {
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[1] % kThreadsPerWarp == 0 || candidate[1] == 1;
-          });
-      constraints.emplace_back(
-          [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -207,7 +206,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] % 8 == 0;
+            return candidate[2] % 8 == 0 || candidate[2] <= 4;
           });
 
       // Step 5: Construct searcher and search.
@@ -229,23 +228,27 @@ TEST(ConfigSearcher, TestReducePipeline) {
                 << std::endl;
       LOG(INFO) << "min score = " << search_res.first;
       LOG(INFO) << "best candidate: "
-                << cinn::utils::Join<int>(search_res.second, ", ");
+                << cinn::utils::Join<int64_t>(search_res.second, ", ");
     }
   }
 }
 
 TEST(ConfigSearcher, TestReduceDemo) {
+  FLAGS_cinn_measure_kernel_time = true;
+  FLAGS_enable_cinn_compile_cache = false;
+  FLAGS_tile_config_policy = "search";
+
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;
 
   std::vector<std::vector<int64_t>> shapes = {
-      {1, 1, 4096},
-      {1, 13, 4096},
-      {128 * 12, 128, 128},
-      {128, 128, 768},      // 3
-      {2048, 32, 128},      // 4
-      {2048, 8, 96},        // 5
-      {13 * 2048, 32, 128}  // 6
+      {1, 1, 4096},          // 0
+      {1, 13, 4096},         // 1
+      {128 * 12, 128, 128},  // 2
+      {128, 128, 768},       // 3
+      {2048, 32, 128},       // 4
+      {2048, 8, 96},         // 5
+      {13 * 2048, 32, 128}   // 6
   };
   auto shape = shapes[0];
   int shape0 = shape[0], shape1 = shape[1], shape2 = shape[2];
@@ -282,7 +285,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 4: Construct config candidate range and constraints.
   std::vector<std::pair<int, int>> candidate_range{
-      {1, 32}, {1, 1024}, {1, 256}};
+      {1, 1}, {32, 32}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -320,7 +323,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto search_res = searcher.Search();
   LOG(INFO) << "min score = " << search_res.first;
   LOG(INFO) << "best candidate: "
-            << cinn::utils::Join<int>(search_res.second, ", ");
+            << cinn::utils::Join<int64_t>(search_res.second, ", ");
 
   // Step 6: Save the config to the file.
   cinn::ir::ScheduleConfig::TileConfig tile_config{

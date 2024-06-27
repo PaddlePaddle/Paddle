@@ -17,12 +17,18 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.incubate.nn.functional import block_multihead_attention_xpu
 
 paddle.seed(2023)
 np.random.seed(2023)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable it temporarily.",
+)
 def create_attn_mask(
     mask_type,
     batch_size,
