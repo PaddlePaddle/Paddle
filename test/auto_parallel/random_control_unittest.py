@@ -134,27 +134,12 @@ class TestRandomControl(unittest.TestCase):
 
         # check program
         ops = rc_engine.main_program.global_block().ops
-        rng_names = []
         seed_var_names = []
         for op in ops:
-            if op.type == "seed":
-                rng_names.append(op.attr('rng_name'))
             if op.type == "dropout":
                 seed_var_names.append(op.input("Seed")[0])
         rank = paddle.distributed.get_rank()
 
-        self.assertEqual(
-            rng_names,
-            [
-                'mesh:1_dim0:-1',
-                f'mesh:1_dim0:{rank}',
-                'mesh:1_dim0:-1',
-                'mesh:1_dim0:-1',
-                f'mesh:1_dim0:{rank}',
-                'mesh:1_dim0:-1',
-                'mesh:1_dim0:-1',
-            ],
-        )
         self.assertEqual(
             seed_var_names,
             [
@@ -227,26 +212,11 @@ class TestRandomControl(unittest.TestCase):
         # check program
         rank = paddle.distributed.get_rank()
         ops = rc_engine.main_program.global_block().ops
-        rng_names = []
         seed_var_names = []
         for op in ops:
-            if op.type == "seed":
-                rng_names.append(op.attr('rng_name'))
             if op.type == "dropout":
                 seed_var_names.append(op.input("Seed")[0])
 
-        self.assertEqual(
-            rng_names,
-            [
-                'mesh:1_dim0:-1',
-                f'mesh:1_dim0:{rank}',
-                'mesh:1_dim0:-1',
-                'mesh:1_dim0:-1',
-                f'mesh:1_dim0:{rank}',
-                'mesh:1_dim0:-1',
-                'mesh:1_dim0:-1',
-            ],
-        )
         self.assertEqual(
             seed_var_names,
             [

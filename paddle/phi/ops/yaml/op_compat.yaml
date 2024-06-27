@@ -3151,6 +3151,8 @@
 - op : seed
   outputs :
     out : Out
+  get_expected_kernel_type :
+    seed : GetSeedExpectedKernelType
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
