@@ -1335,9 +1335,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateXShapeSymbolic(
         },
         tensor_name);
     std::vector<CINNValue> res;
-    auto stages = CreateStages({});
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
