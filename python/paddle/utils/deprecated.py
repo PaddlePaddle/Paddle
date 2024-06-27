@@ -93,6 +93,10 @@ def deprecated(update_to="", since="", reason="", level=0):
         if level == 0:
             return func
 
+        def parse_version(version: str):
+            # Split the version string and convert numeric parts to integers
+            return [int(part) for part in version.split(".") if part.isdigit()]
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             """deprecated warning should be fired in 3 circumstances:
@@ -111,9 +115,9 @@ def deprecated(update_to="", since="", reason="", level=0):
             if sys.platform.lower() == 'win32':
                 warningmsg = "\nWarning:\n%s " % (msg)
 
-            v_current = [int(i) for i in paddle.__version__.split(".")]
+            v_current = parse_version(paddle.__version__)
             v_current += [0] * (4 - len(v_current))
-            v_since = [int(i) for i in _since.split(".")]
+            v_since = parse_version(since)
             v_since += [0] * (4 - len(v_since))
             if (
                 paddle.__version__ == "0.0.0"
