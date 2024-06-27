@@ -538,5 +538,20 @@ class ProcessGroupMapFromGid {
   std::unordered_map<int, ProcessGroup*> map_;
 };
 
+static void CheckTensorContiguous(const phi::DenseTensor& tensor) {
+  if (!tensor.meta().is_contiguous()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The tensor must be contiguous"));
+  }
+}
+
+static void CheckTensorContiguous(const std::vector<phi::DenseTensor>& inputs) {
+  for (const auto& tensor : inputs) {
+    if (!tensor.meta().is_contiguous()) {
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("The tensor must be contiguous"));
+    }
+  }
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

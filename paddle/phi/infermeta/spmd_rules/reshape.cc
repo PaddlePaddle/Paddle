@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -358,5 +357,4 @@ SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
   return spmd_info;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed
