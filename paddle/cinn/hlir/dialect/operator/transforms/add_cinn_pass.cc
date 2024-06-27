@@ -88,6 +88,18 @@ bool HasDynamicShape(const pir::Program& program) {
 }
 }  // namespace
 
+void ApplyShapeOptimizationPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<::pir::PassManager>()>&
+        CreatePassManager) {
+  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  bool has_dynamic_shape = HasDynamicShape(*program);
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+  pass_manager->Run(program);
+}
+
 void ApplyPdToCinnPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<::pir::PassManager>()>&
@@ -115,7 +127,6 @@ void ApplyCinnPreprocessPass(
   bool has_dynamic_shape = HasDynamicShape(*program);
 
   if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -235,6 +246,7 @@ void ApplyCinnPass(::pir::Program* program,
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
+  ApplyShapeOptimizationPass(program, CreatePassManager);
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
