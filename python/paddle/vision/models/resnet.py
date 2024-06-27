@@ -15,15 +15,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from typing_extensions import Unpack
-
 import paddle
 from paddle import nn
 from paddle._typing import Size2
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
-    from typing import Literal, NotRequired, TypedDict
+    from typing import Literal, TypedDict
+
+    from typing_extensions import NotRequired, Unpack
 
     from paddle import Tensor
 
