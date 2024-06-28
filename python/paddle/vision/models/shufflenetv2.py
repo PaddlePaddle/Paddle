@@ -363,7 +363,7 @@ class ShuffleNetV2(nn.Layer):
 
 def _shufflenet_v2(
     arch: _ShuffleNetArch,
-    pretrained=False,
+    pretrained: bool = False,
     scale: float = 1.0,
     **kwargs: Unpack[_ShuffleNetOptions],
 ) -> ShuffleNetV2:
@@ -382,7 +382,7 @@ def _shufflenet_v2(
 
 
 def shufflenet_v2_x0_25(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with 0.25x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
@@ -419,7 +419,7 @@ def shufflenet_v2_x0_25(
 
 
 def shufflenet_v2_x0_33(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with 0.33x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
@@ -456,7 +456,7 @@ def shufflenet_v2_x0_33(
 
 
 def shufflenet_v2_x0_5(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with 0.5x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
@@ -493,7 +493,7 @@ def shufflenet_v2_x0_5(
 
 
 def shufflenet_v2_x1_0(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with 1.0x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
@@ -530,7 +530,7 @@ def shufflenet_v2_x1_0(
 
 
 def shufflenet_v2_x1_5(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with 1.5x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
@@ -567,7 +567,7 @@ def shufflenet_v2_x1_5(
 
 
 def shufflenet_v2_x2_0(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with 2.0x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
@@ -604,7 +604,7 @@ def shufflenet_v2_x2_0(
 
 
 def shufflenet_v2_swish(
-    pretrained=False, **kwargs: Unpack[_ShuffleNetSwishOptions]
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetSwishOptions]
 ) -> ShuffleNetV2:
     """ShuffleNetV2 with swish activation function, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.

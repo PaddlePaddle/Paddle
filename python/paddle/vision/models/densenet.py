@@ -20,7 +20,6 @@ from typing_extensions import Unpack
 
 import paddle
 from paddle import nn
-from paddle._typing import Size2
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import (
     AdaptiveAvgPool2D,
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from typing_extensions import NotRequired
 
     from paddle import Tensor
+    from paddle._typing import Size2
 
     _DenseNetArch = Literal[
         "densenet121",

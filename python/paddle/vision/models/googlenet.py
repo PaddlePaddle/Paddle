@@ -24,7 +24,6 @@ from typing_extensions import NotRequired, Unpack
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle._typing import Size2
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import (
     AdaptiveAvgPool2D,
@@ -39,6 +38,13 @@ from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import Size2
+
+    class _GoogLeNetOptions(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
+
 __all__ = []
 
 model_urls = {
@@ -245,11 +251,6 @@ class GoogLeNet(nn.Layer):
             out2 = self._out2(out2)
 
         return out, out1, out2
-
-
-class _GoogLeNetOptions(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
 
 
 def googlenet(

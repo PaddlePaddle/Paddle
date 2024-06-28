@@ -30,10 +30,9 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.nn import Layer, Sequential
 
-
-class _VGGOptions(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
+    class _VGGOptions(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
 
 
 __all__ = []
