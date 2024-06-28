@@ -531,6 +531,9 @@ class InceptionV3(nn.Layer):
             [1, 1000]
     """
 
+    num_classes: int
+    with_pool: bool
+
     def __init__(self, num_classes: int = 1000, with_pool: bool = True) -> None:
         super().__init__()
         self.num_classes = num_classes

@@ -270,6 +270,9 @@ class DenseNet(nn.Layer):
             [1, 1000]
     """
 
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self,
         layers: int = 121,

@@ -124,6 +124,9 @@ class MobileNetV2(nn.Layer):
             [1, 1000]
     """
 
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self,
         scale: float = 1.0,

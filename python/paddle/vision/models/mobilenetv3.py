@@ -209,6 +209,10 @@ class MobileNetV3(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
     """
 
+    scale: float
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self,
         config: list[InvertedResidualConfig],

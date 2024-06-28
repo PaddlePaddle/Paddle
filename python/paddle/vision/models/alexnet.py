@@ -108,6 +108,8 @@ class AlexNet(nn.Layer):
             [1, 1000]
     """
 
+    num_classes: int
+
     def __init__(self, num_classes: int = 1000) -> None:
         super().__init__()
         self.num_classes = num_classes

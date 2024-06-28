@@ -110,6 +110,10 @@ class MobileNetV1(nn.Layer):
             [1, 1000]
     """
 
+    scale: float
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self,
         scale: float = 1.0,

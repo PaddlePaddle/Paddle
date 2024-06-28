@@ -130,6 +130,10 @@ class SqueezeNet(nn.Layer):
             [1, 1000]
     """
 
+    version: str
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self, version: str, num_classes: int = 1000, with_pool: bool = True
     ) -> None:
