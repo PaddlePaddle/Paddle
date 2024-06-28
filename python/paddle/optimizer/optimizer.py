@@ -245,15 +245,13 @@ class Optimizer:
                         ):
                             logging.info(
                                 "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
-                                "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
-                                % weight_decay.__str__()
+                                f"The weight_decay[{weight_decay}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             )
                             break
 
         if not isinstance(learning_rate, (float, LRScheduler)):
             raise TypeError(
-                "learning rate should be float or LRScheduler, got %s here"
-                % type(learning_rate)
+                f"learning rate should be float or LRScheduler, got {type(learning_rate)} here"
             )
         if grad_clip is not None:
             if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
@@ -611,8 +609,7 @@ class Optimizer:
         """
         if not isinstance(value, (int, float)):
             raise TypeError(
-                "The type of 'value' in optimizer.set_lr must be float, but received %s."
-                % (type(value))
+                f"The type of 'value' in optimizer.set_lr must be float, but received {type(value)}."
             )
         if isinstance(self._learning_rate, LRScheduler):
             raise RuntimeError(
@@ -684,8 +681,7 @@ class Optimizer:
 
         if not isinstance(scheduler, LRScheduler):
             raise TypeError(
-                "The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received %s."
-                % (type(scheduler))
+                f"The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received {type(scheduler)}."
             )
         self._learning_rate = scheduler
 
@@ -1694,8 +1690,7 @@ class Optimizer:
                         repeate_regularizer = True
                         logging.info(
                             "If regularizer of a Parameter has been set by 'base.ParamAttr' or 'base.WeightNormParamAttr' already. "
-                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
-                            % regularization.__str__()
+                            f"The Regularization[{regularization}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         )
                     with param.block.program._optimized_guard([param, grad]):
                         new_grad = self._create_regularization_of_grad(
