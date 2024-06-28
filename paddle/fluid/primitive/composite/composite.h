@@ -494,8 +494,39 @@ Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
 template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   std::vector<Tensor> concat_x;
-  if (has_dynamic_shape(x[0].shape())) {
-    Tensor out_shape = shape<T>(unsqueeze<T>(x[0], {axis}));
+  bool is_dynamic = false;
+  size_t rank = x[0].shape().size();
+
+  std::vector<int64_t> combined_shape(rank, -1);
+  for (auto& item : x) {
+    auto item_shape = item.shape();
+    for (size_t i = 0; i < item_shape.size(); i++) {
+      if (item_shape[i] == -1) {
+        is_dynamic = true;
+      } else {
+        combined_shape[i] = std::max(combined_shape[i], item_shape[i]);
+      }
+    }
+  }
+
+  if (is_dynamic && has_dynamic_shape(combined_shape)) {
+    std::vector<Tensor> shapes;
+    Tensor temp_shape = shape<T>(x[0]);
+    for (size_t j = 0; j < rank; j++) {
+      if (combined_shape[j] == -1) {
+        shapes.push_back(get_slice<T>(temp_shape, j));
+      } else {
+        shapes.push_back(full<T>({1}, combined_shape[j], temp_shape.type()));
+      }
+    }
+    if (axis < 0) {
+      shapes.insert(shapes.begin() + (axis + rank + 1),
+                    full<T>({1}, 1, temp_shape.type()));
+    } else {
+      shapes.insert(shapes.begin() + axis, full<T>({1}, 1, temp_shape.type()));
+    }
+
+    Tensor out_shape = concat<T>(shapes);
     for (size_t i = 0; i < x.size(); ++i) {
       concat_x.push_back(backend::reshape<T>(x[i], out_shape));
     }
@@ -922,6 +953,78 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
     const paddle::optional<Tensor>& scale,
     const paddle::optional<Tensor>& bias,
     float epsilon) {
+  if (has_dynamic_shape(x.shape())) {
+    auto org_dtype = x.dtype();
+    Tensor x_cast = x;
+
+    bool need_cast = is_half_dtype(org_dtype);
+    if (need_cast) {
+      x_cast = cast<T>(x, DataType::FLOAT32);
+    }
+
+    std::vector<int64_t> axis;
+    auto x_dim = x.shape();
+    for (size_t i = 2; i < x_dim.size(); i++) {
+      axis.push_back(static_cast<int64_t>(i));
+    }
+
+    // out = (x - mean(x)) / sqrt(var + epsilon))
+    // var = mean((x-mean(x))^2)
+    auto mean_ = mean_decomp<T>(x_cast, axis, true);
+    auto difference = x_cast - mean_;
+    auto var_tmp1 = difference * difference;
+    auto variance = mean_decomp<T>(var_tmp1, axis, true);
+    auto var_shape = shape<T>(variance);
+    auto var_tmp3 = variance + full_scalar<T>(epsilon, variance.dtype());
+    auto rsqrt_var = rsqrt<T>(var_tmp3);
+    auto out = difference * rsqrt_var;
+
+    int dim_size = x_dim.size();
+    auto x_shape_tensor = shape<T>(x);
+    std::vector<Tensor> slice_shape_concat;
+
+    auto shape_1 = full<T>({1}, 1, x_shape_tensor.dtype());
+    auto shape_2 =
+        cast<T>(get_slice<T>(x_shape_tensor, 1), x_shape_tensor.dtype());
+    auto shape_3 = full<T>({dim_size - 2}, 1, x_shape_tensor.dtype());
+
+    slice_shape_concat.push_back(shape_1);
+    slice_shape_concat.push_back(shape_2);
+    slice_shape_concat.push_back(shape_3);
+    auto slice_shape_tensor = concat<T>(slice_shape_concat, 0);
+
+    Tensor scale_cast;
+    if (scale) {
+      scale_cast =
+          backend::reshape_with_tensor<T>(scale.get(), slice_shape_tensor);
+      if (need_cast) {
+        scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
+      }
+      out = out * scale_cast;
+    }
+    Tensor bias_cast;
+    if (bias) {
+      bias_cast =
+          backend::reshape_with_tensor<T>(bias.get(), slice_shape_tensor);
+      if (need_cast) {
+        bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
+      }
+      out = out + bias_cast;
+    }
+
+    std::vector<int64_t> res_shape(1, -1);
+    auto mean_out = reshape<T>(mean_, res_shape);
+    auto variance_out = reshape<T>(rsqrt_var, res_shape);
+
+    Tensor res;
+    if (need_cast) {
+      res = cast<T>(out, org_dtype);
+    } else {
+      res = out;
+    }
+
+    return std::make_tuple(res, mean_out, variance_out);
+  }
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 

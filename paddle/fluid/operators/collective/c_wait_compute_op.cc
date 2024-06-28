@@ -14,11 +14,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -27,8 +25,7 @@ class Scope;
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CWaitComputeOp : public framework::OperatorBase {
  public:
@@ -116,8 +113,7 @@ Comm stream wait Compute Stream with async event.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 
