@@ -29,7 +29,9 @@
   __pd_give PD_OneDimArray##Type* CvtVecToOneDimArray##Type(    \
       const std::vector<vec_type>& vec) {                       \
     PD_OneDimArray##Type* array = new PD_OneDimArray##Type;     \
-    if (array == nullptr) { return nullptr; }                   \
+    if (array == nullptr) {                                     \
+      return nullptr;                                           \
+    }                                                           \
     array->size = vec.size();                                   \
     array->data = vec.empty() ? nullptr : new type[vec.size()]; \
     for (size_t index = 0; index < vec.size(); ++index) {       \
@@ -146,7 +148,9 @@ __pd_give PD_Cstr* CvtStrToCstr(const std::string& str) {
   __pd_give PD_TwoDimArray##Type* CvtVecToTwoDimArray##Type(           \
       const std::vector<std::vector<vec_type>>& vec) {                 \
     PD_TwoDimArray##Type* array = new PD_TwoDimArray##Type;            \
-    if (array == nullptr) { return nullptr; }                          \
+    if (array == nullptr) {                                            \
+      return nullptr;                                                  \
+    }                                                                  \
     array->size = vec.size();                                          \
     array->data =                                                      \
         vec.empty() ? nullptr : new PD_OneDimArray##Type*[vec.size()]; \
