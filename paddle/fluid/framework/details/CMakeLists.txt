@@ -22,11 +22,8 @@ set(op_handle_srcs
     share_tensor_buffer_functor.cc
     computation_op_handle.cc
     share_tensor_buffer_op_handle.cc
-    rpc_op_handle.cc
-    fetch_barrier_op_handle.cc
     multi_devices_helper.cc
     variable_visitor.cc
-    gather_op_handle.cc
     eager_deletion_op_handle.cc)
 
 if(WITH_DGC)

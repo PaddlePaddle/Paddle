@@ -905,19 +905,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
 
           )DOC")
       .def_property(
-          "is_distribution",
-          [](const BuildStrategy &self) { return self.is_distribution_; },
-          [](BuildStrategy &self, bool b) {
-#ifdef WIN32
-            if (b) {
-              PADDLE_THROW(platform::errors::Unavailable(
-                  "Distribution mode is not supported on Windows platform."));
-            }
-#else
-            self.is_distribution_ = b;
-#endif
-          })
-      .def_property(
           "async_mode",
           [](const BuildStrategy &self) { return self.async_mode_; },
           [](BuildStrategy &self, bool b) { self.async_mode_ = b; })

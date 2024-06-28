@@ -62,9 +62,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 #endif
 
-    AppendPassWithCheck(strategy_.enable_sequential_execution_,
-                        "sequential_execution_pass");
-    AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
+    // AppendPassWithCheck(strategy_.enable_sequential_execution_,
+    //                     "sequential_execution_pass");
+    // AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
@@ -93,16 +93,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "fuse_all_reduce_ops doesn't work under "
              "parallel_graph.";
-      strategy_.fuse_all_reduce_ops_ = false;
-    }
-    if (strategy_.is_distribution_) {
-      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
-          << "Currently, fuse_all_optimizer_ops only works under "
-             "Non-distributed mode.";
-      strategy_.fuse_all_optimizer_ops_ = false;
-      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
-          << "Currently, fuse_all_reduce_ops_ only works under "
-             "Non-distributed mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
@@ -227,27 +217,20 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
-    if (strategy_.async_mode_) {
-      // multi_devices_pass = AppendPass("async_multi_devices_pass").get();
-    } else if (strategy_.is_distribution_) {
-      // multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
-    } else {
-      switch (strategy_.reduce_) {
-        case BuildStrategy::ReduceStrategy::kAllReduce:
-          multi_devices_pass =
-              AppendPass("all_reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kReduce:
-          multi_devices_pass =
-              AppendPass("reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kNoReduce:
-          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
-          break;
-        default:
-          PADDLE_THROW(
-              platform::errors::Unimplemented("Unknown reduce strategy."));
-      }
+    switch (strategy_.reduce_) {
+      case BuildStrategy::ReduceStrategy::kAllReduce:
+        multi_devices_pass =
+            AppendPass("all_reduce_mode_multi_devices_pass").get();
+        break;
+      case BuildStrategy::ReduceStrategy::kReduce:
+        multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
+        break;
+      case BuildStrategy::ReduceStrategy::kNoReduce:
+        multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
+        break;
+      default:
+        PADDLE_THROW(
+            platform::errors::Unimplemented("Unknown reduce strategy."));
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
@@ -340,7 +323,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(8) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -425,7 +408,6 @@ USE_PASS(multi_batch_merge_pass);
 USE_PASS(no_reduce_multi_devices_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
-USE_PASS(dist_multi_devices_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);
