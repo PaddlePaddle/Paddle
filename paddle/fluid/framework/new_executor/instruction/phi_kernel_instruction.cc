@@ -187,11 +187,7 @@ void PhiKernelInstruction::Run() {
   }
   VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
   for (auto& pair : this->InplaceInfo()) {
-    const auto& in = paddle::framework::GetTensorFromVar(pair.first);
-    auto* out = paddle::framework::GetMutableTensorFromVar(pair.second);
-    if (in.dims() == out->dims()) {
-      out->ShareBufferWith(in);
-    }
+    ShareVarBuffer(pair.first, pair.second);
   }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));

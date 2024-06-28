@@ -473,4 +473,58 @@ void HandleForInplaceOp(pir::Operation* op,
   }
 }
 
+void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
+  if (src_var->IsType<phi::DenseTensor>()) {
+    auto& src_tensor = src_var->Get<phi::DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    if (src_tensor.dims() == tmp_dst_tensor->dims()) {
+      tmp_dst_tensor->ShareBufferWith(src_tensor);
+    } else {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "src_tensor_array.at(i).dims() != tmp_dst_tensor.dims()"));
+    }
+    return;
+  } else if (src_var->IsType<phi::SelectedRows>()) {
+    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
+    auto* dst_t = tmp_dst_slr->mutable_value();
+    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto& src_t = src_slr.value();
+    if (src_t.dims() == dst_t->dims()) {
+      dst_t->ShareBufferWith(src_t);
+    } else {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "src_tensor_array.at(i).dims() != tmp_dst_tensor.dims()"));
+    }
+    return;
+  } else if (src_var->IsType<phi::TensorArray>()) {
+    auto src_tensor_array = src_var->Get<phi::TensorArray>();
+    auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
+    if (src_tensor_array.size() == 0) return;
+    dst_tensor_array->resize(src_tensor_array.size());
+    for (size_t i = 0; i < src_tensor_array.size(); ++i) {
+      phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
+      if (src_tensor_array.at(i).dims() == tmp_dst_tensor.dims()) {
+        tmp_dst_tensor.ShareDataWith(src_tensor_array.at(i));
+      } else {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "src_tensor_array.at(i).dims() == tmp_dst_tensor.dims()"));
+      }
+    }
+    return;
+  } else if (src_var->IsType<VariableRefArray>()) {
+    auto src_var_array = src_var->Get<VariableRefArray>();
+    auto* dst_var_array = dst_var->GetMutable<VariableRefArray>();
+    for (size_t i = 0; i < src_var_array.size(); ++i) {
+      Variable* copy_var = const_cast<Variable*>(dst_var_array->at(i));
+      ShareVarBuffer(src_var_array.at(i), copy_var);
+    }
+    return;
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType "
+        "or SelectedRowsType or TensorArrayType"));
+  }
+  return;
+}
+
 }  // namespace paddle::framework

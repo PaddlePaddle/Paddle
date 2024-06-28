@@ -191,11 +191,7 @@ void LegacyKernelInstruction::Run() {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   for (auto& pair : this->InplaceInfo()) {
-    const auto& in = paddle::framework::GetTensorFromVar(pair.first);
-    auto* out = paddle::framework::GetMutableTensorFromVar(pair.second);
-    if (in.dims() == out->dims()) {
-      out->ShareBufferWith(in);
-    }
+    ShareVarBuffer(pair.first, pair.second);
   }
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
