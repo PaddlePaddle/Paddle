@@ -1657,7 +1657,7 @@ def adaptive_avg_pool3d(
     output_size: Size3,
     data_format: DataLayout3D = 'NCDHW',
     name: str | None = None,
-) -> None:
+) -> Tensor:
     r"""
 
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
