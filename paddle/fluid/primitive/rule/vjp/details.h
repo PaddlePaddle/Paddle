@@ -255,7 +255,7 @@ void mean_grad(const Tensor& x,
     }
     if (has_dynamic_shape(x_dim, axis_data)) {
       auto x_shape = shape<T>(x);
-      factor_tensor = factor_tensor =
+      factor_tensor =
           slice<T>(x_shape, {0}, {axis_data[0]}, {axis_data[0] + 1}, {1}, {0});
       for (size_t i = 1; i < axis_data.size(); ++i) {
         factor_tensor =
