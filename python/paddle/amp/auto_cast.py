@@ -525,18 +525,18 @@ def amp_guard(
             if tracer._expected_place.is_xpu_place():
                 if (dtype == 'float16') and not _is_xpu_float16_supported():
                     xpu_verion = core.get_xpu_device_version(
-                        tracer._expected_place.get_device_id()
+                        _current_expected_place().get_device_id()
                     )
                     warnings.warn(
-                        '%d does not support float16 amp.' % xpu_verion
+                        'XPU%d does not support float16 amp.' % xpu_verion
                     )
                     enable = False
                 elif (dtype == 'bfloat16') and not _is_xpu_bfloat16_supported():
                     xpu_verion = core.get_xpu_device_version(
-                        tracer._expected_place.get_device_id()
+                        _current_expected_place().get_device_id()
                     )
                     warnings.warn(
-                        '%d does not support bfloat16 amp.' % xpu_verion
+                        'XPU%d does not support bfloat16 amp.' % xpu_verion
                     )
                     enable = False
             # For custom device:
