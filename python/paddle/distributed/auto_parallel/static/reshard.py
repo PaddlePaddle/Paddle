@@ -2986,6 +2986,10 @@ class Resharder:
             else:
                 idx += 1
 
+    def reshard(self):
+        self.reshard_input_output()
+        self.remove_no_need()
+
     def reshard_input_output(self):
         self._remove_global_process_mesh()
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
