@@ -24,6 +24,7 @@ from .basic import (
     NestedStructure as NestedStructure,
     Numberic as Numberic,
     NumbericSequence as NumbericSequence,
+    ParamAttrLike as ParamAttrLike,
     TensorIndex as TensorIndex,
     TensorLike as TensorLike,
     TensorOrTensors as TensorOrTensors,
