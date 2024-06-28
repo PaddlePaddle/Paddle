@@ -48,17 +48,6 @@ bool ProcessGroupBKCL::BKCLTask::IsCompleted() {
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
 bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
-  // Warning here when use calc stream but also invoke waiting explicitly.
-  if (UseCalcStream()) {
-    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
-               "useless.";
-    return true;
-  }
-
-  const auto* calc_ctx = static_cast<XPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place_));
-  comm_event_->Block(*calc_ctx);
-
   if (barrier_) {
     // If we use the work to do barrier, we should block cpu
 
@@ -70,6 +59,17 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
     xpu_wait();
     calc_ctx->Wait();
   }
+  // Warning here when use calc stream but also invoke waiting explicitly.
+  if (UseCalcStream()) {
+    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
+               "useless.";
+    return true;
+  }
+
+  const auto* calc_ctx = static_cast<XPUContext*>(
+      platform::DeviceContextPool::Instance().Get(place_));
+  comm_event_->Block(*calc_ctx);
+
   return true;
 }
 
@@ -308,17 +308,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     CreateBKCLEnvCache(place, key);
   }
 
-  if (!use_calc_stream) {
-    SyncCalcStream(place);
-  }
-
+  // if (!use_calc_stream) {
+  //   SyncCalcStream(place);
+  // }
+  // TODO(lijin23): The send/recv in BKCL would use a seperate stream now, so we
+  // need to wait calc stream whether we use the calc stream for communication.
+  // May be removed in the future.
+  SyncCalcStream(place);
   auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   auto bkcl_comm_ctx = this->GetCommContext();
-  calc_ctx->Wait();
   fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
 
   if (!use_calc_stream) {
