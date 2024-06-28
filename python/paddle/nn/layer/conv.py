@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Sequence
 import numpy as np
 
 from paddle import get_flags
-from paddle.tensor.tensor import Tensor
 
 from ...device import (
     get_cudnn_version,
