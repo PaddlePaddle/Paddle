@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
-import triton
 import triton.language as tl
 
 import paddle
 from paddle import _C_ops
-from paddle.base.layer_helper import LayerHelper
 from paddle.base.framework import OpProtoHolder
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2
 
@@ -65,17 +65,10 @@ PD_BUILD_OP(${op_name})
 """
 )
 
-add_kernel_config = [
-    {'num_warps': 1},
-]
 
-@paddle_use_triton(
-    tune_config=add_kernel_config,
-    custom_op_template=triton_add_template,
-    key=["n_elements"]
-)
+@paddle_use_triton(custom_op_template=triton_add_template, key=["n_elements"])
 def add_kernel(
-    x_ptr,  
+    x_ptr,
     y_ptr,
     output_ptr,
     n_elements,
@@ -94,16 +87,19 @@ def add_kernel(
 def add(x, y):
     n_elements = x.shape[0] * x.shape[1]
     op_name = "triton_add"
+    add_kernel_config = [
+        {'num_warps': 1},
+    ]
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         # 这里的代码仅仅是注册这个Op！
         out = paddle.empty_like(x)
         # 这里需要注意grid传入的字符串必须是形参的运算得来的！
         grid = ("(n_elements+BLOCK_SIZE-1)/BLOCK_SIZE",)
-        add_kernel[(op_name, grid)](
+        add_kernel[(op_name, grid, add_kernel_config)](
             x,
             y,
             out,
-            -1, # n_elements
+            -1,  # n_elements
             BLOCK_SIZE=2048,
         )
 
@@ -126,13 +122,12 @@ def add(x, y):
         return out
 
 
-
 # 这里封装了个 add_layer 类，是用来验证装饰器的！
 class add_layer(paddle.nn.Layer):
     def __init__(self, hidd):
         super().__init__()
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=False)
-    
+
     @paddle.jit.to_static(backend="paddle_inference")
     def forward(self, x, y):
         for i in range(1000):
@@ -154,7 +149,3 @@ for i in range(100):
     baseline = paddle.add(x, y)
 
 print(paddle.max(paddle.abs(out - baseline)))
-
-
-
-

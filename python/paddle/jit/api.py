@@ -258,8 +258,11 @@ def paddle_inference_decorator(**kwargs):
         if os.path.exists(d2s_input_info_path) and cache_static_model:
             with open(d2s_input_info_path, "r") as f:
                 for line in f.readlines():
-                    name = line.split(":")[0]
-                    shape = line.split(":")[1]
+                    line = line.strip()
+                    name_shape = line.split(":")
+                    assert len(name_shape) == 2
+                    name = name_shape[0]
+                    shape = name_shape[1]
                     if len(shape) > 0:
                         # this is for None input
                         shape = [int(s) for s in shape.split(",")]
@@ -443,6 +446,16 @@ def paddle_inference_decorator(**kwargs):
                     full_graph=True,
                 )
                 paddle.jit.save(model, save_path, skip_prune_program=True)
+
+                # for name, param in args[0].named_parameters():
+                #     a = paddle.rand((1,))
+                #     paddle.assign(a, param)
+                #     print(param.shape)
+                #     print(name)
+
+                # for name, param in args[0].named_parameters():
+                #     print(name)
+                #     print(param.shape)
 
                 # save d2s_shapes
                 assert len(d2s_input_names) == len(d2s_input_shapes)

@@ -47,7 +47,6 @@ class KernelInterface:
     def __init__(
         self,
         func,
-        tune_config,
         custom_op_template,
         other_config,
         key_args=["1"],
@@ -178,7 +177,7 @@ class KernelInterface:
                     + f"""  -g "{lanuch_grid}" """
                 )
                 codegen_commands = []
-                for config in tune_config:
+                for config in self.tune_config:
                     for key in const_hint_dict.keys():
                         if key not in config.keys():
                             config[key] = const_hint_dict[key]
@@ -216,14 +215,13 @@ class KernelInterface:
     def __getitem__(self, op_name_and_grid):
         self.op_name = op_name_and_grid[0]
         self.grid = op_name_and_grid[1]
+        self.tune_config = op_name_and_grid[2]
         return self.decorator
 
 
-def paddle_use_triton(tune_config, custom_op_template, other_config={}, key=[]):
+def paddle_use_triton(custom_op_template, other_config={}, key=[]):
     def decorator(func):
-        return KernelInterface(
-            func, tune_config, custom_op_template, other_config, key
-        )
+        return KernelInterface(func, custom_op_template, other_config, key)
 
     return decorator
 
@@ -327,7 +325,6 @@ wint8_kernel_other_config = {
 
 
 @paddle_use_triton(
-    tune_config=get_wint8_kernel_config(),
     custom_op_template=triton_wint8_template,
     other_config=wint8_kernel_other_config,
     key=["M", "N", "K"],
@@ -568,7 +565,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
             'SPLIT_K',
         )
 
-        wint8_kernel[(op_name, grid)](
+        wint8_kernel[(op_name, grid, get_wint8_kernel_config())](
             x,
             qweight,
             output,
@@ -999,16 +996,8 @@ PD_BUILD_OP(${op_name})
 """
 )
 
-adaptive_layer_norm_kernel_config = [
-    {'num_warps': 4},
-    {'num_warps': 8},
-    {'num_warps': 1},
-    {'num_warps': 2},
-]
-
 
 @paddle_use_triton(
-    tune_config=adaptive_layer_norm_kernel_config,
     custom_op_template=triton_adaptive_layer_norm_template,
     key=["M"],
 )
@@ -1123,10 +1112,16 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     op_name += get_dtype_str(x.dtype)
     op_name += f"_{BLOCK_SIZE}"
 
+    adaptive_layer_norm_kernel_config = [
+        {'num_warps': 1},
+    ]
+
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         y = paddle.empty_like(x)
         grid = ("M",)
-        adaptive_layer_norm_kernel[(op_name, grid)](
+        adaptive_layer_norm_kernel[
+            (op_name, grid, adaptive_layer_norm_kernel_config)
+        ](
             x,
             y,
             weight,
@@ -1218,16 +1213,7 @@ PD_BUILD_OP(${op_name})
 )
 
 
-rms_norm_kernel_config = [
-    {'BLOCK_SIZE_M': 2, 'num_warps': 4},
-    {'BLOCK_SIZE_M': 1, 'num_warps': 1},
-    {'BLOCK_SIZE_M': 1, 'num_warps': 4},
-    {'BLOCK_SIZE_M': 4, 'num_warps': 8},
-]
-
-
 @paddle_use_triton(
-    tune_config=rms_norm_kernel_config,
     custom_op_template=rms_norm_template,
     key=["M"],
 )
@@ -1317,21 +1303,26 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
 
     op_name = "triton_rms_norm"
     op_name += get_dtype_str(x.dtype)
-    op_name += get_value_hint()
     op_name += f"_{N_npo2}"
+
+    rms_norm_kernel_config = []
+    if N_npo2 <= 64:
+        rms_norm_kernel_config.append({'BLOCK_SIZE_M': 4, 'num_warps': 1})
+    else:
+        rms_norm_kernel_config.append({'BLOCK_SIZE_M': 1, 'num_warps': 4})
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         y = paddle.empty_like(x)
         grid = ("((M+BLOCK_SIZE_M-1)/BLOCK_SIZE_M)",)
-        rms_norm_kernel[(op_name, grid)](
+        rms_norm_kernel[(op_name, grid, rms_norm_kernel_config)](
             x,
             y,
             weight,
-            bias,
+            x,
             -1,  # M,
             N,
             epsilon,
-            BLOCK_SIZE_M=2,
+            BLOCK_SIZE_M=4,
             N_npo2=N_npo2,
         )
 

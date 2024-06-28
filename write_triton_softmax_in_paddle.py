@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import triton
@@ -20,8 +21,8 @@ import triton.language as tl
 
 import paddle
 from paddle import _C_ops
-from paddle.base.layer_helper import LayerHelper
 from paddle.base.framework import OpProtoHolder
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2
 
@@ -65,17 +66,8 @@ PD_BUILD_OP(${op_name})
 """
 )
 
-softmax_kernel_config = [
-    {'num_warps': 1},
-    {'num_warps': 2},
-    {'num_warps': 4},
-]
 
-@paddle_use_triton(
-    tune_config=softmax_kernel_config,
-    custom_op_template=triton_softmax_template,
-    key=["M"]
-)
+@paddle_use_triton(custom_op_template=triton_softmax_template, key=["M"])
 def softmax_kernel(
     output_ptr,
     input_ptr,
@@ -110,15 +102,21 @@ def softmax(x):
     input_row_stride = n_cols
     output_row_stride = n_cols
 
+    softmax_kernel_config = [
+        {'num_warps': 1},
+        {'num_warps': 2},
+        {'num_warps': 4},
+    ]
+
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         # 这里的代码仅仅是注册这个Op！
         y = paddle.empty_like(x)
         # 这里需要注意grid传入的字符串必须是形参的运算得来的！
         grid = ("M",)
-        softmax_kernel[(op_name, grid)](
+        softmax_kernel[(op_name, grid, softmax_kernel_config)](
             y,
             x,
-            -1, # M, -1 means we can allow any M.
+            -1,  # M, -1 means we can allow any M.
             input_row_stride,
             output_row_stride,
             n_cols,
@@ -127,7 +125,7 @@ def softmax(x):
 
     # 上面是已经注册完这个Op了，下面开始真正的调用这个自定义算子啦。
     if in_dynamic_or_pir_mode():
-        #print(f"== we are in dynamic mode, op_name: {op_name}")
+        # print(f"== we are in dynamic mode, op_name: {op_name}")
         outs = _C_ops._run_custom_op(op_name, x)
         return outs[0]
     else:
@@ -145,17 +143,16 @@ def softmax(x):
         return out
 
 
-
 # 这里封装了个 softmax_layer 类，是用来验证装饰器的！
 class softmax_layer(paddle.nn.Layer):
     def __init__(self, hidd):
         super().__init__()
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=False)
-    
+
     @paddle.jit.to_static(backend="paddle_inference")
     def forward(self, x):
         for i in range(1000):
-            #x = paddle.nn.functional.softmax(x,-1)
+            # x = paddle.nn.functional.softmax(x,-1)
             x = softmax(x)
         x = x.cast("float32")
         x = self.fn(x)
@@ -179,7 +176,6 @@ for i in range(100):
 print(paddle.max(paddle.abs(out - baseline)))
 
 import datetime
-import time
 
 repeat_times = 100
 paddle.device.synchronize()
@@ -206,4 +202,3 @@ endtime = datetime.datetime.now()
 duringtime = endtime - starttime
 time_ms = duringtime.seconds * 1000 + duringtime.microseconds / 1000.0
 print("The paddle whoel end to end time : ", time_ms, "ms")
-
