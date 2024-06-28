@@ -812,7 +812,7 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
         self.prob = prob
 
     def _apply_image(self, img):
-        if paddle.framework.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_mode():
             return self._dynamic_apply_image(img)
         else:
             return self._static_apply_image(img)
@@ -875,7 +875,7 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
         self.prob = prob
 
     def _apply_image(self, img):
-        if paddle.framework.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_mode():
             return self._dynamic_apply_image(img)
         else:
             return self._static_apply_image(img)
@@ -2206,7 +2206,13 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         log_ratio = np.log(np.array(ratio))
 
         def cond(counter, ten, erase_h, erase_w):
-            return counter < ten and (erase_h >= h or erase_w >= w)
+            return paddle.logical_and(
+                counter < ten,
+                paddle.logical_or(
+                    erase_h >= h,
+                    erase_w > w,
+                ),
+            )
 
         def body(counter, ten, erase_h, erase_w):
             erase_area = (
@@ -2246,7 +2252,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
 
         zero = paddle.zeros([1]).astype("int32")
         top = paddle.static.nn.cond(
-            erase_h < h and erase_w < w,
+            paddle.logical_and(erase_h < h, erase_w < w),
             lambda: paddle.uniform(
                 shape=[1], min=0, max=h - erase_h + 1
             ).astype("int32"),
@@ -2254,7 +2260,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         )
 
         left = paddle.static.nn.cond(
-            erase_h < h and erase_w < w,
+            paddle.logical_and(erase_h < h, erase_w < w),
             lambda: paddle.uniform(
                 shape=[1], min=0, max=w - erase_w + 1
             ).astype("int32"),
@@ -2262,15 +2268,19 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         )
 
         erase_h = paddle.static.nn.cond(
-            erase_h < h and erase_w < w, lambda: erase_h, lambda: h
+            paddle.logical_and(erase_h < h, erase_w < w),
+            lambda: erase_h,
+            lambda: h,
         )
 
         erase_w = paddle.static.nn.cond(
-            erase_h < h and erase_w < w, lambda: erase_w, lambda: w
+            paddle.logical_and(erase_h < h, erase_w < w),
+            lambda: erase_w,
+            lambda: w,
         )
 
         v = paddle.static.nn.cond(
-            erase_h < h and erase_w < w, lambda: v, lambda: img
+            paddle.logical_and(erase_h < h, erase_w < w), lambda: v, lambda: img
         )
 
         return top, left, erase_h, erase_w, v, counter
@@ -2329,7 +2339,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
 
     def _apply_image(self, img):
-        if paddle.framework.in_dynamic_or_pir_mode():
+        if paddle.framework.in_dynamic_mode():
             return self._dynamic_apply_image(img)
         else:
             return paddle.static.nn.cond(
