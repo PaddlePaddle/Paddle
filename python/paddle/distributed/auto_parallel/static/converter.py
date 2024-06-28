@@ -150,7 +150,7 @@ class Converter:
                 )
             except ValueError as err:
                 raise ValueError(
-                    f"Fail to convert tensor '{tensor_name}'. " + str(err)
+                    f"Fail to convert tensor '{tensor_name}'. {err}"
                 )
 
         for tensor_name in self._pre_strategy:
@@ -215,8 +215,7 @@ class Converter:
                             )
                         except ValueError as err:
                             raise ValueError(
-                                f"Fail to convert tensor '{cur_name}' by '{pre_name}'. "
-                                + str(err)
+                                f"Fail to convert tensor '{cur_name}' by '{pre_name}'. {err}"
                             )
                         self._logger.info(
                             f"tensor [{cur_name}] is matched with tensor [{pre_name}]"
