@@ -1398,7 +1398,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
         if w == tw and h == th:
             return 0, 0, h, w
 
-        if paddle.framework.in_dynamic_or_pir_mode():
+        if paddle.in_dynamic_mode():
             i = random.randint(0, h - th)
             j = random.randint(0, w - tw)
         else:
@@ -1813,7 +1813,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
         self.fill = fill
 
     def _get_param(self, degrees):
-        if paddle.framework.in_dynamic_or_pir_mode():
+        if paddle.in_dynamic_mode():
             angle = random.uniform(degrees[0], degrees[1])
         else:
             angle = paddle.uniform(
