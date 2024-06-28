@@ -54,10 +54,6 @@ def check_fp8_support() -> bool:
     return True
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or not get_cuda_version() >= 11080,
-    "FP8 date type has some bug in CPU",
-)
 class TestFP8CastOp(unittest.TestCase):
     def setUp(self):
         self.dtype_dict = {
@@ -84,15 +80,9 @@ class TestFP8CastOp(unittest.TestCase):
                     if self.dtype == "float8_e4m3fn"
                     else E5M2_MAX_POS,
                 )
-                # there exists some problem in cpu fp8 cast
-                if self.device == "gpu":
-                    self.assertTrue(paddle.equal_all(input2, expect))
+                self.assertTrue(paddle.equal_all(input2, expect))
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or not get_cuda_version() >= 11080,
-    "FP8 date type has some bug in CPU",
-)
 class TestFP8FullOp(unittest.TestCase):
     def setUp(self):
         self.dtype_dict = {
@@ -108,9 +98,7 @@ class TestFP8FullOp(unittest.TestCase):
                 self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                 input_fp32 = input.astype("float32")
                 expect = paddle.to_tensor([[1, 1]]).astype("float32")
-                # there exists some problem in cpu fp8 full
-                if self.device == "gpu":
-                    self.assertTrue(paddle.equal_all(expect, input_fp32))
+                self.assertTrue(paddle.equal_all(expect, input_fp32))
 
     def test_zeros(self):
         for self.device in ["cpu", "gpu"]:
