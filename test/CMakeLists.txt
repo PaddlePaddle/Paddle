@@ -266,6 +266,20 @@ if(${len} GREATER_EQUAL 1)
         ${test_arg}
         DIR
         ${CC_TESTS_DIR})
+      get_test_property(${test_name} ENVIRONMENT CURRENT_ENV)
+      if(CURRENT_ENV)
+        string(REGEX MATCH "LD_LIBRARY_PATH=\\s*[^;]+" LD_LIBRARY_PATH_MATCH
+                     "${CURRENT_ENV}")
+        if(LD_LIBRARY_PATH_MATCH)
+          string(
+            REGEX
+            REPLACE "LD_LIBRARY_PATH=\\s*[^;]+"
+                    "${LD_LIBRARY_PATH_MATCH}:$ENV{LD_LIBRARY_PATH};"
+                    UPDATED_ENV "${CURRENT_ENV}")
+          set_tests_properties(${test_name} PROPERTIES ENVIRONMENT
+                                                       "${UPDATED_ENV}")
+        endif()
+      endif()
     elseif(WITH_TESTING AND NOT TEST ${test_name})
       add_test(NAME ${test_name} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${test_name}.)
