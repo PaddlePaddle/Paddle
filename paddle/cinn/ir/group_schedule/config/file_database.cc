@@ -188,7 +188,7 @@ void JsonStringToMessageOfTileConfig(
 
 bool comparepriority(group_schedule::config::proto::TileData tile_data1,
                      group_schedule::config::proto::TileData tile_data2) {
-  return tile_data1.priority() >= tile_data2.priority();
+  return tile_data1.priority() > tile_data2.priority();
 }
 
 TileConfigMap FileTileConfigDatabase::GetConfigs(
