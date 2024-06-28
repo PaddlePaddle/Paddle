@@ -24,10 +24,10 @@ RUN rm /etc/apt/sources.list.d/*
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
 
 RUN apt-get update --allow-unauthenticated && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
+  apt-get install -y software-properties-common && \
+  add-apt-repository ppa:deadsnakes/ppa && \
+  apt-get update && \
+  apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
 <install_cpu_package>
@@ -59,36 +59,36 @@ RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
 RUN apt-get update && \
-    apt-get install -y python3.8 python3.8-dev python3.8-distutils \
-    python3.9 python3.9-dev python3.9-distutils \
-    python3.10 python3.10-dev python3.10-distutils \
-    python3.11 python3.11-dev python3.11-distutils \
-    python3.12 python3.12-dev python3.12-distutils && \
-    apt-get install python-is-python3 && \
-    rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
-    rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
+  apt-get install -y python3.8 python3.8-dev python3.8-distutils \
+  python3.9 python3.9-dev python3.9-distutils \
+  python3.10 python3.10-dev python3.10-distutils \
+  python3.11 python3.11-dev python3.11-distutils \
+  python3.12 python3.12-dev python3.12-distutils && \
+  apt-get install python-is-python3 && \
+  rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
+  rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
 
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && unzip setuptools-50.3.2.zip
 WORKDIR /home/setuptools-50.3.2
 RUN python3.9 setup.py build && python3.9 setup.py install && \
-    python3.8 setup.py build && python3.8 setup.py install
+  python3.8 setup.py build && python3.8 setup.py install
 
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/ef/cc/93f7213b2ab5ed383f98ce8020e632ef256b406b8569606c3f160ed8e1c9/setuptools-68.2.2.tar.gz && tar xf setuptools-68.2.2.tar.gz
 WORKDIR /home/setuptools-68.2.2
 RUN python3.10 setup.py build && python3.10 setup.py install && \
-    python3.11 setup.py build && python3.11 setup.py install && \
-    python3.12 setup.py build && python3.12 setup.py install
+  python3.11 setup.py build && python3.11 setup.py install && \
+  python3.12 setup.py build && python3.12 setup.py install
 
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/1f/7f/4da15e07ccd11c84c1ccc8f6e24288d5e76c99441bf80e315b33542db951/pip-23.3.1.tar.gz && tar -zxf pip-23.3.1.tar.gz
 WORKDIR pip-23.3.1
 RUN python3.9 setup.py install && \
-    python3.8 setup.py install  && \
-    python3.10 setup.py install && \
-    python3.11 setup.py install && \
-    python3.12 setup.py install
+  python3.8 setup.py install  && \
+  python3.10 setup.py install && \
+  python3.11 setup.py install && \
+  python3.12 setup.py install
 
 WORKDIR /home
 RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-23.3.1.tar.gz && \
@@ -96,7 +96,7 @@ RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-23.3.1.tar.gz && \
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
-    tar -xzf binutils-2.33.1.tar.gz && \
+    tar -xzf binutils-2.33.1.tar.gz && \ 
     cd binutils-2.33.1 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz
 
