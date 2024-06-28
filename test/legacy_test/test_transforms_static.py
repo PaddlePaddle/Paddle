@@ -32,6 +32,7 @@ class TestTransformUnitTestBase(unittest.TestCase):
         self.init_dy_res()
 
     def init_dy_res(self):
+        # Obtain the dynamic transform result first before test_transform.
         self.dy_res = self.dynamic_transform()
         if isinstance(self.dy_res, paddle.Tensor):
             self.dy_res = self.dy_res.numpy()
