@@ -529,6 +529,7 @@
   kernel:
     func: fusion_seqpool_concat
     data_type: x
+  support_dygraph_mode : true
 
 - op : fusion_seqpool_cvm_concat
   args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", bool use_cvm = true, int axis = 1)
