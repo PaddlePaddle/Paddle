@@ -812,7 +812,7 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
         self.prob = prob
 
     def _apply_image(self, img):
-        if paddle.framework.in_dynamic_mode():
+        if paddle.in_dynamic_mode():
             return self._dynamic_apply_image(img)
         else:
             return self._static_apply_image(img)
@@ -875,7 +875,7 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
         self.prob = prob
 
     def _apply_image(self, img):
-        if paddle.framework.in_dynamic_mode():
+        if paddle.in_dynamic_mode():
             return self._dynamic_apply_image(img)
         else:
             return self._static_apply_image(img)
@@ -2339,7 +2339,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
 
     def _apply_image(self, img):
-        if paddle.framework.in_dynamic_mode():
+        if paddle.in_dynamic_mode():
             return self._dynamic_apply_image(img)
         else:
             return paddle.static.nn.cond(
