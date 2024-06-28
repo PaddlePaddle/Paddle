@@ -318,7 +318,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   auto bkcl_comm_ctx = this->GetCommContext();
-
+  calc_ctx->Wait();
   fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
 
   if (!use_calc_stream) {
