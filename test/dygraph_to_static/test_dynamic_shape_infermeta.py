@@ -18,12 +18,17 @@ import unittest
 from typing import Any, Callable, Sequence
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_pir_only,
+)
 
 import paddle
 from paddle.static.input import InputSpec
 
 
-class TestDynamicShapeInfermeta(unittest.TestCase):
+class TestDynamicShapeInfermeta(Dy2StTestBase):
     def check_dynamic_shape(
         self,
         fn: Callable[..., Any],
@@ -37,6 +42,8 @@ class TestDynamicShapeInfermeta(unittest.TestCase):
         )
         np.testing.assert_allclose(static_fn(*inputs), fn(*inputs), rtol=1e-05)
 
+    @test_pir_only
+    @test_ast_only
     def test_conv2d(self):
         self.check_dynamic_shape(
             paddle.nn.Conv2D(3, 3, 3),
@@ -44,6 +51,8 @@ class TestDynamicShapeInfermeta(unittest.TestCase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
+    @test_pir_only
+    @test_ast_only
     def test_bn(self):
         self.check_dynamic_shape(
             paddle.nn.BatchNorm2D(3),
@@ -51,6 +60,8 @@ class TestDynamicShapeInfermeta(unittest.TestCase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
+    @test_pir_only
+    @test_ast_only
     def test_depthwise_conv2d(self):
         self.check_dynamic_shape(
             paddle.nn.Conv2D(3, 3, 3, groups=3),
