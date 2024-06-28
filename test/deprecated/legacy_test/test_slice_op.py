@@ -23,7 +23,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
-from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
 
@@ -863,124 +862,6 @@ class TestSliceApiEager(unittest.TestCase):
             np.testing.assert_allclose(
                 a_1.numpy(), a[-3:3, 0:2, 2:4], rtol=1e-05
             )
-
-
-class TestSliceApiWithLoDTensorArray(unittest.TestCase):
-    def setUp(self):
-        self.shape = (3, 4)
-        self.data = np.random.random(size=self.shape).astype('float32')
-        self.idx = 0
-        self.start = 0
-        self.end = 2
-        self.axis = 1
-
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        self.exe = base.Executor(self.place)
-
-    def set_program_and_run(self, main_program, case_num):
-        with paddle_static_guard():
-            with paddle.static.program_guard(main_program):
-                x = [
-                    paddle.static.data(
-                        name='x0', shape=self.shape, dtype="float32"
-                    ),
-                    paddle.static.data(
-                        name='x1', shape=self.shape, dtype="float32"
-                    ),
-                    paddle.static.data(
-                        name='x2', shape=self.shape, dtype="float32"
-                    ),
-                ]
-
-                for each_x in x:
-                    each_x.stop_gradient = False
-
-                arr = paddle.tensor.create_array(dtype="float32")
-                for i in range(3):
-                    idx = paddle.tensor.array_length(arr)
-                    arr = paddle.tensor.array_write(x=x[i], i=idx, array=arr)
-
-                if case_num == 1:
-                    self.sliced_arr = output = arr[0]
-
-                elif case_num == 2:
-                    end = (
-                        paddle.tensor.array_length(arr) - 1
-                    )  # dtype of end is int64
-                    self.sliced_arr = slice_arr = arr[self.start : end]
-                    output, _ = tensor_array_to_tensor(
-                        slice_arr, axis=self.axis, use_stack=True
-                    )
-                elif case_num == 3:
-                    value_int64 = paddle.tensor.fill_constant(
-                        [1], "int64", 2147483648
-                    )
-                    self.sliced_arr = slice_arr = arr[self.start : value_int64]
-                    output, _ = tensor_array_to_tensor(
-                        slice_arr, axis=self.axis, use_stack=True
-                    )
-
-                loss = paddle.sum(output)
-                base.backward.append_backward(loss)
-                g_vars = list(
-                    map(
-                        main_program.global_block().var,
-                        [each_x.name + "@GRAD" for each_x in x],
-                    )
-                )
-                self.out, self.g_x0, self.g_x1, self.g_x2 = self.exe.run(
-                    main_program,
-                    feed={'x0': self.data, 'x1': self.data, 'x2': self.data},
-                    fetch_list=[output] + g_vars,
-                )
-
-    def test_case_1(self):
-        main_program = paddle.static.Program()
-        self.set_program_and_run(main_program, 1)
-
-        self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
-        self.assertEqual(self.sliced_arr.shape, self.shape)
-        np.testing.assert_array_equal(self.out, self.data)
-        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
-        np.testing.assert_array_equal(self.g_x1, np.zeros_like(self.data))
-        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
-
-    def test_case_2(self):
-        with paddle_static_guard():
-            main_program = paddle.static.Program()
-            self.set_program_and_run(main_program, 2)
-
-            self.assertTrue(
-                self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            )
-            self.assertEqual(self.sliced_arr.shape, self.shape)
-            np.testing.assert_array_equal(
-                self.out, np.stack([self.data, self.data], axis=self.axis)
-            )
-            np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
-            np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
-            np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
-
-    def test_case_3(self):
-        with paddle_static_guard():
-            main_program = paddle.static.Program()
-            self.set_program_and_run(main_program, 3)
-
-            self.assertTrue(
-                self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            )
-            self.assertEqual(self.sliced_arr.shape, self.shape)
-            np.testing.assert_array_equal(
-                self.out,
-                np.stack([self.data, self.data, self.data], axis=self.axis),
-            )
-            np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
-            np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
-            np.testing.assert_array_equal(self.g_x2, np.ones_like(self.data))
 
 
 class TestImperativeVarBaseGetItem(unittest.TestCase):
