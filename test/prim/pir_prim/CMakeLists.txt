@@ -1,4 +1,10 @@
 set(TEST_PRIM_PURE_PIR_CASES
+    test_custom_vjp_trait
+    test_decomp_op
+    test_decompose_op
+    test_vjp_prim
+    test_batch_norm_shape_check
+    test_builtin_slice
     test_prim_program
     test_prim_simpnet
     test_prim_custom_vjp

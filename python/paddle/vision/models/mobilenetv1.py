@@ -35,7 +35,6 @@ __all__ = []
 
 
 class _MobileNetV1Options(TypedDict):
-    scale: NotRequired[float]
     num_classes: NotRequired[int]
     with_pool: NotRequired[bool]
 

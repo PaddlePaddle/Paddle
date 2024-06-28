@@ -78,7 +78,7 @@ def create_optimizer(model, lr_scheduler):
         apply_decay_param_fun=apply_decay_param_fun,
         parameters=model.parameters(),
         weight_decay=0.01,
-        grad_clip=None,
+        grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
     )
     return optimizer
 
@@ -151,7 +151,6 @@ class TestLlamaAuto:
             input_ids, labels = inputs
             logits = model(input_ids)
             tr_loss_step = criterion(logits, labels)
-
             if self.gradient_accumulation_steps > 1:
                 tr_loss_step /= self.gradient_accumulation_steps
 
@@ -223,6 +222,7 @@ class TestLlamaAuto:
                 assert loss is not None
             else:
                 assert loss is None
+
         numpy_array = np.array(loss)
         array_bytes = numpy_array.tobytes()
         loss_md5 = hashlib.md5(array_bytes).hexdigest()
