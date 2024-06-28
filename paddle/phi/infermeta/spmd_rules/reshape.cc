@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -278,8 +277,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // The out_shape may contain '-1', which will cause error
   // when inferring the transformation from out_shape to
   // x_shape, so infer the '-1' value before inferring DimTrans
-  int64_t nelm = std::accumulate(
-      x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>());
+  int64_t nelm =
+      std::accumulate(x_shape.begin(), x_shape.end(), 1, std::multiplies<>());
   out_shape = InferTargetShape(out_shape, nelm);
   std::vector<std::shared_ptr<DimTrans>> trans =
       MakeReshapeDimTrans(out_shape, x_shape);
@@ -358,5 +357,4 @@ SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
   return spmd_info;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

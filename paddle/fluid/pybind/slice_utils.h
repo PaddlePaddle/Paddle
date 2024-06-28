@@ -25,11 +25,11 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -535,8 +535,8 @@ static void ParseBoolAndBroadcastIndices(
           common::make_ddim((*advanced_index)[i].shape());
       if (current_shape != common_shape) {
         need_broadcast = true;
-        common_shape = operators::details::BroadcastTwoDims(
-            current_shape, common_shape, -1);
+        common_shape =
+            phi::funcs::BroadcastTwoDims(current_shape, common_shape, -1);
       }
     }
 

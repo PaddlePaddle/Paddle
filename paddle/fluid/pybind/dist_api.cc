@@ -38,6 +38,7 @@ struct type_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
                  Value> {};
 }  // namespace pybind11::detail
 
+using paddle::dialect::DistTypeInterface;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::ProcessMeshAttribute;
 using paddle::dialect::TensorDistAttribute;
@@ -86,9 +87,17 @@ void BindTensorDistAttribute(py::module *m) {
       .def_property_readonly(
           "partial_status",
           [](TensorDistAttribute &self) { return self.partial_status(); })
-      .def_property_readonly("partial_dims", [](TensorDistAttribute &self) {
-        return self.partial_dims();
+      .def_property_readonly(
+          "partial_dims",
+          [](TensorDistAttribute &self) { return self.partial_dims(); })
+      .def_property_readonly("placements", [](TensorDistAttribute &self) {
+        return self.placements();
       });
+}
+
+void BindDistType(py::module *m) {
+  py::class_<DistTypeInterface, pir::Type> dist_type(*m, "DistType");
+  dist_type.def("dist_attr", &DistTypeInterface::tensor_dist_attr);
 }
 
 void BindDistOpsAPI(pybind11::module *module) {
@@ -140,6 +149,7 @@ void BindDistApi(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindOperationDistAttribute(&ir_module);
   BindTensorDistAttribute(&ir_module);
+  BindDistType(&ir_module);
   BindDistUtils(&ir_module);
   BindDistPassAPI(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
