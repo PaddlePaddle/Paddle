@@ -41,9 +41,16 @@ class UnittestBase(unittest.TestCase):
         return type(self).__name__
 
     def infer_prog(self):
-        config = paddle_infer.Config(
-            self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-        )
+        if paddle.framework.use_pir_api():
+            config = paddle_infer.Config(
+                self.save_path + '.json', self.save_path + '.pdiparams'
+            )
+            config.enable_new_ir()
+            config.enable_new_executor()
+        else:
+            config = paddle_infer.Config(
+                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+            )
         config.disable_mkldnn()
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()

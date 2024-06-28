@@ -590,7 +590,5 @@ class StageMap : public Shared<_StageMap_> {
   auto end() const { return self()->data_.end(); }
 };
 
-StageMap CreateStages(const std::vector<ir::Tensor>& tensors);
-
 }  // namespace poly
 }  // namespace cinn

@@ -39,8 +39,9 @@ from ...utils import (
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import Size1, Size2
 
-    from ..._typing import PaddingMode, Size1, Size2
+    from .common import _PaddingSizeMode
 
 __all__ = []
 
@@ -185,7 +186,7 @@ def avg_pool1d(
     x: Tensor,
     kernel_size: Size1,
     stride: Size1 | None = None,
-    padding: PaddingMode | Size1 | Size2 = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
     exclusive: bool = True,
     ceil_mode: bool = False,
     name: str | None = None,

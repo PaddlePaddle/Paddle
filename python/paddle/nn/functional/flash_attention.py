@@ -1056,7 +1056,7 @@ def scaled_dot_product_attention(
         return out
     else:
         if in_dynamic_or_pir_mode():
-            fixed_seed_offset = (None,)
+            fixed_seed_offset = None
             return_softmax = False
             rng_name = ""
             out, _, _, _ = _C_ops.flash_attn(

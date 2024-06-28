@@ -118,7 +118,9 @@ class VGG(nn.Layer):
         return x
 
 
-def make_layers(cfg: list[object], batch_norm: bool = False) -> Sequential:
+def make_layers(
+    cfg: list[int | Literal['M']], batch_norm: bool = False
+) -> Sequential:
     layers = []
     in_channels = 3
     for v in cfg:

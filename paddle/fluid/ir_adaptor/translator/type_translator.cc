@@ -19,8 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 using OpDesc = paddle::framework::OpDesc;
 using BlockDesc = paddle::framework::BlockDesc;
@@ -186,5 +185,4 @@ TypeTranslator::TypeTranslator() {
   };
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator
