@@ -42,7 +42,6 @@ model_urls = {
 
 
 class _MobileNetV2Options(TypedDict):
-    scale: NotRequired[float]
     num_classes: NotRequired[int]
     with_pool: NotRequired[bool]
 
@@ -54,7 +53,7 @@ class InvertedResidual(nn.Layer):
         oup: int,
         stride: int,
         expand_ratio: float,
-        norm_layer: nn.Layer = nn.BatchNorm2D,
+        norm_layer: type[nn.Layer] = nn.BatchNorm2D,
     ) -> None:
         super().__init__()
         self.stride = stride

@@ -80,13 +80,12 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
 
     auto tensor_A = A.as_tensor_ref();
     auto tensor_B = B.as_tensor_ref();
-    auto stages = CreateStages({tensor_A, tensor_B});
 
     auto new_shape_A_e = ToCinnExprs(new_shape_A);
     auto new_shape_B_e = ToCinnExprs(new_shape_B);
 
-    auto new_A = tensor_A->Reshape(new_shape_A_e, stages);
-    auto new_B = tensor_B->Reshape(new_shape_B_e, stages);
+    auto new_A = tensor_A->Reshape(new_shape_A_e);
+    auto new_B = tensor_B->Reshape(new_shape_B_e);
 
     std::vector<ir::Tensor> out;
     target.arch.Match(
@@ -119,14 +118,10 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
         });
 
     std::vector<CINNValue> res;
-    for (auto &t : out) {
-      stages->InsertLazily(t);
-    }
 
     for (auto &t : out) {
       res.push_back(CINNValue(t));
     }
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -251,13 +246,11 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
         }
 
         auto out = pe::Split(A, axis, output_shapes, tensor_names);
-        auto stages = CreateStages(out);
 
         std::vector<CINNValue> res;
         for (int i = 0; i < out.size(); ++i) {
           res.emplace_back(out[i]);
         }
-        res.emplace_back(stages);
         *ret = CINNValuePack{res};
       });
 
@@ -457,11 +450,9 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
     CHECK(pack_args[input_size].is_string());
     std::string tensor_name = pack_args[input_size].operator std::string();
 
-    auto stages = CreateStages(input_tensors);
     auto out = pe::Concat(input_tensors, axis, tensor_name);
-    stages->InsertLazily(out);
 
-    *ret = CINNValuePack({CINNValue(out), CINNValue(stages)});
+    *ret = CINNValuePack(std::vector<CINNValue>({CINNValue(out)}));
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -504,11 +495,9 @@ std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
     CHECK(pack_args[input_size].is_string());
     std::string tensor_name = pack_args[input_size].operator std::string();
 
-    auto stages = CreateStages(input_tensors);
     auto out = pe::Concat(input_tensors, axis, tensor_name);
-    stages->InsertLazily(out);
 
-    *ret = CINNValuePack({CINNValue(out), CINNValue(stages)});
+    *ret = CINNValuePack(std::vector<CINNValue>({CINNValue(out)}));
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -622,13 +611,12 @@ std::shared_ptr<OpStrategy> StrategyForMul(
 
     auto A_tensor = A.as_tensor_ref();
     auto B_tensor = B.as_tensor_ref();
-    auto stages = CreateStages({A_tensor, B_tensor});
 
     auto new_shape_A_e = ToCinnExprs(new_shape_A);
     auto new_shape_B_e = ToCinnExprs(new_shape_B);
 
-    auto new_A = A_tensor->Reshape(new_shape_A_e, stages);
-    auto new_B = B_tensor->Reshape(new_shape_B_e, stages);
+    auto new_A = A_tensor->Reshape(new_shape_A_e);
+    auto new_B = B_tensor->Reshape(new_shape_B_e);
 
     std::vector<ir::Tensor> out;
     PADDLE_ENFORCE_EQ(pack_args.back().is_string(),
@@ -657,14 +645,10 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         });
 
     std::vector<CINNValue> res;
-    for (auto &t : out) {
-      stages->InsertLazily(t);
-    }
 
     for (auto &t : out) {
       res.push_back(CINNValue(t));
     }
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -787,10 +771,7 @@ std::shared_ptr<OpStrategy> StrategyForCublasGemm(
         CHECK(input_args[3].is_string());
         std::string tensor_name = input_args[3].operator std::string();
         auto out = pe::Identity(bias_tensor, tensor_name).front();
-        auto stages = CreateStages(
-            {lhs.as_tensor_ref(), rhs.as_tensor_ref(), bias_tensor});
-        stages->InsertLazily(out);
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
 
@@ -855,10 +836,8 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
 
     auto out = pe::LayoutTransform(
         A.as_tensor_ref(), src_layout, dst_layout, tensor_name);
-    auto stages = CreateStages({A.as_tensor_ref()});
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
-    res = {CINNValue(out), CINNValue(stages)};
+    res = {CINNValue(out)};
     *ret = CINNValuePack{res};
   });
 
@@ -977,8 +956,7 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
     std::string tensor_name = input_args[1].operator std::string();
 
     auto out = pe::Reverse(A.as_tensor_ref(), axis, tensor_name);
-    auto stages = CreateStages({A.as_tensor_ref(), out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1029,8 +1007,7 @@ std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
     CHECK(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
     auto out = pe::Reverse(A.as_tensor_ref(), axis, tensor_name);
-    auto stages = CreateStages({A.as_tensor_ref(), out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1144,8 +1121,7 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
     std::string tensor_name = input_args[1].operator std::string();
 
     auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
-    auto stages = CreateStages({out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1224,8 +1200,7 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
     std::string tensor_name = input_args[1].operator std::string();
 
     auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
-    auto stages = CreateStages({out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1348,9 +1323,7 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                               output_shape,
                               axis,
                               tensor_name);
-        auto stages = CreateStages({x.as_tensor_ref(), index.as_tensor_ref()});
-        stages->InsertLazily(out);
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       }};
 
@@ -1424,9 +1397,7 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
                               axis,
                               output_shape,
                               tensor_name);
-        auto stages = CreateStages({x.as_tensor_ref(), index.as_tensor_ref()});
-        stages->InsertLazily(out);
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       }};
 
@@ -1507,8 +1478,6 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
     CHECK(expr_index.as_tensor());
     auto tensor_index = expr_index.as_tensor_ref();
 
-    auto stages = CreateStages({tensor_input, tensor_updates, tensor_index});
-
     CHECK_EQ(arg_pack.size(), 4U);
     CHECK(arg_pack[3].is_string());
     std::string tensor_name = arg_pack[3].operator std::string();
@@ -1517,11 +1486,9 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
         tensor_input, tensor_updates, tensor_index, target, axis, tensor_name);
 
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of ScatterAssign is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -1631,8 +1598,6 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
     CHECK(expr_index.as_tensor());
     auto tensor_index = expr_index.as_tensor_ref();
 
-    auto stages = CreateStages({tensor_input, tensor_updates, tensor_index});
-
     CHECK_EQ(arg_pack.size(), 4U);
     CHECK(arg_pack[3].is_string());
     std::string tensor_name = arg_pack[3].operator std::string();
@@ -1641,11 +1606,9 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
         tensor_input, tensor_updates, tensor_index, target, axis, tensor_name);
 
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of ScatterAdd is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -1791,8 +1754,7 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
 
         auto out = pe::Slice(
             A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1932,8 +1894,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
                                      output_shape,
                                      tensor_name);
         VLOG(4) << "out: " << out;
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2169,8 +2130,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
                                    ends,
                                    strides,
                                    tensor_name);
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       }};
 

@@ -1110,6 +1110,14 @@ class DistributedStrategy:
         """
         return self.strategy.recompute
 
+    @recompute.setter
+    @is_strict_auto
+    def recompute(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.recompute = flag
+        else:
+            logger.warning("recompute should have value of bool type")
+
     @property
     def sync_nccl_allreduce(self):
         """
@@ -1366,14 +1374,6 @@ class DistributedStrategy:
             self.strategy.nccl_comm_num = value
         else:
             logger.warning("nccl_comm_num should have value of int type")
-
-    @recompute.setter
-    @is_strict_auto
-    def recompute(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.recompute = flag
-        else:
-            logger.warning("recompute should have value of bool type")
 
     @property
     def recompute_configs(self):
