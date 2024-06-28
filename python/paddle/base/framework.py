@@ -1806,8 +1806,8 @@ class Variable(metaclass=VariableMetaClass):
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
-                ...     data = paddle.to_tensor(data)
-                ...     x = linear(data)
+                ...     data_tensor = paddle.to_tensor(data)
+                ...     x = linear(data_tensor)
                 ...     print(x.numpy())
 
         """
@@ -1903,8 +1903,8 @@ class Variable(metaclass=VariableMetaClass):
                 ...         sparse=True)
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
-                ...     x = paddle.to_tensor(x_data)
-                ...     out = embedding(x)
+                ...     x_tensor = paddle.to_tensor(x_data)
+                ...     out = embedding(x_tensor)
                 ...     out.backward()
                 ...     print(embedding.weight.gradient())
 

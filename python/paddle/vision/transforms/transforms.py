@@ -235,7 +235,7 @@ class BaseTransform(_Transform[_InputT, _RetT]):
             ...     else:
             ...         raise TypeError("Unexpected type {}".format(type(img)))
             ...
-            >>> class CustomRandomFlip(BaseTransform):
+            >>> class CustomRandomFlip(BaseTransform): # type: ignore
             ...     def __init__(self, prob=0.5, keys=None):
             ...         super().__init__(keys)
             ...         self.prob = prob
