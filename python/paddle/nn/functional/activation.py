@@ -929,7 +929,7 @@ def maxout(
         if axis not in [1, -1, 3]:
             raise ValueError(
                 "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
-                "Attr(axis): %s." % str(axis)
+                f"Attr(axis): {axis}."
             )
         if axis == -1:
             axis = 3

@@ -1913,7 +1913,7 @@ def diag_embed(
         input_shape = list(input.shape)
         assert len(input_shape) >= 1, (
             "Input must be at least 1-dimensional, "
-            "But received Input's dimensional: %s.\n" % len(input_shape)
+            f"But received Input's dimensional: {len(input_shape)}.\n"
         )
 
         assert np.abs(dim1) <= len(input_shape), (
