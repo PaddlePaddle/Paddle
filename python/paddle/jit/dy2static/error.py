@@ -84,9 +84,11 @@ class TraceBackFrame(OriginInfo):
                 self.location.filepath,
                 self.location.lineno,
                 self.function_name,
-                self.source_code.lstrip()
-                if isinstance(self.source_code, str)
-                else self.source_code,
+                (
+                    self.source_code.lstrip()
+                    if isinstance(self.source_code, str)
+                    else self.source_code
+                ),
             )
         )
 
@@ -435,7 +437,7 @@ class ErrorData:
     def raise_new_exception(self):
         # Raises the origin error if disable dygraph2static error module,
         if int(os.getenv(DISABLE_ERROR_ENV_NAME, DEFAULT_DISABLE_NEW_ERROR)):
-            raise
+            raise self.error_value
 
         new_exception = self.create_exception()
         # NOTE(liym27):
