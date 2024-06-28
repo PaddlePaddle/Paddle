@@ -1719,6 +1719,12 @@
     out : Out
     fc_out : FCOut
 
+- op : fusion_seqpool_concat
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : fusion_transpose_flatten_concat
   inputs :
     x : X

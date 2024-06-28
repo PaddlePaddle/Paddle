@@ -118,6 +118,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'squeeze_excitation_block',
     'yolo_box_xpu',
     'fusion_gru',
+    'fusion_seqpool_concat ',
     'fusion_seqconv_eltadd_relu',
     'fusion_seqexpand_concat_fc',
     'fused_conv2d_add_act',
