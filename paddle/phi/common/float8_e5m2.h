@@ -172,7 +172,8 @@ struct PADDLE_ALIGN(1) float8_e5m2 {
     // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e5m2.h
     uint16_t half_representation = x;
     half_representation <<= 8;
-    return static_cast<float>(phi::dtype::raw_uint16_to_float16(half_representation));
+    return static_cast<float>(
+        phi::dtype::raw_uint16_to_float16(half_representation));
 #endif
   }
 
