@@ -48,7 +48,7 @@ def sin(x, name=None):
         out = sin(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 

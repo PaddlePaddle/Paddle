@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void DistModelDataBuf::Reset(void* data, size_t length) {
   Free();
@@ -102,5 +101,4 @@ DistModelDataBuf::DistModelDataBuf(const DistModelDataBuf& other) {
   *this = other;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

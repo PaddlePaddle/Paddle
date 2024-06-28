@@ -350,6 +350,12 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             bool hard,
                             int axis,
                             MetaTensor* out);
+
+void HashInferMeta(const MetaTensor& x,
+                   int num_hash,
+                   int64_t mod_by,
+                   MetaTensor* out);
+
 void HistogramInferMeta(
     const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
 

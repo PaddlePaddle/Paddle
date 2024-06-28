@@ -61,7 +61,7 @@ function(register_cu_kernel TARGET)
                         "${multiValueArgs}" ${ARGN})
 
   set(cu_srcs)
-  set(op_common_deps operator op_registry layer common_infer_shape_functions)
+  set(op_common_deps operator op_registry layer)
   foreach(cu_src ${register_cu_kernel_SRCS})
     if(${cu_src} MATCHES ".*\\.cu$")
       list(APPEND cu_srcs ${cu_src})
@@ -112,8 +112,7 @@ function(register_onednn_kernel TARGET)
                         "${multiValueArgs}" ${ARGN})
 
   set(onednn_cc_srcs)
-  set(op_common_deps operator op_registry phi layer
-                     common_infer_shape_functions)
+  set(op_common_deps operator op_registry phi layer)
   foreach(onednn_src ${register_onednn_kernel_SRCS})
     if(${onednn_src} MATCHES ".*_onednn_op.cc$")
       list(APPEND onednn_cc_srcs onednn/${onednn_src})
@@ -163,8 +162,7 @@ function(op_library TARGET)
   set(MIOPEN_FILE)
   set(onednn_cc_srcs)
   set(ONEDNN_FILE)
-  set(op_common_deps operator op_registry phi layer
-                     common_infer_shape_functions)
+  set(op_common_deps operator op_registry phi layer)
 
   # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
   set(options UNITY)
