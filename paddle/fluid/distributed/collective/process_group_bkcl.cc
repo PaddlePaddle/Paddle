@@ -48,6 +48,8 @@ bool ProcessGroupBKCL::BKCLTask::IsCompleted() {
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
 bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
+  const auto* calc_ctx = static_cast<XPUContext*>(
+      platform::DeviceContextPool::Instance().Get(place_));
   if (barrier_) {
     // If we use the work to do barrier, we should block cpu
 
@@ -66,8 +68,6 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
     return true;
   }
 
-  const auto* calc_ctx = static_cast<XPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place_));
   comm_event_->Block(*calc_ctx);
 
   return true;
