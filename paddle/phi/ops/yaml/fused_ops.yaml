@@ -521,6 +521,15 @@
   optional : fc_bias
   intermediate : fc_out
 
+- op : fusion_seqpool_concat
+  args: (Tensor[] x, str pooltype = "SUM", int axis = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: FusionSeqpoolConcatInferMeta
+  kernel:
+    func: fusion_seqpool_concat
+    data_type: x
+
 - op : fusion_seqpool_cvm_concat
   args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", bool use_cvm = true, int axis = 1)
   output: Tensor (out)
@@ -791,12 +800,3 @@
     data_type: embeddings
   optional: h0, c0
   intermediate: xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0
-
-- op: fusion_seqpool_concat
-  args: (Tensor[] x, str pooltype = "SUM", int axis = 1)
-  output: Tensor (out)
-  infer_meta:
-    func: FusionSeqpoolConcatInferMeta
-  kernel:
-    func: fusion_seqpool_concat
-    data_type: x
