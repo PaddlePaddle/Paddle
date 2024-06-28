@@ -380,7 +380,7 @@ ir::Tensor Reshape(const ir::Tensor& A,
       phi::errors::InvalidArgument(
           "In op reshape, the input tensor and output tensor's total size "
           "should be equal, please check!"));
-  auto out = Identity(A->Reshape(new_expr_shape, stages), name).front();
+  auto out = Identity(A->Reshape(new_expr_shape), name).front();
   return out;
 }
 

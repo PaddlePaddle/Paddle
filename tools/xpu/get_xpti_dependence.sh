@@ -19,7 +19,7 @@ set -ex
 XPTI_URL=$1
 XPTI_DIR_NAME=$2
 
-if ! [ -n "$WITH_XPTI" ]; then
+if ! [ -n "$XPTI_URL" ]; then
   exit 0
 fi
 

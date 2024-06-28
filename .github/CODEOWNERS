@@ -47,7 +47,7 @@ paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @zhiqiu
 paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder @Aurelius84
 paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen
 pyproject.toml @SigureMo @gouzil
-python/paddle/autograd/backward_utils.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98
+python/paddle/autograd/backward_utils.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98 @cyber-pioneer
 python/paddle/autograd/ir_backward.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98
 python/paddle/base/backward.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
 python/paddle/base/compiler.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
