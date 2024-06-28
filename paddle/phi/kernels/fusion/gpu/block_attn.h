@@ -969,12 +969,12 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   for (int local_hi = 0; local_hi < GQA_SUB_PARTITION_SIZE; local_hi++) {
 #pragma unroll
     for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
-      qk_maxs[local_hi] =
-          fmaxf(qk_maxs[local_hi],
+      qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
 #ifdef PADDLE_WITH_HIP
-                __shfl_xor(qk_maxs[local_hi], mask));
+                                __shfl_xor(qk_maxs[local_hi], mask));
 #else
-                __shfl_xor_sync(uint32_t(-1), qk_maxs[local_hi], mask));
+                                __shfl_xor_sync(
+                                    uint32_t(-1), qk_maxs[local_hi], mask));
 
 #endif
     }
@@ -989,12 +989,12 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
         lane_id < WARPS_PER_BLOCK ? red_smem[lane_id] : -FLT_MAX;
 #pragma unroll
     for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-      qk_maxs[local_hi] =
-          fmaxf(qk_maxs[local_hi],
+      qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
 #ifdef PADDLE_WITH_HIP
-                __shfl_xor(qk_maxs[local_hi], mask));
+                                __shfl_xor(qk_maxs[local_hi], mask));
 #else
-                __shfl_xor_sync(uint32_t(-1), qk_maxs[local_hi], mask));
+                                __shfl_xor_sync(
+                                    uint32_t(-1), qk_maxs[local_hi], mask));
 #endif
     }
 
