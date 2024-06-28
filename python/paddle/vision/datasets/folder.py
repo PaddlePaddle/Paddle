@@ -240,7 +240,7 @@ class DatasetFolder(Dataset):
         self.root = root
         self.transform = transform
         if extensions is None:
-            extensions = _AllowedExtensions
+            extensions = IMG_EXTENSIONS
         classes, class_to_idx = self._find_classes(self.root)
         samples = make_dataset(
             self.root, class_to_idx, extensions, is_valid_file
@@ -299,6 +299,19 @@ class DatasetFolder(Dataset):
 
     def __len__(self):
         return len(self.samples)
+
+
+IMG_EXTENSIONS = (
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.ppm',
+    '.bmp',
+    '.pgm',
+    '.tif',
+    '.tiff',
+    '.webp',
+)
 
 
 def pil_loader(path):
@@ -455,7 +468,7 @@ class ImageFolder(Dataset):
     ) -> None:
         self.root = root
         if extensions is None:
-            extensions = _AllowedExtensions
+            extensions = IMG_EXTENSIONS
 
         samples = []
         path = os.path.expanduser(root)
