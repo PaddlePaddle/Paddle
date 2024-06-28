@@ -639,6 +639,7 @@ const std::vector<std::string> kPirXpuPasses{
 
 const std::vector<std::string> kPirMkldnnPasses {
   "delete_quant_dequant_linear_op_pass", "delete_weight_dequant_linear_op_pass",
+      "matmul_scale_fuse_pass", "matmul_transpose_fuse_pass",
       "depthwise_conv_onednn_pass",
       "squeeze_transpose_onednn_fuse_pass",  //
       "conv2d_bn_onednn_fuse_pass",          //
