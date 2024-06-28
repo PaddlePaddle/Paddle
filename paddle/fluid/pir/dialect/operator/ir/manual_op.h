@@ -813,6 +813,46 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
       pir::AttributeMap *p_attributes);
 };
 
+#if !defined(PADDLE_NO_PYTHON)
+class RegisterHookOp : public pir::Op<RegisterHookOp,
+                                      paddle::dialect::OpYamlInfoInterface,
+                                      paddle::dialect::VjpInterface> {
+  // class RegisterHookOp : public pir::Op<RegisterHookOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.register_hook"; }
+  static const char *attributes_name[2];
+  static constexpr uint32_t attributes_num = 2;
+  static OpInfoTuple GetOpInfo();
+  void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    void *forward_hook_func,
+                    void *backward_hook_func);
+
+  ~RegisterHookOp() { std::cout << "[RegisterHookOp] destructor" << std::endl; }
+
+  pir::Value input() { return operand_source(0); }
+  //   pir::Value forward_hook_func() { return operand_source(1); }
+  //   pir::Value backward_hook_func() { return operand_source(2); }
+  pir::Value out() { return result(0); }
+
+  // static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      pir::AttributeMap *p_attributes);
+
+  static std::vector<std::vector<pir::Value>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+};
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -840,3 +880,6 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
+#if !defined(PADDLE_NO_PYTHON)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::RegisterHookOp)
+#endif

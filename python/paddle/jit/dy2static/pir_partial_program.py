@@ -653,6 +653,12 @@ class PartialProgramLayer:
         in_vars = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes()
+
+        print("====forward program is=====")
+        print(self.program.forward_program)
+        print("====backward program is=====")
+        print(self.program.backward_program)
+
         _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),

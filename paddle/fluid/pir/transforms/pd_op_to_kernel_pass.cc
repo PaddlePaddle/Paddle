@@ -154,6 +154,9 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     AssertOp::name(),
     SelectInputOp::name(),
     SelectOutputOp::name(),
+#if !defined(PADDLE_NO_PYTHON)
+    RegisterHookOp::name(),
+#endif
     "cinn_runtime.jit_kernel"};
 
 const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
@@ -2115,6 +2118,16 @@ void HandleForSpecialOp(
           op_item->result(i).type().dyn_cast<DenseTensorType>()));
     }
   }
+
+#if !defined(PADDLE_NO_PYTHON)
+  if (op_item->isa<RegisterHookOp>()) {
+    // TODO(gouzil): 或许 place 只能用 cpu
+    vec_inputs.push_back(GetNewInput(
+        op_item->operand_source(0), *map_value_pair, 0, op_item->name()));
+    op_output_types.push_back(
+        BuildOutputType(op_item->result(0).type(), place, ctx));
+  }
+#endif
 
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
   // Generate new op

@@ -14,6 +14,7 @@
 
 
 import warnings
+from typing import Callable
 
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
@@ -599,6 +600,14 @@ def monkey_patch_value():
                 "Currently, we can only set shape for dense and selected_row tensor"
             )
 
+    def register_hook(self, hook: Callable):
+        # paddle.base.append_backward(self)
+        out = paddle._pir_ops.register_hook(self, None, hook)
+        out.stop_gradient = False
+        out2 = paddle.base.append_backward(out)
+        # breakpoint()
+        return out
+
     def value_hash(self):
         return hash(id(self))
 
@@ -622,6 +631,7 @@ def monkey_patch_value():
         ('append', append),
         ('pop', pop),
         ('set_shape', set_shape),
+        ('register_hook', register_hook),
         ('__hash__', value_hash),
         ('to_dense', to_dense),
         ('indices', indices),

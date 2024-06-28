@@ -60,6 +60,9 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/yield_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#if !defined(PADDLE_NO_PYTHON)
+#include "paddle/fluid/framework/new_executor/instruction/register_hook_instruction.h"
+#endif
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
@@ -790,6 +793,8 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "pd_op") {
+      std::cout << "[PirInterpreter::BuildInstruction] op name: " << op.name()
+                << std::endl;
       if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
         std::unique_ptr<IfInstruction> if_instr_ptr =
             std::make_unique<IfInstruction>(op_idx++,
@@ -856,6 +861,12 @@ void PirInterpreter::BuildInstruction() {
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
                  ->BodyInterpreter()});
+#if !defined(PADDLE_NO_PYTHON)
+      } else if (op.isa<paddle::dialect::RegisterHookOp>()) {
+        // TODO(gouzil): add RegisterHookInstruction
+        std::cout << "RegisterHookInstruction" << std::endl;
+        CREATE_INSTR(RegisterHookInstruction);
+#endif
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
       } else if (op.isa<paddle::dialect::AssertOp>()) {

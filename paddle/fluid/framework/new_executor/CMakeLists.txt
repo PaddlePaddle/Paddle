@@ -1,5 +1,10 @@
 file(GLOB_RECURSE standalone_executor_srcs "*.cc")
 
+if(NOT WITH_PYTHON)
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/register_hook_instruction.cc)
+endif()
+
 if(NOT (WITH_CINN))
   list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
@@ -25,6 +30,10 @@ set(standalone_executor_deps
     executor_gc_helper
     device_event_base
     framework_proto)
+
+if(WITH_PYTHON)
+  set(standalone_executor_deps ${standalone_executor_deps} python pybind)
+endif()
 
 if(WITH_CINN)
   set(standalone_executor_deps
@@ -56,4 +65,7 @@ add_dependencies(standalone_executor xxhash framework_proto)
 
 if(WITH_ONEDNN)
   add_dependencies(standalone_executor onednn)
+  if(WITH_PYTHON)
+    add_dependencies(standalone_executor python pybind)
+  endif()
 endif()

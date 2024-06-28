@@ -292,5 +292,18 @@ pir::Value array_pop(pir::Value input, int index) {
   }
 }
 
+#if !defined(PADDLE_NO_PYTHON)
+// NOTE(dev): we need use python reference counter
+pir::Value register_hook(pir::Value input,
+                         void* forward_hook_func,
+                         void* backward_hook_func) {
+  auto register_hook_op = ApiBuilder::Instance()
+                              .GetBuilder()
+                              ->Build<paddle::dialect::RegisterHookOp>(
+                                  input, forward_hook_func, backward_hook_func);
+  return register_hook_op.result(0);
+}
+#endif
+
 }  // namespace dialect
 }  // namespace paddle

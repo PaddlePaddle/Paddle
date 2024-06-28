@@ -20,6 +20,12 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_base.h"
+#if !defined(PADDLE_NO_PYTHON)
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/include/core/value.h"
+#include "pybind11/pytypes.h"
+#endif
 
 // TODO(wanghao107)
 // this file will be generated in pd_op.cc
@@ -350,6 +356,39 @@ std::vector<std::vector<pir::Value>> ArrayToTensorOp::Vjp(
   }
   return res;
 }
+
+#if !defined(PADDLE_NO_PYTHON)
+std::vector<std::vector<pir::Value>> RegisterHookOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "RegisterHook op's inputs size should be 1, but now is %d.",
+          inputs_.size()));
+
+  VLOG(6) << "Vjp prepare call RegisterHook's vjp inteface";
+  pir::Value input_grad = inputs_[0][0];
+
+  pybind11::object forward_hook_func = pybind11::none();
+
+  auto backward_hook_func_grad =
+      op->attribute<::pir::PointerAttribute>("backward_hook_func").data();
+
+  auto& builder = *ApiBuilder::Instance().GetBuilder();
+  auto func_grad = builder.Build<RegisterHookOp>(
+      input_grad, backward_hook_func_grad, &forward_hook_func);
+
+  std::vector<std::vector<pir::Value>> res(0);
+  // std::vector<std::vector<pir::Value>> res(1);
+  // res[0].push_back(func_grad.out());
+  return res;
+}
+#endif
 
 }  // namespace dialect
 }  // namespace paddle

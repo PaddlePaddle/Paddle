@@ -25,6 +25,10 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
     paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp,
     paddle::dialect::ArrayPopOp
+#if !defined(PADDLE_NO_PYTHON)
+    ,
+    paddle::dialect::RegisterHookOp
+#endif
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -54,6 +58,9 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
+#if !defined(PADDLE_NO_PYTHON)
+#include "Python.h"
 #endif
 
 namespace paddle::dialect {
@@ -4577,6 +4584,141 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+#if !defined(PADDLE_NO_PYTHON)
+const char *RegisterHookOp::attributes_name[2] = {"forward_hook_func",
+                                                  "backward_hook_func"};
+
+void RegisterHookOp::Build(pir::Builder &builder,
+                           pir::OperationArgument &argument,
+                           pir::Value input,
+                           void *forward_hook_func,
+                           void *backward_hook_func) {
+  VLOG(4) << "Start build RegisterHookOp";
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {input};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  pir::Attribute attr_forward_hook_func =
+      pir::PointerAttribute::get(pir::IrContext::Instance(), forward_hook_func);
+  argument.AddAttribute("forward_hook_func", attr_forward_hook_func);
+  argument_attributes.insert({"forward_hook_func", attr_forward_hook_func});
+  pir::Attribute attr_backward_hook_func = pir::PointerAttribute::get(
+      pir::IrContext::Instance(), backward_hook_func);
+  argument.AddAttribute("backward_hook_func", attr_backward_hook_func);
+  argument_attributes.insert({"backward_hook_func", attr_backward_hook_func});
+  Py_INCREF(forward_hook_func);
+  Py_INCREF(backward_hook_func);
+
+  // TODO(gouzil): add Py_INCREF and Py_DECREF
+
+  std::vector<pir::Type> argument_outputs =
+      RegisterHookOp::InferMeta(argument_inputs, &argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void RegisterHookOp::VerifySig() {}
+
+std::vector<pir::Type> RegisterHookOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttributeMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
+  VLOG(4) << "Start infermeta RegisterHookOp";
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
+  pir::Value input = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType input_type;
+  if (input.type().isa<paddle::dialect::DenseTensorType>()) {
+    input_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorType or "
+        "paddle::dialect::AllocatedDenseTensorType"));
+  }
+
+  PADDLE_ENFORCE_NE(
+      attributes.find("forward_hook_func"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'forward_hook_func' Attribute is expected for RegisterHookOp. "));
+
+  PADDLE_ENFORCE_NE(
+      attributes.find("backward_hook_func"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'backward_hook_func' Attribute is expected for RegisterHookOp. "));
+
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      input_type.dims(),
+      input_type.data_layout(),
+      input_type.lod(),
+      input_type.offset());
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+  dense_out.SetDtype(dense_input.dtype());
+  dense_out.SetDims(dense_input.dims());
+  dense_out.SetLayout(dense_input.layout());
+  dense_out.SetLod(dense_input.lod());
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
+}
+
+OpInfoTuple RegisterHookOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("input",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo(
+          "forward_hook_func", "pir::PointerAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "backward_hook_func", "pir::PointerAttribute", ""),
+  };
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "",
+      {"", ""},
+      "register_hook",
+      {"input", "forward_hook_func", "backward_hook_func"},
+      {"input"},
+      {},
+      {},
+      {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "register_hook");
+}
+
+#endif
+
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
@@ -4603,4 +4745,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
+#if !defined(PADDLE_NO_PYTHON)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::RegisterHookOp)
+#endif
 #endif

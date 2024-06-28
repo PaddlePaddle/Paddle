@@ -97,7 +97,14 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
                                                        bool trans_x,
                                                        bool trans_y,
                                                        std::string activation);
+
 pir::Value array_pop(pir::Value input, int index);
+
+#if !defined(PADDLE_NO_PYTHON)
+pir::Value register_hook(pir::Value input,
+                         void* forward_hook_func,
+                         void* backward_hook_func);
+#endif
 
 }  // namespace dialect
 }  // namespace paddle

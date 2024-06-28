@@ -313,6 +313,10 @@ if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
 endif()
 
+if(WITH_PYTHON)
+  set(op_dialect_deps ${op_dialect_deps} python pybind)
+endif()
+
 cc_library(
   op_dialect
   SRCS ${op_dialect_srcs}
@@ -339,6 +343,10 @@ if(WITH_ONEDNN)
 endif()
 
 set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect prim_utils)
+
+if(WITH_PYTHON)
+  set(op_dialect_vjp_deps ${op_dialect_vjp_deps} python pybind)
+endif()
 
 cc_library(
   op_dialect_vjp
