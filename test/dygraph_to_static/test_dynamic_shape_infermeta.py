@@ -26,18 +26,16 @@ from paddle.static.input import InputSpec
 class TestDynamicShapeInfermeta(unittest.TestCase):
     def check_dynamic_shape(
         self,
-        net: Callable[..., Any],
+        fn: Callable[..., Any],
         inputs: Sequence[paddle.Tensor],
         input_specs: list[InputSpec],
     ):
-        static_net = paddle.jit.to_static(
-            net,
+        static_fn = paddle.jit.to_static(
+            fn,
             full_graph=True,
             input_spec=input_specs,
         )
-        np.testing.assert_allclose(
-            static_net(*inputs), net(*inputs), rtol=1e-05
-        )
+        np.testing.assert_allclose(static_fn(*inputs), fn(*inputs), rtol=1e-05)
 
     def test_conv2d(self):
         self.check_dynamic_shape(
