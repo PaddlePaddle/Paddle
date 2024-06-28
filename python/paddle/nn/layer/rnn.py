@@ -24,12 +24,6 @@ from typing_extensions import Self
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle._typing import (
-    DTypeLike,
-    NestedStructure,
-    ShapeLike,
-    TensorOrTensors,
-)
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
@@ -52,7 +46,13 @@ if TYPE_CHECKING:
     from typing import Literal
 
     from paddle import Tensor
-    from paddle._typing import ParamAttrLike
+    from paddle._typing import (
+        DTypeLike,
+        NestedStructure,
+        ParamAttrLike,
+        ShapeLike,
+        TensorOrTensors,
+    )
 
     _DirectionType = Literal["forward", "bidirect", "bidirectional"]
     _RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]

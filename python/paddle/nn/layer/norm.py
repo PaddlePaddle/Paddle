@@ -38,15 +38,6 @@ from typing import (
 import numpy as np
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle._typing import (
-    DataLayout0D,
-    DataLayout1D,
-    DataLayout2D,
-    DataLayout3D,
-    DataLayoutND,
-    DTypeLike,
-    ShapeLike,
-)
 from paddle.device import get_all_custom_device_type
 
 from ...base import dygraph_utils
@@ -66,6 +57,15 @@ from .layers import Layer
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import (
+        DataLayout0D,
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+        DTypeLike,
+        ShapeLike,
+    )
     from paddle.nn import Layer
 
 __all__ = []
@@ -1907,6 +1907,7 @@ class SpectralNorm(Layer):
             [2, 8, 32, 32]
 
     """
+
     weight_u: Tensor
     weight_v: Tensor
 

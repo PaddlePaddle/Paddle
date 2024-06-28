@@ -19,12 +19,6 @@ from typing import TYPE_CHECKING, Literal, Sequence
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle._typing import (
-    DataLayout1D,
-    DataLayout2D,
-    DataLayout3D,
-    DataLayoutND,
-)
 from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
@@ -36,6 +30,13 @@ from ...base.layer_helper import LayerHelper
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+    )
+
 __all__ = []
 
 

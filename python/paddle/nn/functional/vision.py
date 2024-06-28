@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle._typing import DataLayout2D, ShapeLike
 from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
@@ -32,6 +31,7 @@ from ...device import get_cudnn_version, is_compiled_with_rocm
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DataLayout2D, ShapeLike
 
 __all__ = []
 
