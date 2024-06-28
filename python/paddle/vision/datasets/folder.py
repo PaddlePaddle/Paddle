@@ -14,11 +14,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
+    from paddle._typing import _DTypeLiteral
     from paddle.vision.transforms.transforms import _Transform
 
     from ..image import _ImageDataType
@@ -47,7 +48,7 @@ __all__ = []
 
 
 def has_valid_extension(
-    filename: str, extensions: list[str] | tuple[str]
+    filename: str, extensions: list[str] | tuple[str, ...]
 ) -> bool:
     """Checks if a file is a valid extension.
 
@@ -210,7 +211,7 @@ class DatasetFolder(Dataset):
             >>> data_folder_2 = DatasetFolder(
             ...     fake_data_dir,
             ...     loader=lambda x: cv2.imread(x),  # load image with OpenCV
-            ...     extensions=(".jpg",),  # only load *.jpg files
+            ...     extensions=(".jpg",),  # type: ignore # only load *.jpg files
             ...     transform=transform,  # apply transform to every image
             ... )
 
@@ -223,16 +224,25 @@ class DatasetFolder(Dataset):
 
             >>> for img, label in iter(data_folder_2):
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)
+            ...     print(type(img), img.shape, label) # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 0
 
             >>> shutil.rmtree(fake_data_dir)
     """
 
+    loader: Callable[..., _ImageDataType] | None
+    extensions: _AllowedExtensions | None
+    transform: _Transform[Any, Any] | None
+    classes: list[str]
+    class_to_idx: dict[str, int]
+    samples: list[tuple[str, str]]
+    targets: list[str]
+    dtype: _DTypeLiteral
+
     def __init__(
         self,
         root: str,
-        loader: _ImageDataType | None = None,
+        loader: Callable[..., _ImageDataType] | None = None,
         extensions: _AllowedExtensions | None = None,
         transform: _Transform[Any, Any] | None = None,
         is_valid_file: _ImageDataType | None = None,
@@ -263,9 +273,7 @@ class DatasetFolder(Dataset):
 
         self.dtype = paddle.get_default_dtype()
 
-    def _find_classes(
-        self, dir: str
-    ) -> tuple[list[str], dict[str, int] | dict[str, Any]]:
+    def _find_classes(self, dir: str) -> tuple[list[str], dict[str, int]]:
         """
         Finds the class folders in a dataset.
 
@@ -458,10 +466,15 @@ class ImageFolder(Dataset):
             >>> shutil.rmtree(fake_data_dir)
     """
 
+    loader: Callable[..., _ImageDataType] | None
+    extensions: _AllowedExtensions | None
+    samples: list[str]
+    transform: _Transform[Any, Any] | None
+
     def __init__(
         self,
         root: str,
-        loader: _ImageDataType | None = None,
+        loader: Callable[..., _ImageDataType] | None = None,
         extensions: _AllowedExtensions | None = None,
         transform: _Transform[Any, Any] | None = None,
         is_valid_file: _ImageDataType | None = None,
