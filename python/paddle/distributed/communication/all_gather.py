@@ -56,7 +56,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> tensor_list = []
+            >>> tensor_list = [] # type: ignore
             >>> if dist.get_rank() == 0:
             ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             >>> else:
@@ -92,7 +92,7 @@ def all_gather_object(object_list, obj, group=None):
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> object_list = []
+            >>> object_list = [] # type: ignore
             >>> if dist.get_rank() == 0:
             ...     obj = {"foo": [1, 2, 3]}
             >>> else:

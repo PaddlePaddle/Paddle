@@ -88,13 +88,10 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
         auto out = pe_func(A, tensor_name);
-        auto stages = CreateStages({A});
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -128,13 +125,10 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
         auto out = pe_func(A, tensor_name);
-        auto stages = CreateStages({A});
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -244,8 +238,7 @@ std::shared_ptr<OpStrategy> StrategyForScale(
             },
             tensor_name);
 
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -316,8 +309,7 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
             },
             tensor_name);
 
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -401,8 +393,7 @@ std::shared_ptr<OpStrategy> StrategyForConstScalar(
         tensor_name);
     CHECK(out.defined()) << "can't create const scalar with the given type "
                          << out_type[0];
-    auto stages = CreateStages({out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -529,8 +520,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
             tensor_name);
         CHECK(out.defined())
             << "can't create fill_constant with the given type " << out_type[0];
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -580,8 +570,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
             tensor_name);
         CHECK(out.defined())
             << "can't create fill_constant with the given type " << out_type[0];
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -683,9 +672,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     CHECK(out && out.value().defined())
         << "can't create assign_value with the given type " << out_type[0];
 
-    auto stages = CreateStages({out.value()});
-    *ret =
-        CINNValuePack{{CINNValue(Expr(out.value().get())), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(Expr(out.value().get()))}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -843,7 +830,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({tensor_A});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
@@ -852,11 +838,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
 
     ir::Tensor out = pe::Squeeze(tensor_A, axes, tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of Squeeze is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -930,9 +914,8 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
 
     auto out =
         pe::ExpandDims(x.as_tensor_ref(), axes, output_shapes[0], tensor_name);
-    auto stages = CreateStages({x.as_tensor_ref()});
-    stages->InsertLazily(out);
-    std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+
+    std::vector<CINNValue> res{CINNValue(out)};
     *ret = CINNValuePack{res};
   }};
 
@@ -997,7 +980,6 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
     std::vector<int> new_shape =
         absl::get<std::vector<int>>(attr_store.at("shape"));
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({tensor_A});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
@@ -1007,11 +989,9 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of Reshape is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
 
     *ret = CINNValuePack{res};
   });
@@ -1041,7 +1021,6 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
@@ -1056,11 +1035,9 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of Reshape is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
 
     *ret = CINNValuePack{res};
   });
@@ -1137,18 +1114,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of Cast is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1177,18 +1151,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of Cast is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1214,18 +1185,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Store(tensor_A, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of Cast is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1254,18 +1222,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Store(tensor_A, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of Cast is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1306,20 +1271,16 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
                               "At least 1 input tensors for generate_shape "
                               "compute, but now get %d.",
                               pack_args->size()));
-        auto stages = CreateStages({});
 
         std::string tensor_name = pack_args.back().operator std::string();
         ir::Tensor out = pe::GenerateShape(
             inputs, symbol_bindings, output_dim_exprs, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         PADDLE_ENFORCE(!out_type.empty(),
                        ::common::errors::InvalidArgument(
                            "Invalid argument. The output type of "
                            "generate_shape is empty! Please check."));
-
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1374,9 +1335,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateXShapeSymbolic(
         },
         tensor_name);
     std::vector<CINNValue> res;
-    auto stages = CreateStages({});
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -1434,9 +1392,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
 
         auto out = pe::Arange(start, stop, step, dtype, tensor_name);
         std::vector<cinn::common::CINNValue> res;
-        auto stages = CreateStages({out});
         res.push_back(cinn::common::CINNValue(out));
-        res.push_back(cinn::common::CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1496,9 +1452,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
 
     auto out = pe::Arange(start, stop, step, dtype, tensor_name);
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({out});
     res.push_back(cinn::common::CINNValue(out));
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -1561,7 +1515,6 @@ std::shared_ptr<OpStrategy> StrategyForTril(
             "first input argument in tril should be tensor"));
     int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({tensor_A});
 
     PADDLE_ENFORCE_NE(output_shapes.size(),
                       size_t(0),
@@ -1583,11 +1536,9 @@ std::shared_ptr<OpStrategy> StrategyForTril(
     ir::Tensor out =
         pe::Tril(tensor_A, diagonal, output_shapes[0], tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of Reshape is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
 
     *ret = CINNValuePack{res};
   });
@@ -1631,8 +1582,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
     }
     new_out->Bind(tensor_out->buffer);
 
-    auto stages = CreateStages({tensor_x, tensor_out, new_out});
-    std::vector<CINNValue> res{CINNValue(new_out), CINNValue(stages)};
+    std::vector<CINNValue> res{CINNValue(new_out)};
     *ret = CINNValuePack{res};
   });
 
@@ -1691,8 +1641,7 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
         auto out = pe::IsClose(
             x_tensor, y_tensor, axis, rtol, atol, equal_nan, tensor_name);
 
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1753,8 +1702,7 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
         auto out = pe::IsClose(
             x_tensor, y_tensor, axis, rtol, atol, equal_nan, tensor_name);
 
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

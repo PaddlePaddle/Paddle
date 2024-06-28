@@ -16,23 +16,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-    from paddle.distributed.communication.group import Group
-
 import numpy
 
 import paddle
 from paddle import _C_ops, pir
-from paddle._typing import (
-    DataLayout2D,
-    DataLayout3D,
-    DataLayoutND,
-    IntSequence,
-    ShapeLike,
-    Size2,
-    Size4,
-)
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
@@ -55,6 +42,33 @@ from ...tensor.creation import zeros
 # TODO: define the common functions to build a neural network
 from ...tensor.manipulation import squeeze, unsqueeze
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1DVariant,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+        IntSequence,
+        ShapeLike,
+        Size2,
+        Size4,
+    )
+    from paddle.distributed.communication.group import Group
+
+    _InterpolateMode: TypeAlias = Literal[
+        'linear', 'area', 'nearest', 'bilinear', 'bicubic', 'trilinear'
+    ]
+    _DropoutMode: TypeAlias = Literal['upscale_in_train', 'downscale_in_infer']
+    _PaddingTensorMode: TypeAlias = Literal[
+        "constant", "reflect", "replicate", "circular"
+    ]
+    _PaddingSizeMode: TypeAlias = Literal[  # noqa: PYI047
+        'valid', 'same', 'VALID', 'SAME'
+    ]
+
 __all__ = []
 
 
@@ -62,7 +76,7 @@ def unfold(
     x: Tensor,
     kernel_sizes: Size2,
     strides: Size2 = 1,
-    paddings: Size4 = 0,
+    paddings: Size2 | Size4 = 0,
     dilations: Size2 = 1,
     name: str | None = None,
 ) -> Tensor:
@@ -203,14 +217,12 @@ def unfold(
 def interpolate(
     x: Tensor,
     size: ShapeLike | None = None,
-    scale_factor: ShapeLike | None = None,
-    mode: Literal[
-        'linear', 'area', 'nearest', 'bilinear', 'bicubic', 'trilinear'
-    ] = 'nearest',
+    scale_factor: ShapeLike | float | None = None,
+    mode: _InterpolateMode = 'nearest',
     align_corners: bool = False,
     align_mode: int = 0,
     data_format: (
-        Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"] | None
+        DataLayout1DVariant | DataLayout2D | DataLayout3D | None
     ) = None,
     name: str | None = None,
 ) -> Tensor:
@@ -763,12 +775,12 @@ def upsample(
     x: Tensor,
     size: ShapeLike | None = None,
     scale_factor: ShapeLike | None = None,
-    mode: Literal[
-        'linear', 'nearest', 'bilinear', 'bicubic', 'trilinear'
-    ] = 'nearest',
+    mode: _InterpolateMode = 'nearest',
     align_corners: bool = False,
     align_mode: int = 0,
-    data_format: Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"] = None,
+    data_format: (
+        DataLayout1DVariant | DataLayout2D | DataLayout3D | None
+    ) = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -789,6 +801,7 @@ def upsample(
     - 'trilinear' : Trilinear interpolation
     - 'nearest' : Nearest neighbor interpolation
     - 'bicubic' : Bicubic interpolation
+    - 'area': Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
@@ -921,7 +934,7 @@ def upsample(
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if
              it is either a list or a tuple or a Tensor. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              Default: None.
-        mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear',
+        mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear', 'area',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool, optional) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
@@ -1029,9 +1042,7 @@ def dropout(
     p: float = 0.5,
     axis: int | IntSequence | None = None,
     training: bool = True,
-    mode: Literal[
-        'upscale_in_train', 'downscale_in_infer'
-    ] = "upscale_in_train",
+    mode: _DropoutMode = "upscale_in_train",
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1526,41 +1537,13 @@ def dropout3d(
     )
 
 
-def alpha_dropout(
-    x: Tensor, p: float = 0.5, training: bool = True, name: str | None = None
+def _feature_alpha_dropout_impl(
+    x: Tensor,
+    feature_dropout: bool,
+    p: float,
+    training: bool = True,
+    name: str | None = None,
 ) -> Tensor:
-    """
-    Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
-    For an input with zero mean and unit standard deviation, the output of Alpha Dropout
-    maintains the original mean and standard deviation of the input.
-    Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
-
-    Args:
-        x (Tensor): The input tensor. The data type is float16, float32 or float64.
-        p (float | int): Probability of setting units to zero. Default 0.5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Tensor representing the dropout, has same shape and data type as `x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.seed(1)
-            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
-            >>> y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
-            >>> y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
-            >>> print(y_train)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.77919382,  1.66559887],
-            [-0.10721093, -0.77919382]])
-            >>> print(y_test)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1.,  1.],
-            [-1.,  1.]])
-    """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")
     if p < 0 or p > 1:
@@ -1582,7 +1565,14 @@ def alpha_dropout(
         b = -a * alpha_p * p
 
         dtype = x.dtype
-        input_shape = x.shape
+        if not feature_dropout:
+            input_shape = x.shape
+        else:
+            if x.ndim < 2:
+                raise ValueError(
+                    'Feature alpha dropout needs at least 2D input.'
+                )
+            input_shape = list(x.shape[:2]) + [1] * len(x.shape[2:])
 
         # get mask
         random_tensor = paddle.uniform(
@@ -1607,10 +1597,97 @@ def alpha_dropout(
         return x
 
 
+def alpha_dropout(
+    x: Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
+    For an input with zero mean and unit standard deviation, the output of Alpha Dropout
+    maintains the original mean and standard deviation of the input.
+    Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
+
+    Args:
+        x (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
+        p (float | int, optional): Probability of setting units to zero. Default 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor representing the dropout, has same shape and data type as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
+            >>> y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
+            >>> y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.77919382,  1.66559887],
+            [-0.10721093, -0.77919382]])
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+            [-1.,  1.]])
+    """
+    return _feature_alpha_dropout_impl(
+        x, feature_dropout=False, p=p, training=training, name=name
+    )
+
+
+def feature_alpha_dropout(
+    x: Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    name: str | None = None,
+) -> Tensor:
+    """
+    A channel is a feature map, Feature Alpha Dropout randomly masks out entire channels.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
+    For an input with zero mean and unit standard deviation, the output of Alpha Dropout
+    maintains the original mean and standard deviation of the input.
+    Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
+
+    Args:
+        x (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
+        p (float | int, optional): Probability of setting units to zero. Default 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor representing the dropout, has same shape and data type as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
+            >>> y_train = paddle.nn.functional.feature_alpha_dropout(x, 0.5)
+            >>> y_test = paddle.nn.functional.feature_alpha_dropout(x, 0.5, training=False)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.77919382,  1.66559887],
+            [-0.10721093, -0.77919382]])
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+            [-1.,  1.]])
+    """
+    return _feature_alpha_dropout_impl(
+        x, feature_dropout=True, p=p, training=training, name=name
+    )
+
+
 def pad(
     x: Tensor,
     pad: ShapeLike,
-    mode: Literal["constant", "reflect", "replicate", "circular"] = 'constant',
+    mode: _PaddingTensorMode = 'constant',
     value: float = 0.0,
     data_format: DataLayoutND = "NCHW",
     name: str | None = None,
@@ -2271,7 +2348,7 @@ def class_center_sample(
         >>> # num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
         >>> num_classes_list = [10, 10]
         >>> num_classes = paddle.sum(paddle.to_tensor(num_classes_list))
-        >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
+        >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64') # type: ignore
         >>> label_list = [] # type: ignore
         >>> dist.all_gather(label_list, label)
         >>> label = paddle.concat(label_list, axis=0)

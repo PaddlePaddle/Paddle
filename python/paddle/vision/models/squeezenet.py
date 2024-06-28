@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 
 
 class _SqueezeNetOptions(TypedDict):
-    version: NotRequired[str]
     num_classes: NotRequired[int]
     with_pool: NotRequired[bool]
 
