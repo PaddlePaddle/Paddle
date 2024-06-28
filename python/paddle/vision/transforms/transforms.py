@@ -623,10 +623,10 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
 
         def cond(counter, ten, i, j, h, w):
             return paddle.logical_and(
-                (counter < ten).astype(paddle.bool),
+                counter < ten,
                 paddle.logical_or(
-                    (w > width),
-                    (h > height),
+                    w > width,
+                    h > height,
                 ),
             )
 
@@ -713,6 +713,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
 
     def _apply_image(self, img):
         if paddle.in_dynamic_mode():
+            # if paddle.framework.in_dynamic_or_pir_mode():
             i, j, h, w = self._dynamic_get_param(img)
         else:
             i, j, h, w, counter = self._static_get_param(img)
