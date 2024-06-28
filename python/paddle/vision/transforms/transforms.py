@@ -645,6 +645,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
             h = paddle.round(paddle.sqrt(target_area / aspect_ratio)).astype(
                 'int32'
             )
+
             i = paddle.static.nn.cond(
                 paddle.logical_and(
                     paddle.logical_and(0 < h, h <= height),
