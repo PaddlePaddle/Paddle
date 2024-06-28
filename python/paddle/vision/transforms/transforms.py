@@ -618,11 +618,17 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
 
         i = paddle.zeros([1], dtype="int32")
         j = paddle.zeros([1], dtype="int32")
-        h = paddle.to_tensor([height + 1], dtype="int32")
-        w = paddle.to_tensor([width + 1], dtype="int32")
+        h = paddle.ones([1], dtype="int32") * (height + 1)
+        w = paddle.ones([1], dtype="int32") * (width + 1)
 
         def cond(counter, ten, i, j, h, w):
-            return (counter < ten) and (w > width or h > height)
+            return paddle.logical_and(
+                (counter < ten).astype(paddle.bool),
+                paddle.logical_or(
+                    (w > width),
+                    (h > height),
+                ),
+            )
 
         def body(counter, ten, i, j, h, w):
             target_area = (
@@ -639,9 +645,11 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
             h = paddle.round(paddle.sqrt(target_area / aspect_ratio)).astype(
                 'int32'
             )
-
             i = paddle.static.nn.cond(
-                0 < w <= width and 0 < h <= height,
+                paddle.logical_and(
+                    paddle.logical_and(0 < h, h <= height),
+                    paddle.logical_and(0 < w, w <= width),
+                ),
                 lambda: paddle.uniform(shape=[1], min=0, max=height - h).astype(
                     "int32"
                 ),
@@ -649,7 +657,10 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
             )
 
             j = paddle.static.nn.cond(
-                0 < w <= width and 0 < h <= height,
+                paddle.logical_and(
+                    paddle.logical_and(0 < h, h <= height),
+                    paddle.logical_and(0 < w, w <= width),
+                ),
                 lambda: paddle.uniform(shape=[1], min=0, max=width - w).astype(
                     "int32"
                 ),
@@ -692,7 +703,10 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
             return i, j, h, w, counter
 
         return paddle.static.nn.cond(
-            0 < w <= width and 0 < h <= height,
+            paddle.logical_and(
+                paddle.logical_and(0 < h, h <= height),
+                paddle.logical_and(0 < w, w <= width),
+            ),
             lambda: [i, j, h, w, counter],
             lambda: central_crop(width, height),
         )
