@@ -13,8 +13,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FakeInitInferShape : public framework::InferShapeBase {
  public:
@@ -70,8 +69,7 @@ table parameter at trainer side in distributed lookup table.
 )DOC");
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

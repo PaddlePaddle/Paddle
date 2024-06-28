@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include <regex>
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -44,15 +46,13 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.batch_norm_",
                                                           "pd_op.dropout"};
 //
-std::unordered_set<std::string> dynamic_shape_blacklist = {
-    "pd_op.squeeze",
-    "pd_op.unsqueeze",
-    "pd_op.batch_norm",
-    "pd_op.batch_norm_",
-    "pd_op.bmm",
-    "pd_op.flatten",
-    "pd_op.instance_norm",
-    "pd_op.one_hot"};
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze",
+                                                           "pd_op.batch_norm",
+                                                           "pd_op.batch_norm_",
+                                                           "pd_op.bmm",
+                                                           "pd_op.flatten",
+                                                           "pd_op.one_hot"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {
@@ -424,7 +424,15 @@ void DecompProgram::decomp_program() {
   }
   std::vector<pir::Value> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
-  decomp_block(block, orig_vars_dict, tar_vars);
+  {
+    // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+    // api, which has amp strategy. But Prim already process cast operation
+    // and we need to disable amp strategy here.
+    paddle::imperative::AutoCastGuard guard(
+        egr::Controller::Instance().GetCurrentAmpAttrs(),
+        paddle::imperative::AmpLevel::O0);
+    decomp_block(block, orig_vars_dict, tar_vars);
+  }
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
   if (VLOG_IS_ON(4)) {
