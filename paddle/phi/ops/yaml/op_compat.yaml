@@ -396,6 +396,12 @@
   outputs :
     out : Out
 
+- op : beam_search_decode
+  inputs:
+    {ids : Ids, scores : Scores}
+  outputs:
+    {sentence_ids : SentenceIds, sentence_scores : SentenceScores}
+
 - op : bernoulli
   inputs :
     x : X
