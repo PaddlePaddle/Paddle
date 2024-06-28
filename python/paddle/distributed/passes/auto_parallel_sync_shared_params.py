@@ -38,7 +38,7 @@ class SyncSharedParamsPass(PassBase):
         self.set_attr("global_rank", None)
         self.src_ranks = []
         self.dst_ranks = []
-        self.rank2src = {}
+        self.rankp2p = {}
         self.set_attr("dist_params_grads", None)
 
     def _check_self(self):
@@ -101,8 +101,8 @@ class SyncSharedParamsPass(PassBase):
         if len(self.src_ranks) != len(self.dst_ranks):
             return 2
         for src_rank, dst_rank in zip(self.src_ranks, self.dst_ranks):
-            self.rank2src[dst_rank] = src_rank
-            self.rank2src[src_rank] = dst_rank
+            self.rankp2p[dst_rank] = src_rank
+            self.rankp2p[src_rank] = dst_rank
 
         if self.get_attr("global_rank") in self.dst_ranks:
             # record opt op
@@ -134,6 +134,10 @@ class SyncSharedParamsPass(PassBase):
             self._apply_single_impl_stage_dst(
                 main_program, startup_program, context
             )
+        self._create_var_in_scope()
+        return context
+
+    def _create_var_in_scope(self):
         for param in self.dist_context.concrete_program.parameters:
             if param.name == self.params_maybe_shared[0]["param_name"]:
                 serial_main_program = (
@@ -148,12 +152,12 @@ class SyncSharedParamsPass(PassBase):
                     "dst_mesh"
                 ]
                 new_var_dist_attr.dims_mapping = var_dist_attr.dims_mapping
-                tmp = paddle.base.core.reshard(param, new_var_dist_attr)
+                with paddle.no_grad():
+                    tmp = paddle.base.core.reshard(param, new_var_dist_attr)
                 paddle.device.synchronize()
                 if tmp._is_initialized():
                     dense_tensor = global_scope().var(param.name).get_tensor()
                     dense_tensor._share_data_with(tmp.get_tensor().get_tensor())
-        return context
 
     def _apply_single_impl_stage_src(
         self, main_program, startup_program, context
@@ -221,7 +225,7 @@ class SyncSharedParamsPass(PassBase):
         startup_block = startup_program.global_block()
         param = startup_block.var(param_name)
         cur_rank = self.get_attr("global_rank")
-        ranks = [cur_rank, self.rank2src[cur_rank]]  # TODO: set self.rank2src
+        ranks = [cur_rank, self.rankp2p[cur_rank]]
         ranks.sort()
         sync_group = new_process_group(ranks)
         new_op = startup_block.append_op(
@@ -345,7 +349,7 @@ class SyncSharedParamsPass(PassBase):
         startup_block = startup_program.global_block()
         param = startup_block.var(param_name)
         cur_rank = self.get_attr("global_rank")
-        ranks = [cur_rank, self.rank2src[cur_rank]]  # TODO: set self.rank2src
+        ranks = [cur_rank, self.rankp2p[cur_rank]]
         ranks.sort()
         sync_group = new_process_group(ranks)
         new_op = startup_block.append_op(
@@ -393,6 +397,8 @@ class SyncSharedParamsPass(PassBase):
         self.dist_context.set_op_dist_attr_for_program(
             assign_op, assign_op_dist_attr
         )
+
+        # add new (param, grad) to dist_params_grads
         self.dist_params_grads.append((param, new_param_grad))
 
         # 3.2 insert allreduce_sum
