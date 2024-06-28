@@ -684,7 +684,8 @@ def deserialize_persistables(program, data, executor):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            f"program type must be `base.Program`, but received `{type(program)}`"
+            "program type must be `base.Program`, but received `%s`"
+            % type(program)
         )
     # load params to a tmp program
     load_program = Program()
@@ -1892,9 +1893,11 @@ def load_program_state(model_path, var_list=None):
                     shape=var.shape,
                     dtype=var.dtype,
                     type=var.type,
-                    lod_level=var.lod_level
-                    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    else None,
+                    lod_level=(
+                        var.lod_level
+                        if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
+                        else None
+                    ),
                     persistable=True,
                 )
 
