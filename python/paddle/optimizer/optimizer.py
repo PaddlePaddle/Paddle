@@ -245,7 +245,7 @@ class Optimizer:
                         ):
                             logging.info(
                                 "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
-                                f"The weight_decay[{weight_decay.__str__()}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                                f"The weight_decay[{weight_decay}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             )
                             break
 
@@ -1690,7 +1690,7 @@ class Optimizer:
                         repeate_regularizer = True
                         logging.info(
                             "If regularizer of a Parameter has been set by 'base.ParamAttr' or 'base.WeightNormParamAttr' already. "
-                            f"The Regularization[{regularization.__str__()}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                            f"The Regularization[{regularization}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         )
                     with param.block.program._optimized_guard([param, grad]):
                         new_grad = self._create_regularization_of_grad(

@@ -209,12 +209,12 @@ class QuantizationTransformPass:
         ), "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
-                f"Unknown activation_quantize_type : '{str(activation_quantize_type)}'. It can only be "
+                f"Unknown activation_quantize_type : '{activation_quantize_type}'. It can only be "
                 "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
             )
         if weight_quantize_type not in quant_type:
             raise ValueError(
-                f"Unknown weight_quantize_type: '{str(weight_quantize_type)}'. It can only be "
+                f"Unknown weight_quantize_type: '{weight_quantize_type}'. It can only be "
                 "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' "
                 "or 'moving_average_abs_max'."
             )
@@ -2474,12 +2474,12 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ), "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
-                f"Unknown activation_quantize_type : '{str(activation_quantize_type)}'. It can only be "
+                f"Unknown activation_quantize_type : '{activation_quantize_type}'. It can only be "
                 "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
             )
         if weight_quantize_type not in quant_type:
             raise ValueError(
-                f"Unknown weight_quantize_type: '{str(weight_quantize_type)}'. It can only be "
+                f"Unknown weight_quantize_type: '{weight_quantize_type}'. It can only be "
                 "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' "
                 "or 'moving_average_abs_max'."
             )

@@ -93,7 +93,7 @@ def _channel_last(data_format, num_dims):
         if data_format not in ['NCL', 'NLC']:
             raise ValueError(
                 "Attr(data_format) should be 'NCL' or 'NLC'. Received "
-                f"Attr(data_format): {str(data_format)}"
+                f"Attr(data_format): {data_format}"
             )
         else:
             return True if data_format == "NLC" else False
@@ -101,7 +101,7 @@ def _channel_last(data_format, num_dims):
         if data_format not in ['NCHW', 'NHWC']:
             raise ValueError(
                 "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-                f"Attr(data_format): {str(data_format)}"
+                f"Attr(data_format): {data_format}"
             )
         else:
             return True if data_format == "NHWC" else False
@@ -109,7 +109,7 @@ def _channel_last(data_format, num_dims):
         if data_format not in ['NCDHW', 'NDHWC']:
             raise ValueError(
                 "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-                f"Attr(data_format): {str(data_format)}"
+                f"Attr(data_format): {data_format}"
             )
         else:
             return True if data_format == "NDHWC" else False
@@ -809,7 +809,7 @@ def max_unpool1d(
     if data_format not in ["NCL"]:
         raise ValueError(
             "Attr(data_format) should be 'NCL'. Received "
-            f"Attr(data_format): {str(data_format)}."
+            f"Attr(data_format): {data_format}."
         )
     data_format = "NCHW"
     x = unsqueeze(x, [2])
@@ -954,7 +954,7 @@ def max_unpool2d(
     if data_format not in ["NCHW"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW'. Received "
-            f"Attr(data_format): {str(data_format)}."
+            f"Attr(data_format): {data_format}."
         )
 
     output_size = _unpool_output_size(
@@ -1083,7 +1083,7 @@ def max_unpool3d(
     if data_format not in ["NCDHW"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW'. Received "
-            f"Attr(data_format): {str(data_format)}."
+            f"Attr(data_format): {data_format}."
         )
 
     output_size = _unpool_output_size(
@@ -1188,7 +1188,7 @@ def max_pool2d(
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-            f"Attr(data_format): {str(data_format)}."
+            f"Attr(data_format): {data_format}."
         )
 
     channel_last = True if data_format == "NHWC" else False
@@ -1567,7 +1567,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-            f"Attr(data_format): {str(data_format)}."
+            f"Attr(data_format): {data_format}."
         )
 
     if data_format == "NCHW":
@@ -1702,7 +1702,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            f"Attr(data_format): {str(data_format)}."
+            f"Attr(data_format): {data_format}."
         )
 
     if data_format == "NCDHW":

@@ -867,11 +867,11 @@ def crop(
             )
         if shape_val == 0:
             raise ValueError(
-                f"Attr(shape) of Op(crop_tensor) should not be zero, but received: {str(shape_val)}."
+                f"Attr(shape) of Op(crop_tensor) should not be zero, but received: {shape_val}."
             )
         if shape_val < -1:
             raise ValueError(
-                f"When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: {str(shape_val)}."
+                f"When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: {shape_val}."
             )
 
     def _attr_offsets_check(offset_val):
@@ -881,7 +881,7 @@ def crop(
             )
         if offset_val < 0:
             raise ValueError(
-                f"Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: {str(offset_val)}."
+                f"Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: {offset_val}."
             )
 
     if in_pir_mode():
@@ -6384,7 +6384,7 @@ def put_along_axis(
     if in_dynamic_or_pir_mode():
         if convert_dtype(indices.dtype) not in ['int32', 'int64']:
             raise TypeError(
-                f"The data type of indices should be one of ['int32', 'int64'], but got {str(convert_dtype(indices.dtype))}"
+                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
             )
         return _C_ops.put_along_axis(
             arr, indices, values, axis, reduce, include_self
