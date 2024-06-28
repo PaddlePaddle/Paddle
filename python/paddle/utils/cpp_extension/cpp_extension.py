@@ -27,6 +27,7 @@ from .extension_utils import (
     add_compile_flag,
     find_cuda_home,
     find_rocm_home,
+    find_musa_home,
     normalize_extension_kwargs,
 )
 from .extension_utils import (
@@ -74,7 +75,9 @@ CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
     CUDA_HOME = ROCM_HOME
-
+if core.is_compiled_with_musa():
+    MUSA_HOME = find_musa_home()
+    CUDA_HOME = MUSA_HOME
 
 def setup(**attr):
     """
@@ -416,7 +419,7 @@ class BuildExtension(build_ext):
         )
 
         # Consider .cu, .cu.cc as valid source extensions.
-        self.compiler.src_extensions += ['.cu', '.cu.cc']
+        self.compiler.src_extensions += ['.cu', '.cu.cc',".mu"]
         # Save the original _compile method for later.
         if self.compiler.compiler_type == 'msvc':
             self.compiler._cpp_extensions += ['.cu', '.cuh']
@@ -450,6 +453,17 @@ class BuildExtension(build_ext):
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
+                    elif core.is_compiled_with_musa():
+                        assert (
+                            MUSA_HOME is not None
+                        ), "Not found MUSA runtime, \
+                            please use `export MUSA_PATH= XXX` to specify it."
+
+                        mcc_cmd = os.path.join(MUSA_HOME, 'bin', 'mcc')
+                        self.compiler.set_executable('compiler_so', mcc_cmd)
+                        # {'nvcc': {}, 'cxx: {}}
+                        if isinstance(cflags, dict):
+                            cflags = cflags['mcc']                            
                     else:
                         assert (
                             CUDA_HOME is not None
@@ -484,6 +498,8 @@ class BuildExtension(build_ext):
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     if core.is_compiled_with_rocm():
                         cflags.append('-DPADDLE_WITH_HIP')
+                    elif core.is_compiled_with_musa():
+                        cflags.append('-DPADDLE_WITH_MUSA')                        
                     else:
                         cflags.append('-DPADDLE_WITH_CUDA')
 
