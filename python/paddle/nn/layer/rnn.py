@@ -51,7 +51,8 @@ from .layers import Layer
 if TYPE_CHECKING:
     from typing import Literal
 
-    from paddle import ParamAttr, Tensor
+    from paddle import Tensor
+    from paddle._typing import ParamAttrLike
 
     _DirectionType = Literal["forward", "bidirect", "bidirectional"]
     _RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]
@@ -808,10 +809,10 @@ class SimpleRNNCell(RNNCellBase):
         input_size: int,
         hidden_size: int,
         activation: _ActivationType | str = "tanh",
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1012,10 +1013,10 @@ class LSTMCell(RNNCellBase):
         self,
         input_size: int,
         hidden_size: int,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
         name: str | None = None,
     ) -> None:
@@ -1222,10 +1223,10 @@ class GRUCell(RNNCellBase):
         self,
         input_size: int,
         hidden_size: int,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1525,10 +1526,10 @@ class RNNBase(LayerList):
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
     ) -> None:
         super().__init__()
@@ -1939,10 +1940,10 @@ class SimpleRNN(RNNBase):
         time_major: bool = False,
         dropout: float = 0.0,
         activation: _ActivationType | str = "tanh",
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         if activation == "tanh":
@@ -2082,10 +2083,10 @@ class LSTM(RNNBase):
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
         name: str | None = None,
     ) -> None:
@@ -2203,10 +2204,10 @@ class GRU(RNNBase):
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__(

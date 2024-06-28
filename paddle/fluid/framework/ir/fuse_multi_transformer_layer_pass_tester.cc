@@ -33,9 +33,7 @@ limitations under the License. */
   auto* ffn1_bias = layers.data("ffn1_bias", {4096}, true);             \
   auto* ffn2_bias = layers.data("ffn2_bias", {1024}, true);
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
@@ -169,8 +167,6 @@ TEST(FuseMultiTransformerLayerPass, decoder_fp) {
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(fuse_multi_transformer_layer_pass);
