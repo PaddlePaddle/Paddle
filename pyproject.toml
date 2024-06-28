@@ -77,7 +77,6 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    "PLR1701",
     "PLR1711",
     "PLR1722",
     "PLW3301",
@@ -87,6 +86,9 @@ select = [
 
     # Ruff-specific rules
     "RUF100",
+
+    # flake8-simplify
+    "SIM101"
 ]
 unfixable = [
     "NPY001"
