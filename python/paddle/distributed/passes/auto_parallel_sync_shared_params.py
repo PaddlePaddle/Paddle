@@ -18,7 +18,6 @@ import paddle
 from paddle.base.executor import global_scope
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..auto_parallel.api import ProcessMesh
 from ..auto_parallel.static.dist_attribute import TensorDistAttr
 from ..auto_parallel.static.process_group import new_process_group
 from ..auto_parallel.static.utils import (
@@ -145,9 +144,9 @@ class SyncSharedParamsPass(PassBase):
                     self.dist_context.get_tensor_dist_attr_for_program(var)
                 )
                 new_var_dist_attr = TensorDistAttr()
-                new_var_dist_attr.process_mesh = ProcessMesh(
-                    mesh=[[2, 3]], dim_names=["dp", "mp"]
-                )
+                new_var_dist_attr.process_mesh = self.params_maybe_shared[0][
+                    "dst_mesh"
+                ]
                 new_var_dist_attr.dims_mapping = var_dist_attr.dims_mapping
                 tmp = paddle.base.core.reshard(param, new_var_dist_attr)
                 paddle.device.synchronize()
