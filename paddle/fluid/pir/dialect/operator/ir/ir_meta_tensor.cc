@@ -16,8 +16,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_sparse_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
-namespace paddle {
-namespace dialect {
+
+namespace paddle::dialect {
 static inline void ValidCheck(const IrMetaTensor& meta_tensor) {
   PADDLE_ENFORCE_EQ(meta_tensor.initialized(),
                     true,
@@ -126,5 +126,4 @@ bool IrMetaTensor::is_tensor_array() const { return false; }
 
 bool IrMetaTensor::is_dense() const { return false; }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
