@@ -90,7 +90,7 @@ class Flowers(Dataset):
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = flowers[i]
             ...     # do something with img and label
-            ...     print(type(img), img.size, label)
+            ...     print(type(img), img.size, label)  # type: ignore
             ...     # <class 'PIL.JpegImagePlugin.JpegImageFile'> (523, 500) [1]
 
             >>> transform = T.Compose(
@@ -187,7 +187,9 @@ class Flowers(Dataset):
         self.labels = scio.loadmat(label_file)['labels'][0]
         self.indexes = scio.loadmat(setid_file)[flag][0]
 
-    def __getitem__(self, idx: int) -> tuple[_ImageDataType, npt.NDArray[Any]]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[_ImageDataType, npt.NDArray[np.int64]]:
         index = self.indexes[idx]
         label = np.array([self.labels[index - 1]])
         img_name = "jpg/image_%05d.jpg" % index
