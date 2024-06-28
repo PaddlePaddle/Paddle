@@ -28,7 +28,6 @@ from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
 from ..guard import StringifyExpression, check_guard, union_free_vars
 from ..mutable_data import MutableDictLikeData
-from ..pycode_generator import PyCodeGen
 from ..tracker import (
     DummyTracker,
     GetAttrTracker,
@@ -38,11 +37,14 @@ from ..tracker import (
 )
 
 if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
     from ..function_graph import FunctionGraph
+    from ..pycode_generator import PyCodeGen
 
     # Each variable object should implement a method called `from_value`,
     # which should adhere to the FromValueFunc signature.
-    FromValueFunc = Callable[
+    FromValueFunc: TypeAlias = Callable[
         [Any, FunctionGraph, Tracker], Optional["VariableBase"]
     ]
 
