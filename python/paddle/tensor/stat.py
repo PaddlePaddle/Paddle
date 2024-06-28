@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define statistical functions of a tensor
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, Sequence, overload
+
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import _C_ops
@@ -27,16 +31,27 @@ from ..framework import LayerHelper, core
 from .math import _get_reduce_axis_with_tensor
 from .search import where
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+_Interpolation: TypeAlias = Literal[
+    'linear', 'higher', 'lower', 'midpoint', 'nearest'
+]
 __all__ = []
 
 
-def mean(x, axis=None, keepdim=False, name=None):
+def mean(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the mean of the input tensor's elements along ``axis``.
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int|list|tuple, optional): The axis along which to perform mean
+        axis (int|list|tuple|None, optional): The axis along which to perform mean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), mean is calculated along
             all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
@@ -49,7 +64,7 @@ def mean(x, axis=None, keepdim=False, name=None):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -121,13 +136,19 @@ def mean(x, axis=None, keepdim=False, name=None):
         return out
 
 
-def var(x, axis=None, unbiased=True, keepdim=False, name=None):
+def var(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    unbiased: bool = True,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the variance of ``x`` along ``axis`` .
 
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-        axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
+        axis (int|list|tuple|None, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
 
             - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
@@ -135,7 +156,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
 
         unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
         keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
@@ -174,13 +195,19 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     return out
 
 
-def std(x, axis=None, unbiased=True, keepdim=False, name=None):
+def std(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    unbiased: bool = True,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
 
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-        axis (int|list|tuple, optional): The axis along which to perform
+        axis (int|list|tuple|None, optional): The axis along which to perform
             standard-deviation calculations. ``axis`` should be int, list(int)
             or tuple(int). If ``axis`` is a list/tuple of dimension(s),
             standard-deviation is calculated along all element(s) of ``axis`` .
@@ -200,7 +227,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -232,13 +259,13 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     return paddle.sqrt(out)
 
 
-def numel(x, name=None):
+def numel(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the number of elements for a tensor, which is a 0-D int64 Tensor with shape [].
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64, complex64, complex128.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -269,7 +296,35 @@ def numel(x, name=None):
         return out
 
 
-def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
+@overload
+def nanmedian(
+    x: Tensor,
+    axis: int,
+    keepdim: bool = ...,
+    mode: Literal['min'] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def nanmedian(
+    x: Tensor,
+    axis: int | Sequence[int] | None = ...,
+    keepdim: bool = ...,
+    mode: Literal['avg', 'min'] = ...,
+    name: str | None = ...,
+) -> Tensor:
+    ...
+
+
+def nanmedian(
+    x,
+    axis=None,
+    keepdim=False,
+    mode='avg',
+    name=None,
+):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -291,7 +346,7 @@ def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
         mode (str, optional): Whether to use mean or min operation to calculate
             the nanmedian values when the input tensor has an even number of non-NaN elements
             along the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -386,13 +441,41 @@ def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
         return out
 
 
-def median(x, axis=None, keepdim=False, mode='avg', name=None):
+@overload
+def median(
+    x: Tensor,
+    axis: int = ...,
+    keepdim: bool = ...,
+    mode: Literal['min'] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def median(
+    x: Tensor,
+    axis: int | None = ...,
+    keepdim: bool = ...,
+    mode: Literal['avg', 'min'] = ...,
+    name: str | None = ...,
+) -> Tensor:
+    ...
+
+
+def median(
+    x,
+    axis=None,
+    keepdim=False,
+    mode='avg',
+    name=None,
+):
     """
     Compute the median along the specified axis.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float16, float32, float64, int32, int64.
-        axis (int, optional): The axis along which to perform median calculations ``axis`` should be int.
+        axis (int|None, optional): The axis along which to perform median calculations ``axis`` should be int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
@@ -404,7 +487,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         mode (str, optional): Whether to use mean or min operation to calculate
             the median values when the input tensor has an even number of elements
             in the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -611,8 +694,13 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
 
 
 def _compute_quantile(
-    x, q, axis=None, keepdim=False, interpolation="linear", ignore_nan=False
-):
+    x: Tensor,
+    q: float | Sequence[float] | Tensor | None,
+    axis: int | list[int] | None = None,
+    keepdim: bool = False,
+    interpolation: _Interpolation = "linear",
+    ignore_nan: bool = False,
+) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
 
@@ -787,7 +875,13 @@ def _compute_quantile(
     return outputs
 
 
-def quantile(x, q, axis=None, keepdim=False, interpolation="linear"):
+def quantile(
+    x: Tensor,
+    q: float | Sequence[float] | Tensor,
+    axis: int | list[int] | None = None,
+    keepdim: bool = False,
+    interpolation: _Interpolation = "linear",
+) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
     If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
@@ -865,7 +959,13 @@ def quantile(x, q, axis=None, keepdim=False, interpolation="linear"):
     )
 
 
-def nanquantile(x, q, axis=None, keepdim=False, interpolation="linear"):
+def nanquantile(
+    x: Tensor,
+    q: float | Sequence[float] | Tensor,
+    axis: list[int] | int = None,
+    keepdim: bool = False,
+    interpolation: _Interpolation = "linear",
+) -> Tensor:
     """
     Compute the quantile of the input as if NaN values in input did not exist.
     If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
@@ -888,7 +988,7 @@ def nanquantile(x, q, axis=None, keepdim=False, interpolation="linear"):
         interpolation (str, optional): The interpolation method to use
             when the desired quantile falls between two data points. Must be one of linear, higher,
             lower, midpoint and nearest. Default is linear.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

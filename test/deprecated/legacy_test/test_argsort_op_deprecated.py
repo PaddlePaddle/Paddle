@@ -152,7 +152,7 @@ class TestArgsortOpCPU(unittest.TestCase):
             ana_grad,
             'x',
             max_relative_error=max_relative_error,
-            msg_prefix="Gradient Check On %s" % str(self.place),
+            msg_prefix=f"Gradient Check On {self.place}",
         )
 
     def check_forward(self):

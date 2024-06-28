@@ -81,6 +81,8 @@ USE_PIR_PASS(onednn_placement_pass);
 USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_bn_xpu_fuse_pass);
 USE_PIR_PASS(decoder_attention_xpu_fuse_pass);
+USE_PIR_PASS(conv2d_add_xpu_fuse_pass);
+USE_PIR_PASS(fc_xpu_fuse_pass);
 #endif
 
 #ifdef PADDLE_WITH_CINN

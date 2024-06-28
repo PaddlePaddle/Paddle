@@ -16,8 +16,8 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     List,
-    Literal,
     Sequence,
     Tuple,
     TypeVar,
@@ -31,7 +31,9 @@ from typing_extensions import TypeAlias
 from .backport import EllipsisType
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import ParamAttr, Tensor
+    from paddle.nn.initializer import Initializer
+    from paddle.regularizer import WeightDecayRegularizer
 
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
@@ -49,9 +51,15 @@ TensorIndex: TypeAlias = Union[
 _T = TypeVar("_T")
 
 NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
+NestedList = Union[_T, List["NestedList[_T]"]]
+NestedStructure = Union[
+    _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
+]
 IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
 
-PaddingMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']
+ParamAttrLike: TypeAlias = Union[
+    "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
+]

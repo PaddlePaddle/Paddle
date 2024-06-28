@@ -1798,6 +1798,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
@@ -2867,7 +2868,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
                 >>> # get the number of elements of the Variable
-                >>> y = x.size()
+                >>> y = x.size() # type: ignore
 
         """
 
@@ -8053,7 +8054,7 @@ def device_guard(device=None):
             >>> support_gpu = paddle.is_compiled_with_cuda()
             >>> place = paddle.CPUPlace()
             >>> if support_gpu:
-            ...     place = paddle.CUDAPlace(0)
+            ...     place = paddle.CUDAPlace(0) # type: ignore
 
             >>> # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
             >>> data1 = paddle.full(shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')

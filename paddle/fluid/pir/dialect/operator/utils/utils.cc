@@ -37,8 +37,6 @@ namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
-    BatchFcOp::name(),
-    BatchFcGradOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
@@ -63,7 +61,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushDenseOp::name(),
     SeedOp::name(),
     ShareData_Op::name(),
-    SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
@@ -71,13 +68,9 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
-    LrnOp::name(),
-    LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
 #ifdef PADDLE_WITH_DNNL
-    paddle::onednn::dialect::LrnOp::name(),
-    paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
 #endif
     CReduceAvgOp::name(),
@@ -462,6 +455,28 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     vec_shape = {static_cast<int64_t>(shape_item)};
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {
+    std::vector<pir::Value> inputs =
+        shape.defining_op()->operand_source(0).defining_op()->operands_source();
+    for (auto item : inputs) {
+      auto tmp = ParseValueShape(item, is_from_tensor);
+      vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
+    }
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::ShapeOp>() &&
+             shape.type().isa<paddle::dialect::DenseTensorType>()) {
+    // tensor_shape may come from shape op
+    // x0.shape = [-1,3]
+    // tensor_shape = shape(x0)
+    // y = reshape(x, tensor_shape)
+    pir::Value inputs = shape.defining_op()->operand_source(0);
+    vec_shape = common::vectorize(
+        inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    *is_from_tensor = true;
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
+    // tensor_shape may come from concat
+    // tensor_shape = concat([full(1), full(2)])
+    // y = reshape(x, tensor_shape)
     std::vector<pir::Value> inputs =
         shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {

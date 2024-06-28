@@ -5179,6 +5179,37 @@ void SparseAttentionInferMeta(const MetaTensor& q,
   out->set_dtype(q.dtype());
 }
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& velocity,
+                             const MetaTensor& index,
+                             const MetaTensor& learning_rate,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out) {
+  auto lr_dims = common::product(learning_rate.dims());
+  PADDLE_ENFORCE_EQ(lr_dims == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        lr_dims));
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dim,
+      velocity.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Velocity of SparseMomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dim,
+          velocity.dims()));
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param_out != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,
@@ -6037,7 +6068,7 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            const MetaTensor& ps,
                            const MetaTensor& threshold,
                            const MetaTensor& topp_seed,
-                           int random_seed,
+                           int seed,
                            int k,
                            const std::string& mode,
                            MetaTensor* out,
@@ -6055,10 +6086,12 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   ids->set_dtype(DataType::INT64);
   out->set_dims(phi::make_ddim({bsz, 1}));
   out->set_dtype(x.dtype());
-  topk_ids->set_dims(phi::make_ddim({bsz, k}));
-  topk_ids->set_dtype(DataType::INT64);
-  topk_scores->set_dims(phi::make_ddim({bsz, k}));
-  topk_scores->set_dtype(x.dtype());
+  if (k > 0) {
+    topk_ids->set_dims(phi::make_ddim({bsz, k}));
+    topk_ids->set_dtype(DataType::INT64);
+    topk_scores->set_dims(phi::make_ddim({bsz, k}));
+    topk_scores->set_dtype(x.dtype());
+  }
 }
 
 }  // namespace phi
