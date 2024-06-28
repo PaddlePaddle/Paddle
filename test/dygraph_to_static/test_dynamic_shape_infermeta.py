@@ -14,46 +14,43 @@
 
 from __future__ import annotations
 
-import os
 import unittest
+
+import numpy as np
 
 import paddle
 from paddle.static.input import InputSpec
 
 
 class TestDynamicShapeInfermeta(unittest.TestCase):
-    def setUp(self):
-        os.environ['FLAGS_enable_pir_api'] = '1'
+    def check_dynamic_shape(self, net, input, input_spec: list[InputSpec]):
+        static_net = paddle.jit.to_static(
+            net,
+            full_graph=True,
+            input_spec=input_spec,
+        )
+        np.testing.assert_allclose(static_net(input), net(input), rtol=1e-05)
 
     def test_conv2d(self):
-        net = paddle.jit.to_static(
+        self.check_dynamic_shape(
             paddle.nn.Conv2D(3, 3, 3),
-            full_graph=True,
-            input_spec=[
-                InputSpec(shape=[None, None, None, None], dtype='float32')
-            ],
+            paddle.randn([1, 3, 32, 32]),
+            [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
-        net(paddle.randn([1, 3, 32, 32]))
 
     def test_bn(self):
-        net = paddle.jit.to_static(
+        self.check_dynamic_shape(
             paddle.nn.BatchNorm2D(3),
-            full_graph=True,
-            input_spec=[
-                InputSpec(shape=[None, None, None, None], dtype='float32')
-            ],
+            paddle.randn([1, 3, 32, 32]),
+            [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
-        net(paddle.randn([1, 3, 32, 32]))
 
     def test_depthwise_conv2d(self):
-        net = paddle.jit.to_static(
+        self.check_dynamic_shape(
             paddle.nn.Conv2D(3, 3, 3, groups=3),
-            full_graph=True,
-            input_spec=[
-                InputSpec(shape=[None, None, None, None], dtype='float32')
-            ],
+            paddle.randn([1, 3, 32, 32]),
+            [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
-        net(paddle.randn([1, 3, 32, 32]))
 
 
 if __name__ == '__main__':
