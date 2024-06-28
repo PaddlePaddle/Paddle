@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import DTypeLike
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
@@ -97,6 +96,7 @@ from .ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 __all__ = []
 
