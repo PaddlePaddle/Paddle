@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 import unittest
 
 import paddle
@@ -45,6 +46,7 @@ class TestDynamicInputSpec(unittest.TestCase):
         )
 
     def test_dynamic_input_spec(self):
+        os.environ['FLAGS_enable_pir_api'] = '1'
         self.net(paddle.randn([1, 3, 32, 32]))
 
 
