@@ -29,7 +29,12 @@ class TestTransformUnitTestBase(unittest.TestCase):
             np.float32
         )
         self.set_trans_api()
+        self.init_dy_res()
+
+    def init_dy_res(self):
         self.dy_res = self.dynamic_transform()
+        if isinstance(self.dy_res, paddle.Tensor):
+            self.dy_res = self.dy_res.numpy()
 
     def get_shape(self):
         return (3, 64, 64)
@@ -61,8 +66,6 @@ class TestTransformUnitTestBase(unittest.TestCase):
 
     @test_with_pir_api
     def test_transform(self):
-        if isinstance(self.dy_res, paddle.Tensor):
-            self.dy_res = self.dy_res.numpy()
         st_res = self.static_transform()
         np.testing.assert_almost_equal(self.dy_res, st_res)
 
@@ -135,8 +138,6 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
         assert not res_assert
 
     def test_transform(self):
-        if isinstance(self.dy_res, paddle.Tensor):
-            self.dy_res = self.dy_res.numpy()
         st_res = self.static_transform()
 
         self.assert_test_random_equal(self.dy_res)
@@ -178,8 +179,6 @@ class TestRandomErasing(TestTransformUnitTestBase):
         )
 
     def test_transform(self):
-        if isinstance(self.dy_res, paddle.Tensor):
-            self.dy_res = self.dy_res.numpy()
         st_res = self.static_transform()
 
         self.assert_test_erasing(self.dy_res)
