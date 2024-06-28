@@ -161,7 +161,7 @@ def group_norm_net5(x):
 
 
 def layer_norm_net1(x):
-    return paddle.nn.functional.layer_norm(x, x.shape[2:])
+    return paddle.nn.functional.layer_norm(x, x.shape[1:])
 
 
 def flatten_net(x):
@@ -189,8 +189,8 @@ class TestPrimBase(unittest.TestCase):
         self.tol = 1e-6
 
     def base_net(self, flag=None):
-        # if flag == "prim":
-        #     core._set_prim_all_enabled(True)
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
         x = paddle.to_tensor(self.x)
         if flag == "prim":
             fn = apply_to_static(
@@ -478,9 +478,9 @@ class TestPrimSwiglu2(TestPrimBase):
 class TestPrimLayernorm(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [2, 197, 128]
+        self.shape_x = [2, 32, 128]
         self.dtype_x = "float32"
-        self.init_x_shape = [None, 197, 128]
+        self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = layer_norm_net1
         self.necessary_ops = "pd_op.layer_norm"
