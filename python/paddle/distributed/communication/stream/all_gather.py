@@ -155,7 +155,7 @@ def all_gather(
 
             >>> dist.init_parallel_env()
             >>> local_rank = dist.get_rank()
-            >>> tensor_list = []
+            >>> tensor_list = [] # type: ignore
             >>> if local_rank == 0:
             ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             >>> else:

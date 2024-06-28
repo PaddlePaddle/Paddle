@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
-    Any,
     Literal,
     TypedDict,
 )
@@ -120,7 +119,7 @@ class VGG(nn.Layer):
 
 
 def make_layers(
-    cfg: dict[str, list[Any]], batch_norm: bool = False
+    cfg: list[int | Literal['M']], batch_norm: bool = False
 ) -> Sequential:
     layers = []
     in_channels = 3

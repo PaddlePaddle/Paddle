@@ -54,8 +54,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 static bool PyCheckInteger(PyObject* obj) {
 #if PY_VERSION_HEX < 0x03000000
@@ -2093,5 +2092,4 @@ PyMethodDef math_op_patch_methods[] = {  // NOLINT
      nullptr},
     {nullptr, nullptr, 0, nullptr}};
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

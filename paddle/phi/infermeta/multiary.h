@@ -975,6 +975,15 @@ void SparseAttentionInferMeta(const MetaTensor& q,
                               MetaTensor* sparse_dot_sdd,
                               MetaTensor* softmax);
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& velocity,
+                             const MetaTensor& index,
+                             const MetaTensor& learning_rate,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out);
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,

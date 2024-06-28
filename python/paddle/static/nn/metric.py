@@ -63,7 +63,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             >>> paddle.seed(2023)
             >>> paddle.enable_static()
             >>> data = static.data(name="input", shape=[-1, 32, 32], dtype="float32")
-            >>> label = static.data(name="label", shape=[-1,1], dtype="int")
+            >>> label = static.data(name="label", shape=[-1,1], dtype="int64")
             >>> fc_out = static.nn.fc(x=data, size=10)
             >>> predict = F.softmax(x=fc_out)
             >>> result = static.accuracy(input=predict, label=label, k=5)
@@ -196,7 +196,7 @@ def auc(
 
             >>> paddle.seed(2023)
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
-            >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
+            >>> label = paddle.static.data(name="label", shape=[-1], dtype="int64")
             >>> fc_out = paddle.static.nn.fc(x=data, size=2)
             >>> predict = paddle.nn.functional.softmax(x=fc_out)
             >>> result=paddle.static.auc(input=predict, label=label)
@@ -225,7 +225,7 @@ def auc(
 
             >>> paddle.seed(2023)
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
-            >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
+            >>> label = paddle.static.data(name="label", shape=[-1], dtype="int64")
             >>> ins_tag_weight = paddle.static.data(name='ins_tag_weight', shape=[-1,16], lod_level=0, dtype='float64')
             >>> fc_out = paddle.static.nn.fc(x=data, size=2)
             >>> predict = paddle.nn.functional.softmax(x=fc_out)
