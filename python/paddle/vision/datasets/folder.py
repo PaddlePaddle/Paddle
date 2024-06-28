@@ -12,6 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Literal
+
+from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    from paddle.vision.transforms.transforms import _Transform
+
+    from ..image import _ImageDataType
+
+    _AllowedExtensions: TypeAlias = Literal[
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.ppm',
+        '.bmp',
+        '.pgm',
+        '.tif',
+        '.tiff',
+        '.webp',
+    ]
+
 import os
 
 from PIL import Image
@@ -23,7 +46,9 @@ from paddle.utils import try_import
 __all__ = []
 
 
-def has_valid_extension(filename, extensions):
+def has_valid_extension(
+    filename: str, extensions: list[str] | tuple[str]
+) -> bool:
     """Checks if a file is a valid extension.
 
     Args:
@@ -78,14 +103,14 @@ class DatasetFolder(Dataset):
 
     Args:
         root (str): Root directory path.
-        loader (Callable, optional): A function to load a sample given its path. Default: None.
-        extensions (list[str]|tuple[str], optional): A list of allowed extensions.
+        loader (Callable|None, optional): A function to load a sample given its path. Default: None.
+        extensions (list[str]|tuple[str]|None, optional): A list of allowed extensions.
             Both :attr:`extensions` and :attr:`is_valid_file` should not be passed.
             If this value is not set, the default is to use ('.jpg', '.jpeg', '.png',
             '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'). Default: None.
-        transform (Callable, optional): A function/transform that takes in
+        transform (Callable|None, optional): A function/transform that takes in
             a sample and returns a transformed version. Default: None.
-        is_valid_file (Callable, optional): A function that takes path of a file
+        is_valid_file (Callable|None, optional): A function that takes path of a file
             and check if the file is a valid file. Both :attr:`extensions` and
             :attr:`is_valid_file` should not be passed. Default: None.
 
@@ -206,16 +231,16 @@ class DatasetFolder(Dataset):
 
     def __init__(
         self,
-        root,
-        loader=None,
-        extensions=None,
-        transform=None,
-        is_valid_file=None,
-    ):
+        root: str,
+        loader: _ImageDataType | None = None,
+        extensions: _AllowedExtensions | None = None,
+        transform: _Transform[Any, Any] | None = None,
+        is_valid_file: _ImageDataType | None = None,
+    ) -> None:
         self.root = root
         self.transform = transform
         if extensions is None:
-            extensions = IMG_EXTENSIONS
+            extensions = _AllowedExtensions
         classes, class_to_idx = self._find_classes(self.root)
         samples = make_dataset(
             self.root, class_to_idx, extensions, is_valid_file
@@ -238,7 +263,9 @@ class DatasetFolder(Dataset):
 
         self.dtype = paddle.get_default_dtype()
 
-    def _find_classes(self, dir):
+    def _find_classes(
+        self, dir: str
+    ) -> tuple[list[str], dict[str, int] | dict[str, Any]]:
         """
         Finds the class folders in a dataset.
 
@@ -255,7 +282,7 @@ class DatasetFolder(Dataset):
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         return classes, class_to_idx
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[_ImageDataType, int]:
         """
         Args:
             index (int): Index
@@ -272,19 +299,6 @@ class DatasetFolder(Dataset):
 
     def __len__(self):
         return len(self.samples)
-
-
-IMG_EXTENSIONS = (
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.ppm',
-    '.bmp',
-    '.pgm',
-    '.tif',
-    '.tiff',
-    '.webp',
-)
 
 
 def pil_loader(path):
@@ -318,14 +332,14 @@ class ImageFolder(Dataset):
 
     Args:
         root (str): Root directory path.
-        loader (Callable, optional): A function to load a sample given its path. Default: None.
-        extensions (list[str]|tuple[str], optional): A list of allowed extensions.
+        loader (Callable|None, optional): A function to load a sample given its path. Default: None.
+        extensions (list[str]|tuple[str]|None, optional): A list of allowed extensions.
             Both :attr:`extensions` and :attr:`is_valid_file` should not be passed.
             If this value is not set, the default is to use ('.jpg', '.jpeg', '.png',
             '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'). Default: None.
-        transform (Callable, optional): A function/transform that takes in
+        transform (Callable|None, optional): A function/transform that takes in
             a sample and returns a transformed version. Default: None.
-        is_valid_file (Callable, optional): A function that takes path of a file
+        is_valid_file (Callable|None, optional): A function that takes path of a file
             and check if the file is a valid file. Both :attr:`extensions` and
             :attr:`is_valid_file` should not be passed. Default: None.
 
@@ -433,15 +447,15 @@ class ImageFolder(Dataset):
 
     def __init__(
         self,
-        root,
-        loader=None,
-        extensions=None,
-        transform=None,
-        is_valid_file=None,
-    ):
+        root: str,
+        loader: _ImageDataType | None = None,
+        extensions: _AllowedExtensions | None = None,
+        transform: _Transform[Any, Any] | None = None,
+        is_valid_file: _ImageDataType | None = None,
+    ) -> None:
         self.root = root
         if extensions is None:
-            extensions = IMG_EXTENSIONS
+            extensions = _AllowedExtensions
 
         samples = []
         path = os.path.expanduser(root)
@@ -470,7 +484,7 @@ class ImageFolder(Dataset):
         self.samples = samples
         self.transform = transform
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[_ImageDataType]:
         """
         Args:
             index (int): Index
