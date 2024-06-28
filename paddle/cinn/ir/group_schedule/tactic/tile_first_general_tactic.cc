@@ -273,11 +273,11 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeDiscreteFlattenAxis(
     ir::IRSchedule* sch, const std::string& block_id) {
-  if (vec_spatial_axis_first_.size() >= 2) {
-    sch->Fuse(block_id, vec_spatial_axis_first_);
-  }
   if (vec_spatial_axis_last_.size() >= 2) {
     sch->Fuse(block_id, vec_spatial_axis_last_);
+  }
+  if (vec_spatial_axis_first_.size() >= 2) {
+    sch->Fuse(block_id, vec_spatial_axis_first_);
   }
 }
 
