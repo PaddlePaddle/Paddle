@@ -97,6 +97,9 @@ class IR_API ShapedTypeInterface
   /// dimension.
   ///
   bool IsDynamicShape() const {
+    if (impl_ == nullptr) {
+      return false;
+    }
     auto size_vec = common::vectorize(impl_->get_shape(*this));
     return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_val) {
       return IsDynamic(size_val);

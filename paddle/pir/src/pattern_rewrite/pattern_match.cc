@@ -104,7 +104,7 @@ void RewriterBase::ReplaceOpWithIf(
     src_res.ReplaceUsesWithIf(new_values[i], functor);
     replace_all_uses &= src_res.use_empty();
   }
-  if (replace_all_uses) {
+  if (replace_all_uses && all_uses_replaced != nullptr) {
     *all_uses_replaced = replace_all_uses;
   }
 }

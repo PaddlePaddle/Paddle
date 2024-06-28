@@ -71,8 +71,12 @@ struct PD_ZeroCopyFunctor {
                                   1,
                                   std::multiplies<int>());
     out_data.resize(out_num);
-    output_t->copy_to_cpu(out_data.data());
-    output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
+    if (output_t != nullptr) {
+      output_t->copy_to_cpu(out_data.data());
+    }
+    if (output_i != nullptr) {
+      output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
+    }
     memmove(static_cast<OutT*>(output_i->data),
             out_data.data(),
             out_num * sizeof(OutT));
@@ -109,6 +113,9 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config,
   if (predictor->Run(in, &out, batch_size)) {
     int osize = out.size();
     *output_data = new PD_Tensor[osize];
+    if (output_data == nullptr) {
+      return false;
+    }
     for (int i = 0; i < osize; ++i) {
       output_data[i]->tensor = out[i];
     }
