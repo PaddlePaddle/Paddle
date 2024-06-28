@@ -90,7 +90,7 @@ class Flowers(Dataset):
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = flowers[i]
             ...     # do something with img and label
-            ...     print(type(img), img.size, label)  # type: ignore
+            ...     print(type(img), img.size, label)
             ...     # <class 'PIL.JpegImagePlugin.JpegImageFile'> (523, 500) [1]
 
             >>> transform = T.Compose(
@@ -114,7 +114,7 @@ class Flowers(Dataset):
 
             >>> for img, label in itertools.islice(iter(flowers_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)
+            ...     print(type(img), img.shape, label) # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
