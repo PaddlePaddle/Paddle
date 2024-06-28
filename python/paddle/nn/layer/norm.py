@@ -32,6 +32,7 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Literal,
+    Sequence,
 )
 
 import numpy as np
@@ -44,6 +45,7 @@ from paddle._typing import (
     DataLayout3D,
     DataLayoutND,
     DTypeLike,
+    ShapeLike,
 )
 from paddle.device import get_all_custom_device_type
 
@@ -75,6 +77,9 @@ class _InstanceNormBase(Layer):
 
     See InstanceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
+
+    scale: Tensor | None
+    bias: Tensor | None
 
     def __init__(
         self,
@@ -493,6 +498,9 @@ class GroupNorm(Layer):
                [ 0.44721183,  1.34163547]]]])
     """
 
+    weight: Tensor
+    bias: Tensor
+
     def __init__(
         self,
         num_groups: int,
@@ -631,9 +639,12 @@ class LayerNorm(Layer):
                [-0.81222653,  0.84285998, -1.96189952]]]])
     """
 
+    weight: Tensor | None
+    bias: Tensor | None
+
     def __init__(
         self,
-        normalized_shape: int | tuple | list,
+        normalized_shape: int | Sequence[int],
         epsilon: float = 1e-5,
         weight_attr: bool | ParamAttr | None = None,
         bias_attr: bool | ParamAttr | None = None,
@@ -682,6 +693,9 @@ class _BatchNormBase(Layer):
     """
     BatchNorm base .
     """
+
+    weight: Tensor | None
+    bias: Tensor | None
 
     def __init__(
         self,
@@ -921,6 +935,9 @@ class BatchNorm(Layer):
             >>> batch_norm = nn.BatchNorm(10)
             >>> hidden1 = batch_norm(x)
     """
+
+    weight: Tensor | None
+    bias: Tensor | None
 
     def __init__(
         self,
@@ -1789,13 +1806,20 @@ class LocalResponseNorm(Layer):
             [3, 3, 112, 112]
     """
 
+    size: int
+    alpha: float
+    beta: float
+    k: float
+    data_format: DataLayout1D | DataLayout2D | DataLayout3D
+    name: str | None
+
     def __init__(
         self,
         size: int,
         alpha: float = 0.0001,
         beta: float = 0.75,
         k: float = 1.0,
-        data_format: DataLayout2D = 'NCHW',
+        data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1883,10 +1907,12 @@ class SpectralNorm(Layer):
             [2, 8, 32, 32]
 
     """
+    weight_u: Tensor
+    weight_v: Tensor
 
     def __init__(
         self,
-        weight_shape,
+        weight_shape: ShapeLike,
         dim: int = 0,
         power_iters: int = 1,
         eps: float = 1e-12,
