@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     ]
     _DropoutMode: TypeAlias = Literal['upscale_in_train', 'downscale_in_infer']
     _PaddingTensorMode: TypeAlias = Literal[
-        "constant", "reflect", "replicate", "circular"
+        "zeros", "constant", "reflect", "replicate", "circular"
     ]
     _PaddingSizeMode: TypeAlias = Literal[  # noqa: PYI047
         'valid', 'same', 'VALID', 'SAME'
