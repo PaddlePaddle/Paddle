@@ -923,13 +923,13 @@ def conv2d(
     if not isinstance(use_cudnn, bool):
         raise ValueError(
             "Attr(use_cudnn) should be True or False. Received "
-            "Attr(use_cudnn): %s. " % str(use_cudnn)
+            f"Attr(use_cudnn): {str(use_cudnn)}. "
         )
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-            "Attr(data_format): %s." % str(data_format)
+            f"Attr(data_format): {str(data_format)}."
         )
 
     channel_last = data_format == "NHWC"
@@ -987,8 +987,8 @@ def conv2d(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -997,8 +997,8 @@ def conv2d(
             ):
                 if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1016,8 +1016,7 @@ def conv2d(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{str(padding)}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -1233,13 +1232,13 @@ def conv3d(
     if not isinstance(use_cudnn, bool):
         raise ValueError(
             "Attr(use_cudnn) should be True or False. Received "
-            "Attr(use_cudnn): %s. " % str(use_cudnn)
+            f"Attr(use_cudnn): {str(use_cudnn)}. "
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): %s." % str(data_format)
+            f"Attr(data_format): {str(data_format)}."
         )
 
     channel_last = data_format == "NDHWC"
@@ -1279,8 +1278,8 @@ def conv3d(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:5]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1289,8 +1288,8 @@ def conv3d(
             ):
                 if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1311,8 +1310,7 @@ def conv3d(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{str(padding)}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -1600,8 +1598,8 @@ def conv2d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1610,8 +1608,8 @@ def conv2d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1626,8 +1624,7 @@ def conv2d_transpose(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{str(padding)}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -1971,8 +1968,8 @@ def conv3d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:5]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1981,8 +1978,8 @@ def conv3d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({str(padding)}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -2008,8 +2005,7 @@ def conv3d_transpose(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{str(padding)}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
