@@ -29,6 +29,7 @@ class TestTransformUnitTestBase(unittest.TestCase):
             np.float32
         )
         self.set_trans_api()
+        self.dy_res = self.dynamic_transform()
 
     def get_shape(self):
         return (3, 64, 64)
@@ -38,7 +39,6 @@ class TestTransformUnitTestBase(unittest.TestCase):
 
     def dynamic_transform(self):
         paddle.seed(SEED)
-
         img_t = paddle.to_tensor(self.img)
         return self.api(img_t)
 
@@ -61,12 +61,10 @@ class TestTransformUnitTestBase(unittest.TestCase):
 
     @test_with_pir_api
     def test_transform(self):
-        dy_res = self.dynamic_transform()
-        if isinstance(dy_res, paddle.Tensor):
-            dy_res = dy_res.numpy()
+        if isinstance(self.dy_res, paddle.Tensor):
+            self.dy_res = self.dy_res.numpy()
         st_res = self.static_transform()
-
-        np.testing.assert_almost_equal(dy_res, st_res)
+        np.testing.assert_almost_equal(self.dy_res, st_res)
 
 
 class TestResize(TestTransformUnitTestBase):
@@ -137,10 +135,11 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
         assert not res_assert
 
     def test_transform(self):
-        dy_res = self.dynamic_transform().numpy()
+        if isinstance(self.dy_res, paddle.Tensor):
+            self.dy_res = self.dy_res.numpy()
         st_res = self.static_transform()
 
-        self.assert_test_random_equal(dy_res)
+        self.assert_test_random_equal(self.dy_res)
         self.assert_test_random_equal(st_res)
 
 
@@ -179,12 +178,11 @@ class TestRandomErasing(TestTransformUnitTestBase):
         )
 
     def test_transform(self):
-        dy_res = self.dynamic_transform()
-        if isinstance(dy_res, paddle.Tensor):
-            dy_res = dy_res.numpy()
+        if isinstance(self.dy_res, paddle.Tensor):
+            self.dy_res = self.dy_res.numpy()
         st_res = self.static_transform()
 
-        self.assert_test_erasing(dy_res)
+        self.assert_test_erasing(self.dy_res)
         self.assert_test_erasing(st_res)
 
     def assert_test_erasing(self, arr):
