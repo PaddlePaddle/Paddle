@@ -31,7 +31,9 @@ from typing_extensions import TypeAlias
 from .backport import EllipsisType
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import ParamAttr, Tensor
+    from paddle.nn.initializer import Initializer
+    from paddle.regularizer import WeightDecayRegularizer
 
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
@@ -57,3 +59,7 @@ IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
+
+ParamAttrLike: TypeAlias = Union[
+    "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
+]
