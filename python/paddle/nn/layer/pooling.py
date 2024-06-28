@@ -29,11 +29,12 @@ from paddle._typing import (
 )
 
 from .. import functional as F
-from ..functional.common import _PaddingSizeMode
 from .layers import Layer
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
+    from ..functional.common import _PaddingSizeMode
 __all__ = []
 
 
