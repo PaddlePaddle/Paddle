@@ -21,33 +21,39 @@ import paddle
 from paddle.static.input import InputSpec
 
 
-class SimpleNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.conv = paddle.nn.Conv2D(3, 3, 3)
-        self.bn = paddle.nn.BatchNorm2D(3)
-        self.depthwise_conv = paddle.nn.Conv2D(3, 3, 3, groups=3)
-
-    def forward(self, x):
-        z1 = self.conv(x)
-        z2 = self.bn(x)
-        z3 = self.depthwise_conv(x)
-        return z1, z2, z3
-
-
-class TestDynamicInputSpec(unittest.TestCase):
+class TestDynamicShapeInfermeta(unittest.TestCase):
     def setUp(self):
-        self.net = paddle.jit.to_static(
-            SimpleNet(),
+        os.environ['FLAGS_enable_pir_api'] = '1'
+
+    def test_conv2d(self):
+        net = paddle.jit.to_static(
+            paddle.nn.Conv2D(3, 3, 3),
             full_graph=True,
             input_spec=[
                 InputSpec(shape=[None, None, None, None], dtype='float32')
             ],
         )
+        net(paddle.randn([1, 3, 32, 32]))
 
-    def test_dynamic_input_spec(self):
-        os.environ['FLAGS_enable_pir_api'] = '1'
-        self.net(paddle.randn([1, 3, 32, 32]))
+    def test_bn(self):
+        net = paddle.jit.to_static(
+            paddle.nn.BatchNorm2D(3),
+            full_graph=True,
+            input_spec=[
+                InputSpec(shape=[None, None, None, None], dtype='float32')
+            ],
+        )
+        net(paddle.randn([1, 3, 32, 32]))
+
+    def test_depthwise_conv2d(self):
+        net = paddle.jit.to_static(
+            paddle.nn.Conv2D(3, 3, 3, groups=3),
+            full_graph=True,
+            input_spec=[
+                InputSpec(shape=[None, None, None, None], dtype='float32')
+            ],
+        )
+        net(paddle.randn([1, 3, 32, 32]))
 
 
 if __name__ == '__main__':
