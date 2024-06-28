@@ -88,8 +88,6 @@ struct DArray {
                        dev_ctx.stream());
     d_array = static_cast<IndexT*>((*dev_col_ptr)->ptr());
   }
-
-  IndexT* get_ptr() { return d_array; }
 };
 
 static void check_cat_sparse_dims(const SparseCooTensor* t,
@@ -116,19 +114,21 @@ static void check_cat_sparse_dims(const SparseCooTensor* t,
                     t->dense_dim());
 }
 
-template <typename IndexT>
-__global__ void ConcatCooSetIndicesKernel(
-    const IndexT out_nnz,
-    const IndexT axis,
-    const IndexT in_num,
-    const IndexT* __restrict__ indice_offsets,
-    const IndexT* __restrict__ d_nnz_offsets,
-    IndexT* out_indices) {
+#define MAX_SIZE 128
+
+__constant__ int64_t constant_nnz_offset[MAX_SIZE];
+
+template <typename IndexT, typename DarrayWrapperT>
+__global__ void ConcatCooSetIndicesKernel(const IndexT out_nnz,
+                                          const IndexT axis,
+                                          const IndexT in_num,
+                                          DarrayWrapperT indice_offsets,
+
+                                          IndexT* out_indices) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, out_nnz, IndexT) {
     IndexT index = phi::funcs::UpperBound<IndexT, IndexT>(
-        d_nnz_offsets, in_num + 1, tid_x);
+        constant_nnz_offset, in_num + 1, tid_x);
     index--;
-
     out_indices[axis * out_nnz + tid_x] += indice_offsets[index];
   }
 }
@@ -528,6 +528,10 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
     std::vector<int64_t> nnz_offsets;
     nnz_offsets.push_back(0);
     indice_offsets.push_back(0);
+
+    int64_t d_constant_nnz_offset[MAX_SIZE];
+    d_constant_nnz_offset[0] = 0;
+    int i = 1;
     for (const auto* t : x) {
       indices.emplace_back(t->indices());
       values.emplace_back(t->values());
@@ -535,6 +539,8 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
       nnz_offsets.push_back(out_nnz);
       out_cols += t->dims()[axis];
       indice_offsets.push_back(out_cols);
+      d_constant_nnz_offset[i] = out_nnz;
+      i++;
     }
 
     DenseTensor out_indices;
@@ -549,10 +555,11 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
     phi::Allocator::AllocationPtr dev_indice_offsets_ptr{nullptr};
     DArray<int64_t> d_indice_offsets(
         dev_ctx, indice_offsets, &dev_indice_offsets_ptr);
-    int64_t* d_indice_offsets_ptr = d_indice_offsets.get_ptr();
-    phi::Allocator::AllocationPtr dev_nnz_offsets_ptr{nullptr};
-    DArray<int64_t> d_nnz_offsets(dev_ctx, nnz_offsets, &dev_nnz_offsets_ptr);
-    int64_t* d_nnz_offsets_ptr = d_nnz_offsets.get_ptr();
+    // phi::Allocator::AllocationPtr dev_nnz_offsets_ptr{nullptr};
+    // DArray<int64_t> d_nnz_offsets(dev_ctx, nnz_offsets,
+    // &dev_nnz_offsets_ptr);
+    cudaMemcpyToSymbol(
+        constant_nnz_offset, d_constant_nnz_offset, MAX_SIZE * sizeof(int64_t));
 
     phi::sparse::ConcatFunctor<int64_t, Context>(
         dev_ctx, indices, static_cast<int>(1), &out_indices);
@@ -560,16 +567,12 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
         dev_ctx, values, static_cast<int>(0), &out_values);
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
-    ConcatCooSetIndicesKernel<int64_t>
+    ConcatCooSetIndicesKernel<int64_t, DArray<int64_t>>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
-           dev_ctx.stream()>>>(out_nnz,
-                               axis,
-                               in_num,
-                               d_indice_offsets_ptr,
-                               d_nnz_offsets_ptr,
-                               out_indices_data);
+           dev_ctx.stream()>>>(
+            out_nnz, axis, in_num, d_indice_offsets, out_indices_data);
     out->SetMember(out_indices, out_values, out_dims, x[0]->coalesced());
   } else {
     int64_t values_dim = axis - sparse_dim + 1;
@@ -992,8 +995,7 @@ void ConcatCsrGPU3D1A(const Context& dev_ctx,
           d_out_values,
           d_out_cols);
 
-  // note: The order of GetGpuLaunchConfig3D is z, y , x
-
+  // The number of in_num is usually small, so we set it to z
   config = phi::backends::gpu::GetGpuLaunchConfig3D2(
       dev_ctx, max_rows, batch, in_num);
 
