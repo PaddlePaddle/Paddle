@@ -487,8 +487,7 @@ def _add_feed_fetch_ops(
                 )
             else:
                 warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % name
+                    f"The variable {name} is not found in program. It is not declared or is pruned."
                 )
 
     if use_fetch_v2:
@@ -1420,8 +1419,7 @@ class Executor:
             if feed_name not in feed_target_names:
                 feed.pop(feed_name)
                 warnings.warn(
-                    "The value %s is not found in program. It is not declared or is pruned."
-                    % feed_name
+                    f"The value {feed_name} is not found in program. It is not declared or is pruned."
                 )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
@@ -1578,8 +1576,7 @@ class Executor:
                 if not global_block.has_var(feed_name):
                     feed.pop(feed_name)
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % feed_name
+                        f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                     )
 
         elif isinstance(feed, (list, tuple)):
@@ -1588,8 +1585,7 @@ class Executor:
                     if not global_block.has_var(feed_name):
                         each.pop(feed_name)
                         warnings.warn(
-                            "The variable %s is not found in program. It is not declared or is pruned."
-                            % feed_name
+                            f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                         )
         return feed
 
@@ -1945,8 +1941,7 @@ class Executor:
                 feed = feed[0]
             if not isinstance(feed, dict):
                 raise TypeError(
-                    "feed requires dict as its Parameter. But you passed in %s"
-                    % (type(feed))
+                    f"feed requires dict as its Parameter. But you passed in {type(feed)}"
                 )
             feed = self._update_feed(program, feed)
 
@@ -2037,7 +2032,7 @@ class Executor:
                     and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
-                    raise ValueError('Need feed data for variable %s' % varname)
+                    raise ValueError(f'Need feed data for variable {varname}')
 
         acp._auto_checkpoint(self, program)
 
@@ -2094,8 +2089,7 @@ class Executor:
             feed = feed[0]
         if not isinstance(feed, dict):
             raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
+                f"feed requires dict as its Parameter. But you passed in {type(feed)}"
             )
 
         (
@@ -2974,8 +2968,7 @@ class Executor:
                     )
                 else:
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % name
+                        f"The variable {name} is not found in program. It is not declared or is pruned."
                     )
 
         return tmp_program
