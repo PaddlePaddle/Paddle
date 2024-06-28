@@ -25,9 +25,9 @@ namespace {
     VLOG(0) << "op name is ************************* "<<current_op->name();
 
     std::vector<pir::Attribute> current_bwd_op_stop_gradients;
-    for (int i=0; i<stop_gradients.size(); ++i) {
+    for (size_t i=0; i<stop_gradients.size(); ++i) {
         std::vector<pir::Attribute> tmp;
-      for (int j=0; j<stop_gradients[i].size(); ++j) {
+      for (size_t j=0; j<stop_gradients[i].size(); ++j) {
         tmp.push_back(pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradients[i][j]));
       }
       current_bwd_op_stop_gradients.push_back(pir::ArrayAttribute::get(pir::IrContext::Instance(), tmp));
