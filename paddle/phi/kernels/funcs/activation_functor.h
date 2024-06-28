@@ -3237,7 +3237,7 @@ struct CudaReluFunctor : public BaseActivationFunctor<T> {
 
   // relu(x) = max(x, 0)
   __device__ __forceinline__ T operator()(const T x) const {
-    return x > zero ? x : zero;
+    return x < zero ? zero : x;
   }
 };
 

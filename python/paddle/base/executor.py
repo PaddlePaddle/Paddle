@@ -1174,6 +1174,8 @@ class _ExecutorCache:
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
                 decomp.decompose_dist_program(program)
+        if in_cinn_mode():
+            apply_cinn_pass(program)
         return program, new_exe, data_op_infos
 
 

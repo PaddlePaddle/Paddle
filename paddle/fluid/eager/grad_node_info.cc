@@ -795,7 +795,6 @@ void GradNodeBase::HandleComplexGradToRealGrad(
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
       if (bwd_out_meta_[slot_id].size() == 0) continue;
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
-
       PADDLE_ENFORCE(
           slot_meta.HasTensorMeta() > 0,
           paddle::platform::errors::Fatal(

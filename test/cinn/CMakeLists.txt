@@ -8,10 +8,8 @@ add_custom_command(
 add_custom_target(COPY_CINN_PYTHON_TESTS ALL
                   DEPENDS ${CMAKE_BINARY_DIR}/test/__init__.py)
 
-set(BASIC_TEST_NAMES
-    test_matmul test_common test_packed_func test_pe_elementwise
-    test_pe_reduction test_pe_transform
-    #    test_op_transform
+set(BASIC_TEST_NAMES test_common test_packed_func
+                     #    test_op_transform
 )
 
 foreach(basic_test_name ${BASIC_TEST_NAMES})

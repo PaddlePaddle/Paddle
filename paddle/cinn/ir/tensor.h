@@ -218,8 +218,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * Get a new tensor with the \p shape, but the underlying buffer shared.
    * NOTE the tensor to Reshape should not be an inlined computation.
    */
-  ir::Tensor Reshape(const std::vector<Expr>& shape,
-                     poly::StageMap stages) const;
+  ir::Tensor Reshape(const std::vector<Expr>& shape) const;
 
   /**
    * Get a new tensor with the \p shape with a newly allocated buffer.
