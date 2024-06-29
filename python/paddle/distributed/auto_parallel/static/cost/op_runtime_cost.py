@@ -121,7 +121,7 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
             )
         )
         logger.info(
-            f'[+] var: "{var_name}", shape={str(var_shape)}, dtype="{str(var_dtype)}".\n'
+            f'[+] var: "{var_name}", shape={var_shape}, dtype="{var_dtype}".\n'
         ) if verbose else None
         np_dtype = (
             convert_dtype(var_dtype)
@@ -264,17 +264,16 @@ def measure_program_real_op_cost(
     >>> measure_program_real_op_cost(program, verbose_level=1)
     '''
 
-    assert isinstance(program, Program), (
-        '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
-        % type(program).__name__
-    )
+    assert isinstance(
+        program, Program
+    ), f'"program" should be a instance of "paddle.base.framework.Program" but got type "{type(program).__name__}".'
     supported_places = [
         paddle.CUDAPlace,
     ]
     assert any(
         isinstance(place, supported_place)
         for supported_place in supported_places
-    ), f'Current place ({str(place)}) does not support runtime profiling. "place" should be one of the following: {str(supported_places)}.'
+    ), f'Current place ({place}) does not support runtime profiling. "place" should be one of the following: {supported_places}.'
     assert isinstance(run_iters, int) and run_iters >= 1, (
         'Invalid parameter run_iters set. run_iters '
         'should be an integer >= 1.'
