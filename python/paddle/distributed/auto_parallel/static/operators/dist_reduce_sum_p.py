@@ -231,7 +231,7 @@ class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
     @staticmethod
     def backward(ctx, *args, **kwargs):
         raise RuntimeError(
-            f"primitive operator does NOT have backward function, op type: {op.type}"  # noqa: F821
+            f"primitive operator does NOT have backward function, op type: {self.type}"
         )
 
 
