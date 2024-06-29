@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Literal, Sequence, overload
 import numpy as np
 
 import paddle
-from paddle._typing import DTypeLike
 from paddle.base.data_feeder import convert_dtype
 
 from ... import tensor
@@ -34,7 +33,7 @@ from .norm import LayerNorm
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import ParamAttrLike
+    from paddle._typing import DTypeLike, ParamAttrLike
 
 __all__ = []
 

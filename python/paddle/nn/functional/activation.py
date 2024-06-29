@@ -16,12 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle._typing import DataLayout2D, DTypeLike
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -31,6 +27,10 @@ from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, DTypeLike
 
 __all__ = []
 
