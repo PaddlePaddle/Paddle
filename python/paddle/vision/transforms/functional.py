@@ -1022,14 +1022,14 @@ def normalize(
 
 
 def erase(
-    img: _ImageDataLayout,
+    img: _ImageDataType,
     i: int,
     j: int,
     h: int,
     w: int,
     v: int,
     inplace: bool = False,
-) -> _ImageDataLayout:
+) -> _ImageDataType:
     """Erase the pixels of selected area in input image with given value.
 
     Args:
