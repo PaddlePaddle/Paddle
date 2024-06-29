@@ -552,7 +552,8 @@ def partial_concat(input, start_index=0, length=-1):
     """
     if not isinstance(input, list):
         warnings.warn(
-            f"The type of input in partial_concat should be list, but received {type(input)}."
+            "The type of input in partial_concat should be list, but received %s."
+            % (type(input))
         )
         input = [input]
     for id, x in enumerate(input):
