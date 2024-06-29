@@ -683,14 +683,21 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                                 ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
+
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
-    out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 2]),
-                                    static_cast<int>(filter_dims[i + 2]),
-                                    dilations[i],
-                                    paddings_vec[i * 2],
-                                    paddings_vec[i * 2 + 1],
-                                    strides[i]));
+    // VLOG(3) << "conv_xpu: strides " << i;
+    if ((in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+      out_shape.push_back(-1);
+    } else {
+      out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 2]),
+                                      static_cast<int>(filter_dims[i + 2]),
+                                      dilations[i],
+                                      paddings_vec[i * 2],
+                                      paddings_vec[i * 2 + 1],
+                                      strides[i]));
+    }
   }
+
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_max->set_dims(common::make_ddim({6}));

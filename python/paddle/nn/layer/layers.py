@@ -27,7 +27,6 @@ from typing_extensions import Self
 
 import paddle
 from paddle import Tensor, nn, profiler
-from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -56,6 +55,7 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
 if TYPE_CHECKING:
+    from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
     from paddle.nn.initializer import Initializer
 
 
@@ -755,7 +755,7 @@ class Layer:
     def create_parameter(
         self,
         shape: ShapeLike,
-        attr: ParamAttr | None = None,
+        attr: ParamAttrLike | None = None,
         dtype: DTypeLike | None = None,
         is_bias: bool = False,
         default_initializer: Initializer | None = None,

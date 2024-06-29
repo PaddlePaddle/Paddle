@@ -32,6 +32,7 @@ from ....utils import (
     ConstTypes,
     FallbackError,
     NameGenerator,
+    log,
     paddle_tensor_methods,
     printable,
 )
@@ -45,7 +46,6 @@ from ..guard import (
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
-from ..pycode_generator import PyCodeGen
 from ..tracker import (
     ConstTracker,
     DanglingTracker,
@@ -61,6 +61,7 @@ from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
+    from ..pycode_generator import PyCodeGen
     from .callable import FunctionVariable
 
 
@@ -330,21 +331,40 @@ class TensorVariable(VariableBase):
         self.meta = meta
         dynamic_axes: list[int] = []
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
-            dynamic_axes = self.analyse_dynamic_axes()
+            dynamic_axes = self.analyse_dynamic_axes(tracker)
         self.meta = self.meta.with_dynamic_axes(dynamic_axes)
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
 
-    def analyse_dynamic_axes(self):
+    def analyse_dynamic_axes(self, tracker: Tracker):
+        from ..executor_cache import OpcodeExecutorCache
+
         shape_dims = (
             self.shape.proxy.get_all()
         )  # Trigger convert all shape dims to Variable
-        return [
+        dynamic_axes = [
             i
             for i, dim in enumerate(shape_dims)
             if isinstance(dim, SymbolicVariable)
         ]
+        if dynamic_axes:
+            tracker_expr = tracker.trace_value_from_frame().inlined_expr
+            symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+                self.graph.pycode_gen._origin_code
+            )
+            log(
+                1,
+                f"Start analyse dynamic axes for {tracker.trace_value_from_frame().inlined_expr} in {self.graph.pycode_gen._origin_code}\n",
+            )
+            for key in symbolic_inputs:
+                if key.startswith(tracker_expr):
+                    log(1, f"  {key}: {symbolic_inputs[key]}\n")
+            log(
+                1,
+                f"  -> Tensor {tracker_expr} with dynamic axes {dynamic_axes}\n",
+            )
+        return dynamic_axes
 
     def __len__(self):
         if isinstance(self.meta.shape[0], SymbolicInt):
@@ -742,7 +762,7 @@ class SymbolicVariable(VariableBase):
                 tensor_call_shape_var,
                 ConstantVariable.wrap_literal(shape_idx, graph),
             )
-        if not isinstance(value, int):
+        if type(value) is not int:
             return None
         if not tracker.is_traceable():
             return None

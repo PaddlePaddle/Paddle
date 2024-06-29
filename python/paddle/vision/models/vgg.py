@@ -30,10 +30,9 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.nn import Layer, Sequential
 
-
-class _VGGOptions(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
+    class _VGGOptions(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
 
 
 __all__ = []
@@ -83,6 +82,9 @@ class VGG(nn.Layer):
             [1, 1000]
     """
 
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self, features: Layer, num_classes: int = 1000, with_pool: bool = True
     ) -> None:
@@ -118,7 +120,9 @@ class VGG(nn.Layer):
         return x
 
 
-def make_layers(cfg: list[object], batch_norm: bool = False) -> Sequential:
+def make_layers(
+    cfg: list[int | Literal['M']], batch_norm: bool = False
+) -> Sequential:
     layers = []
     in_channels = 3
     for v in cfg:

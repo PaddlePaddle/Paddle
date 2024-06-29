@@ -30,7 +30,7 @@ class Normal(distribution.Distribution):
 
     Mathematical details
 
-    The probability density function (pdf) is
+    If 'loc' is real number, the probability density function (pdf) is
 
     .. math::
 
@@ -40,14 +40,24 @@ class Normal(distribution.Distribution):
 
         Z = (2 \pi \sigma^2)^{0.5}
 
-    In the above equation:
+    If 'loc' is complex number, the probability density function (pdf) is
+
+    .. math::
+
+        pdf(x; \mu, \sigma) = \frac{1}{Z}e^{\frac {-(x - \mu)^2}  {\sigma^2} }
+
+    .. math::
+
+        Z = \pi \sigma^2
+
+    In the above equations:
 
     * :math:`loc = \mu`: is the mean.
     * :math:`scale = \sigma`: is the std.
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(int|float|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32 and float64.
+        loc(int|float|complex|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32, float64, complex64 and complex128.
         scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32 and float64.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -102,6 +112,7 @@ class Normal(distribution.Distribution):
                 (
                     int,
                     float,
+                    complex,
                     np.ndarray,
                     Variable,
                     paddle.pir.Value,
@@ -128,33 +139,82 @@ class Normal(distribution.Distribution):
         self.all_arg_is_float = False
         self.name = name if name is not None else 'Normal'
         self.dtype = 'float32'
+        self._complex_gaussian = False
 
         if isinstance(loc, int):
             loc = float(loc)
         if isinstance(scale, int):
             scale = float(scale)
 
-        if self._validate_args(loc, scale):
-            self.loc = loc
-            self.scale = scale
-            self.dtype = convert_dtype(loc.dtype)
-        else:
-            if isinstance(loc, float) and isinstance(scale, float):
+        if isinstance(loc, (tuple, list)):
+            loc = np.array(loc)
+            if loc.dtype == np.float64:
+                loc = loc.astype('float32')
+            if loc.dtype == np.complex128:
+                loc = loc.astype('complex64')
+
+        if isinstance(scale, (tuple, list)):
+            scale = np.array(scale, dtype=np.float32)
+
+        if (
+            isinstance(loc, complex)
+            or (
+                isinstance(loc, np.ndarray)
+                and loc.dtype in [np.complex64, np.complex128]
+            )
+            or (self._validate_args(loc) and loc.is_complex())
+        ):
+            self._complex_gaussian = True
+            if isinstance(loc, complex) and isinstance(scale, float):
                 self.all_arg_is_float = True
-            if isinstance(loc, np.ndarray) and str(loc.dtype) in [
-                'float32',
-                'float64',
-            ]:
-                self.dtype = loc.dtype
-            elif isinstance(scale, np.ndarray) and str(scale.dtype) in [
-                'float32',
-                'float64',
-            ]:
-                self.dtype = scale.dtype
-            self.loc, self.scale = self._to_tensor(loc, scale)
-            if self.dtype != convert_dtype(self.loc.dtype):
-                self.loc = paddle.cast(self.loc, dtype=self.dtype)
-                self.scale = paddle.cast(self.scale, dtype=self.dtype)
+
+            if isinstance(loc, np.ndarray):
+                real_dtype = (
+                    'float32' if loc.dtype == np.complex64 else 'float64'
+                )
+                imag_dtype = (
+                    'float32' if loc.dtype == np.complex64 else 'float64'
+                )
+                real = paddle.to_tensor(loc.real, real_dtype)
+                imag = paddle.to_tensor(loc.imag, imag_dtype)
+                self.loc = paddle.complex(real, imag)
+            elif isinstance(loc, complex):
+                real = paddle.to_tensor(loc.real, dtype='float32')
+                imag = paddle.to_tensor(loc.imag, dtype='float32')
+                self.loc = paddle.complex(real, imag)
+            else:
+                self.loc = loc
+
+            if isinstance(scale, np.ndarray):
+                self.scale = paddle.to_tensor(scale, dtype=scale.dtype)
+            elif isinstance(scale, float):
+                self.scale = paddle.to_tensor(scale, dtype='float32')
+            else:
+                self.scale = scale
+
+            self.dtype = convert_dtype(self.loc.dtype)
+        else:
+            if self._validate_args(loc, scale):
+                self.loc = loc
+                self.scale = scale
+                self.dtype = convert_dtype(loc.dtype)
+            else:
+                if isinstance(loc, float) and isinstance(scale, float):
+                    self.all_arg_is_float = True
+                if isinstance(loc, np.ndarray) and str(loc.dtype) in [
+                    'float32',
+                    'float64',
+                ]:
+                    self.dtype = loc.dtype
+                elif isinstance(scale, np.ndarray) and str(scale.dtype) in [
+                    'float32',
+                    'float64',
+                ]:
+                    self.dtype = scale.dtype
+                self.loc, self.scale = self._to_tensor(loc, scale)
+                if self.dtype != convert_dtype(self.loc.dtype):
+                    self.loc = paddle.cast(self.loc, dtype=self.dtype)
+                    self.scale = paddle.cast(self.scale, dtype=self.dtype)
         super().__init__(self.loc.shape)
 
     @property
@@ -204,7 +264,11 @@ class Normal(distribution.Distribution):
 
             zero_tmp_shape = paddle.shape(zero_tmp_reshape)
             normal_random_tmp = random.gaussian(
-                zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
+                zero_tmp_shape,
+                mean=(0.0 + 0.0j) if self._complex_gaussian else 0.0,
+                std=1.0,
+                seed=seed,
+                dtype=self.dtype,
             )
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
             output = paddle.add(output, self.loc, name=name)
@@ -212,7 +276,11 @@ class Normal(distribution.Distribution):
         else:
             output_shape = shape + batch_shape
             output = random.gaussian(
-                output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
+                output_shape,
+                mean=(0.0 + 0.0j) if self._complex_gaussian else 0.0,
+                std=1.0,
+                seed=seed,
+                dtype=self.dtype,
             ) * (paddle.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = paddle.add(output, self.loc, name=name)
             if self.all_arg_is_float:
@@ -234,17 +302,25 @@ class Normal(distribution.Distribution):
             raise TypeError('sample shape must be Iterable object.')
 
         shape = self._extend_shape(tuple(shape))
-        eps = paddle.normal(shape=shape)
+        eps = paddle.normal(
+            mean=(0.0 + 0.0j) if self._complex_gaussian else 0.0, shape=shape
+        )
         return self.loc + eps * self.scale
 
     def entropy(self):
         r"""Shannon entropy in nats.
 
-        The entropy is
+        If non-complex, the entropy is
 
         .. math::
 
             entropy(\sigma) = 0.5 \log (2 \pi e \sigma^2)
+
+        If complex gaussian, the entropy is
+
+        .. math::
+
+            entropy(\sigma) = \log (\pi e \sigma^2) + 1
 
         In the above equation:
 
@@ -256,18 +332,33 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        if -1 in batch_shape:
-            fill_shape = list(batch_shape)
-            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
-            fill_dtype = (self.loc + self.scale).dtype
-            zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
+
+        if self._complex_gaussian:
+            if -1 in batch_shape:
+                fill_shape = list(batch_shape)
+                fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+                fill_dtype = self.scale.dtype
+                zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
+            else:
+                zero_tmp = paddle.full(batch_shape, 0.0, self.scale.dtype)
+            return paddle.add(
+                1.0 + zero_tmp,
+                math.log(math.pi) + 2.0 * paddle.log(self.scale + zero_tmp),
+                name=name,
+            )
         else:
-            zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
-        return paddle.add(
-            0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),
-            name=name,
-        )
+            if -1 in batch_shape:
+                fill_shape = list(batch_shape)
+                fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+                fill_dtype = (self.loc + self.scale).dtype
+                zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
+            else:
+                zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
+            return paddle.add(
+                0.5 + zero_tmp,
+                0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),
+                name=name,
+            )
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -284,11 +375,18 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         log_scale = paddle.log(self.scale)
-        return paddle.subtract(
-            -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
-            log_scale + math.log(math.sqrt(2.0 * math.pi)),
-            name=name,
-        )
+        if self._complex_gaussian:
+            return paddle.subtract(
+                -1.0 * ((value - self.loc).conj() * (value - self.loc)) / (var),
+                2.0 * log_scale + math.log(math.pi),
+                name=name,
+            )
+        else:
+            return paddle.subtract(
+                -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
+                log_scale + math.log(math.sqrt(2.0 * math.pi)),
+                name=name,
+            )
 
     def probs(self, value):
         """Probability density/mass function.
@@ -304,22 +402,41 @@ class Normal(distribution.Distribution):
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        return paddle.divide(
-            paddle.exp(
-                -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
-            ),
-            (math.sqrt(2 * math.pi) * self.scale),
-            name=name,
-        )
+        if self._complex_gaussian:
+            return paddle.divide(
+                paddle.exp(
+                    -1.0
+                    * ((value - self.loc).conj() * (value - self.loc))
+                    / (var)
+                ),
+                (math.pi * var),
+                name=name,
+            )
+        else:
+            return paddle.divide(
+                paddle.exp(
+                    -1.0
+                    * ((value - self.loc) * (value - self.loc))
+                    / (2.0 * var)
+                ),
+                (math.sqrt(2 * math.pi) * self.scale),
+                name=name,
+            )
 
     def kl_divergence(self, other):
         r"""The KL-divergence between two normal distributions.
 
-        The probability density function (pdf) is
+        If non-complex, the KL-divergence is
 
         .. math::
 
             KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio})
+
+        If complex gaussian:
+
+        .. math::
+
+            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio}
 
         .. math::
 
@@ -348,11 +465,21 @@ class Normal(distribution.Distribution):
         if not in_dynamic_mode():
             check_type(other, 'other', Normal, 'kl_divergence')
 
+        if self._complex_gaussian != other._complex_gaussian:
+            raise ValueError(
+                "The kl divergence must be computed between two distributions in the same number field."
+            )
         name = self.name + '_kl_divergence'
         var_ratio = self.scale / other.scale
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
-        t1 = t1 * t1
-        return paddle.add(
-            0.5 * var_ratio, 0.5 * (t1 - 1.0 - paddle.log(var_ratio)), name=name
-        )
+        if self._complex_gaussian:
+            t1 = t1.conj() * t1
+            return var_ratio + t1 - 1.0 - paddle.log(var_ratio)
+        else:
+            t1 = t1 * t1
+            return paddle.add(
+                0.5 * var_ratio,
+                0.5 * (t1 - 1.0 - paddle.log(var_ratio)),
+                name=name,
+            )

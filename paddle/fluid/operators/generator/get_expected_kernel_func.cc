@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // oneDNN's reduction kernel is optimized only for reducing throughout the
 // most outer dims, so in case of another type of reduction, it would be
@@ -447,5 +446,4 @@ phi::KernelKey GetSeedExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   return phi::KernelKey(framework::proto::VarType::INT32, ctx.GetPlace());
 }
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators

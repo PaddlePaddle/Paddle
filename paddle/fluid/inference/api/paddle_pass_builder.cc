@@ -170,7 +170,6 @@ const std::vector<std::string> kDlnneSubgraphPasses({
     "conv_bn_fuse_pass",             //
     "depthwise_conv_bn_fuse_pass",   //
     "shuffle_channel_detect_pass",   //
-    "dlnne_subgraph_pass",           //
 });
 
 // TODO(inference): Most of the existing pass fusion operators do not
@@ -636,11 +635,13 @@ const std::vector<std::string> kPirXpuPasses{
     // Operator fusion pass
     "add_layernorm_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
+    "conv2d_add_xpu_fuse_pass",
     "group_norm_silu_fuse_pass",
     "fc_xpu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses {
   "delete_quant_dequant_linear_op_pass", "delete_weight_dequant_linear_op_pass",
+      "matmul_scale_fuse_pass", "matmul_transpose_fuse_pass",
       "depthwise_conv_onednn_pass",
       "squeeze_transpose_onednn_fuse_pass",  //
       "conv2d_bn_onednn_fuse_pass",          //

@@ -150,7 +150,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         CHECK(!output_shapes.empty());
         auto tensor_x = x.as_tensor_ref();
         auto tensor_index = index.as_tensor_ref();
-        auto stages = CreateStages({tensor_x, tensor_index});
         VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
                 << ", index shape: " << utils::Join(tensor_index->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
@@ -158,11 +157,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         std::string tensor_name = pack_args[2].operator std::string();
         ir::Tensor out = GatherNd(tensor_x, tensor_index, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of " << op_name << " is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -241,7 +238,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
         CHECK(!output_shapes.empty());
         auto tensor_x = x.as_tensor_ref();
         auto tensor_index = index.as_tensor_ref();
-        auto stages = CreateStages({tensor_x, tensor_index});
         VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
                 << ", index shape: " << utils::Join(tensor_index->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
@@ -249,11 +245,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
         std::string tensor_name = pack_args[2].operator std::string();
         ir::Tensor out = GatherNdSymbolic(tensor_x, tensor_index, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of " << op_name << " is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
