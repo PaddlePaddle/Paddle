@@ -477,8 +477,7 @@ def get_dense_send_context(
 def get_geo_trainer_send_context(attrs):
     if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError(
-            "ps mode: {} not matched {}",
-            format(attrs['ps_mode'], "get_geo_trainer_send_context"),
+            f"ps mode: {attrs['ps_mode']} not matched get_geo_trainer_send_context",
         )
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])

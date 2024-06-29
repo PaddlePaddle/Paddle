@@ -116,7 +116,7 @@ def monkey_patch_variable():
         try:
             dtype = var.dtype
         except:
-            raise ValueError("Cannot get data type from %s", var.name)
+            raise ValueError(f"Cannot get data type from {var.name}")
         return dtype
 
     def current_block(var):
