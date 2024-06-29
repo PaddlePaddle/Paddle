@@ -1404,6 +1404,15 @@ void HandleForIfOp(
   }
   auto new_ifop = builder.Build<IfOp>(new_cond, std::move(new_ifop_outputs));
 
+  if (op_item->HasAttribute("fake_false_branch") &&
+      op_item->attributes()
+          .at("fake_false_branch")
+          .dyn_cast<pir::BoolAttribute>()
+          .data()) {
+    new_ifop->set_attribute("fake_false_branch",
+                            op_item->attribute("fake_false_branch"));
+  }
+
   // process true block
   auto& true_block = new_ifop.true_block();
   ProcessBlock(place,
@@ -3069,6 +3078,9 @@ void ProcessBlock(
   auto inputs_by_data_op = GetInputsByDataOp(block);
   for (auto& [keyword, arg] : block->kwargs()) {
     auto new_arg = new_block->AddKwarg(keyword, arg.type());
+    for (auto& [name, attr] : arg.dyn_cast<pir::BlockArgument>().attributes()) {
+      new_arg.set_attribute(name, attr);
+    }
     (*map_value_pair)[arg] = new_arg;
     if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
       new_arg.set_type(

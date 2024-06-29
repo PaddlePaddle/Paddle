@@ -1074,4 +1074,57 @@ void FusedElemwiseActivationGradInferMeta(
     MetaTensor* y_grad,
     MetaConfig config = MetaConfig());
 
+void FP8OutHalfGemmFusedInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& bias,
+    const bool trans_x,
+    const bool trans_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& output_dtype,
+    const std::string& activation_type,
+    MetaTensor* out);
+
+void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
+                                   const MetaTensor& embeddings,
+                                   const MetaTensor& weight_h,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& h0,
+                                   const MetaTensor& c0,
+                                   bool use_peepholes,
+                                   bool is_reverse,
+                                   bool use_seq,
+                                   const std::string& gate_activation,
+                                   const std::string& cell_activation,
+                                   const std::string& candidate_activation,
+                                   MetaTensor* hidden,
+                                   MetaTensor* cell,
+                                   MetaTensor* x_x,
+                                   MetaTensor* batched_input,
+                                   MetaTensor* batched_hidden,
+                                   MetaTensor* batched_cell,
+                                   MetaTensor* reordered_h0,
+                                   MetaTensor* reordered_c0);
+
+void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
+                              const MetaTensor& cvm,
+                              const std::string& pooltype,
+                              float pad_value,
+                              bool use_cvm,
+                              int cvm_offset,
+                              std::vector<MetaTensor*> out,
+                              MetaConfig config = MetaConfig());
+
+void FusedSeqpoolCvmGradInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const MetaTensor& cvm,
+    const std::vector<const MetaTensor*>& out_grad,
+    const std::string& pooltype,
+    float pad_value,
+    bool use_cvm,
+    int cvm_offset,
+    std::vector<MetaTensor*> x_grad,
+    MetaTensor* cvm_grad,
+    MetaConfig config = MetaConfig());
+
 }  // namespace phi

@@ -487,8 +487,7 @@ def _add_feed_fetch_ops(
                 )
             else:
                 warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % name
+                    f"The variable {name} is not found in program. It is not declared or is pruned."
                 )
 
     if use_fetch_v2:
@@ -944,7 +943,8 @@ class _ExecutorCache:
         )
 
     def _get_program_and_executor(self, cached_data):
-        program = cached_data.program
+        # do type promotion if necessary
+        program = process_type_promotion(cached_data.program)
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -1173,6 +1173,8 @@ class _ExecutorCache:
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
                 decomp.decompose_dist_program(program)
+        if in_cinn_mode():
+            apply_cinn_pass(program)
         return program, new_exe, data_op_infos
 
 
@@ -1417,8 +1419,7 @@ class Executor:
             if feed_name not in feed_target_names:
                 feed.pop(feed_name)
                 warnings.warn(
-                    "The value %s is not found in program. It is not declared or is pruned."
-                    % feed_name
+                    f"The value {feed_name} is not found in program. It is not declared or is pruned."
                 )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
@@ -1575,8 +1576,7 @@ class Executor:
                 if not global_block.has_var(feed_name):
                     feed.pop(feed_name)
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % feed_name
+                        f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                     )
 
         elif isinstance(feed, (list, tuple)):
@@ -1585,8 +1585,7 @@ class Executor:
                     if not global_block.has_var(feed_name):
                         each.pop(feed_name)
                         warnings.warn(
-                            "The variable %s is not found in program. It is not declared or is pruned."
-                            % feed_name
+                            f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                         )
         return feed
 
@@ -1799,8 +1798,6 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
-            # do type promotion if necessary
-            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
@@ -1944,8 +1941,7 @@ class Executor:
                 feed = feed[0]
             if not isinstance(feed, dict):
                 raise TypeError(
-                    "feed requires dict as its Parameter. But you passed in %s"
-                    % (type(feed))
+                    f"feed requires dict as its Parameter. But you passed in {type(feed)}"
                 )
             feed = self._update_feed(program, feed)
 
@@ -2036,7 +2032,7 @@ class Executor:
                     and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
-                    raise ValueError('Need feed data for variable %s' % varname)
+                    raise ValueError(f'Need feed data for variable {varname}')
 
         acp._auto_checkpoint(self, program)
 
@@ -2093,8 +2089,7 @@ class Executor:
             feed = feed[0]
         if not isinstance(feed, dict):
             raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
+                f"feed requires dict as its Parameter. But you passed in {type(feed)}"
             )
 
         (
@@ -2973,8 +2968,7 @@ class Executor:
                     )
                 else:
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % name
+                        f"The variable {name} is not found in program. It is not declared or is pruned."
                     )
 
         return tmp_program

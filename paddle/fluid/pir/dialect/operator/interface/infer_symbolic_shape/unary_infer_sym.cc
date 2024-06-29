@@ -257,34 +257,10 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   int32_t num_levels = max_level - min_level + 1;
   int64_t batch_size = 1;
 
-  symbol::DimExpr num_rois = [&]() {
-    pir::Value rois_num = op->operand_source(1);
-    const auto &rois_num_shape_or_data =
-        infer_context->GetShapeOrDataForValue(rois_num);
-
-    batch_size = rois_num_shape_or_data.shape()[0].Get<int64_t>();
-    PADDLE_ENFORCE_EQ(rois_num_shape_or_data.data().has_value(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "InferSymbolicShape of DistributeFpnProposalsdOp "
-                          "only support input with rois_num."));
-
-    symbol::DimExpr rois_total_num = 0;
-    for (int i = 0; i < batch_size; i++) {
-      const auto &rois_num_value = rois_num_shape_or_data.data().value()[i];
-
-      CHECK(rois_num_value.isa<int64_t>() || rois_num_value.isa<std::string>())
-          << "rois_num must be int64 or SymName.";
-      if (rois_num_value.isa<int64_t>()) {
-        return symbol::DimExpr(rois_num_value.Get<int64_t>());
-      } else {
-        return symbol::DimExpr(rois_num_value.Get<std::string>());
-      }
-      rois_total_num = rois_total_num + rois_num_value;
-    }
-
-    return rois_total_num;
-  }();
+  symbol::DimExpr num_rois =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .shape()
+          .at(0);
 
   const auto &multi_rois_out_shape = [&]() {
     symbol::TensorListShapeOrDataDimExprs multi_rois_out_shape;
@@ -300,8 +276,8 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(level_dim));
         last_dim = last_dim - level_dim[0];
       }
-      multi_rois_out_shape.emplace_back(
-          symbol::TensorShapeOrDataDimExprs({last_dim, 4}));
+      multi_rois_out_shape.emplace_back(symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName(), 4}));
     }
 
     return multi_rois_out_shape;
@@ -825,13 +801,26 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  int64_t axis = op->operand_source(1)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
+  const symbol::ShapeOrDataDimExprs &axis_shape_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  PADDLE_ENFORCE_EQ(
+      axis_shape_data.data().has_value(),
+      true,
+      phi::errors::InvalidArgument(
+          "In InferSymbolicShape, axis of SplitWithNumOp is null"));
+  const std::vector<symbol::DimExpr> &axis_data =
+      axis_shape_data.data().value();
+  PADDLE_ENFORCE_EQ(
+      axis_data.size() == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "In SplitWithNumOp, data of axis should be one dimension"));
+  if (!axis_data[0].isa<int64_t>()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of axis must be int64_t"));
+  }
+  int64_t axis = axis_data[0].dyn_cast<int64_t>();
+
   const auto &attributes = op->attributes();
   int num = attributes.at("num").dyn_cast<pir::Int32Attribute>().data();
   const auto &x_s_or_d =
