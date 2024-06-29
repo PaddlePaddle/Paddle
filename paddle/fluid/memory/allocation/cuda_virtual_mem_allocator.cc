@@ -29,9 +29,7 @@
 #endif
 #if CUDA_VERSION >= 10020
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
@@ -225,11 +223,9 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_mem_alloced_offset_ += size;
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, platform::Place(place_));
+      reinterpret_cast<void*>(ptr), size, platform::Place(place_));  // NOLINT
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
 
 #endif

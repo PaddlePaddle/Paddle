@@ -187,7 +187,7 @@ std::array<unsigned int, 3> GetGpuMaxGridDimSize(int id) {
                                    "but received id is: %d. GPU count is: %d.",
                                    id,
                                    GetGPUDeviceCount()));
-  std::array<unsigned int, 3> ret;
+  std::array<unsigned int, 3> ret = {};
   int size;
   auto error_code_x = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimX, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_x);

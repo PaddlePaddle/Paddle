@@ -2,22 +2,17 @@
 include(operators)
 
 # set yaml file path
-set(op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml)
-set(legacy_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml)
-set(bw_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml)
-set(static_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/legacy/static_ops.yaml)
-set(fused_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_ops.yaml)
-set(legacy_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_backward.yaml)
-set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml)
-set(sparse_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml)
-set(static_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/legacy/static_backward.yaml)
-set(fused_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_backward.yaml)
+set(ops_yaml_dir ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml)
+set(op_yaml_file ${ops_yaml_dir}/ops.yaml)
+set(legacy_op_yaml_file ${ops_yaml_dir}/inconsistent/dygraph_ops.yaml)
+set(bw_op_yaml_file ${ops_yaml_dir}/backward.yaml)
+set(static_op_yaml_file ${ops_yaml_dir}/legacy/static_ops.yaml)
+set(fused_op_yaml_file ${ops_yaml_dir}/fused_ops.yaml)
+set(legacy_bw_op_yaml_file ${ops_yaml_dir}/inconsistent/dygraph_backward.yaml)
+set(sparse_op_yaml_file ${ops_yaml_dir}/sparse_ops.yaml)
+set(sparse_bw_op_yaml_file ${ops_yaml_dir}/sparse_backward.yaml)
+set(static_bw_op_yaml_file ${ops_yaml_dir}/legacy/static_backward.yaml)
+set(fused_bw_op_yaml_file ${ops_yaml_dir}/fused_backward.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -198,8 +193,8 @@ endif()
 
 # code generation for op, op makers, and argument mapping functions
 message(
-  "create or remove auto-geneated operators: generated_op(1-4).cc.tmp
-create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp"
+  "create or remove auto-generated operators: generated_op(1-4).cc.tmp
+create or remove auto-generated argument mappings: ${generated_argument_mapping_path}.tmp"
 )
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
@@ -207,11 +202,13 @@ execute_process(
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
     ${parsed_op_dir}/ops.parsed.yaml --backward_yaml_path
     ${parsed_op_dir}/backward.parsed.yaml --op_version_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
-    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
-    --output_op_path "${generated_op_path_1}.tmp" "${generated_op_path_2}.tmp"
-    "${generated_op_path_3}.tmp" "${generated_op_path_4}.tmp"
-    --output_arg_map_path "${generated_argument_mapping_path}.tmp"
+    ${ops_yaml_dir}/op_version.yaml --op_compat_yaml_path
+    ${ops_yaml_dir}/op_compat.yaml --output_op_path "${generated_op_path_1}.tmp"
+    "${generated_op_path_2}.tmp" "${generated_op_path_3}.tmp"
+    "${generated_op_path_4}.tmp" --output_arg_map_path
+    "${generated_argument_mapping_path}.tmp" --ops_exclude_yaml_path
+    ${ops_yaml_dir}/legacy/ops_exclude.yaml --backward_exclude_yaml_path
+    ${ops_yaml_dir}/legacy/backward_exclude.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "operator codegen failed, exiting.")
@@ -223,9 +220,9 @@ execute_process(
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
     ${parsed_op_dir}/legacy/static_ops.parsed.yaml --backward_yaml_path
     ${parsed_op_dir}/legacy/static_backward.parsed.yaml --op_version_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
-    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
-    --output_op_path "${generated_static_op_path}.tmp" --output_arg_map_path
+    ${ops_yaml_dir}/op_version.yaml --op_compat_yaml_path
+    ${ops_yaml_dir}/op_compat.yaml --output_op_path
+    "${generated_static_op_path}.tmp" --output_arg_map_path
     "${generated_static_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
@@ -238,9 +235,9 @@ execute_process(
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
     ${parsed_op_dir}/fused_ops.parsed.yaml --backward_yaml_path
     ${parsed_op_dir}/fused_backward.parsed.yaml --op_version_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
-    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
-    --output_op_path "${generated_fused_op_path}.tmp" --output_arg_map_path
+    ${ops_yaml_dir}/op_version.yaml --op_compat_yaml_path
+    ${ops_yaml_dir}/op_compat.yaml --output_op_path
+    "${generated_fused_op_path}.tmp" --output_arg_map_path
     "${generated_fused_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
@@ -306,7 +303,7 @@ endif()
 # op extra info file
 set(ops_extra_info_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/ops_extra_info_gen.py)
-set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
+set(op_compat_yaml_file ${ops_yaml_dir}/op_compat.yaml)
 set(ops_extra_info_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
 

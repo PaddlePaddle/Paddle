@@ -16,11 +16,9 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#ifdef PADDLE_WITH_XPU_XHPC
+#ifdef PADDLE_WITH_XPU_XRE5
 #include "xfa/flash_api.h"
 #endif
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -38,8 +36,7 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-#ifdef PADDLE_WITH_XPU_XHPC
-
+#ifdef PADDLE_WITH_XPU_XRE5
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
   ctx.template Alloc<T>(dv);
@@ -72,7 +69,18 @@ void FlashAttnGradKernel(const Context& ctx,
 
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   const float* bias_data = nullptr;
+  int64_t fa_layout = AttnQKVLayout_t::ATTN_BLHD;
   if (attn_mask.get_ptr() != nullptr) {
+    const auto& mask_dims = attn_mask->dims();
+    if (mask_dims.size() == 3 || (mask_dims[1] == 1 && mask_dims.size() == 4)) {
+      fa_layout |= AttnQKVLayout_t::BIAS_BLL;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          mask_dims.size(),
+          4,
+          phi::errors::InvalidArgument("flash_attn_bwd requires mask's shape "
+                                       "like [b,l,l] or [b, h, l, l]"));
+    }
     if (attn_mask->dtype() == phi::DataType::FLOAT32) {
       bias_data = attn_mask->data<float>();
     } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
@@ -147,12 +155,23 @@ void FlashAttnGradKernel(const Context& ctx,
       static_cast<int32_t>(seed_offset_data[0]),  // seed
       causal,                                     // is_causal
       nullptr,                                    // attn_mask
-      bias_data                                   // bias
+      bias_data,                                  // bias
+      nullptr,                                    // q_maxptr
+      nullptr,                                    // k_maxptr
+      nullptr,                                    // v_maxptr
+      nullptr,                                    // o_maxptr
+      nullptr,                                    // dq_maxptr
+      nullptr,                                    // dk_maxptr
+      nullptr,                                    // dv_maxptr
+      nullptr,                                    // do_maxptr
+      false,                                      // is_qkv_fusion
+      false,                                      // is_dqkv_fusion
+      fa_layout                                   // qkv_layout
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
-      "re-compile using -DWITH_XPU_XHPC=ON to use FlashAttnGradKernel"));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnGradKernel"));
 #endif
 }
 

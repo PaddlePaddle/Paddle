@@ -20,7 +20,8 @@
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/service/ps_graph_client.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
@@ -31,7 +32,8 @@ REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 REGISTER_PSCORE_CLASS(PSClient, CoordinatorClient);
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
 REGISTER_PSCORE_CLASS(PSClient, PsGraphClient);
 #endif
 
@@ -70,39 +72,45 @@ PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
   if (!config.has_downpour_server_param()) {
     LOG(ERROR) << "miss downpour_server_param in ServerParameter";
-    return NULL;
+    return nullptr;
   }
 
   if (!config.downpour_server_param().has_service_param()) {
     LOG(ERROR) << "miss service_param in ServerParameter.downpour_server_param";
-    return NULL;
+    return nullptr;
   }
 
   if (!config.downpour_server_param().service_param().has_client_class()) {
     LOG(ERROR) << "miss client_class in "
                   "ServerParameter.downpour_server_param.service_param";
-    return NULL;
+    return nullptr;
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
   const auto &client_name = service_param.client_class();
 
-  PSClient *client = NULL;
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
-  auto gloo = ::paddle::framework::GlooWrapper::GetInstance();
-  if (client_name == "PsLocalClient" && gloo->Size() > 1) {
-    client = CREATE_PSCORE_CLASS(PSClient, "PsGraphClient");
-    LOG(WARNING) << "change PsLocalClient to PsGraphClient";
+  PSClient *client = nullptr;
+  const auto &work_param = ps_config.worker_param().downpour_worker_param();
+  bool use_gpu_graph = work_param.downpour_table_param(0).use_gpu_graph();
+  VLOG(3) << "PSClient Client use_gpu_graph:" << use_gpu_graph;
+  if (use_gpu_graph) {
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+    auto gloo = ::paddle::framework::GlooWrapper::GetInstance();
+    if (client_name == "PsLocalClient" && gloo->Size() > 1) {
+      client = CREATE_PSCORE_CLASS(PSClient, "PsGraphClient");
+      LOG(WARNING) << "change PsLocalClient to PsGraphClient";
+    } else {
+      client = CREATE_PSCORE_CLASS(PSClient, client_name);
+    }
+#endif
   } else {
     client = CREATE_PSCORE_CLASS(PSClient, client_name);
   }
-#else
-  client = CREATE_PSCORE_CLASS(PSClient, client_name);
-#endif
-  if (client == NULL) {
+  if (client == nullptr) {
     LOG(ERROR) << "client is not registered, server_name:"
                << service_param.client_class();
-    return NULL;
+    return nullptr;
   }
 
   TableManager::Instance().Initialize();

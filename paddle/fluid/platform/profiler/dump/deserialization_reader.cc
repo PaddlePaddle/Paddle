@@ -15,8 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 DeserializationReader::DeserializationReader(std::string filename)
     : filename_(std::move(filename)) {
@@ -367,5 +366,4 @@ MemsetEventInfo DeserializationReader::HandleMemsetEventInfoProto(
   return memset_info;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

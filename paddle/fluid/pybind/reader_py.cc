@@ -147,6 +147,10 @@ class MultiDeviceFeedReader {
       : queue_(queue),
         names_(names),
         pool_(new ::ThreadPool(dst_places.size())),
+        readers_(),
+        futures_(),
+        exceptions_(),
+        ret_(),
         drop_last_(drop_last),
         pin_memory_(pin_memory) {
     std::vector<framework::DDim> dims;

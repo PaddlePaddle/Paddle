@@ -109,28 +109,31 @@ bool MemcpyToHost(void* dst,
                   size_t bytes,
                   const Target& input_target,
                   void* stream = nullptr) {
-  if (input_target == cinn::common::DefaultNVGPUTarget()) {
+  input_target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    const auto& cuda_stream = static_cast<cudaStream_t>(stream);
-    cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cuda_stream);
-    cudaStreamSynchronize(cuda_stream);
-    return true;
+        const auto& cuda_stream = static_cast<cudaStream_t>(stream);
+        cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cuda_stream);
+        cudaStreamSynchronize(cuda_stream);
 #else
-    PADDLE_THROW(phi::errors::Fatal(
-        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
-    return false;
+        PADDLE_THROW(
+            phi::errors::Fatal("NVGPU Target only support on flag "
+                               "CINN_WITH_CUDA ON! Please check."));
 #endif
-  }
-  if (input_target == cinn::common::DefaultHostTarget()) {
-    memcpy(dst, src, bytes);
-    return true;
-  }
-  std::stringstream ss;
-  ss << "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
-        "input target is "
-     << input_target << "! Please check.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-  return false;
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+      },
+      [&](common::X86Arch) { memcpy(dst, src, bytes); },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        std::stringstream ss;
+        ss << input_target;
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
+            "input target is %s! Please check.",
+            ss.str()));
+      });
+  return true;
 }
 
 bool MemcpyToDevice(void* dst,
@@ -138,35 +141,45 @@ bool MemcpyToDevice(void* dst,
                     size_t bytes,
                     const Target& input_target,
                     void* stream = nullptr) {
+  input_target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (input_target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpyAsync(dst,
-                    src,
-                    bytes,
-                    cudaMemcpyDeviceToDevice,
-                    static_cast<cudaStream_t>(stream));
-    return true;
-  } else if (input_target == cinn::common::DefaultHostTarget()) {
-    cudaMemcpyAsync(dst,
-                    src,
-                    bytes,
-                    cudaMemcpyHostToDevice,
-                    static_cast<cudaStream_t>(stream));
-    return true;
-  } else {
-    std::stringstream ss;
-    ss << "MemcpyToDevice only support cpu or nvgpu -> nvgpu, but here "
-          "the input target is "
-       << input_target << "! Please check.";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-    return false;
-  }
+        cudaMemcpyAsync(dst,
+                        src,
+                        bytes,
+                        cudaMemcpyDeviceToDevice,
+                        static_cast<cudaStream_t>(stream));
 #else
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "MemcpyToDevice only support nvgpu, and NVGPU Target only "
-      "support when flag CINN_WITH_CUDA ON! Please check."));
-  return false;
+        PADDLE_THROW(
+            phi::errors::Fatal("NVGPU Target only support on flag "
+                               "CINN_WITH_CUDA ON! Please check."));
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+      },
+      [&](common::X86Arch) {
+#ifdef CINN_WITH_CUDA
+        cudaMemcpyAsync(dst,
+                        src,
+                        bytes,
+                        cudaMemcpyHostToDevice,
+                        static_cast<cudaStream_t>(stream));
+#else
+        PADDLE_THROW(
+            phi::errors::Fatal("NVGPU Target only support on flag "
+                               "CINN_WITH_CUDA ON! Please check."));
+#endif
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        std::stringstream ss;
+        ss << input_target;
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "MemcpyToDevice Only support gpu or cpu -> gpu, but here the "
+            "input target is %s! Please check.",
+            ss.str()));
+      });
+  return true;
 }
 }  // namespace utils
 
@@ -246,13 +259,18 @@ void cinn_assert_true(void* v_args,
                   utils::AssertTrueMsgTool::GetInstance()->GetMsg(msg),
                   target);
 
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    utils::MemcpyToDevice(
-        output->memory, x->memory, numel * sizeof(bool), target, stream);
-  } else {
-    utils::MemcpyToHost(
-        output->memory, x->memory, numel * sizeof(bool), target, stream);
-  }
+  target.arch.Match(
+      [&](common::NVGPUArch) {
+        utils::MemcpyToDevice(
+            output->memory, x->memory, numel * sizeof(bool), target, stream);
+      },
+      [&](common::HygonDCUArchHIP) {
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+      },
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        utils::MemcpyToHost(
+            output->memory, x->memory, numel * sizeof(bool), target, stream);
+      });
 }
 
 }  // namespace runtime

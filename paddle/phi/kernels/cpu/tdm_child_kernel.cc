@@ -104,7 +104,7 @@ void TDMChildKernel(const Context &dev_ctx,
                     const phi::DenseTensor &x,
                     const phi::DenseTensor &tree_info,
                     int child_nums,
-                    int dtype,
+                    phi::DataType dtype,
                     phi::DenseTensor *child,
                     phi::DenseTensor *leaf_mask) {
   const auto &input_type = x.dtype();
@@ -132,7 +132,7 @@ void TDMChildKernel(const Context &dev_ctx,
           DataTypeToString(DataType::INT32),
           DataTypeToString(DataType::INT64)));
 
-  auto output_type = phi::TransToPhiDataType(dtype);
+  auto output_type = dtype;
   bool out_type_match =
       output_type == DataType::INT32 || output_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(out_type_match,

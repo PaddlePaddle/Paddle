@@ -22,9 +22,7 @@
 
 REGISTER_FILE_SYMBOLS(best_fit_allocator);
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 static int HighestBitPos(size_t N) {
   if (UNLIKELY(N == 0)) {
@@ -183,10 +181,8 @@ BestFitAllocation::BestFitAllocation(
     typename details::ChunkList::iterator chunk_it)
     : Allocation(reinterpret_cast<void*>(
                      reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
-                     chunk_it->offset_),
+                     chunk_it->offset_),  // NOLINT
                  chunk_it->size_,
                  allocator->Place()),
       chunk_it_(chunk_it) {}
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

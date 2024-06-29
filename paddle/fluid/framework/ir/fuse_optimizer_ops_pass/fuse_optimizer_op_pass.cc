@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   ir::Graph &result = *graph;
@@ -688,6 +686,4 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
     graph->RemoveNode(ctrl_var_node);
   }
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

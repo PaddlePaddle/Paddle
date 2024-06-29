@@ -204,7 +204,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
         phi::VisitDataType(value_->dtype(),
                            TensorCopyVisitor(value,
                                              i * value_width,
-                                             *value_.get(),
+                                             *value_,
                                              index * value_width,
                                              value_width));
       }

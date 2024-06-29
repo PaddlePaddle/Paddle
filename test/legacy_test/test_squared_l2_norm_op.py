@@ -31,6 +31,10 @@ def test_squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
 
+def test_squared_l2_norm_prim(x):
+    return _C_ops.squared_l2_norm(x)
+
+
 class TestSquaredL2NormF16Op(unittest.TestCase):
     def init_test_case(self):
         X = np.random.uniform(-0.1, 0.1, (8, 5, 10)).astype('float32')
@@ -81,7 +85,9 @@ class TestL2LossOp(OpTest):
     def setUp(self):
         self.config()
         self.python_api = test_squared_l2_norm
+        self.public_python_api = test_squared_l2_norm_prim
         self.op_type = "squared_l2_norm"
+        self.prim_op_type = "comp"
         self.max_relative_error = 0.05
 
         X = np.random.uniform(-1, 1, self.x_shape).astype("float32")
@@ -90,7 +96,7 @@ class TestL2LossOp(OpTest):
         self.outputs = {'Out': np.array([np.square(LA.norm(X))])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(

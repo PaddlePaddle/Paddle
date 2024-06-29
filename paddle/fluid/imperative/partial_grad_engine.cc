@@ -38,8 +38,7 @@
 
 COMMON_DECLARE_bool(sort_sum_gradient);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 struct HashPair {
   template <class T1, class T2>
@@ -653,7 +652,17 @@ PartialGradTask::PartialGradTask(
     bool create_graph,
     bool retain_graph,
     bool allow_unused,
-    bool only_inputs) {
+    bool only_inputs)
+    : startup_ops_(),
+      pending_ops_(),
+      op_deps_(),
+      grad_accumulators_(),
+      double_grad_nodes_(),
+      grads_to_accumulate_(),
+      input_targets_(),
+      input_target_grads_(),
+      no_grad_var_grad_(),
+      reset_stop_gradient_vars_() {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;
@@ -1174,5 +1183,4 @@ void PartialGradEngine::Execute() {
   Clear();
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

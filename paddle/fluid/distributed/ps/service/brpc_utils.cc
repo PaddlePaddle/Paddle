@@ -20,18 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 framework::proto::VarType::Type VarMessageToVarType(
     VariableMessage::Type type) {
@@ -321,18 +318,18 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
   // If there're some problem with DNS, or ip triggers the bug of Brpc
   // We will try to get the IP address of the domain name manually again
   std::string ip_port = ip + ":" + std::to_string(port);
-  struct hostent* hp = NULL;
+  struct hostent* hp = nullptr;
   hp = gethostbyname(ip.c_str());
 
-  if (NULL == hp) {
+  if (nullptr == hp) {
     LOG(ERROR) << "Brpc Start failed, ip_port= " << ip_port
                << " , Error infomation: " << hstrerror(h_errno);
   }
 
   int i = 0;
-  char* int_ip = NULL;
+  char* int_ip = nullptr;
 
-  while (hp->h_addr_list[i] != NULL) {
+  while (hp->h_addr_list[i] != nullptr) {
     int_ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
     VLOG(3) << "Brpc Get host by name, host:" << ip << " -> ip: " << int_ip;
     break;
@@ -343,5 +340,4 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
   return int_ip_port;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

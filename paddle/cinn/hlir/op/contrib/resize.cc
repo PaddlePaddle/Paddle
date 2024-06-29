@@ -55,7 +55,7 @@ ir::Tensor Resize(const ir::Tensor &input,
                   const std::string &mode,
                   const std::string &output_name) {
   std::string func_name;
-  target.arch.Visit(adt::match{
+  target.arch.Match(
       [&](common::UnknownArch) {
         PADDLE_THROW(phi::errors::Fatal(
             "Resize only supports X86 and NVGPU ! Please Check.\n"));
@@ -66,7 +66,7 @@ ir::Tensor Resize(const ir::Tensor &input,
             "Resize only supports X86 and NVGPU ! Please Check.\n"));
       },
       [&](common::NVGPUArch) { func_name.assign("cinn_cuda_resize_"); },
-  });
+      [&](common::HygonDCUArchHIP) { func_name.assign("cinn_hip_resize_"); });
 
   if (mode == "bilinear") {
     func_name.append("bilinear");
@@ -216,10 +216,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
     ir::Tensor out = Resize(tensor_A, target, out_shape, mode, tensor_name);
 
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({tensor_A});
-    stages->InsertLazily(out);
     res.push_back(cinn::common::CINNValue(out));
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = cinn::common::CINNValuePack{res};
   });
 
@@ -244,7 +241,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      target.arch.Visit(adt::match{
+      target.arch.Match(
           [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::X86Arch) {
             pe::IRScheduleInjectiveCPU(
@@ -254,7 +251,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
           [&](common::NVGPUArch) {
             pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
           },
-      });
+          [&](common::HygonDCUArchHIP) {
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
+          });
     }
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};

@@ -61,18 +61,20 @@ message ShardingConfig {
 
 // for dygraph
 message MpConfig {
-    optional bool sync_param= 1 [ default = true ];
-    optional bool sync_grad= 2 [ default = false ];
-    optional bool sync_moment= 3 [ default = false ];
-    optional string sync_mode= 4 [ default = 'broadcast' ];
+    optional bool sync_param = 1 [ default = true ];
+    optional bool sync_grad = 2 [ default = false ];
+    optional bool sync_moment = 3 [ default = false ];
+    optional string sync_mode = 4 [ default = 'broadcast' ];
     // Support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
-    optional bool mp_async_allreduce= 5 [default = false ];
+    optional bool mp_async_allreduce = 5 [default = false ];
     // Support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when mp_async_allreduce is true.
-    optional bool mp_skip_c_identity= 6 [default = false ];
+    optional bool mp_skip_c_identity = 6 [default = false ];
     // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
-    optional bool mp_fused_linear_param_grad_add= 7 [default = false ];
+    optional bool mp_fused_linear_param_grad_add = 7 [default = false ];
     // Broadcast mp input data
-    optional bool need_broadcast_data=8 [default = true];
+    optional bool need_broadcast_data = 8 [default = true];
+    // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
+    optional bool recompute_allgather = 9 [default = false];
 }
 
 message PpConfig {
@@ -181,13 +183,6 @@ message BuildStrategy {
   optional bool fuse_resunit = 21 [ default = false ];
 }
 
-message ExecutionStrategy {
-  optional int32 num_threads = 1 [ default = 1 ];
-  optional int32 num_iteration_per_drop_scope = 2 [ default = 10 ];
-  optional int32 num_iteration_per_run = 3 [ default = 1 ];
-  optional bool use_thread_barrier = 4 [ default = false ];
-}
-
 message GradientScaleConfig {
   // Optional value ['avg', 'sum', 'customized']
   // If avg, loss@grad will be divided by the number of devices,
@@ -215,6 +210,7 @@ message AsyncConfig {
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
   optional int32 lr_decay_steps = 11 [ default = 10 ];
   optional int32 use_ps_gpu = 12 [ default = 0 ];
+  optional int32 use_gpu_graph = 13 [ default = 0 ];
 }
 
 message TrainerDescConfig {
@@ -269,6 +265,7 @@ message TableParameter {
   // for patch model
   optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
+  optional bool use_gpu_graph = 15 [ default = false ];
 }
 
 message TableAccessorParameter {
@@ -424,7 +421,6 @@ message DistributedStrategy {
   optional QatConfig qat_configs = 117;
 
   optional BuildStrategy build_strategy = 201;
-  optional ExecutionStrategy execution_strategy = 202;
   optional GradientScaleConfig gradient_scale_configs = 203;
 }
 

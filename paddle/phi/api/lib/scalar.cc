@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 template <>
 ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
@@ -53,5 +52,4 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

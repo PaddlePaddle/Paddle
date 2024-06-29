@@ -20,6 +20,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -217,8 +218,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * Get a new tensor with the \p shape, but the underlying buffer shared.
    * NOTE the tensor to Reshape should not be an inlined computation.
    */
-  ir::Tensor Reshape(const std::vector<Expr>& shape,
-                     poly::StageMap stages) const;
+  ir::Tensor Reshape(const std::vector<Expr>& shape) const;
 
   /**
    * Get a new tensor with the \p shape with a newly allocated buffer.
@@ -318,6 +318,10 @@ class _Tensor_ : public ExprNode<_Tensor_> {
       poly::StageMap stages,
       const Target& target = cinn::common::DefaultHostTarget()) const;
 
+  const std::optional<std::vector<Expr>>& value() const { return value_; }
+
+  void set_value(const std::vector<Expr>& value) { value_ = value; }
+
  private:
   //! Initialize the axis field after the shape field is assigned.
   void InitAxis() const;
@@ -327,6 +331,10 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   //! The names of the tensors depend the same buffer and should schedule before
   //! this.
   std::set<std::string> buffer_depended_tensor_names_;
+
+  // The flatten compute value of tensor, such as Tensor[[1, 2], [3, 4]] ->
+  // Tensor[1, 2, 3, 4]
+  std::optional<std::vector<Expr>> value_;
 
   friend Shared<poly::Stage> CreateStage(Tensor tensor);
 };

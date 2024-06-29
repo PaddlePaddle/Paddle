@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 #include "iostream"
 
@@ -36,17 +38,30 @@ void SetRandInt(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<int>(target);
+  target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data,
-               random_data.data(),
-               num_ele * sizeof(int),
-               cudaMemcpyHostToDevice);
-    return;
-  }
+        cudaMemcpy(data,
+                   random_data.data(),
+                   num_ele * sizeof(int),
+                   cudaMemcpyHostToDevice);
+#else
+        CINN_NOT_IMPLEMENTED;
 #endif
-  CHECK(target == cinn::common::DefaultHostTarget());
-  std::copy(random_data.begin(), random_data.end(), data);
+      },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data,
+            random_data.data(),
+            num_ele * sizeof(int),
+            BackendAPI::MemcpyType::HostToDevice);
+      },
+      [&](common::X86Arch) {
+        std::copy(random_data.begin(), random_data.end(), data);
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      });
 }
 
 template <>
@@ -66,17 +81,30 @@ void SetRandData<int>(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<float>(target);
+  target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data,
-               random_data.data(),
-               num_ele * sizeof(float),
-               cudaMemcpyHostToDevice);
-    return;
-  }
+        cudaMemcpy(data,
+                   random_data.data(),
+                   num_ele * sizeof(float),
+                   cudaMemcpyHostToDevice);
+#else
+        CINN_NOT_IMPLEMENTED;
 #endif
-  CHECK(target == cinn::common::DefaultHostTarget());
-  std::copy(random_data.begin(), random_data.end(), data);
+      },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data,
+            random_data.data(),
+            num_ele * sizeof(float),
+            BackendAPI::MemcpyType::HostToDevice);
+      },
+      [&](common::X86Arch) {
+        std::copy(random_data.begin(), random_data.end(), data);
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      });
 }
 
 template <>
@@ -96,21 +124,30 @@ void SetRandData<float>(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<float>(target);
+  target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data,
-               random_data.data(),
-               num_ele * sizeof(float),
-               cudaMemcpyHostToDevice);
-  } else if (target == cinn::common::DefaultHostTarget()) {
-    std::copy(random_data.begin(), random_data.end(), data);
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+        cudaMemcpy(data,
+                   random_data.data(),
+                   num_ele * sizeof(float),
+                   cudaMemcpyHostToDevice);
 #else
-  CHECK(target == cinn::common::DefaultHostTarget());
-  std::copy(random_data.begin(), random_data.end(), data);
+        CINN_NOT_IMPLEMENTED;
 #endif
+      },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data,
+            random_data.data(),
+            num_ele * sizeof(float),
+            BackendAPI::MemcpyType::HostToDevice);
+      },
+      [&](common::X86Arch) {
+        std::copy(random_data.begin(), random_data.end(), data);
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      });
 }
 
 template <typename T>
@@ -118,21 +155,30 @@ std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
                              const cinn::common::Target& target) {
   auto size = tensor->shape().numel();
   std::vector<T> data(size);
+  target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data.data(),
-               static_cast<const void*>(tensor->data<T>()),
-               size * sizeof(T),
-               cudaMemcpyDeviceToHost);
-  } else if (target == cinn::common::DefaultHostTarget()) {
-    std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+        cudaMemcpy(data.data(),
+                   static_cast<const void*>(tensor->data<T>()),
+                   size * sizeof(T),
+                   cudaMemcpyDeviceToHost);
 #else
-  CHECK(target == cinn::common::DefaultHostTarget());
-  std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
+        CINN_NOT_IMPLEMENTED;
 #endif
+      },
+      [&](common::HygonDCUArchHIP arch) {
+        BackendAPI::get_backend(arch)->memcpy(
+            data.data(),
+            static_cast<const void*>(tensor->data<T>()),
+            size * sizeof(T),
+            BackendAPI::MemcpyType::DeviceToHost);
+      },
+      [&](common::X86Arch) {
+        std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      });
   return data;
 }
 

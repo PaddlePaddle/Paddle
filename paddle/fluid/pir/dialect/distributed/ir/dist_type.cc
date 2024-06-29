@@ -16,8 +16,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/type_storage.h"
 #include "paddle/pir/include/core/ir_context.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::DenseTensorType DistDenseTensorType::dense_tensor_type() const {
   return storage()->dense_tensor_type;
@@ -69,7 +68,6 @@ pir::DenseTensorType DistDenseTensorType::local_type() const {
                                    offset());
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DistDenseTensorType)

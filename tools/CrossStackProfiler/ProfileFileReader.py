@@ -46,7 +46,7 @@ class profileFileReader(FileReader):
             profile_dict["trainerRank.%03d" % (rankId)] = self._parseSingleFile(
                 fileName
             )
-            self._logger.info("I finish processing %s!" % fileName)
+            self._logger.info(f"I finish processing {fileName}!")
 
         if q is not None:
             q.put(profile_dict)

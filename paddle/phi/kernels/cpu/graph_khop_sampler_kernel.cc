@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/graph_khop_sampler_kernel.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <numeric>
 #include <random>
@@ -364,8 +364,9 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
     std::copy(eids_merge.begin(), eids_merge.end(), out_eids_data);
   }
 
-  int64_t num_sample_edges = std::accumulate(
-      dst_sample_counts_merge.begin(), dst_sample_counts_merge.end(), 0);
+  int64_t num_sample_edges = std::accumulate(dst_sample_counts_merge.begin(),
+                                             dst_sample_counts_merge.end(),
+                                             static_cast<int64_t>(0));
   PADDLE_ENFORCE_EQ(
       src_merge.size(),
       num_sample_edges,

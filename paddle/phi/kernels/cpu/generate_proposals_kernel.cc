@@ -29,10 +29,9 @@ static void AppendProposals(DenseTensor* dst,
   auto* to_add_data = src.data();
   size_t size_of_t = SizeOf(src.dtype());
   offset *= static_cast<int64_t>(size_of_t);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(out_data) + offset;
   std::memcpy(
-      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),
-      to_add_data,
-      src.numel() * size_of_t);
+      reinterpret_cast<void*>(ptr), to_add_data, src.numel() * size_of_t);
 }
 
 template <class T>

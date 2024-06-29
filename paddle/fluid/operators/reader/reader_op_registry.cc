@@ -14,15 +14,11 @@
 
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class VarDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
-namespace reader {
+namespace paddle::operators::reader {
 
 std::vector<phi::DDim> RestoreShapes(const std::vector<int>& shape_concat,
                                      const std::vector<int>& ranks) {
@@ -161,7 +157,4 @@ void DecoratedReaderMakerBase::Make() {
   Apply();
 }
 
-}  // namespace reader
-
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators::reader

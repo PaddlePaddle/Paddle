@@ -33,10 +33,7 @@
     }                                                                        \
   } while (0)
 
-namespace paddle {
-namespace platform {
-
-namespace details {
+namespace paddle::platform::details {
 std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   std::unordered_map<uint32_t, uint64_t> mapping;
   std::unordered_map<uint64_t, ThreadId> ids = GetAllThreadIds();
@@ -45,7 +42,8 @@ std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   }
   return mapping;
 }
-}  // namespace details
+}  // namespace paddle::platform::details
+namespace paddle::platform {
 
 CudaTracer::CudaTracer() = default;
 
@@ -194,5 +192,4 @@ void CudaTracer::ReleaseBuffer(uint8_t* buffer) {
   paddle::framework::AlignedFree(buffer);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

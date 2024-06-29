@@ -50,7 +50,7 @@ class GlobaleToSubMeshFunction(ReshardFunction):
             dst_value.set_type(dst_type)
             share_data_op.dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
-                    dst_dist_attr.process_mesh, [src_dist_attr], [dst_dist_attr]
+                    src_dist_attr.process_mesh, [src_dist_attr], [dst_dist_attr]
                 )
             )
             return dst_value

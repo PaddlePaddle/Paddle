@@ -68,22 +68,44 @@ class _Tensor_ : public Object {
 
   inline void* mutable_data(const Target& target, const Type& type) {
     set_type(type);
-    if (target == cinn::common::DefaultHostTarget()) {
-      buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
-    } else {
-      buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
-    }
+    target.arch.Match(
+        [&](common::X86Arch) {
+          buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
+        },
+        [&](common::UnknownArch) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        },
+        [&](common::NVGPUArch) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        },
+        [&](common::ARMArch) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        },
+        [&](common::HygonDCUArchHIP) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        });
     return reinterpret_cast<void*>(buffer_->data()->memory);
   }
 
   template <typename T>
   inline T* mutable_data(const Target& target) {
     set_type(type_of<T>());
-    if (target == cinn::common::DefaultHostTarget()) {
-      buffer_->ResizeLazy(1024, shape_.numel() * sizeof(T), target);
-    } else {
-      buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
-    }
+    target.arch.Match(
+        [&](common::X86Arch) {
+          buffer_->ResizeLazy(1024, shape_.numel() * sizeof(T), target);
+        },
+        [&](common::UnknownArch) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        },
+        [&](common::NVGPUArch) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        },
+        [&](common::ARMArch) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        },
+        [&](common::HygonDCUArchHIP) {
+          buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
+        });
     return reinterpret_cast<T*>(buffer_->data()->memory);
   }
 

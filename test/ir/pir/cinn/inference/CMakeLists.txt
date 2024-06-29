@@ -12,8 +12,9 @@ if(WITH_GPU)
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
         FLAGS_prim_enable_dynamic=True FLAGS_prim_all=True
-        FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=True
-        FLAGS_group_schedule_tiling_first=1 ${PYTHON_EXECUTABLE}
+        FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+        FLAGS_cinn_bucket_compile=True FLAGS_group_schedule_tiling_first=1
+        ${PYTHON_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_pir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS

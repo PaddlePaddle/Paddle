@@ -47,7 +47,7 @@ namespace paddle {
 namespace onednn {
 namespace dialect {
 
-const char* ExpandOp::attributes_name[1] = {"mkldnn_data_type"};
+const char* ExpandOp::attributes_name[1] = {"mkldnn_data_type"};  // NOLINT
 
 OpInfoTuple ExpandOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {

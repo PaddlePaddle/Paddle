@@ -50,7 +50,7 @@ bool TensorIsfinite(const phi::DenseTensor& tensor);
     void apply() const {                                                     \
       auto place = in_.place();                                              \
       auto* ctx = static_cast<phi::device##Context*>(                        \
-          platform::DeviceContextPool::Instance().Get(place));               \
+          phi::DeviceContextPool::Instance().Get(place));                    \
       phi::DenseTensor tmp;                                                  \
       tmp.Resize(in_.dims());                                                \
       out_->Resize({1});                                                     \

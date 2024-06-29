@@ -80,21 +80,21 @@ class ConditionalOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], phi::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      phi::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (ips[0]->place().GetType() == phi::AllocationType::XPU) {
 #ifdef PADDLE_WITH_XPU
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], phi::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      phi::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (ips[0]->place().GetType() == phi::AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], phi::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      phi::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else {

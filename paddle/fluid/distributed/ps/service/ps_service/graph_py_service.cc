@@ -21,8 +21,7 @@
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 std::vector<std::string> GraphPyService::split(const std::string& str,
                                                const char pattern) {
   std::vector<std::string> res;
@@ -507,5 +506,4 @@ void GraphPyClient::StopServer() {
   if (status.get() == 0) stoped_ = true;
 }
 void GraphPyClient::FinalizeWorker() { this->worker_ptr->FinalizeWorker(); }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

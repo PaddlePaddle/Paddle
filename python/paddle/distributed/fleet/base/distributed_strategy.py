@@ -185,8 +185,8 @@ class DistributedStrategy:
 
         DistributedStrategy can be serialized into protobuf file or deserialized from protobuf file
 
-        Users who run local training usually configure BuildStrategy and ExecutionStrategy, and
-        DistributedStrategy supports configurations from BuildStrategy and ExecutionStrategy
+        Users who run local training usually configure BuildStrategy, and
+        DistributedStrategy supports configurations from BuildStrategy.
 
         """
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
@@ -639,6 +639,8 @@ class DistributedStrategy:
             'nodeid_slot',
             'sparse_load_filter_slots',
             'sparse_save_filter_slots',
+            'sparse_zero_init',
+            'use_gpu_graph',
         ]
         support_sparse_table_class = [
             'DownpourSparseTable',
@@ -797,6 +799,7 @@ class DistributedStrategy:
             table_data.sparse_table_cache_file_num = config.get(
                 'sparse_cache_file_num', 16
             )
+            table_data.use_gpu_graph = config.get('use_gpu_graph', False)
 
             accessor_class = config.get(
                 "sparse_accessor_class", "DownpourCtrAccessor"
@@ -863,6 +866,12 @@ class DistributedStrategy:
             table_data.accessor.ctr_accessor_param.save_filter_slots.extend(
                 save_filter_slots
             )
+            table_data.accessor.ctr_accessor_param.zero_init = config.get(
+                'sparse_zero_init', True
+            )
+            # gpu graph mode set zero_init False for sparse adam init
+            if table_data.use_gpu_graph is True:
+                table_data.accessor.ctr_accessor_param.zero_init = False
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
 
@@ -1100,6 +1109,14 @@ class DistributedStrategy:
 
         """
         return self.strategy.recompute
+
+    @recompute.setter
+    @is_strict_auto
+    def recompute(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.recompute = flag
+        else:
+            logger.warning("recompute should have value of bool type")
 
     @property
     def sync_nccl_allreduce(self):
@@ -1357,14 +1374,6 @@ class DistributedStrategy:
             self.strategy.nccl_comm_num = value
         else:
             logger.warning("nccl_comm_num should have value of int type")
-
-    @recompute.setter
-    @is_strict_auto
-    def recompute(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.recompute = flag
-        else:
-            logger.warning("recompute should have value of bool type")
 
     @property
     def recompute_configs(self):

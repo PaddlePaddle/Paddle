@@ -75,8 +75,7 @@ typedef SSIZE_T ssize_t;
 
 COMMON_DECLARE_string(tensor_operants_mode);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = ::pybind11;
 
@@ -1380,8 +1379,8 @@ PyMethodDef variable_functions[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_get_custom_operator_inplace_map",
-     (PyCFunction)(void (*)(
-         void))eager_api__get_custom_operator_inplace_reverse_idx,
+     (PyCFunction)(void (*)())
+         eager_api__get_custom_operator_inplace_reverse_idx,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_run_custom_op",
@@ -1463,5 +1462,4 @@ void BindFunctions(PyObject* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

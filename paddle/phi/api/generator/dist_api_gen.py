@@ -295,7 +295,7 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
     }}
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}.size());
     for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
-      {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+      {name}_meta_ptr_vec[i] = {name}[i] ? &{name}_meta_vec[i] : nullptr;
     }}
 """
 INFER_GLOBAL_SHAPE_TEMPLATE = """
@@ -400,7 +400,7 @@ VECTOR_META_OUT_DECL_TEMPLATE = """
       std::vector<phi::MetaTensor> {name}_meta_vec = MakeMetaTensor({name});
       std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
       for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
-        {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+        {name}_meta_ptr_vec[i] = {name}[i] ? &{name}_meta_vec[i] : nullptr;
       }}
 """
 INFER_META_TEMPLATE = """
@@ -1106,9 +1106,7 @@ class DistForwardAPI(ForwardAPI):
                         )
                     else:
                         if (
-                            self.need_to_generate_code_for_inplace_or_view_impl(
-                                i
-                            )
+                            self.need_to_generate_code_for_inplace_impl(i)
                             and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (

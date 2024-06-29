@@ -26,9 +26,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 
@@ -276,9 +274,9 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 
       auto var_name = var_node->Var()->Name();
       if (real_vars_.count(var_name) == 0) {
-        real_vars_[var_name] = var_node;
-        VLOG(4) << var_name << " is in graph " << i;
+        real_vars_[var_name] = std::vector<Node*>();
       }
+      real_vars_[var_name].push_back(var_node);
     }
   }
 }
@@ -319,6 +317,7 @@ void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   ProcessOpWithDtypeAttr();
   VLOG(4) << "ProcessOpWithDtypeAttr done";
   RestoreOpOriginType();
+
   VLOG(4) << "RestoreOpOriginType done";
   LOG(INFO) << "The number of ops run at low precision ["
             << op_run_low_precision_.size() << "/"
@@ -370,7 +369,7 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
       if (op_node->Op()->HasAttr("in_dtype")) {
         auto* var_node = op_node->inputs[0];
         auto* real_var_node = real_vars_.count(var_node->Var()->Name())
-                                  ? real_vars_.at(var_node->Var()->Name())
+                                  ? real_vars_.at(var_node->Var()->Name())[0]
                                   : var_node;
         if (IsFP16AndBFP16(real_var_node->Var()->GetDataType())) {
           op_node->Op()->SetAttr(
@@ -470,7 +469,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
         // dense/sparse_coo/sparse_csr tensor.
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
-          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name())[0];
           if (real_in_var_node->Var()->Persistable()) continue;
 
           support_low_precision =
@@ -481,7 +480,8 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
         }
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
-          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
+          auto* real_out_var_node =
+              real_vars_.at(out_var_node->Var()->Name())[0];
           if (real_out_var_node->Var()->Persistable()) continue;
 
           support_low_precision =
@@ -577,7 +577,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           CHECK_EQ(in_var_node->IsVar(), true);
           if (!VarNodeHasDtype(in_var_node)) continue;
 
-          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name())[0];
           if (real_in_var_node->Var()->Persistable()) continue;
 
           if (vars_should_not_low_precision.count(
@@ -596,7 +596,8 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           CHECK_EQ(out_var_node->IsVar(), true);
           if (!VarNodeHasDtype(out_var_node)) continue;
 
-          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
+          auto* real_out_var_node =
+              real_vars_.at(out_var_node->Var()->Name())[0];
           if (real_out_var_node->Var()->Persistable()) continue;
 
           bool not_run_low_precision = false;
@@ -794,7 +795,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
-          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
+          auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name())[0];
           auto in_var_name = real_in_var_node->Var()->Name();
 
           if (!IsFP32(real_in_var_node->Var()->GetDataType())) continue;
@@ -816,8 +817,12 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
             }
           }
           if (real_in_var_node->Var()->Persistable()) {
-            real_in_var_node->Var()->SetDataType(
-                framework::TransToProtoVarType(low_precision_));
+            for (auto* in_var_node :
+                 real_vars_.at(in_var_node->Var()->Name())) {
+              in_var_node->Var()->SetDataType(
+                  framework::TransToProtoVarType(low_precision_));
+            }
+
             VLOG(4) << real_in_var_node->Var()->Name()
                     << "'s data type was set to low precision";
             vars_convert_to_low_precision_.insert(in_var_name);
@@ -829,15 +834,19 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
 
-          auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
+          auto* real_out_var_node =
+              real_vars_.at(out_var_node->Var()->Name())[0];
           auto out_var_name = real_out_var_node->Var()->Name();
 
           if (!IsFP32(real_out_var_node->Var()->GetDataType())) continue;
           if (!VarNodeHasDtype(real_out_var_node)) continue;
           if (OutputVarsNotConvert(op_node, out_var_name)) continue;
 
-          real_out_var_node->Var()->SetDataType(
-              framework::TransToProtoVarType(low_precision_));
+          for (auto* out_var_node :
+               real_vars_.at(out_var_node->Var()->Name())) {
+            out_var_node->Var()->SetDataType(
+                framework::TransToProtoVarType(low_precision_));
+          }
           VLOG(4) << real_out_var_node->Var()->Name()
                   << "'s data type was set to low precision";
           if (real_out_var_node->Var()->Persistable()) {
@@ -949,7 +958,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         if (!VarNodeHasDtype(in_var_node)) continue;
         if (in_var_node->Var()->Persistable()) continue;
 
-        auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
+        auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name())[0];
 
         auto in_var_type = real_in_var_node->Var()->GetDataType();
 
@@ -1012,9 +1021,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
   VLOG(4) << "insert number of cast op: " << cache.size();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(auto_mixed_precision_pass,
               paddle::framework::ir::AutoMixedPrecisionPass);

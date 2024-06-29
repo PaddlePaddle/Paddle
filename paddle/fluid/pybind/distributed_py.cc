@@ -118,9 +118,22 @@ void BindDistributed(py::module *m) {
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
-          .def("rank", &distributed::ProcessGroup::GetRank)
-          .def("size", &distributed::ProcessGroup::GetSize)
-          .def("name", &distributed::ProcessGroup::GetBackendName)
+          .def("rank",
+               &distributed::ProcessGroup::GetRank,
+               py::call_guard<py::gil_scoped_release>())
+          .def("size",
+               &distributed::ProcessGroup::GetSize,
+               py::call_guard<py::gil_scoped_release>())
+          .def("name",
+               &distributed::ProcessGroup::GetBackendName,
+               py::call_guard<py::gil_scoped_release>())
+          .def("_start_coalescing",
+               &distributed::ProcessGroup::StartCoalescing,
+               py::call_guard<py::gil_scoped_release>())
+          .def("_end_coalescing",
+               &distributed::ProcessGroup::EndCoalescing,
+               py::arg("tasks") = std::nullopt,
+               py::call_guard<py::gil_scoped_release>())
           .def(
               "all_reduce",
               [](distributed::ProcessGroup &self,
@@ -564,7 +577,7 @@ void BindDistributed(py::module *m) {
           .def(
               "barrier",
               [](distributed::ProcessGroup &self, int8_t device_id) {
-                distributed::BarrierOptions opts;
+                distributed::BarrierOptions opts{};
                 opts.device_id = device_id;
                 return self.Barrier(opts);
               },
@@ -578,7 +591,7 @@ void BindDistributed(py::module *m) {
                  py::handle py_tensor,
                  distributed::ReduceOp op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                distributed::AllreduceOptions opts;
+                distributed::AllreduceOptions opts{};
                 opts.reduce_op = op;
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
@@ -594,7 +607,7 @@ void BindDistributed(py::module *m) {
                  py::handle py_tensor,
                  int source_rank) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                distributed::BroadcastOptions opts;
+                distributed::BroadcastOptions opts{};
                 opts.source_rank = source_rank;
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
@@ -735,7 +748,7 @@ void BindDistributed(py::module *m) {
                  int dst,
                  distributed::ReduceOp op) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
-                distributed::ReduceOptions opts;
+                distributed::ReduceOptions opts{};
                 opts.reduce_op = op;
                 opts.root_rank = dst;
                 auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(
@@ -755,7 +768,7 @@ void BindDistributed(py::module *m) {
                  int src) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
-                distributed::ScatterOptions opts;
+                distributed::ScatterOptions opts{};
                 opts.root_rank = src;
                 auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     in_tensor.impl());

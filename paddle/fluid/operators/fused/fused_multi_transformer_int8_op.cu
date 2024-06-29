@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/attn_gemm_int8.h"
-#include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/fused/fused_attention_utils.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
+#include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_helper.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -23,7 +27,7 @@ template <typename T, typename DeviceContext>
 class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    using U = LayerNormParamType<T>;
+    using U = phi::fusion::LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
 
     auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
@@ -85,7 +89,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-    AttnMatmulINT8<T> qkv_compute(
+    phi::fusion::AttnMatmulINT8<T> qkv_compute(
         dev_ctx, bsz_seq, output_size, input_size, compute_bias);
     phi::DenseTensor qkv_out;
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
@@ -100,7 +104,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
-    // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
 
     auto out_seq_len = seq_len;
     if (time_step) {
@@ -158,15 +161,16 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
-    AttnMatmulINT8<T> out_linear_compute(
+    phi::fusion::AttnMatmulINT8<T> out_linear_compute(
         dev_ctx, bsz_seq, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
-    DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+    phi::fusion::DropoutParam dropout_param2(
+        true, 0, true, true, 0.0, nullptr, 0);
+    phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
         fused_dropout_layernorm_helper(
             dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
-    FusedDropoutLayerNormHelper<T, uint8_t>
+    phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
         fused_dropout_layernorm_helper_for_post_layernorm(
             dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
     auto ffn_ln_scales = ctx.MultiInput<phi::DenseTensor>("FFNLnScale");
@@ -189,7 +193,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[0];
-    AttnMatmulINT8<T> ffn1_linear_compute(
+    phi::fusion::AttnMatmulINT8<T> ffn1_linear_compute(
         dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
     phi::DenseTensor ffn1_out;
     ffn1_out.Resize({{bsz_seq, dim_ffn}});
@@ -197,11 +201,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
     // 7. ffn act + bias
-    DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutHelper<T, uint8_t, int32_t, int8_t> fused_act_dropout_helper(
-        dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
-    FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper_for_post_layernorm(
-        dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
+    phi::fusion::DropoutParam ffn1_dropout_param(
+        true, 0, true, true, 0.0, nullptr, 0);
+    phi::fusion::FusedDropoutHelper<T, uint8_t, int32_t, int8_t>
+        fused_act_dropout_helper(dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
+    phi::fusion::FusedDropoutHelper<T, uint8_t>
+        fused_act_dropout_helper_for_post_layernorm(
+            dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
     phi::DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
     ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_dropout_out_data = dev_ctx.Alloc<T>(
@@ -213,18 +219,19 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
-    AttnMatmulINT8<T> ffn2_linear_compute(
+    phi::fusion::AttnMatmulINT8<T> ffn2_linear_compute(
         dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
 
     // 9. ffn2 residual bias
-    DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+    phi::fusion::DropoutParam ffn2_dropout_param(
+        true, 0, true, true, 0.0, nullptr, 0);
+    phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
         ffn2_fused_dropout_helper(
             dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-    FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
+    phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
         ffn2_fused_dropout_dequant_helper(
             dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-    FusedDropoutLayerNormHelper<T, uint8_t>
+    phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
         ffn2_fused_dropout_helper_for_post_layernorm(
             dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 
@@ -289,9 +296,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                   quant_max_bound,
                                   quant_min_bound);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step1";
-#endif
 
       // step2. qkv
       const phi::DenseTensor *qkv_bias =
@@ -334,14 +338,16 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &qkv_out,
                                           qkv_out_scales[i]);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step2";
-#endif
 
       // step3. fmha
       const phi::DenseTensor *cache_kv =
           cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
       phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
+
+      int cache_bsz = 0;
+      if (cache_kv) {
+        cache_bsz = cache_kv->dims()[1];
+      }
 
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
@@ -349,15 +355,22 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         phi::fusion::fmha<T>(dev_ctx,
                              qkv_out,
                              *qkv_bias,
-                             *src_mask,
+                             src_mask,
+                             nullptr,
+                             nullptr,
+                             nullptr,
+                             nullptr,
                              cache_kv_out,
                              &fmha_out,
                              bsz,
+                             cache_bsz,
+                             seq_len,
                              max_seq_len,
                              num_head,
                              dim_head,
                              time_step->data<int>()[0],
-                             1. / std::sqrt(dim_head));
+                             0,
+                             1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(qkv_out,
@@ -413,9 +426,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                     &qktv_out,
                                     &fmha_out);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step3";
-#endif
 
       if (pre_layer_norm) {
         out_linear_compute.ComputeForwardTToINT8(out_linear_weights[i],
@@ -447,9 +457,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           quant_min_bound);
         phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step4";
-#endif
 
       // step5. ln(residual + dropout(input + bias))
       if (pre_layer_norm) {
@@ -495,9 +502,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           ln_mean_data,
                                           ln_var_data);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step5";
-#endif
 
       // step6. ffn matmul1
 
@@ -523,9 +527,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            quant_max_bound,
                                            quant_min_bound);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step6";
-#endif
 
       // step7. act bias
       // TODO(wangxi): remove dropout mask in inference
@@ -552,9 +553,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             ffn1_dropout_out_data,
             ffn1_dropout_mask_data);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step7";
-#endif
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
@@ -579,9 +577,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            quant_max_bound,
                                            quant_min_bound);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step8.0";
-#endif
 
       if (pre_layer_norm) {
         phi::fusion::AllReduce<int32_t>(output_workspace,
@@ -591,9 +586,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       } else {
         phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step8.1";
-#endif
 
       // step9. residual bias
       if (pre_layer_norm) {
@@ -648,9 +640,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           ln_mean_data,
                                           ln_var_data);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step9";
-#endif
       if (pre_layer_norm) {
         x_data = buf1->data<T>();
       }

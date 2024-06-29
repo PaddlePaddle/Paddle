@@ -201,11 +201,21 @@ class TRTConvertValidation {
     // Bind input and output for TRT.
     const int num_bindings = input_output_names.size();
     std::vector<void*> buffers(num_bindings);
-
+#if IS_TRT_VERSION_GE(8600)
+    std::unordered_map<std::string, int> tensor_index;
+    for (int i = 0; i < engine_->engine()->getNbIOTensors(); ++i) {
+      auto tensor_name = engine_->engine()->getIOTensorName(i);
+      tensor_index[std::string(tensor_name)] = i;
+    }
+#endif
     for (const std::string& name : input_output_names) {
       auto* var = scope_.FindVar(name);
       auto* tensor = var->GetMutable<phi::DenseTensor>();
+#if IS_TRT_VERSION_GE(10000)
+      const int bind_index = tensor_index[std::string(name.c_str())];
+#else
       const int bind_index = engine_->engine()->getBindingIndex(name.c_str());
+#endif
       buffers[bind_index] =
           static_cast<void*>(tensor->mutable_data<float>(place_));
     }

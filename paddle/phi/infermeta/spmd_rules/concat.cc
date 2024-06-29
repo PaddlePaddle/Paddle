@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
@@ -159,5 +158,4 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
   return {{input_attrs, output_grad_attr}, {inputs_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -120,6 +120,18 @@
     func : UnchangedInferMeta
   invoke : full_like(out_grad, 0.0f)
 
+- backward_op : flatten2_grad
+  forward: flatten2 (Tensor x, int axis = 1) -> Tensor (out), Tensor (x_shape)
+  args: (Tensor x, Tensor x_shape, Tensor out_grad, int axis = 1)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: Flatten2GradInferMeta
+  kernel:
+    func: flatten2_grad
+    data_type: out_grad
+  inplace: (out_grad -> x_grad)
+  no_need_buffer: x
+
 - backward_op : frobenius_norm_grad
   forward: frobenius_norm (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
@@ -142,6 +154,18 @@
     func : hardswish_grad
     param : [x, out_grad]
   inplace : (out_grad -> x_grad)
+
+- backward_op : lrn_grad
+  forward: lrn (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout") -> Tensor (out), Tensor (mid_out)
+  args: (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format
+    = "AnyLayout")
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: lrn_grad
+    data_type: out_grad
 
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
@@ -177,6 +201,16 @@
     param : [x, y, grad_out, grad_grad_x, grad_grad_y]
   kernel :
     func : matmul_triple_grad
+
+- backward_op : matmul_with_flatten_grad
+  forward : matmul_with_flatten (Tensor x, Tensor y, int x_num_col_dims=1, int y_num_col_dims=1) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int x_num_col_dims=1, int y_num_col_dims=1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : matmul_with_flatten_grad
 
 - backward_op : max_grad
   forward: max (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
@@ -268,15 +302,15 @@
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
 
 - backward_op : prod_grad
-  forward : prod (Tensor x, IntArray dims={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims={0},  bool keep_dim=false, bool reduce_all=false)
+  forward : prod (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={0},  bool keepdim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : prod_grad
-  composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
+  composite: prod_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : rnn_grad
   forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
@@ -343,6 +377,17 @@
     func : swish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : topk_v1_grad
+  forward : topk_v1 (Tensor x, Scalar k) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : topk_v1_grad
+    data_type : out_grad
+
 - backward_op : tril_triu_grad
   forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
   args : (Tensor out_grad, int diagonal, bool lower)
@@ -352,6 +397,26 @@
       param : [out_grad]
   kernel:
     func : tril_triu_grad
+
+- backward_op: cross_entropy_grad
+  forward: cross_entropy (Tensor x, Tensor label, bool soft_label = false, int ignore_index = -100) -> Tensor (out)
+  args: (Tensor x, Tensor label, Tensor out_grad, bool soft_label = false, int ignore_index = -100)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: CrossEntropyGradInferMeta
+  kernel:
+    func: cross_entropy_grad
+    data_type: out_grad
+
+- backward_op: cross_entropy_grad2
+  forward: cross_entropy2 (Tensor x, Tensor label, int ignore_index = -100) -> Tensor (out), Tensor (x_shape), Tensor (match_x)
+  args: (Tensor x_shape, Tensor label, Tensor match_x, Tensor out_grad, int ignore_index = -100)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: CrossEntropyGrad2InferMeta
+  kernel:
+    func: cross_entropy_grad2
+    data_type: x_shape
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)

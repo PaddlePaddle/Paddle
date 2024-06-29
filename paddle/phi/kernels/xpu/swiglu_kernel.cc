@@ -50,7 +50,7 @@ void SwiGluKernel(const Context& ctx,
                         reinterpret_cast<XPUType*>(z_data),
                         dims_vec,
                         axis,
-                        false,
+                        true,
                         const_nullptr,
                         nullptr,
                         y_ptr);

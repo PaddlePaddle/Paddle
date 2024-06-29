@@ -42,9 +42,16 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
-  if (infer_context->GetShapeOrDataForValue(input_values[0])
-          .data()
-          .has_value()) {
+  const auto IsAllDataValue = [&]() -> bool {
+    for (const auto &value : input_values) {
+      if (!infer_context->GetShapeOrDataForValue(value).data().has_value()) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (IsAllDataValue()) {
     std::vector<symbol::DimExpr> out_data;
     for (const auto &value : input_values) {
       const auto &shape_or_data = infer_context->GetShapeOrDataForValue(value);
@@ -94,11 +101,11 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  bool keep_dim = GetBoolAttr(op, "keep_dim");
-  auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  auto axis = paddle::dialect::details::GetVectorAttr(op, "axis");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, infer_context, axis, keep_dim, reduce_all);
+      op, infer_context, axis, keepdim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(
@@ -143,21 +150,6 @@ bool ReshapeOpInferSymbolicShape(
     return true;
   };
 
-  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
-    if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
-    }
-    return false;
-  };
-
-  const auto &target_shape = [&] {
-    std::vector<symbol::DimExpr> target_shape;
-    for (int dim : shape) {
-      target_shape.emplace_back(static_cast<std::int64_t>(dim));
-    }
-    return target_shape;
-  }();
-
   const symbol::ShapeOrDataDimExprs &x_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
@@ -166,6 +158,17 @@ bool ReshapeOpInferSymbolicShape(
   const auto &out_dims = [&] {
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
+    const auto &target_shape = [&] {
+      std::vector<symbol::DimExpr> target_shape;
+      for (size_t i = 0; i < shape.size(); ++i) {
+        if (shape[i] == 0) {
+          target_shape.emplace_back(original_shape[i]);
+        } else {
+          target_shape.emplace_back(static_cast<std::int64_t>(shape[i]));
+        }
+      }
+      return target_shape;
+    }();
 
     const auto &product_exclude_minus_one =
         GetProduct(target_shape, IsNotMinusOne);
@@ -176,7 +179,6 @@ bool ReshapeOpInferSymbolicShape(
       auto out_dim_expr = IsNotMinusOne(target_shape[i])
                               ? target_shape[i]
                               : (numel / product_exclude_minus_one);
-      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
       out_dims.emplace_back(out_dim_expr);
     }
 

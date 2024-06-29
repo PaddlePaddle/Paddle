@@ -81,9 +81,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-if(WITH_CINN)
-  add_subdirectory(paddle2cinn)
-endif()
+
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -515,6 +513,12 @@ cc_library(
   feed_fetch_method
   SRCS feed_fetch_method.cc
   DEPS lod_tensor scope glog)
+
+cc_library(
+  feed_hook
+  SRCS feed_hook.cc
+  DEPS lod_tensor scope glog pir)
+
 cc_library(
   variable_helper
   SRCS variable_helper.cc
@@ -529,6 +533,7 @@ set(NAIVE_EXECUTOR_DEPS
     glog
     lod_rank_table
     feed_fetch_method
+    feed_hook
     graph_to_program_pass
     standalone_executor
     variable_helper)
@@ -550,7 +555,6 @@ cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
   DEPS while_op_helper
-       recurrent_op_helper
        conditional_block_op_helper
        pylayer_op_helper
        scope
@@ -585,7 +589,6 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS fleet_wrapper
-           recurrent_op_helper
            op_registry
            device_context
            scope
@@ -600,6 +603,7 @@ if(WITH_DISTRIBUTE)
            lodtensor_printer
            lod_rank_table
            feed_fetch_method
+           feed_hook
            collective_helper
            ${GLOB_DISTRIBUTE_DEPS}
            graph_to_program_pass
@@ -630,7 +634,7 @@ if(WITH_DISTRIBUTE)
     #         pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     #         device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
     #         index_sampler index_wrapper sampler index_dataset_proto
-    #         lod_rank_table framework_io fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
+    #         lod_rank_table framework_io fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method feed_hook
     #         graph_to_program_pass variable_helper timer monitor
     #         heter_service_proto fleet heter_server brpc fleet_executor
     #         graph_gpu_wrapper)
@@ -660,8 +664,7 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -680,6 +683,7 @@ if(WITH_DISTRIBUTE)
            metrics
            lodtensor_printer
            feed_fetch_method
+           feed_hook
            graph_to_program_pass
            variable_helper
            timer
@@ -736,8 +740,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -754,6 +757,7 @@ if(WITH_DISTRIBUTE)
            metrics
            lodtensor_printer
            feed_fetch_method
+           feed_hook
            graph_to_program_pass
            variable_helper
            timer
@@ -796,8 +800,7 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -813,6 +816,7 @@ elseif(WITH_PSLIB)
          box_wrapper
          lodtensor_printer
          feed_fetch_method
+         feed_hook
          graph_to_program_pass
          variable_helper
          timer
@@ -843,8 +847,7 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -860,6 +863,7 @@ else()
          box_wrapper
          lodtensor_printer
          feed_fetch_method
+         feed_hook
          graph_to_program_pass
          variable_helper
          timer
@@ -867,24 +871,30 @@ else()
 endif()
 
 target_link_libraries(
-  executor while_op_helper executor_gc_helper recurrent_op_helper
-  conditional_block_op_helper pylayer_op_helper)
-
-cc_library(
-  parallel_executor
-  SRCS parallel_executor.cc
-  DEPS ssa_graph_executor graph build_strategy collective_helper
-       variable_helper)
+  executor
+  while_op_helper
+  executor_gc_helper
+  static_prim_api
+  static_utils
+  get_expected_kernel_func
+  conditional_block_op_helper
+  pylayer_op_helper)
 
 cc_library(
   compiled_program
   SRCS compiled_program.cc
-  DEPS graph build_strategy)
+  DEPS graph
+       build_strategy
+       reference_count_pass
+       eager_deletion_pass
+       buffer_shared_inplace_op_pass
+       buffer_shared_cross_op_memory_reuse_pass
+       inplace_addto_op_pass)
 
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor pir_transforms pir)
+  DEPS pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
@@ -950,7 +960,8 @@ cc_library(
        phi
        common
        imperative_flag
-       layer)
+       layer
+       op_dialect_vjp)
 
 cc_library(
   type_info

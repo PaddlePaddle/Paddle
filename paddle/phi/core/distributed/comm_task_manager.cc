@@ -62,7 +62,7 @@ std::unordered_map<std::string, std::shared_ptr<CommTask>>
 std::chrono::time_point<std::chrono::steady_clock>
     CommTaskManager::last_update_time_ = std::chrono::steady_clock::now();
 
-CommTaskManager::CommTaskManager() {
+CommTaskManager::CommTaskManager() : timeout_(0) {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
   comm_task_clear_loop_thread_ =

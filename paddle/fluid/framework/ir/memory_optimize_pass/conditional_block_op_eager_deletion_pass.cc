@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 using OpVariant = operators::OpVariant;
 class ConditionalOpEagerDeletionPass : public Pass {
  protected:
@@ -94,9 +92,7 @@ class ConditionalOpEagerDeletionPass : public Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conditional_block_op_eager_deletion_pass,
               paddle::framework::ir::ConditionalOpEagerDeletionPass);

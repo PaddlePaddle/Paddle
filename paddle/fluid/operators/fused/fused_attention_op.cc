@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusedAttentionOp : public framework::OperatorWithKernel {
  public:
@@ -809,8 +808,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
                                     "OutLinearOut",
                                     "SrcMask");
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_attention,

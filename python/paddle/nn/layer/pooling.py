@@ -12,8 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
+
 from .. import functional as F
 from .layers import Layer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        Size1,
+        Size2,
+        Size3,
+        Size4,
+        Size6,
+    )
+
+    from ..functional.common import _PaddingSizeMode
 
 __all__ = []
 
@@ -37,7 +57,7 @@ class AvgPool1D(Layer):
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
-        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain an integer. Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
@@ -49,7 +69,7 @@ class AvgPool1D(Layer):
         exclusive(bool, optional): Whether to exclude padding points in average pooling mode, default is `True`.
         ceil_mode(bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
             and width. If it is set to False, the floor function will be used. The default value is False.
-        name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no nset and None by default.
 
     Shape:
@@ -78,13 +98,13 @@ class AvgPool1D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        exclusive=True,
-        ceil_mode=False,
-        name=None,
-    ):
+        kernel_size: Size1,
+        stride: Size1 | None = None,
+        padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        exclusive: bool = True,
+        ceil_mode: bool = False,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.kernel_size = kernel_size
         self.stride = stride
@@ -93,7 +113,7 @@ class AvgPool1D(Layer):
         self.exclusive = exclusive
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         out = F.avg_pool1d(
             x,
             self.kernel_size,
@@ -105,7 +125,7 @@ class AvgPool1D(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )
@@ -132,11 +152,12 @@ class AvgPool2D(Layer):
             Output(N_i, C_j, h, w)  = \frac{\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
                 Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
 
+
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
-        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
             Default None, then stride will be equal to the kernel_size.
@@ -153,9 +174,9 @@ class AvgPool2D(Layer):
         divisor_override(float, optional): If specified, it will be used as divisor, otherwise kernel_size will be
             used. Default None.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`,
-            `"NDHW"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `"NHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
     Shape:
@@ -184,15 +205,15 @@ class AvgPool2D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        ceil_mode=False,
-        exclusive=True,
-        divisor_override=None,
-        data_format="NCHW",
-        name=None,
-    ):
+        kernel_size: Size2,
+        stride: Size2 | None = None,
+        padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        ceil_mode: bool = False,
+        exclusive: bool = True,
+        divisor_override: float | None = None,
+        data_format: DataLayout2D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -216,7 +237,7 @@ class AvgPool2D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )
@@ -235,7 +256,7 @@ class AvgPool3D(Layer):
             is a tuple or list, it must contain three integers,
             (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be the cube of an int.
-        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain three integers, [stride_Depth, stride_Height, stride_Width).
             Otherwise, the pool stride size will be a cube of an int.
             Default None, then stride will be equal to the kernel_size.
@@ -253,7 +274,7 @@ class AvgPool3D(Layer):
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`,
              `"NDHWC"`. The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
              `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
              to :ref:`api_guide_Name`. Usually name is no need to set and
              None by default.
 
@@ -283,15 +304,15 @@ class AvgPool3D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        ceil_mode=False,
-        exclusive=True,
-        divisor_override=None,
-        data_format="NCDHW",
-        name=None,
-    ):
+        kernel_size: Size3,
+        stride: Size3 | None = None,
+        padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        ceil_mode: bool = False,
+        exclusive: bool = True,
+        divisor_override: float | None = None,
+        data_format: DataLayout3D = 'NCDHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -302,7 +323,7 @@ class AvgPool3D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.avg_pool3d(
             x,
             kernel_size=self.ksize,
@@ -315,8 +336,212 @@ class AvgPool3D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__
+        )
+
+
+class LPPool1D(Layer):
+    r"""
+    Performing a 1D power-average pooling over an input signal composed
+    of several input planes, based on the input, output_size, return_mask parameters.
+    Input(X) and output(Out) are in NCL format, where N is batch
+    size, C is the number of channels, L is the length of the feature.
+    The output tensor shape will be [N, C, output_size].
+
+    The output value of the layer with input size (N, C, L),
+    output (N, C, :math:`L_{out}`) and kernel_size ksize can be precisely described as
+    For average pool1d:
+
+    ..  math::
+
+        Output(N_i, C_i, l) = sum(Input[N_i, C_i, stride \times l:stride \times l+k]^{norm\_type})^{1/norm\_type}
+
+    Parameters:
+        norm_type(int|float): The number the power operation.
+        kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain an integer.
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
+            it must contain an integer. Default None, then stride will be equal to the kernel_size.
+        padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
+            1. A string in ['valid', 'same'].
+            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of `padding[0]` on every sides.
+            4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCL"`,
+            `"NLC"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`. Default: "NCL"
+        name(str|None, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no nset and None by default.
+
+    Shape:
+        - x(Tensor): The input tensor of lp pool1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of lp pool1d  operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        A callable object of LPPool1D.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
+            >>> LPPool1D = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> pool_out = LPPool1D(data)
+            >>> print(pool_out.shape)
+            [1, 3, 16]
+
+    """
+
+    def __init__(
+        self,
+        norm_type: float,
+        kernel_size: Size1,
+        stride: Size1 | None = None,
+        padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        ceil_mode: bool = False,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.norm_type = float(norm_type)
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = F.lp_pool1d(
+            x,
+            self.norm_type,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.ceil_mode,
+            self.data_format,
+            self.name,
+        )
+        return out
+
+    def extra_repr(self) -> str:
+        return 'norm_type={norm_type}, kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+            **self.__dict__
+        )
+
+
+class LPPool2D(Layer):
+    r"""
+    Performing 2D power-average pooling over input features based on the input,
+    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
+    in NCHW format, where N is batch size, C is the number of channels,
+    H is the height of the feature, and W is the width of the feature.
+
+    Example:
+        Input:
+            X shape: :math:`(N, C, H_{in}, W_{in})`
+        Attr:
+            - kernel_size: kernel_size
+            - norm_type: norm_type
+
+        Output:
+            Out shape: :math:`(N, C, H_{out}, W_{out})`
+
+        ..  math::
+
+            Output(N_i, C_j, h, w)  = (\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
+                               Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)^{norm\_type})^{1 / norm\_type}
+
+    Parameters:
+        norm_type(int|float): The number the power operation.
+        kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width).
+            Otherwise, the pool stride size will be a square of an int.
+            Default None, then stride will be equal to the kernel_size.
+        padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
+            1. A string in ['valid', 'same'].
+            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`,
+            `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. Default: "NCHW".
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+
+    Shape:
+        - x(Tensor): The input tensor of lp pool2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of lp pool2d  operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        A callable object of LPPool2D.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> # lp pool2d
+            >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
+            >>> LPPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> output = LPPool2D(input)
+            >>> print(output.shape)
+            [1, 3, 16, 16]
+
+    """
+
+    def __init__(
+        self,
+        norm_type: float,
+        kernel_size: Size2,
+        stride: Size2 | None = None,
+        padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        ceil_mode: bool = False,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.norm_type = float(norm_type)
+        self.ksize = kernel_size
+        self.stride = kernel_size if stride is None else stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x: Tensor) -> Tensor:
+        return F.lp_pool2d(
+            x,
+            norm_type=self.norm_type,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            ceil_mode=self.ceil_mode,
+            data_format=self.data_format,
+            name=self.name,
+        )
+
+    def extra_repr(self) -> str:
+        return 'norm_type={norm_type}, kernel_size={ksize}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )
 
@@ -340,7 +565,7 @@ class MaxPool1D(Layer):
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
-        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain an integer. Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
@@ -352,7 +577,7 @@ class MaxPool1D(Layer):
         return_mask(bool, optional): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode(bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default False.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Returns:
         A callable object of MaxPool1D.
@@ -387,13 +612,13 @@ class MaxPool1D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        return_mask=False,
-        ceil_mode=False,
-        name=None,
-    ):
+        kernel_size: Size1,
+        stride: Size1 | None = None,
+        padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        return_mask: bool = False,
+        ceil_mode: bool = False,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.kernel_size = kernel_size
         self.stride = stride
@@ -402,7 +627,7 @@ class MaxPool1D(Layer):
         self.return_mask = return_mask
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         out = F.max_pool1d(
             input,
             self.kernel_size,
@@ -414,7 +639,7 @@ class MaxPool1D(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )
@@ -445,7 +670,7 @@ class MaxPool2D(Layer):
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
-        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
             Default None, then stride will be equal to the kernel_size.
@@ -458,10 +683,10 @@ class MaxPool2D(Layer):
             The default value is 0.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
-        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
     Returns:
@@ -497,14 +722,14 @@ class MaxPool2D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        return_mask=False,
-        ceil_mode=False,
-        data_format="NCHW",
-        name=None,
-    ):
+        kernel_size: Size2,
+        stride: Size2 | None = None,
+        padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        return_mask: bool = False,
+        ceil_mode: bool = False,
+        data_format: DataLayout2D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -514,7 +739,7 @@ class MaxPool2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.max_pool2d(
             x,
             kernel_size=self.ksize,
@@ -526,7 +751,7 @@ class MaxPool2D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )
@@ -544,7 +769,7 @@ class MaxPool3D(Layer):
             is a tuple or list, it must contain three integers,
             (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be the cube of an int.
-        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple|None, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain three integers, [stride_Depth, stride_Height, stride_Width).
             Otherwise, the pool stride size will be a cube of an int.
             Default None, then stride will be equal to the kernel_size.
@@ -560,7 +785,7 @@ class MaxPool3D(Layer):
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`,
             `"NDHWC"`. The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
 
@@ -597,14 +822,14 @@ class MaxPool3D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        return_mask=False,
-        ceil_mode=False,
-        data_format="NCDHW",
-        name=None,
-    ):
+        kernel_size: Size3,
+        stride: Size3 | None = None,
+        padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        return_mask: bool = False,
+        ceil_mode: bool = False,
+        data_format: DataLayout3D | str = 'NCDHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -614,7 +839,7 @@ class MaxPool3D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.max_pool3d(
             x,
             kernel_size=self.ksize,
@@ -626,7 +851,7 @@ class MaxPool3D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )
@@ -653,7 +878,7 @@ class AdaptiveAvgPool1D(Layer):
 
     Parameters:
         output_size(int): The target output size. Its data type must be int.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A callable object for computing 1D adaptive average pooling.
@@ -683,15 +908,15 @@ class AdaptiveAvgPool1D(Layer):
             [1, 3, 16]
     """
 
-    def __init__(self, output_size, name=None):
+    def __init__(self, output_size: int, name: str | None = None) -> None:
         super().__init__()
         self.output_size = output_size
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return F.adaptive_avg_pool1d(input, self.output_size, self.name)
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self.output_size}'
 
 
@@ -723,7 +948,7 @@ class AdaptiveAvgPool2D(Layer):
         data_format(str, optional): The data format of the input and output data. An optional string
             from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
     Shape:
@@ -763,13 +988,18 @@ class AdaptiveAvgPool2D(Layer):
             [2, 3, 3, 3]
     """
 
-    def __init__(self, output_size, data_format="NCHW", name=None):
+    def __init__(
+        self,
+        output_size: Size2,
+        data_format: DataLayout2D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._output_size = output_size
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool2d(
             x,
             output_size=self._output_size,
@@ -777,7 +1007,7 @@ class AdaptiveAvgPool2D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
 
 
@@ -814,7 +1044,7 @@ class AdaptiveAvgPool3D(Layer):
         data_format(str, optional): The data format of the input and output data. An optional string
             from: "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is stored in
             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Shape:
         - x(Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
@@ -856,13 +1086,18 @@ class AdaptiveAvgPool3D(Layer):
             [2, 3, 3, 3, 3]
     """
 
-    def __init__(self, output_size, data_format="NCDHW", name=None):
+    def __init__(
+        self,
+        output_size: Size3,
+        data_format: DataLayout3D = 'NCDHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._output_size = output_size
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool3d(
             x,
             output_size=self._output_size,
@@ -870,7 +1105,7 @@ class AdaptiveAvgPool3D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
 
 
@@ -894,11 +1129,11 @@ class AdaptiveMaxPool1D(Layer):
         Output(i) &= max(Input[lstart:lend])
 
     Parameters:
-        output_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+        output_size(int): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one int.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Returns:
         A callable object of AdaptiveMaxPool1D.
@@ -943,18 +1178,23 @@ class AdaptiveMaxPool1D(Layer):
 
     """
 
-    def __init__(self, output_size, return_mask=False, name=None):
+    def __init__(
+        self,
+        output_size: int,
+        return_mask: bool = False,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.output_size = output_size
         self.return_mask = return_mask
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return F.adaptive_max_pool1d(
             input, self.output_size, self.return_mask, self.name
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self.output_size}, return_mask={self.return_mask}'
 
 
@@ -984,7 +1224,7 @@ class AdaptiveMaxPool2D(Layer):
             the input.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs.
             It cannot be set in average pooling type. Default False.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Shape:
         - x(Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor.
@@ -1024,13 +1264,18 @@ class AdaptiveMaxPool2D(Layer):
             [2, 3, 3, 3]
     """
 
-    def __init__(self, output_size, return_mask=False, name=None):
+    def __init__(
+        self,
+        output_size: Size2,
+        return_mask: bool = False,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_max_pool2d(
             x,
             output_size=self._output_size,
@@ -1038,7 +1283,7 @@ class AdaptiveMaxPool2D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
@@ -1074,7 +1319,7 @@ class AdaptiveMaxPool3D(Layer):
             that of the input.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs.
             Default False.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Shape:
         - x(Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor.
@@ -1121,13 +1366,18 @@ class AdaptiveMaxPool3D(Layer):
 
     """
 
-    def __init__(self, output_size, return_mask=False, name=None):
+    def __init__(
+        self,
+        output_size: Size3,
+        return_mask: bool = False,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_max_pool3d(
             x,
             output_size=self._output_size,
@@ -1135,7 +1385,7 @@ class AdaptiveMaxPool3D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
@@ -1169,7 +1419,7 @@ class MaxUnPool1D(Layer):
         data_format (string): The data format of the input and output data.
                         The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_length]`.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1198,13 +1448,13 @@ class MaxUnPool1D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        data_format="NCL",
-        output_size=None,
-        name=None,
-    ):
+        kernel_size: Size1,
+        stride: Size1 | None = None,
+        padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        data_format: DataLayout1D = 'NCL',
+        output_size: Sequence[int] | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -1213,7 +1463,7 @@ class MaxUnPool1D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x, indices):
+    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
         return F.max_unpool1d(
             x,
             indices,
@@ -1225,7 +1475,7 @@ class MaxUnPool1D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self.output_size}'
 
 
@@ -1244,11 +1494,14 @@ class MaxUnPool2D(Layer):
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
         kernel_size (int|tuple): Size of the max unpooling window.
-        padding (int | tuple): Padding that was added to the input.
+        padding (int|tuple): Padding that was added to the input.
         output_size(list|tuple, optional): The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, padding).
-        name(str, optional): For detailed information, please refer
+        data_format (string): The data format of the input and output data.
+                        The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_length]`.
+        name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1290,13 +1543,13 @@ class MaxUnPool2D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        data_format="NCHW",
-        output_size=None,
-        name=None,
-    ):
+        kernel_size: Size2,
+        stride: Size2 | None = None,
+        padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        data_format: DataLayout2D = 'NCHW',
+        output_size: Sequence[int] | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -1305,7 +1558,7 @@ class MaxUnPool2D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x, indices):
+    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
         return F.max_unpool2d(
             x,
             indices,
@@ -1317,7 +1570,7 @@ class MaxUnPool2D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self.output_size}'
 
 
@@ -1347,7 +1600,7 @@ class MaxUnPool3D(Layer):
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
-        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+        stride (int|list|tuple|None): The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
         padding (int | tuple): Padding that was added to the input.
         output_size(list|tuple, optional): The target output size. If output_size is not specified,
@@ -1356,7 +1609,7 @@ class MaxUnPool3D(Layer):
         data_format (string): The data format of the input and output data.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1385,13 +1638,13 @@ class MaxUnPool3D(Layer):
 
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        data_format="NCDHW",
-        output_size=None,
-        name=None,
-    ):
+        kernel_size: Size3,
+        stride: Size3 | None = None,
+        padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        data_format: DataLayout3D = 'NCDHW',
+        output_size: Sequence[int] | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -1400,7 +1653,7 @@ class MaxUnPool3D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x, indices):
+    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
         return F.max_unpool3d(
             x,
             indices,
@@ -1412,7 +1665,7 @@ class MaxUnPool3D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'output_size={self.output_size}'
 
 
@@ -1450,13 +1703,13 @@ class FractionalMaxPool2D(Layer):
         output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
             two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of
             the input.
-        kernel_size (int|list|tuple, optional): The pool kernel size. If the kernel size
+        kernel_size (int|list|tuple|None, optional): The pool kernel size. If the kernel size
             is a tuple or list, it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be the square of an int. Default is None, means using the non-overlapping mode.
-        random_u(float): A random float number in range (0, 1) for the fractional pooling.
+        random_u(float|None, optional): A random float number in range (0, 1) for the fractional pooling.
             Default None, means randomly generated by framework which can be fixed by ``paddle.seed``.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
     Shape:
@@ -1503,11 +1756,11 @@ class FractionalMaxPool2D(Layer):
 
     def __init__(
         self,
-        output_size,
-        kernel_size=None,
-        random_u=None,
-        return_mask=False,
-        name=None,
+        output_size: Size2,
+        kernel_size: Size2 | None = None,
+        random_u: float | None = None,
+        return_mask: bool = False,
+        name: str | None = None,
     ):
         super().__init__()
         self._output_size = output_size
@@ -1516,7 +1769,7 @@ class FractionalMaxPool2D(Layer):
         self._return_mask = return_mask
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.fractional_max_pool2d(
             x,
             output_size=self._output_size,
@@ -1526,7 +1779,7 @@ class FractionalMaxPool2D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> Tensor:
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
@@ -1566,10 +1819,10 @@ class FractionalMaxPool3D(Layer):
         output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
             three element, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of
             the input.
-        kernel_size (int|list|tuple): The pool kernel size. If the kernel size
+        kernel_size (int|list|tuple|None): The pool kernel size. If the kernel size
             is a tuple or list, it must contain three integers, (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be the cube of an int. Default is None, means using the non-overlapping mode.
-        random_u(float): A random float number in range (0, 1) for the fractional pooling.
+        random_u(float|None, optional): A random float number in range (0, 1) for the fractional pooling.
             Default None, means randomly generated by framework which can be fixed by ``paddle.seed``.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
@@ -1619,11 +1872,11 @@ class FractionalMaxPool3D(Layer):
 
     def __init__(
         self,
-        output_size,
-        kernel_size=None,
-        random_u=None,
-        return_mask=False,
-        name=None,
+        output_size: Size2,
+        kernel_size: Size2 | None = None,
+        random_u: float | None = None,
+        return_mask: bool = False,
+        name: str | None = None,
     ):
         super().__init__()
         self._output_size = output_size
@@ -1632,7 +1885,7 @@ class FractionalMaxPool3D(Layer):
         self._return_mask = return_mask
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.fractional_max_pool3d(
             x,
             output_size=self._output_size,
@@ -1642,7 +1895,7 @@ class FractionalMaxPool3D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )

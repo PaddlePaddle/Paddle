@@ -26,7 +26,7 @@
 
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -62,8 +62,11 @@ struct UnionFindNode : public Object {
 
   template <typename T>
   T* safe_as() {
-    CHECK_EQ(std::strcmp(T::__type_info__, type_info()), 0)
-        << "Want a " << T::__type_info__ << " but get a " << type_info();
+    PADDLE_ENFORCE_EQ(
+        std::strcmp(T::__type_info__, type_info()),
+        0,
+        phi::errors::InvalidArgument(
+            "Want a %d but get a %d", T::__type_info__, type_info()));
     return reinterpret_cast<T*>(this);
   }
 

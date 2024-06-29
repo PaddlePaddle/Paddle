@@ -41,7 +41,7 @@ class PadOpConverter : public OpConverter {
     nvinfer1::DimsHW post_pad(paddings[pad_size - 3], paddings[pad_size - 1]);
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                       Padding,
+                                       PaddingNd,
                                        *const_cast<nvinfer1::ITensor*>(input),
                                        pre_pad,
                                        post_pad);

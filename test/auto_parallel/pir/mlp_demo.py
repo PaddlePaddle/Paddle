@@ -20,7 +20,6 @@ from test_to_static_pir_program import DemoNet, create_data_loader
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.base.framework import _current_expected_place
 
 BATCH_SIZE = 4
 BATCH_NUM = 40
@@ -113,19 +112,6 @@ class TestMLPTensorParallel(unittest.TestCase):
         dist_model = dist.to_static(mp_layer, dist_loader, loss_fn, opt)
 
         dist_model.train()
-        mode = "train"
-
-        # TODO(2024-Q2) hack for engine api
-        dist_model._engine._has_prepared[mode] = True
-        dist_model._mode = mode
-        dist_model._engine._mode = mode
-        paddle.disable_static()
-        dist_model._engine._initialize(mode)
-        dist_model._engine._executor = paddle.static.Executor(
-            _current_expected_place()
-        )
-        dist_model._engine._init_comm()
-
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
 
@@ -144,21 +130,6 @@ class TestMLPReplicated(unittest.TestCase):
         dist_model = dist.to_static(replicated_layer, dist_loader, loss_fn, opt)
 
         dist_model.train()
-        mode = "train"
-        # dist_model._engine._build(mode)
-        # main_program = dist_model._engine._pir_main_progs[mode]
-
-        # TODO(2024-Q2) hack for engine api
-        # main_program = dist_model._engine._pir_main_progs[mode]
-        dist_model._engine._has_prepared[mode] = True
-        dist_model._mode = mode
-        dist_model._engine._mode = mode
-        paddle.disable_static()
-        dist_model._engine._initialize(mode)
-        dist_model._engine._executor = paddle.static.Executor(
-            _current_expected_place()
-        )
-
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
 
@@ -178,17 +149,6 @@ class TestMLPPipelineParallel(unittest.TestCase):
         dist_model = dist.to_static(pp_layer, dist_loader, loss_fn, opt)
         dist_model.train()
         mode = "train"
-
-        # TODO(2024-Q2) hack for engine api
-        dist_model._engine._has_prepared[mode] = True
-        dist_model._mode = mode
-        dist_model._engine._mode = mode
-        paddle.disable_static()
-        dist_model._engine._initialize(mode)
-        dist_model._engine._executor = paddle.static.Executor(
-            _current_expected_place()
-        )
-        dist_model._engine._init_comm()
 
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)

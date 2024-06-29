@@ -37,7 +37,6 @@ GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group);
 pir::Operation* CompileBroadcastTreeToConditionBlock(
     const OpLoweringGroupPtr& group,
     const BroadcastTree& broadcast_tree,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,

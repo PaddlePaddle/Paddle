@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
@@ -51,7 +52,6 @@ using pir::Builder;
 using pir::CombineOp;
 using pir::Operation;
 using pir::Program;
-using pir::Region;
 using pir::StackCreateOp;
 using pir::TuplePopOp;
 using pir::TuplePushOp;
@@ -270,8 +270,7 @@ void BuildPipeForBlock(Block* block) {
 
 }  // namespace
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
   PADDLE_ENFORCE_NOT_NULL(
       if_op,
@@ -328,6 +327,36 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     res.push_back(result(i));
   }
   for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
+       ++operand_index, ++arg_index) {
+    if (!body_block.arg(arg_index).type().isa<pir::DenseTensorType>()) {
+      continue;
+    }
+
+    auto l_type =
+        body_block.arg(arg_index).type().dyn_cast<pir::DenseTensorType>();
+    auto r_type = yield_op.operand_source(operand_index)
+                      .type()
+                      .dyn_cast<pir::DenseTensorType>();
+    if (l_type.dims().size() == r_type.dims().size() &&
+        l_type.dims() != r_type.dims()) {
+      VLOG(4) << "while op input " << operand_index
+              << " has dynamic shape, origin shape is: " << l_type.dims()
+              << "new shape is: " << r_type.dims();
+      auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
+      auto new_type = pir::DenseTensorType::get(operation_->ir_context(),
+                                                l_type.dtype(),
+                                                dim,
+                                                l_type.data_layout(),
+                                                l_type.lod(),
+                                                l_type.offset());
+      body_block.arg(arg_index).set_type(new_type);
+      yield_op.operand_source(operand_index).set_type(new_type);
+      result(arg_index).set_type(new_type);
+      VLOG(4) << "change shape as: " << new_type.dims();
+    }
+  }
+
+  for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index) {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
       operand_source(operand_index).set_type(body_block.arg(arg_index).type());
@@ -382,5 +411,4 @@ void BindControlFlowApi(py::module* m) {
   BindTuplePopOp(m);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind
