@@ -15,7 +15,6 @@
 
 import copy
 import os
-import pickle
 import shutil
 import tempfile
 import unittest
@@ -27,7 +26,6 @@ import paddle
 from paddle import base
 from paddle.base import unique_name
 from paddle.jit.api import to_static
-from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
 from paddle.pir_utils import test_with_dygraph_pir
 from paddle.static import InputSpec
@@ -1111,22 +1109,6 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
-
-    # pir has no need to save extra var info, param always saved with program,
-    # and trainable info saved in program's op attr
-    def test_load_var_not_in_extra_var_info(self):
-        self.train_and_save()
-
-        # chage extra var info
-        var_info_path = self.model_path + INFER_PARAMS_INFO_SUFFIX
-        with open(var_info_path, 'rb') as f:
-            extra_var_info = pickle.load(f)
-            extra_var_info.clear()
-        with open(var_info_path, 'wb') as f:
-            pickle.dump(extra_var_info, f, protocol=2)
-
-        with self.assertRaises(RuntimeError):
-            paddle.jit.load(self.model_path)
 
 
 class TestJitSaveMultiCases(unittest.TestCase):
