@@ -481,7 +481,7 @@ class HDFSClient(FS):
         sleep_inter=1000,
     ):  # ms
         self.pre_commands = []
-        hadoop_bin = '%s/bin/hadoop' % hadoop_home
+        hadoop_bin = f'{hadoop_home}/bin/hadoop'
         self.pre_commands.append(hadoop_bin)
         dfs = 'fs'
         self.pre_commands.append(dfs)
@@ -1216,7 +1216,7 @@ class HDFSClient(FS):
         )
         ret, lines = self._run_cmd(cmd)
         if len(lines) == 0:
-            logger.warning("list_files empty, path[%s]" % path_list)
+            logger.warning(f"list_files empty, path[{path_list}]")
             return []
         for line in lines:
             arr = line.split(' ')
