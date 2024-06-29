@@ -207,7 +207,7 @@ class FleetUtil:
 
         """
         auc_value = self.get_global_auc(scope, stat_pos, stat_neg)
-        self.rank0_print(print_prefix + f" global auc = {auc_value}")
+        self.rank0_print(f"{print_prefix} global auc = {auc_value}")
 
     def get_global_auc(
         self,
