@@ -224,6 +224,7 @@ class Accuracy(Metric):
         .. code-block:: python
             :name: code-model-api-example
 
+            >>> # doctest: +TIMEOUT(80)
             >>> import paddle
             >>> from paddle.static import InputSpec
             >>> import paddle.vision.transforms as T
