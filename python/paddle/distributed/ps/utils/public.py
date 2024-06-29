@@ -1801,7 +1801,7 @@ def check_program(program):
             for var_name in input_var_names + output_var_names:
                 if not block._find_var_recursive(str(var_name)):
                     raise ValueError(
-                        f'var: {str(var_name)} needed by op is not found in block: {block_idx}'
+                        f'var: {var_name} needed by op is not found in block: {block_idx}'
                     )
         block_idx += 1
     print('program checked valid')
