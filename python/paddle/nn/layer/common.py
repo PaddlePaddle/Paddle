@@ -23,13 +23,14 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
-    from paddle import ParamAttr, Tensor
+    from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,
         DataLayout1DVariant,
         DataLayout2D,
         DataLayout3D,
         IntSequence,
+        ParamAttrLike,
         ShapeLike,
         Size2,
         Size4,
@@ -197,8 +198,8 @@ class Linear(Layer):
         self,
         in_features: int,
         out_features: int,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -744,8 +745,8 @@ class Bilinear(Layer):
         in1_features: int,
         in2_features: int,
         out_features: int,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1765,7 +1766,7 @@ class Embedding(Layer):
         embedding_dim: int,
         padding_idx: float | None = None,
         sparse: bool = False,
-        weight_attr: ParamAttr | None = None,
+        weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()

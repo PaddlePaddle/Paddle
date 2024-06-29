@@ -156,6 +156,7 @@ class LinearDequanter(Layer):
         self._zero_point = self.create_parameter(
             shape=zero_point.shape, attr=zp_attr, dtype="float32"
         )
+        self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
 

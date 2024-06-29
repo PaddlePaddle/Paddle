@@ -16,13 +16,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from paddle._typing import DataLayout2D
-
 from .. import functional
 from .layers import Layer
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DataLayout2D
+
 __all__ = []
 
 
