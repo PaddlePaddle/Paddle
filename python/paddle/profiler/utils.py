@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import functools
 import sys
-import types
 from contextlib import ContextDecorator, contextmanager
+from typing import TYPE_CHECKING
 from warnings import warn
 
 from paddle.base import core
 from paddle.base.core import TracerEventType, _RecordEvent
+
+if TYPE_CHECKING:
+    import types
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
