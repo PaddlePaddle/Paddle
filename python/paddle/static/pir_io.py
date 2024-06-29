@@ -90,24 +90,51 @@ def set_var(name, ndarray):
     p = t._place()
     if p.is_cpu_place():
         place = paddle.base.CPUPlace()
-    # elif p.is_cuda_pinned_place():
-    #     place = paddle.base.CUDAPinnedPlace()
-    # elif p.is_xpu_place():
-    #     p = paddle.base.core.Place()
-    #     p.set_place(t._place())
-    #     place = paddle.base.XPUPlace(p.xpu_device_id())
-    # elif p.is_custom_place():
-    #     p = paddle.base.core.Place()
-    #     p.set_place(t._place())
-    #     place = paddle.base.CustomPlace(
-    #         paddle.device.get_device().split(':')[0], p.custom_device_id()
-    #     )
+    elif p.is_cuda_pinned_place():
+        place = paddle.base.CUDAPinnedPlace()
+    elif p.is_xpu_place():
+        p = paddle.base.core.Place()
+        p.set_place(t._place())
+        place = paddle.base.XPUPlace(p.xpu_device_id())
+    elif p.is_custom_place():
+        p = paddle.base.core.Place()
+        p.set_place(t._place())
+        place = paddle.base.CustomPlace(
+            paddle.device.get_device().split(':')[0], p.custom_device_id()
+        )
     else:
         p = paddle.base.core.Place()
         p.set_place(t._place())
         place = paddle.base.CUDAPlace(p.gpu_device_id())
 
     t.set(ndarray, place)
+
+
+def append_pir_feed_ops(program, feed_vars):
+    """
+    Append feed ops to the program.
+    Args:
+        program(Program): Specify a program you want to append fetch op.
+        feed_vars(Value | list[Value]): Values should be feed.
+    Returns:
+        modify program
+    """
+    for i, var in enumerate(feed_vars):
+        orig_op = var.get_defining_op()
+        if orig_op.name() != 'pd_op.feed' and orig_op.name() != 'pd_op.data':
+            value = paddle._pir_ops.data(
+                "feed_name_" + str(i),
+                var.shape,
+                var.dtype,
+                paddle.base.core.Place(),
+            )
+            var.replace_all_uses_with(value)
+            value.get_defining_op().move_before(orig_op)
+
+    for i, var in enumerate(feed_vars):
+        orig_op = var.get_defining_op()
+        if orig_op.name() != 'pd_op.feed' and orig_op.name() != 'pd_op.data':
+            orig_op.get_parent_block().remove_op(orig_op)
 
 
 def append_pir_fetch_ops(program, fetch_name_var_maps):
@@ -136,8 +163,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
     """
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `paddle.static.Program`, but received `{type(program)}`"
         )
 
     total_ops = program.global_block().ops
@@ -239,8 +265,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `paddle.static.Program`, but received `{type(program)}`"
         )
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
@@ -298,6 +323,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
         else:
             fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
     with paddle.static.program_guard(copy_program):
+        append_pir_feed_ops(copy_program, clone_feed_vars)
         append_pir_fetch_ops(copy_program, fetch_vars_tuple)
 
     return copy_program
@@ -454,8 +480,7 @@ def load_vars_pir(
 
         if not isinstance(main_program, paddle.static.Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is paddle.static.Program, but received {type(main_program)}"
             )
         param, opt = get_pir_parameters(main_program)
         vars = param + opt
@@ -475,8 +500,7 @@ def load_vars_pir(
 
         if not isinstance(main_program, paddle.static.Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is paddle.static.Program, but received {type(main_program)}"
             )
 
         # TODO(chenzhiyang):save origin param shape, check vars
@@ -607,7 +631,7 @@ def save_pir(program, model_path, protocol=4, **configs):
 
 
 @static_only
-def load_pir(program, model_path, executor=None, var_list=None):
+def load_pir(program, model_prefix, executor=None, var_list=None):
     """
     :api_attr: PIR Static Graph
 
@@ -620,7 +644,7 @@ def load_pir(program, model_path, executor=None, var_list=None):
 
     Args:
         program(Program): The program to be loaded
-        model_path(str): The file prefix to store the program
+        model_prefix(str): The file prefix to store the program
         executor(Executor, optional): The executor used for initializing the parameter
                                       when startup program is not run.
         var_list(list|tuple, optional): The Tensor list/tuple to load a single model file saved with
@@ -632,14 +656,6 @@ def load_pir(program, model_path, executor=None, var_list=None):
     """
 
     assert executor is None or isinstance(executor, Executor)
-
-    model_prefix = model_path
-    if model_prefix.endswith(".pdparams"):
-        model_prefix = model_prefix[:-9]
-    elif model_prefix.endswith(".pdopt"):
-        model_prefix = model_prefix[:-6]
-    elif model_prefix.endswith(".pdmodel"):
-        model_prefix = model_prefix[:-8]
 
     parameter_file_name = model_prefix + ".pdparams"
 
@@ -683,7 +699,7 @@ def load_pir(program, model_path, executor=None, var_list=None):
 
 
 @static_only
-def save_pir_inference_model(
+def save_inference_model_pir(
     path_prefix, feed_vars, fetch_vars, executor, **kwargs
 ):
     """
@@ -758,7 +774,7 @@ def save_pir_inference_model(
 
 
 @static_only
-def load_pir_inference_model(path_prefix, executor, **kwargs):
+def load_inference_model_pir(path_prefix, executor, **kwargs):
     """
 
     Load inference model from a given path. By this API, you can get the model

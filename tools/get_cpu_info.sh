@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,7 +54,7 @@ echo "OS Version             : `uname -o`"
 echo "Kernel Release Version : `uname -r`"
 echo "Kernel Patch Version   : `uname -v`"
 echo "GCC Version            :`gcc --version | head -n 1|awk -F '\\\(GCC\\\)' '{print $2}'`"
-if command -v cmake >/dev/null 2>&1; then 
+if command -v cmake >/dev/null 2>&1; then
   cmake_ver=`cmake --version | head -n 1 | awk -F 'version' '{print $2}'`
 else
   cmake_ver=" Not installed"

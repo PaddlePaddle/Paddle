@@ -155,6 +155,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
+  list(REMOVE_ITEM TEST_OPS test_ops_nms)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -205,7 +206,6 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
@@ -421,15 +421,11 @@ function(parallel_bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
+list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_base_cpu)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
-list(REMOVE_ITEM TEST_OPS
-     test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -437,6 +433,8 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
+list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -485,6 +483,8 @@ endif()
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
+    test_affine_channel_op
+    test_scatter_op
     test_concat_op
     test_elementwise_add_op
     test_lookup_table_op
@@ -570,6 +570,11 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
 endif()
+
+py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS
+                ${GC_ENVS})
+py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS
+                ${GC_ENVS})
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -681,7 +686,7 @@ if(WITH_DISTRIBUTE)
     endif()
   endif()
 endif()
-
+py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(
   test_fuse_bn_add_act_pass
   MODULES
@@ -753,6 +758,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
@@ -788,12 +794,18 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 1500)
+  set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
+  set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 1200)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
 else()
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
   set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
   set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op
@@ -946,6 +958,10 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 set(TEST_CINN_OPS
+    test_assign_op
+    test_layer_norm_op
+    test_atan2_op
+    test_cast_op
     test_stack_op
     test_activation_op
     test_fill_any_like_op
@@ -954,6 +970,22 @@ set(TEST_CINN_OPS
     test_elementwise_sub_op
     test_elementwise_div_op
     test_elementwise_max_op
+    test_elementwise_mul_op
+    test_elementwise_pow_op
+    test_expand_v2_op
+    test_flatten_contiguous_range_op
+    test_flip
+    test_full_like_op
+    test_top_k_op
+    test_top_k_v2_op
+    test_reshape_op
+    test_triangular_solve_op
+    test_split_op
+    test_scatter_op
+    test_reverse_op
+    test_roll_op
+    test_meshgrid_op
+    test_index_select_op
     test_mean_op
     test_clip_op
     test_gather_op
@@ -997,6 +1029,15 @@ set_tests_properties(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_adagrad_op
+    test_adamw_op
+    test_bincount_op
+    test_batch_norm_op
+    test_nce
+    test_layer_norm_op
+    test_eigh_op
+    test_matmul_op
+    test_matmul_v2_op
+    test_paddle_save_load_binary
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
@@ -1052,6 +1093,9 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
+py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
+                FLAGS_inner_op_parallelism=4)
+
 set(PIR_COVERAGE_TESTS test_fused_feedforward_pass)
 if(NOT WITH_GPU)
   list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fused_feedforward_pass)
@@ -1099,3 +1143,57 @@ set_pir_tests_properties()
 set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
+set_tests_properties(test_linalg_cholesky_inverse PROPERTIES TIMEOUT 100)
+set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_bicubic_interp_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv2d_op_depthwise_conv
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES TIMEOUT 120)
+set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 300)
+set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
+set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_star_gan_with_gradient_penalty
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_lstm_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_nearest_interp_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pad3d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
+set_tests_properties(test_partial_concat_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
+if(WIN32)
+  set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 900)
+else()
+  set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
+endif()
+set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
+set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
+set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_paddle_save_load_binary_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
+set_tests_properties(test_data_norm_op PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
+set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
+set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
+set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)

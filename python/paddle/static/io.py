@@ -60,12 +60,12 @@ from .io_utils import (
 )
 from .pir_io import (
     get_pir_parameters,
+    load_inference_model_pir,
     load_pir,
-    load_pir_inference_model,
     load_vars_pir,
     normalize_pir_program,
+    save_inference_model_pir,
     save_pir,
-    save_pir_inference_model,
     save_vars_pir,
 )
 
@@ -188,8 +188,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
         return normalize_pir_program(program, feed_vars, fetch_vars, **kwargs)
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `base.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `base.Program`, but received `{type(program)}`"
         )
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
@@ -526,7 +525,7 @@ def save_inference_model(
     """
 
     if in_pir_mode():
-        save_pir_inference_model(
+        save_inference_model_pir(
             path_prefix, feed_vars, fetch_vars, executor, **kwargs
         )
         return
@@ -852,7 +851,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
             # program to get the inference result.
     """
     if in_pir_mode():
-        return load_pir_inference_model(path_prefix, executor, **kwargs)
+        return load_inference_model_pir(path_prefix, executor, **kwargs)
     # check kwargs
     supported_args = ('model_filename', 'params_filename')
     deprecated_args = ('pserver_endpoints',)
@@ -1225,8 +1224,7 @@ def load_vars(
             main_program = default_main_program()
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is base.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is base.Program, but received {type(main_program)}"
             )
 
         load_vars(
@@ -1245,8 +1243,7 @@ def load_vars(
 
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is base.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is base.Program, but received {type(main_program)}"
             )
 
         # save origin param shape
@@ -1527,9 +1524,6 @@ def load(program, model_path, executor=None, var_list=None):
             >>> static.save(prog, "./temp")
             >>> static.load(prog, "./temp")
     """
-    if in_pir_mode():
-        return load_pir(program, model_path, executor, var_list)
-
     assert executor is None or isinstance(executor, Executor)
 
     model_prefix = model_path
@@ -1539,6 +1533,11 @@ def load(program, model_path, executor=None, var_list=None):
         model_prefix = model_prefix[:-6]
     elif model_prefix.endswith(".pdmodel"):
         model_prefix = model_prefix[:-8]
+    elif model_prefix.endswith(".json"):
+        model_prefix = model_prefix[:-5]
+
+    if in_pir_mode():
+        return load_pir(program, model_prefix, executor, var_list)
 
     parameter_file_name = model_prefix + ".pdparams"
 
@@ -1578,8 +1577,9 @@ def load(program, model_path, executor=None, var_list=None):
             if len(binary_file_set) > 0:
                 unused_var_list = " ".join(list(binary_file_set))
                 _logger.warning(
-                    "variable file [ %s ] not used"
-                    % (" ".join(list(binary_file_set)))
+                    "variable file [ {} ] not used".format(
+                        " ".join(list(binary_file_set))
+                    )
                 )
             try:
                 load_vars(
@@ -1893,9 +1893,11 @@ def load_program_state(model_path, var_list=None):
                     shape=var.shape,
                     dtype=var.dtype,
                     type=var.type,
-                    lod_level=var.lod_level
-                    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    else None,
+                    lod_level=(
+                        var.lod_level
+                        if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
+                        else None
+                    ),
                     persistable=True,
                 )
 

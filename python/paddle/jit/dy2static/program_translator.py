@@ -19,7 +19,9 @@ import inspect
 import threading
 import warnings
 import weakref
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+
+from typing_extensions import ParamSpec, Self
 
 import paddle
 import paddle.pir.core as ir_static
@@ -49,8 +51,9 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import PartialProgramLayerHook
+from .partial_program import PartialProgramLayer, PartialProgramLayerHook
 from .pir_partial_program import (
+    PartialProgramLayer as PirPartialProgramLayer,
     PartialProgramLayerHook as PirPartialProgramLayerHook,
 )
 from .transformers import DygraphToStaticAst
@@ -70,7 +73,12 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from paddle._typing import NestedSequence
+    from paddle.static import InputSpec, Program
     from paddle.static.amp.fp16_utils import AmpOptions
+
+_RetT = TypeVar("_RetT")
+_InputT = ParamSpec("_InputT")
 
 __all__ = []
 
@@ -318,7 +326,7 @@ def unwrap_decorators(func):
     return decorators, cur
 
 
-class StaticFunction:
+class StaticFunction(Generic[_InputT, _RetT]):
     def __init__(self, function, input_spec=None, **kwargs):
         """
         Initializes a `StaticFunction`.
@@ -374,7 +382,7 @@ class StaticFunction:
         self._property = kwargs.get("property", False)
         self._get_debug_name()
 
-    def _get_debug_name(self):
+    def _get_debug_name(self) -> str:
         try:
             if self._class_instance:
                 self._debug_name = self._class_instance.__class__.__name__
@@ -384,11 +392,11 @@ class StaticFunction:
             self._debug_name = "static_function"
 
     @property
-    def is_property(self):
+    def is_property(self) -> bool:
         # whether is class proproty to be exported.
         return self._property
 
-    def train(self):
+    def train(self) -> None:
         if (
             isinstance(self._class_instance, layers.Layer)
             and self._class_instance.training is False
@@ -399,7 +407,7 @@ class StaticFunction:
             )
         self._training = True
 
-    def eval(self):
+    def eval(self) -> None:
         if (
             isinstance(self._class_instance, layers.Layer)
             and self._class_instance.training is True
@@ -452,12 +460,12 @@ class StaticFunction:
 
         return self._descriptor_cache[instance]
 
-    def _clone(self):
+    def _clone(self) -> Self:
         return self.__class__(
             self.dygraph_function, self._input_spec, **self._kwargs
         )
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         """
         Supports to call the returned instance with input `args` and `kwargs` directly.
 
@@ -493,7 +501,7 @@ class StaticFunction:
 
         return self._perform_call(*args, **kwargs)
 
-    def _is_train_mode(self):
+    def _is_train_mode(self) -> bool:
         if self._class_instance is not None:
             if not hasattr(self._class_instance, 'training'):
                 raise TypeError(
@@ -504,7 +512,9 @@ class StaticFunction:
         else:
             return self._training
 
-    def _call_dygraph_function(self, *args, **kwargs):
+    def _call_dygraph_function(
+        self, *args: _InputT.args, **kwargs: _InputT.kwargs
+    ) -> _RetT:
         """
         Calls dygraph function directly and returns the outputs.
 
@@ -526,7 +536,9 @@ class StaticFunction:
         if self.is_property:
             raise RuntimeError("Can not call the func when property=True.")
 
-    def get_concrete_program(self, *args, **kwargs):
+    def get_concrete_program(
+        self, *args: _InputT.args, **kwargs: _InputT.kwargs
+    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
         raise NotImplementedError("Not implemented yet.")
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -536,11 +548,11 @@ class StaticFunction:
         raise NotImplementedError("Not implemented yet.")
 
     @property
-    def code(self):
+    def code(self) -> str:
         raise NotImplementedError("Not implemented yet.")
 
     @property
-    def dygraph_function(self):
+    def dygraph_function(self) -> Callable[_InputT, _RetT]:
         """
         Returns the original decorated function.
         """
@@ -550,15 +562,18 @@ class StaticFunction:
             return self._dygraph_function
 
     @property
-    def concrete_program(self):
+    def concrete_program(self) -> ConcreteProgram:
         raise NotImplementedError("Not implemented yet.")
 
     def concrete_program_specify_input_spec(
-        self, input_spec=None, with_hook=False, is_prim_infer=False
+        self,
+        input_spec: NestedSequence[InputSpec] | None = None,
+        with_hook: bool = False,
+        is_prim_infer: bool = False,
     ):
         raise NotImplementedError("Not implemented yet.")
 
-    def rollback(self):
+    def rollback(self) -> Callable[_InputT, _RetT]:
         """
         Rollback into original dygraph functions for current class instance.
 
@@ -662,23 +677,23 @@ class StaticFunction:
             return self._dygraph_function
 
     @property
-    def inputs(self):
+    def inputs(self) -> list[Any]:
         raise NotImplementedError("Not implemented yet.")
 
     @property
-    def outputs(self):
+    def outputs(self) -> list[Any]:
         raise NotImplementedError("Not implemented yet.")
 
     @property
-    def main_program(self):
+    def main_program(self) -> Program:
         raise NotImplementedError("Not implemented yet.")
 
     @property
-    def program_cache(self):
+    def program_cache(self) -> ProgramCache:
         raise NotImplementedError("Not implemented yet.")
 
     @property
-    def function_spec(self):
+    def function_spec(self) -> FunctionSpec:
         raise NotImplementedError("Not implemented yet.")
 
 
@@ -762,10 +777,10 @@ class SymbolicStaticFunction(StaticFunction):
 
     @property
     def function_spec(self):
-        raise_error_template("function_spec ")()
+        raise_error_template("function_spec")()
 
 
-class ASTStaticFunction(StaticFunction):
+class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
     """
     Wrapper class to Manage program conversion of decorated function.
 
@@ -812,7 +827,9 @@ class ASTStaticFunction(StaticFunction):
                 )
                 raise e
 
-    def get_concrete_program(self, *args, **kwargs):
+    def get_concrete_program(
+        self, *args: _InputT.args, **kwargs: _InputT.kwargs
+    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
         """
         Returns traced concrete program and inner executable partial layer.
 
@@ -867,7 +884,9 @@ class ASTStaticFunction(StaticFunction):
         partial_program_layer._debug_name = self._debug_name
         return concrete_program, partial_program_layer
 
-    def get_concrete_program_with_cache_key(self, cached_key):
+    def get_concrete_program_with_cache_key(
+        self, cached_key: CacheKey
+    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
         """
         Returns traced concrete program and inner executable partial layer by cached key.
 
@@ -884,14 +903,14 @@ class ASTStaticFunction(StaticFunction):
         ) = self._program_cache.get_program_without_cache(cached_key)
         return concrete_program, partial_program_layer
 
-    def get_traced_count(self):
+    def get_traced_count(self) -> int:
         """
         Returns the number of traced programs for the decorated function.
         """
         return len(self._program_cache)
 
     @property
-    def code(self):
+    def code(self) -> str:
         """
         Returns the source code of transformed static function for debugging.
         """
@@ -900,7 +919,7 @@ class ASTStaticFunction(StaticFunction):
         return source_code
 
     @property
-    def concrete_program(self):
+    def concrete_program(self) -> ConcreteProgram:
         """
         Returns recent ConcreteProgram instance of decorated function.
 
@@ -930,8 +949,11 @@ class ASTStaticFunction(StaticFunction):
         return self.concrete_program_specify_input_spec(input_spec=None)
 
     def concrete_program_specify_input_spec(
-        self, input_spec=None, with_hook=False, is_prim_infer=False
-    ):
+        self,
+        input_spec: NestedSequence[InputSpec] | None = None,
+        with_hook: bool = False,
+        is_prim_infer: bool = False,
+    ) -> ConcreteProgram:
         """
         Returns recent ConcreteProgram instance of decorated function while
         specifying input_spec. If the self._function_spec already has
@@ -1006,7 +1028,7 @@ class ASTStaticFunction(StaticFunction):
                 )
 
     @property
-    def inputs(self):
+    def inputs(self) -> list[Any]:
         """
         Returns input tensors of recent converted static program.
         """
@@ -1020,7 +1042,7 @@ class ASTStaticFunction(StaticFunction):
         return inputs
 
     @property
-    def outputs(self):
+    def outputs(self) -> list[Any]:
         """
         Returns output tensors of recent converted static program.
         """
@@ -1035,7 +1057,7 @@ class ASTStaticFunction(StaticFunction):
         return outputs
 
     @property
-    def main_program(self):
+    def main_program(self) -> Program:
         """
         Returns recent converted static main program.
         """
@@ -1045,11 +1067,11 @@ class ASTStaticFunction(StaticFunction):
         return main_program
 
     @property
-    def program_cache(self):
+    def program_cache(self) -> ProgramCache:
         return self._program_cache
 
     @property
-    def function_spec(self):
+    def function_spec(self) -> FunctionSpec:
         return self._function_spec
 
 
@@ -1597,8 +1619,7 @@ class ProgramCache:
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
-                'type(item) should be CacheKey, but received %s'
-                % type_name(item)
+                f'type(item) should be CacheKey, but received {type_name(item)}'
             )
         item_id = hash(item)
         self._recent_cache_key = item
@@ -1621,8 +1642,7 @@ class ProgramCache:
     def get_program(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
-                "Input item's type should be FunctionSpec, but received %s"
-                % type_name(item)
+                f"Input item's type should be FunctionSpec, but received {type_name(item)}"
             )
         item_id = hash(item)
         if item_id not in self._caches:
@@ -1757,7 +1777,7 @@ class ProgramTranslator:
         self.enable_to_static = enable_to_static
 
 
-def enable_to_static(enable_to_static_bool):
+def enable_to_static(enable_to_static_bool: bool) -> None:
     """
     Enable or disable the converting from imperative to static graph by
     ProgramTranslator globally.

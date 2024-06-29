@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
+#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <mutex>
@@ -24,13 +25,18 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/attr_adt_type_id.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/type_adt_type_id.h"
 #include "paddle/common/adt_type_id.h"
+#include "paddle/common/call_before_main.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/common/overloaded.h"
+#include "paddle/fluid/framework/feed_hook.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -39,6 +45,160 @@
 
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 COMMON_DECLARE_bool(logging_trunc_pir_py_code);
+COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
+
+namespace paddle::framework {
+
+namespace {
+
+std::optional<std::string> GetLoggingFilePath() {
+  if (FLAGS_logging_pir_py_code_dir.empty()) return std::nullopt;
+  const std::string file_path =
+      FLAGS_logging_pir_py_code_dir + "/programs_example_input_tensor_meta.py";
+  return file_path;
+}
+
+void TryTruncateLoggingFile() {
+  if (!FLAGS_logging_trunc_pir_py_code) return;
+  std::optional<std::string> file_path = GetLoggingFilePath();
+  if (!file_path.has_value()) return;
+  static std::once_flag once_flag;
+  std::call_once(once_flag, [&] {
+    std::ofstream ofs;
+    ofs.open(file_path.value().c_str(), std::ios::out | std::ios::trunc);
+    ofs.close();
+  });
+}
+
+template <typename DoEachFeadNameT>
+void VisitFeedName(const pir::Program& program,
+                   const DoEachFeadNameT& DoEachFeadName) {
+  auto module_op = program.module_op();
+  const auto& block = module_op.block();
+  const auto& IsDataOp = [](const pir::Operation& op) -> bool {
+    return op.isa<paddle::dialect::DataOp>();
+  };
+  const auto& GetDataOpName = [](const pir::Operation& op) -> std::string {
+    return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  };
+  for (const auto& op : block) {
+    if (IsDataOp(op)) {
+      DoEachFeadName(GetDataOpName(op));
+    }
+  }
+  for (const auto& [name, _] : block.kwargs()) {
+    DoEachFeadName(name);
+  }
+}
+
+std::optional<std::vector<int64_t>> GetTensorData(
+    const phi::DenseTensor& tensor) {
+  constexpr int kLimit = 64;
+  if (tensor.numel() > kLimit || !tensor.IsInitialized()) return std::nullopt;
+  if (tensor.dtype() == phi::DataType::INT64) {
+    return phi::GetVectorFromTensor<int64_t>(&tensor);
+  }
+  if (tensor.dtype() == phi::DataType::INT32) {
+    const auto& data = phi::GetVectorFromTensor<int32_t>(&tensor);
+    return std::vector<int64_t>(data.begin(), data.end());
+  }
+  return std::nullopt;
+}
+
+std::string ShapeToString(const phi::DenseTensor& tensor) {
+  std::ostringstream ss;
+  ss << "[";
+  int i = 0;
+  for (int64_t dim : ::common::vectorize<int64_t>(tensor.dims())) {
+    if (i++ > 0) {
+      ss << ", ";
+    }
+    ss << dim;
+  }
+  ss << "]";
+  return ss.str();
+}
+
+std::string DataToString(const phi::DenseTensor& tensor) {
+  const auto& data = GetTensorData(tensor);
+  if (!data.has_value()) return "None";
+  std::ostringstream ss;
+  ss << "[";
+  int i = 0;
+  for (int64_t dim : data.value()) {
+    if (i++ > 0) {
+      ss << ", ";
+    }
+    ss << dim;
+  }
+  ss << "]";
+  return ss.str();
+}
+
+int64_t GetRandomId() {
+  std::random_device rd{};
+  std::mt19937_64 gen(rd());
+  std::uniform_int_distribution<int64_t> dis(
+      0, std::numeric_limits<int64_t>::max());
+  return dis(gen);
+}
+
+std::string GetLoggingShapeOrDataForName(int64_t program_id,
+                                         const std::string& name,
+                                         const phi::DenseTensor& tensor) {
+  std::ostringstream ss;
+  ss << "class PirProgram_example_input_tensor_meta_" << GetRandomId() << ":";
+  ss << "\n\tprogram_id = " << program_id;
+  ss << "\n\tinput_name = " << std::quoted(name);
+  ss << "\n\tshape = " << ShapeToString(tensor);
+  ss << "\n\tdata = " << DataToString(tensor);
+  ss << "\n\n";
+  return ss.str();
+}
+
+void AppendToLoggingFile(const std::string& logging_str) {
+  std::optional<std::string> file_path = GetLoggingFilePath();
+  if (!file_path.has_value()) return;
+  std::ofstream ofs;
+  ofs.open(file_path.value().c_str(), std::ios::out | std::ios::app);
+  if (!ofs.is_open()) return;
+  ofs << logging_str << std::endl;
+  ofs.close();
+}
+
+void AppendLoggingShapeOrDataForName(int64_t uid,
+                                     const std::string& name,
+                                     const phi::DenseTensor& tensor) {
+  static std::mutex mutex;
+  std::unique_lock<std::mutex> lock(mutex);
+  using Name2OnceFlag = std::unordered_map<std::string, std::once_flag>;
+  static std::unordered_map<int64_t, Name2OnceFlag> once_flags;
+  std::call_once(once_flags[uid][name], [&] {
+    AppendToLoggingFile(GetLoggingShapeOrDataForName(uid, name, tensor));
+  });
+}
+
+void DumpExampleInputsShapeOrData(const pir::Program& program,
+                                  const Scope& scope) {
+  if (FLAGS_logging_pir_py_code_dir.empty()) return;
+  TryTruncateLoggingFile();
+  VisitFeedName(program, [&](const std::string& name) {
+    Variable* variable = scope.FindVar(name);
+    if (variable == nullptr) return;
+    if (!variable->IsType<phi::DenseTensor>()) return;
+    const phi::DenseTensor& tensor = variable->Get<phi::DenseTensor>();
+    AppendLoggingShapeOrDataForName(program.id(), name, tensor);
+  });
+}
+
+}  // namespace
+
+PD_CALL_BEFORE_MAIN([] {
+  if (std::getenv("FLAGS_logging_pir_py_code_dir") == nullptr) return;
+  ::paddle::framework::AddFeedHook(DumpExampleInputsShapeOrData);
+});
+
+}  // namespace paddle::framework
 
 namespace cinn::dialect::ir {
 
@@ -225,10 +385,23 @@ struct PirToPyCodeConverterHelper {
 
   std::vector<pir::Value> GetFreeVars(const pir::Block& block) {
     std::vector<pir::Value> inputs;
+    const auto IsBlockPositionalArg = [&](pir::Value value) {
+      const auto& args = block.args();
+      return std::find(args.begin(), args.end(), value) != args.end();
+    };
+    const auto IsBlockKeywardArg = [&](pir::Value value) {
+      const auto& kwargs = block.kwargs();
+      for (const auto& [_, kwarg] : kwargs) {
+        if (kwarg == value) return true;
+      }
+      return false;
+    };
     for (const auto& value : GetUsedExternalValue(block)) {
       if (!value) continue;
       if (std::find(inputs.begin(), inputs.end(), value) != inputs.end())
         continue;
+      if (IsBlockPositionalArg(value)) continue;
+      if (IsBlockKeywardArg(value)) continue;
       inputs.push_back(value);
     }
     return inputs;
@@ -330,6 +503,9 @@ struct PirToPyCodeConverterHelper {
           "):");
       IStrings return_lambda{ret_lambda_declare};
       PushBackIndented(&return_lambda, block_body);
+      if (block_body.empty()) {
+        return_lambda.push_back(Indent("pass"));
+      }
       return return_lambda;
     };
     std::string free_vars_as_args = ConvertFreeVarsAsArgs(block);
@@ -453,6 +629,9 @@ struct PirToPyCodeConverterHelper {
         },
         [](const symbol::TensorListShapeOrDataDimExprs& impl) {
           return ConvertTensorListShapeOrData(impl);
+        },
+        [](const symbol::NullShapeOrDataDimExpr& impl) {
+          return std::string("self.s_null()");
         });
   }
 
@@ -866,27 +1045,52 @@ struct PirToPyCodeConverterHelper {
   }
 
   std::string ConvertInputTypes(const pir::Operation* op) {
-    std::stringstream ss;
-    ss << "[";
-    for (int i = 0; i < op->num_operands(); ++i) {
-      if (i > 0) {
-        ss << ", ";
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (int i = 0; i < op->num_operands(); ++i) {
+        DoEachValue(op->operand_source(i));
       }
-      ss << ConvertType(op->operand_source(i).type());
-    }
-    ss << "]";
-    return ss.str();
+    };
+    return ConvertValueTypes(VisitValue);
+  }
+
+  std::string ConvertBlockArgTypes(const pir::Block& block) {
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (const auto& arg : block.args()) {
+        DoEachValue(arg);
+      }
+    };
+    return ConvertValueTypes(VisitValue);
+  }
+
+  std::string ConvertBlockKwArgTypes(const pir::Block& block) {
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (const auto& [_, arg] : block.kwargs()) {
+        DoEachValue(arg);
+      }
+    };
+    return ConvertValueTypes(VisitValue);
   }
 
   std::string ConvertOutputTypes(const pir::Operation* op) {
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (int i = 0; i < op->num_results(); ++i) {
+        DoEachValue(op->result(i));
+      }
+    };
+    return ConvertValueTypes(VisitValue);
+  }
+
+  template <typename VisitValueT>
+  std::string ConvertValueTypes(const VisitValueT& VisitValue) {
     std::stringstream ss;
     ss << "[";
-    for (int i = 0; i < op->num_results(); ++i) {
-      if (i > 0) {
+    int i = 0;
+    VisitValue([&](pir::Value value) {
+      if (i++ > 0) {
         ss << ", ";
       }
-      ss << ConvertType(op->result(i).type());
-    }
+      ss << ConvertType(value.type());
+    });
     ss << "]";
     return ss.str();
   }
@@ -1098,7 +1302,45 @@ struct PirToPyCodeConverterHelper {
         }
         ss << "]";
       }
-      ss << "]";
+      ss << "], ";
+    }
+    {
+      int i = 0;
+      ss << "block_positional_arg_types=[";
+      for (const auto& region : *op) {
+        if (i++ > 0) {
+          ss << ",";
+        }
+        int j = 0;
+        ss << "[";
+        for (const auto& block : region) {
+          if (j++ > 0) {
+            ss << ",";
+          }
+          ss << ConvertBlockArgTypes(block);
+        }
+        ss << "]";
+      }
+      ss << "], ";
+    }
+    {
+      int i = 0;
+      ss << "block_keyword_arg_types=[";
+      for (const auto& region : *op) {
+        if (i++ > 0) {
+          ss << ",";
+        }
+        int j = 0;
+        ss << "[";
+        for (const auto& block : region) {
+          if (j++ > 0) {
+            ss << ",";
+          }
+          ss << ConvertBlockKwArgTypes(block);
+        }
+        ss << "]";
+      }
+      ss << "], ";
     }
     return ss.str();
   }
@@ -1138,16 +1380,8 @@ struct PirToPyCodeConverterHelper {
 
   std::string GetPyClassName() {
     std::ostringstream ss;
-    ss << "PirProgram_" << RandomInt();
+    ss << "PirProgram_" << program_->id();
     return ss.str();
-  }
-
-  int64_t RandomInt() {
-    std::random_device rd{};
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<int64_t> dis(
-        0, std::numeric_limits<int64_t>::max());
-    return dis(gen);
   }
 
   std::string ConvertIStringsToString(const IStrings& istrings) {
@@ -1216,5 +1450,18 @@ void PirToPyCodeConverter::SaveIfFlagEnabled() const {
   ofs << content << std::endl;
   ofs.close();
 }
+
+void DumpExecProgram(const pir::Program& program,
+                     const ::paddle::framework::Scope& _) {
+  PirToPyCodeConverter(&program)
+      .file_name("exec_programs.py")
+      .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
+      .SaveIfFlagEnabled();
+}
+
+PD_CALL_BEFORE_MAIN([] {
+  if (std::getenv("FLAGS_logging_pir_py_code_dir") == nullptr) return;
+  ::paddle::framework::AddFeedHook(DumpExecProgram);
+});
 
 }  // namespace cinn::dialect::ir

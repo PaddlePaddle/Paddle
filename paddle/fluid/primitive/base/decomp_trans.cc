@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include <regex>
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -41,17 +43,16 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.unsqueeze",
                                                           "pd_op.flatten",
                                                           "pd_op.batch_norm",
-                                                          "pd_op.batch_norm_"};
+                                                          "pd_op.batch_norm_",
+                                                          "pd_op.dropout"};
 //
-std::unordered_set<std::string> dynamic_shape_blacklist = {
-    "pd_op.squeeze",
-    "pd_op.unsqueeze",
-    "pd_op.batch_norm",
-    "pd_op.batch_norm_",
-    "pd_op.bmm",
-    "pd_op.flatten",
-    "pd_op.instance_norm",
-    "pd_op.one_hot"};
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze",
+                                                           "pd_op.batch_norm",
+                                                           "pd_op.batch_norm_",
+                                                           "pd_op.bmm",
+                                                           "pd_op.flatten",
+                                                           "pd_op.one_hot"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {
@@ -408,7 +409,7 @@ std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
 
 void DecompProgram::decomp_program() {
   std::unordered_map<pir::Value, int> orig_vars_dict;
-  for (size_t i = 0; i < src_vars_.size(); i++) {
+  for (size_t i = 0; i < src_vars_.size(); i++) {  // NOLINT
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
   std::ostringstream orig_prog_stream;
@@ -423,7 +424,15 @@ void DecompProgram::decomp_program() {
   }
   std::vector<pir::Value> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
-  decomp_block(block, orig_vars_dict, tar_vars);
+  {
+    // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+    // api, which has amp strategy. But Prim already process cast operation
+    // and we need to disable amp strategy here.
+    paddle::imperative::AutoCastGuard guard(
+        egr::Controller::Instance().GetCurrentAmpAttrs(),
+        paddle::imperative::AmpLevel::O0);
+    decomp_block(block, orig_vars_dict, tar_vars);
+  }
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
   if (VLOG_IS_ON(4)) {
@@ -468,14 +477,31 @@ void DecompProgram::decomp_block(
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       std::vector<pir::Value> orig_outs = op->results();
-      bool is_next_builtin_split = false;
+      bool is_next_builtin_split_slice = false;
 
       for (size_t i = 0; i < orig_outs.size(); i++) {
         auto item = orig_outs[i];
-        if (item.use_count() == 1) {
+        if (item.use_count() >= 1) {
           auto next_op = item.first_use().owner();
+
+          if (next_op->name() == "builtin.slice") {
+            is_next_builtin_split_slice = true;
+            std::vector<pir::Operation*> slice_ops;
+            for (auto it = item.use_begin(); it != item.use_end(); ++it) {
+              slice_ops.push_back(it->owner());
+            }
+            for (size_t j = 0; j < slice_ops.size(); j++) {
+              int attr_idx = slice_ops[j]
+                                 ->attribute("index")
+                                 .dyn_cast<pir::Int32Attribute>()
+                                 .data();
+              slice_ops[j]->ReplaceAllUsesWith(decomp_res[i][attr_idx]);
+              RemoveOp(block, slice_ops[j]);
+            }
+          }
+
           if (next_op->name() == "builtin.split") {
-            is_next_builtin_split = true;
+            is_next_builtin_split_slice = true;
 
             check_decomp_outputs(
                 next_op->name(), next_op->results(), decomp_res[i]);
@@ -490,7 +516,7 @@ void DecompProgram::decomp_block(
           }
         }
       }
-      if (!is_next_builtin_split) {
+      if (!is_next_builtin_split_slice) {
         std::vector<pir::Value> standard_decomp_res =
             format_decomp_res(op->name(), orig_outs, decomp_res);
         check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);

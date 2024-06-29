@@ -33,17 +33,17 @@ set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
+list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor)
@@ -100,11 +100,11 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_fleet)
-  list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
+  list(REMOVE_ITEM TEST_OPS test_fleet_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
-  list(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
+  list(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor_deprecated)
   list(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
   list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
   list(REMOVE_ITEM TEST_OPS test_nvprof)
@@ -115,7 +115,7 @@ endif()
 
 if(NOT WITH_DISTRIBUTE OR WIN32)
   # DISTRIBUTE related
-  list(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+  list(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_metric)
   list(REMOVE_ITEM TEST_OPS test_fleet_ps)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
@@ -130,7 +130,6 @@ endif()
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
-  list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -162,8 +161,8 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor)
@@ -182,7 +181,6 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -200,8 +198,8 @@ list(REMOVE_ITEM TEST_OPS decorator_helper)
 
 if(APPLE)
   if(NOT WITH_DISTRIBUTE)
-    list(REMOVE_ITEM TEST_OPS test_desc_clone)
-    list(REMOVE_ITEM TEST_OPS test_program_code)
+    list(REMOVE_ITEM TEST_OPS test_desc_clone_deprecated)
+    list(REMOVE_ITEM TEST_OPS test_program_code_deprecated)
   endif()
   message(
     WARNING
@@ -398,22 +396,19 @@ function(parallel_bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
-list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
+list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
-list(REMOVE_ITEM TEST_OPS test_data_norm_op)
-list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
-list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
+list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
-list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
-list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
+list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass_deprecated)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -428,6 +423,7 @@ endif()
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
+  list(REMOVE_ITEM TEST_OPS test_dataset_deprecated)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
@@ -452,8 +448,8 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_affine_channel_op test_gather_nd_op test_scatter_op
-                     test_slice_op)
+set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op)
+set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op_deprecated)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -482,13 +478,7 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
-py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
-                FLAGS_inner_op_parallelism=4)
 
-py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS
-                ${GC_ENVS})
-py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS
-                ${GC_ENVS})
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
                 FLAGS_cudnn_deterministic=1)
 py_test_modules(
@@ -511,11 +501,8 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
                   test_fused_dot_product_attention_op)
 endif()
 
-set_tests_properties(test_conv2d_op_depthwise_conv
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
                                                            "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -543,19 +530,21 @@ if(WITH_DISTRIBUTE)
 
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
                   ${dist_ENVS})
-  py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
-                  ${dist_ENVS})
+  py_test_modules(test_communicator_geo_deprecated MODULES
+                  test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS
-                    ${dist_ENVS})
-    py_test_modules(test_fleet_base_3 MODULES test_fleet_base_3 ENVS
-                    ${dist_ENVS})
+    py_test_modules(test_fleet_base_2_deprecated MODULES
+                    test_fleet_base_2_deprecated ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_base_3_deprecated MODULES
+                    test_fleet_base_3_deprecated ENVS ${dist_ENVS})
     if(NOT WIN32)
-      py_test_modules(test_auto_parallel_partitioner MODULES
-                      test_auto_parallel_partitioner ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_partitioner_gpt MODULES
-                      test_auto_parallel_partitioner_gpt ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_partitioner_deprecated MODULES
+        test_auto_parallel_partitioner_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_partitioner_gpt_deprecated MODULES
+        test_auto_parallel_partitioner_gpt_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_searcher MODULES
                       test_auto_parallel_searcher ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard MODULES
@@ -603,22 +592,24 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if(WIN32)
-  py_test_modules(test_feed_data_check_shape_type MODULES
-                  test_feed_data_check_shape_type ENVS CUDA_VISIBLE_DEVICES=0)
+  py_test_modules(
+    test_feed_data_check_shape_type_deprecated MODULES
+    test_feed_data_check_shape_type_deprecated ENVS CUDA_VISIBLE_DEVICES=0)
   py_test_modules(test_fetch_lod_tensor_array MODULES
                   test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
 else()
-  py_test_modules(test_feed_data_check_shape_type MODULES
-                  test_feed_data_check_shape_type)
+  py_test_modules(test_feed_data_check_shape_type_deprecated MODULES
+                  test_feed_data_check_shape_type_deprecated)
   py_test_modules(test_fetch_lod_tensor_array MODULES
                   test_fetch_lod_tensor_array)
 endif()
 
-py_test_modules(test_data_norm_op MODULES test_data_norm_op)
+py_test_modules(test_data_norm_op_deprecated MODULES
+                test_data_norm_op_deprecated)
 py_test_modules(
-  test_fuse_bn_act_pass
+  test_fuse_bn_act_pass_deprecated
   MODULES
-  test_fuse_bn_act_pass
+  test_fuse_bn_act_pass_deprecated
   ENVS
   FLAGS_cudnn_deterministic=1
   FLAGS_cudnn_batchnorm_spatial_persistent=1
@@ -631,8 +622,8 @@ if(NOT WIN32)
 endif()
 
 set_tests_properties(
-  test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_data_norm_op_deprecated test_dataloader_keep_order_deprecated
+  test_dataloader_unkeep_order_deprecated PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32)
   set_tests_properties(test_multiprocess_reader_exception
@@ -642,105 +633,72 @@ endif()
 
 # setting timeout value as 15S
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_lod_tensor_to_selected_rows
+set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
                      PROPERTIES TIMEOUT 200)
-set_tests_properties(test_lstm_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_star_gan_with_gradient_penalty
-                     PROPERTIES TIMEOUT 120)
 
-set_tests_properties(test_bicubic_interp_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
-set_tests_properties(test_nearest_interp_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
+set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 if(NOT WIN32)
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
   endif()
 endif()
-set_tests_properties(test_add_reader_dependency PROPERTIES TIMEOUT 120)
-set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
+                                                                      120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
-set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
-if(WIN32)
-  set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 900)
-else()
-  set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
-endif()
+
 if(WITH_NV_JETSON)
-  set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 1200)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
-  set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
+  set_tests_properties(test_conv3d_transpose_part2_op_deprecated
+                       PROPERTIES TIMEOUT 1200)
+  set_tests_properties(test_layer_norm_op_deprecated PROPERTIES TIMEOUT 1500)
 else()
-  set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
-  set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_conv3d_transpose_part2_op_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_layer_norm_op_deprecated PROPERTIES TIMEOUT 250)
 endif()
 
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
-set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
-set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
-set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
-set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
+set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
-set_tests_properties(test_partial_concat_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
-set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
-set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
+set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
+                                                                       120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
-set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
-set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
-set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES TIMEOUT 120)
+set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
-set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
-set_tests_properties(test_matmul_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_pad3d_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dataloader_keep_order PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dataloader_unkeep_order PROPERTIES TIMEOUT 120)
+set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
+                                                                      120)
+set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
+                                                                        120)
 set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
-set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
-set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
@@ -756,36 +714,19 @@ set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
 
 set(TEST_CINN_OPS
     test_softmax_op
-    test_expand_v2_op
     test_reduce_op
     test_slice_op
-    test_full_like_op
-    test_index_select_op
-    test_top_k_v2_op
-    test_elementwise_mul_op
+    test_slice_op_deprecated
     test_gather_nd_op
-    test_elementwise_pow_op
-    test_reshape_op
-    test_meshgrid_op
     test_scale_op
-    test_scatter_op
-    test_layer_norm_op
-    test_cast_op
-    test_roll_op
-    test_atan2_op
-    test_top_k_op
+    test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
-    test_reverse_op
-    test_flip
-    test_triangular_solve_op
     test_scatter_nd_op
     test_instance_norm_op
+    test_instance_norm_op_deprecated
     test_cumsum_op
-    test_split_op
-    test_erf_op
-    test_assign_op
-    test_flatten_contiguous_range_op)
+    test_erf_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -798,32 +739,29 @@ foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   endif()
 endforeach()
 
-# In test_conditional_block, the sub block changes the dtype and place of the output variable.
+# In test_conditional_block_deprecated, the sub block changes the dtype and place of the output variable.
 # The changed variable is used in the following op. Static build is not supported for this case.
-set_tests_properties(test_conditional_block
+set_tests_properties(test_conditional_block_deprecated
                      PROPERTIES ENVIRONMENT "FLAGS_new_executor_static_build=0")
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_adamw_op
+    test_adamw_op_deprecated
     test_arg_min_max_op
-    test_batch_norm_op
-    test_bincount_op
-    test_decoupled_py_reader
-    test_eigh_op
+    test_batch_norm_op_deprecated
+    test_decoupled_py_reader_deprecated
     test_fetch_lod_tensor_array
-    test_fuse_bn_act_pass
-    test_layer_norm_op
+    test_fuse_bn_act_pass_deprecated
+    test_layer_norm_op_deprecated
     test_lookup_table_v2_op_deprecated
-    test_matmul_op
-    test_matmul_v2_op
     test_momentum_op
-    test_nce
-    test_paddle_save_load_binary
+    test_momentum_op_deprecated
+    test_nce_deprecated
     test_reduce_op
     test_sparse_conv_op
     test_sparse_norm_op
     test_tensor_array_to_tensor
+    test_tensor_array_to_tensor_deprecated
     test_unique
     test_one_hot_v2_op)
 
@@ -854,20 +792,18 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
-set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
-                                                                      120)
-set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_decoupled_py_reader_deprecated_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fuse_bn_act_pass_deprecated_static_build
+                     PROPERTIES TIMEOUT 120)
 set_tests_properties(
-  test_fuse_bn_act_pass_static_build
+  test_fuse_bn_act_pass_deprecated_static_build
   PROPERTIES
     ENVIRONMENT
     "FLAGS_cudnn_deterministic=1;FLAGS_cudnn_batchnorm_spatial_persistent=1;FLAGS_conv_workspace_size_limit=1000"
 )
-set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
-set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
-set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
-set_tests_properties(test_paddle_save_load_binary_static_build
-                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_layer_norm_op_deprecated_static_build
+                     PROPERTIES TIMEOUT 1500)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
@@ -875,6 +811,6 @@ py_test_modules(test_stride MODULES test_stride ENVS
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
-set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
-
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
+set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
+set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)

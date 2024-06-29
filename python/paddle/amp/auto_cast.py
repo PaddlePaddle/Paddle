@@ -143,6 +143,31 @@ def _is_gpu_bfloat16_supported():
     return prop[0] >= 8 and cuda_version_check
 
 
+def _is_xpu_float16_supported():
+    """
+    Judge whether current xpu device support float16 amp.
+    Only XPU2 and XPU3 support float16 amp.
+    """
+    place = _current_expected_place()
+    return (
+        core.get_xpu_device_version(place.get_device_id())
+        >= core.XPUVersion.XPU2
+    )
+
+
+def _is_xpu_bfloat16_supported():
+    """
+    Judge whether current xpu device support bfloat16 amp.
+    Only XPU3 support bfloat16 amp.
+    Although XPU2 supports bfloat16 computing, but XPU2's bfloat16 operators haven't been widely covered.
+    """
+    place = _current_expected_place()
+    return (
+        core.get_xpu_device_version(place.get_device_id())
+        >= core.XPUVersion.XPU3
+    )
+
+
 def _is_custom_device_bfloat16_supported():
     """
     Judge whether current custom device support bfloat16 amp.
@@ -497,9 +522,23 @@ def amp_guard(
             enable = False
         if enable:
             # For xpu:
-            if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
-                warnings.warn('XPUPlace only support float16 amp.')
-                enable = False
+            if tracer._expected_place.is_xpu_place():
+                if (dtype == 'float16') and not _is_xpu_float16_supported():
+                    xpu_verion = core.get_xpu_device_version(
+                        _current_expected_place().get_device_id()
+                    )
+                    warnings.warn(
+                        'XPU%d does not support float16 amp.' % xpu_verion
+                    )
+                    enable = False
+                elif (dtype == 'bfloat16') and not _is_xpu_bfloat16_supported():
+                    xpu_verion = core.get_xpu_device_version(
+                        _current_expected_place().get_device_id()
+                    )
+                    warnings.warn(
+                        'XPU%d does not support bfloat16 amp.' % xpu_verion
+                    )
+                    enable = False
             # For custom device:
             if (
                 tracer._expected_place.is_custom_place()
@@ -550,7 +589,7 @@ def amp_guard(
 
             def master_grad_hook():
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
-                # classify the params of model into different calsses according to their process_mesh.
+                # classify the params of model into different classes according to their process_mesh.
                 # Otherwise, fault will occur.
                 if not amp_global_state().already_classify_params_meshes:
                     for param in amp_global_state().model_parameters:
@@ -761,11 +800,14 @@ def amp_decorate(
         else:
             return models, optimizers
     # For xpu:
-    if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
-        if optimizers is None:
-            return models
-        else:
-            return models, optimizers
+    if tracer._expected_place.is_xpu_place():
+        if (dtype == 'float16' and not _is_xpu_float16_supported()) or (
+            dtype == 'bfloat16' and not _is_xpu_bfloat16_supported()
+        ):
+            if optimizers is None:
+                return models
+            else:
+                return models, optimizers
     # For custom device:
     if (
         tracer._expected_place.is_custom_place()

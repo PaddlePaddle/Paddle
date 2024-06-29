@@ -15,8 +15,10 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.base" > signature.txt
+    python tools/print_signature.py "paddle" > API.spec
 """
+
+from __future__ import annotations
 
 import argparse
 import collections
@@ -24,9 +26,22 @@ import hashlib
 import inspect
 import logging
 import pkgutil
+import re
 import sys
+from typing import Literal
 
 import paddle
+
+SpecFields = Literal[
+    "args",
+    "varargs",
+    "varkw",
+    "defaults",
+    "kwonlyargs",
+    "kwonlydefaults",
+    "annotations",
+    "document",
+]
 
 member_dict = collections.OrderedDict()
 
@@ -59,21 +74,6 @@ def md5(doc):
         )
 
     return md5sum
-
-
-def is_primitive(instance):
-    int_types = (int,)
-    pritimitive_types = int_types + (float, str)
-    if isinstance(instance, pritimitive_types):
-        return True
-    elif isinstance(instance, (list, tuple, set)):
-        for obj in instance:
-            if not is_primitive(obj):
-                return False
-
-        return True
-    else:
-        return False
 
 
 ErrorSet = set()
@@ -200,9 +200,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
             if gen_doc_anno:
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
             if inspect.isfunction(obj):
-                api_info_dict[fc_id]["signature"] = repr(
-                    inspect.getfullargspec(obj)
-                ).replace('FullArgSpec', 'ArgSpec', 1)
+                api_info_dict[fc_id]["signature"] = inspect.getfullargspec(obj)
         return api_info_dict[fc_id]
 
 
@@ -239,85 +237,6 @@ def process_module(m, attr="__all__"):
     return api_counter
 
 
-def check_public_api():
-    modulelist = [  # npqa
-        paddle,
-        paddle.amp,
-        paddle.nn,
-        paddle.nn.functional,
-        paddle.nn.initializer,
-        paddle.nn.utils,
-        paddle.static,
-        paddle.static.nn,
-        paddle.io,
-        paddle.jit,
-        paddle.metric,
-        paddle.distribution,
-        paddle.optimizer,
-        paddle.optimizer.lr,
-        paddle.regularizer,
-        paddle.text,
-        paddle.utils,
-        paddle.utils.download,
-        paddle.utils.cpp_extension,
-        paddle.sysconfig,
-        paddle.vision,
-        paddle.vision.datasets,
-        paddle.vision.models,
-        paddle.vision.transforms,
-        paddle.vision.ops,
-        paddle.distributed,
-        paddle.distributed.fleet,
-        paddle.distributed.fleet.utils,
-        paddle.distributed.parallel,
-        paddle.distributed.utils,
-        paddle.callbacks,
-        paddle.hub,
-        paddle.autograd,
-        paddle.incubate,
-        paddle.inference,
-        paddle.onnx,
-        paddle.device,
-        paddle.audio,
-        paddle.audio.backends,
-        paddle.audio.datasets,
-        paddle.sparse,
-        paddle.sparse.nn,
-        paddle.sparse.nn.functional,
-    ]
-
-    apinum = 0
-    alldict = {}
-    for module in modulelist:
-        if hasattr(module, '__all__'):
-            old_all = module.__all__
-        else:
-            old_all = []
-            dirall = dir(module)
-            for item in dirall:
-                if item.startswith('__'):
-                    continue
-                old_all.append(item)
-        apinum += len(old_all)
-        alldict.update({module.__name__: old_all})
-
-    old_all = []
-    dirall = dir(paddle.Tensor)
-    for item in dirall:
-        if item.startswith('_'):
-            continue
-        old_all.append(item)
-    apinum += len(old_all)
-    alldict.update({'paddle.Tensor': old_all})
-
-    for module, allapi in alldict.items():
-        for member_name in allapi:
-            cur_name = module + '.' + member_name
-            instance = eval(cur_name)
-            doc_md5 = md5(instance.__doc__)
-            member_dict[cur_name] = f"({cur_name}, ('document', '{doc_md5}'))"
-
-
 def check_allmodule_callable():
     modulelist = [paddle]
     for m in modulelist:
@@ -326,69 +245,89 @@ def check_allmodule_callable():
     return member_dict
 
 
+class ApiSpecFormatter:
+    def __init__(self, show_fields: SpecFields):
+        self.show_fields = show_fields
+
+    def format_spec(self, spec: inspect.FullArgSpec | None) -> str:
+        if spec is None:
+            return "ArgSpec()"
+        inner_str = ", ".join(
+            f"{field}={getattr(spec, field)!r}"
+            for field in spec._fields
+            if field in self.show_fields
+        )
+        return f"ArgSpec({inner_str})"
+
+    def format_doc(self, doc: str) -> str:
+        if "document" not in self.show_fields:
+            return "('document', '**********')"
+        return f"('document', '{md5(doc)}')"
+
+    def format(self, api_name: str, spec: inspect.FullArgSpec, doc: str) -> str:
+        return f"{api_name} ({self.format_spec(spec)}, {self.format_doc(doc)})"
+
+
 def parse_args():
     """
     Parse input arguments
     """
     parser = argparse.ArgumentParser(description='Print Apis Signatures')
-    parser.add_argument('--debug', dest='debug', action="store_true")
-    parser.add_argument(
-        '--method',
-        dest='method',
-        type=str,
-        default='get_all_api',
-        help="using get_all_api or from_modulelist",
-    )
-    parser.add_argument(
-        'module', type=str, help='module', default='paddle'
-    )  # not used
+    parser.add_argument('module', type=str, help='module', default='paddle')
     parser.add_argument(
         '--skipped',
         dest='skipped',
         type=str,
-        help='Skip Checking submodules',
-        default='paddle.base.libpaddle.eager.ops',
+        help='Skip Checking submodules, support regex',
+        default=r'paddle\.base\.libpaddle\.(eager|pir)\.ops',
     )
-
-    if len(sys.argv) == 1:
-        args = parser.parse_args(['paddle'])
-        return args
-    #    parser.print_help()
-    #    sys.exit(1)
-
+    parser.add_argument(
+        '--show-fields',
+        type=str,
+        default="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults,annotations,document",
+        help="show fields in arg spec, separated by comma, e.g. 'args,varargs'",
+    )
     args = parser.parse_args()
     return args
+
+
+def create_api_filter(skipped_regex: str):
+    if not skipped_regex:
+        return lambda api_name: True
+    skipped_pattern = re.compile(skipped_regex)
+
+    def api_filter(api_name: str) -> bool:
+        return not skipped_pattern.match(api_name)
+
+    return api_filter
 
 
 if __name__ == '__main__':
     args = parse_args()
     check_allmodule_callable()
-    if args.method == 'from_modulelist':
-        check_public_api()
-        for name in member_dict:
-            print(name, member_dict[name])
-    elif args.method == 'get_all_api':
-        get_all_api()
-        all_api_names_to_k = {}
-        for k, api_info in api_info_dict.items():
-            # 1. the shortest suggested_name may be renamed;
-            # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
-            api_name = sorted(api_info['all_names'])[0]
-            all_api_names_to_k[api_name] = k
-        all_api_names_sorted = sorted(all_api_names_to_k.keys())
-        for api_name in all_api_names_sorted:
-            if args.skipped != '' and api_name.find(args.skipped) >= 0:
-                continue
-            api_info = api_info_dict[all_api_names_to_k[api_name]]
-            print(
-                "{} ({}, ('document', '{}'))".format(
-                    api_name,
-                    api_info['signature']
-                    if 'signature' in api_info
-                    else 'ArgSpec()',
-                    md5(api_info['docstring']),
-                )
+    get_all_api(args.module)
+    api_filter = create_api_filter(args.skipped)
+    spec_formatter = ApiSpecFormatter(args.show_fields.split(','))
+
+    all_api_names_to_k = {}
+    for k, api_info in api_info_dict.items():
+        # 1. the shortest suggested_name may be renamed;
+        # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
+        api_name = sorted(api_info['all_names'])[0]
+        all_api_names_to_k[api_name] = k
+    all_api_names_sorted = sorted(all_api_names_to_k.keys())
+    for api_name in all_api_names_sorted:
+        if not api_filter(api_name):
+            continue
+        api_info = api_info_dict[all_api_names_to_k[api_name]]
+
+        print(
+            spec_formatter.format(
+                api_name,
+                api_info.get('signature'),
+                api_info['docstring'],
             )
+        )
 
     if len(ErrorSet) == 0:
         sys.exit(0)

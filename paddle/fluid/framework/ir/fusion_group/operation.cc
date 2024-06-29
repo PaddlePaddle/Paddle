@@ -16,10 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 OperationMap *OperationMap::map = nullptr;
 
@@ -233,7 +230,4 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
   insert_handler_without_input("fill_constant", "${str_value}", {});
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

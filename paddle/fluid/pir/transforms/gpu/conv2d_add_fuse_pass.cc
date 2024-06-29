@@ -69,7 +69,13 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
       }
       auto padding_algorithm = match_ctx.Attr<std::string>("padding_algorithm");
       auto groups = match_ctx.Attr<int>("groups");
+      auto filter_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
       if (!cutlass_pattern_) {
+        if (!(filter_dtype.isa<pir::Float16Type>() ||
+              filter_dtype.isa<pir::Float32Type>() ||
+              filter_dtype.isa<pir::Float64Type>())) {
+          return false;
+        }
         if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
             padding_algorithm != "VALID") {
           return false;
@@ -83,8 +89,6 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
           return false;
         }
       } else {
-        auto filter_dtype =
-            pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
         auto filter_shape = pir::GetShapeFromValue(match_ctx.Tensor("filter"));
         auto strides_shape = match_ctx.Attr<std::vector<int>>("strides");
         auto dilations_shape = match_ctx.Attr<std::vector<int>>("dilations");
@@ -97,6 +101,11 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
         int kh = filter_shape[2];
         int kw = filter_shape[3];
         if (sm_version_ < 80 && !filter_dtype.isa<pir::Float16Type>()) {
+          return false;
+        }
+        if (!(filter_dtype.isa<pir::Float16Type>() ||
+              filter_dtype.isa<pir::Float32Type>() ||
+              filter_dtype.isa<pir::BFloat16Type>())) {
           return false;
         }
         if (padding_algorithm != "EXPLICIT") {
@@ -138,62 +147,6 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
         [this](const paddle::drr::MatchContext &match_ctx) -> std::string {
           return cutlass_pattern_ ? "gpu" : "gpudnn";
         });
-    const auto &perm_weight_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ || data_format == "NHWC") {
-            return {0, 2, 3, 1};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &perm_input_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            return {0, 2, 3, 1};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &perm_bias_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            if (bias_shape.size() == 4) {
-              return {0, 2, 3, 1};
-            } else if (bias_shape.size() == 3) {
-              return {0, 2, 1};
-            } else {
-              return {0};
-            }
-          } else {
-            std::vector<int> dst_vector(bias_shape.size());
-            std::iota(dst_vector.begin(), dst_vector.end(), 0);
-            return dst_vector;
-          }
-        });
-    const auto &data_format_conv = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::string {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            return "NHWC";
-          } else {
-            return data_format;
-          }
-        });
-    // TODO(bukejiyu) When the transfer_layout_pass is supported,
-    // transpose_op will be deleted.
-    const auto &transpose_op_w = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_weight_shape}});
-    const auto &transpose_op_input = res.Op(
-        paddle::dialect::TransposeOp::name(), {{"perm", perm_input_shape}});
-    const auto &transpose_op_bias = res.Op(paddle::dialect::TransposeOp::name(),
-                                           {{"perm", perm_bias_shape}});
-    res.Tensor("filter_transpose") = transpose_op_w(res.Tensor("filter"));
-    res.Tensor("input_transpose") = transpose_op_input(res.Tensor("input"));
-    res.Tensor("bias_transpose") = transpose_op_bias(res.Tensor("bias"));
     const auto &fused_conv2d_add_act = res.Op(
         paddle::dialect::FusedConv2dAddActOp::name(),
         {{
@@ -202,7 +155,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
             {"padding_algorithm", pat.Attr("padding_algorithm")},
             {"dilations", pat.Attr("dilations")},
             {"groups", pat.Attr("groups")},
-            {"data_format", data_format_conv},
+            {"data_format", pat.Attr("data_format")},
             {"activation", res.StrAttr("identity")},
             {"split_channels", res.VectorInt32Attr({})},
             {"exhaustive_search", res.BoolAttr(false)},
@@ -211,25 +164,11 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
         }},
         {{{paddle::dialect::kForceBackendAttr, force_backend_runtime_attr}}});
 
-    fused_conv2d_add_act(
-        {&res.Tensor("input_transpose"),
-         &res.Tensor("filter_transpose"),
-         &res.Tensor("bias_transpose"),
-         &res.InputNoneTensor()},
-        {&res.Tensor("fuesd_conv2d_add_act_out"), &res.OutputNoneTensor()});
-    const auto &perm_out_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            return {0, 3, 1, 2};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &transpose_op_out = res.Op(paddle::dialect::TransposeOp::name(),
-                                          {{"perm", perm_out_shape}});
-    res.Tensor("add_out") =
-        transpose_op_out(res.Tensor("fuesd_conv2d_add_act_out"));
+    fused_conv2d_add_act({&res.Tensor("input"),
+                          &res.Tensor("filter"),
+                          &res.Tensor("bias"),
+                          &res.InputNoneTensor()},
+                         {&res.Tensor("add_out"), &res.OutputNoneTensor()});
   }
 };
 

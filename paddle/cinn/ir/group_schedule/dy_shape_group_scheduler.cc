@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
@@ -66,41 +66,48 @@ void DynamicShapeGroupScheduler::InitBuckets() {
             << iter_space_info.total_sp_extent;
     VLOG(4) << "iter_space_info.total_rb_extent: "
             << iter_space_info.total_rb_extent;
-    VLOG(4) << "bucket_info is: ";
-    int dims = bucket_info.space.size();
+    VLOG(4) << iter_space_info.PrintIterSpace();
+    VLOG(4) << bucket_info.ToString();
+    PADDLE_ENFORCE_EQ(
+        bucket_info.space.size(),
+        iter_space_info.memory_consistent_order_homogeneous_merged_space.size(),
+        ::common::errors::PreconditionNotMet(
+            "rank of bucket info should be same as rank of homogeneous merged "
+            "iter space"));
+    int rank = bucket_info.space.size();
+    for (int i = 0; i < rank; ++i) {
+      PADDLE_ENFORCE_EQ(
+          bucket_info.space[i].iter_type,
+          iter_space_info.memory_consistent_order_homogeneous_merged_space[i]
+              .first,
+          ::common::errors::PreconditionNotMet(
+              "iter type of bucket info should be same as homogeneous merged "
+              "iter space"));
+    }
     SymbolicPredicate predicate = ir::Expr(true);
-    for (int i = 0; i < dims; ++i) {
+    for (int i = 0; i < rank; ++i) {
       VLOG(4) << "bucket_info.space[" << i
               << "].lower_bound= " << bucket_info.space[i].lower_bound;
       VLOG(4) << "bucket_info.space[" << i
               << "].upper_bound= " << bucket_info.space[i].upper_bound;
-      if (dims == 2 && bucket_info.space[1].iter_type == "R") {
-        if (i == 0 && OutOfRange(iter_space_info.total_sp_extent,
-                                 bucket_info.space[i].lower_bound,
-                                 bucket_info.space[i].upper_bound)) {
-          VLOG(4) << "Dimension " << i << " Out of range";
-          return;
-        }
-        if (i == 1 && OutOfRange(iter_space_info.total_rb_extent,
-                                 bucket_info.space[i].lower_bound,
-                                 bucket_info.space[i].upper_bound)) {
-          VLOG(4) << "Dimension " << i << " Out of range";
-          return;
-        }
-        auto extent = (i == 0) ? iter_space_info.total_sp_extent
-                               : iter_space_info.total_rb_extent;
-        SymbolicPredicate lower_bound_predicate =
-            ir::GE::Make(extent, ir::Expr(bucket_info.space[i].lower_bound));
-        SymbolicPredicate upper_bound_predicate =
-            ir::LE::Make(extent, ir::Expr(bucket_info.space[i].upper_bound));
-        SymbolicPredicate curr_predicate =
-            ir::And::Make(lower_bound_predicate, upper_bound_predicate);
-        predicate = ir::And::Make(predicate, curr_predicate);
-      } else {
-        PADDLE_THROW(::common::errors::Unimplemented(
-            "Now, the function InitBucket doesn't support the cases except "
-            "SR"));
+      ir::Expr extent =
+          iter_space_info.memory_consistent_order_homogeneous_merged_space[i]
+              .second;
+      VLOG(4) << "extent = " << extent;
+      if (OutOfRange(extent,
+                     bucket_info.space[i].lower_bound,
+                     bucket_info.space[i].upper_bound)) {
+        VLOG(4) << "Dimension " << i << " Out of range";
+        return;
       }
+
+      SymbolicPredicate lower_bound_predicate =
+          ir::GE::Make(extent, ir::Expr(bucket_info.space[i].lower_bound));
+      SymbolicPredicate upper_bound_predicate =
+          ir::LE::Make(extent, ir::Expr(bucket_info.space[i].upper_bound));
+      SymbolicPredicate curr_predicate =
+          ir::And::Make(lower_bound_predicate, upper_bound_predicate);
+      predicate = ir::And::Make(predicate, curr_predicate);
     }
     ScheduleContext schedule_context{output_names,
                                      target_,
@@ -108,10 +115,12 @@ void DynamicShapeGroupScheduler::InitBuckets() {
                                      std::move(bucket_info),
                                      std::move(config)};
     BucketContext bucket_context{std::move(predicate),
+                                 bucket_info.bucket_priority,
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
                                  std::move(schedule_context)};
     bucket_contexts_.emplace_back(std::move(bucket_context));
+    VLOG(3) << "The bucket_contexts_.size() is " << bucket_contexts_.size();
   };
 
   ScheduleConfigManager& schedule_config_manager =
@@ -161,6 +170,22 @@ DynamicShapeGroupScheduler::GetIRs() {
     irs.emplace_back(context.predicate,
                      context.ir_sch->GetModule().GetExprs()[0]);
   }
+  return irs;
+}
+
+std::vector<int> DynamicShapeGroupScheduler::GetPriorities() {
+  std::vector<int> priorities;
+  for (BucketContext& context : bucket_contexts_) {
+    priorities.emplace_back(context.priority);
+  }
+  return priorities;
+}
+
+std::vector<std::pair<SymbolicPredicate, ir::Expr>>
+DynamicShapeGroupScheduler::GetCX86IRs() {
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> irs(1);
+  irs[0].first = ir::EQ::Make(ir::Expr(1), ir::Expr(1));
+  irs[1].second = ir_sch_->GetModule().GetExprs()[0];
   return irs;
 }
 
@@ -239,12 +264,12 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       if (is_reduce_iter_var) {
         info.rb_space.emplace_back(for_node->extent,
                                    IterativeSpaceInfo::AxisType::kSerial);
-        info.memory_consistent_order_space.emplace_back(for_node->extent);
+        info.memory_consistent_order_space.emplace_back("R", for_node->extent);
         rb_iter_indices.push_back(loop_idx);
       } else {
         info.sp_space.emplace_back(for_node->extent,
                                    IterativeSpaceInfo::AxisType::kSerial);
-        info.memory_consistent_order_space.emplace_back(for_node->extent);
+        info.memory_consistent_order_space.emplace_back("S", for_node->extent);
         sp_iter_indices.push_back(loop_idx);
       }
       ++loop_idx;
@@ -258,12 +283,33 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
   } else {
     for (int i = 0; i < loops.size(); ++i) {
       ir::For* for_node = loops[i].As<ir::For>();
-      info.memory_consistent_order_space.emplace_back(for_node->extent);
+      info.memory_consistent_order_space.emplace_back("S", for_node->extent);
       info.sp_space.emplace_back(for_node->extent,
                                  IterativeSpaceInfo::AxisType::kSerial);
       info.rb_last_order.push_back(i);
     }
   }
+  // init memory_consistent_order_homogeneous_merged_space
+  for (int64_t i = 0; i < info.memory_consistent_order_space.size(); ++i) {
+    std::string iter_type = info.memory_consistent_order_space[i].first;
+    ir::Expr extent = info.memory_consistent_order_space[i].second;
+    if (extent.is_constant() && extent.get_constant() == 1) continue;
+    if (info.memory_consistent_order_homogeneous_merged_space.empty() ||
+        info.memory_consistent_order_homogeneous_merged_space.back().first !=
+            iter_type) {
+      info.memory_consistent_order_homogeneous_merged_space.emplace_back(
+          iter_type, extent);
+    } else {
+      info.memory_consistent_order_homogeneous_merged_space.back().second =
+          info.memory_consistent_order_homogeneous_merged_space.back().second *
+          extent;
+    }
+  }
+  if (info.memory_consistent_order_homogeneous_merged_space.empty()) {
+    info.memory_consistent_order_homogeneous_merged_space.emplace_back(
+        "S", ir::Expr(1));
+  }
+
   // init total extents
   ir::Expr sp_extent = ir::Expr(1);
   ir::Expr rb_extent = ir::Expr(1);

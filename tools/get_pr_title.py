@@ -14,9 +14,22 @@
 
 import json
 import os
+import re
 import sys
 
 import requests
+
+SKIP_COVERAGE_CHECKING_LABELS = [
+    "cinn",
+    "typing",
+    "codestyle",
+]
+
+SKIP_COVERAGE_CHECKING_REGEX = re.compile(
+    rf"[\[【]({'|'.join(SKIP_COVERAGE_CHECKING_LABELS)})[\]】]",
+    re.IGNORECASE,
+)
+
 
 pr_id = os.getenv('GIT_PR_ID')
 if not pr_id:
@@ -32,9 +45,10 @@ data = json.loads(response.text)
 
 title = data['title']
 
-prefixes = ['【CINN】', '[CINN]', '[cinn]', '【cinn】']
-if any(title.startswith(prefix) for prefix in prefixes):
-    print('The title starts with cinn')
+if match_obj := SKIP_COVERAGE_CHECKING_REGEX.search(title):
+    print(f'The title starts with {match_obj.group(0)}')
 else:
-    print('The title does not start with cinn')
+    print(
+        f'The title does not start with {" or ".join(SKIP_COVERAGE_CHECKING_LABELS)}'
+    )
     sys.exit(1)

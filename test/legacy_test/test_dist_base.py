@@ -1040,7 +1040,7 @@ class TestDistBase(unittest.TestCase):
             ) as s:
                 s.bind(('', 0))
                 print_to_err(
-                    type(self).__name__, "socket name: %s" % s.getsockname()[1]
+                    type(self).__name__, f"socket name: {s.getsockname()[1]}"
                 )
                 return s.getsockname()[1]
 
@@ -1479,10 +1479,9 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster_gloo(
         self, model, envs, update_method, check_error_log, log_name
     ):
-        assert update_method == "gloo", (
-            "_run_cluster_gloo must have update_method: gloo, but get %s"
-            % update_method
-        )
+        assert (
+            update_method == "gloo"
+        ), f"_run_cluster_gloo must have update_method: gloo, but get {update_method}"
         assert (
             not self._use_hallreduce
         ), "_run_cluster_gloo must have _use_hallreduce = false"
@@ -1551,9 +1550,7 @@ class TestDistBase(unittest.TestCase):
             if DIST_UT_PORT == 0:
                 # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
                 for i in range(0, 4):
-                    self._ps_endpoints += "127.0.0.1:%s," % (
-                        self._find_free_port()
-                    )
+                    self._ps_endpoints += f"127.0.0.1:{self._find_free_port()},"
             else:
                 for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
@@ -1677,7 +1674,7 @@ class TestDistBase(unittest.TestCase):
 
         if check_error_log:
             required_envs["GLOG_vmodule"] = (
-                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,"
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,"
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10,"
                 "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10,"
                 "grpc_server=10,request_handler_impl=10,section_worker=10"

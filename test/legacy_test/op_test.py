@@ -56,7 +56,7 @@ from white_list import (
 )
 
 import paddle
-from paddle import base
+from paddle import base, pir
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
@@ -114,7 +114,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         )
                     input_t.append(
                         paddle.static.data(
-                            name='data_%s' % index, shape=shape, dtype=dtype
+                            name=f'data_{index}', shape=shape, dtype=dtype
                         )
                     )
 
@@ -223,7 +223,7 @@ def get_numeric_gradient(
             return tensor._get_complex128_element(i)
         else:
             raise TypeError(
-                "Unsupported test data type %s." % tensor_to_check_dtype
+                f"Unsupported test data type {tensor_to_check_dtype}."
             )
 
     def __set_elem__(tensor, i, e):
@@ -251,7 +251,7 @@ def get_numeric_gradient(
             return tensor._set_complex128_element(i, e)
         else:
             raise TypeError(
-                "Unsupported test data type %s." % tensor_to_check_dtype
+                f"Unsupported test data type {tensor_to_check_dtype}."
             )
 
     # we only compute gradient of one element each time.
@@ -501,7 +501,7 @@ class OpTest(unittest.TestCase):
                 and not hasattr(cls, "exist_check_grad")
             ):
                 raise AssertionError(
-                    "This test of %s op needs check_grad." % cls.op_type
+                    f"This test of {cls.op_type} op needs check_grad."
                 )
 
             # check for op test with fp64 precision, but not check onednn op test for now
@@ -518,8 +518,7 @@ class OpTest(unittest.TestCase):
                 and not cls.check_prim_pir
             ):
                 raise AssertionError(
-                    "This test of %s op needs check_grad with fp64 precision."
-                    % cls.op_type
+                    f"This test of {cls.op_type} op needs check_grad with fp64 precision."
                 )
 
             if (
@@ -1061,7 +1060,7 @@ class OpTest(unittest.TestCase):
                     name_temp = name
                 else:
                     nplist_value_temp = np_list[name]
-                    name_temp = unique_name.generate("%s_out" % (name))
+                    name_temp = unique_name.generate(f"{name}_out")
                 v = create_var(
                     nplist_value_temp,
                     name_temp,
@@ -1184,10 +1183,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
-                % self.op_type
-            )
+            assert hasattr(
+                self, "python_api"
+            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
             args = OpTestUtils.prepare_python_api_arguments(
                 self.python_api,
                 dygraph_tensor_inputs,
@@ -1288,10 +1286,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
-                % self.op_type
-            )
+            assert hasattr(
+                self, "python_api"
+            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
             return kernel_sig
 
     def get_ir_input_attr_dict_and_feed(self, stop_gradient):
@@ -1613,6 +1610,42 @@ class OpTest(unittest.TestCase):
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
             return outs, fetch_list
+
+    def _infer_and_compare_symbol(self):
+        """Don't caculate the program, only infer the shape of var"""
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            with scope_guard(Scope()):
+                # prepare inps attributes feed
+                (
+                    static_inputs,
+                    attrs,
+                    input_dict,
+                    feed,
+                ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
+
+                # run the program with pass
+                pm = pir.PassManager()
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
+                pm.run(program)
+
+                # compare expect & actual
+                shape_analysis = (
+                    paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        program
+                    )
+                )
+                for var in program.list_vars():
+                    shape_or_data = shape_analysis.get_shape_or_data_for_var(
+                        var
+                    )
+                    expect_shape = var.shape
+                    expect_data = []
+                    if not shape_or_data.is_equal(expect_shape, expect_data):
+                        raise AssertionError(
+                            f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                        )
+                return True
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None
@@ -2035,6 +2068,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
+        check_symbol_infer=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2532,6 +2566,20 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
+        class SymbolInferChecker(Checker):
+            def check(self):
+                """return None means ok, raise Error means failed."""
+                self.init()
+                self.infer_and_compare_symbol()
+
+            def init(self):
+                self.checker_name = "symbol infer checker"
+
+            def infer_and_compare_symbol(self):
+                """infer symbol and compare it with actualy shape and data"""
+                self.is_python_api_test = True
+                self.op_test._infer_and_compare_symbol()
+
         # set some flags by the combination of arguments.
         if self.is_float16_op():
             self.dtype = np.float16
@@ -2573,7 +2621,7 @@ class OpTest(unittest.TestCase):
                 not in no_check_set_white_list.no_check_set_white_list
             ):
                 raise AssertionError(
-                    "no_check_set of op %s must be set to None." % self.op_type
+                    f"no_check_set of op {self.op_type} must be set to None."
                 )
 
         if check_prim:
@@ -2663,6 +2711,15 @@ class OpTest(unittest.TestCase):
                 with paddle.pir_utils.IrGuard():
                     pir_checker = PirChecker(self, self.outputs)
                     pir_checker.check()
+
+        if check_symbol_infer:
+            if (
+                type(place) is paddle.base.libpaddle.CPUPlace
+                or type(place) is paddle.base.libpaddle.CUDAPlace
+            ):
+                with paddle.pir_utils.IrGuard():
+                    symbol_checker = SymbolInferChecker(self, self.outputs)
+                    symbol_checker.check()
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -2777,6 +2834,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
+        check_symbol_infer=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2805,6 +2863,7 @@ class OpTest(unittest.TestCase):
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
                 check_pir_onednn=check_pir_onednn,
+                check_symbol_infer=check_symbol_infer,
             )
             if not res and only_check_prim:
                 continue
@@ -2877,7 +2936,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {str(a.shape)}, dtype: {self.dtype}) max gradient diff over limit"
+                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {a.shape}, dtype: {self.dtype}) max gradient diff over limit"
                     ),
                 )
             else:
@@ -3091,7 +3150,7 @@ class OpTest(unittest.TestCase):
             analytic_grads,
             inputs_to_check,
             max_relative_error,
-            "Gradient Check On %s" % str(place),
+            f"Gradient Check On {place}",
             atol=atol,
         )
 
@@ -3366,7 +3425,7 @@ class OpTest(unittest.TestCase):
                     dygraph_dygraph_grad,
                     inputs_to_check,
                     max_relative_error,
-                    "Gradient Check On %s" % str(place),
+                    f"Gradient Check On {place}",
                     atol=atol,
                 )
 
@@ -3406,7 +3465,7 @@ class OpTest(unittest.TestCase):
                     pir_grad,
                     inputs_to_check,
                     max_relative_error,
-                    "Gradient Check On %s" % str(place),
+                    f"Gradient Check On {place}",
                     atol=atol,
                 )
 
@@ -3484,7 +3543,7 @@ class OpTest(unittest.TestCase):
                         )
                     else:
                         raise TypeError(
-                            "Unsupported test data type %s." % type(cast_input)
+                            f"Unsupported test data type {type(cast_input)}."
                         )
 
                 outputs = {}
@@ -3850,12 +3909,12 @@ class OpTest(unittest.TestCase):
                         range(len(user_defined_grad_outputs)),
                     ):
                         grad_val = paddle.static.data(
-                            name='val_grad_%s' % idx,
+                            name=f'val_grad_{idx}',
                             shape=grad_out_value.shape,
                             dtype=grad_out_value.dtype,
                         )
                         grad_outputs.append(grad_val)
-                        feed.update({'val_grad_%s' % idx: grad_out_value})
+                        feed.update({f'val_grad_{idx}': grad_out_value})
                     # delete the inputs which no need to calculate grad
                     for no_grad_val in no_grad_set:
                         del static_inputs[no_grad_val]
@@ -3894,8 +3953,7 @@ class OpTest(unittest.TestCase):
                             )
                         else:
                             raise TypeError(
-                                "Unsupported test data type %s."
-                                % type(cast_input)
+                                f"Unsupported test data type {type(cast_input)}."
                             )
 
                     outputs = {}

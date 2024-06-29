@@ -16,17 +16,16 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
 PD_DECLARE_bool(cinn_bucket_compile);
-PD_DECLARE_bool(cinn_enable_config_search);
+PD_DECLARE_bool(cinn_measure_kernel_time);
+PD_DECLARE_string(tile_config_policy);
 PD_DECLARE_string(cinn_kernel_execution_label);
 
 namespace paddle {
@@ -42,7 +41,9 @@ class CinnJitInstruction::FnPtrImpl {
   explicit FnPtrImpl(const CINNKernelInfo& cinn_kernel_info)
       : cinn_kernel_info_(cinn_kernel_info) {}
 
-  void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
+  void Run(const std::vector<phi::DenseTensor*>& kernel_args,
+           void* stream,
+           bool is_gpu) {
     VLOG(6) << "Start Run: " << cinn_kernel_info_.fn_name;
     func_args_.clear();
 
@@ -67,8 +68,32 @@ class CinnJitInstruction::FnPtrImpl {
     }
 
     // 3. Launch host kernel
-    ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
-        static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+    if (FLAGS_cinn_measure_kernel_time ||
+        FLAGS_tile_config_policy == "search") {
+      VLOG(3) << "enter searching config branch";
+      ::common::PerformanceStatistician& ps =
+          ::common::PerformanceStatistician::Instance();
+      auto data_p = static_cast<void*>(func_args_.data());
+      cudaDeviceSynchronize();
+      ps.Start(FLAGS_cinn_kernel_execution_label);
+      if (is_gpu) {
+        ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      } else {
+        ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      }
+      cudaDeviceSynchronize();
+      ps.End(FLAGS_cinn_kernel_execution_label);
+    } else {
+      if (is_gpu) {
+        ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      } else {
+        ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      }
+    }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
 
@@ -155,6 +180,11 @@ CinnJitInstruction::CinnJitInstruction(
     tensor_args_.push_back(tensor);
   }
 
+  if (op->HasAttribute("exec_backend")) {
+    place_ = op->attribute("exec_backend")
+                 .dyn_cast<paddle::dialect::PlaceAttribute>()
+                 .data();
+  }
   dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
 
   for (size_t i = 0; i < op->num_results(); ++i) {
@@ -182,29 +212,25 @@ CinnJitInstruction::CinnJitInstruction(
 
 void CinnJitInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA)
-  auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
+  void* running_stream = nullptr;
+  bool is_gpu = false;
 
-  auto stream = gpu_ctx->stream();
+  if (place_.GetType() == phi::AllocationType::GPU) {
+    is_gpu = true;
+    running_stream =
+        static_cast<void*>(static_cast<phi::GPUContext*>(dev_ctx_)->stream());
+  }
 
   if (FLAGS_cinn_bucket_compile && need_update_shape) {
     fn_ptr_impl_->InferShape(
         tensor_args_, input_tensor_size, output_tensor_size);
   }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
-    gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
+    dev_ctx_->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
   // 2. exexute kernel
-  if (FLAGS_cinn_enable_config_search) {
-    ::common::PerformanceStatistician& ps =
-        ::common::PerformanceStatistician::Instance();
-    ps.Start(FLAGS_cinn_kernel_execution_label);
-    fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
-    cudaDeviceSynchronize();
-    ps.End(FLAGS_cinn_kernel_execution_label);
-  } else {
-    fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
-  }
+  fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";

@@ -17,7 +17,6 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -42,8 +41,7 @@ COMMON_DECLARE_bool(enable_async_trace);
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 constexpr int64_t kWaitBlockTImeout = 10;
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 using phi::distributed::CheckSizeOnEachRank;
 using phi::distributed::IsP2POP;
@@ -134,7 +132,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       place_to_group_key_(),
       pg_timeout_(timeout),
       nccl_comm_init_option_(nccl_comm_init_option),
-      allocation_stream_pairs() {
+      allocation_stream_pairs_() {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
@@ -208,11 +206,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& in_tensor_maybe_partial =
-      numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
+      numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
         VLOG(3) << "[ncclAllGather] "
@@ -226,7 +225,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
@@ -242,27 +241,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
         VLOG(3) << "[ncclAllReduce] "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", redop: "
                 << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->AllReduce(
-            out_tensor, tensor_tmp, ToNCCLRedType(opts.reduce_op), stream);
+            out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::ALLREDUCE,
       sync_op,
       use_calc_stream);
@@ -275,10 +275,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
     const std::vector<int64_t>& in_size_each_rank,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   const phi::DDim& out_dim = out_tensor->dims();
-  const phi::DDim& in_dim = tensor_tmp.dims();
+  const phi::DDim& in_dim = in_tensor.dims();
   CheckSizeOnEachRank(out_dim, out_size_each_rank, size_);
   CheckSizeOnEachRank(in_dim, in_size_each_rank, size_);
 
@@ -287,7 +288,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
   // shape check. Its shape check will be done by dynamic checks with
   // FLAGS_enable_nccl_dynamic_check.
   phi::distributed::CommStaticCheck::CheckShape(*out_tensor,
-                                                tensor_tmp,
+                                                in_tensor,
                                                 /*dst_rank*/ rank_,
                                                 /*cur_rank*/ rank_,
                                                 size_,
@@ -298,22 +299,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
               *out_tensor,
-              tensor_tmp,
+              in_tensor,
               in_size_each_rank,
               rank_,
               size_,
               comm_context->GetNcclComm());
         }
-        int64_t in_row_size = tensor_tmp.numel() / in_dim[0],
+        int64_t in_row_size = in_tensor.numel() / in_dim[0],
                 out_row_size = out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
         VLOG(3) << "[AllToAll] "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", out_size_each_rank: "
@@ -321,13 +322,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                 << ", in_size_each_rank: "
                 << string::join_strings(in_size_each_rank, ',')
                 << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
-          input_partial = GetPartialTensor(tensor_tmp, in_offset, in_numel);
+          input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
           comm_context->Send(input_partial, in_numel, i, stream);
           in_offset += in_numel;
 
@@ -338,7 +339,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         }
         GroupEnd();
       },
-      tensor_tmp,
+      in_tensor,
       CommType::ALLTOALL,
       sync_op,
       use_calc_stream);
@@ -375,26 +376,27 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
 
         VLOG(3) << "[ncclBroadcast] "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", root: " << root
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
-        comm_context->Broadcast(out_tensor, tensor_tmp, root, stream);
+        comm_context->Broadcast(out_tensor, in_tensor, root, stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::BROADCAST,
       sync_op,
       use_calc_stream);
@@ -406,30 +408,31 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
         VLOG(3) << "[ncclReduce] "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", redop: "
                 << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
                 << ", root: " << opts.root_rank
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->Reduce(out_tensor,
-                             tensor_tmp,
+                             in_tensor,
                              ToNCCLRedType(opts.reduce_op),
                              opts.root_rank,
                              stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::REDUCE,
       sync_op,
       use_calc_stream);
@@ -441,26 +444,27 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
         VLOG(3) << "[ncclReduceScatter] "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", redop: "
                 << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
         comm_context->ReduceScatter(
-            out_tensor, tensor_tmp, ToNCCLRedType(opts.reduce_op), stream);
+            out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
       },
-      tensor_tmp,
+      in_tensor,
       CommType::REDUCE_SCATTER,
       sync_op,
       use_calc_stream);
@@ -472,11 +476,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
     const ScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   phi::distributed::CommStaticCheck::ScatterLikeShape(
       *out_tensor,
-      tensor_tmp,
+      in_tensor,
       /*dst_rank*/ opts.root_rank,
       /*cur_rank*/ rank_,
       size_);
@@ -491,24 +496,24 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
         }
 
         VLOG(3) << "[Scatter] "
-                << "sendbuff: " << tensor_tmp.data()
+                << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
-                << ", count: " << tensor_tmp.numel() << ", datatype: "
-                << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", root: " << opts.root_rank
                 << ", ncclcomm: " << comm_context->GetNcclComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
-        int64_t numel = tensor_tmp.numel() / size_;
+        int64_t numel = in_tensor.numel() / size_;
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
           phi::DenseTensor partial_tensor;
           GroupStart();
           for (auto i = 0; i < size_; i++) {
-            partial_tensor = GetPartialTensor(tensor_tmp, offset, numel);
+            partial_tensor = GetPartialTensor(in_tensor, offset, numel);
             comm_context->Send(partial_tensor, numel, i, stream);
             offset += numel;
           }
@@ -518,7 +523,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
           comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
         }
       },
-      tensor_tmp,
+      in_tensor,
       CommType::SCATTER,
       sync_op,
       use_calc_stream);
@@ -530,8 +535,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
   std::vector<phi::DenseTensor> partial_tensors;
   if (rank_ == opts.root_rank) {
     partial_tensors.reserve(size_);
@@ -553,8 +559,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*gather_tensors_ptr);
+
   auto& gather_tensors = *gather_tensors_ptr;
   PADDLE_ENFORCE_GT(size_,
                     opts.root_rank,
@@ -567,7 +574,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     // shape check
     if (FLAGS_enable_nccl_dynamic_check) {
       phi::distributed::NCCLDynamicCheck::CheckGatherShape(
-          tensor_tmp,
+          in_tensor,
           gather_tensors,
           opts.root_rank,
           rank_,
@@ -576,14 +583,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     }
 
     VLOG(3) << "[Gather] "
-            << "sendbuff: " << tensor_tmp.data()
-            << ", count: " << tensor_tmp.numel() << ", datatype: "
-            << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
+            << "sendbuff: " << in_tensor.data()
+            << ", count: " << in_tensor.numel() << ", datatype: "
+            << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
             << ", root: " << opts.root_rank
             << ", ncclcomm: " << comm_context->GetNcclComm()
             << ", stream: " << stream << ", rank_in_group: " << rank_
             << ", nranks: " << size_ << ", sync_op: " << sync_op
-            << ", use_calc_stream: " << use_calc_stream << GetGroupMessage();
+            << ", use_calc_stream: " << use_calc_stream << ", "
+            << ", " << GetGroupMessage();
 
     GroupStart();
     // root receive from all devices
@@ -594,11 +602,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
       }
     }
     // send to root
-    comm_context->Send(tensor_tmp, tensor_tmp.numel(), opts.root_rank, stream);
+    comm_context->Send(in_tensor, in_tensor.numel(), opts.root_rank, stream);
     GroupEnd();
   };
   return Collective(
-      gather_func, tensor_tmp, CommType::GATHER, sync_op, use_calc_stream);
+      gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
@@ -608,6 +616,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
+  CheckTensorContiguous(*tensor);
   // numel > 0 indicates the tensor need to be sliced
   phi::DenseTensor partial_tensor;
   if (numel > 0) {
@@ -628,7 +637,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << ", stream: " << stream
                 << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->Recv(tensor, tensor->numel(), rank_in_group, stream);
@@ -647,11 +656,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
+  CheckTensorContiguous(tensor);
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& tensor_maybe_partial =
-      numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
+      numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
   return Point2Point(
       [&](phi::distributed::NCCLCommContext* comm_context,
@@ -667,7 +675,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                 << ", stream: " << stream
                 << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << use_calc_stream
+                << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
         comm_context->Send(tensor_maybe_partial,
@@ -815,10 +823,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
+  CheckTensorContiguous(tensor);
+
   comm_seq_++;
-  const auto& place = tensor_tmp.place();
+  const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
   platform::CUDADeviceGuard cuda_guard(place);
@@ -855,7 +863,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
                                                          size_,
                                                          gid_,
                                                          comm_seq_,
-                                                         tensor_tmp.numel(),
+                                                         tensor.numel(),
                                                          sync_op,
                                                          use_calc_stream,
                                                          nccl_comm,
@@ -872,12 +880,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator ||
-        FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    if (!is_coalescing_) {
+      if (FLAGS_use_stream_safe_cuda_allocator ||
+          FLAGS_use_cuda_malloc_async_allocator) {
+        memory::RecordStream(tensor.Holder(), nccl_stream);
+      }
+      task->UpdateWaitChain(*comm_ctx);
+      allocation_stream_pairs_.emplace_back(tensor.Holder(), nccl_stream);
+    } else {
+      colaescing_tensors_.emplace_back(
+          std::make_shared<phi::DenseTensor>(tensor));
+      colaescing_place_keys_.push_back(key);
     }
-    task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -908,9 +922,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
-  const auto& place = tensor_tmp.place();
+  CheckTensorContiguous(tensor);
+
+  const auto& place = tensor.place();
 
   int p2p_rank = 0;
   int p2p_target_rank = 0;
@@ -965,7 +979,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
                                                        p2p_nrank,
                                                        gid_,
                                                        p2p_comm_seq_[key],
-                                                       tensor_tmp.numel(),
+                                                       tensor.numel(),
                                                        sync_op,
                                                        use_calc_stream,
                                                        nccl_comm,
@@ -988,12 +1002,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator ||
-        FLAGS_use_cuda_malloc_async_allocator) {
-      memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
+    if (!is_coalescing_) {
+      if (FLAGS_use_stream_safe_cuda_allocator ||
+          FLAGS_use_cuda_malloc_async_allocator) {
+        memory::RecordStream(tensor.Holder(), nccl_stream);
+      }
+      task->UpdateWaitChain(*comm_ctx);
+      allocation_stream_pairs_.emplace_back(tensor.Holder(), nccl_stream);
+    } else {
+      colaescing_tensors_.emplace_back(
+          std::make_shared<phi::DenseTensor>(tensor));
+      colaescing_place_keys_.push_back(key);
     }
-    task->UpdateWaitChain(*comm_ctx);
-    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -1045,5 +1065,55 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
   return comm_context;
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+void ProcessGroupNCCL::StartCoalescing() {
+  PADDLE_ENFORCE_EQ(is_coalescing_,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Coalescing is on, please call EndCoalesce."));
+  is_coalescing_ = true;
+  GroupStart();
+}
+
+void ProcessGroupNCCL::EndCoalescing(
+    std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>> tasks_opt) {
+  GroupEnd();
+
+  // NOTE(shenliang03): If using calculate stream, no need to record stream and
+  // update task.
+  if (!tasks_opt.has_value() || colaescing_tensors_.empty()) {
+    is_coalescing_ = false;
+    return;
+  }
+
+  auto& tasks = tasks_opt.value();
+
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      colaescing_tensors_.size(),
+      phi::errors::PreconditionNotMet(
+          "Number of tasks[%d] do not match number of collectives[%d].",
+          tasks.size(),
+          colaescing_tensors_.size()));
+
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    auto* nccl_task = static_cast<ProcessGroupNCCL::NCCLTask*>(tasks[i].get());
+    const auto& tensor = colaescing_tensors_[i];
+    const auto& key = colaescing_place_keys_[i];
+    const auto& comm_ctx = place_to_comm_ctx_.at(key);
+    auto nccl_stream = comm_ctx->stream();
+
+    if (FLAGS_use_stream_safe_cuda_allocator ||
+        FLAGS_use_cuda_malloc_async_allocator) {
+      memory::RecordStream(tensor->Holder(), nccl_stream);
+    }
+
+    nccl_task->UpdateWaitChain(*comm_ctx);
+    allocation_stream_pairs_.emplace_back(tensor->Holder(), nccl_stream);
+  }
+
+  is_coalescing_ = false;
+  colaescing_tensors_.clear();
+  colaescing_place_keys_.clear();
+}
+
+}  // namespace paddle::distributed

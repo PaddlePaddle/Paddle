@@ -42,8 +42,8 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     padding_algorithm = attrs['padding_algorithm']
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{padding_algorithm}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if attrs['data_format'] == 'NHWC':

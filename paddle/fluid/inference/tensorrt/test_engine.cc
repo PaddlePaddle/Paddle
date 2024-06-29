@@ -20,9 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class TensorRTEngineTest : public ::testing::Test {
  protected:
@@ -334,6 +332,4 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
   ASSERT_EQ(y_cpu[1], 5.0);
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

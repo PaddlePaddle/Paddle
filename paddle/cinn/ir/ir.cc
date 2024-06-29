@@ -17,7 +17,6 @@
 #include <map>
 #include <string>
 #include <vector>
-
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -26,6 +25,8 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace ir {
@@ -60,8 +61,11 @@ void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
   CHECK(a.defined());
   CHECK(b.defined());
   TryElevateInt32ToInt64({a, b});
-  CHECK_EQ(a.type(), b.type())
-      << "The operands' types of the node [" << ir_name << "] don't match";
+  PADDLE_ENFORCE_EQ(
+      a.type(),
+      b.type(),
+      phi::errors::InvalidArgument(
+          "The operands' types of the node [%s] don't match", ir_name));
 }
 
 void Add::Verify() const { BinaryNodeVerify(a(), b(), "Add"); }
@@ -163,7 +167,11 @@ Expr And::Make(Expr a, Expr b) {
 
 void And::Verify() const {
   BinaryNodeVerify(a(), b(), "And");
-  CHECK_EQ(a().type(), type_of<bool>());
+  PADDLE_ENFORCE_EQ(
+      a().type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument(
+          "The type of the operands of the node [And] should be bool"));
 }
 
 Expr Or::Make(Expr a, Expr b) {
@@ -173,7 +181,11 @@ Expr Or::Make(Expr a, Expr b) {
 
 void Or::Verify() const {
   BinaryNodeVerify(a(), b(), "Or");
-  CHECK_EQ(a().type(), type_of<bool>());
+  PADDLE_ENFORCE_EQ(
+      a().type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument(
+          "The type of the operands of the node [Or] should be bool"));
 }
 
 Type Or::type() const { return type_; }
@@ -183,7 +195,13 @@ Expr Not::Make(Expr v) {
   return Expr(node);
 }
 
-void Not::Verify() const { CHECK_EQ(v().type(), type_of<bool>()); }
+void Not::Verify() const {
+  PADDLE_ENFORCE_EQ(
+      v().type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument(
+          "The type of the operand of the node [Not] should be bool"));
+}
 
 Type Not::type() const { return type_; }
 
@@ -204,7 +222,11 @@ void Let::Verify() const {
   // The default value(contained in body) is not required.
   if (body.defined()) {
     TryElevateInt32ToInt64({symbol, body});
-    CHECK_EQ(symbol.type(), body.type());
+    PADDLE_ENFORCE_EQ(
+        symbol.type(),
+        body.type(),
+        phi::errors::InvalidArgument("The type of the symbol and the body of "
+                                     "the node [Let] should be the same"));
   }
 }
 
@@ -255,6 +277,7 @@ Expr For::Make(Var loop_var,
                Expr body,
                VectorizeInfo vector_info,
                BindInfo bind_info) {
+  ir::TryElevateInt32ToInt64({loop_var, min, extent});
   auto node = make_shared<For>();
   CHECK(loop_var.defined());
   CHECK(min.defined());
@@ -334,7 +357,11 @@ Expr ScheduleBlockRealize::Make(const std::vector<Expr> &iter_values,
 void ScheduleBlockRealize::Verify() const {
   auto *schedule_block_ptr = schedule_block.As<ScheduleBlock>();
   CHECK(schedule_block_ptr);
-  CHECK_EQ(schedule_block_ptr->iter_vars.size(), iter_values.size());
+  PADDLE_ENFORCE_EQ(
+      schedule_block_ptr->iter_vars.size(),
+      iter_values.size(),
+      phi::errors::InvalidArgument(
+          "The size of iter_values should be equal to the size of iter_vars"));
 }
 std::vector<Expr *> ScheduleBlockRealize::expr_fields() {
   std::vector<Expr *> res;
@@ -691,7 +718,10 @@ Expr Load::index() const {
     Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
     return res;
   } else {
-    CHECK_EQ(indices.size(), 1UL);
+    PADDLE_ENFORCE_EQ(indices.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The indices size of Load node should be 1"));
     return indices[0];
   }
 }
@@ -723,8 +753,15 @@ Expr Ramp::Make(Expr base, Expr stride, int lanes) {
   CHECK(stride.defined());
   CHECK(base.type().valid());
   CHECK(stride.type().valid());
-  CHECK_EQ(stride.type(), Int(32));
-  CHECK_GT(lanes, 0);
+  PADDLE_ENFORCE_EQ(stride.type(),
+                    Int(32),
+                    phi::errors::InvalidArgument(
+                        "The stride of the node [Ramp] should be int32"));
+  PADDLE_ENFORCE_GT(
+      lanes,
+      0,
+      phi::errors::InvalidArgument(
+          "The lanes of the node [Ramp] should be greater than 0"));
 
   auto *n = make_shared<Ramp>();
   n->base = base;
@@ -761,9 +798,10 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
   TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
   for (auto &v : vs) {
-    CHECK_EQ(v.type(), type) << "The operands' types of the node ["
-                             << n->node_type() << "] don't match: "
-                             << "(" << v << " vs " << vs.front() << ")";
+    PADDLE_ENFORCE_EQ(v.type(),
+                      type,
+                      phi::errors::InvalidArgument(
+                          "The operands' types of the node [Sum] don't match"));
   }
 
   n->operands() = vs;
@@ -774,12 +812,21 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
 }
 
 Expr Product::Make(const std::vector<Expr> &vs) {
-  CHECK_GE(vs.size(), 1);
+  PADDLE_ENFORCE_GE(
+      vs.size(),
+      1,
+      phi::errors::InvalidArgument("The operands of the node [Product] "
+                                   "should have at least one element"));
 
   auto *n = make_shared<Product>();
   TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
-  for (auto &v : vs) CHECK_EQ(v.type(), type);
+  for (auto &v : vs)
+    PADDLE_ENFORCE_EQ(
+        v.type(),
+        type,
+        phi::errors::InvalidArgument("The operands' types of the node "
+                                     "[Product] don't match"));
 
   n->operands() = vs;
 
@@ -824,7 +871,12 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
   CHECK(body.type().valid());
   if (init.defined()) {
     CHECK(init.type().valid());
-    CHECK_EQ(init.type(), body.type());
+    PADDLE_ENFORCE_EQ(
+        init.type(),
+        body.type(),
+        phi::errors::InvalidArgument(
+            "The type of the init and the body of the node [Reduce] "
+            "should be the same"));
   }
   n->set_type(body.type());
   return Expr(n);
@@ -855,7 +907,12 @@ void Reduce::Verify() const {
   CHECK(init.defined());
   CHECK(body.defined());
   CHECK(!reduce_axis.empty()) << "At least one reduce axis is needed";
-  CHECK_EQ(init.type(), body.type());
+  PADDLE_ENFORCE_EQ(
+      init.type(),
+      body.type(),
+      phi::errors::InvalidArgument(
+          "The type of the init and the body of the node [Reduce] "
+          "should be the same"));
 }
 
 Type Select::type() const {
@@ -870,8 +927,11 @@ void Select::Verify() const {
   CHECK(false_value.defined());
   CHECK(condition.type().is_bool())
       << "Select Node's condition should be a boolean";
-  CHECK_EQ(true_value.type(), false_value.type())
-      << "Select Node's true_value and false_value should have the same type";
+  PADDLE_ENFORCE_EQ(true_value.type(),
+                    false_value.type(),
+                    phi::errors::InvalidArgument(
+                        "Select Node's true_value and false_value should have "
+                        "the same type"));
 }
 
 void Free::Verify() const { CHECK(destination.defined()); }
@@ -884,9 +944,21 @@ void For::Verify() const {
   CHECK(extent.defined());
   CHECK(body.defined());
 
-  CHECK_EQ(loop_var->type(), type_of<int32_t>());
-  CHECK_EQ(min->type(), type_of<int32_t>());
-  CHECK_EQ(extent->type(), type_of<int32_t>());
+  PADDLE_ENFORCE_EQ((loop_var->type() == type_of<int32_t>()) ||
+                        (loop_var->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop var's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((min->type() == type_of<int32_t>()) ||
+                        (min->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop min's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((extent->type() == type_of<int32_t>()) ||
+                        (extent->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop extent's type must be int32 or int64"));
 }
 
 void PolyFor::Verify() const {
@@ -896,10 +968,20 @@ void PolyFor::Verify() const {
   CHECK(inc.defined());
   CHECK(body.defined());
 
-  CHECK_EQ(iterator->type(), type_of<int32_t>());
-  CHECK_EQ(init.type(), type_of<int32_t>());
-  CHECK_EQ(condition.type(), type_of<bool>());
-  CHECK_EQ(inc.type(), type_of<int32_t>());
+  PADDLE_ENFORCE_EQ(
+      iterator->type(),
+      type_of<int32_t>(),
+      phi::errors::InvalidArgument("iterator's type must be int32"));
+  PADDLE_ENFORCE_EQ(init.type(),
+                    type_of<int32_t>(),
+                    phi::errors::InvalidArgument("init's type must be int32"));
+  PADDLE_ENFORCE_EQ(
+      condition.type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument("condition's type must be bool"));
+  PADDLE_ENFORCE_EQ(inc.type(),
+                    type_of<int32_t>(),
+                    phi::errors::InvalidArgument("inc's type must be int32"));
 }
 
 void Ramp::Verify() const {
@@ -910,7 +992,12 @@ void Ramp::Verify() const {
 void FracOp::Verify() const {
   CHECK(a().defined());
   CHECK(b().defined());
-  CHECK_EQ(a().type(), b().type());
+  PADDLE_ENFORCE_EQ(
+      a().type(),
+      b().type(),
+      phi::errors::InvalidArgument(
+          "The type of the operands of the node [FracOp] should be "
+          "the same"));
 }
 
 void Broadcast::Verify() const { CHECK(value.defined()); }
@@ -920,23 +1007,30 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
   CHECK(operand_type.valid());
   for (int i = 1; i < operands.size(); i++) {
     CHECK(operands[i].defined());
-    CHECK_EQ(operands[i].type(), operand_type);
+    PADDLE_ENFORCE_EQ(operands[i].type(),
+                      operand_type,
+                      phi::errors::InvalidArgument(
+                          "The operands' types of the node don't match"));
   }
 }
 
 Type Product::type() const { return operands().front().type(); }
 
 void Product::Verify() const {
-  CHECK_GT(operands().size(), 1UL)
-      << "Product node should have more than 1 operands";
+  PADDLE_ENFORCE_GT(operands().size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Product node should have more than 1 operands"));
   MultiOperandVerify(operands());
 }
 
 Type Sum::type() const { return operands().front().type(); }
 
 void Sum::Verify() const {
-  CHECK_GT(operands().size(), 1UL)
-      << "Sum node should have more than 1 operands";
+  PADDLE_ENFORCE_GT(operands().size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Sum node should have more than 1 operands"));
   MultiOperandVerify(operands());
 }
 

@@ -30,9 +30,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 using string::PrettyLogEndl;
 using string::Style;
 
@@ -268,25 +266,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
-    } else if (pass_name == "dlnne_subgraph_pass") {
-      auto precision_mode = argument->dlnne_precision_mode();
-      pass->Set("min_subgraph_size",
-                new int(argument->dlnne_min_subgraph_size()));
-      pass->Set("max_batch_size", new int(argument->dlnne_max_batch_size()));
-      pass->Set("use_static_batch",
-                new bool(argument->dlnne_use_static_batch()));
-      pass->Set("weight_share_mode",
-                new std::string(argument->dlnne_weight_share_mode()));
-      pass->Set("disable_nodes_by_outputs",
-                new std::unordered_set<std::string>(
-                    argument->dlnne_disable_nodes_by_outputs()));
-      pass->Set("use_calib_mode", new bool(argument->dlnne_use_calib_mode()));
-      pass->Set("dlnne_precision_mode", new int(precision_mode));
-      pass->Set("input_shape_dict",
-                new std::map<std::string, std::vector<int64_t>>(
-                    argument->dlnne_input_shape_dict()));
-      pass->Set("program",
-                new framework::ProgramDesc *(&argument->main_program()));
     } else if (pass_name == "memory_optimize_pass") {
       pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
     } else if (pass_name == "build_cinn_pass") {
@@ -341,6 +320,4 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   return graph;
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

@@ -173,6 +173,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[2541, 2], dtype=paddle.float32),
         )
         self.net = LayerCase
+        self.with_train = False
         self.with_cinn = False
 
     # NOTE cinn lead to error

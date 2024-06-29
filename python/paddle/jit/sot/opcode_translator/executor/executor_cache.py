@@ -16,8 +16,7 @@ from __future__ import annotations
 
 import gc
 import traceback
-import types
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
@@ -34,6 +33,9 @@ from ...utils import (
 from ..custom_code import CustomCode
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
+
+if TYPE_CHECKING:
+    import types
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]
@@ -56,12 +58,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     cache: dict[types.CodeType, GuardedFunctions]
     translate_count: int
-    symbolic_inputs: dict[str, dict[int, int]]
+    code_symbolic_inputs: dict[types.CodeType, dict[str, dict[int, int]]]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
-        self.symbolic_inputs = {}
+        self.code_symbolic_inputs = {}
+
+    def get_symbolic_inputs(self, code: types.CodeType):
+        self.code_symbolic_inputs.setdefault(code, {})
+        return self.code_symbolic_inputs[code]
 
     def clear(self):
         """
@@ -69,6 +75,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         """
         self.cache.clear()
         self.translate_count = 0
+        self.code_symbolic_inputs.clear()
 
     def __call__(self, frame: types.FrameType, **kwargs) -> CustomCode:
         code: types.CodeType = frame.f_code

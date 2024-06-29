@@ -143,6 +143,7 @@ class TestLayer(TestBase):
         self.input_specs = []
         self.inputs = ()
         self.net = LayerCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

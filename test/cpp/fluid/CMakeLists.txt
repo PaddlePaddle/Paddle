@@ -3,14 +3,8 @@ add_subdirectory(benchmark)
 add_subdirectory(framework)
 add_subdirectory(platform)
 
-if(WITH_CINN)
-  add_subdirectory(cinn)
-endif()
 add_subdirectory(controlflow)
 
-if(WITH_DLNNE)
-  add_subdirectory(dlnne)
-endif()
 add_subdirectory(elementwise)
 add_subdirectory(fused)
 add_subdirectory(math)
@@ -29,17 +23,6 @@ endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
 
-nv_test(
-  test_common_infer_shape_functions
-  SRCS test_common_infer_shape_functions.cc
-  DEPS common_infer_shape_functions
-       ${COMMON_OP_DEPS}
-       activation_op
-       generated_op
-       elementwise_add_op
-       phi
-       common
-       generated_static_op)
 paddle_test(gather_test SRCS gather_test.cc)
 paddle_test(assign_op_test SRCS assign_op_test.cc)
 paddle_test(scatter_test SRCS scatter_test.cc DEPS common)

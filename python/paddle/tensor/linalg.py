@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import numpy as np
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import _C_ops
@@ -37,6 +41,11 @@ from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    _POrder: TypeAlias = Literal['fro', 'nuc']
+
 __all__ = []
 
 
@@ -44,7 +53,9 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
-def transpose(x, perm, name=None):
+def transpose(
+    x: Tensor, perm: Sequence[int], name: str | None = None
+) -> Tensor:
     """
     Permute the data dimensions of `input` according to `perm`.
 
@@ -54,7 +65,7 @@ def transpose(x, perm, name=None):
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
         perm (list|tuple): Permute the input according to the data of perm.
-        name (str, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        name (str|None, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
         Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
@@ -130,6 +141,8 @@ def transpose(x, perm, name=None):
                 'uint16',
                 'complex64',
                 'complex128',
+                'float8_e5m2',
+                'float8_e4m3fn',
             ],
             'transpose',
         )
@@ -173,7 +186,13 @@ def transpose_(x, perm, name=None):
         return _C_ops.transpose_(x, perm)
 
 
-def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+def matmul(
+    x: Tensor,
+    y: Tensor,
+    transpose_x: bool = False,
+    transpose_y: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Applies matrix multiplication to two tensors. `matmul` follows
     the complete broadcast rules,
@@ -219,7 +238,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         y (Tensor): The input tensor which is a Tensor.
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
-        name (str, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
         Tensor: The output Tensor.
@@ -305,7 +324,117 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         return out
 
 
-def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
+def fp8_fp8_half_gemm_fused(
+    x,
+    y,
+    transpose_x=False,
+    transpose_y=False,
+    bias=None,
+    scale=1.0,
+    output_dtype="float16",
+    act="identity",
+    name=None,
+):
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fp8_fp8_half_gemm_fused(
+            x, y, bias, transpose_x, transpose_y, scale, output_dtype, act
+        )
+    else:
+        attrs = {
+            'transpose_x': transpose_x,
+            'transpose_y': transpose_y,
+            'scale': scale,
+            'output_dtype': output_dtype,
+            'act': act,
+        }
+        if bias is None:
+
+            def __check_input(x, y):
+                var_names = {'x': x, 'y': y}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(
+                        val,
+                        name,
+                        [
+                            'float8_e5m2',
+                            'float8_e4m3fn',
+                        ],
+                        'fp8_fp8_half_gemm_fused',
+                    )
+
+            __check_input(x, y)
+
+            helper = LayerHelper('fp8_fp8_half_gemm_fused', **locals())
+            if output_dtype == 'float16':
+                out = helper.create_variable_for_type_inference(dtype='float16')
+            elif output_dtype == 'bfloat16':
+                out = helper.create_variable_for_type_inference(
+                    dtype='bfloat16'
+                )
+            else:
+                raise ValueError("The output_dtype must be float16 or bfloa16")
+
+            helper.append_op(
+                type='fp8_fp8_half_gemm_fused',
+                inputs={'x': x, 'y': y},
+                outputs={'out': out},
+                attrs=attrs,
+            )
+            return out
+        else:
+
+            def __check_input(x, y):
+                var_names = {'x': x, 'y': y}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(
+                        val,
+                        name,
+                        [
+                            'float8_e5m2',
+                            'float8_e4m3fn',
+                        ],
+                        'fp8_fp8_half_gemm_fused',
+                    )
+
+            __check_input(x, y)
+            if output_dtype == 'float16':
+                check_variable_and_dtype(
+                    bias, 'bias', ['float16'], 'fp8_fp8_half_gemm_fused'
+                )
+            elif output_dtype == 'bfloat16':
+                check_variable_and_dtype(
+                    bias, 'bias', ['bfloat16'], 'fp8_fp8_half_gemm_fused'
+                )
+            else:
+                raise ValueError("The output_dtype must be float16 or bfloa16")
+
+            helper = LayerHelper('fp8_fp8_half_gemm_fused', **locals())
+
+            if output_dtype == 'float16':
+                out = helper.create_variable_for_type_inference(dtype='float16')
+            elif output_dtype == 'bfloat16':
+                out = helper.create_variable_for_type_inference(
+                    dtype='bfloat16'
+                )
+            else:
+                raise ValueError("The output_dtype must be float16 or bfloa16")
+
+            helper.append_op(
+                type='fp8_fp8_half_gemm_fused',
+                inputs={'x': x, 'y': y, 'bias': bias},
+                outputs={'out': out},
+                attrs=attrs,
+            )
+            return out
+
+
+def vector_norm(
+    x: Tensor,
+    p: float = 2.0,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
     Returns the vector norm (the 1-norm, the Euclidean or 2-norm, and in general the p-norm)
@@ -314,9 +443,9 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     Args:
         x (Tensor): Tensor, data type float32, float64.
         p (int|float, optional): None for porder=2.0. Default None.
-        axis (int|list, optional): None for last dimension. Default None.
+        axis (int|list|tuple, optional): None for last dimension. Default None.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-        name (str, optional): The default value is None. Normally there is no need for
+        name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -535,16 +664,22 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             )
 
 
-def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
+def matrix_norm(
+    x: Tensor,
+    p: float | _POrder = 'fro',
+    axis: int | list[int] | tuple[int, int] = [-2, -1],
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
 
     Args:
         x (Tensor): Tensor, data type float32, float64.
         p (int|float|string, optional): Default 'fro'.
-        axis (list, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
+        axis (int|list|tuple, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-        name (str, optional): The default value is None. Normally there is no need for
+        name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -607,7 +742,12 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         """
         return [i for i, j in sorted(enumerate(perm), key=lambda ij: ij[1])]
 
-    def frobenius_norm(input, dim=None, keepdim=False, name=None):
+    def frobenius_norm(
+        input: Tensor,
+        dim: list[int] | None = None,
+        keepdim: bool = False,
+        name: str | None = None,
+    ) -> Tensor:
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
         Args:
@@ -647,14 +787,19 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
             )
             return out
 
-    def nuclear_norm(input, axis=axis, keepdim=False, name=None):
+    def nuclear_norm(
+        input: Tensor,
+        axis: int | list[int] | tuple[int, int] = axis,
+        keepdim: bool = False,
+        name: str | None = None,
+    ) -> Tensor:
         """
         The nuclear norm OP is to calculate the nuclear norm of certain two dimensions of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
-          dim (list): Two dimensions.
+          axis (list): Two dimensions.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-          name (str, optional): The default value is None. Normally there is no need for
+          name (str|None, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
 
@@ -739,7 +884,13 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
 
         return out
 
-    def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
+    def p_matrix_norm(
+        input: Tensor,
+        porder: float | _POrder = 1.0,
+        axis: int | list[int] | tuple[int, int] = axis,
+        keepdim: bool = False,
+        name: str | None = None,
+    ) -> Tensor:
         """
         Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
         Args:
@@ -936,7 +1087,13 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         )
 
 
-def norm(x, p=None, axis=None, keepdim=False, name=None):
+def norm(
+    x: Tensor,
+    p: float | _POrder | None = None,
+    axis: int | list[int] | tuple[int, int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
 
     Returns the matrix norm (the Frobenius norm, the nuclear norm and p-norm) or vector norm (the 1-norm, the Euclidean
@@ -984,7 +1141,7 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
-        p (int|float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
+        p (int|float|string|None, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
             `±inf` and any real number yielding the corresponding p-norm.
             Default value is None.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
@@ -996,7 +1153,7 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): The default value is None. Normally there is no need for
+        name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1098,7 +1255,7 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
         )
 
 
-def dist(x, y, p=2, name=None):
+def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
     r"""
 
     Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
@@ -1157,7 +1314,7 @@ def dist(x, y, p=2, name=None):
         x (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
         y (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
-        name (str, optional): The default value is `None`. Normally there is no need for
+        name (str|None, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1212,7 +1369,11 @@ def dist(x, y, p=2, name=None):
     return out
 
 
-def cond(x, p=None, name=None):
+def cond(
+    x: Tensor,
+    p: float | _POrder | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
 
     Computes the condition number of a matrix or batches of matrices with respect to a matrix norm ``p``.
@@ -1324,7 +1485,9 @@ def cond(x, p=None, name=None):
 
     """
 
-    def mat_norm(input, porder=1.0, axis=None):
+    def mat_norm(
+        input: Tensor, porder: float = 1.0, axis: list[int] | None = None
+    ) -> Tensor:
         """
         NOTE:
             Calculate the matrix norm of a square matrix or batches of square matrices,
@@ -1388,7 +1551,9 @@ def cond(x, p=None, name=None):
                 )
             return out
 
-    def fro_norm(input, porder=2, axis=[-1]):
+    def fro_norm(
+        input: Tensor, porder: float = 2, axis: list[int] = [-1]
+    ) -> Tensor:
         """
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
@@ -1448,7 +1613,9 @@ def cond(x, p=None, name=None):
             )
             return out
 
-    def svd_norm(input, porder, axis=[-1]):
+    def svd_norm(
+        input: Tensor, porder: float, axis: list[int] = [-1]
+    ) -> Tensor:
         """
         NOTE:
             Calculate the matrix norm, which is related to singular values, of a matrix
@@ -1575,7 +1742,7 @@ def cond(x, p=None, name=None):
         )
 
 
-def dot(x, y, name=None):
+def dot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     This operator calculates inner product for vectors.
 
@@ -1586,7 +1753,7 @@ def dot(x, y, name=None):
     Parameters:
         x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
         y(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
-        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+        name(str|None, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
         Tensor: the calculated result Tensor.
@@ -1666,7 +1833,14 @@ def dot(x, y, name=None):
         return out
 
 
-def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
+def cov(
+    x: Tensor,
+    rowvar: bool = True,
+    ddof: bool = True,
+    fweights: Tensor | None = None,
+    aweights: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Estimate the covariance matrix of the input variables, given data and weights.
 
@@ -1676,11 +1850,11 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
 
     Parameters:
         x (Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
-        rowvar (Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True.
-        ddof (Bool, optional): If ddof=True will return the unbiased estimate, and ddof=False will return the simple average. Default: True.
+        rowvar (bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True.
+        ddof (bool, optional): If ddof=True will return the unbiased estimate, and ddof=False will return the simple average. Default: True.
         fweights (Tensor, optional): 1-D Tensor of integer frequency weights; The number of times each observation vector should be repeated. Default: None.
         aweights (Tensor, optional): 1-D Tensor of observation vector weights. How important of the observation vector, larger data means this element is more important. Default: None.
-        name (str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name` .
+        name (str|None, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name` .
 
     Returns:
         Tensor: The covariance matrix Tensor of the variables.
@@ -1704,7 +1878,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
     if len(x.shape) > 2 or len(x.shape) < 1:
         raise ValueError(
             "Input(x) only support N-D (1<=N<=2) tensor in cov, but received "
-            "length of Input(input) is %s." % len(x.shape)
+            f"length of Input(input) is {len(x.shape)}."
         )
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cov')
     nx = x
@@ -1719,7 +1893,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if len(w.shape) > 1:
             raise ValueError(
                 "Input(fweights) only support N-D (N<=1) tensor in cov, but received "
-                "shape of Input(input) is %s." % len(fweights.shape)
+                f"shape of Input(input) is {len(fweights.shape)}."
             )
         if fweights.shape[0] != observation_num:
             raise ValueError(
@@ -1742,7 +1916,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if len(aw.shape) > 1:
             raise ValueError(
                 "Input(aweights) only support N-D (N<=1) tensor in cov, but received "
-                "length of Input(input) is %s." % len(aweights.shape)
+                f"length of Input(input) is {len(aweights.shape)}."
             )
         check_variable_and_dtype(
             aweights, 'dtype', ['float32', 'float64'], 'cov'
@@ -1786,7 +1960,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
     return cov
 
 
-def t(input, name=None):
+def t(input: Tensor, name: str | None = None) -> Tensor:
     """
     Transpose <=2-D tensor.
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to
@@ -1794,7 +1968,7 @@ def t(input, name=None):
 
     Args:
         input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for
+        name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -1841,8 +2015,8 @@ def t(input, name=None):
     if len(input.shape) > 2:
         raise ValueError(
             "Input(input) only support N-D (N<=2) tensor, but received "
-            "length of Input(input) is %s. Perhaps you can use paddle."
-            "tensor.transpose() instead." % len(input.shape)
+            f"length of Input(input) is {len(input.shape)}. Perhaps you can use paddle."
+            "tensor.transpose() instead."
         )
     if in_dynamic_or_pir_mode():
         if len(input.shape) <= 1:
@@ -1883,8 +2057,8 @@ def t_(input, name=None):
     if len(input.shape) > 2:
         raise ValueError(
             "Input(input) only support N-D (N<=2) tensor, but received "
-            "length of Input(input) is %s. Perhaps you can use paddle."
-            "tensor.transpose() instead." % len(input.shape)
+            f"length of Input(input) is {len(input.shape)}. Perhaps you can use paddle."
+            "tensor.transpose() instead."
         )
     if in_dynamic_mode():
         if len(input.shape) <= 1:
@@ -1895,7 +2069,12 @@ def t_(input, name=None):
         return out
 
 
-def cross(x, y, axis=9, name=None):
+def cross(
+    x: Tensor,
+    y: Tensor,
+    axis: int = 9,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the cross product between two tensors along an axis.
 
@@ -1906,7 +2085,7 @@ def cross(x, y, axis=9, name=None):
         x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
         y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
         axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. A Tensor with same data type as `x`.
@@ -1985,7 +2164,7 @@ def cross(x, y, axis=9, name=None):
         return out
 
 
-def cholesky(x, upper=False, name=None):
+def cholesky(x: Tensor, upper: bool = False, name: str | None = None) -> Tensor:
     r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrices.
@@ -2002,7 +2181,7 @@ def cholesky(x, upper=False, name=None):
             Its data type should be float32 or float64.
         upper (bool, optional): The flag indicating whether to return upper or lower
             triangular matrices. Default: False.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2042,7 +2221,12 @@ def cholesky(x, upper=False, name=None):
         return out
 
 
-def matrix_rank(x, tol=None, hermitian=False, name=None):
+def matrix_rank(
+    x: Tensor,
+    tol: float | Tensor | None = None,
+    hermitian: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Computes the rank of a matrix.
 
@@ -2058,7 +2242,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         hermitian (bool, optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
             enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use
             the lower triangular of the matrix to compute. Default: False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Rank of tensor x.
@@ -2129,7 +2313,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         return out
 
 
-def bmm(x, y, name=None):
+def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Applies batched matrix multiplication to two tensors.
 
@@ -2193,7 +2377,13 @@ def bmm(x, y, name=None):
         return out
 
 
-def histogram(input, bins=100, min=0, max=0, name=None):
+def histogram(
+    input: Tensor,
+    bins: int = 100,
+    min: int = 0,
+    max: int = 0,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
     If min and max are both zero, the minimum and maximum values of the data are used.
@@ -2237,7 +2427,12 @@ def histogram(input, bins=100, min=0, max=0, name=None):
         return out
 
 
-def bincount(x, weights=None, minlength=0, name=None):
+def bincount(
+    x: Tensor,
+    weights: Tensor | None = None,
+    minlength: int = 0,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes frequency of each value in the input tensor.
 
@@ -2245,7 +2440,7 @@ def bincount(x, weights=None, minlength=0, name=None):
         x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
         weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
         minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -2302,7 +2497,7 @@ def bincount(x, weights=None, minlength=0, name=None):
         return out
 
 
-def mv(x, vec, name=None):
+def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
 
@@ -2311,7 +2506,7 @@ def mv(x, vec, name=None):
             should be one of float32, float64.
         vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
             should be one of float32, float64.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -2363,7 +2558,7 @@ def mv(x, vec, name=None):
         return out
 
 
-def det(x, name=None):
+def det(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Calculates determinant value of a square matrix or batches of square matrices.
@@ -2372,7 +2567,7 @@ def det(x, name=None):
         x (Tensor): the input matrix of size `(n, n)` or the
             batch of matrices of size `(*, n, n)` where `*` is one or more
             batch dimensions.
-        name (str, optional): Name of the output.It's used to print debug info for
+        name (str|None, optional): Name of the output.It's used to print debug info for
             developers. Details: :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -2399,7 +2594,7 @@ def det(x, name=None):
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
             "The x must be at least 2-dimensional, "
-            "but received Input x's dimensional: %s.\n" % len(input_shape)
+            f"but received Input x's dimensional: {len(input_shape)}.\n"
         )
 
         assert input_shape[-1] == input_shape[-2], (
@@ -2415,7 +2610,7 @@ def det(x, name=None):
         return out
 
 
-def slogdet(x, name=None):
+def slogdet(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
@@ -2428,7 +2623,7 @@ def slogdet(x, name=None):
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
-        name (str, optional): Name of the output.It's used to print debug info for
+        name (str|None, optional): Name of the output.It's used to print debug info for
             developers. Details: :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -2456,7 +2651,7 @@ def slogdet(x, name=None):
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
             "The x must be at least 2-dimensional, "
-            "but received Input x's dimensional: %s.\n" % len(input_shape)
+            f"but received Input x's dimensional: {len(input_shape)}.\n"
         )
 
         assert input_shape[-1] == input_shape[-2], (
@@ -2474,7 +2669,9 @@ def slogdet(x, name=None):
         return out
 
 
-def svd(x, full_matrices=False, name=None):
+def svd(
+    x: Tensor, full_matrices: bool = False, name: str | None = None
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Computes the singular value decomposition of one matrix or a batch of regular matrices.
 
@@ -2494,7 +2691,7 @@ def svd(x, full_matrices=False, name=None):
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
             Default value is False.
-        name (str, optional): Name for the operation. For more information,
+        name (str|None, optional): Name for the operation. For more information,
             please refer to :ref:`api_guide_Name`. Default value is None.
 
     Returns:
@@ -2593,7 +2790,13 @@ def _get_approximate_basis(x, q, niter=2, M=None):
     return Q
 
 
-def svd_lowrank(x, q=None, niter=2, M=None, name=None):
+def svd_lowrank(
+    x: Tensor,
+    q: int | None = None,
+    niter: int = 2,
+    M: Tensor | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Return the singular value decomposition (SVD) on a low-rank matrix or batches of such matrices.
 
@@ -2616,7 +2819,7 @@ def svd_lowrank(x, q=None, niter=2, M=None, name=None):
         niter (int, optional): The number of iterations to perform. Default: 2.
         M (Tensor, optional): The input tensor's mean. Its shape should be `[..., 1, M]`.
             Default value is None.
-        name (str, optional): Name for the operation. For more information, please
+        name (str|None, optional): Name for the operation. For more information, please
             refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
@@ -2707,7 +2910,13 @@ def svd_lowrank(x, q=None, niter=2, M=None, name=None):
     return U, S, V
 
 
-def pca_lowrank(x, q=None, center=True, niter=2, name=None):
+def pca_lowrank(
+    x: Tensor,
+    q: int | None = None,
+    center: bool = True,
+    niter: int = 2,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Performs linear Principal Component Analysis (PCA) on a low-rank matrix or batches of such matrices.
 
@@ -2725,7 +2934,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         center (bool, optional): if True, center the input tensor.
             Default value is True.
         niter (int, optional): number of iterations to perform. Default: 2.
-        name (str, optional): Name for the operation. For more information,
+        name (str|None, optional): Name for the operation. For more information,
             please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
@@ -2786,7 +2995,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     return svd_lowrank(x - C, q, niter=niter, M=None)
 
 
-def matrix_power(x, n, name=None):
+def matrix_power(
+    x: Tensor, n: int, name: str | None = None
+) -> tuple[Tensor, int]:
     r"""
 
     Computes the n-th power of a square matrix or a batch of square matrices.
@@ -2810,7 +3021,7 @@ def matrix_power(x, n, name=None):
             to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         n (int): The exponent. It can be any positive, negative integer or zero.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2861,7 +3072,29 @@ def matrix_power(x, n, name=None):
         return out
 
 
-def qr(x, mode="reduced", name=None):
+@overload
+def qr(
+    x: Tensor,
+    mode: Literal['reduced', 'complete'] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def qr(
+    x: Tensor,
+    mode: Literal['r'] = ...,
+    name: str | None = ...,
+) -> Tensor:
+    ...
+
+
+def qr(
+    x,
+    mode="reduced",
+    name=None,
+) -> Tensor | tuple[Tensor, Tensor]:
     r"""
     Computes the QR decomposition of one matrix or batches of matrices (backward is unsupported now).
 
@@ -2877,7 +3110,7 @@ def qr(x, mode="reduced", name=None):
             which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
             If mode = "r", qr op will only return reduced R matrix, which means
             R's shape is `[..., K, N]`. Default: "reduced".
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2891,12 +3124,12 @@ def qr(x, mode="reduced", name=None):
 
             >>> x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
             >>> q, r = paddle.linalg.qr(x)
-            >>> print (q)
+            >>> print(q)
             Tensor(shape=[3, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[-0.16903085,  0.89708523],
              [-0.50709255,  0.27602622],
              [-0.84515425, -0.34503278]])
-            >>> print (r)
+            >>> print(r)
             Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[-5.91607978, -7.43735744],
              [ 0.        ,  0.82807867]])
@@ -2926,7 +3159,36 @@ def qr(x, mode="reduced", name=None):
             return q, r
 
 
-def lu(x, pivot=True, get_infos=False, name=None):
+@overload
+def lu(
+    x: Tensor,
+    pivot: bool = ...,
+    get_infos: Literal[False] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def lu(
+    x: Tensor,
+    pivot: bool = ...,
+    get_infos: Literal[True] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def lu(
+    x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = ...
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+def lu(
+    x, pivot=True, get_infos=False, name=None
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
     r"""
     Computes the LU factorization of an N-D(N>=2) matrix x.
 
@@ -2951,17 +3213,17 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
         get_infos (bool, optional): if set to True, returns an info IntTensor. Default: False.
 
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         factorization (Tensor), LU matrix, the factorization of input X.
 
-        pivots (IntTensor), the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
+        pivots (IntTensor), the pivots of size(\*(N-2), min(m,n)). `pivots` stores all the
         intermediate transpositions of rows. The final permutation `perm` could be
         reconstructed by this, details refer to upper example.
 
-        infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (∗(N-2))
+        infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (\*(N-2))
         where non-zero values indicate whether factorization for the matrix or each minibatch
         has succeeded or failed.
 
@@ -3028,7 +3290,13 @@ def lu(x, pivot=True, get_infos=False, name=None):
         return lu, p
 
 
-def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
+def lu_unpack(
+    x: Tensor,
+    y: Tensor,
+    unpack_ludata: bool = True,
+    unpack_pivots: bool = True,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Unpack L U and P to single matrix tensor .
     unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
@@ -3051,7 +3319,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
         unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
 
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3133,7 +3401,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         return p, l, u
 
 
-def eig(x, name=None):
+def eig(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
     """
     Performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
 
@@ -3147,12 +3415,12 @@ def eig(x, name=None):
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
             ``float64``, ``compplex64`` or ``complex128``.
-        name (str, optional): The default value is `None`. Normally there is no need for user to set
+        name (str|None, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Eigenvalues(Tensors): A tensor with shape math:`[*, N]` refers to the eigen values.
-        Eigenvectors(Tensors): A tensor with shape math:`[*, N, N]` refers to the eigen vectors.
+        Eigenvalues(Tensor): A tensor with shape math:`[*, N]` refers to the eigen values.
+        Eigenvectors(Tensor): A tensor with shape math:`[*, N, N]` refers to the eigen vectors.
 
     Examples:
         .. code-block:: python
@@ -3196,7 +3464,7 @@ def eig(x, name=None):
         return w, v
 
 
-def eigvals(x, name=None):
+def eigvals(x: Tensor, name: str | None = None) -> Tensor:
     """
     Compute the eigenvalues of one or more general matrices.
 
@@ -3208,7 +3476,7 @@ def eigvals(x, name=None):
         x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
             Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions.
             Its data type should be float32, float64, complex64, or complex128.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3260,7 +3528,7 @@ def eigvals(x, name=None):
         return out
 
 
-def multi_dot(x, name=None):
+def multi_dot(x: list[Tensor], name: str | None = None) -> Tensor:
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.
 
@@ -3286,8 +3554,8 @@ def multi_dot(x, name=None):
     than sequential calculation.
 
     Args:
-        x ([Tensor]): The input tensors which is a list Tensor.
-        name (str, optional): Name for the operation (optional, default is None).
+        x (list[Tensor]): The input tensors which is a list Tensor.
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3340,7 +3608,9 @@ def multi_dot(x, name=None):
         return out
 
 
-def eigh(x, UPLO='L', name=None):
+def eigh(
+    x: Tensor, UPLO: Literal['L', 'U'] = 'L', name: str | None = None
+) -> tuple[Tensor, Tensor]:
     """
     Compute the eigenvalues and eigenvectors of a
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
@@ -3350,7 +3620,7 @@ def eigh(x, UPLO='L', name=None):
             should be one of float32, float64, complex64, complex128.
         UPLO (str, optional): (string, default 'L'), 'L' represents the lower triangular matrix,
             "'U' represents the upper triangular matrix.". Default: 'L'.
-        name (str, optional): The default value is None. Normally there is no need for user to set this
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3385,7 +3655,7 @@ def eigh(x, UPLO='L', name=None):
         if len(x.shape) < 2:
             raise ValueError(
                 "Input(input) only support >=2 tensor, but received "
-                "length of Input(input) is %s." % len(x.shape)
+                f"length of Input(input) is {len(x.shape)}."
             )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
@@ -3423,7 +3693,12 @@ def eigh(x, UPLO='L', name=None):
         return out_value, out_vector
 
 
-def pinv(x, rcond=1e-15, hermitian=False, name=None):
+def pinv(
+    x: Tensor,
+    rcond: float | Tensor = 1e-15,
+    hermitian: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Calculate pseudo inverse via SVD(singular value decomposition)
     of one matrix or batches of regular matrix.
@@ -3446,11 +3721,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or complex128, hermitian should be set
             True.
-        rcond (Tensor, optional): the tolerance value to determine
+        rcond (Tensor|float, optional): the tolerance value to determine
             when is a singular value zero. Default:1e-15.
         hermitian (bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.
-        name (str, optional): The default value is None. Normally there is no need for user to set this
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3664,7 +3939,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             return out_2
 
 
-def solve(x, y, name=None):
+def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
@@ -3681,7 +3956,7 @@ def solve(x, y, name=None):
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3722,8 +3997,13 @@ def solve(x, y, name=None):
 
 
 def triangular_solve(
-    x, y, upper=True, transpose=False, unitriangular=False, name=None
-):
+    x: Tensor,
+    y: Tensor,
+    upper: bool = True,
+    transpose: bool = False,
+    unitriangular: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Computes the solution of a system of equations with a triangular coefficient. `x` is coefficient matrix
     `y` is multiple right-hand sides of equations.
@@ -3751,7 +4031,7 @@ def triangular_solve(
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
         unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed
             to be 1 and not referenced from `x` . Default: False.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3810,7 +4090,9 @@ def triangular_solve(
         return out
 
 
-def cholesky_solve(x, y, upper=False, name=None):
+def cholesky_solve(
+    x: Tensor, y: Tensor, upper: bool = False, name: str | None = None
+) -> Tensor:
     r"""
     Solves a linear system of equations A @ X = B, given A's Cholesky factor matrix u and  matrix B.
 
@@ -3823,7 +4105,7 @@ def cholesky_solve(x, y, upper=False, name=None):
         y (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3867,7 +4149,9 @@ def cholesky_solve(x, y, upper=False, name=None):
         return out
 
 
-def eigvalsh(x, UPLO='L', name=None):
+def eigvalsh(
+    x: Tensor, UPLO: Literal['L', 'U'] = 'L', name: str | None = None
+) -> Tensor:
     """
     Computes the eigenvalues of a
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
@@ -3875,8 +4159,8 @@ def eigvalsh(x, UPLO='L', name=None):
     Args:
         x (Tensor): A tensor with shape :math:`[*, M, M]` , where * is zero or greater batch dimension. The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
-        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
+        UPLO(str, optional): Lower triangular part of a ('L', default) or the upper triangular part ('U').
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3902,7 +4186,7 @@ def eigvalsh(x, UPLO='L', name=None):
         if len(x.shape) < 2:
             raise ValueError(
                 "Input(input) only support >=2 tensor, but received "
-                "length of Input(input) is %s." % len(x.shape)
+                f"length of Input(input) is {len(x.shape)}."
             )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
@@ -3942,7 +4226,13 @@ def eigvalsh(x, UPLO='L', name=None):
         return out_value
 
 
-def lstsq(x, y, rcond=None, driver=None, name=None):
+def lstsq(
+    x: Tensor,
+    y: Tensor,
+    rcond: float | None = None,
+    driver: Literal['gels', 'gelsy', 'gelsd', 'gelss'] | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """
     Computes a solution to
     the least squares problem of a system of linear equations.
@@ -3956,8 +4246,8 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the
             machine precision of x_dtype.
         driver(str, optional): The default value is None. The name of LAPACK method to be used. For
-            CPU inputs the valid values are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only
-            valid driver is ‘gels’. If ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’
+            CPU inputs the valid values are 'gels', 'gelsy', 'gelsd, 'gelss'. For CUDA input, the only
+            valid driver is 'gels'. If ``driver`` is None, 'gelsy' is used for CPU inputs and 'gels'
             for CUDA inputs.
         name(str, optional): The default value is None. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -3968,9 +4258,9 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed
         when M > N and every matrix in ``x`` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor
         with shape ``(*)``, meaning the ranks of the matrices in ``x``, which is computed when ``driver`` in
-        (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with
+        ('gelsy', 'gelsd', 'gelss'), otherwise return an empty tensor. ``singular_values`` is a tensor with
         shape ``(*, min(M, N))``, meaning singular values of the matrices in ``x``, which is computed when
-        ``driver`` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
+        ``driver`` in ('gelsd', 'gelss'), otherwise return an empty tensor.
 
     Examples:
         .. code-block:: python
@@ -4121,7 +4411,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         return solution, residuals, rank, singular_values
 
 
-def corrcoef(x, rowvar=True, name=None):
+def corrcoef(x: Tensor, rowvar: bool = True, name: str | None = None) -> Tensor:
     """
 
     A correlation coefficient matrix indicate the correlation of each pair variables in the input matrix.
@@ -4139,7 +4429,7 @@ def corrcoef(x, rowvar=True, name=None):
 
         x (Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
         rowvar (bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True.
-        name (str, optional): Name of the output. It's used to print debug info for developers. Details: :ref:`api_guide_Name`. Default: None.
+        name (str|None, optional): Name of the output. It's used to print debug info for developers. Details: :ref:`api_guide_Name`. Default: None.
 
     Returns:
 
@@ -4162,7 +4452,7 @@ def corrcoef(x, rowvar=True, name=None):
     if len(x.shape) > 2 or len(x.shape) < 1:
         raise ValueError(
             "Input(x) only support N-D (1<=N<=2) tensor in corrcoef, but received "
-            "length of Input(input) is %s." % len(x.shape)
+            f"length of Input(input) is {len(x.shape)}."
         )
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'corrcoef')
 
@@ -4192,8 +4482,16 @@ def corrcoef(x, rowvar=True, name=None):
 
 
 def cdist(
-    x, y, p=2.0, compute_mode="use_mm_for_euclid_dist_if_necessary", name=None
-):
+    x: Tensor,
+    y: Tensor,
+    p: float = 2.0,
+    compute_mode: Literal[
+        'use_mm_for_euclid_dist_if_necessary',
+        'use_mm_for_euclid_dist',
+        'donot_use_mm_for_euclid_dist',
+    ] = "use_mm_for_euclid_dist_if_necessary",
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Compute the p-norm distance between each pair of the two collections of inputs.
@@ -4213,7 +4511,7 @@ def cdist(
             - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
 
             Default: ``use_mm_for_euclid_dist_if_necessary``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, the dtype is same as input tensor.
@@ -4247,7 +4545,7 @@ def cdist(
         raise ValueError(
             "The compute_mode should be 'use_mm_for_euclid_dist_if_necessary', "
             "'use_mm_for_euclid_dist' or 'donot_use_mm_for_euclid_dist', "
-            "but received compute_mode is %s." % compute_mode
+            f"but received compute_mode is {compute_mode}."
         )
 
     mode = 0
@@ -4261,12 +4559,12 @@ def cdist(
     x_shape = list(x.shape)
     assert len(x_shape) >= 2, (
         "The x must be at least 2-dimensional, "
-        "But received Input x's dimensional is %s.\n" % len(x_shape)
+        f"But received Input x's dimensional is {len(x_shape)}.\n"
     )
     y_shape = list(y.shape)
     assert len(y_shape) >= 2, (
         "The y must be at least 2-dimensional, "
-        "But received Input y's dimensional is %s.\n" % len(y_shape)
+        f"But received Input y's dimensional is {len(y_shape)}.\n"
     )
     assert x_shape[-1] == y_shape[-1], (
         "The x and y must have same last dimension, "
@@ -4274,8 +4572,7 @@ def cdist(
         f"Input y's last dimension is {y_shape[-1]}.\n"
     )
     assert p >= 0, (
-        "The p must be greater than or equal to 0, "
-        "But received p is %s.\n" % p
+        "The p must be greater than or equal to 0, " f"But received p is {p}.\n"
     )
 
     r1 = x.shape[-2]
@@ -4309,7 +4606,9 @@ def cdist(
     )
 
 
-def householder_product(x, tau, name=None):
+def householder_product(
+    x: Tensor, tau: Tensor, name: str | None = None
+) -> Tensor:
     r"""
 
     Computes the first n columns of a product of Householder matrices.
@@ -4322,7 +4621,7 @@ def householder_product(x, tau, name=None):
     Args:
         x (Tensor): A tensor with shape (*, m, n) where * is zero or more batch dimensions.
         tau (Tensor): A tensor with shape (*, k) where * is zero or more batch dimensions.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, the dtype is same as input tensor, the Q in QR decomposition.
@@ -4415,9 +4714,11 @@ def householder_product(x, tau, name=None):
                 Q = paddle.static.setitem(
                     Q,
                     (slice(None), slice(i, None)),
-                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
-                    if x.dtype in [paddle.complex128, paddle.complex64]
-                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                    (
+                        Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                        if x.dtype in [paddle.complex128, paddle.complex64]
+                        else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    ),
                 )
         return Q[:, :n]
 
@@ -4667,7 +4968,7 @@ def _matrix_uv_float64(mat_a, l1_norm, squarings, dtype):
     return u, v
 
 
-def matrix_exp(x, name=None):
+def matrix_exp(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Computes the matrix exponential of square matrices.
 
@@ -4682,7 +4983,7 @@ def matrix_exp(x, name=None):
 
     Args:
         x (Tensor): A tensor with shape :math:`(*, M, M)` where :math:`*` is zero or more batch dimensions. The data type should be one of float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, the shape and dtype are same as input tensor.
@@ -4819,8 +5120,13 @@ def matrix_exp(x, name=None):
 
 
 def histogramdd(
-    x, bins=10, ranges=None, density=False, weights=None, name=None
-):
+    x: Tensor,
+    bins: Tensor | list[int] | int = 10,
+    ranges: Sequence[float] | None = None,
+    density: bool = False,
+    weights: Tensor | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, list[Tensor]]:
     r"""
     Computes a multi-dimensional histogram of the values in a tensor.
 
@@ -4832,11 +5138,11 @@ def histogramdd(
 
     Args:
         x (Tensor): The input tensor.
-        bins (Tensor[], int[], or int): If Tensor[], defines the sequences of bin edges. If int[], defines the number of equal-width bins in each dimension. If int, defines the number of equal-width bins for all dimensions.
-        ranges (sequence of float, optional): Defines the leftmost and rightmost bin edges in each dimension. If is None, set the minimum and maximum as leftmost and rightmost edges for each dimension.
+        bins (list[Tensor], list[int], or int): If list[Tensor], defines the sequences of bin edges. If list[int], defines the number of equal-width bins in each dimension. If int, defines the number of equal-width bins for all dimensions.
+        ranges (sequence[float]|None, optional): Defines the leftmost and rightmost bin edges in each dimension. If is None, set the minimum and maximum as leftmost and rightmost edges for each dimension.
         density (bool, optional): If False (default), the result will contain the count (or total weight) in each bin. If True, each count (weight) is divided by the total count (total weight), then divided by the volume of its associated bin.
-        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin’s result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin's result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         N-dimensional Tensor containing the values of the histogram. ``bin_edges(Tensor[])``,  sequence of N 1D Tensors containing the bin edges.
@@ -5045,7 +5351,14 @@ def histogramdd(
     return (hist, edges)
 
 
-def ormqr(x, tau, y, left=True, transpose=False, name=None):
+def ormqr(
+    x: Tensor,
+    tau: Tensor,
+    y: Tensor,
+    left: bool = True,
+    transpose: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r'''
     Calculate the product of a normal matrix and a householder matrix.
     Compute the product of the matrix C (given by y) with dimensions (m, n) and a matrix Q,
@@ -5057,7 +5370,7 @@ def ormqr(x, tau, y, left=True, transpose=False, name=None):
         y (Tensor): Shape (\*m,n), where \* indicates that the length of the Tensor on axis 0 is 0 or greater, and its type is the same as input.
         left (bool, optional): Determines the order in which the matrix product operations are operated. If left is true, the order of evaluation is op(Q) \* y, otherwise, the order of evaluation is y \* op(Q). Default value: True.
         transpose (bool, optional): If true, the matrix Q is conjugated and transposed, otherwise, the conjugate transpose transformation is not performed. Default value: False.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor. Data type and dimension are equals with :attr:`y`.
@@ -5134,3 +5447,66 @@ def ormqr(x, tau, y, left=True, transpose=False, name=None):
     result = matmul(Q, y) if left else matmul(y, Q)
 
     return result
+
+
+def cholesky_inverse(
+    x: Tensor, upper: bool = False, name: str | None = None
+) -> Tensor:
+    r"""
+    Using the Cholesky factor `U` to calculate the inverse matrix of a symmetric positive definite matrix, returns the matrix `inv`.
+
+    If `upper` is `False`, `U` is lower triangular matrix:
+
+    .. math::
+
+        inv = (UU^{T})^{-1}
+
+    If `upper` is `True`, `U` is upper triangular matrix:
+
+    .. math::
+
+        inv = (U^{T}U)^{-1}
+
+    Args:
+        x (Tensor): A tensor of lower or upper triangular Cholesky decompositions of symmetric matrix with shape `[N, N]`.
+            The data type of the `x` should be one of ``float32``, ``float64``.
+        upper (bool, optional): If `upper` is `False`, `x` is lower triangular matrix, or is upper triangular matrix. Default: `False`.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor. Computes the inverse matrix.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # lower triangular matrix
+            >>> x = paddle.to_tensor([[3.,.0,.0], [5.,3.,.0], [-1.,1.,2.]])
+            >>> out = paddle.linalg.cholesky_inverse(x)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[ 0.61728382, -0.25925916,  0.22222219],
+             [-0.25925916,  0.13888884, -0.08333331],
+             [ 0.22222218, -0.08333331,  0.25000000]])
+
+            >>> # upper triangular matrix
+            >>> out = paddle.linalg.cholesky_inverse(x.T, upper=True)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[ 0.61728382, -0.25925916,  0.22222219],
+             [-0.25925916,  0.13888884, -0.08333331],
+             [ 0.22222218, -0.08333331,  0.25000000]])
+
+    """
+    if x.ndim != 2:
+        raise ValueError('The input tensor must be 2-dimensional')
+
+    if x.shape[0] != x.shape[1]:
+        raise ValueError('The input tensor must be square matrix')
+
+    if upper:
+        A = x.T @ x
+    else:
+        A = x @ x.T
+    return paddle.linalg.inv(A)

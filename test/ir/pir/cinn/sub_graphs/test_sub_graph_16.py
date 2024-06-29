@@ -115,6 +115,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[22, 28, 56, 56], dtype=paddle.float32),
         )
         self.net = LayerCase
+        self.with_train = False
 
     def set_flags(self):
         # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True

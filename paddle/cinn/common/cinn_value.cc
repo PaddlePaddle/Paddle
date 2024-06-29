@@ -18,7 +18,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 
 namespace ir {
@@ -128,23 +128,38 @@ bool CINNValue::is_tensor() const {
 }
 
 CINNValue::operator std::string() const {
-  CHECK_EQ(type_code_, TypeCode<std::string>());
+  PADDLE_ENFORCE_EQ(
+      type_code_,
+      TypeCode<std::string>(),
+      phi::errors::InvalidArgument("The type_code is not std::string."));
   return absl::any_cast<std::string>(shared_);
 }
 CINNValue::operator ir::Var() const {
-  CHECK_EQ(type_code_, TypeCode<ir::Var>());
+  PADDLE_ENFORCE_EQ(
+      type_code_,
+      TypeCode<ir::Var>(),
+      phi::errors::InvalidArgument("The type_code is not ir::Var."));
   return absl::any_cast<ir::Var>(shared_);
 }
 CINNValue::operator ir::Expr() const {
-  CHECK_EQ(type_code_, TypeCode<ir::Expr>());
+  PADDLE_ENFORCE_EQ(
+      type_code_,
+      TypeCode<ir::Expr>(),
+      phi::errors::InvalidArgument("The type_code is not ir::Expr."));
   return absl::any_cast<Expr>(shared_);
 }
 CINNValue::operator CINNValuePack() const {
-  CHECK_EQ(type_code_, TypeCode<CINNValuePack>());
+  PADDLE_ENFORCE_EQ(
+      type_code_,
+      TypeCode<CINNValuePack>(),
+      phi::errors::InvalidArgument("The type_code is not CINNValuePack."));
   return absl::any_cast<CINNValuePack>(shared_);
 }
 CINNValue::operator poly::StageMap() const {
-  CHECK_EQ(type_code(), TypeCode<poly::StageMap>());
+  PADDLE_ENFORCE_EQ(
+      type_code(),
+      TypeCode<poly::StageMap>(),
+      phi::errors::InvalidArgument("The type_code is not poly::StageMap."));
   return absl::any_cast<poly::StageMap>(shared_);
 }
 CINNValue::CINNValue(char *value)
@@ -181,11 +196,17 @@ CINNValuePack _CINNValuePack_::Make(const std::vector<CINNValue> &array) {
   return CINNValuePack(node);
 }
 CINNValue &_CINNValuePack_::operator[](int offset) {
-  CHECK_LT(offset, size());
+  PADDLE_ENFORCE_LT(
+      offset,
+      size(),
+      phi::errors::InvalidArgument("The offset is out of range."));
   return values_[offset];
 }
 const CINNValue &_CINNValuePack_::operator[](int offset) const {
-  CHECK_LT(offset, size());
+  PADDLE_ENFORCE_LT(
+      offset,
+      size(),
+      phi::errors::InvalidArgument("The offset is out of range."));
   return values_[offset];
 }
 void _CINNValuePack_::AddValue(const CINNValue &value) {

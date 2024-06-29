@@ -61,6 +61,17 @@
     func : acosh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : add_position_encoding_grad
+  forward: add_position_encoding (Tensor x, float alpha = 1.0f, float beta = 1.0f) -> Tensor (out)
+  args: (Tensor x, Tensor out_grad, float alpha = 1.0f, float beta = 1.0f)
+  output: Tensor (x_grad)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: add_position_encoding_grad
+    data_type: out_grad
+
 - backward_op : addmm_grad
   forward : addmm (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha, float beta)
@@ -70,6 +81,18 @@
     param : [input, x, y]
   kernel :
     func : addmm_grad
+
+- backward_op : affine_channel_grad
+  forward: affine_channel (Tensor x, Tensor scale, Tensor bias, str data_layout = "AnyLayout") -> Tensor (out)
+  args: (Tensor x, Tensor scale, Tensor bias, Tensor out_grad, str data_layout = "AnyLayout")
+  output: Tensor (x_grad), Tensor (scale_grad), Tensor (bias_grad)
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [x, scale, bias]
+  kernel:
+    func: affine_channel_grad
+    data_type: out_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : affine_grid_grad
   forward : affine_grid (Tensor input, IntArray output_shape={}, bool align_corners=true) -> Tensor(output)
@@ -199,6 +222,17 @@
   kernel :
     func : atanh_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : batch_fc_grad
+  forward : batch_fc (Tensor input, Tensor w, Tensor bias) -> Tensor(out)
+  args : (Tensor input, Tensor w, Tensor bias, Tensor out_grad)
+  output : Tensor(input_grad), Tensor(w_grad), Tensor(bias_grad)
+  infer_meta :
+    func : BatchFCGradInferMeta
+  kernel :
+    func : batch_fc_grad
+    data_type : out_grad
+  no_need_buffer : bias
 
 - backward_op : bce_loss_grad
   forward : bce_loss (Tensor input, Tensor label) -> Tensor(out)
@@ -643,6 +677,18 @@
     func : cumsum_grad
     data_type: x
   composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
+
+- backward_op : cvm_grad
+  forward: cvm (Tensor x, Tensor cvm, bool use_cvm = true) -> Tensor (out)
+  args: (Tensor x, Tensor cvm, Tensor out_grad, bool use_cvm = true)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: cvm_grad
+    data_type: out_grad
+  no_need_buffer: x
 
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
@@ -1400,6 +1446,17 @@
     func : heaviside_grad
     data_type : out_grad
 
+- backward_op : hinge_loss_grad
+  forward: hinge_loss(Tensor logits, Tensor labels) -> Tensor (loss)
+  args: (Tensor logits, Tensor labels, Tensor loss_grad)
+  output: Tensor (logits_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [logits]
+  kernel:
+    func: hinge_loss_grad
+    data_type: loss_grad
+
 - backward_op : hsigmoid_loss_grad
   forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
   args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, Tensor pre_out, Tensor out_grad, int num_classes, bool is_sparse)
@@ -1817,14 +1874,41 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : logsumexp_grad
-  forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  forward : logsumexp(Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int[] axis,  bool keepdim,  bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : logsumexp_grad
+
+- backward_op : lp_pool2d_grad
+  forward : lp_pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, float norm_type)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : lp_pool2d_grad
+    param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
+
+- backward_op : lstm_grad
+  forward: lstm (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
+    = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
+    str cell_activation = "tanh", str candidate_activation = "tanh") -> Tensor (hidden), Tensor (cell), Tensor (batch_gate), Tensor (batch_cell_pre_act)
+  args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, Tensor hidden, Tensor cell,
+    Tensor batch_gate, Tensor batch_cell_pre_act, Tensor hidden_grad, bool use_peepholes, bool is_reverse, bool is_test, str gate_activation,
+    str cell_activation, str candidate_activation)
+  output: Tensor(input_grad), Tensor(h0_grad), Tensor(c0_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta:
+    func: LSTMGradInferMeta
+    param: [input, h0, c0, weight, bias]
+  kernel:
+    func: lstm_grad
+    data_type: input
+  optional: h0, c0
 
 - backward_op : lu_grad
   forward : lu (Tensor x, bool pivot = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
@@ -1867,6 +1951,16 @@
     func : masked_select_grad
     data_type : x
   no_need_buffer : x
+
+- backward_op : match_matrix_tensor_grad
+  forward: match_matrix_tensor(Tensor x, Tensor y, Tensor w, int dim_t = 1) -> Tensor (out), Tensor (tmp)
+  args : (Tensor x, Tensor y, Tensor w, Tensor tmp, Tensor out_grad, int dim_t = 1)
+  output : Tensor (x_grad), Tensor (y_grad), Tensor (w_grad)
+  infer_meta :
+    func: GeneralTernaryGradInferMeta
+    param: [x, y, w]
+  kernel:
+    func: match_matrix_tensor_grad
 
 - backward_op : matrix_power_grad
   forward : matrix_power (Tensor x, int n) -> Tensor(out)
@@ -2279,15 +2373,15 @@
     data_type : x
 
 - backward_op : prod_grad
-  forward : prod (Tensor x, IntArray dims, bool keep_dim, bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims,  bool keep_dim, bool reduce_all)
+  forward : prod (Tensor x, IntArray axis, bool keepdim, bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis, bool keepdim, bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : prod_grad
-  composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
+  composite: prod_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : psroi_pool_grad
   forward : psroi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, int output_channels=1, float spatial_scale=1.0) -> Tensor(out)
@@ -2661,6 +2755,19 @@
     func: sequence_conv_grad
     data_type: out_grad
   optional: padding_data
+
+- backward_op : sequence_pool_grad
+  forward: sequence_pool(Tensor x, bool is_test = false, str pooltype = "AVERAGE", float pad_value = 0.0) -> Tensor (out), Tensor (max_index)
+  args: (Tensor x, Tensor max_index, Tensor out_grad, bool is_test, str pooltype, float pad_value)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: sequence_pool_grad
+    data_type: out_grad
+  optional: max_index
+  no_need_buffer: x
 
 - backward_op : set_value_with_tensor_grad
   forward: set_value_with_tensor (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes) -> Tensor(out)
@@ -3194,8 +3301,8 @@
     func : tensor_unfold_grad
 
 - backward_op : thresholded_relu_grad
-  forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float threshold)
+  forward : thresholded_relu (Tensor x, float threshold, float value) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float threshold, float value)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -3472,6 +3579,19 @@
     func: check_model_nan_inf
     data_type: out_grad
 
+- backward_op: im2sequence_grad
+  forward: im2sequence (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1}) -> Tensor (out)
+  args: (Tensor x, Tensor y, Tensor out_grad, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1})
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: im2sequence_grad
+  optional: y
+
 - backward_op: pyramid_hash_grad
   forward: pyramid_hash (Tensor x, Tensor w, Tensor white_list, Tensor black_list, int num_emb = 0,
     int space_len = 0, int pyramid_layer = 2, int rand_len = 0, float drop_out_percent
@@ -3490,6 +3610,16 @@
   kernel:
     func: pyramid_hash_grad
     data_type: w
+
+- backward_op: shuffle_batch_grad
+  forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+  args: (Tensor shuffle_idx, Tensor out_grad,int startup_seed=0)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: ShuffleBatchGradInferMeta
+  kernel:
+    func: shuffle_batch_grad
+    data_type : out_grad
 
 - backward_op: silu_double_grad
   forward: silu_grad (Tensor x, Tensor out, Tensor grad_out) -> Tensor(grad_x)

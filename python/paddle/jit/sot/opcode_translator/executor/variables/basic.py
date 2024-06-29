@@ -24,7 +24,7 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ....infer_meta import MetaInfo
+from ....infer_meta import MetaInfo, SymbolicInt
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
@@ -32,6 +32,7 @@ from ....utils import (
     ConstTypes,
     FallbackError,
     NameGenerator,
+    log,
     paddle_tensor_methods,
     printable,
 )
@@ -45,12 +46,12 @@ from ..guard import (
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
-from ..pycode_generator import PyCodeGen
 from ..tracker import (
     ConstTracker,
     DanglingTracker,
     DummyTracker,
     GetAttrTracker,
+    GetItemTracker,
     GetIterTracker,
     GlobalTracker,
     SymbolicOperationTracker,
@@ -60,6 +61,7 @@ from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
+    from ..pycode_generator import PyCodeGen
     from .callable import FunctionVariable
 
 
@@ -68,6 +70,8 @@ FP_DTYPE_ABBRS = {
     core.DataType.FLOAT64: "float64",
     core.DataType.FLOAT32: "float32",
     core.DataType.FLOAT16: "float16",
+    core.DataType.FLOAT8_E4M3FN: "float8_e4m3fn",
+    core.DataType.FLOAT8_E5M2: "float8_e5m2",
 }
 
 CP_DTYPE_ABBRS = {
@@ -89,6 +93,8 @@ DTYPE_ABBRS = {
     **INT_DTYPE_ABBRS,
     core.DataType.BOOL: "bool",
 }
+
+STATIC_DIM_FREQ_THRESHOLD = 5
 
 
 class ConstantVariable(VariableBase):
@@ -173,24 +179,6 @@ class ConstantVariable(VariableBase):
             self.graph,
             DummyTracker([self]),
         )
-
-    @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
-        if (
-            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-            and isinstance(self.value, int)
-            and self.tracker.need_guard()
-        ):
-            from ..executor_cache import OpcodeExecutorCache
-
-            frame_value_tracer = self.tracker.trace_value_from_frame()
-            symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
-            symbolic_inputs.setdefault(frame_value_tracer.inlined_expr, {})
-            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-            symbolic_input.setdefault(self.value, 0)
-            symbolic_input[self.value] += 1
-
-        return super().make_stringify_guard()
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -334,29 +322,54 @@ class TensorVariable(VariableBase):
 
     def __init__(
         self,
-        tensor: paddle.Tensor | MetaInfo,
+        meta: MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
-        if isinstance(tensor, paddle.Tensor):
-            self.value = None
-            self.meta = MetaInfo.from_tensor(tensor)
-        elif isinstance(tensor, MetaInfo):
-            self.value = None
-            self.meta = tensor
-        else:
-            raise InnerError(
-                f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
-            )
+        self.value = None
+        self.meta = meta
+        dynamic_axes: list[int] = []
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
+            dynamic_axes = self.analyse_dynamic_axes(tracker)
+        self.meta = self.meta.with_dynamic_axes(dynamic_axes)
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
 
+    def analyse_dynamic_axes(self, tracker: Tracker):
+        from ..executor_cache import OpcodeExecutorCache
+
+        shape_dims = (
+            self.shape.proxy.get_all()
+        )  # Trigger convert all shape dims to Variable
+        dynamic_axes = [
+            i
+            for i, dim in enumerate(shape_dims)
+            if isinstance(dim, SymbolicVariable)
+        ]
+        if dynamic_axes:
+            tracker_expr = tracker.trace_value_from_frame().inlined_expr
+            symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+                self.graph.pycode_gen._origin_code
+            )
+            log(
+                1,
+                f"Start analyse dynamic axes for {tracker.trace_value_from_frame().inlined_expr} in {self.graph.pycode_gen._origin_code}\n",
+            )
+            for key in symbolic_inputs:
+                if key.startswith(tracker_expr):
+                    log(1, f"  {key}: {symbolic_inputs[key]}\n")
+            log(
+                1,
+                f"  -> Tensor {tracker_expr} with dynamic axes {dynamic_axes}\n",
+            )
+        return dynamic_axes
+
     def __len__(self):
-        if self.meta.shape[0] == -1:
+        if isinstance(self.meta.shape[0], SymbolicInt):
             raise BreakGraphError(
-                "length of tensor variable with first dimension == -1"
+                "length of tensor variable with first dimension is dynamic shape causes graph break."
             )
         return self.meta.shape[0]
 
@@ -399,9 +412,13 @@ class TensorVariable(VariableBase):
     def make_stringify_guard(self) -> list[StringifyExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
+        else:
+            str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
         return [
             StringifyExpression(
-                f"MetaInfo.from_tensor({{}}).guard_str() == '{self.origin_meta.guard_str()}'",
+                f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
                 [frame_value_tracer],
                 union_free_vars(
                     {"MetaInfo": MetaInfo},
@@ -483,15 +500,17 @@ class TensorVariable(VariableBase):
 
     @tensor_property
     def shape(self):
-        if self.meta.is_dynamic_shape():
+        if (
+            not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and self.meta.is_dynamic_shape()
+        ):
             raise BreakGraphError(
                 f"Getting shape for a dynamic shape tensor causes graph break. shape = {self.meta.shape}"
             )
         from .container import ListVariable
 
-        return ListVariable(
-            self.meta.shape, self.graph, tracker=DummyTracker([self])
-        )
+        tracker = GetAttrTracker(self, "shape")
+        return ListVariable(self.meta.shape, self.graph, tracker=tracker)
 
     def numel(self):
         return self.size
@@ -500,7 +519,7 @@ class TensorVariable(VariableBase):
         if len(self.meta.shape) == 0:
             raise InnerError("len() of a 0-D tensor is wrong")
         first_dim = self.meta.shape[0]
-        if first_dim == -1:
+        if isinstance(first_dim, SymbolicInt):
             raise BreakGraphError(
                 "Getting len() for a dynamic shape tensor causes graph break."
             )
@@ -592,6 +611,11 @@ class TensorVariable(VariableBase):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.Tensor, MetaInfo)):
+            value = (
+                MetaInfo.from_tensor(value)
+                if isinstance(value, paddle.Tensor)
+                else value
+            )
             return TensorVariable(value, graph, tracker)
         return None
 
@@ -605,14 +629,14 @@ class SymbolicVariable(VariableBase):
 
     def __init__(
         self,
-        value: int | MetaInfo,
+        value: int | SymbolicInt | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
         if isinstance(value, MetaInfo):
-            self.value = None
+            self.value = SymbolicInt()
             self.meta = value
         else:
             self.value = value
@@ -623,7 +647,7 @@ class SymbolicVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         self.need_guard_value = True
-        if self.value is None:
+        if isinstance(self.value, SymbolicInt):
             assert isinstance(
                 self.tracker, SymbolicOperationTracker
             ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
@@ -637,6 +661,8 @@ class SymbolicVariable(VariableBase):
 
     def get_py_type(self):
         # TODO(zrr1999): not need to use value to get type
+        if isinstance(self.value, SymbolicInt):
+            return int
         return super().get_py_type()
 
     def get_symbol(self) -> Symbol:
@@ -663,7 +689,9 @@ class SymbolicVariable(VariableBase):
         from ..executor_cache import OpcodeExecutorCache
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
 
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
@@ -681,40 +709,90 @@ class SymbolicVariable(VariableBase):
             )
         ]
 
+    @staticmethod
+    def should_create_symbolic_variable(
+        value: Any, tracker: Tracker, symbolic_inputs: dict[str, dict[int, int]]
+    ):
+        tracker_expr = tracker.trace_value_from_frame().inlined_expr
+        symbolic_inputs.setdefault(tracker_expr, {})
+        for expr, symbolic_input in symbolic_inputs.items():
+            if tracker.match_expr(expr):
+                symbolic_input.setdefault(value, 0)
+                symbolic_input[value] += 1
+                if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
+                    return False
+                if len(symbolic_input.keys()) > 1:
+                    return True
+                return False
+        return False
+
+    @staticmethod
+    def find_tensor_shape_source(dim_tracker: Tracker):
+        from .container import ListVariable
+
+        if not isinstance(dim_tracker, GetItemTracker):
+            return None
+        if not isinstance(dim_tracker.container, ListVariable):
+            return None
+        if not isinstance(dim_tracker.container.tracker, GetAttrTracker):
+            return None
+        if dim_tracker.container.tracker.attr != "shape":
+            return None
+        if not isinstance(dim_tracker.container.tracker.obj, TensorVariable):
+            return None
+        tensor_var = dim_tracker.container.tracker.obj
+        shape_idx = dim_tracker.key
+        return tensor_var, shape_idx
+
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            return
-        if not isinstance(value, int):
-            return
-        if not tracker.need_guard():
-            return
+            return None
+        if isinstance(value, SymbolicInt):
+            tensor_shape_source_result = (
+                SymbolicVariable.find_tensor_shape_source(tracker)
+            )
+            assert tensor_shape_source_result is not None
+            tensor_var, shape_idx = tensor_shape_source_result
+            tensor_call_shape_var = graph.call_paddle_api(
+                paddle.shape, tensor_var
+            )
+            return graph.call_symbolic_method(
+                "__getitem__",
+                tensor_call_shape_var,
+                ConstantVariable.wrap_literal(shape_idx, graph),
+            )
+        if type(value) is not int:
+            return None
+        if not tracker.is_traceable():
+            return None
 
         from ..executor_cache import OpcodeExecutorCache
 
-        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            graph.pycode_gen._origin_code
+        )
 
-        for tracker_expr, symbolic_input in symbolic_inputs.items():
-            if tracker.match_expr(tracker_expr):
-                symbolic_input.setdefault(value, 0)
-                symbolic_input[value] += 1
-                # TODO(zrr1999): determine frequency
-                return SymbolicVariable(value, graph, tracker)
+        if SymbolicVariable.should_create_symbolic_variable(
+            value, tracker, symbolic_inputs
+        ):
+            return SymbolicVariable(value, graph, tracker)
         return None
 
 
 class ParameterVariable(TensorVariable):
     def __init__(
         self,
-        param: paddle.Tensor | MetaInfo,
+        meta: MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
-        super().__init__(param, graph, tracker)
+        super().__init__(meta, graph, tracker)
 
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.base.framework.EagerParamBase)):
+            value = MetaInfo.from_tensor(value)
             return ParameterVariable(value, graph, tracker)
         return None
 

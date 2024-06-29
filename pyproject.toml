@@ -42,6 +42,9 @@ select = [
     # Pyupgrade
     "UP",
 
+    # Flake8-pyi
+    "PYI",
+
     # NumPy-specific rules
     "NPY001",
     "NPY003",
@@ -82,6 +85,9 @@ select = [
     # Pygrep-hooks
     "PGH004",
 
+    # Flake8-type-checking
+    "TCH",
+
     # Ruff-specific rules
     "RUF100",
 ]
@@ -111,6 +117,10 @@ ignore = [
     "UP015",
     # It will cause the performance regression on python3.10
     "UP038",
+    # collections.namedtuple can be quickly created a inlined class
+    "PYI024",
+    # `__all__.append` is a common pattern in Paddle
+    "PYI056",
 ]
 
 [tool.ruff.lint.isort]
@@ -131,6 +141,8 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+# Ignore docstring in tensor.pyi
+"python/paddle/tensor/tensor.prototype.pyi" = ["PYI021", "PYI048"]
 
 [tool.mypy]
 python_version = "3.8"
@@ -145,6 +157,8 @@ check_untyped_defs = true
 follow_imports = "normal"
 # Miscellaneous
 warn_unused_configs = true
+# Disallow generic without type arguments
+disallow_any_generics = true
 # Configuring warnings
 warn_redundant_casts = true
 warn_unused_ignores = true

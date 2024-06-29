@@ -14,7 +14,6 @@
 
 import unittest
 
-import numpy
 import numpy as np
 from op import Operator
 from op_test import OpTest
@@ -1033,80 +1032,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
-
-
-class TestMultiTensorMomentumStatic(unittest.TestCase):
-    def _momentum_optimize_static(
-        self, place, use_amp=False, use_multi_tensor=False
-    ):
-        paddle.enable_static()
-        paddle.seed(10)
-        np.random.seed(10)
-        if place == 'cpu':
-            use_amp = False
-        exe = paddle.static.Executor(place=place)
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.Momentum(
-            multi_precision=use_amp, use_multi_tensor=use_multi_tensor
-        )
-        if use_amp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
-        with paddle.static.program_guard(train_program, startup_program):
-            if use_amp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16'
-                )
-            else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32'
-                )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer.minimize(loss)
-        exe.run(startup_program)
-        if use_amp:
-            optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
-            )
-            x = numpy.random.random(size=(2, 2)).astype('float16')
-        else:
-            x = numpy.random.random(size=(2, 2)).astype('float32')
-        out = []
-        for idx in range(5):
-            (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss]
-            )
-            out.append(loss_data)
-        return out
-
-    def _get_places(self):
-        places = ['cpu']
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
-    def _check_with_place_amp(self, place, use_amp):
-        output1 = self._momentum_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=True
-        )
-        output2 = self._momentum_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=False
-        )
-        for idx in range(len(output1)):
-            np.testing.assert_allclose(output1[idx], output2[idx], rtol=1e-05)
-
-    def test_main(self):
-        for place in self._get_places():
-            use_amp_list = [True, False]
-            for use_amp in use_amp_list:
-                self._check_with_place_amp(place, use_amp)
 
 
 if __name__ == "__main__":

@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
 
 from .. import core, framework
 from ..framework import convert_np_dtype_to_dtype_
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -63,7 +71,7 @@ def monkey_patch_math_tensor():
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
 
-    def astype(self, dtype):
+    def astype(self: Tensor, dtype: DTypeLike) -> Tensor:
         """
 
         Cast a Tensor to a specified data type.
@@ -91,16 +99,18 @@ def monkey_patch_math_tensor():
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(self, dtype)
 
-    def _scalar_elementwise_op_(var, scale, bias):
+    def _scalar_elementwise_op_(
+        var: Tensor, scale: float, bias: float
+    ) -> Tensor:
         if framework.in_dygraph_mode():
             return _C_ops.scale(var, float(scale), bias, True)
         else:
             return _legacy_C_ops.scale(var, 'scale', scale, 'bias', bias)
 
-    def _neg_(var):
+    def _neg_(var: Tensor) -> Tensor:
         return _scalar_elementwise_op_(var, -1.0, 0.0)
 
-    def _float_(var):
+    def _float_(var: Tensor) -> float:
         numel = np.prod(var.shape)
         assert (
             numel == 1
@@ -110,7 +120,7 @@ def monkey_patch_math_tensor():
             var = var.astype('float32')
         return float(np.array(var))
 
-    def _long_(var):
+    def _long_(var: Tensor) -> int:
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to long."
         assert var._is_initialized(), "variable's tensor is not initialized"
@@ -118,7 +128,7 @@ def monkey_patch_math_tensor():
             var = var.astype('float32')
         return int(np.array(var))
 
-    def _int_(var):
+    def _int_(var: Tensor) -> int:
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to int."
         assert var._is_initialized(), "variable's tensor is not initialized"
@@ -126,7 +136,7 @@ def monkey_patch_math_tensor():
             var = var.astype('float32')
         return int(np.array(var))
 
-    def _len_(var):
+    def _len_(var: Tensor) -> int:
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type == core.VarDesc.VarType.VOCAB:
             return len(var.value().get_map_tensor())
@@ -135,7 +145,7 @@ def monkey_patch_math_tensor():
         else:
             return var.shape[0]
 
-    def _index_(var):
+    def _index_(var: Tensor) -> int:
         numel = np.prod(var.shape)
         assert (
             numel == 1
@@ -146,21 +156,21 @@ def monkey_patch_math_tensor():
         return int(np.array(var))
 
     @property
-    def _ndim(var):
+    def _ndim(var: Tensor) -> int:
         return len(var.shape)
 
-    def ndimension(var):
+    def ndimension(var: Tensor) -> int:
         return len(var.shape)
 
-    def dim(var):
+    def dim(var: Tensor) -> int:
         return len(var.shape)
 
     @property
-    def _size_(var):
+    def _size_(var: Tensor) -> int:
         return int(np.prod(var.shape))
 
     @property
-    def _T_(var):
+    def _T_(var: Tensor) -> Tensor:
         if len(var.shape) == 1:
             return var
         perm = list(reversed(range(len(var.shape))))
