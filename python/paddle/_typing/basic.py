@@ -18,7 +18,6 @@ from typing import (
     Any,
     Dict,
     List,
-    Never,
     Sequence,
     Tuple,
     TypeVar,
@@ -27,7 +26,7 @@ from typing import (
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import TypeAlias
+from typing_extensions import Never, TypeAlias
 
 from .backport import EllipsisType
 
