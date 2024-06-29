@@ -585,7 +585,7 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
   // PrepareForCUDAGraphCapture(graph);
-  graph = member_->ApplyMemoryOptimizePass(graph);
+  // graph = member_->ApplyMemoryOptimizePass(graph);
 }
 
 void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
