@@ -31,7 +31,7 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Literal, TypeVar
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
@@ -39,10 +39,10 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import Size2, Size3, Size4
 
-    from ..image import _ImageDataType
     from .transforms import _InterpolationCv2, _InterpolationPil, _PaddingMode
 
     _ImageDataLayout = Literal['CHW', "HWC"]
+    _ImageDataType = TypeVar("_ImageDataType", Tensor, PILImage, npt.NDArray)
 
 __all__ = []
 
