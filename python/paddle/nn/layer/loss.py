@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable
 
 import paddle
@@ -25,6 +24,8 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import ParamAttrLike
 
