@@ -31,39 +31,47 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeVar
+    from typing import Literal, TypeGuard, TypeVar, Union
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
+    from typing_extensions import TypeAlias
 
     from paddle import Tensor
-    from paddle._typing import Size2, Size3, Size4
+    from paddle._typing import DataLayoutImage, Size2, Size3, Size4
 
-    from .transforms import _InterpolationCv2, _InterpolationPil, _PaddingMode
-
-    _ImageDataLayout = Literal['CHW', "HWC"]
-    _ImageDataType = TypeVar("_ImageDataType", Tensor, PILImage, npt.NDArray)
+    _InterpolationPil: TypeAlias = Literal[
+        "nearest", "bilinear", "bicubic", "lanczos", "hamming"
+    ]
+    _InterpolationCv2: TypeAlias = Literal[
+        "nearest", "bilinear", "area", "bicubic", "lanczos"
+    ]
+    _PaddingMode: TypeAlias = Literal[
+        "constant", "edge", "reflect", "symmetric"
+    ]
+    _ImageDataT = TypeVar("_ImageDataT", Tensor, PILImage, npt.NDArray[Any])
+    _ImageDataType = Union[Tensor, PILImage, npt.NDArray[Any]]
 
 __all__ = []
 
 
-def _is_pil_image(img):
+def _is_pil_image(img: _ImageDataType) -> TypeGuard[PILImage]:
     return isinstance(img, Image.Image)
 
 
-def _is_tensor_image(img):
+def _is_tensor_image(img: _ImageDataType) -> TypeGuard[Tensor]:
     """
     Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
     """
     return isinstance(img, (paddle.Tensor, Variable))
 
 
-def _is_numpy_image(img):
+def _is_numpy_image(img: _ImageDataType) -> TypeGuard[npt.NDArray[Any]]:
     return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
 
 
 def to_tensor(
-    pic: PILImage | npt.NDArray[Any], data_format: _ImageDataLayout = 'CHW'
+    pic: PILImage | npt.NDArray[Any], data_format: DataLayoutImage = 'CHW'
 ) -> Tensor:
     """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
 
@@ -117,10 +125,10 @@ def to_tensor(
 
 
 def resize(
-    img: _ImageDataType,
+    img: _ImageDataT,
     size: Size2,
     interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
-) -> _ImageDataType:
+) -> _ImageDataT:
     """
     Resizes the image to given size
 
@@ -177,11 +185,11 @@ def resize(
 
 
 def pad(
-    img: _ImageDataType,
+    img: _ImageDataT,
     padding: Size2 | Size4,
     fill: Size3 = 0,
     padding_mode: _PaddingMode = 'constant',
-) -> _ImageDataType:
+) -> _ImageDataT:
     """
     Pads the given PIL.Image or numpy.array or paddle.Tensor on all sides with specified padding mode and fill value.
 
@@ -246,8 +254,8 @@ def pad(
 
 
 def crop(
-    img: _ImageDataType, top: int, left: int, height: int, width: int
-) -> _ImageDataType:
+    img: _ImageDataT, top: int, left: int, height: int, width: int
+) -> _ImageDataT:
     """Crops the given Image.
 
     Args:
@@ -289,7 +297,7 @@ def crop(
         return F_cv2.crop(img, top, left, height, width)
 
 
-def center_crop(img: _ImageDataType, output_size: Size2) -> _ImageDataType:
+def center_crop(img: _ImageDataT, output_size: Size2) -> _ImageDataT:
     """Crops the given Image and resize it to desired size.
 
     Args:
@@ -327,7 +335,7 @@ def center_crop(img: _ImageDataType, output_size: Size2) -> _ImageDataType:
         return F_cv2.center_crop(img, output_size)
 
 
-def hflip(img: _ImageDataType) -> _ImageDataType:
+def hflip(img: _ImageDataT) -> _ImageDataT:
     """Horizontally flips the given Image or np.array or paddle.Tensor.
 
     Args:
@@ -364,7 +372,7 @@ def hflip(img: _ImageDataType) -> _ImageDataType:
         return F_cv2.hflip(img)
 
 
-def vflip(img: _ImageDataType) -> _ImageDataType:
+def vflip(img: _ImageDataT) -> _ImageDataT:
     """Vertically flips the given Image or np.array or paddle.Tensor.
 
     Args:
@@ -402,8 +410,8 @@ def vflip(img: _ImageDataType) -> _ImageDataType:
 
 
 def adjust_brightness(
-    img: _ImageDataType, brightness_factor: float
-) -> _ImageDataType:
+    img: _ImageDataT, brightness_factor: float
+) -> _ImageDataT:
     """Adjusts brightness of an Image.
 
     Args:
@@ -455,9 +463,7 @@ def adjust_brightness(
         return F_t.adjust_brightness(img, brightness_factor)
 
 
-def adjust_contrast(
-    img: _ImageDataType, contrast_factor: float
-) -> _ImageDataType:
+def adjust_contrast(img: _ImageDataT, contrast_factor: float) -> _ImageDataT:
     """Adjusts contrast of an Image.
 
     Args:
@@ -497,8 +503,8 @@ def adjust_contrast(
 
 
 def adjust_saturation(
-    img: _ImageDataType, saturation_factor: float
-) -> _ImageDataType:
+    img: _ImageDataT, saturation_factor: float
+) -> _ImageDataT:
     """Adjusts color saturation of an image.
 
     Args:
@@ -538,7 +544,7 @@ def adjust_saturation(
         return F_t.adjust_saturation(img, saturation_factor)
 
 
-def adjust_hue(img: _ImageDataType, hue_factor: float) -> _ImageDataType:
+def adjust_hue(img: _ImageDataT, hue_factor: float) -> _ImageDataT:
     """Adjusts hue of an image.
 
     The image hue is adjusted by converting the image to HSV and
@@ -619,7 +625,7 @@ def _get_affine_matrix(center, angle, translate, scale, shear):
 
 
 def affine(
-    img: _ImageDataType,
+    img: _ImageDataT,
     angle: float,
     translate: list[float] | tuple[float, float],
     scale: float,
@@ -627,7 +633,7 @@ def affine(
     interpolation: _InterpolationPil | _InterpolationCv2 = "nearest",
     fill: Size3 = 0,
     center: list[float] | tuple[float, float] | None = None,
-) -> _ImageDataType:
+) -> _ImageDataT:
     """Apply affine transformation on the image.
 
     Args:
@@ -753,13 +759,13 @@ def affine(
 
 
 def rotate(
-    img: _ImageDataType,
+    img: _ImageDataT,
     angle: float,
     interpolation: _InterpolationPil | _InterpolationCv2 = "nearest",
     expand: bool = False,
     center: list[float] | tuple[float, float] | None = None,
     fill: Size3 = 0,
-) -> _ImageDataType:
+) -> _ImageDataT:
     """Rotates the image by angle.
 
 
@@ -869,12 +875,12 @@ def _get_perspective_coeffs(startpoints, endpoints):
 
 
 def perspective(
-    img: _ImageDataType,
+    img: _ImageDataT,
     startpoints: list[list[int]],
     endpoints: list[list[int]],
     interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
     fill: Size3 = 0,
-) -> _ImageDataType:
+) -> _ImageDataT:
     """Perform perspective transform of the given image.
 
     Args:
@@ -932,9 +938,7 @@ def perspective(
         )
 
 
-def to_grayscale(
-    img: _ImageDataType, num_output_channels: int = 1
-) -> _ImageDataType:
+def to_grayscale(img: _ImageDataT, num_output_channels: int = 1) -> _ImageDataT:
     """Converts image to grayscale version of image.
 
     Args:
@@ -976,12 +980,12 @@ def to_grayscale(
 
 
 def normalize(
-    img: _ImageDataType,
+    img: _ImageDataT,
     mean: list[float] | tuple[float, float, float],
     std: list[float] | tuple[float, float, float],
-    data_format: _ImageDataLayout = 'CHW',
+    data_format: DataLayoutImage = 'CHW',
     to_rgb: bool = False,
-) -> _ImageDataType:
+) -> _ImageDataT:
     """Normalizes a tensor or image with mean and standard deviation.
 
     Args:
@@ -1022,14 +1026,14 @@ def normalize(
 
 
 def erase(
-    img: _ImageDataType,
+    img: _ImageDataT,
     i: int,
     j: int,
     h: int,
     w: int,
-    v: int,
+    v: npt.NDArray[Any] | Tensor,
     inplace: bool = False,
-) -> _ImageDataType:
+) -> _ImageDataT:
     """Erase the pixels of selected area in input image with given value.
 
     Args:

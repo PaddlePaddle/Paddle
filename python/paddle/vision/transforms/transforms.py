@@ -45,15 +45,12 @@ if TYPE_CHECKING:
     _TransformInputKeys: TypeAlias = Sequence[
         Literal["image", "coords", "boxes", "mask"]
     ]
-    _InterpolationPil: TypeAlias = Literal[
-        "nearest", "bilinear", "bicubic", "lanczos", "hamming"
-    ]
-    _InterpolationCv2: TypeAlias = Literal[
-        "nearest", "bilinear", "area", "bicubic", "lanczos"
-    ]
-    _PaddingMode: TypeAlias = Literal[
-        "constant", "edge", "reflect", "symmetric"
-    ]
+    from .functional import (
+        _InterpolationCv2,
+        _InterpolationPil,
+        _PaddingMode,
+    )
+
 
 _InputT = TypeVar(
     "_InputT", "Tensor", "PILImage", "npt.NDArray[Any]", contravariant=True
