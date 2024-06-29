@@ -916,8 +916,8 @@ void BatchNormInferMeta(const MetaTensor& x,
     check = false;
   }
 
-  if ((!config.is_runtime) &&
-      (contain_unknown_dim(scale.dims()) || contain_unknown_dim(bias.dims()))) {
+  if ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
+                               contain_unknown_dim(bias.dims()) || C == -1)) {
     check = false;
   }
 
