@@ -22,6 +22,7 @@ import numpy as np
 from PIL import Image
 
 import paddle
+from paddle._typing import unreached
 
 from ...base.framework import Variable
 from . import (
@@ -756,6 +757,8 @@ def affine(
         translate_f = [1.0 * t for t in translate]
         matrix = _get_affine_matrix(center_f, angle, translate_f, scale, shear)
         return F_t.affine(img, matrix, interpolation, fill)
+
+    unreached()
 
 
 def rotate(

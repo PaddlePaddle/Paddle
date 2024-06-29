@@ -18,6 +18,7 @@ from typing import (
     Any,
     Dict,
     List,
+    Never,
     Sequence,
     Tuple,
     TypeVar,
@@ -63,3 +64,7 @@ TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
 ParamAttrLike: TypeAlias = Union[
     "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
 ]
+
+
+def unreached() -> Never:
+    raise RuntimeError("Unreachable code path")
