@@ -67,4 +67,7 @@ ParamAttrLike: TypeAlias = Union[
 
 
 def unreached() -> Never:
+    """Mark a code path as unreachable.
+    Refer to https://typing.readthedocs.io/en/latest/source/unreachable.html#marking-code-as-unreachable
+    """
     raise RuntimeError("Unreachable code path")
