@@ -2088,7 +2088,7 @@ class DistModel:
         if len(feed_name_list) != len(data_list):
             raise ValueError(
                 "The input data and feed_list are not consistent."
-                "The model takes %s as input" % (str(feed_name_list))
+                f"The model takes {feed_name_list} as input"
             )
 
         def _to_lodtensor(tensor: paddle.Tensor):
