@@ -170,7 +170,7 @@ class Compose(_Transform[_InputT, _RetT]):
                 stack_info = traceback.format_exc()
                 print(
                     f"fail to perform transform [{f}] with error: "
-                    f"{e} and stack:\n{str(stack_info)}"
+                    f"{e} and stack:\n{stack_info!s}"
                 )
                 raise e
         return data

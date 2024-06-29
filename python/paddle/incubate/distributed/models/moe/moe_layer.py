@@ -395,7 +395,7 @@ class MoELayer(nn.Layer):
                 )
             else:
                 raise AssertionError(
-                    f"We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {str(gate)} gate."
+                    f"We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {gate} gate."
                 )
         elif isinstance(gate, NaiveGate):
             self.top_k = gate.top_k
