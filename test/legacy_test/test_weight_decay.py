@@ -94,7 +94,7 @@ class TestWeightDecay(unittest.TestCase):
                 main_prog, feed=feeder.feed(data), fetch_list=[loss.name]
             )
 
-            print(f"loss              {np.average(out)}")
+            print("loss              %s" % (np.average(out)))
             loss_set.append(np.average(out))
 
         return loss_set
