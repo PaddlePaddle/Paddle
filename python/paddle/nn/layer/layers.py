@@ -56,6 +56,7 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
 if TYPE_CHECKING:
+    from paddle._typing import ParamAttrLike
     from paddle.nn.initializer import Initializer
 
 
@@ -755,7 +756,7 @@ class Layer:
     def create_parameter(
         self,
         shape: ShapeLike,
-        attr: ParamAttr | None = None,
+        attr: ParamAttrLike | None = None,
         dtype: DTypeLike | None = None,
         is_bias: bool = False,
         default_initializer: Initializer | None = None,

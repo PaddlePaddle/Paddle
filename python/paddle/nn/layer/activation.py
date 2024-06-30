@@ -25,8 +25,7 @@ from .layers import Layer
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DataLayoutND
-    from paddle.base import ParamAttr
+    from paddle._typing import DataLayoutND, ParamAttrLike
 __all__ = []
 
 
@@ -489,7 +488,7 @@ class PReLU(Layer):
         self,
         num_parameters: int = 1,
         init: float = 0.25,
-        weight_attr: ParamAttr | None = None,
+        weight_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
         name: str | None = None,
     ) -> None:

@@ -863,30 +863,25 @@ def crop(
     def _attr_shape_check(shape_val):
         if not isinstance(shape_val, int):
             raise TypeError(
-                "Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: %s."
-                % type(shape_val)
+                f"Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: {type(shape_val)}."
             )
         if shape_val == 0:
             raise ValueError(
-                "Attr(shape) of Op(crop_tensor) should not be zero, but received: %s."
-                % str(shape_val)
+                f"Attr(shape) of Op(crop_tensor) should not be zero, but received: {shape_val}."
             )
         if shape_val < -1:
             raise ValueError(
-                "When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: %s."
-                % str(shape_val)
+                f"When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: {shape_val}."
             )
 
     def _attr_offsets_check(offset_val):
         if not isinstance(offset_val, int):
             raise TypeError(
-                "Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: %s."
-                % type(offset_val)
+                f"Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: {type(offset_val)}."
             )
         if offset_val < 0:
             raise ValueError(
-                "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
-                % str(offset_val)
+                f"Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: {offset_val}."
             )
 
     if in_pir_mode():
@@ -1020,8 +1015,7 @@ def fill_(x: Tensor, value: float) -> Tensor:
     """
     if not isinstance(value, (float, int)):
         raise TypeError(
-            "The type of 'value'  must be int or float, but received %s."
-            % (type(value))
+            f"The type of 'value'  must be int or float, but received {type(value)}."
         )
     return _C_ops.fill_(x, value)
 
@@ -1431,8 +1425,7 @@ def concat(
 
             assert len(input) == 1, (
                 "If the elements of 'input' in concat are Variable(LoDTensorArray), "
-                "number of the elements must be 1, but received %s."
-                % len(input)
+                f"number of the elements must be 1, but received {len(input)}."
             )
             out_index = helper.create_variable_for_type_inference(dtype="int32")
             helper.append_op(
@@ -2212,7 +2205,7 @@ def stack(
         if x[0].is_dense_tensor_array_type():
             assert len(x) == 1, (
                 "If the elements of 'x' in stack are Variable(LoDTensorArray), "
-                "number of the elements must be 1, but received %s." % len(x)
+                f"number of the elements must be 1, but received {len(x)}."
             )
             out, _ = _C_ops.array_to_tensor(x, axis, True)
             return out
@@ -2225,7 +2218,7 @@ def stack(
     if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, (
             "If the elements of 'x' in stack are Variable(LoDTensorArray), "
-            "number of the elements must be 1, but received %s." % len(x)
+            f"number of the elements must be 1, but received {len(x)}."
         )
         out_index = helper.create_variable_for_type_inference(dtype="int32")
 
@@ -2638,7 +2631,7 @@ def split(
         elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                "received %s." % (type(num_or_sections))
+                f"received {type(num_or_sections)}."
             )
 
         if isinstance(num_or_sections, int):
@@ -2657,7 +2650,7 @@ def split(
         if not isinstance(num_or_sections, (int, list, tuple)):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                "received %s." % (type(num_or_sections))
+                f"received {type(num_or_sections)}."
             )
         if isinstance(num_or_sections, int):
             assert num_or_sections > 0, 'num_or_sections must be than 0.'
@@ -3929,7 +3922,7 @@ def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
     """
     if not isinstance(axis, (int)):
         raise TypeError(
-            "The type of 'axis'  must be int, but received %s." % (type(axis))
+            f"The type of 'axis'  must be int, but received {type(axis)}."
         )
 
     if axis not in range(-input.ndim, input.ndim):
@@ -6391,7 +6384,7 @@ def put_along_axis(
     if in_dynamic_or_pir_mode():
         if convert_dtype(indices.dtype) not in ['int32', 'int64']:
             raise TypeError(
-                f"The data type of indices should be one of ['int32', 'int64'], but got {str(convert_dtype(indices.dtype))}"
+                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
             )
         return _C_ops.put_along_axis(
             arr, indices, values, axis, reduce, include_self
