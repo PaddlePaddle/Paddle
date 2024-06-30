@@ -4443,7 +4443,7 @@ class Block:
             error_clip = v.error_clip
             stop_gradient = v.stop_gradient
         else:
-            raise ValueError("unsupported var type: %s", type(v))
+            raise ValueError(f"unsupported var type: {type(v)}")
         orig_var_type = v.type
         self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
@@ -7701,8 +7701,7 @@ class EagerParamBase(core.eager.Tensor):
             self.stop_gradient = not trainable
         else:
             raise ValueError(
-                "The type of trainable MUST be bool, but the type is ",
-                type(trainable),
+                f"The type of trainable MUST be bool, but the type is {type(trainable)}"
             )
 
     def _create_init_op(self, block):
