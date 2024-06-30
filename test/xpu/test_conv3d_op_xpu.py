@@ -31,13 +31,13 @@ def conv3d_forward_naive(
 ):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+            f"Unknown Attr(padding_algorithm): '{padding_algorithm}'. "
             "It can only be 'SAME' or 'VALID'."
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
-            f"Unknown Attr(data_format): '{str(data_format)}' ."
+            f"Unknown Attr(data_format): '{data_format}' ."
             "It can only be 'NCDHW' or 'NDHWC'."
         )
 
