@@ -23,14 +23,6 @@ import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import (
-    DTypeLike,
-    NestedNumbericSequence,
-    Numberic,
-    PlaceLike,
-    ShapeLike,
-    TensorLike,
-)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -56,7 +48,15 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
-    from paddle._typing import ParamAttrLike
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumbericSequence,
+        Numberic,
+        ParamAttrLike,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 __all__ = []
 

@@ -1717,7 +1717,7 @@ class Completer:
                     continue
 
                 else:
-                    raise ValueError(f"got unexpected op [{str(grad_op.type)}]")
+                    raise ValueError(f"got unexpected op [{grad_op.type}]")
 
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr
@@ -1911,7 +1911,7 @@ class Completer:
                     )
                 else:
                     raise NotImplementedError(
-                        f"Backward Partial is not adapted for {str(grad_op)}"
+                        f"Backward Partial is not adapted for {grad_op}"
                     )
 
                 # resolute partial
@@ -2151,7 +2151,7 @@ class Completer:
                         grad_op, grad_op_dist_attr
                     )
                 else:
-                    raise ValueError(f"got unexpected op [{str(grad_op.type)}]")
+                    raise ValueError(f"got unexpected op [{grad_op.type}]")
 
     def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""

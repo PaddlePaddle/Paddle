@@ -27,7 +27,6 @@ from typing_extensions import Self
 
 import paddle
 from paddle import Tensor, nn, profiler
-from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -56,7 +55,7 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
 if TYPE_CHECKING:
-    from paddle._typing import ParamAttrLike
+    from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
     from paddle.nn.initializer import Initializer
 
 
@@ -280,9 +279,7 @@ class LayerObjectHelper(LayerHelperBase):
         if isinstance(act, str):
             act = {'type': act}
         else:
-            raise TypeError(
-                str(act) + " should be unicode or str in %s ", self.name
-            )
+            raise TypeError(f"{act} should be unicode or str in {self.name}")
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
@@ -2492,8 +2489,7 @@ class Layer:
             excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
-                "excluded_layers should be type nn.Layer or list, but got %s.",
-                type(excluded_layers).__name__,
+                f"excluded_layers should be type nn.Layer or list, but got {type(excluded_layers).__name__}.",
             )
 
         def layer_trans(layer):
@@ -2559,8 +2555,7 @@ class Layer:
             excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
-                "excluded_layers should be type nn.Layer or list, but got %s.",
-                type(excluded_layers).__name__,
+                f"excluded_layers should be type nn.Layer or list, but got {type(excluded_layers).__name__}.",
             )
 
         def layer_trans(layer):
@@ -2627,8 +2622,7 @@ class Layer:
             excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
-                "excluded_layers should be type nn.Layer or list, but got %s.",
-                type(excluded_layers).__name__,
+                f"excluded_layers should be type nn.Layer or list, but got {type(excluded_layers).__name__}.",
             )
 
         def layer_trans(layer):

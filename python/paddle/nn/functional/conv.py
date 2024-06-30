@@ -16,23 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-
-    from .common import _PaddingSizeMode
-
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
-from paddle._typing import (
-    DataLayout1D,
-    DataLayout2D,
-    DataLayout3D,
-    DataLayoutND,
-    Size1,
-    Size2,
-    Size3,
-    Size4,
-    Size6,
-)
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -54,6 +38,23 @@ from ...utils import (
     _is_symmetric_padding,
     convert_to_list,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+        Size1,
+        Size2,
+        Size3,
+        Size4,
+        Size6,
+    )
+
+    from .common import _PaddingSizeMode
+
 
 __all__ = []
 
