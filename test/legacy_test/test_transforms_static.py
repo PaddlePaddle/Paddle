@@ -45,6 +45,7 @@ class TestTransformUnitTestBase(unittest.TestCase):
 
     def dynamic_transform(self):
         paddle.seed(SEED)
+
         img_t = paddle.to_tensor(self.img)
         return self.api(img_t)
 
