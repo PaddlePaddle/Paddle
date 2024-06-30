@@ -28,6 +28,7 @@ from .basic import (
     TensorIndex as TensorIndex,
     TensorLike as TensorLike,
     TensorOrTensors as TensorOrTensors,
+    unreached as unreached,
 )
 
 # Device

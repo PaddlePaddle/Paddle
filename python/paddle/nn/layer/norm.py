@@ -66,7 +66,7 @@ if TYPE_CHECKING:
         DTypeLike,
         ShapeLike,
     )
-    from paddle.nn import Layer
+
 
 __all__ = []
 

@@ -516,8 +516,7 @@ def amp_guard(
             or tracer._expected_place.is_custom_place()
         ):
             warnings.warn(
-                'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
-                % tracer._expected_place
+                f'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is {tracer._expected_place}, so it makes no effect.'
             )
             enable = False
         if enable:
@@ -873,8 +872,7 @@ def amp_decorate(
     if save_dtype is not None:
         if save_dtype not in ['float16', 'bfloat16', 'float32', 'float64']:
             raise ValueError(
-                "save_dtype can only be float16 float32 or float64, but your input save_dtype is %s."
-                % save_dtype
+                f"save_dtype can only be float16 float32 or float64, but your input save_dtype is {save_dtype}."
             )
         for idx in range(len(models)):
             for layer in models[idx].sublayers(include_self=True):

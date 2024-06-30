@@ -20,14 +20,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import (
-    DTypeLike,
-    NestedList,
-    NestedSequence,
-    Numberic,
-    ShapeLike,
-    TensorOrTensors,
-)
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -51,6 +43,14 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import (
+        DTypeLike,
+        NestedList,
+        NestedSequence,
+        Numberic,
+        ShapeLike,
+        TensorOrTensors,
+    )
 
 __all__ = []
 
