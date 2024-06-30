@@ -21,7 +21,6 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
-#include "paddle/fluid/distributed/collective/async_load.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -51,6 +50,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
+#endif
+
+#if defined(PADDLE_WITH_GPU)
+#include "paddle/fluid/distributed/collective/async_load.h"
 #endif
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
@@ -125,50 +128,6 @@ void BindDistributed(py::module *m) {
       .def("synchronize",
            &distributed::AsyncLoad::Task::Synchronize,
            py::call_guard<py::gil_scoped_release>());
-
-  auto AsyncLoad =
-      py::class_<distributed::AsyncLoad>(*m, "AsyncLoad")
-          .def(py::init<>())
-          .def(
-              "offload",
-              [](distributed::AsyncLoad &self,
-                 py::handle py_dst_tensor,
-                 py::handle py_src_tensor) {
-                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
-                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    dst_tensor.impl());
-                auto *dst_dense = p_dst_tensor.get();
-
-                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
-                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    src_tensor.impl());
-                auto src_dense = *p_src_tensor;
-
-                return self.Offload(dst_dense, src_dense);
-              },
-              py::arg("dst"),
-              py::arg("src"),
-              py::call_guard<py::gil_scoped_release>())
-          .def(
-              "reload",
-              [](distributed::AsyncLoad &self,
-                 py::handle py_dst_tensor,
-                 py::handle py_src_tensor) {
-                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
-                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    dst_tensor.impl());
-                auto *dst_dense = p_dst_tensor.get();
-
-                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
-                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    src_tensor.impl());
-                auto src_dense = *p_src_tensor;
-
-                return self.Reload(dst_dense, src_dense);
-              },
-              py::arg("dst"),
-              py::arg("src"),
-              py::call_guard<py::gil_scoped_release>());
 
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
@@ -1426,6 +1385,52 @@ void BindDistributed(py::module *m) {
       .def_static("destroy",
                   distributed::ProcessGroupIdMap::DestroyProcessGroup,
                   py::call_guard<py::gil_scoped_release>());
+
+#if defined(PADDLE_WITH_GPU)
+  auto AsyncLoad =
+      py::class_<distributed::AsyncLoad>(*m, "AsyncLoad")
+          .def(py::init<>())
+          .def(
+              "offload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Offload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "reload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Reload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>());
+#endif
 }
 
 }  // end namespace pybind
