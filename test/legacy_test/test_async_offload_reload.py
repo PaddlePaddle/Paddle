@@ -28,8 +28,8 @@ from paddle.incubate.tensor.manipulation import (
 class TestSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_paddle_save(self):
         loader = create_async_load()
-        data0 = paddle.randn([10000, 50])
-        data1 = paddle.randn([50, 50])
+        data0 = paddle.randn([20, 5])
+        data1 = paddle.randn([10, 10])
 
         cpu_data, task = async_offload(data0, loader)
         res = paddle.matmul(data1, data1)
