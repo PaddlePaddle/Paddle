@@ -8,13 +8,6 @@ cc_library(
   SRCS reducer.cc
   DEPS eager_api process_group phi common string_helper)
 
-if(WITH_GPU AND NOT WIN32)
-  cc_library(
-    async_load
-    SRCS async_load.cc
-    DEPS device_context place ${DEVICE_EVENT_LIBS})
-endif()
-
 if(WITH_DISTRIBUTE)
   cc_library(
     process_group_gloo
@@ -34,6 +27,12 @@ if(WITH_NCCL OR WITH_RCCL)
          collective_helper
          device_context
          ${DEVICE_EVENT_LIBS})
+
+  cc_library(
+    async_load
+    SRCS async_load.cc
+    DEPS device_context place ${DEVICE_EVENT_LIBS})
+
 endif()
 
 if(WITH_XPU_BKCL)
