@@ -13,11 +13,20 @@
 # limitations under the License.
 
 import unittest
+from distutils.version import LooseVersion
 
 import numpy as np
 
 import paddle
 from paddle.pir_utils import test_with_pir_api
+
+
+def get_ref_api():
+    return (
+        np.trapezoid
+        if LooseVersion(np.__version__) >= LooseVersion('2.0.0')
+        else np.trapz
+    )
 
 
 class TestTrapezoidAPI(unittest.TestCase):
@@ -38,7 +47,7 @@ class TestTrapezoidAPI(unittest.TestCase):
             )
 
     def set_api(self):
-        self.ref_api = np.trapz
+        self.ref_api = get_ref_api()
         self.paddle_api = paddle.trapezoid
 
     def setUp(self):
@@ -227,7 +236,7 @@ class TestTrapezoidError(unittest.TestCase):
 class Testfp16Trapezoid(TestTrapezoidAPI):
     def set_api(self):
         self.paddle_api = paddle.trapezoid
-        self.ref_api = np.trapz
+        self.ref_api = get_ref_api()
 
     @test_with_pir_api
     def test_fp16_with_gpu(self):

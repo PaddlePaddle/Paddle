@@ -419,6 +419,15 @@ void IdentityLossGradInferMeta(const MetaTensor& x,
                                const int reduction,
                                MetaTensor* x_grad);
 
+void Im2sequenceInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const std::vector<int>& kernels,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& out_stride,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,

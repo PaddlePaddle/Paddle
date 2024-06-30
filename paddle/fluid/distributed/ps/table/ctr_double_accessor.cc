@@ -18,8 +18,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int CtrDoubleAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
@@ -385,5 +384,4 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
   return str_len + 2;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

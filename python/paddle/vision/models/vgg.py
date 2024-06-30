@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
-    Any,
     Literal,
     TypedDict,
 )
@@ -31,10 +30,9 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.nn import Layer, Sequential
 
-
-class _VGGOptions(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
+    class _VGGOptions(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
 
 
 __all__ = []
@@ -84,6 +82,9 @@ class VGG(nn.Layer):
             [1, 1000]
     """
 
+    num_classes: int
+    with_pool: bool
+
     def __init__(
         self, features: Layer, num_classes: int = 1000, with_pool: bool = True
     ) -> None:
@@ -120,7 +121,7 @@ class VGG(nn.Layer):
 
 
 def make_layers(
-    cfg: dict[str, list[Any]], batch_norm: bool = False
+    cfg: list[int | Literal['M']], batch_norm: bool = False
 ) -> Sequential:
     layers = []
     in_channels = 3
@@ -138,68 +139,35 @@ def make_layers(
 
 
 cfgs = {
-    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'A': [
+        64, 'M',
+        128, 'M',
+        256, 256, 'M',
+        512, 512, 'M',
+        512, 512, 'M',
+    ],
     'B': [
-        64,
-        64,
-        'M',
-        128,
-        128,
-        'M',
-        256,
-        256,
-        'M',
-        512,
-        512,
-        'M',
-        512,
-        512,
-        'M',
+        64, 64, 'M',
+        128, 128, 'M',
+        256, 256, 'M',
+        512, 512, 'M',
+        512, 512, 'M',
     ],
     'D': [
-        64,
-        64,
-        'M',
-        128,
-        128,
-        'M',
-        256,
-        256,
-        256,
-        'M',
-        512,
-        512,
-        512,
-        'M',
-        512,
-        512,
-        512,
-        'M',
+        64, 64, 'M',
+        128, 128, 'M',
+        256, 256, 256, 'M',
+        512, 512, 512, 'M',
+        512, 512, 512, 'M',
     ],
     'E': [
-        64,
-        64,
-        'M',
-        128,
-        128,
-        'M',
-        256,
-        256,
-        256,
-        256,
-        'M',
-        512,
-        512,
-        512,
-        512,
-        'M',
-        512,
-        512,
-        512,
-        512,
-        'M',
+        64, 64, 'M',
+        128, 128, 'M',
+        256, 256, 256, 256, 'M',
+        512, 512, 512, 512, 'M',
+        512, 512, 512, 512, 'M',
     ],
-}
+}  # fmt: skip
 
 
 def _vgg(

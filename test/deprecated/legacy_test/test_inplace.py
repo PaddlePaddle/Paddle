@@ -812,7 +812,7 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
         var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
         with self.assertRaisesRegex(
             TypeError,
-            'y must be scalar type, but received: %s ' % (type([2])),
+            f'y must be scalar type, but received: {type([2])} ',
         ):
             paddle.pow_(var, [2])
 

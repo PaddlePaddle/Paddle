@@ -133,66 +133,80 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
 
   framework::CINNCompute reduction_compute([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name
-                         << " compute is empty! Please check.";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of %s compute is empty! Please check.",
+            op_name));
     CINNValuePack arg_packs = args[0];
-    CHECK_EQ(arg_packs.size(), 2U)
-        << "There should be 2 input args for " << op_name << " compute";
-    CHECK(arg_packs[1].is_string());
+    PADDLE_ENFORCE_EQ(
+        arg_packs.size(),
+        2U,
+        phi::errors::InvalidArgument(
+            "There should be 2 input args for %s compute", op_name));
+    PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The arg_packs[1] is not empty! Please check."));
     std::string tensor_name = arg_packs[1].operator std::string();
     Expr x_expr = arg_packs[0];
-    CHECK(x_expr.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The x_expr can not as tensor! Please check."));
     ir::Tensor x = x_expr.as_tensor_ref();
 
     std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
                                                       "reduce_any"};
-    CHECK(!bool_reduce_op.count(op_name) || x->type().is_bool())
-        << "The type of input argument " << x->name << " of " << op_name
-        << " should be bool, but get " << x->type() << "! Please check.";
+    PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The type of input argument %s of %s should be bool, "
+                          "but get %s! Please check.",
+                          x->name,
+                          op_name,
+                          x->type().to_string()));
 
     const auto &NaiveCompute = [&]() {
       VLOG(3) << "Do Reduce Compute!";
       auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
-      auto stages = CreateStages({out});
 
-      std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+      std::vector<CINNValue> cinn_values{CINNValue(out)};
       *ret = CINNValuePack{cinn_values};
     };
-    target.arch.Match(
-        [&](common::NVGPUArch) {
-          if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
-            if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
-              VLOG(3) << "Do Two Step Block Reduce Compute!";
-              auto res = gpu_reduce_with_last_axis_func(
-                  x, reduce_axes, keepdim, tensor_name);
-              auto stages = CreateStages(res);
+    auto reductionComputeNvHygon = [&] {
+      if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
+        if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
+          VLOG(3) << "Do Two Step Block Reduce Compute!";
+          auto res = gpu_reduce_with_last_axis_func(
+              x, reduce_axes, keepdim, tensor_name);
 
-              std::vector<CINNValue> cinn_values;
-              for (auto &t : res) {
-                cinn_values.emplace_back(t);
-              }
-              cinn_values.emplace_back(stages);
-              *ret = CINNValuePack{cinn_values};
-            } else {
-              VLOG(3) << "Do Block Shuffle Reduce Compute!";
-              auto res = gpu_reduce_without_last_axis_func(
-                  x, reduce_axes, keepdim, tensor_name);
-              auto stages = CreateStages(res);
-
-              std::vector<CINNValue> cinn_values;
-              for (auto &t : res) {
-                cinn_values.emplace_back(t);
-              }
-              cinn_values.emplace_back(stages);
-              *ret = CINNValuePack{cinn_values};
-            }
-          } else {
-            NaiveCompute();
+          std::vector<CINNValue> cinn_values;
+          for (auto &t : res) {
+            cinn_values.emplace_back(t);
           }
-        },
+          *ret = CINNValuePack{cinn_values};
+        } else {
+          VLOG(3) << "Do Block Shuffle Reduce Compute!";
+          auto res = gpu_reduce_without_last_axis_func(
+              x, reduce_axes, keepdim, tensor_name);
+
+          std::vector<CINNValue> cinn_values;
+          for (auto &t : res) {
+            cinn_values.emplace_back(t);
+          }
+          *ret = CINNValuePack{cinn_values};
+        }
+      } else {
+        NaiveCompute();
+      }
+    };
+    target.arch.Match(
+        [&](common::NVGPUArch) { reductionComputeNvHygon(); },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) { NaiveCompute(); });
+                         common::ARMArch>) { NaiveCompute(); },
+        [&](common::HygonDCUArchHIP) { reductionComputeNvHygon(); });
   });
 
   framework::CINNSchedule reduction_schedule([=](lang::Args args,
@@ -347,6 +361,15 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
                           *ret = CINNValuePack{res};
                         }
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        if (!FLAGS_cinn_new_group_scheduler) {
+                          ReduceSchedule();
+                        } else {
+                          std::vector<CINNValue> res{
+                              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                          *ret = CINNValuePack{res};
+                        }
                       });
   });
 
@@ -431,9 +454,8 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
 
         VLOG(3) << "Do Reduce Compute!";
         auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
-        auto stages = CreateStages({out});
 
-        std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> cinn_values{CINNValue(out)};
         *ret = CINNValuePack{cinn_values};
       });
 

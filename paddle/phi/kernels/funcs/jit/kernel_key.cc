@@ -17,8 +17,7 @@
 #include <xxhash.h>  // XXH64: 13.8 GB/s
 #include <array>
 
-namespace phi {
-namespace jit {
+namespace phi::jit {
 
 template <>
 int64_t JitCodeKey<int>(const int& d) {
@@ -71,5 +70,4 @@ int64_t JitCodeKey<adam_attr_t>(const adam_attr_t& attr) {
   return static_cast<int64_t>(attr.beta1 + attr.beta2);
 }
 
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit

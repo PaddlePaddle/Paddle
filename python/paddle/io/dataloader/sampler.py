@@ -45,6 +45,7 @@ class Sampler:
 
         .. code-block:: python
 
+            >>> import numpy as np
             >>> from paddle.io import Dataset, Sampler
 
             >>> class RandomDataset(Dataset):
@@ -111,6 +112,7 @@ class SequenceSampler(Sampler):
 
         .. code-block:: python
 
+            >>> import numpy as np
             >>> from paddle.io import Dataset, SequenceSampler
 
             >>> class RandomDataset(Dataset):

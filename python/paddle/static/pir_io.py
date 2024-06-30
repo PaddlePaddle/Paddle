@@ -163,8 +163,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
     """
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `paddle.static.Program`, but received `{type(program)}`"
         )
 
     total_ops = program.global_block().ops
@@ -266,8 +265,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `paddle.static.Program`, but received `{type(program)}`"
         )
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
@@ -482,8 +480,7 @@ def load_vars_pir(
 
         if not isinstance(main_program, paddle.static.Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is paddle.static.Program, but received {type(main_program)}"
             )
         param, opt = get_pir_parameters(main_program)
         vars = param + opt
@@ -503,8 +500,7 @@ def load_vars_pir(
 
         if not isinstance(main_program, paddle.static.Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is paddle.static.Program, but received {type(main_program)}"
             )
 
         # TODO(chenzhiyang):save origin param shape, check vars

@@ -257,6 +257,11 @@ void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  MetaTensor* out,
                                  MetaTensor* out_scale);
 
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out);
+
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
                           DataType dtype,
@@ -345,6 +350,12 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             bool hard,
                             int axis,
                             MetaTensor* out);
+
+void HashInferMeta(const MetaTensor& x,
+                   int num_hash,
+                   int64_t mod_by,
+                   MetaTensor* out);
+
 void HistogramInferMeta(
     const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
 
