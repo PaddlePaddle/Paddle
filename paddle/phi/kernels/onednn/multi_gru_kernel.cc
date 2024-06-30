@@ -603,8 +603,8 @@ class MultiGRUHandler {
   template <typename Tout>
   void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer UNUSED) {
     auto* data = mem->get_data_handle();
-    auto* hidden_data =
-        phi::funcs::to_void_cast(hidden_->mutable_data<Tout>(place_));
+    auto tmp = dev_ctx_.Alloc<Tout>(hidden_);
+    auto* hidden_data = phi::funcs::to_void_cast(tmp);
 
     if (isNTC(gru_pds_[{layers_ - 1, L2R}]->dst_desc())) {
       reorderNTCtoPP(data, hidden_data, layers_ - 1);
