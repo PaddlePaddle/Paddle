@@ -21,10 +21,9 @@ template <typename T, typename Context>
 void ShareDataKernel(const Context &dev_ctx,
                      const SelectedRows &x,
                      SelectedRows *out) {
-  const auto &origin_selected_rows = x;
-  auto *detach_selected_rows = out;
-  detach_selected_rows->mutable_value()->ShareDataWith(
-      origin_selected_rows.value());
+  out->set_rows(x.rows());
+  out->set_height(x.height());
+  out->mutable_value()->ShareDataWith(x.value());
 }
 }  // namespace sr
 }  // namespace phi
