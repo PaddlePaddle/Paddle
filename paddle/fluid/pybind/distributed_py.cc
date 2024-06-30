@@ -116,16 +116,6 @@ void BindDistributed(py::module *m) {
       .def(py::init<>())
       .def_readwrite("root_rank", &distributed::GatherOptions::root_rank);
 
-  py::class_<distributed::AsyncLoad::Task,
-             std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
-      .def("is_completed", &distributed::AsyncLoad::Task::IsCompleted)
-      .def("wait",
-           &distributed::AsyncLoad::Task::Synchronize,
-           py::call_guard<py::gil_scoped_release>())
-      .def("synchronize",
-           &distributed::AsyncLoad::Task::Synchronize,
-           py::call_guard<py::gil_scoped_release>());
-
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
@@ -1263,6 +1253,16 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);
+
+  py::class_<distributed::AsyncLoad::Task,
+             std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
+      .def("is_completed", &distributed::AsyncLoad::Task::IsCompleted)
+      .def("wait",
+           &distributed::AsyncLoad::Task::Synchronize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("synchronize",
+           &distributed::AsyncLoad::Task::Synchronize,
+           py::call_guard<py::gil_scoped_release>());
 
   auto AsyncLoad =
       py::class_<distributed::AsyncLoad>(*m, "AsyncLoad")
