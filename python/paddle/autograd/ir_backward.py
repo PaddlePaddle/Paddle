@@ -1216,7 +1216,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         for i, param in enumerate(parameter_list):
             check_type(
                 param,
-                'parameter_list[%s]' % i,
+                f'parameter_list[{i}]',
                 paddle.pir.Value,
                 'base.backward.append_backward',
             )
