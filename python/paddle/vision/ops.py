@@ -38,8 +38,8 @@ from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
 if TYPE_CHECKING:
-    from paddle import ParamAttr, Tensor, nn
-    from paddle._typing import Size2, Size4
+    from paddle import Tensor, nn
+    from paddle._typing import ParamAttrLike, Size2, Size4
     from paddle.nn.functional.common import _PaddingSizeMode
 
 __all__ = [
@@ -1107,11 +1107,11 @@ class DeformConv2D(Layer):
         kernel_size: Size2,
         stride: Size2 = 1,
         padding: _PaddingSizeMode | Size2 | Size4 | str = 0,
-        dilation: int | list | tuple = 1,
+        dilation: Size2 = 1,
         deformable_groups: int = 1,
         groups: int = 1,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
     ) -> None:
         super().__init__()
         assert (
