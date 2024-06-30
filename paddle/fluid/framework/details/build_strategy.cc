@@ -62,9 +62,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 #endif
 
-    // AppendPassWithCheck(strategy_.enable_sequential_execution_,
-    //                     "sequential_execution_pass");
-    // AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
+    AppendPassWithCheck(strategy_.enable_sequential_execution_,
+                        "sequential_execution_pass");
+    AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
