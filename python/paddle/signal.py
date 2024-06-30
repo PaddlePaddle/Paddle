@@ -27,6 +27,8 @@ from .tensor.attribute import is_complex
 if TYPE_CHECKING:
     from paddle import Tensor
 
+    _SignalAxes = Literal[0, -1]
+
 __all__ = [
     'stft',
     'istft',
@@ -37,7 +39,7 @@ def frame(
     x: Tensor,
     frame_length: int,
     hop_length: int,
-    axis: int = -1,
+    axis: _SignalAxes = -1,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -157,7 +159,7 @@ def frame(
 
 
 def overlap_add(
-    x: Tensor, hop_length: int, axis: int = -1, name: str | None = None
+    x: Tensor, hop_length: int, axis: _SignalAxes = -1, name: str | None = None
 ) -> Tensor:
     """
     Reconstructs a tensor consisted of overlap added sequences from input frames.
