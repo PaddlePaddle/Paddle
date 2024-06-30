@@ -151,7 +151,7 @@ class Metric(metaclass=abc.ABCMeta):
         )
 
     @abc.abstractmethod
-    def accumulate(self) -> None:
+    def accumulate(self) -> Any:
         """
         Accumulates statistics, computes and returns the metric value
         """
@@ -160,7 +160,7 @@ class Metric(metaclass=abc.ABCMeta):
         )
 
     @abc.abstractmethod
-    def name(self) -> None:
+    def name(self) -> str:
         """
         Returns metric name
         """
@@ -325,7 +325,7 @@ class Accuracy(Metric):
         self.total = [0.0] * len(self.topk)
         self.count = [0] * len(self.topk)
 
-    def accumulate(self) -> None:
+    def accumulate(self) -> list[float]:
         """
         Computes and returns the accumulated metric.
         """
@@ -428,8 +428,8 @@ class Precision(Metric):
 
     def update(
         self,
-        preds: npt.NDArray[np.float32 | np.float64],
-        labels: npt.NDArray[np.int32 | np.int64],
+        preds: npt.NDArray[np.float32 | np.float64] | Tensor,
+        labels: npt.NDArray[np.int32 | np.int64] | Tensor,
     ) -> None:
         """
         Update the states based on the current mini-batch prediction results.
@@ -567,8 +567,8 @@ class Recall(Metric):
 
     def update(
         self,
-        preds: npt.NDArray[np.float32 | np.float64],
-        labels: npt.NDArray[np.int32 | np.int64],
+        preds: npt.NDArray[np.float32 | np.float64] | Tensor,
+        labels: npt.NDArray[np.int32 | np.int64] | Tensor,
     ) -> None:
         """
         Update the states based on the current mini-batch prediction results.
@@ -727,8 +727,8 @@ class Auc(Metric):
 
     def update(
         self,
-        preds: npt.NDArray[np.float32 | np.float64],
-        labels: npt.NDArray[np.int32 | np.int64],
+        preds: npt.NDArray[np.float32 | np.float64] | Tensor,
+        labels: npt.NDArray[np.int32 | np.int64] | Tensor,
     ) -> None:
         """
         Update the auc curve with the given predictions and labels.
