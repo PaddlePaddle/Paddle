@@ -70,8 +70,8 @@ class FCLayer:
         """
         fc = FC(
             size=self.fc_dim,
-            param_attr=paddle.ParamAttr(name="%s.w" % self.name),
-            bias_attr=paddle.ParamAttr(name="%s.b" % self.name),
+            param_attr=paddle.ParamAttr(name=f"{self.name}.w"),
+            bias_attr=paddle.ParamAttr(name=f"{self.name}.b"),
             act=self.act,
         )
         return fc
