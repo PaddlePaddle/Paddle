@@ -26,7 +26,7 @@ from typing import (
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import TypeAlias
+from typing_extensions import Never, TypeAlias
 
 from .backport import EllipsisType
 
@@ -63,3 +63,10 @@ TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
 ParamAttrLike: TypeAlias = Union[
     "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
 ]
+
+
+def unreached() -> Never:
+    """Mark a code path as unreachable.
+    Refer to https://typing.readthedocs.io/en/latest/source/unreachable.html#marking-code-as-unreachable
+    """
+    raise RuntimeError("Unreachable code path")
