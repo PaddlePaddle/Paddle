@@ -15,6 +15,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.incubate.tensor.manipulation import (
     async_offload,
@@ -28,13 +30,23 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         loader = create_async_load()
         data0 = paddle.randn([10000, 50])
         data1 = paddle.randn([50, 50])
-        data1 = paddle.randn([50, 50])
+        # data1 = paddle.randn([50, 50])
         cpu_data, task = async_offload(data0, loader)
         res = paddle.matmul(data1, data1)
         task.wait()
         gpu_data = async_reload(cpu_data, loader)
         res = paddle.matmul(data1, data1)
         task.wait()
+
+        np.testing.assert_array_equal(
+            data0.numpy(),
+            cpu_data.numpy(),
+        )
+
+        np.testing.assert_array_equal(
+            data0.numpy(),
+            gpu_data.numpy(),
+        )
 
 
 if __name__ == '__main__':

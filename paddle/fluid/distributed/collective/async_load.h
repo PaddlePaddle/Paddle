@@ -58,18 +58,11 @@ class AsyncLoad {
                                           const phi::DenseTensor& src);
 
  private:
-  // platform::DeviceEvent calc_event_;
   std::unordered_map<std::string, platform::DeviceEvent>
       place_to_calc_event_;  // event on calc stream
-
-  // std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
-  //     place_to_load_ctx_;
-
   bool is_initialized_{false};
-  // platform::DeviceEvent calc_event_;
   std::unique_ptr<phi::GPUContext> load_ctx_;
   Place gpu_place_;
-
   std::shared_ptr<AsyncLoad::Task> CreateTask(const Place& place);
 };
 

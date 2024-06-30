@@ -40,24 +40,6 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::CreateTask(const Place& place) {
   return std::make_shared<AsyncLoad::Task>(place);
 }
 
-// void AsyncLoad::PrepareLoadEnv(const std::string& key, const Place& place) {
-//   if (place_to_calc_event_.find(key) == place_to_calc_event_.end()) {
-//     place_to_calc_event_.emplace(
-//         key, platform::DeviceEvent(place,
-//         platform::GenerateDeviceEventFlag()));
-//     place_to_load_ctx_.emplace(
-//         key, std::move(std::make_unique<phi::GPUContext>(place)));
-//   }
-
-//   auto& async_ctx = place_to_load_ctx_.at(key);
-//   auto& calc_event = place_to_calc_event_.at(key);
-
-//   const auto* calc_ctx = static_cast<phi::GPUContext*>(
-//       platform::DeviceContextPool::Instance().Get(place));
-//   calc_event.Record(calc_ctx);
-//   calc_event.Wait(platform::Place2DeviceType(place), async_ctx.get());
-// }
-
 void AsyncLoad::SyncCalcuStream(const Place& place,
                                 phi::GPUContext* ctx,
                                 platform::DeviceEvent& calc_event) {  // NOLINT
@@ -83,31 +65,24 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
   auto* dev_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   auto* dst_ptr = dev_ctx->Alloc(dst, src.dtype(), size, true);
-
-  // auto* dst_ptr = dst->mutable_data(platform::CUDAPinnedPlace(),
-  // src.dtype());
   auto* src_ptr = src.data();
 
   // 1. wait calc stream to finish
   std::string key = "load";
-  // PrepareLoadEnv(key, place);
 
   if (!is_initialized_) {
     is_initialized_ = true;
     gpu_place_ = place;
-    // calc_event_ = platform::DeviceEvent(place,
-    // platform::GenerateDeviceEventFlag());
     place_to_calc_event_.emplace(
         key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
     load_ctx_ = std::move(std::make_unique<phi::GPUContext>(place));
   }
   SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
-  // auto& async_ctx = place_to_load_ctx_.at(key);
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();
   phi::memory_utils::Copy(
-      platform::CUDAPlace(), dst_ptr, place, src_ptr, size, stream);
+      dst->place(), dst_ptr, src.place(), src_ptr, size, stream);
 
   // 3. record event on offload stream
   auto task = CreateTask(place);
@@ -140,15 +115,13 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(
 
   // 1. wait calc stream to finish
   std::string key = "load";
-  // PrepareLoadEnv(key, place);
-  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
-  // auto& async_ctx = place_to_load_ctx_.at(key);
+  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();
   phi::memory_utils::Copy(
-      platform::CUDAPinnedPlace(), dst_ptr, place, src_ptr, size, stream);
+      dst->place(), dst_ptr, src.place(), src_ptr, size, stream);
 
   // 3. record event on offload stream
   auto task = CreateTask(gpu_place_);
