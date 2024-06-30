@@ -17,7 +17,6 @@ import unittest
 from os.path import dirname
 
 import numpy as np
-from scipy.special import logit
 from test_infer_sym_shape_utils import (
     TestBase,
     check_infer_results,
@@ -25,7 +24,6 @@ from test_infer_sym_shape_utils import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import _C_ops
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
@@ -168,76 +166,6 @@ class LogspaceOpInferSymbolicShapeTest(TestBase):
         net.eval()
         check_infer_results(net, input_spec, 'pd_op.logspace', self.expected)
         return True
-
-
-class SigmoidCrossEntropyWithLogitsNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, label, pos_weight):
-        out = _C_ops.sigmoid_cross_entropy_with_logits(
-            x, label, pos_weight, False, -100
-        )
-        out = _C_ops.sigmoid_cross_entropy_with_logits(
-            x, label, None, False, -100
-        )
-        return out
-
-
-class SigmoidCrossEntropyWithLogitsOpInferSymbolicShapeTest(TestBase):
-    def prepare_data(self):
-        batch_size = 64
-        num_classes = 20
-
-        self.x_cases = [
-            logit(
-                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                    "float32"
-                )
-            )
-        ]
-
-        self.label_cases = [
-            np.random.uniform(0, 1, (batch_size, num_classes)).astype("float32")
-        ]
-
-        self.pos_weight_cases = [
-            np.random.uniform(0, 1, (batch_size, num_classes)).astype("float32")
-        ]
-
-        self.expected = [
-            'shape[S0, S1], data[NULL]',
-            'shape[S0, S1], data[NULL]',
-        ]
-
-    def test_eval_symbolic(self):
-        net = SigmoidCrossEntropyWithLogitsNet()
-
-        for i in range(len(self.x_cases)):
-            x = self.x_cases[i]
-            label = self.label_cases[i]
-            pos_weight = self.pos_weight_cases[i]
-            x_spec = InputSpec(
-                shape=[None for _ in range(len(x.shape))], dtype='float32'
-            )
-            label_spec = InputSpec(
-                shape=[None for _ in range(len(label.shape))], dtype='float32'
-            )
-            pos_weight_spec = InputSpec(
-                shape=[None for _ in range(len(pos_weight.shape))],
-                dtype='float32',
-            )
-
-            input_spec = [x_spec, label_spec, pos_weight_spec]
-            net = apply_to_static(net, False, input_spec)
-            net.eval()
-
-            check_infer_results(
-                net,
-                input_spec,
-                'pd_op.sigmoid_cross_entropy_with_logits',
-                self.expected,
-            )
 
 
 class SliceNet(paddle.nn.Layer):
