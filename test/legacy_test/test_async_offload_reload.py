@@ -36,7 +36,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         task.wait()
         gpu_data, task = async_reload(cpu_data, loader)
         res = paddle.matmul(data1, data1)
-        task.wait()
+        task.synchronize()
 
         np.testing.assert_array_equal(
             data0.numpy(),
