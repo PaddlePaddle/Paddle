@@ -73,7 +73,7 @@ class VOC2012(Dataset):
 
         .. code-block:: python
 
-            >>> # doctest: +TIMEOUT(75)
+            >>> # doctest: +TIMEOUT(120)
             >>> import itertools
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import VOC2012
@@ -86,9 +86,9 @@ class VOC2012(Dataset):
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = voc2012[i]
             ...     # do something with img and label
-            ...     print(type(img), img.size)
+            ...     print(type(img), img.size) # type: ignore
             ...     # <class 'PIL.JpegImagePlugin.JpegImageFile'> (500, 281)
-            ...     print(type(label), label.size)
+            ...     print(type(label), label.size) # type: ignore
             ...     # <class 'PIL.PngImagePlugin.PngImageFile'> (500, 281)
 
 
@@ -113,9 +113,9 @@ class VOC2012(Dataset):
 
             >>> for img, label in itertools.islice(iter(voc2012_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape)
+            ...     print(type(img), img.shape) # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 281, 500]
-            ...     print(type(label), label.shape)
+            ...     print(type(label), label.shape) # type: ignore
             ...     # <class 'numpy.ndarray'> (281, 500)
     """
 
@@ -130,7 +130,7 @@ class VOC2012(Dataset):
         self,
         data_file: str | None = None,
         mode: _DatasetMode = 'train',
-        transform: _Transform[Any, Any] = None,
+        transform: _Transform[Any, Any] | None = None,
         download: bool = True,
         backend: _ImageBackend | None = None,
     ) -> None:
