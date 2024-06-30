@@ -80,7 +80,6 @@ class TestResizeError(TestTransformUnitTestBase):
     def test_transform(self):
         pass
 
-    @test_with_pir_api
     def test_error(self):
         paddle.enable_static()
         # Not support while w<=0 or h<=0, but received w=-1, h=-1
@@ -139,7 +138,6 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
                 break
         assert not res_assert
 
-    @test_with_pir_api
     def test_transform(self):
         st_res = self.static_transform()
 
