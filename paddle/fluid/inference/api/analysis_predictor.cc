@@ -446,7 +446,7 @@ bool AnalysisPredictor::Init(
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
     std::string optimized_model;
-    if (load_pir_model_) {
+    if (config_.new_ir_enabled()) {
       optimized_model = optimized_model_path + "/" + "_optimized.json";
     } else {
       optimized_model = optimized_model_path + "/" + "_optimized.pdmodel";
@@ -1062,23 +1062,24 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
   for (size_t i = 0; i < len; ++i) {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
+
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
-        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-        const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
-        pir::Type type_ = pir::GetDataTypeFromValue(value);
-        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-        dev_ctx->Alloc(tensor_temp, type_data);
+        LOG(INFO) << "Created new variable: " << param_names[i];
       } else {
         PADDLE_THROW(platform::errors::Unavailable(
             "Only support parameter data of type DenseTensor."));
       }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+    tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+    const phi::DeviceContext *dev_ctx = pool.Get(place_);
+    pir::Type type_ = pir::GetDataTypeFromValue(value);
+    phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+    dev_ctx->Alloc(tensor_temp, type_data);
     tensor_out.push_back(tensor_temp);
   }
 
@@ -1151,13 +1152,15 @@ bool AnalysisPredictor::PrepareProgram(
       }
 #endif
     } else {
-      OptimizeInferenceProgram();
+      if (!config_.new_ir_enabled()) {
+        OptimizeInferenceProgram();
+      }
     }
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
-    if (config_.apply_optim_) {
+    if (config_.apply_optim_ && !config_.new_ir_enabled()) {
       VLOG(3)
           << "apply_optim is enabled, will call OptimizeInferenceProgram().";
       OptimizeInferenceProgram();
