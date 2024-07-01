@@ -428,7 +428,7 @@ class ImageFolder(Dataset):
             >>> for i in range(len(image_folder_1)):
             ...     (img,) = image_folder_1[i]
             ...     # do something with img
-            ...     print(type(img), img.size) # type: ignore
+            ...     print(type(img), img.size)
             ...     # <class 'PIL.Image.Image'> (32, 32)
 
 
@@ -460,7 +460,7 @@ class ImageFolder(Dataset):
 
             >>> for (img,) in iter(image_folder_2):
             ...     # do something with img
-            ...     print(type(img), img.shape)
+            ...     print(type(img), img.shape) # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 64, 64]
 
             >>> shutil.rmtree(fake_data_dir)
