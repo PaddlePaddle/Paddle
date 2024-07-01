@@ -160,7 +160,7 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be core.eager.Tensor" % param.name
+                f"The data type of '{param.name}' must be core.eager.Tensor"
             )
 
         if is_model_parallel:
@@ -916,7 +916,7 @@ def _check_var_exists(var_name):
     if var is None:
         raise ValueError(
             "paddle.distributed initialize error, "
-            "environment variable %s is needed, but not set." % var_name
+            f"environment variable {var_name} is needed, but not set."
         )
 
 

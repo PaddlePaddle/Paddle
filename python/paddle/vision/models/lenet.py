@@ -53,6 +53,8 @@ class LeNet(nn.Layer):
             [1, 10]
     """
 
+    num_classes: int
+
     def __init__(self, num_classes: int = 10) -> None:
         super().__init__()
         self.num_classes = num_classes

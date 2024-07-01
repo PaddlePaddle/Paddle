@@ -640,37 +640,40 @@ const std::vector<std::string> kPirXpuPasses{
     "fc_xpu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses {
-  "delete_quant_dequant_linear_op_pass", "delete_weight_dequant_linear_op_pass",
-      "matmul_scale_fuse_pass", "matmul_transpose_fuse_pass",
-      "depthwise_conv_onednn_pass",
-      "squeeze_transpose_onednn_fuse_pass",  //
-      "conv2d_bn_onednn_fuse_pass",          //
-      "conv2d_bias_fuse_pass",               //
-      "conv2d_transpose_bias_fuse_pass",     //
-      "conv3d_bias_fuse_pass",               //
-      "batch_norm_act_fuse_pass",            //
-      "scale_matmul_fuse_pass",              //
-      "reshape_transpose_matmul_fuse_pass",  //
-      "matmul_transpose_reshape_fuse_pass",  //
-      "matmul_elementwise_add_fuse_pass",    //
-      "matmul_activation_fuse_pass",         //
-      "matmul_add_act_fuse_pass",            //
-      "fc_onednn_enable_pass",               //
-      "fc_activation_fuse_pass",             //
+  "delete_quant_dequant_linear_op_pass",          //
+      "delete_weight_dequant_linear_op_pass",     //
+      "depthwise_conv_onednn_pass",               //
+      "squeeze_transpose_onednn_fuse_pass",       //
+      "conv2d_bn_onednn_fuse_pass",               //
+      "conv2d_bias_fuse_pass",                    //
+      "conv2d_transpose_bias_fuse_pass",          //
+      "conv3d_bias_fuse_pass",                    //
+      "conv_elementwise_add_onednn_fuse_pass",    //
+      "conv_activation_onednn_fuse_pass",         //
+      "conv_concat_activation_onednn_fuse_pass",  //
+      "batch_norm_act_fuse_pass",                 //
+      "matmul_scale_fuse_pass",                   //
+      "scale_matmul_fuse_pass",                   //
+      "reshape_transpose_matmul_fuse_pass",       //
+      "matmul_transpose_reshape_fuse_pass",       //
+      "matmul_add_act_fuse_pass",                 //
+      "fc_onednn_enable_pass",                    //
+      "matmul_elementwise_add_fuse_pass",         //
+      "matmul_activation_fuse_pass",              //
+      "matmul_add_act_fuse_pass",                 //
+      "fc_onednn_enable_pass",                    //
+      "fc_activation_fuse_pass",                  //
 #if defined(PADDLE_WITH_AVX512F) && defined(PADDLE_WITH_MKLML) && \
     defined(PADDLE_WITH_DNNL)
       "self_attention_fuse_pass",  //
 #endif
-      "softplus_activation_fuse_pass",            //
-      "shuffle_channel_detect_pass",              //
-      "operator_reshape_onednn_fuse_pass",        //
-      "conv_elementwise_add_onednn_fuse_pass",    //
-      "conv_activation_onednn_fuse_pass",         //
-      "conv_concat_activation_onednn_fuse_pass",  //
-      "elementwise_act_onednn_fuse_pass",         //
-      "operator_unsqueeze_onednn_fuse_pass",      //
-      "operator_scale_onednn_fuse_pass",          //
-      "onednn_placement_pass"                     //
+      "softplus_activation_fuse_pass",        //
+      "shuffle_channel_detect_pass",          //
+      "operator_reshape_onednn_fuse_pass",    //
+      "elementwise_act_onednn_fuse_pass",     //
+      "operator_unsqueeze_onednn_fuse_pass",  //
+      "operator_scale_onednn_fuse_pass",      //
+      "onednn_placement_pass"                 //
 };
 
 const std::vector<std::string> kPirCpuPasses{

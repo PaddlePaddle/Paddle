@@ -46,7 +46,6 @@ from ..guard import (
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
-from ..pycode_generator import PyCodeGen
 from ..tracker import (
     ConstTracker,
     DanglingTracker,
@@ -62,6 +61,7 @@ from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
+    from ..pycode_generator import PyCodeGen
     from .callable import FunctionVariable
 
 
@@ -1002,10 +1002,10 @@ class NumpyVariable(VariableBase):
             frame_value_tracer = self.tracker.trace_value_from_frame()
 
             def format_dtype(dtype: np.dtype):
-                return f"np.{str(dtype)}"
+                return f"np.{dtype}"
 
             def format_number(number: np.number):
-                return f"{format_dtype(number.dtype)}({str(number.item())})"
+                return f"{format_dtype(number.dtype)}({number.item()})"
 
             return [
                 StringifyExpression(

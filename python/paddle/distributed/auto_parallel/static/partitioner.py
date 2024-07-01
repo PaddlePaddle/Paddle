@@ -60,8 +60,7 @@ class Partitioner:
         """
         if not isinstance(dist_context, DistributedContext):
             raise TypeError(
-                "dist_context be DistributedContext, got %s here"
-                % type(dist_context)
+                f"dist_context be DistributedContext, got {type(dist_context)} here"
             )
 
         self._dist_context = dist_context
@@ -77,8 +76,7 @@ class Partitioner:
     ):
         if not isinstance(serial_main_program, (Program)):
             raise TypeError(
-                "main_program be paddle.framework.Program, got %s here"
-                % type(serial_main_program)
+                f"main_program be paddle.framework.Program, got {type(serial_main_program)} here"
             )
 
         # check if shard annotated serial program valid
@@ -118,8 +116,7 @@ class Partitioner:
     ):
         if not isinstance(serial_startup_program, (Program)):
             raise TypeError(
-                "dist_context be paddle.framework.Program, got %s here"
-                % type(serial_startup_program)
+                f"dist_context be paddle.framework.Program, got {type(serial_startup_program)} here"
             )
 
         partitioned_startup_prog = paddle.framework.Program()
@@ -147,7 +144,7 @@ class Partitioner:
             output_vars = op.desc.output_arg_names()
             assert (
                 len(output_vars) == 1
-            ), f"initializer should output only ONE variable, but got [{str(op.desc)}]"
+            ), f"initializer should output only ONE variable, but got [{op.desc}]"
             assert (
                 temp_varname_map[output_vars[0]] in var2shape
             ), f"try to initialize [{output_vars[0]}] which is not a persistable var"
@@ -357,7 +354,7 @@ class Partitioner:
                 )
             else:
                 raise NotImplementedError(
-                    f"partitioner only support forward and backward, optimize ops, but got {str(op)}"
+                    f"partitioner only support forward and backward, optimize ops, but got {op}"
                 )
 
     def _is_valid_annotated_program(self, program):

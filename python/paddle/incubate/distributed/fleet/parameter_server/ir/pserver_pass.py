@@ -74,7 +74,7 @@ def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
         pass
     else:
         raise ValueError(
-            "Not supported optimizer for distributed training: %s" % op_type
+            f"Not supported optimizer for distributed training: {op_type}"
         )
     return orig_shape
 
@@ -1084,7 +1084,7 @@ def add_geo_optimizer_pass(program, config):
         pserver_block = per_opt_block.program.global_block()
         param = pserver_block.vars[var_name]
 
-        delta_var_name = "%s.delta" % (param.name)
+        delta_var_name = f"{param.name}.delta"
         origin_varname = _orig_varname(param.name)
 
         if origin_varname in sparse_tablenames:

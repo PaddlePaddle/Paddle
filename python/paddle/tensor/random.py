@@ -686,12 +686,12 @@ def gaussian(
             core.DataType.COMPLEX128,
         ]:
             raise TypeError(
-                "if mean is a complex number, dtype should be complex64 or complex128, ",
+                "if mean is a complex number, dtype should be complex64 or complex128, "
                 f"but got dtype = {dtype}",
             )
         if mean.real != mean.imag:
             raise ValueError(
-                "The mean of complex gaussian distribution should be a complex number with ",
+                "The mean of complex gaussian distribution should be a complex number with "
                 f"real part equal imaginary part, but got {mean.real} != {mean.imag}",
             )
         mean = mean.real
@@ -778,12 +778,12 @@ def gaussian_(
             core.DataType.COMPLEX128,
         ]:
             raise TypeError(
-                "if mean is a complex number, x's dtype should be complex64 or complex128, ",
+                "if mean is a complex number, x's dtype should be complex64 or complex128, "
                 f"but dtype = {x.dtype}",
             )
         if mean.real != mean.imag:
             raise ValueError(
-                "The mean of complex gaussian distribution should be a complex number with ",
+                "The mean of complex gaussian distribution should be a complex number with "
                 f"real part equal imaginary part, but got {mean.real} != {mean.imag}",
             )
         mean = mean.real

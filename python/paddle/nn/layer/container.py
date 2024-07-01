@@ -21,11 +21,12 @@ from typing import Any, Iterator, Sequence
 
 from typing_extensions import Self
 
-from paddle import Tensor
-
 from ...base.dygraph.base import param_guard
 from ...base.framework import Parameter
 from .layers import Layer
+
+if typing.TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 

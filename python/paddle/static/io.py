@@ -188,8 +188,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
         return normalize_pir_program(program, feed_vars, fetch_vars, **kwargs)
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `base.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `base.Program`, but received `{type(program)}`"
         )
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
@@ -1225,8 +1224,7 @@ def load_vars(
             main_program = default_main_program()
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is base.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is base.Program, but received {type(main_program)}"
             )
 
         load_vars(
@@ -1245,8 +1243,7 @@ def load_vars(
 
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is base.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is base.Program, but received {type(main_program)}"
             )
 
         # save origin param shape
@@ -1580,8 +1577,9 @@ def load(program, model_path, executor=None, var_list=None):
             if len(binary_file_set) > 0:
                 unused_var_list = " ".join(list(binary_file_set))
                 _logger.warning(
-                    "variable file [ %s ] not used"
-                    % (" ".join(list(binary_file_set)))
+                    "variable file [ {} ] not used".format(
+                        " ".join(list(binary_file_set))
+                    )
                 )
             try:
                 load_vars(
@@ -1895,9 +1893,11 @@ def load_program_state(model_path, var_list=None):
                     shape=var.shape,
                     dtype=var.dtype,
                     type=var.type,
-                    lod_level=var.lod_level
-                    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    else None,
+                    lod_level=(
+                        var.lod_level
+                        if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
+                        else None
+                    ),
                     persistable=True,
                 )
 
