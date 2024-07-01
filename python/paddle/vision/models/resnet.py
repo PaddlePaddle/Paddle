@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
-from paddle._typing import Size2
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
     from typing_extensions import NotRequired, Unpack
 
     from paddle import Tensor
+    from paddle._typing import Size2
 
     _ResNetArch = Literal[
         'resnet18',
@@ -177,7 +177,7 @@ class BottleneckBlock(nn.Layer):
     ) -> None:
         super().__init__()
         if norm_layer is None:
-            norm_layer: type[nn.BatchNorm2D] = nn.BatchNorm2D
+            norm_layer = nn.BatchNorm2D
         width = int(planes * (base_width / 64.0)) * groups
 
         self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False)

@@ -27,6 +27,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from types import ModuleType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Protocol,
@@ -44,7 +45,6 @@ from typing_extensions import (
 )
 
 import paddle
-from paddle._typing import NestedStructure
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -63,7 +63,6 @@ from paddle.base.framework import (
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
-from paddle.static import InputSpec
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -87,6 +86,10 @@ from .translated_layer import (
     INFER_PROPERTY_SUFFIX,
     TranslatedLayer,
 )
+
+if TYPE_CHECKING:
+    from paddle._typing import NestedStructure
+    from paddle.static import InputSpec
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 

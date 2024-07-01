@@ -20,12 +20,14 @@ import inspect
 import logging
 import re
 import sys
-import types
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
-from typing import Any, Callable, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol
 
 from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 logging.basicConfig(style="{", format="{message}", level=logging.INFO)
 logger = logging.getLogger("Generating stub file for paddle.Tensor")
@@ -403,7 +405,7 @@ def func_doc_to_method_doc(func_doc: str) -> str:
     return method_doc
 
 
-def try_import_paddle() -> types.ModuleType | None:
+def try_import_paddle() -> ModuleType | None:
     try:
         return importlib.import_module('paddle')
     except ModuleNotFoundError:

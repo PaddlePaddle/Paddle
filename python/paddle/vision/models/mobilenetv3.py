@@ -32,6 +32,11 @@ from ._utils import _make_divisible
 if TYPE_CHECKING:
     from paddle import Tensor
 
+    class _MobileNetV3Options(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
+
 __all__ = []
 
 model_urls = {
@@ -44,11 +49,6 @@ model_urls = {
         "118db5792b4e183b925d8e8e334db3df",
     ),
 }
-
-
-class _MobileNetV3Options(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
 
 
 class SqueezeExcitation(nn.Layer):
@@ -208,6 +208,10 @@ class MobileNetV3(nn.Layer):
             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
     """
+
+    scale: float
+    num_classes: int
+    with_pool: bool
 
     def __init__(
         self,
