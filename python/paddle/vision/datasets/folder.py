@@ -428,7 +428,7 @@ class ImageFolder(Dataset):
             >>> for i in range(len(image_folder_1)):
             ...     (img,) = image_folder_1[i]
             ...     # do something with img
-            ...     print(type(img), img.size)
+            ...     print(type(img), img.size) # type: ignore
             ...     # <class 'PIL.Image.Image'> (32, 32)
 
 
@@ -447,7 +447,7 @@ class ImageFolder(Dataset):
             >>> image_folder_2 = ImageFolder(
             ...     fake_data_dir,
             ...     loader=lambda x: cv2.imread(x),  # load image with OpenCV
-            ...     extensions=(".jpg",),  # only load *.jpg files
+            ...     extensions=(".jpg",),   # type: ignore # only load *.jpg files
             ...     transform=transform,  # apply transform to every image
             ... )
 
