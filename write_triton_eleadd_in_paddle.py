@@ -23,7 +23,7 @@ from paddle import _C_ops
 from paddle.base.framework import OpProtoHolder
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
-from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2
+from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2, get_dtype_str
 
 triton_add_template = (
     """
@@ -87,8 +87,9 @@ def add_kernel(
 def add(x, y):
     n_elements = x.shape[0] * x.shape[1]
     op_name = "triton_add"
+    op_name += get_dtype_str(x.dtype)
     add_kernel_config = [
-        {'num_warps': 1},
+        {'num_warps': 1, "BLOCK_SIZE": 2048},
     ]
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         # 这里的代码仅仅是注册这个Op！
@@ -139,13 +140,13 @@ class add_layer(paddle.nn.Layer):
 
 batch = 4096
 hidd = 4096
-dtype = "float32"
+dtype = "bfloat16"
 x = paddle.rand([batch, hidd], dtype=dtype)
 y = paddle.rand([batch, hidd], dtype=dtype)
 
 # warm up.
 for i in range(100):
     out = add(x, y)
-    baseline = paddle.add(x, y)
+    baseline = x + y
 
 print(paddle.max(paddle.abs(out - baseline)))

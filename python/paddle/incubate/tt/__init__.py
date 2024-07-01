@@ -22,7 +22,7 @@ try:
         rms_norm,
         weight_only_int8,
     )
-    from .triton_utils import paddle_custom_op_head_part, tune_and_invoke_part2
+    from .triton_utils import paddle_custom_op_head_part, tune_and_invoke_part2, get_dtype_str
 
     __all__ += [
         "paddle_custom_op_head_part",
@@ -32,6 +32,7 @@ try:
         "adaptive_layer_norm",
         "fused_adaLN_scale_residual",
         "rms_norm",
+        "get_dtype_str",
     ]
 except:
     print("import triton_ops failed")
