@@ -110,8 +110,7 @@ class AmpScaler:
                 or tracer._expected_place.is_custom_place()
             ):
                 warnings.warn(
-                    'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is %s, so it makes no effect.'
-                    % tracer._expected_place
+                    f'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is {tracer._expected_place}, so it makes no effect.'
                 )
                 enable = False
 
@@ -210,8 +209,7 @@ class AmpScaler:
             self._use_dynamic_loss_scaling = False
             self._init_loss_scaling = 1.0
             warnings.warn(
-                'It is not recommended to use dynamic loss scaling for %s, so GradScaler is disable by default.'
-                % (amp_global_state().amp_dtype)
+                f'It is not recommended to use dynamic loss scaling for {amp_global_state().amp_dtype}, so GradScaler is disable by default.'
             )
 
         if in_pir_mode():

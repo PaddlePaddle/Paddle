@@ -20,6 +20,7 @@
 #include <unordered_set>
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -61,7 +62,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
-// COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
+COMMON_DECLARE_bool(enable_collect_shape);
 
 namespace paddle::dialect {
 
@@ -3141,6 +3142,9 @@ void ProcessBlock(
   auto inputs_by_data_op = GetInputsByDataOp(block);
   for (auto& [keyword, arg] : block->kwargs()) {
     auto new_arg = new_block->AddKwarg(keyword, arg.type());
+    for (auto& [name, attr] : arg.dyn_cast<pir::BlockArgument>().attributes()) {
+      new_arg.set_attribute(name, attr);
+    }
     (*map_value_pair)[arg] = new_arg;
     if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
       new_arg.set_type(
@@ -3323,6 +3327,11 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
 
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
+
+  if (FLAGS_enable_collect_shape) {
+    paddle::framework::CollectShapeManager::Instance().SetValueMap(
+        map_value_pair);
+  }
 
   if (FLAGS_print_ir) {
     std::cout << "IR after lowering = " << *program << std::endl;

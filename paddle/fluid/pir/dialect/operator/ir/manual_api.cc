@@ -21,8 +21,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
@@ -316,5 +315,4 @@ std::vector<pir::Value> tensorrt_engine(
   return out_split_op.outputs();
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

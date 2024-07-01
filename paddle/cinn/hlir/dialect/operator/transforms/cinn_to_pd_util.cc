@@ -29,31 +29,6 @@
 
 namespace cinn::dialect::details {
 
-template <typename T, std::size_t... I>
-auto VectorToTupleHelper(const std::vector<T>& vec, std::index_sequence<I...>) {
-  return std::make_tuple(vec[I]...);
-}
-
-template <typename T, std::size_t N>
-auto VectorToTuple(const std::vector<T>& vec) {
-  return VectorToTupleHelper(vec, std::make_index_sequence<N>{});
-}
-
-template <typename Func, typename Tuple, std::size_t... I>
-auto ApplyTupleArgsHelper(Func&& func,
-                          Tuple&& tuple,
-                          std::index_sequence<I...>) {
-  return func(std::get<I>(std::forward<Tuple>(tuple))...);
-}
-
-template <typename Func, typename Tuple>
-auto ApplyTupleArgs(Func&& func, Tuple&& tuple) {
-  return ApplyTupleArgsHelper(
-      std::forward<Func>(func),
-      std::forward<Tuple>(tuple),
-      std::make_index_sequence<std::tuple_size<std::decay_t<Tuple>>::value>{});
-}
-
 pir::Attribute ArrayAttributeToIntArrayAttribute(
     const ::pir::ArrayAttribute& array_attr) {
   std::vector<int64_t> data;
@@ -70,77 +45,97 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
   return attr_data;
 }
 
-enum class TransAttrType { IntArray, Int32, Int64, Float, Bool };
-using OpAttrTypeMap =
-    std::unordered_map<std::string,
-                       std::unordered_map<std::string, TransAttrType>>;
+const auto& handler_reduce_sum_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                             // NOLINT
+       ::pir::PatternRewriter& rewriter) -> ::pir::Operation* {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
 
-static const OpAttrTypeMap OP_TRANS_ATTRTYPES_MAP = {
-    {"reduce_max", {{"axis", TransAttrType::IntArray}}},
-    {"reduce_min", {{"axis", TransAttrType::IntArray}}},
-    {"reduce_sum", {{"axis", TransAttrType::IntArray}}},
-    {"reduce_prod", {{"axis", TransAttrType::IntArray}}},
-    {"gather", {{"axis", TransAttrType::Int32}}},
-    {"isclose",
-     {{"atol", TransAttrType::Float},
-      {"rtol", TransAttrType::Float},
-      {"equal_nan", TransAttrType::Bool}}},
-    {"scale",
-     {{"scale", TransAttrType::Float},
-      {"bias", TransAttrType::Float},
-      {"bias_after_scale", TransAttrType::Bool}}},
-    {"slice",
-     {{"starts", TransAttrType::IntArray}, {"ends", TransAttrType::IntArray}}},
+  ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
+
+  auto pd_op = rewriter.Build<paddle::dialect::SumOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
 };
 
-pir::AttributeMap ConvertAttributes(::pir::Operation* op) {
-  auto attrs = op->attributes();
-  if (OP_TRANS_ATTRTYPES_MAP.count(op->name()) == 0) {
-    return attrs;
-  }
-  const auto& trans_attrtypes = OP_TRANS_ATTRTYPES_MAP.at(op->name());
-  for (const auto& trans_attrtype : trans_attrtypes) {
-    auto attr_name = trans_attrtype.first;
-    auto attr_type = trans_attrtype.second;
-    if (attr_type == TransAttrType::IntArray) {
-      auto attr = ArrayAttributeToIntArrayAttribute(
-          attrs.at(attr_name).dyn_cast<::pir::ArrayAttribute>());
-      attrs[attr_name] = attr;
-    } else if (attr_type == TransAttrType::Int32) {
-      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::Int32Attribute>();
-    } else if (attr_type == TransAttrType::Int64) {
-      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::Int64Attribute>();
-    } else if (attr_type == TransAttrType::Float) {
-      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::FloatAttribute>();
-    } else if (attr_type == TransAttrType::Bool) {
-      attrs[attr_name] = attrs.at(attr_name).dyn_cast<::pir::BoolAttribute>();
-    } else {
-      PADDLE_THROW(::common::errors::Unimplemented(
-          "Unsupported attribute type in ConvertAttributes"));
-    }
-  }
-  return attrs;
-}
-
-template <typename TARGET_OP, std::size_t INPUT_NUM>
-::pir::Operation* ConvertCinnOp(::pir::Operation* op,
-                                ::pir::IrMapping& ir_mapping,        // NOLINT
-                                ::pir::PatternRewriter& rewriter) {  // NOLINT
+const auto& handler_reduce_max_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                             // NOLINT
+       ::pir::PatternRewriter& rewriter) -> ::pir::Operation* {  // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = ConvertAttributes(op);
+  auto attrs = op->attributes();
 
-  std::vector<pir::Value> inputs;
-  for (uint32_t i = 0; i < INPUT_NUM; ++i) {
-    inputs.push_back(ir_mapping.Lookup(op->operand_source(i)));
+  // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
+  // Normalization
+  ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
+
+  auto pd_op = rewriter.Build<paddle::dialect::MaxOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
   }
-  auto input_tuple = VectorToTuple<pir::Value, INPUT_NUM>(inputs);
+  return pd_op;
+};
 
-  auto tuple_args = std::tuple_cat(input_tuple, std::make_tuple(attrs));
-  const auto& build_op_func = [&rewriter](auto&&... args) {
-    return rewriter.Build<TARGET_OP>(std::forward<decltype(args)>(args)...);
-  };
-  auto pd_op = ApplyTupleArgs(build_op_func, tuple_args);
+const auto& handler_reduce_min_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                             // NOLINT
+       ::pir::PatternRewriter& rewriter) -> ::pir::Operation* {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
 
+  ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
+
+  auto pd_op = rewriter.Build<paddle::dialect::MinOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+};
+
+const auto& handler_reduce_prod_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                             // NOLINT
+       ::pir::PatternRewriter& rewriter) -> ::pir::Operation* {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+
+  ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
+
+  auto pd_op = rewriter.Build<paddle::dialect::ProdOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+};
+
+::pir::Operation* ConvertSliceOp(::pir::Operation* op,
+                                 ::pir::IrMapping& ir_mapping,        // NOLINT
+                                 ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  ::pir::Attribute starts = ArrayAttributeToIntArrayAttribute(
+      attrs.at("starts").dyn_cast<::pir::ArrayAttribute>());
+  ::pir::Attribute ends = ArrayAttributeToIntArrayAttribute(
+      attrs.at("ends").dyn_cast<::pir::ArrayAttribute>());
+  attrs["starts"] = starts;
+  attrs["ends"] = ends;
+  auto pd_op = rewriter.Build<paddle::dialect::SliceOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -193,6 +188,37 @@ template <typename TARGET_OP, std::size_t INPUT_NUM>
   return new_op;
 }
 
+::pir::Operation* ConvertScaleOp(::pir::Operation* op,
+                                 ::pir::IrMapping& ir_mapping,        // NOLINT
+                                 ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& attrs = op->attributes();
+
+  float scale = attrs.at("scale").dyn_cast<::pir::FloatAttribute>().data();
+  float bias = attrs.at("bias").dyn_cast<pir::FloatAttribute>().data();
+  bool bias_after_scale =
+      attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data();
+  auto pd_op = rewriter.Build<paddle::dialect::ScaleOp>(
+      ir_mapping.Lookup(op->operand_source(0)), scale, bias, bias_after_scale);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertFlipOp(::pir::Operation* op,
+                                ::pir::IrMapping& ir_mapping,        // NOLINT
+                                ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& attrs = op->attributes();
+  auto pd_op = rewriter.Build<paddle::dialect::FlipOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
 ::pir::Operation* ConvertPool2dOp(::pir::Operation* op,
                                   ::pir::IrMapping& ir_mapping,        // NOLINT
                                   ::pir::PatternRewriter& rewriter) {  // NOLINT
@@ -207,6 +233,27 @@ template <typename TARGET_OP, std::size_t INPUT_NUM>
   attrs.erase("padding_size");
   auto pd_op = rewriter.Build<paddle::dialect::Pool2dOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertIscloseOp(
+    ::pir::Operation* op,
+    ::pir::IrMapping& ir_mapping,        // NOLINT
+    ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& attrs = op->attributes();
+  double rtol = attrs.at("atol").dyn_cast<pir::FloatAttribute>().data();
+  double atol = attrs.at("atol").dyn_cast<pir::FloatAttribute>().data();
+  bool equal_nan = attrs.at("equal_nan").dyn_cast<pir::BoolAttribute>().data();
+  auto pd_op = rewriter.Build<paddle::dialect::IscloseOp>(
+      ir_mapping.Lookup(op->operand_source(0)),
+      ir_mapping.Lookup(op->operand_source(1)),
+      rtol,
+      atol,
+      equal_nan);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -279,6 +326,22 @@ template <typename TARGET_OP, std::size_t INPUT_NUM>
   return pd_op;
 }
 
+::pir::Operation* ConvertGatherOp(::pir::Operation* op,
+                                  ::pir::IrMapping& ir_mapping,        // NOLINT
+                                  ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& attrs = op->attributes();
+  int axis = attrs.at("axis").dyn_cast<pir::Int32Attribute>().data();
+  auto pd_op = rewriter.Build<paddle::dialect::GatherOp>(
+      ir_mapping.Lookup(op->operand_source(0)),
+      ir_mapping.Lookup(op->operand_source(1)),
+      axis);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
 bool CanApplyOn(::pir::Operation* op) {
   return op->dialect()->name() == "cinn_op";
 }
@@ -325,50 +388,25 @@ void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
 
 }  // namespace cinn::dialect::details
 
-REGISTER_TRANSFORM_RULES(
-    reduce_sum_op,
-    cinn::dialect::ReduceSumOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::SumOp, 1>));
+REGISTER_TRANSFORM_RULES(reduce_sum_op,
+                         cinn::dialect::ReduceSumOp::name(),
+                         cinn::dialect::details::handler_reduce_sum_op);
 
-REGISTER_TRANSFORM_RULES(
-    reduce_max_op,
-    cinn::dialect::ReduceMaxOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::MaxOp, 1>));
+REGISTER_TRANSFORM_RULES(reduce_max_op,
+                         cinn::dialect::ReduceMaxOp::name(),
+                         cinn::dialect::details::handler_reduce_max_op);
 
-REGISTER_TRANSFORM_RULES(
-    reduce_min_op,
-    cinn::dialect::ReduceMinOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::MinOp, 1>));
+REGISTER_TRANSFORM_RULES(reduce_min_op,
+                         cinn::dialect::ReduceMinOp::name(),
+                         cinn::dialect::details::handler_reduce_min_op);
 
-REGISTER_TRANSFORM_RULES(
-    reduce_prod_op,
-    cinn::dialect::ReduceProdOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::ProdOp, 1>));
+REGISTER_TRANSFORM_RULES(reduce_prod_op,
+                         cinn::dialect::ReduceProdOp::name(),
+                         cinn::dialect::details::handler_reduce_prod_op);
 
-REGISTER_TRANSFORM_RULES(
-    flip_op,
-    cinn::dialect::ReverseOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::FlipOp, 1>));
-
-REGISTER_TRANSFORM_RULES(
-    gather_op,
-    cinn::dialect::GatherOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::GatherOp, 2>));
-
-REGISTER_TRANSFORM_RULES(
-    isclose_op,
-    cinn::dialect::IscloseOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::IscloseOp, 2>));
-
-REGISTER_TRANSFORM_RULES(
-    scale_op,
-    cinn::dialect::ScaleOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::ScaleOp, 1>));
-
-REGISTER_TRANSFORM_RULES(
-    slice_op,
-    cinn::dialect::SliceOp::name(),
-    (cinn::dialect::details::ConvertCinnOp<paddle::dialect::SliceOp, 1>));
+REGISTER_TRANSFORM_RULES(slice_op,
+                         cinn::dialect::SliceOp::name(),
+                         cinn::dialect::details::ConvertSliceOp);
 
 REGISTER_TRANSFORM_RULES(reshape_op,
                          cinn::dialect::ReshapeOp::name(),
@@ -381,10 +419,23 @@ REGISTER_TRANSFORM_RULES(concat_op,
 REGISTER_TRANSFORM_RULES(generate_shape_op,
                          cinn::dialect::GenerateShapeOp::name(),
                          cinn::dialect::details::ConvertGenerateShapeOp);
+REGISTER_TRANSFORM_RULES(scale_op,
+                         cinn::dialect::ScaleOp::name(),
+                         cinn::dialect::details::ConvertScaleOp);
+
+REGISTER_TRANSFORM_RULES(
+    flip_op,
+    cinn::dialect::ReverseOp::name(),  // cinn::dialect::ReverseOp <->
+                                       // paddle::dialect::FlipOp
+    cinn::dialect::details::ConvertFlipOp);
 
 REGISTER_TRANSFORM_RULES(pool2d_op,
                          cinn::dialect::Pool2dOp::name(),
                          cinn::dialect::details::ConvertPool2dOp);
+
+REGISTER_TRANSFORM_RULES(isclose_op,
+                         cinn::dialect::IscloseOp::name(),
+                         cinn::dialect::details::ConvertIscloseOp);
 
 REGISTER_TRANSFORM_RULES(yield_store,
                          cinn::dialect::YieldStoreOp::name(),
@@ -399,3 +450,7 @@ REGISTER_TRANSFORM_RULES(
 REGISTER_TRANSFORM_RULES(uniform_op,
                          cinn::dialect::UniformRandomOp::name(),
                          cinn::dialect::details::ConvertUniformOp);
+
+REGISTER_TRANSFORM_RULES(gather_op,
+                         cinn::dialect::GatherOp::name(),
+                         cinn::dialect::details::ConvertGatherOp);

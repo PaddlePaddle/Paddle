@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include "paddle/fluid/framework/new_executor/interpreter/job.h"
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
@@ -85,7 +86,6 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -100,7 +100,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/fluid/platform/tensorrt/engine.h"
+#include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
@@ -135,6 +135,7 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/utils/none.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -1310,7 +1311,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return common::vectorize(operators::details::BroadcastTwoDims(
+        return common::vectorize(phi::funcs::BroadcastTwoDims(
             common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
       });
 
@@ -3233,6 +3234,28 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::EngineParams::optim_shape_tensor)
       .def_readwrite("engine_serialized_data",
                      &paddle::platform::EngineParams::engine_serialized_data);
+
+  py::enum_<paddle::framework::ShapeMode>(m, "ShapeMode")
+      .value("kMIN", paddle::framework::ShapeMode::kMIN)
+      .value("kMAX", paddle::framework::ShapeMode::kMAX)
+      .value("kOPT", paddle::framework::ShapeMode::kOPT)
+      .export_values();
+
+  m.def("get_value_shape_range_info",
+        [](const pir::Value value,
+           bool is_shape_tensor,
+           paddle::framework::ShapeMode shape_mode) -> py::list {
+          py::list res;
+          paddle::framework::CollectShapeManager::Instance()
+              .StatisticShapeRangeInfo();
+          auto shape_result =
+              paddle::framework::CollectShapeManager::Instance()
+                  .GetValueShapeRangeInfo(value, is_shape_tensor, shape_mode);
+          for (auto i : shape_result) {
+            res.append(i);
+          }
+          return res;
+        });
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);

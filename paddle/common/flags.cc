@@ -1730,6 +1730,11 @@ PHI_DEFINE_EXPORTED_int32(
     -1,
     "Max count of eliminate redundant computation in CSE, for debug usage");
 
+PHI_DEFINE_EXPORTED_bool(
+    use_xqa_optim,
+    false,
+    "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
@@ -1759,6 +1764,17 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify path for loading *.dll about cuda on windows");
 
+/**
+ * Collect shapes of value for TensorRTEngine
+ * Name: enable_collect_shape
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will collect shapes of value when run executor.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_collect_shape,
+                         false,
+                         "Collect shapes of value for TensorRTEngine");
 // Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
 PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp32,
                            1e-6,

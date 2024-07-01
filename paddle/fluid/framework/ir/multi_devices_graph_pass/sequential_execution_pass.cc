@@ -15,15 +15,11 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class OpDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static bool IsSameOpDesc(OpDesc *op1, OpDesc *op2) {
   return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
@@ -114,9 +110,7 @@ class SequentialExecutionPass : public ir::Pass {
     }
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(sequential_execution_pass,
               paddle::framework::ir::SequentialExecutionPass)
