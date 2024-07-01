@@ -122,9 +122,9 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     if (!tgt_splitted_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (auto in_dim : src_dims) {
-        if (src_shape[in_dim] > 1) {
+        if (src_shape[in_dim] > 1) {  // NOLINT
           input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
-        } else if (src_shape[in_dim] == 1 && s == 1 && t == 1) {
+        } else if (src_shape[in_dim] == 1 && s == 1 && t == 1) {  // NOLINT
           // NOTE: for the case like:
           //    shape: [1, 512, 4096] --> [1, 2, 256, 4096],
           //    input dims_mapping: [0, 1, -1]

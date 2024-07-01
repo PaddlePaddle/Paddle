@@ -140,8 +140,6 @@ void ConvertAssignValueOp(OpDesc* op) {
       op->SetAttr("bool_values", ExtractPlainVector<int>(values));
       break;
     case phi::DataType::FLOAT32:
-      op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
-      break;
     case phi::DataType::FLOAT64:
       op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
       break;

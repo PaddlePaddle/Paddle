@@ -255,7 +255,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
         vec = {};
       }
     } else {
-      if (keepdims) {
+      if (keepdims) {  // NOLINT
         vec = std::vector<int64_t>(x.dims().size(), -1);
       } else {
         vec = std::vector<int64_t>(x.dims().size() - 1, -1);
@@ -4269,8 +4269,8 @@ void SplitInferMeta(const MetaTensor& x,
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if ((sections.FromTensor() && !config.is_runtime) ||
-        axis_value == -1) {  // NOLINT
+    if ((sections.FromTensor() && !config.is_runtime) ||  // NOLINT
+        axis_value == -1) {
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
           common::make_ddim(std::vector<int>(x.dims().size(), -1)));

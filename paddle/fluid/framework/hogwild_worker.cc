@@ -1400,7 +1400,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     timeline.Pause();
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
-    if (infer_out_of_ins) {
+    if (infer_out_of_ins) {  // NOLINT
       for (size_t i = 0; i < ops_.size(); ++i) {
         timeline.Start();
         auto &op = ops_[i];
@@ -1620,7 +1620,7 @@ void HogwildWorker::TrainFiles() {
     if (cur_batch <= 0 && !infer_out_of_ins) {
       break;
     }
-    if (infer_out_of_ins) {
+    if (infer_out_of_ins) {  // NOLINT
       for (auto &op : ops_) {
         if (op->Type() == "c_broadcast") {
           op->Run(*thread_scope_, place_);

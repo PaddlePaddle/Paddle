@@ -281,7 +281,7 @@ int32_t CtrCommonAccessor::Update(float** update_values,
 bool CtrCommonAccessor::CreateValue(int stage, const float* value) {
   // stage == 0, pull
   // stage == 1, push
-  if (stage == 0) {
+  if (stage == 0) {  // NOLINT
     return true;
   } else if (stage == 1) {
     // operation

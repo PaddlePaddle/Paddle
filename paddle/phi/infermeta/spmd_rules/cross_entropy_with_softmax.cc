@@ -320,11 +320,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
     if (!use_softmax) {
       x_dims_mapping[axis] = -1;
     } else {
-      if (axis != x_ndim - 1) {
-        x_dims_mapping[axis] = -1;
-        s_out_dims_mapping_dst[axis] = -1;
-        label_dims_mapping[axis] = -1;
-      } else if (soft_label) {
+      if (axis != x_ndim - 1 || soft_label) {
         x_dims_mapping[axis] = -1;
         s_out_dims_mapping_dst[axis] = -1;
         label_dims_mapping[axis] = -1;
