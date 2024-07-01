@@ -41,17 +41,17 @@ __global__ void RenormKernel(const T* table,
   T norm = 0;
   for (size_t i = 0; i < D; ++i) {
     if (norm_type == 1) {
-      norm += abs(in[i]);
+      norm += fabs(in[i]);
     } else if (norm_type == 2) {
       norm += in[i] * in[i];
     } else {
-      norm += pow(in[i], norm_type);
+      norm += powf(in[i], norm_type);
     }
   }
   if (norm_type == 2) {
-    norm = sqrt(norm);
+    norm = sqrtf(norm);
   } else {
-    norm = pow(norm, 1.0 / norm_type);
+    norm = powf(norm, 1.0 / norm_type);
   }
 
   for (size_t i = 0; i < D; ++i) {
