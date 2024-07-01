@@ -16,22 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-
-    from .common import _PaddingSizeMode
-
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
-from paddle._typing import (
-    DataLayout1D,
-    DataLayout2D,
-    DataLayout3D,
-    Size1,
-    Size2,
-    Size3,
-    Size4,
-    Size6,
-)
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -53,6 +38,23 @@ from ...utils import (
     _is_symmetric_padding,
     convert_to_list,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+        Size1,
+        Size2,
+        Size3,
+        Size4,
+        Size6,
+    )
+
+    from .common import _PaddingSizeMode
+
 
 __all__ = []
 
@@ -127,20 +129,20 @@ def _update_padding_nd(padding, channel_last, num_dims):
 
 
 def _conv_nd(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: int | Sequence[int] = 1,
+    padding: _PaddingSizeMode | int | Sequence[int] | Sequence[Size2] = 0,
     padding_algorithm=None,
-    dilation=1,
-    groups=1,
-    data_format="NCHW",
-    channel_dim=1,
-    op_type="conv2d",
-    use_cudnn=True,
-    name=None,
-):
+    dilation: int | Sequence[int] = 1,
+    groups: int = 1,
+    data_format: DataLayoutND = "NCHW",
+    channel_dim: int = 1,
+    op_type: str = "conv2d",
+    use_cudnn: bool = True,
+    name: str | None = None,
+) -> Tensor:
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
@@ -777,7 +779,7 @@ def conv1d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size1 = 1,
-    padding: _PaddingSizeMode | Size1 | Size2 = 0,
+    padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
     output_padding: Size1 = 0,
     groups: int = 1,
     dilation: Size1 = 1,
@@ -1356,7 +1358,7 @@ def conv3d(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size3 = 1,
-    padding=0,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
     dilation: Size3 = 1,
     groups: int = 1,
     data_format: DataLayout3D = "NCDHW",

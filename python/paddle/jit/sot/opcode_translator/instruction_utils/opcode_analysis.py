@@ -15,16 +15,19 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import TYPE_CHECKING
 
 from paddle.jit.utils import OrderedSet
 
-from .instruction_utils import Instruction
 from .opcode_info import (
     ALL_JUMP,
     HAS_FREE,
     HAS_LOCAL,
     UNCONDITIONAL_JUMP,
 )
+
+if TYPE_CHECKING:
+    from .instruction_utils import Instruction
 
 
 @dataclasses.dataclass

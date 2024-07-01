@@ -22,7 +22,6 @@ import numpy.typing as npt
 from typing_extensions import Self
 
 import paddle
-from paddle._typing import DTypeLike, ShapeLike, Size1
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
 from paddle.base.framework import (
@@ -41,6 +40,7 @@ from ..base.variable_index import _setitem_static
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike, ShapeLike, Size1
 
 __all__ = []
 

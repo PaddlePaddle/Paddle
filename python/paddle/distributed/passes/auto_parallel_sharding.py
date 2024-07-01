@@ -1123,7 +1123,7 @@ class ShardingPass(PassBase):
                 first_grad_name = group.vars[0].name
                 assert (
                     first_grad_name in op.output_arg_names
-                ), f"Unexpected: op is supposed to generate grad [{first_grad_name}] but got [{str(op)}]"
+                ), f"Unexpected: op is supposed to generate grad [{first_grad_name}] but got [{op}]"
                 grad_names = [grad.name for grad in group.vars]
 
                 concated_shapes = []
