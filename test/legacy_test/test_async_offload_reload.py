@@ -26,9 +26,8 @@ from paddle.incubate.tensor.manipulation import (
 
 
 class TestSaveLoadLargeParameters(unittest.TestCase):
-    def test_large_parameters_paddle_save(self):
+    def offload_and_reload(self, data0):
         loader = create_async_load()
-        data0 = paddle.randn([20, 5])
         data1 = paddle.randn([10, 10])
 
         cpu_data, task = async_offload(data0, loader)
@@ -46,6 +45,15 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
             data0.numpy(),
             gpu_data.numpy(),
         )
+
+    def test_large_parameters_paddle_save_tensor(self):
+        data0 = paddle.randn([10, 5])
+        self.offload_and_reload(data0)
+
+    def test_large_parameters_paddle_save_model_weight(self):
+        model = paddle.nn.Linear(10, 5)
+        data0 = model.weight
+        self.offload_and_reload(data0)
 
 
 if __name__ == '__main__':
