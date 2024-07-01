@@ -455,6 +455,9 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
+      if (config_.new_ir_enabled()) {
+        load_pir_model_ = true;
+      }
       LOG(INFO) << "Load Optimized model from " << optimized_model
                 << " and Load Optimized optimized_params from "
                 << optimized_params;
@@ -472,9 +475,11 @@ bool AnalysisPredictor::Init(
     return false;
   }
   InitPlace();
+
   if (!CreateExecutor()) {
     return false;
   }
+
   if (load_pir_model_) {
     if (!PreparePirProgram()) {
       return false;
@@ -1107,7 +1112,6 @@ bool AnalysisPredictor::PreparePirProgram() {
       platform::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
   pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
   if (!SaveOrLoadPirParameters(false)) {
     return false;
@@ -1151,15 +1155,13 @@ bool AnalysisPredictor::PrepareProgram(
       }
 #endif
     } else {
-      if (!config_.new_ir_enabled()) {
-        OptimizeInferenceProgram();
-      }
+      OptimizeInferenceProgram();
     }
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
-    if (config_.apply_optim_ && !config_.new_ir_enabled()) {
+    if (config_.apply_optim_) {
       VLOG(3)
           << "apply_optim is enabled, will call OptimizeInferenceProgram().";
       OptimizeInferenceProgram();
@@ -2293,7 +2295,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
-  config_.PartiallyRelease();
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
