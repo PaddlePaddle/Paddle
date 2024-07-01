@@ -98,6 +98,7 @@ class TestRandomControl(unittest.TestCase):
                 dy_broadcast_helper(mask_tensor_local)
 
     def test_random_ctrl_vanilla(self):
+        paddle.enable_static()
         # mp2 recompute training
         rc_engine = self.get_engine(False)
         train_dataloader = rc_engine.dataloader(
@@ -154,6 +155,7 @@ class TestRandomControl(unittest.TestCase):
         )
 
     def test_random_ctrl_with_recompute(self):
+        paddle.enable_static()
         # mp2 recompute training
         rc_engine = self.get_engine(True)
         train_dataloader = rc_engine.dataloader(
