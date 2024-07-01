@@ -83,10 +83,12 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+#include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
+COMMON_DECLARE_bool(enable_collect_shape);
 COMMON_DECLARE_int32(low_precision_op_list);
 
 #define CREATE_INSTR(instr_name)                                   \
@@ -1873,6 +1875,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             << " runs on " << platform::GetCurrentThreadName() << "\n"
             << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+
+    if (FLAGS_enable_collect_shape) {
+      CollectShapeManager::Instance().CollectShapeInfo(
+          instr_node, value_exe_info_.get(), scope_);
+    }
 
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_input_hookfuncs_) {

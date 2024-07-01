@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include "paddle/fluid/framework/new_executor/interpreter/job.h"
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
@@ -3243,6 +3244,28 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::EngineParams::optim_shape_tensor)
       .def_readwrite("engine_serialized_data",
                      &paddle::platform::EngineParams::engine_serialized_data);
+
+  py::enum_<paddle::framework::ShapeMode>(m, "ShapeMode")
+      .value("kMIN", paddle::framework::ShapeMode::kMIN)
+      .value("kMAX", paddle::framework::ShapeMode::kMAX)
+      .value("kOPT", paddle::framework::ShapeMode::kOPT)
+      .export_values();
+
+  m.def("get_value_shape_range_info",
+        [](const pir::Value value,
+           bool is_shape_tensor,
+           paddle::framework::ShapeMode shape_mode) -> py::list {
+          py::list res;
+          paddle::framework::CollectShapeManager::Instance()
+              .StatisticShapeRangeInfo();
+          auto shape_result =
+              paddle::framework::CollectShapeManager::Instance()
+                  .GetValueShapeRangeInfo(value, is_shape_tensor, shape_mode);
+          for (auto i : shape_result) {
+            res.append(i);
+          }
+          return res;
+        });
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);

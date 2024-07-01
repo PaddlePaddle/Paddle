@@ -1748,3 +1748,15 @@ PHI_DEFINE_EXPORTED_string(
     win_cuda_bin_dir,  // NOLINT
     "",
     "Specify path for loading *.dll about cuda on windows");
+
+/**
+ * Collect shapes of value for TensorRTEngine
+ * Name: enable_collect_shape
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will collect shapes of value when run executor.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_collect_shape,
+                         false,
+                         "Collect shapes of value for TensorRTEngine");
