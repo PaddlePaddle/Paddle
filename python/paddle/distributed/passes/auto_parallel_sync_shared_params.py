@@ -104,10 +104,13 @@ class SyncSharedParamsPass(PassBase):
             self.rankp2p[dst_rank] = src_rank
             self.rankp2p[src_rank] = dst_rank
 
+        opt_info = None
         if self.get_attr("global_rank") in self.dst_ranks:
             # record opt op
             for idx, op in enumerate(main_block.ops):
                 if op._is_optimize_op():
+                    if "ParamOut" not in op.output_names:
+                        continue
                     var_name = op.output("ParamOut")[0]
                     if (
                         not var_name
@@ -115,6 +118,9 @@ class SyncSharedParamsPass(PassBase):
                     ):
                         continue
 
+                    assert (
+                        opt_info is None
+                    ), f"only support single optimize op now. another opt op {op}"
                     opt_info = {
                         "opt_op": op,
                     }
@@ -250,7 +256,7 @@ class SyncSharedParamsPass(PassBase):
             attrs={
                 'ring_id': sync_group.id,
                 'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Backward,
+                OP_ROLE_KEY: OpRole.Optimize,
             },
         )
         allreduce_op_dist_attr = sum_info["dist_attr"]
@@ -399,7 +405,13 @@ class SyncSharedParamsPass(PassBase):
         )
 
         # add new (param, grad) to dist_params_grads
-        self.dist_params_grads.append((param, new_param_grad))
+        param_idx = None
+        for idx, p_g in enumerate(self.dist_params_grads):
+            if p_g[1].name == new_param_grad.name:
+                self.dist_params_grads[idx] = (p_g[0], new_param_grad)
+                param_idx = idx
+        if param_idx is None:
+            self.dist_params_grads.append((param, new_param_grad))
 
         # 3.2 insert allreduce_sum
         allreduce_op = main_block._insert_op_without_sync(
@@ -410,7 +422,7 @@ class SyncSharedParamsPass(PassBase):
             attrs={
                 'ring_id': sync_group.id,
                 'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Backward,
+                OP_ROLE_KEY: OpRole.Optimize,
             },
         )
         allreduce_op_dist_attr = send_info["dist_attr"]
