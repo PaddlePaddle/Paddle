@@ -1,39 +1,39 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
+#pragma once
 #include <algorithm>
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/sequence_expand_kernel_impl.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 using LoDTensor = phi::DenseTensor;
 
 template <typename T>
-__global__ void sequence_expand_kernel(const T* x_data,
-                                       const size_t* x_lod,
-                                       const size_t* ref_lod,
-                                       const size_t* offset,
-                                       const size_t lod_size,
-                                       /* default=1,
-                                          the instance length*/
-                                       const int x_item_length,
-                                       T* out_data) {
+inline __global__ void sequence_expand_kernel(const T* x_data,
+                                              const size_t* x_lod,
+                                              const size_t* ref_lod,
+                                              const size_t* offset,
+                                              const size_t lod_size,
+                                              /* default=1,
+                                                 the instance length*/
+                                              const int x_item_length,
+                                              T* out_data) {
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
 
@@ -53,15 +53,15 @@ __global__ void sequence_expand_kernel(const T* x_data,
 }
 
 template <typename T>
-__global__ void sequence_expand_grad_kernel(const T* dout_data,
-                                            const size_t* ref_lod,
-                                            const size_t* dx_lod,
-                                            const size_t* offset,
-                                            const size_t lod_size,
-                                            /* default=1,
-                                               the instance length*/
-                                            const int x_item_length,
-                                            T* dx_data) {
+inline __global__ void sequence_expand_grad_kernel(const T* dout_data,
+                                                   const size_t* ref_lod,
+                                                   const size_t* dx_lod,
+                                                   const size_t* offset,
+                                                   const size_t lod_size,
+                                                   /* default=1,
+                                                      the instance length*/
+                                                   const int x_item_length,
+                                                   T* dx_data) {
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
   int x_item_count = dx_lod[bid + 1] - dx_lod[bid];
@@ -83,9 +83,9 @@ __global__ void sequence_expand_grad_kernel(const T* dout_data,
   }
 }
 
-void GetOutputOffset(const phi::Vector<size_t>& x_lod,
-                     const phi::Vector<size_t>& ref_lod,
-                     phi::Vector<size_t>* out_offset) {
+inline void GetOutputOffset(const phi::Vector<size_t>& x_lod,
+                            const phi::Vector<size_t>& ref_lod,
+                            phi::Vector<size_t>* out_offset) {
   size_t offset = 0;
   int lod_size = static_cast<int>(x_lod.size());
   for (int i = 0; i < static_cast<int>(x_lod.size()); ++i) {
@@ -97,12 +97,12 @@ void GetOutputOffset(const phi::Vector<size_t>& x_lod,
 }
 
 template <typename T>
-static int ExpandByMemoryCopy(const phi::GPUContext& context,
-                              const LoDTensor& x,
-                              LoDTensor* out,
-                              const phi::Vector<size_t>& x_lod,
-                              const phi::Vector<size_t>& ref_lod,
-                              bool do_copy) {
+static inline int ExpandByMemoryCopy(const phi::GPUContext& context,
+                                     const LoDTensor& x,
+                                     LoDTensor* out,
+                                     const phi::Vector<size_t>& x_lod,
+                                     const phi::Vector<size_t>& ref_lod,
+                                     bool do_copy) {
   auto out_data = out->data<T>();
   auto x_data = x.data<T>();
 
@@ -188,7 +188,7 @@ struct SequenceExpandFunctor<phi::GPUContext, T> {
           out_offset_data,
           x_lod_size,
           x_item_length,
-          out->mutable_data<T>(context.GetPlace()));
+          context.template Alloc<T>(out));
     }
   }
 };
@@ -220,27 +220,8 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
         mixv_out_offset.CUDAData(context.GetPlace()),
         ref_lod.size(),
         x_item_length,
-        dx->mutable_data<T>(context.GetPlace()));
+        context.template Alloc<T>(dx));
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(sequence_expand,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SequenceExpandKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_expand_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SequenceExpandGradKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+}  // namespace phi

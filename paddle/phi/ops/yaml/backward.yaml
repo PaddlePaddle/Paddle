@@ -2756,6 +2756,18 @@
     data_type: out_grad
   optional: padding_data
 
+- backward_op : sequence_expand_grad
+  forward: sequence_expand (Tensor x, Tensor y, int ref_level = -1) -> Tensor (out)
+  args: (Tensor x, Tensor y, Tensor out_grad, int ref_level = -1)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: sequence_expand_grad
+    data_type: out_grad
+  no_need_buffer: x, y
+
 - backward_op : sequence_pool_grad
   forward: sequence_pool(Tensor x, bool is_test = false, str pooltype = "AVERAGE", float pad_value = 0.0) -> Tensor (out), Tensor (max_index)
   args: (Tensor x, Tensor max_index, Tensor out_grad, bool is_test, str pooltype, float pad_value)

@@ -3205,6 +3205,13 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_expand
+  backward: sequence_expand_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+
 - op : sequence_mask
   inputs:
     x : X
