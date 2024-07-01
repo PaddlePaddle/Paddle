@@ -32,8 +32,8 @@ void WeightDequantizeKernel(const Context& dev_ctx,
                             int32_t group_size,
                             DenseTensor* out) {
 #if defined(PADDLE_WITH_CUTLASS)
-  out->Resize({{out_dims[1], out_dims[0] * 2}});
   auto out_dims = out->dims();
+  out->Resize({{out_dims[1], out_dims[0] * 2}});
   dev_ctx.template Alloc<T>(out);
   WeightDequantize<T, Context>(dev_ctx, x, scale, algo, true, group_size, out);
   if (algo == "weight_only_int8") {
