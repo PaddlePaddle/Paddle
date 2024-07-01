@@ -157,6 +157,8 @@ void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
 
 void InferSymbolicShapeContext::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  VLOG(3) << "op->result(0): " << val.impl()->id();
+
   const symbol::ShapeOrDataDimExprs& simplified_shape_or_data =
       SimplifyBroadcastForShapeOrData(shape_or_data);
   const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
@@ -168,9 +170,11 @@ void InferSymbolicShapeContext::SetShapeOrDataForValue(
   }
   auto iter = value_id_to_shape_or_data_.find(val.impl()->id());
   if (iter == value_id_to_shape_or_data_.end()) {
+    VLOG(3) << "insert new item for value.";
     value_id_to_shape_or_data_.emplace(val.impl()->id(),
                                        substituted_shape_or_data);
   } else {
+    VLOG(3) << "update item for value.";
     iter->second = substituted_shape_or_data;
   }
 }

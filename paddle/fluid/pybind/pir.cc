@@ -2578,6 +2578,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                  return true;
                }
                for (size_t i = 0; i < actual.size(); i++) {
+                 VLOG(3) << "expect[" << i << "]: " << expect.at(i)
+                         << " actual[" << i << "]: " << actual.at(i) << " .";
+
                  if (!actual.at(i).isa<int64_t>()) {
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
@@ -2585,8 +2588,6 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                        "is int64_t."));
                    return false;
                  }
-                 VLOG(3) << "expect[" << i << "]: " << expect.at(i)
-                         << " actual[" << i << "]: " << actual.at(i) << " .";
                  if (actual.at(i) != expect.at(i)) {
                    LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
                               << " is not equal to actual[" << i
