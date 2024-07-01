@@ -56,12 +56,11 @@ namespace dialect {
 
 template <typename ConcreteOp>
 common::DataLayout PreferLayoutImpl(pir::Operation* op) {
-  return common::DataLayout::ALL_LAYOUT;
-}
-
-template <typename ConcreteOp>
-common::DataLayout CurrentLayoutImpl(pir::Operation* op) {
-  return common::DataLayout::UNDEFINED;
+  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
+  if (!data_format_attr) {
+    return common::DataLayout::ALL_LAYOUT;
+  }
+  return common::StringToDataLayout(data_format_attr.AsString());
 }
 
 template <typename ConcreteOp>
