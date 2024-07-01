@@ -2510,40 +2510,8 @@ PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
   attn_qk_matmul->LinksFrom({attn_q_scale_out_var, attn_k_transpose_out_var})
       .LinksTo({attn_qk_matmul_out_var});
 
-  auto *attn_mask_var =
-      pattern->NewNode(attn_mask_repr())->assert_is_op_input("cast", "X");
-  auto *attn_mask_cast1 =
-      pattern->NewNode(attn_mask_cast1_repr())->assert_is_op("cast");
-  auto *attn_mask_cast1_out_var = pattern->NewNode(attn_mask_cast1_out_repr())
-                                      ->assert_is_op_output("cast", "Out")
-                                      ->assert_is_op_input("cast", "X");
-  attn_mask_cast1->LinksFrom({attn_mask_var})
-      .LinksTo({attn_mask_cast1_out_var});
-
-  auto *attn_mask_cast2 =
-      pattern->NewNode(attn_mask_cast2_repr())->assert_is_op("cast");
-  auto *attn_mask_cast2_out_var = pattern->NewNode(attn_mask_cast2_out_repr())
-                                      ->assert_is_op_output("cast", "Out")
-                                      ->assert_is_op_input("scale", "X");
-  attn_mask_cast2->LinksFrom({attn_mask_cast1_out_var})
-      .LinksTo({attn_mask_cast2_out_var});
-
-  auto *attn_mask_scale1 =
-      pattern->NewNode(attn_mask_scale1_repr())->assert_is_op("scale");
-  auto *attn_mask_scale1_out_var = pattern->NewNode(attn_mask_scale1_out_repr())
-                                       ->assert_is_op_output("scale", "Out")
-                                       ->assert_is_op_input("scale", "X");
-  attn_mask_scale1->LinksFrom({attn_mask_cast2_out_var})
-      .LinksTo({attn_mask_scale1_out_var});
-
-  auto *attn_mask_scale2 =
-      pattern->NewNode(attn_mask_scale2_repr())->assert_is_op("scale");
-  auto *attn_mask_scale2_out_var =
-      pattern->NewNode(attn_mask_scale2_out_repr())
-          ->assert_is_op_output("scale", "Out")
-          ->assert_is_op_input("elementwise_add", "Y");
-  attn_mask_scale2->LinksFrom({attn_mask_scale1_out_var})
-      .LinksTo({attn_mask_scale2_out_var});
+  auto *attn_mask_var = pattern->NewNode(attn_mask_repr())
+                            ->assert_is_op_input("elementwise_add", "Y");
 
   auto *attn_mask_eleadd = pattern->NewNode(attn_mask_eleadd_repr())
                                ->assert_is_op("elementwise_add");
@@ -2551,8 +2519,7 @@ PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
       pattern->NewNode(attn_mask_eleadd_out_repr())
           ->assert_is_op_output("elementwise_add", "Out")
           ->assert_is_op_input("softmax", "X");
-  attn_mask_eleadd
-      ->LinksFrom({attn_mask_scale2_out_var, attn_qk_matmul_out_var})
+  attn_mask_eleadd->LinksFrom({attn_mask_var, attn_qk_matmul_out_var})
       .LinksTo({attn_mask_eleadd_out_var});
 
   auto *attn_softmax =
