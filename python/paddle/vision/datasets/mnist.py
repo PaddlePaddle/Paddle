@@ -75,7 +75,7 @@ class MNIST(Dataset):
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = mnist[i]
             ...     # do something with img and label
-            ...     print(type(img), img.size, label) # type: ignore
+            ...     print(type(img), img.size, label)
             ...     # <class 'PIL.Image.Image'> (28, 28) [5]
 
 
@@ -294,7 +294,7 @@ class FashionMNIST(MNIST):
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = fashion_mnist[i]
             ...     # do something with img and label
-            ...     print(type(img), img.size, label) # type: ignore
+            ...     print(type(img), img.size, label)
             ...     # <class 'PIL.Image.Image'> (28, 28) [9]
 
 
