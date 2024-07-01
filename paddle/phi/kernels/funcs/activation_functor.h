@@ -2962,12 +2962,11 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
       is_negative = true;
       decimals = -decimals;
     }
-    float ten_pow_deciamls = std::pow(10, decimals);
+    auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
 
-    out.device(d) =
-        is_negative
-            ? (x / static_cast<T>(ten_pow_deciamls)).round() * ten_pow_deciamls
-            : (x * static_cast<T>(ten_pow_deciamls)).round() / ten_pow_deciamls;
+    out.device(d) = is_negative
+                        ? (x / ten_pow_deciamls).round() * ten_pow_deciamls
+                        : (x * ten_pow_deciamls).round() / ten_pow_deciamls;
   }
 };
 
@@ -5190,13 +5189,10 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
       is_negative = true;
       decimals = -decimals;
     }
-    float ten_pow_deciamls = std::pow(10, decimals);
-    return is_negative ? static_cast<T>(
-                             round(x / static_cast<MPType>(ten_pow_deciamls))) *
-                             static_cast<T>(ten_pow_deciamls)
-                       : static_cast<T>(
-                             round(x * static_cast<MPType>(ten_pow_deciamls))) /
-                             static_cast<T>(ten_pow_deciamls);
+    auto ten_pow_deciamls = static_cast<MPType>(std::pow(10, decimals));
+    return is_negative
+               ? static_cast<T>(round(x / ten_pow_deciamls)) * ten_pow_deciamls
+               : static_cast<T>(round(x * ten_pow_deciamls)) / ten_pow_deciamls;
   }
 };
 
