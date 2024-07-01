@@ -1788,3 +1788,5 @@ PHI_DEFINE_EXPORTED_double(accuracy_check_atol_bf16,
 PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_bf16,
                            1e-3,
                            "It controls the rtol of accuracy_check op");
+
+PHI_DEFINE_EXPORTED_int32(trt_min_group_size, 3, "when the trt subgraph size is not larger than `trt_min_group_size`, the group will fallback to original graph.");
