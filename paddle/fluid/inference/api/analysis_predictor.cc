@@ -1066,7 +1066,6 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
-        LOG(INFO) << "Created new variable: " << param_names[i];
       } else {
         PADDLE_THROW(platform::errors::Unavailable(
             "Only support parameter data of type DenseTensor."));
@@ -2294,6 +2293,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
+  config_.PartiallyRelease();
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
