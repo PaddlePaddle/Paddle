@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/sub_graph_extract_pass.h"
+#include "paddle/fluid/pir/transforms/trt_sub_graph_extract_pass.h"
 
 #include <queue>
 #include <regex>
@@ -40,12 +40,16 @@ namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
 
 bool IsSupportedByTRT(const pir::Operation& op) {
-  return op->attribute<pir::BoolAttribute>(paddle::dialect::kCanRunTrtAttr).data();
+  if (op.HasAttribute(paddle::dialect::kCanRunTrtAttr) &&
+        op.attribute<pir::BoolAttribute>(paddle::dialect::kCanRunTrtAttr).data()) {
+    return true;
+  }
+  return false;
 }
 
 class TrtSubGraphExtractPass : public pir::Pass {
  public:
-  SubGraphExtractPass()
+  TrtSubGraphExtractPass()
       : pir::Pass("trt_sub_graph_extract_pass", 1) {}
 
   void Run(pir::Operation* op) override {
@@ -60,7 +64,7 @@ class TrtSubGraphExtractPass : public pir::Pass {
         ::pir::SubgraphDetector(&block, IsSupportedByTRT)();
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
-      if(group_ops.size() < trt_min_group_size) {
+      if(group_ops.size() < FLAGS_trt_min_group_size) {
         VLOG(4) << "current group_ops.size(): " << group_ops.size() << ", will fallback to paddle original graph";
         continue;
       }
@@ -77,7 +81,7 @@ class TrtSubGraphExtractPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> TrtSubGraphExtractPass() {
+std::unique_ptr<Pass> CreateTrtSubGraphExtractPass() {
   return std::make_unique<TrtSubGraphExtractPass>();
 }
 

@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateSubGraphExtractPass();
+IR_API std::unique_ptr<Pass> CreateTrtSubGraphExtractPass();
 
 }  // namespace pir
