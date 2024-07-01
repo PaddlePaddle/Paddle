@@ -913,8 +913,8 @@ void BatchNormInferMeta(const MetaTensor& x,
 
   bool check = true;
   if (!scale || !bias ||
-      ((!config.is_runtime) && (common::product(scale.dims()) <= 0 ||
-                                common::product(bias.dims()) <= 0))) {
+      ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
+                                contain_unknown_dim(bias.dims())))) {
     check = false;
   }
 
