@@ -295,7 +295,7 @@ class TrainerDesc:
             if not isinstance(values, list):
                 values = [values]
             if len(values) != 1:
-                raise ValueError("dependency len %s != 1" % len(values))
+                raise ValueError(f"dependency len {len(values)} != 1")
             for value in values:
                 m.values.append(value)
         config.dense_pull_after_copy = config_dict.get(

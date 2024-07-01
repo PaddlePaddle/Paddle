@@ -15,9 +15,3 @@ gather_srcs(
   compile_error.cc)
 
 cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
-
-if(WITH_CUDA)
-  cinn_nv_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)
-else()
-  cinn_cc_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)
-endif()

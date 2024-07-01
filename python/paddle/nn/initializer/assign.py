@@ -116,7 +116,7 @@ class NumpyArrayInitializer(Initializer):
             value_name = "int8_values"
             values = [int(v) for v in np_value.flat]
         else:
-            raise ValueError("Unsupported dtype %s", self._value.dtype)
+            raise ValueError(f"Unsupported dtype {self._value.dtype}")
         if self._value.size > 1024 * 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "

@@ -36,6 +36,7 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
+  "fusion/fp8_gemm/fp8_gemm_with_cublasLt/*.cu"
   "fusion/gpu/*.cu")
 
 file(

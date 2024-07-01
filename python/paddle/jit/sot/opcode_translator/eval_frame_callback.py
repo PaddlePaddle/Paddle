@@ -16,11 +16,14 @@ from __future__ import annotations
 
 import dis
 from functools import partial
+from typing import TYPE_CHECKING
 
 from ..profiler import EventGuard
 from ..utils import log_do, log_format
-from .custom_code import CustomCode
 from .executor.executor_cache import OpcodeExecutorCache
+
+if TYPE_CHECKING:
+    from .custom_code import CustomCode
 
 
 def print_locals(frame):

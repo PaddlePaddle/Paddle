@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.framework import (
@@ -25,10 +29,19 @@ from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...device import get_cudnn_version, is_compiled_with_rocm
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, ShapeLike
+
 __all__ = []
 
 
-def affine_grid(theta, out_shape, align_corners=True, name=None):
+def affine_grid(
+    theta: Tensor,
+    out_shape: ShapeLike,
+    align_corners: bool = True,
+    name: str | None = None,
+) -> Tensor:
     """
     It generates a grid of (x,y) or (x,y,z) coordinates using the parameters of
     the affine transformation that correspond to a set of points where
@@ -42,7 +55,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                                            When the format is ``[N, C, H, W]``, it represents the batch size, number of channels, height and width. When the format is ``[N, C, D, H, W]``, it represents the batch size, number of channels, depth, height and width.
                                            The data type must be int32.
         align_corners(bool, optional): if True, aligns the centers of the 4 (4D) or 8 (5D) corner pixels of the input and output tensors, and preserves the value of the corner pixels. Default: True
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, A Tensor with shape [batch_size, H, W, 2] or [batch, D, H, W, 3] while ('D')'H', 'W' are the (depth)height, width of feature map in affine transformation. The data type is the same as `theta`.
@@ -126,13 +139,13 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
 
 
 def grid_sample(
-    x,
-    grid,
-    mode='bilinear',
-    padding_mode='zeros',
-    align_corners=True,
-    name=None,
-):
+    x: Tensor,
+    grid: Tensor,
+    mode: str = 'bilinear',
+    padding_mode: Literal["zeros", "reflection", "border"] = 'zeros',
+    align_corners: bool = True,
+    name: str | None = None,
+) -> Tensor:
     """
     Sample input X by using bilinear interpolation or
     nearest interpolation based on flow field grid, which is usually
@@ -214,7 +227,7 @@ def grid_sample(
         align_corners(bool, optional): If `align_corners` is true, it will projects
                    -1 and 1 to the centers of the corner pixels. Otherwise, it will
                    projects -1 and 1 to the image edges.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -319,7 +332,12 @@ def grid_sample(
     return out
 
 
-def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
+def pixel_shuffle(
+    x: Tensor,
+    upscale_factor: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     """
     This API implements pixel shuffle operation.
     See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
@@ -329,7 +347,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
         data_format (str, optional): The data format of the input and output data. An optional string from: ``"NCHW"``, ``"NHWC"``. When it is ``"NCHW"``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``"NCHW"``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Out(tensor): Reshaped tensor according to the new dimension.
@@ -373,7 +391,12 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         return out
 
 
-def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
+def pixel_unshuffle(
+    x: Tensor,
+    downscale_factor: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     """
     This API implements pixel unshuffle operation.
     See more details in :ref:`PixelUnShuffle <api_paddle_nn_PixelUnshuffle>` .
@@ -382,7 +405,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
         downscale_factor (int): Factor to decrease spatial resolution.
         data_format (str, optional): The data format of the input and output data. An optional string of ``'NCHW'`` or ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
-        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Out (Tensor): Reshaped tensor according to the new dimension.
@@ -436,7 +459,12 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     return out
 
 
-def channel_shuffle(x, groups, data_format="NCHW", name=None):
+def channel_shuffle(
+    x: Tensor,
+    groups: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     """
     This API implements channel shuffle operation.
     See more details in :ref:`api_paddle_nn_ChannelShuffle`.
@@ -445,7 +473,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
         groups (int): Number of groups to divide channels in.
         data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Out (Tensor): Rearranged tensor keeping the original tensor shape.
