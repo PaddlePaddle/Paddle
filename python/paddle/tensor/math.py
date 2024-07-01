@@ -8457,7 +8457,7 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
             >>> import paddle
             >>> a = paddle.to_tensor([1, 2, 3], dtype='int32')
             >>> b = paddle.to_tensor([5, 6], dtype='int32')
-            >>> res = paddle.cartesian_prod(a, b)
+            >>> res = paddle.cartesian_prod([a, b])
             >>> print(res)
             Tensor(shape=[6, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
                 [[1, 5],
