@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/kernels/funcs/beam_search_decode_op_def.h"
+#include "paddle/phi/kernels/funcs/beam_search_decode.h"
 
 namespace phi {
 namespace funcs {

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/beam_search_decode_op_def.h"
+#include "paddle/phi/kernels/funcs/beam_search_decode.h"
 
 namespace phi {
 

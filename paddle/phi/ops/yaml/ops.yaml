@@ -467,14 +467,6 @@
     data_type: pre_ids
   optional: ids, parent_idx
 
-- op : beam_search_decode
-  args: (Tensor ids, Tensor scores, int beam_size, int end_id)
-  output: Tensor (sentence_ids), Tensor (sentence_scores)
-  infer_meta:
-    func: BeamSearchDecodeInferMeta
-  kernel:
-    func: beam_search_decode
-
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)

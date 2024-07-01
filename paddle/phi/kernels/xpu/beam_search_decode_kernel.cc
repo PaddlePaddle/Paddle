@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/beam_search_decode_op_xpu.h"
+#include "paddle/phi/kernels/funcs/beam_search_decode_xpu.h"
 
 namespace phi {
 
