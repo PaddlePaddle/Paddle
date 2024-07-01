@@ -441,6 +441,7 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
+
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
@@ -449,6 +450,7 @@ bool AnalysisPredictor::Init(
       optimized_model = optimized_model_path + "/" + "_optimized.json";
     } else {
       optimized_model = optimized_model_path + "/" + "_optimized.pdmodel";
+      LOG(INFO) << "optimized_model" << optimized_model;
     }
     std::string optimized_params =
         optimized_model_path + "/" + "_optimized.pdiparams";
@@ -470,13 +472,10 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
-
   InitPlace();
-
   if (!CreateExecutor()) {
     return false;
   }
-
   if (load_pir_model_) {
     if (!PreparePirProgram()) {
       return false;
@@ -651,6 +650,9 @@ void AnalysisPredictor::ClearExtraParams() {
         extra_params.emplace_back(var_desc->Name());
       }
     }
+  }
+  for (auto name : extra_params) {
+    LOG(INFO) << "清除的name " << name;
   }
   scope_->EraseVars(extra_params);
   VLOG(1) << "Clear " << extra_params.size() << " extra params.";
@@ -920,8 +922,10 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     pass_pm.Run(pir_program_.get());
 
     if (config_.save_optimized_model_) {
+      std::string optimized_model_path = GetOptimizedModelPath();
+      LOG(INFO) << " optimized_model_path" << optimized_model_path;
       std::string optimized_model =
-          GetOptimizedModelPath() + "/" + "_optimized.json";
+          optimized_model_path + "/" + "_optimized.json";
       pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
       LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
@@ -1259,7 +1263,6 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    std::cout << "predictor program " << *pir_program_ << std::endl;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -2293,7 +2296,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
-  config_.PartiallyRelease();
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
