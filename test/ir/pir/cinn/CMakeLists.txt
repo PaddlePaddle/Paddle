@@ -11,7 +11,8 @@ if(WITH_GPU)
     "test_*.py")
   string(REPLACE ".py" "" CINN_PIR_TEST "${CINN_PIR_TEST}")
 
-  list(REMOVE_ITEM CINN_PIR_TEST test_subgraph_checker test_cinn_multi_device test_cinn_auto_parallel)
+  list(REMOVE_ITEM CINN_PIR_TEST test_subgraph_checker test_cinn_multi_device
+       test_cinn_auto_parallel)
   foreach(cinn_pir_test_name ${CINN_PIR_TEST})
     add_test(
       NAME ${cinn_pir_test_name}
