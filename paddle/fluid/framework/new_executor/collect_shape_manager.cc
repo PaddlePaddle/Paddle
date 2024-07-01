@@ -27,6 +27,7 @@ void CollectShapeManager::CollectShapeInfo(
     framework::InstructionBase *instr,
     framework::ValueExecutionInfo *value_exe_info,
     framework::Scope *scope) {
+  is_shape_range_info_ready_ = false;
   for (auto &input : instr->Inputs()) {
     auto var_name = value_exe_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
