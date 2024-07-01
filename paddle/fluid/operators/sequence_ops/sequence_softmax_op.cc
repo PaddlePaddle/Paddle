@@ -12,13 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sequence_ops/sequence_softmax_op.h"
-
-#include <string>
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/gpu/gpu_dnn.h"
-#endif
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -151,15 +145,3 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sequence_softmax_grad,
                   ops::SequenceSoftmaxGradOp,
                   ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
-PD_REGISTER_STRUCT_KERNEL(sequence_softmax,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceSoftmaxKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(sequence_softmax_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SequenceSoftmaxGradKernel,
-                          float,
-                          double) {}

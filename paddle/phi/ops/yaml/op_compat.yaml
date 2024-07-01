@@ -3219,8 +3219,12 @@
 
 - op : sequence_softmax
   backward : sequence_softmax_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
   extra :
-    attrs : [str data_format = "AnyLayout"]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = false]
 
 - op : sgd_ (sgd)
   inputs :

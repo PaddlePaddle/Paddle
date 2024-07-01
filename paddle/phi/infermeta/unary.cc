@@ -4256,6 +4256,11 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
   y->set_dtype(out_dtype);
 }
 
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
 void SplitInferMeta(const MetaTensor& x,
                     const IntArray& sections,
                     const Scalar& axis,

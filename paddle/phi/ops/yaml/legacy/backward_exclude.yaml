@@ -48,3 +48,4 @@
 - tril_grad
 - triu_grad
 - unpool_grad
+- sequence_softmax_grad
