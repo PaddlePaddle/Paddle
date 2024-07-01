@@ -33,6 +33,12 @@
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
+# this add_n_grad is only used for generate AddNOp::Vjp func
+- backward_op : add_n_grad
+  forward : add_n (Tensor[] inputs) -> Tensor(out)
+  args : (Tensor[] inputs, Tensor out_grad)
+  output : Tensor[](inputs_grad)
+
 - backward_op : add_triple_grad
   forward : add_double_grad (Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, int axis = -1) -> Tensor(grad_grad_out)
   args : (Tensor grad_grad_x, Tensor grad_grad_y, Tensor grad_grad_out_grad, int axis = -1)
