@@ -684,8 +684,7 @@ def deserialize_persistables(program, data, executor):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `base.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `base.Program`, but received `{type(program)}`"
         )
     # load params to a tmp program
     load_program = Program()

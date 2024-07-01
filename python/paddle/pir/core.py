@@ -114,7 +114,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 # program is a global instance.

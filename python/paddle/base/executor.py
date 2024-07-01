@@ -1459,8 +1459,7 @@ class Executor:
                 _fetch_list.append(item)
             else:
                 raise TypeError(
-                    "The item in fetch_list should be str, variable or optimize_op, but received %s.",
-                    type(item),
+                    f"The item in fetch_list should be str, variable or optimize_op, but received {type(item)}.",
                 )
 
         for index, item in enumerate(fetch_list):
