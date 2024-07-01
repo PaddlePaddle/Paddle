@@ -86,9 +86,9 @@ class VOC2012(Dataset):
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = voc2012[i]
             ...     # do something with img and label
-            ...     print(type(img), img.size) # type: ignore
+            ...     print(type(img), img.size)
             ...     # <class 'PIL.JpegImagePlugin.JpegImageFile'> (500, 281)
-            ...     print(type(label), label.size) # type: ignore
+            ...     print(type(label), label.size)
             ...     # <class 'PIL.PngImagePlugin.PngImageFile'> (500, 281)
 
 
@@ -115,7 +115,7 @@ class VOC2012(Dataset):
             ...     # do something with img and label
             ...     print(type(img), img.shape) # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 281, 500]
-            ...     print(type(label), label.shape) # type: ignore
+            ...     print(type(label), label.shape)
             ...     # <class 'numpy.ndarray'> (281, 500)
     """
 
