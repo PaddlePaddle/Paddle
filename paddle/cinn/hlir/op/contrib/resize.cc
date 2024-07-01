@@ -65,7 +65,8 @@ ir::Tensor Resize(const ir::Tensor &input,
         PADDLE_THROW(phi::errors::Fatal(
             "Resize only supports X86 and NVGPU ! Please Check.\n"));
       },
-      [&](common::NVGPUArch) { func_name.assign("cinn_cuda_resize_"); });
+      [&](common::NVGPUArch) { func_name.assign("cinn_cuda_resize_"); },
+      [&](common::HygonDCUArchHIP) { func_name.assign("cinn_hip_resize_"); });
 
   if (mode == "bilinear") {
     func_name.append("bilinear");
@@ -240,16 +241,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::X86Arch) {
-                          pe::IRScheduleInjectiveCPU(
-                              ir_sch, output_shapes.front(), target, true);
-                        },
-                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::NVGPUArch) {
-                          pe::IRGpuScheduleInjective(
-                              ir_sch, output_shapes.front(), target);
-                        });
+      target.arch.Match(
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            pe::IRScheduleInjectiveCPU(
+                ir_sch, output_shapes.front(), target, true);
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
+          },
+          [&](common::HygonDCUArchHIP) {
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
+          });
     }
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};

@@ -54,6 +54,8 @@ ParamsT CreateParamsImpl(common::ARMArch) {
 
 ParamsT CreateParamsImpl(common::NVGPUArch) { return CreateCudaParams(); }
 
+ParamsT CreateParamsImpl(common::HygonDCUArchHIP) { return CreateCudaParams(); }
+
 ParamsT CreateParams(common::Arch arch) {
   return std::visit([](const auto &impl) { return CreateParamsImpl(impl); },
                     arch.variant());

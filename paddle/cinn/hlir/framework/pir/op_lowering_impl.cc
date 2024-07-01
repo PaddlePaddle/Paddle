@@ -54,6 +54,7 @@ PD_DECLARE_bool(cinn_enable_map_expr_schedule);
 PD_DECLARE_bool(cinn_bucket_compile);
 PD_DECLARE_bool(cinn_new_group_scheduler);
 PD_DECLARE_bool(cinn_check_tensor_buffer_map);
+const int default_priority = 100;
 
 namespace cinn {
 namespace hlir {
@@ -192,7 +193,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
-    return {{std::make_tuple(ir::Expr(1), LowerCustomCall(group)[0], 100)},
+    return {{std::make_tuple(
+                ir::Expr(1), LowerCustomCall(group)[0], default_priority)},
             ir::LoweredFunc()};
   }
   auto X86Expr = LowerX86(group, ops, apply_op_schedule);
@@ -281,7 +283,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   } else {
     cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
-    priorities.emplace_back(100);
+    priorities.emplace_back(default_priority);
   }
 
   // The last func is stored as a kernel on x86
@@ -720,6 +722,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             optim::EliminateCommonGlobalMemoryRead(&(func_body));
             optim::OptimizeExprGPU(&(func_body));
 #endif
+          },
+          [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+            optim::EliminateCommonGlobalMemoryRead(&(func_body));
+            optim::OptimizeExprGPU(&(func_body));
+#endif
           });
     }
 
@@ -904,6 +912,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
                          common::ARMArch>) {
           op_func_arg_tensors->push_back(expr.as_tensor_ref());
           expr.as_tensor_ref()->WithBuffer();
+        },
+        [&](common::HygonDCUArchHIP) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          } else {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          }
         });
   }
 

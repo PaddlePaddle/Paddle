@@ -1,0 +1,3 @@
+{"priority":-1,"bucketInfo":{"dimension":[{"lowerBound":16384,"upperBound":16384,"iterType":"S"},{"lowerBound":768,"upperBound":768,"iterType":"R"}]},"tileConfig":{"warpNum":"24","treeReduceNum":"32","spatialInnerNum":"1"}}
+{"priority":-1,"bucketInfo":{"dimension":[{"lowerBound":196608,"upperBound":196608,"iterType":"S"},{"lowerBound":128,"upperBound":128,"iterType":"R"}]},"tileConfig":{"warpNum":"12","treeReduceNum":"32","spatialInnerNum":"1"}}
+{"priority":-1,"bucketInfo":{"dimension":[{"lowerBound":13,"upperBound":13,"iterType":"S"},{"lowerBound":4096,"upperBound":4096,"iterType":"R"}]},"tileConfig":{"warpNum":"4","treeReduceNum":"128","spatialInnerNum":"1"}}
