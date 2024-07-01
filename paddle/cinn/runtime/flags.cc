@@ -56,7 +56,7 @@ PD_DEFINE_string(cinn_kernel_execution_label,
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
                  StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./config/"),
+                               "./tile_file/"),
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
@@ -69,8 +69,8 @@ PD_DEFINE_int32(cinn_parallel_compile_thread,
                              (std::thread::hardware_concurrency() >> 1)),
                 "How much thread the parallel compile used.");
 
-PD_DEFINE_bool(cinn_enable_config_search,
-               BoolFromEnv("FLAGS_cinn_enable_config_search", false),
+PD_DEFINE_bool(cinn_measure_kernel_time,
+               BoolFromEnv("FLAGS_cinn_measure_kernel_time", false),
                "Whether to enable schedule config search mode.");
 
 PD_DEFINE_bool(cinn_use_op_fusion,

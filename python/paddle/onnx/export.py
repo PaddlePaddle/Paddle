@@ -83,7 +83,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             ...     # Static and run model.
             ...     paddle.jit.to_static(model)
             ...     out = model(x, y, z=True)
-            ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, z], output_spec=[out], input_names_after_prune=[x])
+            ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, True], output_spec=[out], input_names_after_prune=[x])
             ...
             >>> export_logic()
     """

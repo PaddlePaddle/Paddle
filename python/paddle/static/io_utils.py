@@ -77,8 +77,7 @@ def _get_valid_program(program=None):
         )
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "The type of input program is invalid, expected type is base.Program, but received %s"
-            % type(program)
+            f"The type of input program is invalid, expected type is base.Program, but received {type(program)}"
         )
     return program
 

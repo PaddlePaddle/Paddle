@@ -45,7 +45,6 @@ using ir::Tensor;
 
 std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
                                const cinn::common::Target &target,
-                               poly::StageMap stages,
                                const int &axis,
                                const bool &keep_dims,
                                const std::string &name) {
@@ -77,7 +76,7 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
   }
 
   auto sort_index =
-      ArgSort(in_tensor, target, stages, pos_axis, false, name + "_index");
+      ArgSort(in_tensor, target, pos_axis, false, name + "_index");
   auto res = Compute(
       output_shape,
       [=](const std::vector<Expr> &indices) {
@@ -90,7 +89,6 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
         return sort_index.at(0)(eval_indices);
       },
       name);
-  stages->InsertLazily(sort_index.at(0));
   return {res, sort_index.at(0), sort_index.at(1)};
 }
 
@@ -123,18 +121,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
         Expr in_expr = pack_args[0];
         CHECK(in_expr.as_tensor());
         Tensor in_tensor = in_expr.as_tensor_ref();
-        auto stages = CreateStages({in_tensor});
         CHECK_EQ(pack_args.size(), 2U);
         CHECK(pack_args[1].is_string());
         tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out_tensor =
-            Argmax(in_tensor, target, stages, axis, keep_dims, tensor_name);
+            Argmax(in_tensor, target, axis, keep_dims, tensor_name);
 
-        stages->InsertLazily(out_tensor[0]);
         std::vector<CINNValue> cinn_values{CINNValue(out_tensor[0]),
                                            CINNValue(out_tensor[1]),
-                                           CINNValue(out_tensor[2]),
-                                           CINNValue(stages)};
+                                           CINNValue(out_tensor[2])};
         *ret = cinn::common::CINNValuePack{cinn_values};
       });
 

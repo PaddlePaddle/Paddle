@@ -2668,6 +2668,30 @@ class TestRelu_ZeroDim(TestRelu):
         self.shape = []
 
 
+class TestRelu_NanInput(TestActivation):
+    def setUp(self):
+        self.init_dtype()
+        self.init_shape()
+        self.if_enable_cinn()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        x[-1] = float('nan')
+        tensor_x = paddle.to_tensor(x)
+        out = paddle.nn.functional.relu(tensor_x)
+        self.outputs_paddle = out
+
+    def test_check_output(self):
+        self.assertTrue(
+            paddle.isnan(self.outputs_paddle).cast('int32').sum() > 0
+        )
+
+    def test_check_grad(self):
+        pass
+
+
 class TestReluAPI(unittest.TestCase):
     # test paddle.nn.ReLU, paddle.nn.functional.relu
     def setUp(self):
