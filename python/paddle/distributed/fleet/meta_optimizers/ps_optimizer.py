@@ -208,8 +208,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 return free
             else:
                 raise ValueError(
-                    "%s platform is unsupported is parameter server optimizer"
-                    % (platform.system())
+                    f"{platform.system()} platform is unsupported is parameter server optimizer"
                 )
 
         if not isinstance(self.inner_opt, paddle.optimizer.SGD):
@@ -248,8 +247,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     if x < 0:
                         if neg_dim_count >= 1:
                             raise ValueError(
-                                "Var %s has more than one negative dim."
-                                % (var_name)
+                                f"Var {var_name} has more than one negative dim."
                             )
                         neg_dim_count += 1
                         data_count *= -x

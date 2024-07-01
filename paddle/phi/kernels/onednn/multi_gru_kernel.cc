@@ -1,40 +1,35 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <initializer_list>
 #include <iostream>
 #include <memory>
 
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/multi_gru_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 using common::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
-using phi::OneDNNContext;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 namespace {
-
 // oneDNN RNN dimensions
 const int64_t D = 1;  // Directions
 const int64_t L = 1;  // Layers (PP supports only 1 stacked layer)
@@ -46,25 +41,37 @@ constexpr Direction R2L = Direction::unidirectional_right2left;
 constexpr const char* dir2str(Direction dir) {
   return dir == L2R ? "LR" : "RL";
 }
-
 }  // namespace
 
 template <typename T, typename T_out = T>
 class MultiGRUHandler {
  public:
-  MultiGRUHandler(const paddle::framework::ExecutionContext& ctx,
-                  const OneDNNContext& dev_ctx)
+  MultiGRUHandler(const OneDNNContext& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<const DenseTensor*>& weight_x,
+                  const std::vector<const DenseTensor*>& weight_h,
+                  const std::vector<const DenseTensor*>& bias,
+                  const std::vector<const DenseTensor*>& scale_weights,
+                  const std::string& activation,
+                  const std::string& gate_activation,
+                  int layers,
+                  bool origin_mode,
+                  const std::string& mkldnn_data_type,
+                  float scale_data,
+                  float shift_data,
+                  bool force_fp32_output,
+                  DenseTensor* hidden)
       : dev_ctx_(dev_ctx),
         engine_(dev_ctx.GetEngine()),
-        place_(ctx.GetPlace()),
-        origin_mode_(ctx.Attr<bool>("origin_mode")),
-        layers_(ctx.Attr<int>("layers")),
+        place_(dev_ctx.GetPlace()),
+        origin_mode_(origin_mode),
+        layers_(layers),
         concat_pds_(layers_, std::shared_ptr<dnnl::concat::primitive_desc>()),
-        x_(ctx.Input<phi::DenseTensor>("X")),
-        weights_x_(ctx.MultiInput<phi::DenseTensor>("WeightX")),
-        weights_h_(ctx.MultiInput<phi::DenseTensor>("WeightH")),
-        biases_(ctx.MultiInput<phi::DenseTensor>("Bias")),
-        hidden_(ctx.Output<phi::DenseTensor>("Hidden")),
+        x_(&x),
+        weights_x_(weight_x),
+        weights_h_(weight_h),
+        biases_(bias),
+        hidden_(hidden),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
         weights_x_.size(),
@@ -84,12 +91,12 @@ class MultiGRUHandler {
                                        "not match the number of layers."));
     // oneDNN kernel has hardcoded activation functions
     PADDLE_ENFORCE_EQ(
-        ctx.Attr<std::string>("gate_activation"),
+        gate_activation,
         "sigmoid",
         phi::errors::Unimplemented(
             "oneDNN fusion_gru supports only sigmoid as a gate activation."));
     PADDLE_ENFORCE_EQ(
-        ctx.Attr<std::string>("activation"),
+        activation,
         "tanh",
         phi::errors::Unimplemented(
             "oneDNN fusion_gru supports only tanh as an activation."));
@@ -110,7 +117,7 @@ class MultiGRUHandler {
       OCs.push_back(vectorize(weights_h_[2 * layer]->dims())[0]);
     }
 
-    const std::string unique_name = ctx.OutputName("Hidden");
+    const std::string unique_name = dev_ctx.GetOutputsName("Hidden")[0];
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
@@ -129,8 +136,6 @@ class MultiGRUHandler {
 
     if (is_int8) {
       // Add int8 attributes
-      const auto scale_weights =
-          ctx.MultiInput<phi::DenseTensor>("Scale_weights");
       PADDLE_ENFORCE_EQ(
           scale_weights.size(),
           layers_ * 2,
@@ -139,8 +144,6 @@ class MultiGRUHandler {
               "not match the number of layers. Expected: %d. Actual: %d",
               layers_ * 2,
               scale_weights.size()));
-      const float scale_data = ctx.Attr<float>("Scale_data");
-      const float shift_data = ctx.Attr<float>("Shift_data");
 
       const int weights_scale_mask =
           0 +
@@ -600,8 +603,8 @@ class MultiGRUHandler {
   template <typename Tout>
   void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer UNUSED) {
     auto* data = mem->get_data_handle();
-    auto* hidden_data =
-        phi::funcs::to_void_cast(hidden_->mutable_data<Tout>(place_));
+    auto tmp = dev_ctx_.Alloc<Tout>(hidden_);
+    auto* hidden_data = phi::funcs::to_void_cast(tmp);
 
     if (isNTC(gru_pds_[{layers_ - 1, L2R}]->dst_desc())) {
       reorderNTCtoPP(data, hidden_data, layers_ - 1);
@@ -681,45 +684,115 @@ class MultiGRUHandler {
   const phi::Vector<size_t>& x_lod_;
 };
 
-template <typename T, typename DeviceContext>
-class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const bool force_fp32_output =
-        ctx.HasAttr("force_fp32_output") && ctx.Attr<bool>("force_fp32_output");
+template <typename T, typename Context, typename Tout = T>
+void RunKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<const DenseTensor*>& weight_x,
+               const std::vector<const DenseTensor*>& weight_h,
+               const std::vector<const DenseTensor*>& bias,
+               const std::vector<const DenseTensor*>& scale_weights,
+               const std::string& activation,
+               const std::string& gate_activation,
+               int layers_in,
+               bool origin_mode,
+               const std::string& mkldnn_data_type,
+               float scale_data,
+               float shift_data,
+               bool force_fp32_output,
+               DenseTensor* hidden) {
+  MultiGRUHandler<T, Tout> handler(dev_ctx,
+                                   x,
+                                   weight_x,
+                                   weight_h,
+                                   bias,
+                                   scale_weights,
+                                   activation,
+                                   gate_activation,
+                                   layers_in,
+                                   origin_mode,
+                                   mkldnn_data_type,
+                                   scale_data,
+                                   shift_data,
+                                   force_fp32_output,
+                                   hidden);
 
-    if (force_fp32_output) {  // NOLINT
-      RunKernel<float>(ctx);
-    } else {
-      RunKernel<T>(ctx);
-    }
+  int layers = handler.getLayers();
+  auto input_mem = handler.AcquireInputMemoryWithReorder();
+  for (int layer = 0; layer < layers; ++layer) {
+    auto gru_out_L2R = handler.executeSingleGru(input_mem, layer, L2R);
+    handler.reorderInputL2RtoR2L(input_mem, layer);
+    auto gru_out_R2L = handler.executeSingleGru(input_mem, layer, R2L);
+    if (layer < layers - 1)  // NOLINT
+      handler.template reorderOutputR2LtoL2R<T>(gru_out_R2L, layer);
+    else
+      handler.template reorderOutputR2LtoL2R<Tout>(gru_out_R2L, layer);
+    input_mem = handler.executeConcat(gru_out_L2R, gru_out_R2L, layer);
   }
+  handler.template reorderOutput<Tout>(input_mem, layers - 1);
+}
 
-  template <typename Tout = T>
-  void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    MultiGRUHandler<T, Tout> handler(ctx, dev_ctx);
-
-    int layers = handler.getLayers();
-    auto input_mem = handler.AcquireInputMemoryWithReorder();
-    for (int layer = 0; layer < layers; ++layer) {
-      auto gru_out_L2R = handler.executeSingleGru(input_mem, layer, L2R);
-      handler.reorderInputL2RtoR2L(input_mem, layer);
-      auto gru_out_R2L = handler.executeSingleGru(input_mem, layer, R2L);
-      if (layer < layers - 1)  // NOLINT
-        handler.template reorderOutputR2LtoL2R<T>(gru_out_R2L, layer);
-      else
-        handler.template reorderOutputR2LtoL2R<Tout>(gru_out_R2L, layer);
-      input_mem = handler.executeConcat(gru_out_L2R, gru_out_R2L, layer);
-    }
-    handler.template reorderOutput<Tout>(input_mem, layers - 1);
+template <typename T, typename Context>
+void MultiGRUMKLDNNKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& weight_x,
+    const std::vector<const DenseTensor*>& weight_h,
+    const paddle::optional<std::vector<const DenseTensor*>>& bias,
+    const paddle::optional<std::vector<const DenseTensor*>>& scale_weights,
+    const std::string& activation,
+    const std::string& gate_activation,
+    int layers,
+    bool origin_mode,
+    const std::string& mkldnn_data_type,
+    float scale_data,
+    float shift_data,
+    bool force_fp32_output,
+    DenseTensor* hidden) {
+  std::vector<const DenseTensor*> tmp_bias;
+  std::vector<const DenseTensor*> tmp_scale_weights;
+  if (bias.get_ptr() != nullptr) {
+    tmp_bias.insert(tmp_bias.end(), bias.get().begin(), bias.get().end());
   }
-};
+  if (scale_weights.get_ptr() != nullptr) {
+    tmp_scale_weights.insert(tmp_scale_weights.end(),
+                             scale_weights.get().begin(),
+                             scale_weights.get().end());
+  }
+  if (force_fp32_output) {  // NOLINT
+    RunKernel<T, Context, float>(dev_ctx,
+                                 x,
+                                 weight_x,
+                                 weight_h,
+                                 tmp_bias,
+                                 tmp_scale_weights,
+                                 activation,
+                                 gate_activation,
+                                 layers,
+                                 origin_mode,
+                                 mkldnn_data_type,
+                                 scale_data,
+                                 shift_data,
+                                 force_fp32_output,
+                                 hidden);
+  } else {
+    RunKernel<T, Context, T>(dev_ctx,
+                             x,
+                             weight_x,
+                             weight_h,
+                             tmp_bias,
+                             tmp_scale_weights,
+                             activation,
+                             gate_activation,
+                             layers,
+                             origin_mode,
+                             mkldnn_data_type,
+                             scale_data,
+                             shift_data,
+                             force_fp32_output,
+                             hidden);
+  }
+}
+}  // namespace phi
 
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-
-PD_REGISTER_STRUCT_KERNEL(
-    multi_gru, OneDNN, ONEDNN, ops::MultiGRUMKLDNNKernel, float, uint8_t) {}
+PD_REGISTER_KERNEL(
+    multi_gru, OneDNN, ONEDNN, phi::MultiGRUMKLDNNKernel, float, uint8_t) {}

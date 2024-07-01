@@ -17,6 +17,7 @@ from __future__ import annotations
 import dis
 import functools
 import inspect
+import opcode
 import operator
 import sys
 import traceback
@@ -24,8 +25,6 @@ import types
 from dataclasses import dataclass
 from itertools import chain
 from typing import Any, Callable
-
-import opcode
 
 from paddle.jit.utils import OrderedSet
 
