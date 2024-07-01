@@ -91,7 +91,7 @@ rem          skip them on PR-CI-Windows(CUDA 12.0)
 rem LEVEL 2: run all test
 if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
-if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python38
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python39
 if not defined BUILD_DIR set BUILD_DIR=build
 if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 if not defined WITH_PIP_CUDA_LIBRARIES set WITH_PIP_CUDA_LIBRARIES=OFF
