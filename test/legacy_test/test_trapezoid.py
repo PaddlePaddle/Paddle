@@ -25,7 +25,7 @@ def get_ref_api():
     return (
         np.trapezoid
         if LooseVersion(np.__version__) >= LooseVersion('2.0.0')
-        else np.trapz
+        else np.trapz  # noqa: NPY201
     )
 
 
