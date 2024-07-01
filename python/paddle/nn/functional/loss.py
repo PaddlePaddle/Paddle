@@ -4516,15 +4516,13 @@ def adaptive_log_softmax_with_loss(
         if input.dim() != 2:
             raise ValueError(
                 '1D label tensor expects 2D input tensors, '
-                'but found inputs with size',
-                input.shape,
+                f'but found inputs with size {input.shape}'
             )
     elif targt_dim == 0:
         if input.dim() != 1:
             raise ValueError(
                 '0D label tensor expects 1D input tensors, '
-                'but found inputs with size',
-                input.shape,
+                f'but found inputs with size {input.shape}'
             )
     else:
         raise ValueError(

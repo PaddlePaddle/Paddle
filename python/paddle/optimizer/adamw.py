@@ -235,8 +235,7 @@ class AdamW(Optimizer):
 
         if not isinstance(learning_rate, (float, LRScheduler)):
             raise TypeError(
-                "learning rate should be float or LRScheduler, got %s here"
-                % type(learning_rate)
+                f"learning rate should be float or LRScheduler, got {type(learning_rate)} here"
             )
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):

@@ -85,6 +85,9 @@ select = [
     # Pygrep-hooks
     "PGH004",
 
+    # Flake8-type-checking
+    "TCH",
+
     # Ruff-specific rules
     "RUF100",
 ]

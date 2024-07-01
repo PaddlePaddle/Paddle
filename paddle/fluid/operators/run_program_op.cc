@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 using BlockDesc = framework::BlockDesc;
 
@@ -255,8 +254,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(run_program,
