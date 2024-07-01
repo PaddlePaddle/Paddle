@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import os
 import random
 from functools import reduce
@@ -91,6 +92,8 @@ class TestLlamaAuto:
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
+        self.config.recompute = False
+        self.config.sep_parallel_degree = 1
 
         self.init_dist_env()
 
@@ -122,7 +125,6 @@ class TestLlamaAuto:
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
         )
         optimizer = create_optimizer(model, lr_scheduler)
-        optimizer = dist.shard_optimizer(optimizer)
 
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
@@ -136,48 +138,39 @@ class TestLlamaAuto:
             batch_sampler=train_sampler,
             num_workers=0,
         )
-
         dist_loader = dist.shard_dataloader(
             dataloader=train_dataloader,
-            meshes=[get_mesh(), get_mesh(-1)],
+            meshes=[get_mesh(0), get_mesh(1)],
             shard_dims="dp",
         )
 
-        global_step = 1
         tr_loss = float(0)
-
         model.train()
-        check_loss = None
         #####
-        for epoch_idx in range(1):
-            for step, inputs in enumerate(dist_loader):
-                input_ids, labels = inputs
-                logits = model(input_ids)
-                tr_loss_step = criterion(logits, labels)
+        for step, inputs in enumerate(dist_loader()):
+            input_ids, labels = inputs
+            logits = model(input_ids)
+            tr_loss_step = criterion(logits, labels)
+            if self.gradient_accumulation_steps > 1:
+                tr_loss_step /= self.gradient_accumulation_steps
 
-                if self.gradient_accumulation_steps > 1:
-                    tr_loss_step /= self.gradient_accumulation_steps
+            tr_loss_step.backward()
+            tr_loss += tr_loss_step
 
-                tr_loss_step.backward()
-                tr_loss += tr_loss_step
+            if step % self.gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.clear_grad()
+                lr_scheduler.step()
+                tr_loss = 0
 
-                if global_step == 1:
-                    check_loss = tr_loss.numpy()
+            if step >= 9:
+                break
+            if int(dist.get_rank()) in [2, 3, 6, 7]:
+                assert tr_loss_step._is_initialized()
+            else:
+                assert not tr_loss_step._is_initialized()
 
-                if global_step % self.gradient_accumulation_steps == 0:
-                    print(
-                        f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
-                    )
-                    optimizer.step()
-                    optimizer.clear_grad()
-                    lr_scheduler.step()
-                    tr_loss = 0
-
-                global_step += 1
-                if global_step // self.gradient_accumulation_steps >= 10:
-                    break
-
-        return check_loss
+        return tr_loss_step._md5sum()
 
     def run_dy2static(self):
         model = LlamaForCausalLMAuto(self.config)
@@ -187,7 +180,6 @@ class TestLlamaAuto:
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
         )
         optimizer = create_optimizer(model, lr_scheduler)
-        optimizer = dist.shard_optimizer(optimizer)
 
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
@@ -201,11 +193,11 @@ class TestLlamaAuto:
             batch_sampler=train_sampler,
             num_workers=0,
         )
-
-        if isinstance(optimizer, dist.auto_parallel.api._ShardOptimizer):
-            opt = optimizer._inner_opt
-        else:
-            opt = optimizer
+        dist_loader = dist.shard_dataloader(
+            dataloader=train_dataloader,
+            meshes=[get_mesh(0), get_mesh(1)],
+            shard_dims="dp",
+        )
 
         strategy = None
         if self.gradient_accumulation_steps > 1:
@@ -213,37 +205,36 @@ class TestLlamaAuto:
             strategy.pipeline.accumulate_steps = (
                 self.gradient_accumulation_steps
             )
-        dist_loader = dist.shard_dataloader(
-            dataloader=train_dataloader,
-            meshes=[get_mesh(), get_mesh(-1)],
-            shard_dims="dp",
-        )
+
         dist_model = dist.to_static(
-            model, dist_loader, criterion, opt, strategy=strategy
+            model, dist_loader, criterion, optimizer, strategy=strategy
         )
 
         dist_model.train()
-        check_loss = None
+        loss = None
         for step, inputs in enumerate(dist_loader()):
             input_ids, labels = inputs
             loss = dist_model(input_ids, labels)
-            if step == 0:
-                check_loss = np.array(loss)
-            print(
-                f"step: {step + 1 // self.gradient_accumulation_steps}  loss: {np.array(loss)}"
-            )
+            lr_scheduler.step()
             if step >= 9:
                 break
-        return check_loss
+            if int(dist.get_rank()) in [2, 3, 6, 7]:
+                assert loss is not None
+            else:
+                assert loss is None
+
+        numpy_array = np.array(loss)
+        array_bytes = numpy_array.tobytes()
+        loss_md5 = hashlib.md5(array_bytes).hexdigest()
+        return loss_md5
 
     def run_test_cases(self):
         self.init_dist_env()
-        dy_loss = self.run_dynamic()
+        dy_loss_md5 = self.run_dynamic()
         self.init_dist_env()
-        st_loss = self.run_dy2static()
-        print(dy_loss, st_loss)
-        if int(dist.get_rank()) == 7:
-            np.testing.assert_allclose(dy_loss, st_loss, atol=1e-5)
+        st_loss_md5 = self.run_dy2static()
+        if int(dist.get_rank()) in [2, 3, 6, 7]:
+            assert dy_loss_md5 == st_loss_md5
 
 
 if __name__ == '__main__':

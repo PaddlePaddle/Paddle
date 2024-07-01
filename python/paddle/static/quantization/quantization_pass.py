@@ -209,15 +209,14 @@ class QuantizationTransformPass:
         ), "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
-                "Unknown activation_quantize_type : '%s'. It can only be "
+                f"Unknown activation_quantize_type : '{activation_quantize_type}'. It can only be "
                 "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
-                % (str(activation_quantize_type))
             )
         if weight_quantize_type not in quant_type:
             raise ValueError(
-                "Unknown weight_quantize_type: '%s'. It can only be "
+                f"Unknown weight_quantize_type: '{weight_quantize_type}'. It can only be "
                 "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' "
-                "or 'moving_average_abs_max'." % (str(weight_quantize_type))
+                "or 'moving_average_abs_max'."
             )
 
         self._activation_quantize_type = activation_quantize_type
@@ -231,7 +230,7 @@ class QuantizationTransformPass:
                 op + " is not supported for quantization."
             )
         self._quantizable_grad_ops = [
-            '%s_grad' % (op) for op in self._quantizable_ops
+            f'{op}_grad' for op in self._quantizable_ops
         ]
         self._is_test = is_test
         self._global_step = None
@@ -1037,19 +1036,19 @@ class QuantizationTransformPass:
         """
         Return quantized variable name for the input `var_name`.
         """
-        return "%s.quantized" % (var_name)
+        return f"{var_name}.quantized"
 
     def _dequantized_var_name(self, var_name):
         """
         Return dequantized variable name for the input `var_name`.
         """
-        return "%s.dequantized" % (var_name)
+        return f"{var_name}.dequantized"
 
     def _quantized_scale_name(self, var_name):
         """
         Return the scale name of quantized variable for the input `var_name`.
         """
-        return "%s@scale" % (var_name)
+        return f"{var_name}@scale"
 
     def _is_skip_quant(self, graph, op_node):
         """
@@ -1267,9 +1266,7 @@ class QuantizationFreezePass:
             if original_var_name in persistable_vars:
                 assert isinstance(
                     scale_v, list
-                ), 'The scale of parameter %s is not a list.' % (
-                    original_var_name
-                )
+                ), f'The scale of parameter {original_var_name} is not a list.'
                 channel_scale = np.array(scale_v)
             else:
                 assert isinstance(scale_v, IrNode)
@@ -1277,8 +1274,8 @@ class QuantizationFreezePass:
 
         if len(op_node.output_arg_names()) != 1:
             raise ValueError(
-                "Only support one output, but op %s has"
-                " more than one output." % (op_node.name())
+                f"Only support one output, but op {op_node.name()} has"
+                " more than one output."
             )
 
         output_var_node = graph._find_node_by_name(
@@ -1354,9 +1351,7 @@ class QuantizationFreezePass:
             if original_var_name in persistable_vars:
                 assert self._is_float(
                     scale_v
-                ), 'The scale of parameter %s is not a float.' % (
-                    original_var_name
-                )
+                ), f'The scale of parameter {original_var_name} is not a float.'
                 scale_v = 1e-8 if scale_v == 0.0 else scale_v
                 max_range *= param_range / scale_v
             else:
@@ -1366,8 +1361,8 @@ class QuantizationFreezePass:
 
         if len(op_node.output_arg_names()) != 1:
             raise ValueError(
-                "Only support one output, but op %s has"
-                " more than one output." % (op_node.name())
+                f"Only support one output, but op {op_node.name()} has"
+                " more than one output."
             )
 
         output_var_node = graph._find_node_by_name(
@@ -1438,7 +1433,7 @@ class QuantizationFreezePass:
         """
         Return dequantized variable name for the input `var_name`.
         """
-        return "%s.dequantized" % (var_name)
+        return f"{var_name}.dequantized"
 
     def _is_float(self, v):
         return isinstance(v, (float, np.float16, np.float32, np.float64))
@@ -1748,7 +1743,7 @@ class OutScaleForTrainingPass:
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s@scale" % (var_name)
+        return f"{var_name}@scale"
 
 
 class OutScaleForInferencePass:
@@ -1820,7 +1815,7 @@ class OutScaleForInferencePass:
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s@scale" % (var_name)
+        return f"{var_name}@scale"
 
 
 class AddQuantDequantPass:
@@ -1875,7 +1870,7 @@ class AddQuantDequantPass:
                 op_type + " is not supported for quantization."
             )
         self._quantizable_grad_op_type = [
-            '%s_grad' % (op) for op in self._quantizable_op_type
+            f'{op}_grad' for op in self._quantizable_op_type
         ]
 
         assert self._scope is not None, "scope must not be None."
@@ -2335,25 +2330,25 @@ class InsertQuantizeLinear:
         """
         Return quantized variable name for the input `var_name`.
         """
-        return "%s.quantized" % (var_name)
+        return f"{var_name}.quantized"
 
     def _dequantized_var_name(self, var_name):
         """
         Return dequantized variable name for the input `var_name`.
         """
-        return "%s.dequantized" % (var_name)
+        return f"{var_name}.dequantized"
 
     def _quantized_scale_name(self, var_name):
         """
         Return the scale name of quantized variable for the input `var_name`.
         """
-        return "%s@scale" % (var_name)
+        return f"{var_name}@scale"
 
     def _zero_point_name(self, var_name):
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s@zero_point" % (var_name)
+        return f"{var_name}@zero_point"
 
 
 class QuantizationTransformPassV2(QuantizationTransformPass):
@@ -2479,15 +2474,14 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ), "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
-                "Unknown activation_quantize_type : '%s'. It can only be "
+                f"Unknown activation_quantize_type : '{activation_quantize_type}'. It can only be "
                 "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
-                % (str(activation_quantize_type))
             )
         if weight_quantize_type not in quant_type:
             raise ValueError(
-                "Unknown weight_quantize_type: '%s'. It can only be "
+                f"Unknown weight_quantize_type: '{weight_quantize_type}'. It can only be "
                 "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' "
-                "or 'moving_average_abs_max'." % (str(weight_quantize_type))
+                "or 'moving_average_abs_max'."
             )
 
         self._activation_quantize_type = activation_quantize_type
@@ -2501,7 +2495,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 op + " is not supported for quantization."
             )
         self._quantizable_grad_ops = [
-            '%s_grad' % (op) for op in self._quantizable_ops
+            f'{op}_grad' for op in self._quantizable_ops
         ]
         self._is_test = is_test
         self._global_step = None
@@ -2863,7 +2857,7 @@ class AddQuantDequantPassV2:
                 op_type + " is not supported for quantization."
             )
         self._quantizable_grad_op_type = [
-            '%s_grad' % (op) for op in self._quantizable_op_type
+            f'{op}_grad' for op in self._quantizable_op_type
         ]
 
         assert self._scope is not None, "scope must not be None."
@@ -3147,13 +3141,13 @@ class ReplaceFakeQuantDequantPass:
         """
         Return quantized variable name for the input `var_name`.
         """
-        return "%s.quantized" % (var_name)
+        return f"{var_name}.quantized"
 
     def _zero_point_name(self, var_name):
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s@zero_point" % (var_name)
+        return f"{var_name}@zero_point"
 
 
 class QuantWeightPass:
@@ -3386,7 +3380,7 @@ class AddQuantDequantForInferencePass:
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s@scale" % (var_name)
+        return f"{var_name}@scale"
 
     def _insert_quant_dequant_op(self, graph, var_node):
         assert var_node.is_var(), f'{var_node.name()} is not a var'

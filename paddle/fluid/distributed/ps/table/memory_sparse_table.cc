@@ -39,8 +39,7 @@ PD_DEFINE_int32(pserver_table_save_max_retry,
                 3,
                 "pserver_table_save_max_retry");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int32_t MemorySparseTable::Initialize() {
   auto &profiler = CostProfiler::instance();
@@ -70,10 +69,12 @@ int32_t MemorySparseTable::InitializeValue() {
 #ifdef PADDLE_WITH_HETERPS
   _task_pool_size = _sparse_table_shard_num;
 #endif
+  _use_gpu_graph = _config.use_gpu_graph();
   VLOG(1) << "memory sparse table _avg_local_shard_num: "
           << _avg_local_shard_num
           << " _real_local_shard_num: " << _real_local_shard_num
-          << " _task_pool_size:" << _task_pool_size;
+          << " _task_pool_size:" << _task_pool_size
+          << " _use_gpu_graph:" << _use_gpu_graph;
 
   _local_shards.reset(new shard_type[_real_local_shard_num]);
 
@@ -314,6 +315,15 @@ void MemorySparseTable::CheckSavePrePatchDone() {
 
 int32_t MemorySparseTable::Save(const std::string &dirname,
                                 const std::string &param) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  // gpu graph mode
+  if (_use_gpu_graph) {
+    auto *save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
+    if (save_filtered_slots != nullptr && (save_filtered_slots->size()) > 0) {
+      return Save_v2(dirname, param);
+    }
+  }
+#endif
   if (_real_local_shard_num == 0) {
     _local_show_threshold = -1;
     return 0;
@@ -372,9 +382,9 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
     int retry_num = 0;
     int err_no = 0;
     auto &shard = _local_shards[i];
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
     // for incremental training, batch_model increase unseenday before save
-    if (save_param == 3) {
+    if (_use_gpu_graph && save_param == 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
         _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
@@ -426,17 +436,15 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
       }
     } while (is_write_failed);
     feasign_size_all += feasign_size;
-#ifndef PADDLE_WITH_GPU_GRAPH
-    for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
-    }
-#else
-    if (save_param != 3) {
+    if (!_use_gpu_graph) {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
+      }
+    } else if (save_param != 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
         _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
     }
-#endif
     LOG(INFO) << "MemorySparseTable save prefix success, path: "
               << channel_config.path << " feasign_size: " << feasign_size;
   }
@@ -445,14 +453,9 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   return 0;
 }
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
 int32_t MemorySparseTable::Save_v2(const std::string &dirname,
                                    const std::string &param) {
-  auto *save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
-  if (save_filtered_slots == nullptr || (save_filtered_slots->size()) <= 0) {
-    return Save(dirname, param);
-  }
-
   if (_real_local_shard_num == 0) {
     _local_show_threshold = -1;
     return 0;
@@ -537,9 +540,9 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
     int err_no = 0;
     int err_no_for_slot_feature = 0;
     auto &shard = _local_shards[i];
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
     // for incremental training, batch_model increase unseenday before save
-    if (save_param == 3) {
+    if (_use_gpu_graph && save_param == 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
         _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
@@ -632,17 +635,15 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
 
     feasign_size_all += feasign_size;
     feasign_size_all_for_slot_feature += feasign_size_for_slot_feature;
-#ifndef PADDLE_WITH_GPU_GRAPH
-    for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
-    }
-#else
-    if (save_param != 3) {
+    if (!_use_gpu_graph) {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
+      }
+    } else if (save_param != 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
         _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
     }
-#endif
     LOG(INFO) << "MemorySparseTable save prefix&feature success, path: "
               << channel_config.path << " feasign_size: " << feasign_size
               << ", feature path:" << channel_config_for_slot_feature.path
@@ -1296,5 +1297,4 @@ int32_t MemorySparseTable::Shrink(const std::string &param) {
 
 void MemorySparseTable::Clear() { VLOG(0) << "clear coming soon"; }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -544,6 +544,7 @@ def load_state_dict(
             else:
                 # assign value remotely
                 if src_rank == paddle.distributed.get_rank():
+                    storage_chunk_tensor = storage_chunk_tensor.contiguous()
                     paddle.distributed.broadcast(
                         storage_chunk_tensor, src=src_rank, group=process_group
                     )

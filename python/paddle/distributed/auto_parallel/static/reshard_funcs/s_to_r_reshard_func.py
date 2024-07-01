@@ -61,7 +61,7 @@ class SToRReshardFunction(ReshardFunction):
         out_dims_mapping = list(in_dist_attr.dims_mapping)
         out_dims_mapping[split_axis] = -1
         out_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-            mesh, out_dims_mapping, {}
+            mesh, out_dims_mapping, in_dist_attr.partial_status
         )
         out_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
             out_type, out_dist_attr

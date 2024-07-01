@@ -1188,6 +1188,8 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableCustomPasses(const std::vector<std::string>& passes,
                           bool custom_pass_only = false);
 
+  void DeletePass(const std::vector<std::string>& passes);
+
   ///
   /// \brief Set pir Optimization level.
   /// \param opt_level The optimization level
@@ -1419,6 +1421,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool custom_pass_only_{false};
   int pm_opt_level_{2};
   std::vector<std::string> ir_debug_passes_;
+  std::vector<std::string> deleted_passes_;
 };
 
 }  // namespace paddle
