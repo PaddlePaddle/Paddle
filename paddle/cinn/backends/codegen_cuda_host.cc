@@ -401,5 +401,17 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
   return nullptr;
 }
 
+llvm::Value* CodeGenCUDA_Host::LowerWrappedCall(const ir::Call* op) {
+  std::vector<llvm::Value*> ll_function_args;
+  std::transform(f_->arg_begin(),
+                 f_->arg_end(),
+                 std::back_inserter(ll_function_args),
+                 [](auto& arg) { return std::addressof(arg); });
+  llvm::Function* call_func = m_->getFunction(op->name);
+  CHECK(call_func) << "Unknown function referenced. [" << op->name << "]";
+  b_->CreateCall(call_func, ll_function_args);
+  return nullptr;
+}
+
 }  // namespace backends
 }  // namespace cinn

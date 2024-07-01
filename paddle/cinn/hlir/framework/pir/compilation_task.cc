@@ -15,8 +15,12 @@
 #pragma once
 
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
@@ -38,6 +42,41 @@ void GroupCompilationContext::SetLoweredFuncs(
   infer_shape_lowered_func_ = std::move(funcs.infer_shape_func);
 }
 
+void GroupCompilationContext::PrepareModuleBuilder() {
+  PADDLE_ENFORCE_EQ(predicates_.size(),
+                    lowered_funcs_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and lowered_funcs should be "
+                        "the same."));
+  PADDLE_ENFORCE_EQ(predicates_.size(),
+                    priorities_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and priorites should be "
+                        "the same."));
+  for (const ir::Expr& predicate : predicates_) {
+    module_builder_.AddPredicate(predicate);
+  }
+  for (const ir::LoweredFunc& func : lowered_funcs_) {
+    module_builder_.AddFunction(func);
+  }
+  for (int& priority : priorities_) {
+    module_builder_.AddPriority(priority);
+  }
+  module_builder_.SetInferShapeFunc(infer_shape_lowered_func_);
+
+  PADDLE_ENFORCE_EQ(CX86_predicates_.size(),
+                    CX86_lowered_funcs_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and lowered_funcs should be "
+                        "the same."));
+  for (const ir::Expr& predicate : CX86_predicates_) {
+    CX86_module_builder_.AddPredicate(predicate);
+  }
+  for (const ir::LoweredFunc& func : CX86_lowered_funcs_) {
+    CX86_module_builder_.AddFunction(func);
+  }
+}
+
 std::string GroupCompilationContext::PrintPredicate2Funcs() const {
   std::stringstream ss;
   for (int i = 0; i < predicates_.size(); ++i) {
@@ -47,12 +86,50 @@ std::string GroupCompilationContext::PrintPredicate2Funcs() const {
   return ss.str();
 }
 
-std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
-  Lowering();
-  return CodegenAndJit();
+void BroadcastGroupFuncArgsReduction(
+    std::vector<GroupCompilationContext>* contexts,
+    pir::OpLoweringGroupPtr broadcast_origin_group,
+    std::unordered_map<int, ir::Var>* symbolic_shape_var_index) {
+  CHECK_GT(contexts->size(), 0);
+  std::unordered_map<ir::Var, pir::CINNKernelInfo::ArgDimIdx> new_args_map;
+  int total_args_num = 0;
+  for (int i = 0; i < contexts->size(); ++i) {
+    auto& func_args = (*contexts)[i].lowered_funcs_[0]->args;
+    const auto& origin_int_args = (*contexts)[i].group_->int_args_map();
+    std::vector<ir::Argument> new_args_vec;
+    for (int arg_idx = 0; arg_idx < func_args.size(); ++arg_idx) {
+      if (func_args[arg_idx].is_var()) {
+        new_args_map[func_args[arg_idx].var_arg()] =
+            origin_int_args.at(arg_idx);
+      } else {
+        new_args_vec.emplace_back(func_args[arg_idx]);
+      }
+    }
+    for (auto& func : (*contexts)[i].lowered_funcs_) {
+      func->args = new_args_vec;
+    }
+    if (i == 0) {
+      total_args_num = new_args_vec.size();
+    }
+  }
+  broadcast_origin_group->mut_int_args_map().clear();
+  std::vector<ir::Argument> new_int_args_vec;
+  for (const auto& [arg, idx_info] : new_args_map) {
+    symbolic_shape_var_index->insert({total_args_num, arg});
+    broadcast_origin_group->mut_int_args_map()[total_args_num++] = idx_info;
+    new_int_args_vec.emplace_back(ir::Argument{arg});
+  }
+  for (int i = 0; i < contexts->size(); ++i) {
+    for (auto& func : (*contexts)[i].lowered_funcs_) {
+      func->args.insert(
+          func->args.end(), new_int_args_vec.begin(), new_int_args_vec.end());
+    }
+  }
 }
 
-void CompilationTask::Lowering() {
+void LoweringTask::operator()() { Lowering(); }
+
+void LoweringTask::Lowering() {
   VLOG(5) << "Begin to lowering group: " << *context_->group_;
   auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
@@ -60,49 +137,45 @@ void CompilationTask::Lowering() {
                              /* apply op schedule = */ false,
                              /* apply group schedule = */ true,
                              /* apply pass = */ true));
+  if (context_->group_->IsBroadcastLeaf()) {
+    const auto& broadcast_condition_dimexprs =
+        context_->group_->GetBroadcastConditions();
+    const auto ChangeEqualDimExprToExpr =
+        [&broadcast_condition_dimexprs]() -> ir::Expr {
+      ir::Expr result = ir::Expr(true);
+      using BranchType = pir::OpLoweringGroup::BranchType;
+      for (const auto& [broadcast_expr, condition] :
+           broadcast_condition_dimexprs) {
+        const auto& expr_converter = common::DimExprConverter();
+        ir::Expr lhs = expr_converter.ConvertToIrExpr(broadcast_expr->lhs);
+        ir::Expr rhs = expr_converter.ConvertToIrExpr(broadcast_expr->rhs);
+        ir::Expr one = ir::Expr(1);
+        ir::Expr condition_expr;
+        if (condition == BranchType::LHS_EQ_RHS) {
+          condition_expr = ir::EQ::Make(lhs, rhs);
+        } else {
+          condition_expr = ir::NE::Make(lhs, rhs);
+          ir::Expr eq_one_expr;
+          if (condition == BranchType::LHS_EQ_ONE) {
+            eq_one_expr = ir::EQ::Make(lhs, one);
+          } else {  // BranchType::RHS_EQ_ONE
+            eq_one_expr = ir::EQ::Make(rhs, one);
+          }
+          condition_expr = ir::And::Make(condition_expr, eq_one_expr);
+        }
+        result = ir::And::Make(result, condition_expr);
+      }
+      return result;
+    };
+    context_->broadcast_condition_ = ChangeEqualDimExprToExpr();
+  }
   VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
-std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
-  ir::Module::Builder builder(cinn::common::UniqName("module"),
-                              context_->target_);
-  PADDLE_ENFORCE_EQ(context_->predicates_.size(),
-                    context_->lowered_funcs_.size(),
-                    phi::errors::InvalidArgument(
-                        "The size of predicates and lowered_funcs should be "
-                        "the same."));
-  PADDLE_ENFORCE_EQ(context_->predicates_.size(),
-                    context_->priorities_.size(),
-                    phi::errors::InvalidArgument(
-                        "The size of predicates and priorites should be "
-                        "the same."));
-  for (const ir::Expr& predicate : context_->predicates_) {
-    builder.AddPredicate(predicate);
-  }
-  for (const ir::LoweredFunc& func : context_->lowered_funcs_) {
-    builder.AddFunction(func);
-  }
-  for (int& priority : context_->priorities_) {
-    builder.AddPriority(priority);
-  }
-  builder.SetInferShapeFunc(context_->infer_shape_lowered_func_);
-  ir::Module ir_module = builder.Build();
-
-  ir::Module::Builder builder_CX86(cinn::common::UniqName("module"),
-                                   common::DefaultHostTarget());
-  PADDLE_ENFORCE_EQ(context_->CX86_predicates_.size(),
-                    context_->CX86_lowered_funcs_.size(),
-                    phi::errors::InvalidArgument(
-                        "The size of predicates and lowered_funcs should be "
-                        "the same."));
-  for (const ir::Expr& predicate : context_->CX86_predicates_) {
-    builder_CX86.AddPredicate(predicate);
-  }
-  for (const ir::LoweredFunc& func : context_->CX86_lowered_funcs_) {
-    builder_CX86.AddFunction(func);
-  }
-  ir::Module ir_moduleCX86 = builder_CX86.Build();
-
+std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
+  context_->PrepareModuleBuilder();
+  ir::Module ir_module = context_->module_builder_.Build();
+  ir::Module ir_moduleCX86 = context_->CX86_module_builder_.Build();
   return BuildPirCINNKernelInfo(ir_module, ir_moduleCX86);
 }
 
@@ -123,6 +196,39 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
   return compilation_result;
 }
 
+std::shared_ptr<pir::CompilationResult>
+CompilationTask::CompileBroadcastModules(
+    std::vector<GroupCompilationContext>* leaf_group_contexts,
+    const std::unordered_map<int, ir::Var>& symbolic_shape_var_index) {
+  auto compilation_result =
+      std::make_shared<pir::CompilationResult>(context_->target_);
+  auto backend_resource = std::make_shared<pir::BackendResource>(
+      context_->target_,
+      context_->group_->FuncName(),
+      context_->group_->FuncName() + "_infer_shape",
+      context_->group_->int_args_map());
+  VLOG(5) << "Start to compile module into cuda kernel...";
+  std::vector<std::string> inner_func_names;
+  std::vector<ir::Expr> broadcast_conditions;
+  for (auto& context : *leaf_group_contexts) {
+    context.PrepareModuleBuilder();
+    inner_func_names.emplace_back(context.group_->FuncName());
+    broadcast_conditions.push_back(context.broadcast_condition_);
+    ir::Module ir_module = context.module_builder_.Build();
+    ir::Module ir_moduleCX86 = context.CX86_module_builder_.Build();
+    backend_resource->GetBackendCompiler()->Build(ir_module, "", false);
+    backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86, false);
+  }
+  ir::Module wrapper(
+      cinn::backends::CreateBroadcastWrapperModule(inner_func_names,
+                                                   broadcast_conditions,
+                                                   context_->group_->FuncName(),
+                                                   symbolic_shape_var_index));
+  backend_resource->GetBackendCompiler()->AppendBroadcastWrapper(wrapper);
+  compilation_result->SetBackendResource(backend_resource);
+  VLOG(5) << "End to compile module into cuda kernel.";
+  return compilation_result;
+}
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn

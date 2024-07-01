@@ -25,7 +25,8 @@ class PirCompiler final {
   PirCompiler(const Target& target) : target_(target) {}
 
   std::vector<pir::CINNKernelInfo> Build(
-      const std::vector<pir::OpLoweringGroupPtr>& groups);
+      const std::vector<pir::OpLoweringGroupPtr>& groups,
+      pir::OpLoweringGroupPtr broadcast_origin_group = nullptr);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);

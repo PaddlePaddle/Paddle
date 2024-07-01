@@ -101,6 +101,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
           << ", shared_memory_bytes=" << shared_memory_bytes
           << ", stream=" << stream << ", kernel_fn=" << kernel_fn;
 
+  VLOG(0) << "before prepare args";
   std::vector<void *> kernel_args;
   {
     cinn::utils::RecordEvent record_run("prepare_args",
@@ -116,8 +117,12 @@ void cinn_call_cuda_kernel(void *kernel_fn,
       }
     }
   }
+  VLOG(0) << "after prepare args";
 
+  VLOG(0) << "before launch kernel";
   {
+    char *ptr = static_cast<char *>(kernel_fn);
+    VLOG(0) << ptr[0];
     cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
     CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
@@ -132,6 +137,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
                                     kernel_args.data(),
                                     nullptr))
   }
+  VLOG(0) << "after launch kernel";
 }
 
 void cinn_call_cublas(void *v_args,

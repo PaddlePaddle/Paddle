@@ -27,6 +27,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/lang/packed_func.h"
 #ifdef CINN_WITH_CUDA
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
 
@@ -106,7 +107,9 @@ class Compiler final {
   void Build(const ir::Module& module,
              const std::string& code = "",
              const bool end = true);
-  void AppendCX86(const ir::Module& module);
+  void AppendCX86(const ir::Module& module, bool add_module = true);
+
+  void AppendBroadcastWrapper(const ir::Module& module);
 
   void ExportObject(const std::string& path);
 
@@ -130,17 +133,24 @@ class Compiler final {
   void CompileX86Module(const ir::Module& module, bool add_module = true);
 
   explicit Compiler(const Target& target)
-      : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}
+      : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {
+#ifdef CINN_WITH_CUDA
+    cuda_source_ = CodeGenCUDA_Dev::GetSourceHeader();
+#endif
+  }
 
   CINN_DISALLOW_COPY_AND_ASSIGN(Compiler);
 
  private:
+  void AddModulePrepare();
   Target target_;
   std::unique_ptr<ExecutionEngine> engine_;
 
   std::vector<void*> fn_ptr_;
+  std::vector<std::string> fn_names_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
+  std::string cuda_source_;
 #endif
 };
 

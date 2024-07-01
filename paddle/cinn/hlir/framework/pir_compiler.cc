@@ -64,8 +64,33 @@ static size_t GetThreadNum(size_t task_size) {
   return thread_size;
 }
 
+pir::CINNKernelInfo GetBroadcastGroupKernelInfo(
+    const Target& target,
+    std::vector<GroupCompilationContext>* group_compilation_contexts,
+    pir::OpLoweringGroupPtr broadcast_origin_group) {
+  for (int i = 0; i < group_compilation_contexts->size(); ++i) {
+    LoweringTask lowering_task(&group_compilation_contexts->at(i));
+    lowering_task();
+  }
+  std::unordered_map<int, ir::Var> symbolic_shape_var_index;
+  BroadcastGroupFuncArgsReduction(group_compilation_contexts,
+                                  broadcast_origin_group,
+                                  &symbolic_shape_var_index);
+  GroupCompilationContext origin_group_ctx(target, broadcast_origin_group);
+  CompilationTask compilation_task(&origin_group_ctx);
+  const auto device_id = runtime::GetArchDevice(target);
+  runtime::SetArchDevice(target, device_id);
+  auto result = compilation_task.CompileBroadcastModules(
+      group_compilation_contexts, symbolic_shape_var_index);
+  const auto kernel_info = result->GetKernelInfo();
+  CompilationCache::Instance().Insert(pir::FusionInfo(*broadcast_origin_group),
+                                      result);
+  return kernel_info;
+}
+
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
-    const std::vector<pir::OpLoweringGroupPtr>& groups) {
+    const std::vector<pir::OpLoweringGroupPtr>& groups,
+    pir::OpLoweringGroupPtr broadcast_origin_group) {
   CompilationContextMapper ctx_mapper(target_, groups);
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
   auto& compilation_results = ctx_mapper.MutableCompilationResult();
@@ -75,6 +100,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
   cinn::ir::InitScheduleConfig();
+  if (broadcast_origin_group) {
+    CHECK_EQ(task_size, groups.size());
+    return {GetBroadcastGroupKernelInfo(
+        target_, &group_compilation_contexts, broadcast_origin_group)};
+  }
   if (task_size > 0) {
     // See
     // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
@@ -82,8 +112,10 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
       runtime::SetArchDevice(target_, device_id);
-      CompilationTask task(&group_compilation_contexts[index]);
-      compilation_results[index] = task();
+      LoweringTask lowering_task(&group_compilation_contexts[index]);
+      CompilationTask compilation_task(&group_compilation_contexts[index]);
+      lowering_task();
+      compilation_results[index] = compilation_task();
       // Triggering llvm compilation in thread
       compilation_results[index]->GetKernelInfo();
     };

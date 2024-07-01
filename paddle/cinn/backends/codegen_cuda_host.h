@@ -52,6 +52,8 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
       return LowerParseArgsValueCall(op);
     } else if (op->name == runtime::intrinsic::call_cuda_kernel) {
       return LowerCUDAKernelCall(op);
+    } else if (op->name.find("_leaf") != std::string::npos) {
+      return LowerWrappedCall(op);
     } else {
       return CodeGenLLVM::Visit(op);
     }
@@ -78,6 +80,8 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
   llvm::Value *LowerParseArgsValueCall(const ir::Call *call_ir);
 
   llvm::Value *LowerCUDAKernelCall(const ir::Call *op);
+
+  llvm::Value *LowerWrappedCall(const ir::Call *op);
 };
 
 }  // namespace backends

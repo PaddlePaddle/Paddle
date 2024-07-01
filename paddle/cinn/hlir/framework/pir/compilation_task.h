@@ -24,27 +24,52 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
+class LoweringTask;
 class CompilationTask;
 
 class GroupCompilationContext {
  public:
   GroupCompilationContext(const Target& target,
                           const pir::OpLoweringGroupPtr& group)
-      : target_(target), group_(group) {}
+      : target_(target),
+        group_(group),
+        module_builder_(cinn::common::UniqName("module"), target),
+        CX86_module_builder_(cinn::common::UniqName("module"),
+                             common::DefaultHostTarget()) {}
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
+  void PrepareModuleBuilder();
   std::string PrintPredicate2Funcs() const;
 
  private:
+  friend class LoweringTask;
   friend class CompilationTask;
+  friend void BroadcastGroupFuncArgsReduction(
+      std::vector<GroupCompilationContext>* contexts,
+      pir::OpLoweringGroupPtr broadcast_origin_group,
+      std::unordered_map<int, ir::Var>* symbolic_shape_var_index);
   const Target& target_;
   const pir::OpLoweringGroupPtr& group_;
+  ir::SymbolicPredicate broadcast_condition_;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<int> priorities_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   std::vector<ir::SymbolicPredicate> CX86_predicates_;
   std::vector<ir::LoweredFunc> CX86_lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;
+  ir::Module::Builder module_builder_;
+  ir::Module::Builder CX86_module_builder_;
+};
+
+class LoweringTask {
+ public:
+  explicit LoweringTask(GroupCompilationContext* context) : context_(context) {}
+
+  void operator()();
+
+ private:
+  void Lowering();
+  GroupCompilationContext* context_;
 };
 
 class CompilationTask {
@@ -53,10 +78,11 @@ class CompilationTask {
       : context_(context) {}
 
   std::shared_ptr<pir::CompilationResult> operator()();
+  std::shared_ptr<pir::CompilationResult> CompileBroadcastModules(
+      std::vector<GroupCompilationContext>* leaf_group_contexts,
+      const std::unordered_map<int, ir::Var>& symbolic_shape_var_index);
 
  private:
-  void Lowering();
-  std::shared_ptr<pir::CompilationResult> CodegenAndJit();
   std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
       const ir::Module& module, const ir::Module& CX86module);
 

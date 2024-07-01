@@ -33,6 +33,89 @@ std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module) {
   return visitor(&expr);
 }
 
+ir::Module CreateBroadcastWrapperModule(
+    const std::vector<std::string> &func_names,
+    const std::vector<ir::Expr> &broadcast_conditions,
+    const std::string &origin_func_name,
+    const std::unordered_map<int, ir::Var> &symbolic_shape_var_index) {
+  ir::Var kernel_args(KERNEL_ARGS, type_of<void *>());
+  ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
+  ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+  ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int64_t **>());
+  std::vector<ir::Argument> host_func_arguments = {
+      ir::Argument(kernel_args, ir::Argument::IO::kOutput),
+      ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
+      ir::Argument(kernel_stream, ir::Argument::IO::kOutput)};
+  std::vector<ir::Argument> infer_shape_func_arguments = {
+      ir::Argument(kernel_args, ir::Argument::IO::kOutput),
+      ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
+      ir::Argument(tensor_shape_args, ir::Argument::IO::kOutput)};
+  std::vector<ir::Expr> arg_defs;
+  for (const auto &item : symbolic_shape_var_index) {
+    ir::Expr call_get_value_in_kernel_args =
+        ir::Call::Make(Int(64),
+                       runtime::intrinsic::get_value_in_cuda_kernel_args,
+                       {kernel_args, ir::Expr(item.first)},
+                       {},
+                       ir::CallType::Extern,
+                       ir::FunctionRef(),
+                       0);
+    ir::Expr let_symbol = ir::Expr(item.second);
+    let_symbol->set_type(type_of<int64_t>());
+    ir::Expr stmt = ir::Let::Make(let_symbol, call_get_value_in_kernel_args);
+    arg_defs.push_back(stmt);
+  }
+  std::vector<ir::Expr> host_func_body_stmts(arg_defs);
+  std::vector<ir::Expr> x86_func_body_stmts(arg_defs);
+  std::vector<ir::Expr> infer_shape_func_body_stmts(arg_defs);
+  for (int i = 0; i < broadcast_conditions.size(); ++i) {
+    ir::Expr host_func_callee =
+        ir::Call::Make(Void(),
+                       func_names[i],
+                       {kernel_args, kernel_args_num, kernel_stream},
+                       {},
+                       ir::CallType::Extern,
+                       ir::FunctionRef(),
+                       0);
+    host_func_body_stmts.emplace_back(
+        ir::IfThenElse::Make(broadcast_conditions[i], host_func_callee));
+    ir::Expr infer_shape_func_callee =
+        ir::Call::Make(Void(),
+                       func_names[i] + "_infer_shape",
+                       {kernel_args, kernel_args_num, tensor_shape_args},
+                       {},
+                       ir::CallType::Extern,
+                       ir::FunctionRef(),
+                       0);
+    infer_shape_func_body_stmts.emplace_back(
+        ir::IfThenElse::Make(broadcast_conditions[i], infer_shape_func_callee));
+  }
+  ir::Module::Builder module_builder(origin_func_name + "_wrapper",
+                                     cinn::common::DefaultHostTarget());
+  ir::Expr host_func_caller =
+      ir::_LoweredFunc_::Make(origin_func_name,
+                              host_func_arguments,
+                              ir::Block::Make(host_func_body_stmts),
+                              {});
+  module_builder.AddFunctionWithoutOptim(
+      host_func_caller.as_lowered_func_ref());
+  ir::Expr infer_shape_func_caller =
+      ir::_LoweredFunc_::Make(origin_func_name + "_infer_shape",
+                              infer_shape_func_arguments,
+                              ir::Block::Make(infer_shape_func_body_stmts),
+                              {});
+  module_builder.AddFunctionWithoutOptim(
+      infer_shape_func_caller.as_lowered_func_ref());
+  ir::Expr cx86_func_caller =
+      ir::_LoweredFunc_::Make(origin_func_name + "_CX86",
+                              host_func_arguments,
+                              ir::Block::Make(host_func_body_stmts),
+                              {});
+  module_builder.AddFunctionWithoutOptim(
+      cx86_func_caller.as_lowered_func_ref());
+  return module_builder.Build();
+}
+
 struct PredicatePrinter : public ir::IrPrinter {
   explicit PredicatePrinter(std::ostream &os) : ir::IrPrinter(os) {}
 
@@ -158,14 +241,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                      ir::CallType::Extern,
                      ir::FunctionRef(),
                      0);
-  if (buckets_.empty()) {
-    buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
-  } else {
-    auto false_expr = buckets_.back();
-    buckets_.pop_back();
-    buckets_.emplace_back(
-        ir::IfThenElse::Make(predicate, call_extern_api, false_expr));
-  }
+  buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
 }
 
 void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(

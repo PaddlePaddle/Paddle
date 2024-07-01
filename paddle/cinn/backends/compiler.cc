@@ -238,10 +238,49 @@ void Compiler::Build(const Module& module,
   return std::visit(PatternMatch, target_.arch.variant());
 }
 
-void Compiler::AppendCX86(const Module& module) {
+void Compiler::AddModulePrepare() {
+#ifdef CINN_WITH_CUDA
+  nvrtc::Compiler compiler;
+  auto ptx = compiler(cuda_source_);
+  CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
+                      << cuda_source_;
+  using runtime::cuda::CUDAModule;
+  cuda_module_.reset(new CUDAModule(ptx,
+                                    compiler.compile_to_cubin()
+                                        ? CUDAModule::Kind::CUBIN
+                                        : CUDAModule::Kind::PTX));
+
+  RuntimeSymbols symbols;
+  for (const auto& kernel_fn_name : fn_names_) {
+    VLOG(3) << "[CUDA] Register function pointer for:" << kernel_fn_name;
+    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
+    CHECK(fn_kernel);
+
+    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
+    VLOG(3) << "[CUDA] ptr is: " << fn_ptr_.back();
+
+    symbols.RegisterVar(kernel_fn_name + "_ptr_",
+                        reinterpret_cast<void*>(fn_kernel));
+  }
+  engine_->AddModuleSymbols(std::move(symbols));
+  for (const auto& kernel_fn_name : fn_names_) {
+    VLOG(0) << "name in jit: " << engine_->Lookup(kernel_fn_name + "_ptr_");
+  }
+#endif
+}
+
+void Compiler::AppendCX86(const Module& module, bool add_module) {
+  if (add_module) {
+    AddModulePrepare();
+  }
   VLOG(3) << "Start Compiler::BuildCX86" << module;
-  CompileX86Module(module, true);
+  CompileX86Module(module, add_module);
   VLOG(3) << "Over Compiler::BuildCX86";
+}
+
+void Compiler::AppendBroadcastWrapper(const ir::Module& module) {
+  AddModulePrepare();
+  engine_->Link<CodeGenCUDA_Host>(module, true);
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
@@ -317,30 +356,14 @@ void Compiler::CompileCudaModule(const Module& module,
       << device_module;
   VLOG(3) << "[CUDA] C:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
-  using runtime::cuda::CUDAModule;
-
-  nvrtc::Compiler compiler;
-  auto ptx = compiler(source_code);
-  CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
-                      << source_code;
-  cuda_module_.reset(new CUDAModule(ptx,
-                                    compiler.compile_to_cubin()
-                                        ? CUDAModule::Kind::CUBIN
-                                        : CUDAModule::Kind::PTX));
-
-  RuntimeSymbols symbols;
+  cuda_source_ += source_code;
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
-    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
-    CHECK(fn_kernel);
-
-    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
-
-    symbols.RegisterVar(kernel_fn_name + "_ptr_",
-                        reinterpret_cast<void*>(fn_kernel));
+    fn_names_.push_back(kernel_fn_name);
   }
-
-  engine_ = ExecutionEngine::Create(ExecutionOptions(), std::move(symbols));
+  if (add_module) {
+    AddModulePrepare();
+  }
   engine_->Link<CodeGenCUDA_Host>(host_module, add_module);
 
 #else

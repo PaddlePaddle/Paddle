@@ -217,6 +217,18 @@ void ExecutionEngine::Link(const ir::Module &module, bool add_module) {
   }
 }
 
+void ExecutionEngine::AddModuleSymbols(RuntimeSymbols &&module_symbols) {
+  module_symbols_ = std::forward<RuntimeSymbols>(module_symbols);
+  auto *session = &jit_->getExecutionSession();
+  for (const auto &sym : module_symbols_.All()) {
+    VLOG(0) << "Add symbol: {" << sym.first << ":" << sym.second << "}";
+    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
+        {{session->intern(sym.first),
+          {llvm::pointerToJITTargetAddress(sym.second),
+           llvm::JITSymbolFlags::Exported}}})));
+  }
+}
+
 bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
                                 std::unique_ptr<llvm::LLVMContext> context) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
@@ -228,7 +240,8 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
     module->print(os, {});
     // main_jd_->dump(os);
     os.flush();
-    VLOG(5) << buffer;
+    std::cerr << "debug from SHine:\n";
+    std::cerr << buffer;
   }
   llvm::orc::ThreadSafeContext tsc(std::move(context));
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
@@ -265,13 +278,7 @@ void ExecutionEngine::RegisterRuntimeSymbols() {
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
         {{session->intern(sym.first),
           {llvm::pointerToJITTargetAddress(sym.second),
-           llvm::JITSymbolFlags::None}}})));
-  }
-  for (const auto &sym : module_symbols_.All()) {
-    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
-        {{session->intern(sym.first),
-          {llvm::pointerToJITTargetAddress(sym.second),
-           llvm::JITSymbolFlags::None}}})));
+           llvm::JITSymbolFlags::Exported}}})));
   }
 }
 

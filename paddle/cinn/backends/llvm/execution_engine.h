@@ -83,6 +83,8 @@ class ExecutionEngine {
 
   void ExportObject(const std::string &path);
 
+  void AddModuleSymbols(RuntimeSymbols &&module_symbols);
+
   bool AddModule(std::unique_ptr<llvm::Module> module,
                  std::unique_ptr<llvm::LLVMContext> context);
 
