@@ -21,11 +21,12 @@ from typing import Any, Iterator, Sequence
 
 from typing_extensions import Self
 
-from paddle import Tensor
-
 from ...base.dygraph.base import param_guard
 from ...base.framework import Parameter
 from .layers import Layer
+
+if typing.TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -100,7 +101,7 @@ class LayerDict(Layer):
     def __len__(self) -> int:
         return len(self._sub_layers)
 
-    def __iter__(self) -> Iterator[Layer]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._sub_layers)
 
     def __contains__(self, key: str) -> bool:
@@ -605,7 +606,7 @@ class Sequential(Layer):
             for idx, layer in enumerate(layers):
                 self.add_sublayer(str(idx), layer)
 
-    def __getitem__(self, name: str) -> Layer:
+    def __getitem__(self, name: str | slice | int) -> Layer:
         if isinstance(name, slice):
             return self.__class__(*(list(self._sub_layers.values())[name]))
         elif isinstance(name, str):

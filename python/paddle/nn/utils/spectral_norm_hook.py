@@ -184,6 +184,7 @@ def spectral_norm(
     Examples:
         .. code-block:: python
 
+            >>> import paddle
             >>> from paddle.nn import Conv2D
             >>> from paddle.nn.utils import spectral_norm
             >>> paddle.seed(2023)

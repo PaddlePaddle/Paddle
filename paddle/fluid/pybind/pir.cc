@@ -40,6 +40,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -96,9 +97,9 @@ using paddle::dialect::SparseCsrTensorType;
 using paddle::dialect::WhileOp;
 using pir::TuplePopOp;
 
+using paddle::dialect::IntArrayAttribute;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
-
 using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
@@ -549,7 +550,11 @@ void BindProgram(py::module *m) {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
                }
              }
-           });
+           })
+      .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
+      });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -669,10 +674,15 @@ void BindBlock(py::module *m) {
              }
              return param_list;
            })
-      .def("refresh_stopgradient", [](Block &self) {
-        for (auto &op : self) {
-          RefreshOpStopgradients(&op);
-        }
+      .def("refresh_stopgradient",
+           [](Block &self) {
+             for (auto &op : self) {
+               RefreshOpStopgradients(&op);
+             }
+           })
+      .def("_sync_with_cpp", [](const Block &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
       });
 }
 
@@ -765,6 +775,14 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name,
                  pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
+      .def("set_int_array_attr",
+           [](Operation &self,
+              std::string &attr_name,
+              const std::vector<int64_t> &val) {
+             auto attr = IntArrayAttribute::get(pir::IrContext::Instance(),
+                                                phi::IntArray(val));
+             self.set_attribute(attr_name, attr);
            })
       .def("attrs",
            [](Operation &self) -> py::dict {
@@ -1113,7 +1131,8 @@ pir::Value apply(Value self, py::object func) {
           return py::cast<py::none>(Py_None);                                \
         }                                                                    \
         auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
-        py::object obj = py::object(py::handle(py_data), true);              \
+        py::object obj =                                                     \
+            py::reinterpret_borrow<py::object>(py::handle(py_data));         \
         return obj;                                                          \
       },                                                                     \
       [](Value self, py::object obj) {                                       \
@@ -1287,20 +1306,20 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
-      .def("dist_attr",
-           [](Value self) -> py::object {
-             auto type = self.type();
-             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
-      .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+      .def("update_dist_attr",
+           [](Value &self, TensorDistAttribute dist_attr) {
+             self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+           })
+      .def_property_readonly("process_mesh", [](Value &self) -> py::object {
+        auto type = self.type();
+        if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+          return py::cast(
+              dist_type.tensor_dist_attr().process_mesh_attr().process_mesh());
+        } else {
+          return py::cast<py::none>(Py_None);
+        }
       });
 }
 
@@ -1346,14 +1365,6 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
-      .def("dist_attr",
-           [](Type self) -> py::object {
-             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       .def_property(
           "_local_shape",
           [](Type self) {
@@ -1372,6 +1383,13 @@ void BindType(py::module *m) {
            [](Type self) -> py::object {
              if (auto vec_type = self.dyn_cast<VectorType>()) {
                return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_dist_type",
+           [](Type &self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type);
              }
              return py::cast<py::none>(Py_None);
            })
@@ -2549,7 +2567,48 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
            return_value_policy::reference)
       .def("data",
            &symbol::ShapeOrDataDimExprs::data,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("is_equal",
+           [](symbol::ShapeOrDataDimExprs &self,
+              std::vector<int64_t> expect_shape,
+              std::vector<int64_t> expect_data = {}) -> bool {
+             VLOG(3) << "Start compare shape and data.";
+
+             const auto &compare_func =
+                 [&](const std::vector<int64_t> &expect,
+                     const std::vector<symbol::DimExpr> &actual) -> bool {
+               if (actual.size() != expect.size()) {
+                 LOG(ERROR) << "expect size " << expect.size()
+                            << " is not equal to actual size " << actual.size()
+                            << " .";
+                 return false;
+               } else if (actual.empty()) {
+                 return true;
+               }
+               for (size_t i = 0; i < actual.size(); i++) {
+                 if (!actual.at(i).isa<int64_t>()) {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "In OpTest, only supports cases where the type of "
+                       "DimExpr "
+                       "is int64_t."));
+                   return false;
+                 }
+                 if (actual.at(i) != expect.at(i)) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
+                              << " is not equal to actual[" << i
+                              << "]: " << actual.at(i) << " .";
+                   return false;
+                 }
+               }
+               return true;
+             };
+
+             // compare shape
+             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+
+             // TODO(gongshaotian): compare data
+             return compare_func(expect_shape, actual_shape);
+           });
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {

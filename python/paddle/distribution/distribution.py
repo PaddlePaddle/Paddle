@@ -233,7 +233,15 @@ class Distribution:
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
+        if paddle.is_complex(param):
+            return value.astype(param.dtype)
+
         if in_dynamic_or_pir_mode():
+            if in_pir_mode():
+                check_variable_and_dtype(
+                    value, 'value', ['float32', 'float64'], 'log_prob'
+                )
+
             if value.dtype != param.dtype and convert_dtype(value.dtype) in [
                 'float32',
                 'float64',
@@ -245,7 +253,10 @@ class Distribution:
             return value
 
         check_variable_and_dtype(
-            value, 'value', ['float32', 'float64'], 'log_prob'
+            value,
+            'value',
+            ['float32', 'float64'],
+            'log_prob',
         )
         if value.dtype != param.dtype:
             warnings.warn(

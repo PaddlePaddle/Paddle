@@ -277,6 +277,8 @@ paddle_type_to_proto_type = {
     DataType.UINT8: core.VarDesc.VarType.UINT8,
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+    DataType.FLOAT8_E4M3FN: core.VarDesc.VarType.FP8_E4M3FN,
+    DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
 }
 
 
@@ -1295,6 +1297,10 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
+        dtype = 'float8_e4m3fn'
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
+        dtype = 'float8_e5m2'
     else:
         dtype = np.dtype(np_dtype)
 
@@ -1302,6 +1308,10 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
         return core.VarDesc.VarType.FP64
+    elif dtype == 'float8_e4m3fn':
+        return core.VarDesc.VarType.FP8_E4M3FN
+    elif dtype == 'float8_e5m2':
+        return core.VarDesc.VarType.FP8_E5M2
     elif dtype == np.float16:
         return core.VarDesc.VarType.FP16
     elif dtype == np.int32:
@@ -1788,6 +1798,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
@@ -1795,8 +1806,8 @@ class Variable(metaclass=VariableMetaClass):
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
-                ...     data = paddle.to_tensor(data)
-                ...     x = linear(data)
+                ...     data_tensor = paddle.to_tensor(data)
+                ...     x = linear(data_tensor)
                 ...     print(x.numpy())
 
         """
@@ -1826,7 +1837,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle
                 >>> paddle.disable_static()
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> inputs = []
                 >>> for _ in range(10):
                 ...     tmp = paddle.to_tensor(x)
@@ -1870,7 +1881,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import numpy as np
 
                 >>> # example1: return ndarray
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
@@ -1892,8 +1903,8 @@ class Variable(metaclass=VariableMetaClass):
                 ...         sparse=True)
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
-                ...     x = paddle.to_tensor(x_data)
-                ...     out = embedding(x)
+                ...     x_tensor = paddle.to_tensor(x_data)
+                ...     out = embedding(x_tensor)
                 ...     out.backward()
                 ...     print(embedding.weight.gradient())
 
@@ -1919,7 +1930,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> inputs2 = []
                 >>> for _ in range(10):
                 >>>     tmp = paddle.to_tensor(x)
@@ -2857,7 +2868,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
                 >>> # get the number of elements of the Variable
-                >>> y = x.size()
+                >>> y = x.size() # type: ignore
 
         """
 
@@ -8043,7 +8054,7 @@ def device_guard(device=None):
             >>> support_gpu = paddle.is_compiled_with_cuda()
             >>> place = paddle.CPUPlace()
             >>> if support_gpu:
-            ...     place = paddle.CUDAPlace(0)
+            ...     place = paddle.CUDAPlace(0) # type: ignore
 
             >>> # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
             >>> data1 = paddle.full(shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')

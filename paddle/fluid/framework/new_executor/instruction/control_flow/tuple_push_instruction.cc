@@ -99,7 +99,6 @@ void TuplePushInstruction::Run() {
     for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
       Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
-      int stack_size = tuple_push_op_.tuple_size();
 
       auto var_name = value_2_var_name.at(inlet_element_value);
       auto num_str = std::to_string(stack_element_var_array_->size());
@@ -110,7 +109,7 @@ void TuplePushInstruction::Run() {
       DeepCopyVariable(var,
                        &copy_var,
                        value_exe_info_,
-                       stack_size,
+                       stack_element_var_array_->size(),
                        is_optional,
                        &src_to_dst);
       VLOG(10) << "done DeepCopyVariable " << new_name;

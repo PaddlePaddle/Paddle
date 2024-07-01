@@ -25,12 +25,11 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -39,6 +38,24 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+
+template <typename T>
+inline T GetDenseTensorValue(const phi::DenseTensor* x) {
+  T value = static_cast<T>(0);
+  if (!(x->place().GetType() == phi::AllocationType::CPU)) {
+    phi::DenseTensor cpu_x;
+    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    const platform::DeviceContext* dev_ctx = pool.Get(x->place());
+    dev_ctx->Wait();
+#endif
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x->data<T>()[0];
+  }
+  return value;
+}
 
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
@@ -63,10 +80,10 @@ static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   if (tensor.numel() == 1) {
     if (framework::TransToProtoVarType(tensor.type()) ==
         framework::proto::VarType::INT32) {
-      return static_cast<Py_ssize_t>(operators::GetValue<int32_t>(&tensor));
+      return static_cast<Py_ssize_t>(GetDenseTensorValue<int32_t>(&tensor));
     } else if (framework::TransToProtoVarType(tensor.type()) ==
                framework::proto::VarType::INT64) {
-      return static_cast<Py_ssize_t>(operators::GetValue<int64_t>(&tensor));
+      return static_cast<Py_ssize_t>(GetDenseTensorValue<int64_t>(&tensor));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently, the type of tensor in slice indices only allows "
@@ -518,8 +535,8 @@ static void ParseBoolAndBroadcastIndices(
           common::make_ddim((*advanced_index)[i].shape());
       if (current_shape != common_shape) {
         need_broadcast = true;
-        common_shape = operators::details::BroadcastTwoDims(
-            current_shape, common_shape, -1);
+        common_shape =
+            phi::funcs::BroadcastTwoDims(current_shape, common_shape, -1);
       }
     }
 
@@ -549,7 +566,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
     paddle::Tensor value_tensor_tmp(
         std::make_shared<phi::DenseTensor>(),
         egr::Controller::Instance().GenerateUniqueName());
-    py::object value_obj_tmp(py::handle(value_obj), true);
+    py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     py::object value = value_obj_tmp;
     if (tensor.dtype() == phi::DataType::FLOAT32) {
       if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
@@ -595,7 +612,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
         false);
     value_tensor = value_tensor_tmp;
   } else {
-    py::object value_obj_tmp(py::handle(value_obj), true);
+    py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     // convert the value to self data type
     if (py::isinstance<py::float_>(value_obj_tmp) ||
         py::isinstance<py::int_>(value_obj_tmp) ||

@@ -91,8 +91,8 @@
   kernel :
     func : fused_transpose
 
-- op: multi_gru
-  args: (Tensor x, Tensor[] weight_x, Tensor[] weight_h, Tensor[] bias, Tensor[] scale_weights, str activation="tanh", str gate_activation="sigmoid", int layers=1, bool origin_mode=false, str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=1.0, bool force_fp32_output=false)
+- op : multi_gru
+  args: (Tensor x, Tensor[] weight_x, Tensor[] weight_h, Tensor[] bias, Tensor[] scale_weights, str activation="tanh", str gate_activation="sigmoid", int layers=1, bool origin_mode=false, str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=0.0, bool force_fp32_output=false)
   output: Tensor(hidden)
   infer_meta:
      func: MultiGruInferMeta

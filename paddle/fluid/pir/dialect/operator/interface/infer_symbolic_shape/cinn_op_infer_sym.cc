@@ -17,7 +17,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
 namespace cinn::dialect {
-using paddle::dialect::details::CreateShapeOrDataForXShape;
 
 bool BroadcastOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -43,9 +42,16 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
-  if (infer_context->GetShapeOrDataForValue(input_values[0])
-          .data()
-          .has_value()) {
+  const auto IsAllDataValue = [&]() -> bool {
+    for (const auto &value : input_values) {
+      if (!infer_context->GetShapeOrDataForValue(value).data().has_value()) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (IsAllDataValue()) {
     std::vector<symbol::DimExpr> out_data;
     for (const auto &value : input_values) {
       const auto &shape_or_data = infer_context->GetShapeOrDataForValue(value);
@@ -95,11 +101,11 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  bool keep_dim = GetBoolAttr(op, "keep_dim");
-  auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  auto axis = paddle::dialect::details::GetVectorAttr(op, "axis");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, infer_context, axis, keep_dim, reduce_all);
+      op, infer_context, axis, keepdim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(
@@ -188,11 +194,6 @@ bool ReshapeOpInferSymbolicShape(
   }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-  // NOTE(Aureliue84): Parse XShape symbolic expression which is used for
-  // backward process. It will be removed after normolizing ReshapeGrad(out,
-  // xshape) into ReshapeGrad(out, x).
-  infer_context->SetShapeOrDataForValue(op->result(1),
-                                        CreateShapeOrDataForXShape(x_dim_expr));
 
   return true;
 }

@@ -452,5 +452,97 @@ class TestPrimStackGrad(unittest.TestCase):
         paddle.base.core.set_prim_eager_enabled(False)
 
 
+class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
+    def test_dygraph_cpu(self):
+        place = base.CPUPlace()
+        paddle.disable_static(place)
+
+        x1 = paddle.ones([1, 0])
+        x2 = paddle.ones([1, 0])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.stack([x1, x2])
+        out.retain_grads()
+        out.backward()
+
+        np.testing.assert_equal(out.shape, [2, 1, 0])
+        np.testing.assert_equal(x1.grad, None)
+        np.testing.assert_equal(x2.grad, None)
+        np.testing.assert_equal(out, np.ones([2, 1, 0]))
+
+        paddle.enable_static()
+
+    def test_dygraph_gpu(self):
+        if base.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
+            paddle.disable_static(place)
+
+            x1 = paddle.ones([1, 0])
+            x2 = paddle.ones([1, 0])
+            x1.stop_gradient = False
+            x2.stop_gradient = False
+            out = paddle.stack([x1, x2])
+            out.retain_grads()
+            out.backward()
+
+            np.testing.assert_equal(out.shape, [2, 1, 0])
+            np.testing.assert_equal(x1.grad, None)
+            np.testing.assert_equal(x2.grad, None)
+            np.testing.assert_equal(out, np.ones([2, 1, 0]))
+
+            paddle.enable_static()
+
+    @test_with_pir_api
+    def test_static_cpu(self):
+        paddle.enable_static()
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data1 = paddle.static.data('data1', shape=[0, 2], dtype='float64')
+            data2 = paddle.static.data('data2', shape=[0, 2], dtype='float64')
+            data3 = paddle.static.data('data3', shape=[0, 2], dtype='float64')
+            result_stack = paddle.stack([data1, data2, data3], axis=0)
+            input1 = np.ones([0, 2]).astype('float64')
+            input2 = np.ones([0, 2]).astype('float64')
+            input3 = np.ones([0, 2]).astype('float64')
+            (result,) = exe.run(
+                feed={"data1": input1, "data2": input2, "data3": input3},
+                fetch_list=[result_stack],
+            )
+            expected_result = np.stack([input1, input2, input3], axis=0)
+            np.testing.assert_equal(expected_result, result)
+
+    @test_with_pir_api
+    def test_static_gpu(self):
+        if base.is_compiled_with_cuda():
+            paddle.enable_static()
+            place = base.CUDAPlace(0)
+            exe = base.Executor(place)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                data1 = paddle.static.data(
+                    'data1', shape=[0, 2], dtype='float64'
+                )
+                data2 = paddle.static.data(
+                    'data2', shape=[0, 2], dtype='float64'
+                )
+                data3 = paddle.static.data(
+                    'data3', shape=[0, 2], dtype='float64'
+                )
+                result_stack = paddle.stack([data1, data2, data3], axis=0)
+                input1 = np.ones([0, 2]).astype('float64')
+                input2 = np.ones([0, 2]).astype('float64')
+                input3 = np.ones([0, 2]).astype('float64')
+                (result,) = exe.run(
+                    feed={"data1": input1, "data2": input2, "data3": input3},
+                    fetch_list=[result_stack],
+                )
+                expected_result = np.stack([input1, input2, input3], axis=0)
+                np.testing.assert_equal(expected_result, result)
+
+
 if __name__ == '__main__':
     unittest.main()
