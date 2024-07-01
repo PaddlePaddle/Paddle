@@ -22,12 +22,18 @@ from op_test import OpTest
 sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
 
+import paddle
 from paddle.base import core
+
+
+def api_wrapper(x):
+    return paddle._C_ops.sequence_softmax(x)
 
 
 class TestSequenceSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = "sequence_softmax"
+        self.python_api = api_wrapper
         self.use_cudnn = False
         self.init_op_type()
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
