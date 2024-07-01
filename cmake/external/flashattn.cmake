@@ -81,10 +81,8 @@ foreach(arch ${NVCC_ARCH_BIN})
   endif()
 endforeach()
 
-ProcessorCount(NUM_CORES)
-
 if(NOT DEFINED FA_COMPILE_JOBS)
-  set(FA_COMPILE_JOBS ${NUM_CORES})
+  set(FA_COMPILE_JOBS 4)
 endif()
 
 ExternalProject_Add(
