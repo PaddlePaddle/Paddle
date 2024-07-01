@@ -44,7 +44,7 @@ class DistributedStack(DistributedOperatorImplContainer):
         rule = get_phi_spmd_rule("stack")
         # tensor order following order in PHI definition
         fw_results = rule.infer_forward(input_specs, axis)
-        bw_results = rule.infer_backward(output_spec, axis)
+        bw_results = rule.infer_backward(input_specs, output_spec, axis)
 
         # step3: update dist_attr
         # tensor order following order in PHI definition
