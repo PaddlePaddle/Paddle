@@ -141,11 +141,13 @@ RUN pip3.8 --no-cache-dir install pytest && \
     pip3.12 --no-cache-dir install pytest
 
 RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
-    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 && \
-    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 pre-commit==2.17.0 && \
-    pip3.10 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 pre-commit==2.17.0 && \
-    pip3.11 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 && \
-    pip3.12 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1
+    pip3.9 --no-cache-dir install pre-commit==2.17.0 && \
+    pip3.10 --no-cache-dir install pre-commit==2.17.0 && \
+    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.10 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.11 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.12 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
