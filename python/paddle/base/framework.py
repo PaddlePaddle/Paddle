@@ -127,7 +127,7 @@ def set_flags(flags):
             _global_flags()[key] = value
         else:
             raise ValueError(
-                "Flag %s cannot set its value through this function." % (key)
+                f"Flag {key} cannot set its value through this function."
             )
 
 
@@ -161,8 +161,7 @@ def get_flags(flags):
                 flags_value.update(temp)
             else:
                 raise ValueError(
-                    "Flag %s cannot get its value through this function."
-                    % (key)
+                    f"Flag {key} cannot get its value through this function."
                 )
     elif isinstance(flags, str):
         if _global_flags().is_public(flags):
@@ -171,7 +170,7 @@ def get_flags(flags):
             flags_value.update(temp)
         else:
             raise ValueError(
-                "Flag %s cannot get its value through this function." % (flags)
+                f"Flag {flags} cannot get its value through this function."
             )
     else:
         raise TypeError("Flags in get_flags should be a list, tuple or string.")
@@ -552,21 +551,19 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
     """
     if not isinstance(min_version, str):
         raise TypeError(
-            "The type of 'min_version' in require_version must be str, but received %s."
-            % (type(min_version))
+            f"The type of 'min_version' in require_version must be str, but received {type(min_version)}."
         )
 
     if not isinstance(max_version, (str, type(None))):
         raise TypeError(
-            "The type of 'max_version' in require_version must be str or type(None), but received %s."
-            % (type(max_version))
+            f"The type of 'max_version' in require_version must be str or type(None), but received {type(max_version)}."
         )
 
     check_format = re.match(r"\d+(\.\d+){0,3}", min_version)
     if check_format is None or check_format.group() != min_version:
         raise ValueError(
             "The value of 'min_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
-            "like '1.5.2.0', but received %s" % min_version
+            f"like '1.5.2.0', but received {min_version}"
         )
 
     if max_version is not None:
@@ -574,7 +571,7 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
         if check_format is None or check_format.group() != max_version:
             raise ValueError(
                 "The value of 'max_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
-                "like '1.5.2.0', but received %s" % max_version
+                f"like '1.5.2.0', but received {max_version}"
             )
 
     version_installed = [
@@ -638,9 +635,9 @@ def _dygraph_not_support_(
     func: Callable[_InputT, _RetT]
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert not in_dygraph_mode(), (
-            "We don't support %s in dynamic graph mode" % func.__name__
-        )
+        assert (
+            not in_dygraph_mode()
+        ), f"We don't support {func.__name__} in dynamic graph mode"
         return func(*args, **kwargs)
 
     return __impl__
@@ -648,10 +645,9 @@ def _dygraph_not_support_(
 
 def _dygraph_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert in_dygraph_mode(), (
-            "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
-            % func.__name__
-        )
+        assert (
+            in_dygraph_mode()
+        ), f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
         return func(*args, **kwargs)
 
     return __impl__
@@ -1335,7 +1331,7 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
     elif dtype == np.complex128:
         return core.VarDesc.VarType.COMPLEX128
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 def convert_np_dtype_to_dtype_(np_dtype):
@@ -1806,8 +1802,8 @@ class Variable(metaclass=VariableMetaClass):
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
-                ...     data = paddle.to_tensor(data)
-                ...     x = linear(data)
+                ...     data_tensor = paddle.to_tensor(data)
+                ...     x = linear(data_tensor)
                 ...     print(x.numpy())
 
         """
@@ -1837,7 +1833,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle
                 >>> paddle.disable_static()
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> inputs = []
                 >>> for _ in range(10):
                 ...     tmp = paddle.to_tensor(x)
@@ -1881,7 +1877,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import numpy as np
 
                 >>> # example1: return ndarray
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
@@ -1903,8 +1899,8 @@ class Variable(metaclass=VariableMetaClass):
                 ...         sparse=True)
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
-                ...     x = paddle.to_tensor(x_data)
-                ...     out = embedding(x)
+                ...     x_tensor = paddle.to_tensor(x_data)
+                ...     out = embedding(x_tensor)
                 ...     out.backward()
                 ...     print(embedding.weight.gradient())
 
@@ -1930,7 +1926,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> inputs2 = []
                 >>> for _ in range(10):
                 >>>     tmp = paddle.to_tensor(x)
@@ -3004,7 +3000,7 @@ class OpProtoHolder:
 
         """
         if type not in self.op_proto_map:
-            raise ValueError('Operator "%s" has not been registered.' % type)
+            raise ValueError(f'Operator "{type}" has not been registered.')
         return self.op_proto_map[type]
 
     def update_op_proto(self):
@@ -3204,7 +3200,7 @@ class Operator:
                     op_attrs[op_device] = _current_device
                 else:
                     warnings.warn(
-                        "The Op(%s) is not support to set device." % type
+                        f"The Op({type}) is not support to set device."
                     )
                 if "force_cpu" in op_attrs:
                     if (
@@ -3212,9 +3208,9 @@ class Operator:
                         and op_attrs["force_cpu"] is not None
                     ) or op_attrs["force_cpu"] is not False:
                         warnings.warn(
-                            "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
+                            f"The Attr(force_cpu) of Op({type}) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
-                            "used at the same time." % type
+                            "used at the same time."
                         )
             if _current_pipeline_stage is not None:
                 pipeline_attr_name = (
@@ -3468,7 +3464,7 @@ class Operator:
 
             if attr_type == core.AttrType.VARS:
                 attr_var_names = [
-                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                    f"'{var.name()}'" for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
                     name=name, value=",".join(attr_var_names)
@@ -4259,12 +4255,14 @@ class Block:
                 self.parent_idx,
             )
             for var in list(self.vars.values()):
-                res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
-                    r"\n    \1", var.to_string(throw_on_error, with_details)
+                res_str += "\n  vars {{\n    {}  }}".format(
+                    re_add_indent.sub(
+                        r"\n    \1", var.to_string(throw_on_error, with_details)
+                    )
                 )
             for op in self.ops:
-                res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
-                    r"\n    \1", op.to_string(throw_on_error)
+                res_str += "\n  ops {{\n    {}  }}".format(
+                    re_add_indent.sub(r"\n    \1", op.to_string(throw_on_error))
                 )
             res_str += "\n}"
         else:
@@ -4323,12 +4321,11 @@ class Block:
         """
         if not isinstance(name, str):
             raise TypeError(
-                "var require string as parameter, but get %s instead."
-                % (type(name))
+                f"var require string as parameter, but get {type(name)} instead."
             )
         v = self.vars.get(name, None)
         if v is None:
-            raise ValueError("var %s not in this block" % name)
+            raise ValueError(f"var {name} not in this block")
         return v
 
     def _find_var_recursive(self, name):
@@ -4432,7 +4429,7 @@ class Block:
         )
 
         if not self.has_var(name):
-            raise ValueError("var %s is not in current block" % name)
+            raise ValueError(f"var {name} is not in current block")
         v = self.var(name)
         if type(v) == Parameter:
             var_type = "Parameter"
@@ -4446,7 +4443,7 @@ class Block:
             error_clip = v.error_clip
             stop_gradient = v.stop_gradient
         else:
-            raise ValueError("unsupported var type: %s", type(v))
+            raise ValueError(f"unsupported var type: {type(v)}")
         orig_var_type = v.type
         self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
@@ -4559,9 +4556,9 @@ class Block:
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
             warnings.warn(
-                "Op `%s` is executed through `append_op` under the dynamic mode, "
+                f"Op `{op_type}` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
-                "using `_C_ops` method." % type,
+                "using `_C_ops` method.",
                 DeprecationWarning,
             )
             op = Operator(
@@ -5629,12 +5626,12 @@ class IrGraph:
             node_in(IrNode): the input node.
             node_out(IrNode): the output node.
         """
-        assert node_in.node in self.graph.nodes(), (
-            "node_in(%s) must be in the graph nodes." % node_in.node.name()
-        )
-        assert node_out.node in self.graph.nodes(), (
-            "node_out(%s) must be in the graph nodes." % node_out.node.name()
-        )
+        assert (
+            node_in.node in self.graph.nodes()
+        ), f"node_in({node_in.node.name()}) must be in the graph nodes."
+        assert (
+            node_out.node in self.graph.nodes()
+        ), f"node_out({node_out.node.name()}) must be in the graph nodes."
         node_in.append_output(node_out)
         node_out.append_input(node_in)
 
@@ -5795,9 +5792,9 @@ class IrGraph:
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert target_node is not None, (
-            "Cannot find the target node (%s)in the giving set." % node_name
-        )
+        assert (
+            target_node is not None
+        ), f"Cannot find the target node ({node_name})in the giving set."
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -6631,7 +6628,7 @@ class Program:
             if not isinstance(var, str):
                 raise ValueError(
                     "All feeded_var_names of Program._prune_with_input() can only be "
-                    "str, but received %s." % type(var)
+                    f"str, but received {type(var)}."
                 )
 
         # find out all variables that can be generated or updated with given feed
@@ -6660,7 +6657,7 @@ class Program:
                 else:
                     raise ValueError(
                         "All targets of Program._prune_with_input() can only be "
-                        "Variable or Operator, but received %s." % type(t)
+                        f"Variable or Operator, but received {type(t)}."
                     )
 
                 # NOTE(zhiqiu): For variable to be fed in fetch_list, there two cases:
@@ -7002,8 +6999,7 @@ class Program:
     def random_seed(self, seed):
         if not isinstance(seed, int):
             raise ValueError(
-                "Program.random_seed's input seed must be an integer, but received %s."
-                % type(seed)
+                f"Program.random_seed's input seed must be an integer, but received {type(seed)}."
             )
         self._seed = seed
 
@@ -7153,8 +7149,7 @@ class Program:
         """
         if not isinstance(other, Program):
             raise TypeError(
-                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
-                % type(other)
+                f"Function Program._copy_param_info_from() needs to pass in a source Program, but received {type(other)}"
             )
 
         self.global_block()._copy_param_info_from(other.global_block())
@@ -7171,8 +7166,7 @@ class Program:
         """
         if not isinstance(other, Program):
             raise TypeError(
-                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
-                % type(other)
+                f"Function Program._copy_param_info_from() needs to pass in a source Program, but received {type(other)}"
             )
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
@@ -7200,8 +7194,7 @@ class Program:
         """
         if not isinstance(other, Program):
             raise TypeError(
-                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
-                % type(other)
+                f"Function Program._copy_param_info_from() needs to pass in a source Program, but received {type(other)}"
             )
 
         if not pruned_origin_block_id_map:
@@ -7518,8 +7511,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         for each in shape:
             if each < 0:
                 raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape)
+                    f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
                 )
 
         Variable.__init__(
@@ -7628,8 +7620,7 @@ class EagerParamBase(core.eager.Tensor):
         for each in shape:
             if each < 0:
                 raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape)
+                    f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
                 )
 
         if dtype is not None:
@@ -7710,8 +7701,7 @@ class EagerParamBase(core.eager.Tensor):
             self.stop_gradient = not trainable
         else:
             raise ValueError(
-                "The type of trainable MUST be bool, but the type is ",
-                type(trainable),
+                f"The type of trainable MUST be bool, but the type is {type(trainable)}"
             )
 
     def _create_init_op(self, block):
@@ -8084,7 +8074,7 @@ def device_guard(device=None):
     ):
         raise ValueError(
             "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
-            "when there is no need to specify device. But received %s" % device
+            f"when there is no need to specify device. But received {device}"
         )
     if index:
         device = ":".join([device, index])

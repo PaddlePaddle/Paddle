@@ -15,25 +15,12 @@
 #pragma once
 
 #include <numeric>
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
 namespace paddle {
 namespace primitive {
 namespace details {
-
-template <typename T>
-static Tensor get_slice(const Tensor& x, int64_t idx) {
-  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
-}
-
-template <typename T>
-static Tensor get_slice_vec(const Tensor& x,
-                            int64_t start_idx,
-                            int64_t end_idx) {
-  return slice<T>(x, {0}, {start_idx}, {end_idx}, {1}, {});
-}
 
 template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
