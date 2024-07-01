@@ -24,7 +24,6 @@ from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import StringifyExpression, check_guard
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
-from ..pycode_generator import PyCodeGen
 from ..tracker import (
     ConstTracker,
     DanglingTracker,
@@ -39,6 +38,7 @@ from .callable import BuiltinVariable, UserDefinedFunctionVariable
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
+    from ..pycode_generator import PyCodeGen
 
 
 class ContainerVariable(VariableBase):
