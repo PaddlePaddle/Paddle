@@ -106,29 +106,39 @@ void divide_grad(const Tensor& x,
   if (dy) {
     // dy = -(x/y^2) * dout
     auto dy_res = -(x / (y * y)) * out_grad;
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          sum<T>(dy_res, common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+    if (has_dynamic_shape(y.shape())) {
+      auto dy_tmp = reduce_as<T>(dy_res, y);
       set_output<T>(dy_tmp, dy);
     } else {
-      set_output<T>(dy_res, dy);
+      if (out_grad.dims() != y.dims()) {
+        phi::DDim reduce_dim =
+            get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        auto dy_reduce_res =
+            sum<T>(dy_res, common::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      } else {
+        set_output<T>(dy_res, dy);
+      }
     }
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
-    auto one_tensor = full<T>(common::vectorize(y.dims()), 1.0, y.dtype());
+    Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
     auto dx_res = one_tensor / y * out_grad;
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          sum<T>(dx_res, common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+    if (has_dynamic_shape(x.shape())) {
+      auto dx_tmp = reduce_as<T>(dx_res, x);
       set_output<T>(dx_tmp, dx);
     } else {
-      set_output<T>(dx_res, dx);
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto dx_reduce_res =
+            sum<T>(dx_res, common::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      } else {
+        set_output<T>(dx_res, dx);
+      }
     }
   }  // indicate we will compute dx
 }
