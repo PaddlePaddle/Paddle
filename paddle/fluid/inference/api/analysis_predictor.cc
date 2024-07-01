@@ -1238,7 +1238,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
   }
 
-  if (load_pir_model_) {
+  if (config_.new_ir_enabled()) {
     executor_->Prepare(sub_scope_);
   } else {
     DisablePrepareDataOpt(inference_program_, 0, false);
@@ -1259,7 +1259,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    VLOG(1) << "predictor program " << *pir_program_;
+    std::cout << "predictor program " << *pir_program_ << std::endl;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
