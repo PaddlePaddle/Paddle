@@ -8438,7 +8438,7 @@ def isin(
         return cmp
 
 
-def cartesian_prod(x, name=None):
+def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
     Perform Cartesian product on a given tensor sequence. This behavior is similar to the itertools.product in Python.
     Equivalent to converting all input tensors into lists, performing itertools.product on these lists,
