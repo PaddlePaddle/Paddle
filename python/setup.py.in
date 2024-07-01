@@ -666,7 +666,7 @@ packages=['paddle',
           'paddle.pir',
           'paddle.decomposition',
           'paddle._typing',
-
+          'paddle.tensorrt',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
