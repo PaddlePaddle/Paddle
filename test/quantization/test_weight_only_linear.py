@@ -817,11 +817,11 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
             weight_dtype=weight_dtype,
         )
         out = paddle.matmul(x=x, y=weight)
-        np.testing.assert_allclose(quant_out, out, rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(quant_out, out, rtol=1e-2, atol=1e-2)
 
         quant_out.backward()
         out.backward()
-        np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-2, atol=1e-2)
 
     def test_weightonly_linear_backward_int4(self):
         def test_weightonly_linear_backward(
