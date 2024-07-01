@@ -81,9 +81,9 @@
 
 - op : reshape
   args : (Tensor x, int[] shape)
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : ReshapeWithXShapeInferMeta
+    func : ReshapeInferMeta
   kernel :
     func : reshape
   interfaces : paddle::dialect::InferSymbolicShapeInterface

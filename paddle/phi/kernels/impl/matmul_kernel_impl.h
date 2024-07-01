@@ -1453,6 +1453,105 @@ MatmulJudgeDtypeKernel(const Context& ctx,
   phi::CastKernel<float>(ctx, out_tmp, x.dtype(), out);
 }
 
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 12010
+template <typename Context>
+typename std::enable_if<std::is_same<Context, phi::GPUContext>::value>::type
+DispatchMatmulFP8Kernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const std::vector<std::int64_t>& x_dims,
+                        const std::vector<std::int64_t>& y_dims,
+                        DenseTensor* out,
+                        bool transpose_x,
+                        bool transpose_y) {
+  if (x.dtype() != DataType::FLOAT8_E4M3FN ||
+      y.dtype() != DataType::FLOAT8_E4M3FN) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "float8 matmul needs input x and y be float8_e4m3fn"));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Mat x for matmul fp8 just support 2-dim tensor, but got %d",
+          x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Mat y for matmul fp8 just support 2-dim tensor, but got %d",
+          y_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1],
+      y_dims[0],
+      phi::errors::InvalidArgument("x_dims[1] needs to equal to y_dims[0], but "
+                                   "got x_dims[1] = %d, y_dims[0] = %d",
+                                   x_dims[1],
+                                   y_dims[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "fp8 matmul need x_dims[1] % 16 = 0, got x_dims[1] = %d", x_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      y_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "fp8 matmul need y_dims[0] % 16 = 0, got y_dims[0] = %d", y_dims[0]));
+
+  phi::DenseTensor workspace;
+  workspace.Resize({30 * 1024 * 1024});
+  ctx.template Alloc<int8_t>(&workspace);
+  ctx.template Alloc<phi::dtype::float16>(out);
+
+  CublasLtMatmulFP8<phi::dtype::float16>(ctx, x, y, &workspace, out);
+}
+
+template <typename Context>
+typename std::enable_if<std::is_same<Context, phi::CPUContext>::value>::type
+DispatchMatmulFP8Kernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const std::vector<std::int64_t>& x_dims,
+                        const std::vector<std::int64_t>& y_dims,
+                        DenseTensor* out,
+                        bool transpose_x,
+                        bool transpose_y) {}
+
+template <typename Context, typename T>
+typename std::enable_if<std::is_same<T, phi::dtype::float8_e4m3fn>::value>::type
+DispatchMatmulKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const std::vector<std::int64_t>& x_dims,
+                     const std::vector<std::int64_t>& y_dims,
+                     DenseTensor* out,
+                     bool transpose_x,
+                     bool transpose_y) {
+  DispatchMatmulFP8Kernel<Context>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+}
+#endif
+#endif
+
+template <typename Context, typename T>
+typename std::enable_if<
+    !std::is_same<T, phi::dtype::float8_e4m3fn>::value>::type
+DispatchMatmulKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const std::vector<std::int64_t>& x_dims,
+                     const std::vector<std::int64_t>& y_dims,
+                     DenseTensor* out,
+                     bool transpose_x,
+                     bool transpose_y) {
+  MatMulFunction<Context, T>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+}
+
 template <typename Context, typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type
 MatmulJudgeDtypeKernel(const Context& ctx,
@@ -1463,7 +1562,7 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
-  MatMulFunction<Context, T>(
+  DispatchMatmulKernel<Context, T>(
       ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
 

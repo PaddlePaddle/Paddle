@@ -65,8 +65,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCholesky(
         ir::Tensor x = x_expr.as_tensor_ref();
         std::string tensor_name = "cholesky_out";
         auto out = pe::Identity(x, tensor_name).front();
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();

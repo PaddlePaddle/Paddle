@@ -258,12 +258,11 @@ class ProgramHelper:
         # skip if we has already built program.
         if self.build_info.has_cache(mode, True):
             self._logger.info(
-                "Already build program with mode = %s, use cached program."
-                % mode
+                f"Already build program with mode = {mode}, use cached program."
             )
             return
 
-        self._logger.info("start to build program for mode = %s." % mode)
+        self._logger.info(f"start to build program for mode = {mode}.")
         input_spec = [self.inputs_spec, self.labels_spec]
         static_func = to_static(
             self.static_func(), input_spec=input_spec, full_graph=True
@@ -332,14 +331,12 @@ class ProgramHelper:
         assert hasattr(
             optimizer, "minimize"
         ), "Optimizer must have minimize() method."
-        assert self.proxy_layer.mode == 'train', (
-            "Required mode == 'train', but received '%s'"
-            % self.proxy_layer.mode
-        )
-        assert len(self.loss_vars) == 1, (
-            "Required len(loss_vars) == 1, but received len(loss_vars) = %s"
-            % len(self.loss_vars)
-        )
+        assert (
+            self.proxy_layer.mode == 'train'
+        ), f"Required mode == 'train', but received '{self.proxy_layer.mode}'"
+        assert (
+            len(self.loss_vars) == 1
+        ), f"Required len(loss_vars) == 1, but received len(loss_vars) = {len(self.loss_vars)}"
 
     def to(self, mode):
         """

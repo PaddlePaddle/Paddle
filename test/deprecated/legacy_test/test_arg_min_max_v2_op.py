@@ -41,7 +41,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis}
-            self.numpy_op = eval("np.%s" % (numpy_op_type))
+            self.numpy_op = eval(f"np.{numpy_op_type}")
             self.outputs = {'Out': self.numpy_op(self.x, axis=self.axis)}
 
         def test_check_output(self):
@@ -84,7 +84,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis, "keepdims": True}
-            self.numpy_op = eval("np.%s" % (numpy_op_type))
+            self.numpy_op = eval(f"np.{numpy_op_type}")
             self.outputs = {
                 'Out': self.numpy_op(self.x, axis=self.axis).reshape((1, 5, 6))
             }
@@ -101,7 +101,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis, "flatten": True}
-            self.numpy_op = eval("np.%s" % (numpy_op_type))
+            self.numpy_op = eval(f"np.{numpy_op_type}")
             self.outputs = {
                 'Out': self.numpy_op(self.x.flatten(), axis=self.axis)
             }
@@ -118,40 +118,40 @@ def create_kernel_case(op_type, numpy_op_type):
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis, "flatten": True, "keepdims": False}
-            self.numpy_op = eval("np.%s" % (numpy_op_type))
+            self.numpy_op = eval(f"np.{numpy_op_type}")
             self.outputs = {
                 'Out': np.array(self.numpy_op(self.x.flatten(), axis=self.axis))
             }
 
-    cls_name = "ArgMinMaxKernelBaseCase_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelBaseCase_{op_type}"
     ArgMinMaxKernelBaseCase.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelBaseCase
 
-    cls_name = "ArgMinMaxKernelCase0_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase0_{op_type}"
     ArgMinMaxKernelCase0.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase0
 
-    cls_name = "ArgMinMaxKernelCase1_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase1_{op_type}"
     ArgMinMaxKernelCase1.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase1
 
-    cls_name = "ArgMinMaxKernelCase2_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase2_{op_type}"
     ArgMinMaxKernelCase2.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase2
 
-    cls_name = "ArgMinMaxKernelCase3_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase3_{op_type}"
     ArgMinMaxKernelCase3.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase3
 
-    cls_name = "ArgMinMaxKernelCase4_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase4_{op_type}"
     ArgMinMaxKernelCase4.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase4
 
-    cls_name = "ArgMinMaxKernelCase5_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase5_{op_type}"
     ArgMinMaxKernelCase5.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase5
 
-    cls_name = "ArgMinMaxKernelCase6_%s" % (op_type)
+    cls_name = f"ArgMinMaxKernelCase6_{op_type}"
     ArgMinMaxKernelCase6.__name__ = cls_name
     globals()[cls_name] = ArgMinMaxKernelCase6
 
@@ -169,8 +169,8 @@ def create_test_case(op_type):
             self.places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
-            self.op = eval("paddle.%s" % (op_type))
-            self.numpy_op = eval("np.%s" % (op_type))
+            self.op = eval(f"paddle.{op_type}")
+            self.numpy_op = eval(f"np.{op_type}")
 
         def run_static(self, place):
             paddle.enable_static()
@@ -178,7 +178,7 @@ def create_test_case(op_type):
                 data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32"
                 )
-                op = eval("paddle.%s" % (op_type))
+                op = eval(f"paddle.{op_type}")
                 result = op(data_var)
                 exe = paddle.static.Executor(place)
                 result_data = exe.run(
@@ -193,7 +193,7 @@ def create_test_case(op_type):
                 data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32"
                 )
-                op = eval("paddle.%s" % (op_type))
+                op = eval(f"paddle.{op_type}")
                 result = op(data_var, axis=1)
                 exe = paddle.static.Executor(place)
                 result_data = exe.run(
@@ -206,7 +206,7 @@ def create_test_case(op_type):
                 data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32"
                 )
-                op = eval("paddle.%s" % (op_type))
+                op = eval(f"paddle.{op_type}")
                 result = op(data_var, axis=-1)
                 exe = paddle.static.Executor(place)
                 result_data = exe.run(
@@ -220,7 +220,7 @@ def create_test_case(op_type):
                     name="data", shape=[10, 10], dtype="float32"
                 )
 
-                op = eval("paddle.%s" % (op_type))
+                op = eval(f"paddle.{op_type}")
                 result = op(data_var, axis=-1, keepdim=True)
                 exe = paddle.static.Executor(place)
                 result_data = exe.run(
@@ -232,7 +232,7 @@ def create_test_case(op_type):
                 self.assertTrue((result_data == expected_data).all(), True)
 
             with paddle.static.program_guard(paddle.static.Program()):
-                op = eval("paddle.%s" % (op_type))
+                op = eval(f"paddle.{op_type}")
                 data_var = paddle.static.data(
                     name="data", shape=[10, 10], dtype="float32"
                 )
@@ -241,7 +241,7 @@ def create_test_case(op_type):
 
         def run_dygraph(self, place):
             paddle.disable_static(place)
-            op = eval("paddle.%s" % (op_type))
+            op = eval(f"paddle.{op_type}")
             data_tensor = paddle.to_tensor(self.input_data)
 
             # case 1

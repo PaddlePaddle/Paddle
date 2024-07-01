@@ -132,7 +132,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._forward_remain_anchors = []
         else:
             raise NotImplementedError(
-                f"the sharding segment strategy [{str(segment_strategy)}] is not implemented"
+                f"the sharding segment strategy [{segment_strategy}] is not implemented"
             )
         self._sharding_segment_strategy = segment_strategy
 

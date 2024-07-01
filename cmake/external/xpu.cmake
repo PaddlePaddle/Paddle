@@ -30,7 +30,7 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240515")
+  set(XPU_XHPC_BASE_DATE "20240626")
 endif()
 set(XPU_XCCL_BASE_VERSION "1.2.1.2")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -52,13 +52,15 @@ if(NOT XPU_XFT_BASE_URL)
   )
 endif()
 
-set(XPU_XPTI_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xpti/dev/${XPU_XPTI_BASE_VERSION}"
-)
+if(WITH_XPTI)
+  set(XPU_XPTI_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xpti/dev/${XPU_XPTI_BASE_VERSION}"
+  )
+  set(XPU_XPTI_DIR_NAME "xpti")
+endif()
 
 if(WITH_XPU_XRE5)
   set(XPU_XRE_BASE_VERSION "5.0.3.1")
-  set(XPU_XHPC_BASE_DATE "20240601")
   set(XPU_XRE_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
   )
@@ -79,12 +81,11 @@ elseif(WITH_SUNWAY)
   set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no deepin output at now.
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no deepin output at now.
 elseif(WITH_BDCENTOS)
+  set(XPU_XHPC_DIR_NAME "xhpc-bdcentos7_x86_64")
   if(WITH_XPU_XRE5)
     set(XPU_XRE_DIR_NAME "xre-bdcentos-x86_64-${XPU_XRE_BASE_VERSION}")
-    set(XPU_XHPC_DIR_NAME "xhpc-bdcentos7_x86_64")
   else()
     set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
-    set(XPU_XHPC_DIR_NAME "xhpc-bdcentos_x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
@@ -99,12 +100,11 @@ else()
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu2004_x86_64")
   else()
     set(XPU_XRE_DIR_NAME "xre-ubuntu_1604_x86_64")
-    set(XPU_XHPC_DIR_NAME "xhpc-ubuntu_x86_64")
+    set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 endif()
-set(XPU_XPTI_DIR_NAME "xpti")
 
 set(XPU_XRE_URL
     "${XPU_XRE_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
@@ -113,12 +113,13 @@ set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XFT_URL "${XPU_XFT_BASE_URL}/${XPU_XFT_DIR_NAME}.tar.gz")
-set(XPU_XPTI_URL
-    "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz"
-    CACHE STRING "" FORCE)
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
+
+if(WITH_XPTI)
+  set(XPU_XPTI_URL "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz")
+endif()
 
 set(XPU_XHPC_URL
     "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
@@ -170,7 +171,7 @@ ExternalProject_Add(
     ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} && WITH_XPTI=${WITH_XPTI} bash
+    ${XPU_XFT_DIR_NAME} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
@@ -206,8 +207,11 @@ include_directories(${XPU_XHPC_INC_DIR})
 set(XPU_XBLAS_INC_DIR "${XPU_INC_DIR}/xhpc/xblas")
 include_directories(${XPU_XBLAS_INC_DIR})
 
-set(XPU_XFA_INC_DIR "${XPU_INC_DIR}/xhpc/xfa")
-include_directories(${XPU_XFA_INC_DIR})
+if(WITH_XPU_XRE5)
+  add_definitions(-DPADDLE_WITH_XPU_XRE5)
+  set(XPU_XFA_INC_DIR "${XPU_INC_DIR}/xhpc/xfa")
+  include_directories(${XPU_XFA_INC_DIR})
+endif()
 
 if(WITH_XPTI)
   message(STATUS "Compile with XPU XPTI!")
@@ -225,8 +229,13 @@ if(WITH_XPTI)
   target_link_libraries(xpulib ${XPU_XPTI_LIB})
 endif()
 
-target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
-                      ${XPU_API_LIB} ${XPU_XFA_LIB})
+if(WITH_XPU_XRE5)
+  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
+                        ${XPU_API_LIB} ${XPU_XFA_LIB})
+else()
+  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
+                        ${XPU_API_LIB})
+endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
 
