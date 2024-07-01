@@ -32,7 +32,6 @@ void ReshapeInferKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
-
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
     return;
@@ -54,7 +53,6 @@ void ReshapeInferKernel<phi::XPUContext>(const XPUContext& dev_ctx,
                                          DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
-
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
     return;

@@ -8436,3 +8436,45 @@ def isin(
         return cmp.reshape([])
     else:
         return cmp
+
+
+def cartesian_prod(x, name=None):
+    """
+    Perform Cartesian product on a given tensor sequence. This behavior is similar to the itertools.product in Python.
+    Equivalent to converting all input tensors into lists, performing itertools.product on these lists,
+    and finally converting the resulting list into tensors.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Any number of 1-D input Tensors. Supported data types: bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), cartesian product of input tensors with the same data type.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> a = paddle.to_tensor([1, 2, 3], dtype='int32')
+            >>> b = paddle.to_tensor([5, 6], dtype='int32')
+            >>> res = paddle.cartesian_prod(a, b)
+            >>> print(res)
+            Tensor(shape=[6, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+                [[1, 5],
+                 [1, 6],
+                 [2, 5],
+                 [2, 6],
+                 [3, 5],
+                 [3, 6]])
+    """
+    for tensor in x:
+        if len(tensor.shape) != 1:
+            raise ValueError(
+                f"Expect a 1D vector, but got shape {tensor.shape}"
+            )
+
+    if len(x) == 1:
+        return x[0]
+
+    coordinates = paddle.stack(paddle.meshgrid(x), axis=-1)
+    return paddle.reshape(coordinates, [-1, len(x)])
