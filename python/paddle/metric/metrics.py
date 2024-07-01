@@ -646,7 +646,6 @@ class Auc(Metric):
             'ROC' or 'PR' for the Precision-Recall-curve. Default is 'ROC'.
         num_thresholds (int): The number of thresholds to use when
             discretizing the roc curve. Default is 4095.
-            'ROC' or 'PR' for the Precision-Recall-curve. Default is 'ROC'.
         name (str, optional): String name of the metric instance. Default
             is `auc`.
 
