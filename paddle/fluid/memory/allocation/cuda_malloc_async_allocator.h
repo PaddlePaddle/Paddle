@@ -26,6 +26,11 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+class CUDAMallocAsyncAllocation;
+class CUDAMallocAsyncAllocator;
+
+#ifdef PADDLE_WITH_CUDA
+
 // TODO(eee4017): It may be beneficial to introduce an abstract class named
 // `StreamAllocator` in future developments. This class would serve as a central
 // entity for methods specifically related to stream management, such as
@@ -129,6 +134,8 @@ class CUDAMallocAsyncAllocator : public Allocator {
       graph_owned_allocations_;
   SpinLock graph_owned_allocations_lock_;
 };
+
+#endif
 
 }  // namespace allocation
 }  // namespace memory

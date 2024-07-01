@@ -39,6 +39,8 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
+#ifdef PADDLE_WITH_CUDA
+
 #if CUDA_VERSION < 11000
 // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
 using cudaFunction_t = void *;
@@ -421,3 +423,5 @@ class CUDAGraphCaptureModeGuard {
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

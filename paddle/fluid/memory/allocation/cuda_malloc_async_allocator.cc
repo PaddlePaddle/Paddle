@@ -24,6 +24,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #include <string>
@@ -31,13 +32,10 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#if defined(PADDLE_WITH_CUDA)
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-#elif defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
-#endif
 
 #include "paddle/utils/optional.h"
+
+#ifdef PADDLE_WITH_CUDA
 
 /*
  * Note: [cuda_malloc_async_pool_memory_throttle_ratio]
@@ -74,7 +72,7 @@
  * an OOM condition since more memory can be allocated without
  * immediate deallocation.
  */
-PHI_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
+COMMON_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
 
 namespace paddle::memory::allocation {
 
@@ -393,3 +391,5 @@ void CUDAMallocAsyncAllocator::SetDefaultStream(gpuStream_t stream) {
 }
 
 }  // namespace paddle::memory::allocation
+
+#endif

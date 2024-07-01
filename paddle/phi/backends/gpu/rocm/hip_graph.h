@@ -37,6 +37,8 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
+#ifdef PADDLE_WITH_HIP
+
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -393,3 +395,5 @@ class CUDAGraphCaptureModeGuard {
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

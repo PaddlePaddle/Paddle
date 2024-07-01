@@ -15,6 +15,8 @@
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #include "paddle/common/flags.h"
 
+#ifdef PADDLE_WITH_CUDA
+
 #if CUDA_VERSION < 11000
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
                                 const void *symbolPtr) {
@@ -401,3 +403,5 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 #endif
 
 }  // namespace phi::backends::gpu
+
+#endif
