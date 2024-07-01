@@ -2957,16 +2957,13 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    bool is_negative = false;
-    if (decimals < 0) {
-      is_negative = true;
-      decimals = -decimals;
+    if (decimals >= 0) {
+      auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
+      out.device(d) = (x * ten_pow_deciamls).round() / ten_pow_deciamls;
+    } else {
+      auto ten_pow_deciamls = static_cast<T>(std::pow(10, -decimals));
+      out.device(d) = (x / ten_pow_deciamls).round() * ten_pow_deciamls;
     }
-    auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
-
-    out.device(d) = is_negative
-                        ? (x / ten_pow_deciamls).round() * ten_pow_deciamls
-                        : (x * ten_pow_deciamls).round() / ten_pow_deciamls;
   }
 };
 
@@ -5184,15 +5181,14 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   // round(x) = round(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    bool is_negative = false;
-    if (is_negative) {
-      is_negative = true;
-      decimals = -decimals;
+
+    if (decimals >= 0) {
+      auto ten_pow_deciamls = static_cast<MPType>(std::pow(10, decimals));
+      return static_cast<T>(round(x * ten_pow_deciamls) / ten_pow_deciamls);
+    } else {
+      auto ten_pow_deciamls = static_cast<MPType>(std::pow(10, -decimals));
+      return static_cast<T>(round(x / ten_pow_deciamls) * ten_pow_deciamls);
     }
-    auto ten_pow_deciamls = static_cast<MPType>(std::pow(10, decimals));
-    return is_negative
-               ? static_cast<T>(round(x / ten_pow_deciamls)) * ten_pow_deciamls
-               : static_cast<T>(round(x * ten_pow_deciamls)) / ten_pow_deciamls;
   }
 };
 
