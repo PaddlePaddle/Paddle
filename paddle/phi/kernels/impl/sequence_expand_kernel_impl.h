@@ -83,7 +83,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
                           int ref_level,
                           DenseTensor* out) {
   // From InferShape
-  const auto& x_dims = x.dims();
+  const auto& x_dims = x_in.dims();
   auto out_dims = x_dims;
   auto& x_lod = x_in.lod();
   auto& y_lod = y_in.lod();
