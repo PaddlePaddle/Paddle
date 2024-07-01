@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
@@ -37,10 +38,6 @@
 #endif
 
 #include "paddle/utils/optional.h"
-
-PHI_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
-
-namespace paddle::memory::allocation {
 
 /*
  * Note: [cuda_malloc_async_pool_memory_throttle_ratio]
@@ -77,6 +74,9 @@ namespace paddle::memory::allocation {
  * an OOM condition since more memory can be allocated without
  * immediate deallocation.
  */
+PHI_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
+
+namespace paddle::memory::allocation {
 
 thread_local std::once_flag CUDAMallocAsyncAllocation::once_flag_;
 
