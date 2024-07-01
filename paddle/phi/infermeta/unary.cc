@@ -2072,23 +2072,6 @@ void HashInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void HashInferMeta(const MetaTensor& x,
-                   int num_hash,
-                   int64_t mod_by,
-                   MetaTensor* out) {
-  const auto& dims = x.dims();
-  PADDLE_ENFORCE_EQ(dims.size(),
-                    2UL,
-                    phi::errors::InvalidArgument(
-                        "The input of hash_op's dimensions must be 2"));
-  std::vector<int64_t> out_dims;
-  phi::funcs::HashOutputSize(dims, out_dims, num_hash);
-
-  out->set_dims(common::make_ddim(out_dims));
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-}
-
 void HistogramInferMeta(const MetaTensor& input,
                         const MetaTensor& weight,
                         int64_t bins,
