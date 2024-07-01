@@ -34,7 +34,7 @@ class AttributeVisitor {
  public:
   pir::IrContext* ctx;
   AttributeVisitor() { ctx = pir::IrContext::Instance(); }
-  ~AttributeVisitor() = default;
+  virtual ~AttributeVisitor() = default;
 
  public:
   virtual pir::Attribute operator()(int i) {
@@ -247,6 +247,26 @@ class PlaceAttributeVisitor : public AttributeVisitor {
   }
 };
 
+class BoolAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  pir::Attribute operator()(const paddle::blank& blank) override {
+    VLOG(10) << "translating paddle::blank to Place::UNDEFINED";
+    return pir::BoolAttribute::get(ctx, false);
+  }
+
+  pir::Attribute operator()(int i) override {
+    VLOG(10) << "translating int";
+    return pir::BoolAttribute::get(ctx, static_cast<bool>(i));
+  }
+
+  pir::Attribute operator()(int64_t i) override {
+    VLOG(10) << "translating int64";
+    return pir::BoolAttribute::get(ctx, static_cast<bool>(i));
+  }
+};
+
 AttributeTranslator::AttributeTranslator() {
   general_visitor = new AttributeVisitor();
   special_visitors["paddle::dialect::IntArrayAttribute"] =
@@ -260,6 +280,7 @@ AttributeTranslator::AttributeTranslator() {
   special_visitors["pir::ArrayAttribute<pir::Int32Attribute>"] =
       new Int32ArrayAttributeVisitor();
   special_visitors["pir::Int64Attribute"] = new Int64AttributeVisitor();
+  special_visitors["pir::BoolAttribute"] = new BoolAttributeVisitor();
 }
 
 pir::Attribute AttributeTranslator::operator()(

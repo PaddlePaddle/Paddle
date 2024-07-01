@@ -183,13 +183,6 @@ message BuildStrategy {
   optional bool fuse_resunit = 21 [ default = false ];
 }
 
-message ExecutionStrategy {
-  optional int32 num_threads = 1 [ default = 1 ];
-  optional int32 num_iteration_per_drop_scope = 2 [ default = 10 ];
-  optional int32 num_iteration_per_run = 3 [ default = 1 ];
-  optional bool use_thread_barrier = 4 [ default = false ];
-}
-
 message GradientScaleConfig {
   // Optional value ['avg', 'sum', 'customized']
   // If avg, loss@grad will be divided by the number of devices,
@@ -217,6 +210,7 @@ message AsyncConfig {
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
   optional int32 lr_decay_steps = 11 [ default = 10 ];
   optional int32 use_ps_gpu = 12 [ default = 0 ];
+  optional int32 use_gpu_graph = 13 [ default = 0 ];
 }
 
 message TrainerDescConfig {
@@ -271,6 +265,7 @@ message TableParameter {
   // for patch model
   optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
+  optional bool use_gpu_graph = 15 [ default = false ];
 }
 
 message TableAccessorParameter {
@@ -426,7 +421,6 @@ message DistributedStrategy {
   optional QatConfig qat_configs = 117;
 
   optional BuildStrategy build_strategy = 201;
-  optional ExecutionStrategy execution_strategy = 202;
   optional GradientScaleConfig gradient_scale_configs = 203;
 }
 

@@ -20,7 +20,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_alignment.h"
 
 namespace phi {
 

@@ -38,8 +38,7 @@
 
 COMMON_DECLARE_bool(sort_sum_gradient);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 struct HashPair {
   template <class T1, class T2>
@@ -1184,5 +1183,4 @@ void PartialGradEngine::Execute() {
   Clear();
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

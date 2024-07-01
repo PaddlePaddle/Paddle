@@ -137,8 +137,12 @@ class VarMap:
     def add_rec(self, key_vars, value_vars):
         if value_vars is None:
             return
-        if isinstance(key_vars, paddle.base.framework.Variable):
-            if not isinstance(value_vars, paddle.base.framework.Variable):
+        if isinstance(
+            key_vars, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
+            if not isinstance(
+                value_vars, (paddle.base.framework.Variable, paddle.pir.Value)
+            ):
                 raise TypeError(
                     f'value_vars must be Variable, but got {type(value_vars)}'
                 )
@@ -208,7 +212,9 @@ class Transform:
     def add_vars_rec(self, new_vars):
         if new_vars is None:
             return
-        if isinstance(new_vars, paddle.base.framework.Variable):
+        if isinstance(
+            new_vars, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             self.vars.update({id(new_vars): new_vars})
             return
         if not isinstance(new_vars, list):
@@ -242,7 +248,7 @@ class Transform:
 
     def var2dot_rec(self, vars):
         """Lookup var2dot recursively."""
-        if isinstance(vars, paddle.base.framework.Variable):
+        if isinstance(vars, (paddle.base.framework.Variable, paddle.pir.Value)):
             dot = self.var2dot.lookup(vars)
             return dot
 
@@ -250,7 +256,7 @@ class Transform:
         return dots
 
     def dot2bar_rec(self, dots):
-        if isinstance(dots, paddle.base.framework.Variable):
+        if isinstance(dots, (paddle.base.framework.Variable, paddle.pir.Value)):
             bar = self.dot2bar.lookup(dots)
             assert bar is not None, 'bar must be not None'
             return bar
@@ -385,7 +391,9 @@ def _lower_composite(
         for i in range(len(args)):
             if isinstance(args[i], list):
                 bind(args[i], to_bind, value_table)
-            if not isinstance(args[i], paddle.base.framework.Variable):
+            if not isinstance(
+                args[i], (paddle.base.framework.Variable, paddle.pir.Value)
+            ):
                 continue
             elif args[i] is not None and args[i].name in to_bind:
                 args[i] = value_table[to_bind[args[i].name]]
@@ -641,7 +649,7 @@ def prim2orig(block=None, blacklist=None):
             >>> enable_prim()
 
             >>> x = paddle.ones(shape=[2, 2], dtype='float32')
-            >>> x.stop_gradients = False
+            >>> x.stop_gradient = False
             >>> y = x * x
             >>> dy_dx = paddle.static.gradients(y, x)
             >>> if prim_enabled():

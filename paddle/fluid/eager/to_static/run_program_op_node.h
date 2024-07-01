@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/executor_cache.h"
+#include "paddle/fluid/framework/feed_hook.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -583,6 +584,7 @@ inline void PirRunProgramAPI(
     //}
   }
 
+  paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
   // interpretercore run
   if (!forward_program->block()->empty()) {
     paddle::platform::RecordEvent record_event(
@@ -869,7 +871,6 @@ inline void RunProgramGradAPI(
   auto *backward_global_block = PADDLE_GET_CONST(
       paddle::framework::BlockDesc *, attrs.at("backward_global_block"));
   auto *backward_program = backward_global_block->Program();
-
   details::Trans2ContiguousTensorsInplace(out_grad);
 
   auto out_grad_names = details::GetTensorsName(out_grad);
@@ -1155,6 +1156,7 @@ inline void PirRunProgramGradAPI(
     }
   }
 
+  paddle::framework::RunFeedHooks(*backward_program, *global_inner_scope);
   if (!backward_program->block()->empty()) {
     paddle::platform::RecordEvent record_event(
         "interpreter_core_run",

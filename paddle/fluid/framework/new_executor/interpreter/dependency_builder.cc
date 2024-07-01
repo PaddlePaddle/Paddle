@@ -45,9 +45,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
                             false,
                             "Enable dependency builder debug info");
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 size_t CountDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
@@ -1482,6 +1480,4 @@ void DependencyBuilderSimplify::AddDownstreamOp(size_t prior_op_idx,
   }
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

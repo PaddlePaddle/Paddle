@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/reduction_factoring.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
@@ -25,6 +23,9 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/external_func_names.h"
+#include "paddle/common/enforce.h"
+
+const int default_priority = 100;
 
 namespace cinn {
 namespace ir {
@@ -32,10 +33,13 @@ namespace ir {
 static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
       block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(sch_block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      sch_block_realize,
+      phi::errors::InvalidArgument("block is not a realize"));
   ir::ScheduleBlock* sch_block =
       sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(sch_block);
+  PADDLE_ENFORCE_NOT_NULL(sch_block,
+                          phi::errors::InvalidArgument("block is not a block"));
 
   auto find_call = ir::ir_utils::CollectIRNodesWithoutTensor(
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
@@ -71,10 +75,13 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
 std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(schedule_block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      schedule_block_realize,
+      phi::errors::InvalidArgument("block is not a realize"));
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(schedule_block);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block,
+                          phi::errors::InvalidArgument("block is not a block"));
   std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
   std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_loop_var_names;
@@ -95,10 +102,13 @@ std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
 std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(schedule_block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      schedule_block_realize,
+      phi::errors::InvalidArgument("block is not a realize"));
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(schedule_block);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block,
+                          phi::errors::InvalidArgument("block is not a block"));
   std::vector<ir::Var>& iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_var_names;
   for (int i = 0; i < iter_vars.size(); ++i) {
@@ -121,7 +131,8 @@ void StaticShapeGroupScheduler::Schedule() {
 #ifdef CINN_WITH_CUDA
         OptimizeReduction();
 #endif
-      });
+      },
+      [&](common::HygonDCUArchHIP) { OptimizeReduction(); });
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
   cinn::common::DefaultDeviceTarget().arch.Match(
@@ -132,6 +143,10 @@ void StaticShapeGroupScheduler::Schedule() {
         BindCudaAxis();
         AllocateStorage();
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        BindCudaAxis();
+        AllocateStorage();
       });
 }
 
@@ -144,12 +159,18 @@ void StaticShapeGroupScheduler::MapExprSchedule() {
 #ifdef CINN_WITH_CUDA
         AllocateStorage();
 #endif
-      });
+      },
+      [&](common::HygonDCUArchHIP) { AllocateStorage(); });
 }
 
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 StaticShapeGroupScheduler::GetIRs() {
   return {{Expr(1), ir_sch_->GetModule().GetExprs()[0]}};
+}
+
+std::vector<int> StaticShapeGroupScheduler::GetPriorities() {
+  std::vector<int> priorities = {default_priority};
+  return priorities;
 }
 
 NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
@@ -162,7 +183,8 @@ NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
   int64_t score = 1;
   for (Expr expr : node->GetLoops()) {
     ir::For* for_node = expr.As<ir::For>();
-    CHECK_NOTNULL(for_node);
+    PADDLE_ENFORCE_NOT_NULL(for_node,
+                            phi::errors::InvalidArgument("expr is not a For"));
     int loop_extent = ir::GetLoopExtent(expr);
     score *= loop_extent;
     if (reduce_loop_var_names.count(for_node->loop_var->name) != 0) {
@@ -238,13 +260,18 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
           return find_reduce_var;
         },
         /* uniq_target = */ true);
-    CHECK_EQ(reduce_loads.size(), 1);
+    PADDLE_ENFORCE_EQ(
+        reduce_loads.size(),
+        1,
+        phi::errors::InvalidArgument("The reduce load size should be 1."));
 
     std::vector<ir::Expr> indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
     for (ir::Expr index : indices) {
       if (index.is_constant()) continue;
-      CHECK_NOTNULL(index.as_var());
+      PADDLE_ENFORCE_NOT_NULL(
+          index.as_var(),
+          phi::errors::InvalidArgument("The index is not a Var."));
       int idx = 0;
       bool is_reduce_var = false;
       for (int iter_idx = 0; iter_idx < master_iter_vars.size(); ++iter_idx) {
@@ -286,7 +313,11 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
         }
       }
     }
-    CHECK_EQ(original_master_loop_order.size(), recover_loop_order.size());
+    PADDLE_ENFORCE_EQ(original_master_loop_order.size(),
+                      recover_loop_order.size(),
+                      phi::errors::InvalidArgument(
+                          "The size of original_master_loop_order and "
+                          "recover_loop_order should be equal."));
   } else {
     for (int i = 0; i < master_loops.size(); ++i) {
       original_master_loop_extents.push_back(
@@ -383,25 +414,6 @@ void StaticShapeGroupScheduler::DoComputeInline() {
   VLOG(5) << "[Start DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
-  std::unordered_set<std::string> no_inline_output_names = OutputTensorNames();
-  auto_schedule::AutoInline inliner(target_, no_inline_output_names);
-
-  auto InlineFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try ComputeInline on: " << node->id()
-            << ", before ComputeInline, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    ir::Expr schedule_block = node->Block();
-    inliner.Apply(ir_sch_, schedule_block);
-    VLOG(6) << "try ComputeInline on: " << node->id()
-            << ", after ComputeInline, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(InlineFunc);
-  schedule_block_graph_->Update(*ir_sch_);
   VLOG(5) << "[After DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
@@ -414,7 +426,8 @@ void StaticShapeGroupScheduler::DoHorizontalLoopFusion() {
       schedule_block_graph_->EndPoints();
   std::reverse(end_nodes.begin(), end_nodes.end());
   ir::ScheduleBlockNode* master_node = end_nodes.front();
-  CHECK_NOTNULL(master_node);
+  PADDLE_ENFORCE_NOT_NULL(
+      master_node, phi::errors::InvalidArgument("Cannot find the master node"));
   for (int i = 1; i < end_nodes.size(); ++i) {
     if (IsProhibitScheduleExternCallBlock(end_nodes[i]->Block())) {
       continue;
@@ -574,23 +587,6 @@ void StaticShapeGroupScheduler::BindCudaAxis() {
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
-  auto_schedule::AutoBind binder(target_);
-
-  auto BindFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try bind cuda axis on: " << node->id()
-            << ", before bind, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    binder.Apply(ir_sch_, node->id());
-    VLOG(6) << "try bind cuda axis on: " << node->id()
-            << ", after bind, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(BindFunc);
-
   VLOG(5) << "[After BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
@@ -609,493 +605,488 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
-  VLOG(5) << "[Start AllocateStorage] func body: "
-          << ir_sch_->GetModule().GetExprs().front();
+  auto AllocateStorageNvHygon = [&] {
+    VLOG(5) << "[Start AllocateStorage] func body: "
+            << ir_sch_->GetModule().GetExprs().front();
 
-  // Record ir::For using index structure: <block_name, <var_name, for_node>>
-  std::unordered_map<std::string, std::unordered_map<std::string, ir::Expr>>
-      for_map;
-  std::unordered_set<std::string> sync_mark;
+    // Record ir::For using index structure: <block_name, <var_name, for_node>>
+    std::unordered_map<std::string, std::unordered_map<std::string, ir::Expr>>
+        for_map;
+    std::unordered_set<std::string> sync_mark;
 
-  // function to update for_map
-  auto UpdateVarNameToForMap = [&](ir::Expr root) {
-    std::vector<ir::Expr> all_blocks = ir_sch_->GetAllBlocks();
-    for (const ir::Expr& block : all_blocks) {
-      std::string block_name = block.As<ir::ScheduleBlockRealize>()
-                                   ->schedule_block.As<ir::ScheduleBlock>()
-                                   ->name;
-      std::vector<ir::Expr> for_expr = ir_sch_->GetLoops(block);
-      for (ir::Expr for_expr : for_expr) {
-        for_map[block_name][for_expr.As<ir::For>()->loop_var->name] = for_expr;
-        VLOG(6) << "for_map.insert: <" << block_name << ", "
-                << for_expr.As<ir::For>()->loop_var->name << ">";
-      }
-    }
-  };
-
-  // function to analyze and flatten indices to one dim of load_or_store node
-  auto AnalyzeIndiceValue = [](ir::Expr load_or_store,
-                               ir::Expr block) -> ir::Expr {
-    std::vector<ir::Expr> indices;
-    ir::Tensor tensor;
-    if (load_or_store.As<ir::Load>()) {
-      indices = load_or_store.As<ir::Load>()->indices;
-      tensor = load_or_store.As<ir::Load>()->tensor.as_tensor_ref();
-    } else {
-      indices = load_or_store.As<ir::Store>()->indices;
-      tensor = load_or_store.As<ir::Store>()->tensor.as_tensor_ref();
-    }
-    std::vector<ir::Var> iter_vars =
-        block.As<ir::ScheduleBlockRealize>()
-            ->schedule_block.As<ir::ScheduleBlock>()
-            ->iter_vars;
-    std::vector<ir::Expr> iter_values =
-        block.As<ir::ScheduleBlockRealize>()->iter_values;
-    struct VarHash {
-      size_t operator()(const ir::Var& var) const {
-        std::string name = var->name;
-        return std::hash<std::string>()(name);
+    // function to update for_map
+    auto UpdateVarNameToForMap = [&](ir::Expr root) {
+      std::vector<ir::Expr> all_blocks = ir_sch_->GetAllBlocks();
+      for (const ir::Expr& block : all_blocks) {
+        std::string block_name = block.As<ir::ScheduleBlockRealize>()
+                                     ->schedule_block.As<ir::ScheduleBlock>()
+                                     ->name;
+        std::vector<ir::Expr> for_expr = ir_sch_->GetLoops(block);
+        for (ir::Expr for_expr : for_expr) {
+          for_map[block_name][for_expr.As<ir::For>()->loop_var->name] =
+              for_expr;
+          VLOG(6) << "for_map.insert: <" << block_name << ", "
+                  << for_expr.As<ir::For>()->loop_var->name << ">";
+        }
       }
     };
-    std::vector<int> strides;
-    int extent = 1;
-    for (int idx = tensor->shape.size() - 1; idx >= 0; --idx) {
-      strides.insert(strides.begin(), extent);
-      tensor->shape[idx] = cinn::common::AutoSimplify(tensor->shape[idx]);
-      CHECK(tensor->shape[idx].is_constant())
-          << "Shape of tensor: " << tensor << " is not constant";
-      extent *= tensor->shape[idx].get_constant();
-    }
-    ir::Expr flatten_indice(0);
-    for (int idx = 0; idx < indices.size(); ++idx) {
-      flatten_indice = flatten_indice + ir::Expr(strides[idx]) * indices[idx];
-    }
-    flatten_indice = cinn::common::AutoSimplify(flatten_indice);
-    for (int idx = 0; idx < iter_vars.size(); ++idx) {
-      optim::ReplaceVarWithExpr(
-          &flatten_indice, iter_vars[idx], iter_values[idx]);
-    }
-    flatten_indice = cinn::common::AutoSimplify(flatten_indice);
-    VLOG(6) << "flatten_indice of " << load_or_store << " : " << flatten_indice;
-    return flatten_indice;
-  };
 
-  enum class CudaBindInfo : int {
-    kCudaBlock,
-    kCudaThread,
-    kSerial,
-    kCudaThreadAndSerial,
-  };
-
-  // function to calculate the range of the specified CUDA axis in a indice
-  // expression
-  auto CalculateRange = [&for_map](ir::Expr indice_value,
-                                   const CudaBindInfo& bind_info,
-                                   const std::string& block_name) {
-    ir::Expr copy_for_upper_bound = ir::ir_utils::IRCopy(indice_value);
-    ir::Expr copy_for_lower_bound = ir::ir_utils::IRCopy(indice_value);
-    std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
-        indice_value, [](const ir::Expr* x) { return x->as_var(); });
-    for (ir::Expr var : var_set) {
-      std::string name = var.as_var_ref()->name;
-      CHECK(for_map.find(block_name) != for_map.end());
-      CHECK(for_map[block_name].find(name) != for_map[block_name].end());
-      ir::Expr for_expr = for_map[block_name][name];
-      if (bind_info == CudaBindInfo::kCudaBlock) {
-        if (for_expr.As<ir::For>()->is_gpu_block_binded()) {
-          optim::ReplaceVarWithExpr(&copy_for_upper_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min +
-                                        for_expr.As<ir::For>()->extent -
-                                        Expr(1));
-          optim::ReplaceVarWithExpr(&copy_for_lower_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min);
-        } else {
-          optim::ReplaceVarWithExpr(
-              &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
-          optim::ReplaceVarWithExpr(
-              &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
-        }
-      } else if (bind_info == CudaBindInfo::kCudaThread) {
-        if (for_expr.As<ir::For>()->is_gpu_thread_binded()) {
-          optim::ReplaceVarWithExpr(&copy_for_upper_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min +
-                                        for_expr.As<ir::For>()->extent -
-                                        Expr(1));
-          optim::ReplaceVarWithExpr(&copy_for_lower_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min);
-        } else {
-          optim::ReplaceVarWithExpr(
-              &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
-          optim::ReplaceVarWithExpr(
-              &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
-        }
-      } else if (bind_info == CudaBindInfo::kSerial) {
-        if (!for_expr.As<ir::For>()->is_gpu_thread_binded() &&
-            !for_expr.As<ir::For>()->is_gpu_block_binded()) {
-          optim::ReplaceVarWithExpr(&copy_for_upper_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min +
-                                        for_expr.As<ir::For>()->extent -
-                                        Expr(1));
-          optim::ReplaceVarWithExpr(&copy_for_lower_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min);
-        } else {
-          optim::ReplaceVarWithExpr(
-              &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
-          optim::ReplaceVarWithExpr(
-              &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
-        }
-      } else if (bind_info == CudaBindInfo::kCudaThreadAndSerial) {
-        if (!for_expr.As<ir::For>()->is_gpu_block_binded()) {
-          optim::ReplaceVarWithExpr(&copy_for_upper_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min +
-                                        for_expr.As<ir::For>()->extent -
-                                        Expr(1));
-          optim::ReplaceVarWithExpr(&copy_for_lower_bound,
-                                    var.as_var_ref(),
-                                    for_expr.As<ir::For>()->min);
-        } else {
-          optim::ReplaceVarWithExpr(
-              &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
-          optim::ReplaceVarWithExpr(
-              &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
-        }
+    // function to analyze and flatten indices to one dim of load_or_store node
+    auto AnalyzeIndiceValue = [](ir::Expr load_or_store,
+                                 ir::Expr block) -> ir::Expr {
+      std::vector<ir::Expr> indices;
+      ir::Tensor tensor;
+      if (load_or_store.As<ir::Load>()) {
+        indices = load_or_store.As<ir::Load>()->indices;
+        tensor = load_or_store.As<ir::Load>()->tensor.as_tensor_ref();
+      } else {
+        indices = load_or_store.As<ir::Store>()->indices;
+        tensor = load_or_store.As<ir::Store>()->tensor.as_tensor_ref();
       }
-    }
-    VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
-            << copy_for_lower_bound;
-    copy_for_lower_bound = cinn::common::AutoSimplify(
-        cinn::common::AutoSimplify(copy_for_lower_bound));
-    VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
-            << copy_for_upper_bound;
-    copy_for_upper_bound = cinn::common::AutoSimplify(
-        cinn::common::AutoSimplify(copy_for_upper_bound));
-    VLOG(6) << "lower_bound of " << indice_value << " = "
-            << copy_for_lower_bound;
-    VLOG(6) << "upper_bound of " << indice_value << " = "
-            << copy_for_upper_bound;
-    return Range{static_cast<int>(copy_for_lower_bound.get_constant()),
-                 static_cast<int>(copy_for_upper_bound.get_constant())};
-  };
-
-  // function to calculate the coefficient and range of the specified for_type
-  // in a indice expression
-  auto GetCoefficientAndRange = [&for_map](ir::Expr indice_value,
-                                           const ir::ForType& for_type,
-                                           const std::string& block_name) {
-    std::vector<std::pair<int, Range>> coef_and_ranges(3);
-    std::vector<ir::Expr> indice_copies;
-    for (int i = 0; i < 3; ++i) {
-      indice_copies.push_back(ir::ir_utils::IRCopy(indice_value));
-    }
-    std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
-        indice_value, [](const ir::Expr* x) { return x->as_var(); });
-    std::unordered_set<std::string> visited_var_names;
-    for (ir::Expr var : var_set) {
-      std::string name = var.as_var_ref()->name;
-      if (visited_var_names.count(name) > 0) {
-        continue;
-      }
-      visited_var_names.insert(name);
-      CHECK(for_map.find(block_name) != for_map.end());
-      CHECK(for_map[block_name].find(name) != for_map[block_name].end());
-      ir::Expr for_expr = for_map[block_name][name];
-      for (int i = 0; i < 3; ++i) {
-        if (for_type == for_expr.As<ir::For>()->for_type() &&
-            for_expr.As<ir::For>()->bind_info().offset == i &&
-            for_expr.As<ir::For>()->extent.get_constant() > 1) {
-          optim::ReplaceVarWithExpr(
-              &(indice_copies[i]), var.as_var_ref(), ir::Expr(1));
-          coef_and_ranges[i].second.min =
-              for_expr.As<ir::For>()->min.get_constant();
-          coef_and_ranges[i].second.max =
-              for_expr.As<ir::For>()->min.get_constant() +
-              for_expr.As<ir::For>()->extent.get_constant();
-        } else {
-          optim::ReplaceVarWithExpr(
-              &(indice_copies[i]), var.as_var_ref(), ir::Expr(0));
-        }
-      }
-    }
-    for (int i = 0; i < 3; ++i) {
-      VLOG(6) << "before simplify [" << i << "], the coefficient of "
-              << indice_value << " = " << indice_copies[i] << ", range = ("
-              << coef_and_ranges[i].second.min << ", "
-              << coef_and_ranges[i].second.max << ")";
-      indice_copies[i] = cinn::common::AutoSimplify(indice_copies[i]);
-      VLOG(6) << "after simplify [" << i << "], the coefficient of "
-              << indice_value << " = " << indice_copies << ", range = ("
-              << coef_and_ranges[i].second.min << ", "
-              << coef_and_ranges[i].second.max << ")";
-      coef_and_ranges[i].first =
-          static_cast<int>(indice_copies[i].get_constant());
-    }
-    return coef_and_ranges;
-  };
-
-  // Determine whether the indice of a pair of Store and Load cross CUDA threads
-  auto IsCrossThread = [&](ir::Expr store_indice_value,
-                           ir::Expr load_indice_value,
-                           const std::string& store_block_name,
-                           const std::string& load_block_name) {
-    Range store_thread_overall_range = CalculateRange(
-        store_indice_value, CudaBindInfo::kCudaThread, store_block_name);
-    Range load_thread_overall_range = CalculateRange(
-        load_indice_value, CudaBindInfo::kCudaThread, load_block_name);
-    Range store_serial_overall_range = CalculateRange(
-        store_indice_value, CudaBindInfo::kSerial, store_block_name);
-    Range load_serial_overall_range = CalculateRange(
-        load_indice_value, CudaBindInfo::kSerial, load_block_name);
-    auto store_thread_coefficient_and_range = GetCoefficientAndRange(
-        store_indice_value, ir::ForType::GPUThread, store_block_name);
-    auto load_thread_coefficient_and_range = GetCoefficientAndRange(
-        load_indice_value, ir::ForType::GPUThread, load_block_name);
-    VLOG(6) << "store_block_name: " << store_block_name
-            << ", load_block_name: " << load_block_name;
-    VLOG(6) << "store_indice_value: " << store_indice_value
-            << ", load_indice_value: " << load_indice_value;
-    VLOG(6) << "store_thread_overall_range = " << store_thread_overall_range;
-    VLOG(6) << "load_thread_overall_range = " << load_thread_overall_range;
-    VLOG(6) << "store_serial_overall_range = " << store_serial_overall_range;
-    VLOG(6) << "load_serial_overall_range = " << load_serial_overall_range;
-    VLOG(6) << "store_thread_coefficient_and_range[0] = <"
-            << store_thread_coefficient_and_range[0].first << ", "
-            << store_thread_coefficient_and_range[0].second << ">";
-    VLOG(6) << "load_thread_coefficient_and_range[0] = <"
-            << load_thread_coefficient_and_range[0].first << ", "
-            << load_thread_coefficient_and_range[0].second << ">";
-    VLOG(6) << "store_thread_coefficient_and_range[1] = <"
-            << store_thread_coefficient_and_range[1].first << ", "
-            << store_thread_coefficient_and_range[1].second << ">";
-    VLOG(6) << "load_thread_coefficient_and_range[1] = <"
-            << load_thread_coefficient_and_range[1].first << ", "
-            << load_thread_coefficient_and_range[1].second << ">";
-    VLOG(6) << "store_thread_coefficient_and_range[2] = <"
-            << store_thread_coefficient_and_range[2].first << ", "
-            << store_thread_coefficient_and_range[2].second << ">";
-    VLOG(6) << "load_thread_coefficient_and_range[2] = <"
-            << load_thread_coefficient_and_range[2].first << ", "
-            << load_thread_coefficient_and_range[2].second << ">";
-    return !(store_thread_overall_range.min <= load_thread_overall_range.min &&
-             store_thread_overall_range.max >= load_thread_overall_range.max &&
-             store_serial_overall_range.min <= load_serial_overall_range.min &&
-             store_serial_overall_range.max >= load_serial_overall_range.max &&
-             (store_thread_coefficient_and_range[0].first ==
-                  load_thread_coefficient_and_range[0].first ||
-              load_thread_coefficient_and_range[0].first == 0) &&
-             store_thread_coefficient_and_range[0].second.min <=
-                 load_thread_coefficient_and_range[0].second.min &&
-             store_thread_coefficient_and_range[0].second.max >=
-                 load_thread_coefficient_and_range[0].second.max &&
-             (store_thread_coefficient_and_range[1].first ==
-                  load_thread_coefficient_and_range[1].first ||
-              load_thread_coefficient_and_range[1].first == 0) &&
-             store_thread_coefficient_and_range[1].second.min <=
-                 load_thread_coefficient_and_range[1].second.min &&
-             store_thread_coefficient_and_range[1].second.max >=
-                 load_thread_coefficient_and_range[1].second.max &&
-             (store_thread_coefficient_and_range[2].first ==
-                  load_thread_coefficient_and_range[2].first ||
-              load_thread_coefficient_and_range[2].first == 0) &&
-             store_thread_coefficient_and_range[2].second.min <=
-                 load_thread_coefficient_and_range[2].second.min &&
-             store_thread_coefficient_and_range[2].second.max >=
-                 load_thread_coefficient_and_range[2].second.max);
-  };
-
-  // Determine whether the indice of a pair of Store and Load cross CUDA block
-  auto IsCrossBlock = [&](ir::Expr store_indice_value,
-                          ir::Expr load_indice_value,
-                          const std::string& store_block_name,
-                          const std::string& load_block_name) {
-    Range store_block_overall_range = CalculateRange(
-        store_indice_value, CudaBindInfo::kCudaBlock, store_block_name);
-    Range load_block_overall_range = CalculateRange(
-        load_indice_value, CudaBindInfo::kCudaBlock, load_block_name);
-    Range store_thread_and_serial_overall_range =
-        CalculateRange(store_indice_value,
-                       CudaBindInfo::kCudaThreadAndSerial,
-                       store_block_name);
-    Range load_thread_and_serial_overall_range = CalculateRange(
-        load_indice_value, CudaBindInfo::kCudaThreadAndSerial, load_block_name);
-    auto store_block_coefficient_and_range = GetCoefficientAndRange(
-        store_indice_value, ir::ForType::GPUBlock, store_block_name);
-    auto load_block_coefficient_and_range = GetCoefficientAndRange(
-        load_indice_value, ir::ForType::GPUBlock, load_block_name);
-    VLOG(6) << "store_block_name: " << store_block_name
-            << ", load_block_name: " << load_block_name;
-    VLOG(6) << "store_indice_value: " << store_indice_value
-            << ", load_indice_value: " << load_indice_value;
-    VLOG(6) << "store_block_overall_range = " << store_block_overall_range;
-    VLOG(6) << "load_block_overall_range = " << load_block_overall_range;
-    VLOG(6) << "store_thread_and_serial_overall_range = "
-            << store_thread_and_serial_overall_range;
-    VLOG(6) << "load_thread_and_serial_overall_range = "
-            << load_thread_and_serial_overall_range;
-    VLOG(6) << "store_block_coefficient_and_range[0] = <"
-            << store_block_coefficient_and_range[0].first << ", "
-            << store_block_coefficient_and_range[0].second << ">";
-    VLOG(6) << "load_block_coefficient_and_range[0] = <"
-            << load_block_coefficient_and_range[0].first << ", "
-            << load_block_coefficient_and_range[0].second << ">";
-    VLOG(6) << "store_block_coefficient_and_range[1] = <"
-            << store_block_coefficient_and_range[1].first << ", "
-            << store_block_coefficient_and_range[1].second << ">";
-    VLOG(6) << "load_block_coefficient_and_range[1] = <"
-            << load_block_coefficient_and_range[1].first << ", "
-            << load_block_coefficient_and_range[1].second << ">";
-    VLOG(6) << "store_block_coefficient_and_range[2] = <"
-            << store_block_coefficient_and_range[2].first << ", "
-            << store_block_coefficient_and_range[2].second << ">";
-    VLOG(6) << "load_block_coefficient_and_range[2] = <"
-            << load_block_coefficient_and_range[2].first << ", "
-            << load_block_coefficient_and_range[2].second << ">";
-    return !(store_block_overall_range.min <= load_block_overall_range.min &&
-             store_block_overall_range.max >= load_block_overall_range.max &&
-             store_thread_and_serial_overall_range.min <=
-                 load_thread_and_serial_overall_range.min &&
-             store_thread_and_serial_overall_range.max >=
-                 load_thread_and_serial_overall_range.max &&
-             (store_block_coefficient_and_range[0].first ==
-                  load_block_coefficient_and_range[0].first ||
-              load_block_coefficient_and_range[0].first == 0) &&
-             store_block_coefficient_and_range[0].second.min <=
-                 load_block_coefficient_and_range[0].second.min &&
-             store_block_coefficient_and_range[0].second.max >=
-                 load_block_coefficient_and_range[0].second.max &&
-             (store_block_coefficient_and_range[1].first ==
-                  load_block_coefficient_and_range[1].first ||
-              load_block_coefficient_and_range[1].first == 0) &&
-             store_block_coefficient_and_range[1].second.min <=
-                 load_block_coefficient_and_range[1].second.min &&
-             store_block_coefficient_and_range[1].second.max >=
-                 load_block_coefficient_and_range[1].second.max &&
-             (store_block_coefficient_and_range[2].first ==
-                  load_block_coefficient_and_range[2].first ||
-              load_block_coefficient_and_range[2].first == 0) &&
-             store_block_coefficient_and_range[2].second.min <=
-                 load_block_coefficient_and_range[2].second.min &&
-             store_block_coefficient_and_range[2].second.max >=
-                 load_block_coefficient_and_range[2].second.max);
-  };
-
-  // function to set storage of each tensor
-  auto SetStorage = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    ir::MemoryType memory_type = ir::MemoryType::GPULocal;
-    ir::Expr cur_block = node->Block();
-    ir::Expr root_block = ir_sch_->GetRootBlock(cur_block);
-    UpdateVarNameToForMap(root_block);
-    std::vector<ir::Expr> consumer_blocks =
-        ir::GetConsumers(cur_block, root_block);
-    // find store and corresponding load nodes
-    ir::Expr find_store =
-        *ir::ir_utils::CollectIRNodesWithoutTensor(
-             cur_block,
-             [&](const ir::Expr* x) { return x->As<ir::Store>(); },
-             true)
-             .begin();
-    ir::Expr store_indice_value = AnalyzeIndiceValue(find_store, cur_block);
-    std::vector<std::tuple<ir::Expr, ir::Expr>> loads_and_blocks;
-    for (const ir::Expr& consumer_block : consumer_blocks) {
-      ir::ir_utils::CollectIRNodesWithoutTensor(
-          consumer_block, [&](const Expr* x) {
-            if (x->As<ir::Load>() && (x->As<ir::Load>()->name() ==
-                                      find_store.As<ir::Store>()->name())) {
-              loads_and_blocks.push_back(std::make_tuple(*x, consumer_block));
-            }
-            return false;
-          });
-    }
-    // Traverse load nodes to check if there are loads that cross cuda blocks or
-    // threads
-    for (const auto& load_and_block : loads_and_blocks) {
-      ir::Expr load = std::get<0>(load_and_block);
-      ir::Expr consumer_block = std::get<1>(load_and_block);
-      std::string consumer_block_name =
-          consumer_block.As<ir::ScheduleBlockRealize>()
+      std::vector<ir::Var> iter_vars =
+          block.As<ir::ScheduleBlockRealize>()
               ->schedule_block.As<ir::ScheduleBlock>()
-              ->name;
-      ir::Expr load_indice_value = AnalyzeIndiceValue(load, consumer_block);
-      if (IsCrossBlock(store_indice_value,
-                       load_indice_value,
-                       node->id(),
-                       consumer_block_name)) {
-        // TODO(BiynXu): Return error information to the front-end instead of
-        // terminating the program.
-        PADDLE_THROW(phi::errors::InvalidArgument(
-            "Fusion requires synchronization across blocks, but "
-            "currently we do not support it."));
-        break;
-      } else if (IsCrossThread(store_indice_value,
-                               load_indice_value,
-                               node->id(),
-                               consumer_block_name)) {
-        memory_type = ir::MemoryType::GPUShared;
+              ->iter_vars;
+      std::vector<ir::Expr> iter_values =
+          block.As<ir::ScheduleBlockRealize>()->iter_values;
+      struct VarHash {
+        size_t operator()(const ir::Var& var) const {
+          std::string name = var->name;
+          return std::hash<std::string>()(name);
+        }
+      };
+      std::vector<int> strides;
+      int extent = 1;
+      for (int idx = tensor->shape.size() - 1; idx >= 0; --idx) {
+        strides.insert(strides.begin(), extent);
+        tensor->shape[idx] = cinn::common::AutoSimplify(tensor->shape[idx]);
+        CHECK(tensor->shape[idx].is_constant())
+            << "Shape of tensor: " << tensor << " is not constant";
+        extent *= tensor->shape[idx].get_constant();
       }
-    }
-    // Set output node to global
-    std::unordered_set<std::string> output_names = OutputTensorNames();
-    if (output_names.count(node->id()) > 0) {
-      memory_type = ir::MemoryType::Auto;
-    }
-    // Set the reduce_init tensor and the real tensor to the same memory
-    if (ir::IsReduceInitTensorName(node->id())) {
-      ir::Expr block =
-          ir_sch_->GetBlock(ir::GetOriginalReduceTensorName(node->id()));
-      memory_type = ir::GetTensor(block)->buffer->memory_type;
-    }
-    // Do schedule
-    if (memory_type == ir::MemoryType::Auto) {
-      VLOG(6) << "Set store tensor of block " << node->id() << " to global";
-    } else if (memory_type == ir::MemoryType::GPUShared) {
-      VLOG(6) << "Set store tensor of block " << node->id() << " to shared";
-      ir_sch_->SetBuffer(cur_block, "shared");
-      std::vector<ir::Expr> loops = ir_sch_->GetLoops(cur_block);
-      if (sync_mark.count(ir::GetOriginalReduceTensorName(node->id())) == 0) {
-        ir_sch_->SyncThreads(loops.back(), true);
-        sync_mark.insert(ir::GetOriginalReduceTensorName(node->id()));
+      ir::Expr flatten_indice(0);
+      for (int idx = 0; idx < indices.size(); ++idx) {
+        flatten_indice = flatten_indice + ir::Expr(strides[idx]) * indices[idx];
       }
-    } else if (memory_type == ir::MemoryType::GPULocal) {
-      VLOG(6) << "Set store tensor of block " << node->id() << " to register";
-      ir_sch_->SetBuffer(cur_block, "local");
-    }
+      flatten_indice = cinn::common::AutoSimplify(flatten_indice);
+      for (int idx = 0; idx < iter_vars.size(); ++idx) {
+        optim::ReplaceVarWithExpr(
+            &flatten_indice, iter_vars[idx], iter_values[idx]);
+      }
+      flatten_indice = cinn::common::AutoSimplify(flatten_indice);
+      VLOG(6) << "flatten_indice of " << load_or_store << " : "
+              << flatten_indice;
+      return flatten_indice;
+    };
+
+    enum class CudaBindInfo : int {
+      kCudaBlock,
+      kCudaThread,
+      kSerial,
+      kCudaThreadAndSerial,
+    };
+
+    // function to calculate the range of the specified CUDA axis in a indice
+    // expression
+    auto CalculateRange = [&for_map](ir::Expr indice_value,
+                                     const CudaBindInfo& bind_info,
+                                     const std::string& block_name) {
+      ir::Expr copy_for_upper_bound = ir::ir_utils::IRCopy(indice_value);
+      ir::Expr copy_for_lower_bound = ir::ir_utils::IRCopy(indice_value);
+      std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
+          indice_value, [](const ir::Expr* x) { return x->as_var(); });
+      for (ir::Expr var : var_set) {
+        std::string name = var.as_var_ref()->name;
+        CHECK(for_map.find(block_name) != for_map.end());
+        CHECK(for_map[block_name].find(name) != for_map[block_name].end());
+        ir::Expr for_expr = for_map[block_name][name];
+        if (bind_info == CudaBindInfo::kCudaBlock) {
+          if (for_expr.As<ir::For>()->is_gpu_block_binded()) {
+            optim::ReplaceVarWithExpr(&copy_for_upper_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min +
+                                          for_expr.As<ir::For>()->extent -
+                                          Expr(1));
+            optim::ReplaceVarWithExpr(&copy_for_lower_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min);
+          } else {
+            optim::ReplaceVarWithExpr(
+                &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
+            optim::ReplaceVarWithExpr(
+                &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
+          }
+        } else if (bind_info == CudaBindInfo::kCudaThread) {
+          if (for_expr.As<ir::For>()->is_gpu_thread_binded()) {
+            optim::ReplaceVarWithExpr(&copy_for_upper_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min +
+                                          for_expr.As<ir::For>()->extent -
+                                          Expr(1));
+            optim::ReplaceVarWithExpr(&copy_for_lower_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min);
+          } else {
+            optim::ReplaceVarWithExpr(
+                &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
+            optim::ReplaceVarWithExpr(
+                &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
+          }
+        } else if (bind_info == CudaBindInfo::kSerial) {
+          if (!for_expr.As<ir::For>()->is_gpu_thread_binded() &&
+              !for_expr.As<ir::For>()->is_gpu_block_binded()) {
+            optim::ReplaceVarWithExpr(&copy_for_upper_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min +
+                                          for_expr.As<ir::For>()->extent -
+                                          Expr(1));
+            optim::ReplaceVarWithExpr(&copy_for_lower_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min);
+          } else {
+            optim::ReplaceVarWithExpr(
+                &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
+            optim::ReplaceVarWithExpr(
+                &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
+          }
+        } else if (bind_info == CudaBindInfo::kCudaThreadAndSerial) {
+          if (!for_expr.As<ir::For>()->is_gpu_block_binded()) {
+            optim::ReplaceVarWithExpr(&copy_for_upper_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min +
+                                          for_expr.As<ir::For>()->extent -
+                                          Expr(1));
+            optim::ReplaceVarWithExpr(&copy_for_lower_bound,
+                                      var.as_var_ref(),
+                                      for_expr.As<ir::For>()->min);
+          } else {
+            optim::ReplaceVarWithExpr(
+                &copy_for_upper_bound, var.as_var_ref(), ir::Expr(0));
+            optim::ReplaceVarWithExpr(
+                &copy_for_lower_bound, var.as_var_ref(), ir::Expr(0));
+          }
+        }
+      }
+      VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
+              << copy_for_lower_bound;
+      copy_for_lower_bound = cinn::common::AutoSimplify(
+          cinn::common::AutoSimplify(copy_for_lower_bound));
+      VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
+              << copy_for_upper_bound;
+      copy_for_upper_bound = cinn::common::AutoSimplify(
+          cinn::common::AutoSimplify(copy_for_upper_bound));
+      VLOG(6) << "lower_bound of " << indice_value << " = "
+              << copy_for_lower_bound;
+      VLOG(6) << "upper_bound of " << indice_value << " = "
+              << copy_for_upper_bound;
+      return Range{static_cast<int>(copy_for_lower_bound.get_constant()),
+                   static_cast<int>(copy_for_upper_bound.get_constant())};
+    };
+
+    // function to calculate the coefficient and range of the specified for_type
+    // in a indice expression
+    auto GetCoefficientAndRange = [&for_map](ir::Expr indice_value,
+                                             const ir::ForType& for_type,
+                                             const std::string& block_name) {
+      std::vector<std::pair<int, Range>> coef_and_ranges(3);
+      std::vector<ir::Expr> indice_copies;
+      for (int i = 0; i < 3; ++i) {
+        indice_copies.push_back(ir::ir_utils::IRCopy(indice_value));
+      }
+      std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
+          indice_value, [](const ir::Expr* x) { return x->as_var(); });
+      std::unordered_set<std::string> visited_var_names;
+      for (ir::Expr var : var_set) {
+        std::string name = var.as_var_ref()->name;
+        if (visited_var_names.count(name) > 0) {
+          continue;
+        }
+        visited_var_names.insert(name);
+        CHECK(for_map.find(block_name) != for_map.end());
+        CHECK(for_map[block_name].find(name) != for_map[block_name].end());
+        ir::Expr for_expr = for_map[block_name][name];
+        for (int i = 0; i < 3; ++i) {
+          if (for_type == for_expr.As<ir::For>()->for_type() &&
+              for_expr.As<ir::For>()->bind_info().offset == i &&
+              for_expr.As<ir::For>()->extent.get_constant() > 1) {
+            optim::ReplaceVarWithExpr(
+                &(indice_copies[i]), var.as_var_ref(), ir::Expr(1));
+            coef_and_ranges[i].second.min =
+                for_expr.As<ir::For>()->min.get_constant();
+            coef_and_ranges[i].second.max =
+                for_expr.As<ir::For>()->min.get_constant() +
+                for_expr.As<ir::For>()->extent.get_constant();
+          } else {
+            optim::ReplaceVarWithExpr(
+                &(indice_copies[i]), var.as_var_ref(), ir::Expr(0));
+          }
+        }
+      }
+      for (int i = 0; i < 3; ++i) {
+        VLOG(6) << "before simplify [" << i << "], the coefficient of "
+                << indice_value << " = " << indice_copies[i] << ", range = ("
+                << coef_and_ranges[i].second.min << ", "
+                << coef_and_ranges[i].second.max << ")";
+        indice_copies[i] = cinn::common::AutoSimplify(indice_copies[i]);
+        VLOG(6) << "after simplify [" << i << "], the coefficient of "
+                << indice_value << " = " << indice_copies << ", range = ("
+                << coef_and_ranges[i].second.min << ", "
+                << coef_and_ranges[i].second.max << ")";
+        coef_and_ranges[i].first =
+            static_cast<int>(indice_copies[i].get_constant());
+      }
+      return coef_and_ranges;
+    };
+
+    // Determine whether the indice of a pair of Store and Load cross CUDA
+    // threads
+    auto IsCrossThread = [&](ir::Expr store_indice_value,
+                             ir::Expr load_indice_value,
+                             const std::string& store_block_name,
+                             const std::string& load_block_name) {
+      Range store_thread_overall_range = CalculateRange(
+          store_indice_value, CudaBindInfo::kCudaThread, store_block_name);
+      Range load_thread_overall_range = CalculateRange(
+          load_indice_value, CudaBindInfo::kCudaThread, load_block_name);
+      Range store_serial_overall_range = CalculateRange(
+          store_indice_value, CudaBindInfo::kSerial, store_block_name);
+      Range load_serial_overall_range = CalculateRange(
+          load_indice_value, CudaBindInfo::kSerial, load_block_name);
+      auto store_thread_coefficient_and_range = GetCoefficientAndRange(
+          store_indice_value, ir::ForType::GPUThread, store_block_name);
+      auto load_thread_coefficient_and_range = GetCoefficientAndRange(
+          load_indice_value, ir::ForType::GPUThread, load_block_name);
+      VLOG(6) << "store_block_name: " << store_block_name
+              << ", load_block_name: " << load_block_name;
+      VLOG(6) << "store_indice_value: " << store_indice_value
+              << ", load_indice_value: " << load_indice_value;
+      VLOG(6) << "store_thread_overall_range = " << store_thread_overall_range;
+      VLOG(6) << "load_thread_overall_range = " << load_thread_overall_range;
+      VLOG(6) << "store_serial_overall_range = " << store_serial_overall_range;
+      VLOG(6) << "load_serial_overall_range = " << load_serial_overall_range;
+      VLOG(6) << "store_thread_coefficient_and_range[0] = <"
+              << store_thread_coefficient_and_range[0].first << ", "
+              << store_thread_coefficient_and_range[0].second << ">";
+      VLOG(6) << "load_thread_coefficient_and_range[0] = <"
+              << load_thread_coefficient_and_range[0].first << ", "
+              << load_thread_coefficient_and_range[0].second << ">";
+      VLOG(6) << "store_thread_coefficient_and_range[1] = <"
+              << store_thread_coefficient_and_range[1].first << ", "
+              << store_thread_coefficient_and_range[1].second << ">";
+      VLOG(6) << "load_thread_coefficient_and_range[1] = <"
+              << load_thread_coefficient_and_range[1].first << ", "
+              << load_thread_coefficient_and_range[1].second << ">";
+      VLOG(6) << "store_thread_coefficient_and_range[2] = <"
+              << store_thread_coefficient_and_range[2].first << ", "
+              << store_thread_coefficient_and_range[2].second << ">";
+      VLOG(6) << "load_thread_coefficient_and_range[2] = <"
+              << load_thread_coefficient_and_range[2].first << ", "
+              << load_thread_coefficient_and_range[2].second << ">";
+      return !(
+          store_thread_overall_range.min <= load_thread_overall_range.min &&
+          store_thread_overall_range.max >= load_thread_overall_range.max &&
+          store_serial_overall_range.min <= load_serial_overall_range.min &&
+          store_serial_overall_range.max >= load_serial_overall_range.max &&
+          (store_thread_coefficient_and_range[0].first ==
+               load_thread_coefficient_and_range[0].first ||
+           load_thread_coefficient_and_range[0].first == 0) &&
+          store_thread_coefficient_and_range[0].second.min <=
+              load_thread_coefficient_and_range[0].second.min &&
+          store_thread_coefficient_and_range[0].second.max >=
+              load_thread_coefficient_and_range[0].second.max &&
+          (store_thread_coefficient_and_range[1].first ==
+               load_thread_coefficient_and_range[1].first ||
+           load_thread_coefficient_and_range[1].first == 0) &&
+          store_thread_coefficient_and_range[1].second.min <=
+              load_thread_coefficient_and_range[1].second.min &&
+          store_thread_coefficient_and_range[1].second.max >=
+              load_thread_coefficient_and_range[1].second.max &&
+          (store_thread_coefficient_and_range[2].first ==
+               load_thread_coefficient_and_range[2].first ||
+           load_thread_coefficient_and_range[2].first == 0) &&
+          store_thread_coefficient_and_range[2].second.min <=
+              load_thread_coefficient_and_range[2].second.min &&
+          store_thread_coefficient_and_range[2].second.max >=
+              load_thread_coefficient_and_range[2].second.max);
+    };
+
+    // Determine whether the indice of a pair of Store and Load cross CUDA block
+    auto IsCrossBlock = [&](ir::Expr store_indice_value,
+                            ir::Expr load_indice_value,
+                            const std::string& store_block_name,
+                            const std::string& load_block_name) {
+      Range store_block_overall_range = CalculateRange(
+          store_indice_value, CudaBindInfo::kCudaBlock, store_block_name);
+      Range load_block_overall_range = CalculateRange(
+          load_indice_value, CudaBindInfo::kCudaBlock, load_block_name);
+      Range store_thread_and_serial_overall_range =
+          CalculateRange(store_indice_value,
+                         CudaBindInfo::kCudaThreadAndSerial,
+                         store_block_name);
+      Range load_thread_and_serial_overall_range =
+          CalculateRange(load_indice_value,
+                         CudaBindInfo::kCudaThreadAndSerial,
+                         load_block_name);
+      auto store_block_coefficient_and_range = GetCoefficientAndRange(
+          store_indice_value, ir::ForType::GPUBlock, store_block_name);
+      auto load_block_coefficient_and_range = GetCoefficientAndRange(
+          load_indice_value, ir::ForType::GPUBlock, load_block_name);
+      VLOG(6) << "store_block_name: " << store_block_name
+              << ", load_block_name: " << load_block_name;
+      VLOG(6) << "store_indice_value: " << store_indice_value
+              << ", load_indice_value: " << load_indice_value;
+      VLOG(6) << "store_block_overall_range = " << store_block_overall_range;
+      VLOG(6) << "load_block_overall_range = " << load_block_overall_range;
+      VLOG(6) << "store_thread_and_serial_overall_range = "
+              << store_thread_and_serial_overall_range;
+      VLOG(6) << "load_thread_and_serial_overall_range = "
+              << load_thread_and_serial_overall_range;
+      VLOG(6) << "store_block_coefficient_and_range[0] = <"
+              << store_block_coefficient_and_range[0].first << ", "
+              << store_block_coefficient_and_range[0].second << ">";
+      VLOG(6) << "load_block_coefficient_and_range[0] = <"
+              << load_block_coefficient_and_range[0].first << ", "
+              << load_block_coefficient_and_range[0].second << ">";
+      VLOG(6) << "store_block_coefficient_and_range[1] = <"
+              << store_block_coefficient_and_range[1].first << ", "
+              << store_block_coefficient_and_range[1].second << ">";
+      VLOG(6) << "load_block_coefficient_and_range[1] = <"
+              << load_block_coefficient_and_range[1].first << ", "
+              << load_block_coefficient_and_range[1].second << ">";
+      VLOG(6) << "store_block_coefficient_and_range[2] = <"
+              << store_block_coefficient_and_range[2].first << ", "
+              << store_block_coefficient_and_range[2].second << ">";
+      VLOG(6) << "load_block_coefficient_and_range[2] = <"
+              << load_block_coefficient_and_range[2].first << ", "
+              << load_block_coefficient_and_range[2].second << ">";
+      return !(store_block_overall_range.min <= load_block_overall_range.min &&
+               store_block_overall_range.max >= load_block_overall_range.max &&
+               store_thread_and_serial_overall_range.min <=
+                   load_thread_and_serial_overall_range.min &&
+               store_thread_and_serial_overall_range.max >=
+                   load_thread_and_serial_overall_range.max &&
+               (store_block_coefficient_and_range[0].first ==
+                    load_block_coefficient_and_range[0].first ||
+                load_block_coefficient_and_range[0].first == 0) &&
+               store_block_coefficient_and_range[0].second.min <=
+                   load_block_coefficient_and_range[0].second.min &&
+               store_block_coefficient_and_range[0].second.max >=
+                   load_block_coefficient_and_range[0].second.max &&
+               (store_block_coefficient_and_range[1].first ==
+                    load_block_coefficient_and_range[1].first ||
+                load_block_coefficient_and_range[1].first == 0) &&
+               store_block_coefficient_and_range[1].second.min <=
+                   load_block_coefficient_and_range[1].second.min &&
+               store_block_coefficient_and_range[1].second.max >=
+                   load_block_coefficient_and_range[1].second.max &&
+               (store_block_coefficient_and_range[2].first ==
+                    load_block_coefficient_and_range[2].first ||
+                load_block_coefficient_and_range[2].first == 0) &&
+               store_block_coefficient_and_range[2].second.min <=
+                   load_block_coefficient_and_range[2].second.min &&
+               store_block_coefficient_and_range[2].second.max >=
+                   load_block_coefficient_and_range[2].second.max);
+    };
+
+    // function to set storage of each tensor
+    auto SetStorage = [&](ir::ScheduleBlockNode* node) {
+      if (IsProhibitScheduleExternCallBlock(node->Block())) {
+        return;
+      }
+      ir::MemoryType memory_type = ir::MemoryType::GPULocal;
+      ir::Expr cur_block = node->Block();
+      ir::Expr root_block = ir_sch_->GetRootBlock(cur_block);
+      UpdateVarNameToForMap(root_block);
+      std::vector<ir::Expr> consumer_blocks =
+          ir::GetConsumers(cur_block, root_block);
+      // find store and corresponding load nodes
+      ir::Expr find_store =
+          *ir::ir_utils::CollectIRNodesWithoutTensor(
+               cur_block,
+               [&](const ir::Expr* x) { return x->As<ir::Store>(); },
+               true)
+               .begin();
+      ir::Expr store_indice_value = AnalyzeIndiceValue(find_store, cur_block);
+      std::vector<std::tuple<ir::Expr, ir::Expr>> loads_and_blocks;
+      for (const ir::Expr& consumer_block : consumer_blocks) {
+        ir::ir_utils::CollectIRNodesWithoutTensor(
+            consumer_block, [&](const Expr* x) {
+              if (x->As<ir::Load>() && (x->As<ir::Load>()->name() ==
+                                        find_store.As<ir::Store>()->name())) {
+                loads_and_blocks.push_back(std::make_tuple(*x, consumer_block));
+              }
+              return false;
+            });
+      }
+      // Traverse load nodes to check if there are loads that cross cuda blocks
+      // or threads
+      for (const auto& load_and_block : loads_and_blocks) {
+        ir::Expr load = std::get<0>(load_and_block);
+        ir::Expr consumer_block = std::get<1>(load_and_block);
+        std::string consumer_block_name =
+            consumer_block.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->name;
+        ir::Expr load_indice_value = AnalyzeIndiceValue(load, consumer_block);
+        if (IsCrossBlock(store_indice_value,
+                         load_indice_value,
+                         node->id(),
+                         consumer_block_name)) {
+          // TODO(BiynXu): Return error information to the front-end instead of
+          // terminating the program.
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Fusion requires synchronization across blocks, but "
+              "currently we do not support it."));
+          break;
+        } else if (IsCrossThread(store_indice_value,
+                                 load_indice_value,
+                                 node->id(),
+                                 consumer_block_name)) {
+          memory_type = ir::MemoryType::GPUShared;
+        }
+      }
+      // Set output node to global
+      std::unordered_set<std::string> output_names = OutputTensorNames();
+      if (output_names.count(node->id()) > 0) {
+        memory_type = ir::MemoryType::Auto;
+      }
+      // Set the reduce_init tensor and the real tensor to the same memory
+      if (ir::IsReduceInitTensorName(node->id())) {
+        ir::Expr block =
+            ir_sch_->GetBlock(ir::GetOriginalReduceTensorName(node->id()));
+        memory_type = ir::GetTensor(block)->buffer->memory_type;
+      }
+      // Do schedule
+      if (memory_type == ir::MemoryType::Auto) {
+        VLOG(6) << "Set store tensor of block " << node->id() << " to global";
+      } else if (memory_type == ir::MemoryType::GPUShared) {
+        VLOG(6) << "Set store tensor of block " << node->id() << " to shared";
+        ir_sch_->SetBuffer(cur_block, "shared");
+        std::vector<ir::Expr> loops = ir_sch_->GetLoops(cur_block);
+        if (sync_mark.count(ir::GetOriginalReduceTensorName(node->id())) == 0) {
+          ir_sch_->SyncThreads(loops.back(), true);
+          sync_mark.insert(ir::GetOriginalReduceTensorName(node->id()));
+        }
+      } else if (memory_type == ir::MemoryType::GPULocal) {
+        VLOG(6) << "Set store tensor of block " << node->id() << " to register";
+        ir_sch_->SetBuffer(cur_block, "local");
+      }
+    };
+    schedule_block_graph_->DFSTopoWalk(SetStorage);
+    VLOG(5) << "[After AllocateStorage] func body: "
+            << ir_sch_->GetModule().GetExprs().front();
   };
-  schedule_block_graph_->DFSTopoWalk(SetStorage);
-  VLOG(5) << "[After AllocateStorage] func body: "
-          << ir_sch_->GetModule().GetExprs().front();
+  target_.arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        // do nothing
+      },
+      [&](common::NVGPUArch) { AllocateStorageNvHygon(); },
+      [&](common::HygonDCUArchHIP) { AllocateStorageNvHygon(); });
 }
 
 void StaticShapeGroupScheduler::OptimizeReduction() {
   VLOG(5) << "[Start OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();
-
-  auto_schedule::ReductionFactoring rf(target_);
-
-  auto ReductionFactoring = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try ReductionFactoring on: " << node->id()
-            << ", before ReductionFactoring, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    rf.Apply(node->id(), ir_sch_);
-    VLOG(6) << "try ReductionFactoring on: " << node->id()
-            << ", after ReductionFactoring, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(ReductionFactoring);
-  schedule_block_graph_->Update(*ir_sch_);
 
   VLOG(5) << "[After OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();

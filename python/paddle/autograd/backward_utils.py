@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import collections
+import logging
 import warnings
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from paddle import pir
@@ -24,78 +26,6 @@ from paddle.base.libpaddle.pir import (
     get_used_external_value,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-
-# TODO: Consider a better way to mark these ops has no grad op.
-# Such as use a new trait to mark these ops.
-ALLOW_NO_GRAD_OPS = [
-    # Compare ops
-    "pd_op.equal",
-    "pd_op.equal_",
-    "pd_op.not_equal",
-    "pd_op.not_equal_",
-    "pd_op.less_than",
-    "pd_op.less_than_",
-    "pd_op.less_equal",
-    "pd_op.less_equal_",
-    "pd_op.greater_than",
-    "pd_op.greater_than_",
-    "pd_op.greater_equal",
-    "pd_op.greater_equal_",
-    # Logical ops
-    "pd_op.logical_and",
-    "pd_op.logical_and_",
-    "pd_op.logical_not",
-    "pd_op.logical_not_",
-    "pd_op.logical_or",
-    "pd_op.logical_or_",
-    "pd_op.logical_xor",
-    "pd_op.logical_xor_",
-    # Bitwise ops
-    "pd_op.bitwise_and",
-    "pd_op.bitwise_and_",
-    "pd_op.bitwise_left_shift",
-    "pd_op.bitwise_left_shift_",
-    "pd_op.bitwise_not",
-    "pd_op.bitwise_not_",
-    "pd_op.bitwise_or",
-    "pd_op.bitwise_or_",
-    "pd_op.bitwise_right_shift",
-    "pd_op.bitwise_right_shift_",
-    "pd_op.bitwise_xor",
-    "pd_op.bitwise_xor_",
-    # Array ops
-    "pd_op.assign_array",
-    "pd_op.array_length",
-    "pd_op.slice_array",
-    "pd_op.slice_array_dense",
-    "pd_op.assign_array",
-    "pd_op.assign_array_",
-    "pd_op.create_array",
-    "pd_op.create_array_like",
-    "pd_op.array_read",
-    "pd_op.array_write_",
-    "pd_op.array_pop",
-    # Others
-    "pd_op.remainder",
-    "pd_op.argmax",
-    "pd_op.print",
-    "pd_op.accuracy",
-    "pd_op.randint",
-    "pd_op.uniform",
-    "pd_op.gaussian",
-    "pd_op.bernoulli",
-    "pd_op.full_like",
-    "pd_op.assign_value_",
-    "pd_op.nextafter",
-    "pd_op.isnan",
-    "pd_op.isinf",
-    "pd_op.all",
-    "pd_op.any",
-    "pd_op.prior_box",
-    "pd_op.share_data_",
-    "pd_op.floor_divide",
-]
-
 
 # TODO(CZ): to be removed when we support dynamic shape by default.
 ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
@@ -111,6 +41,16 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.rsqrt",
     "pd_op.sigmoid",
     "pd_op.silu",
+    "pd_op.sum",
+    "pd_op.mean",
+    "pd_op.add",
+    "pd_op.subtract",
+    "pd_op.concat",
+    "pd_op.split",
+    "pd_op.multiply",
+    "pd_op.relu",
+    "pd_op.sigmoid",
+    "pd_op.divide",
 ]
 
 
@@ -510,7 +450,7 @@ def remove_op(block, op, state):
 
             if value in state.sumvaluegrad_to_value:
                 raise ValueError(
-                    'input_grad in [%s] is value which need to sum ', op.name()
+                    f'input_grad in [%s] is value which need to sum {op.name()}'
                 )
     # NOTE(SigureMo): Ensure access to the op's results before removing it.
     # Otherwise, the op will be deconstructed and access the num_results
@@ -660,3 +600,8 @@ def get_split_op(value):
         if op.name() == "builtin.split":
             return op
     return None
+
+
+@lru_cache
+def warning_once(message: str):
+    logging.warning(message)

@@ -18,6 +18,7 @@ import numpy as np
 
 from paddle import base
 from paddle.base.core import AnalysisConfig, create_paddle_predictor
+from paddle.framework import use_pir_api
 
 
 class PredictorTools:
@@ -59,6 +60,12 @@ class PredictorTools:
         # in CUDA11
         config.switch_ir_optim(False)
 
+        if use_pir_api():
+            config.enable_new_ir()
+            config.enable_new_executor()
+            if os.name == 'nt':
+                config.delete_pass(["conv2d_bn_fuse_pass"])
+
         return config
 
     def _get_analysis_outputs(self, config):
@@ -70,11 +77,9 @@ class PredictorTools:
             outs (numpy array): forward netwrok prediction outputs
         '''
         predictor = create_paddle_predictor(config)
-        tensor_shapes = predictor.get_input_tensor_shape()
         names = predictor.get_input_names()
         for i, name in enumerate(names):
             # assert name in self.feeds_var, '{} not in feeded dict'.format(name)
-            shape = tensor_shapes[name]
             tensor = predictor.get_input_tensor(name)
             feed_data = self.feeds_var[i]
             tensor.copy_from_cpu(np.array(feed_data))

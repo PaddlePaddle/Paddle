@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/group.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -22,8 +22,10 @@ namespace pir {
 std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
                                     ::pir::IrMapping& ir_mapping,
                                     const Options& option) const {
-  CHECK_EQ(option.OnlyCloneOps(), true)
-      << "Only Support Clone Group ops information.";
+  PADDLE_ENFORCE_EQ(option.OnlyCloneOps(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "OnlyCloneOps is the only supported option."));
   std::vector<::pir::Operation*> new_ops;
   // Mapper from original to new ops.
   std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;

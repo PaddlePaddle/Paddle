@@ -66,7 +66,8 @@ TEST(BroadcastTree, Naive) {
                                     MakeBroadcastDimExpr(expr1, expr2),
                                     MakeBroadcastDimExpr(expr3, expr4)};
   BroadcastLeaf leaf = adt::List<std::vector<DimExpr>>{tensor_shape};
-  BroadcastTree tree = ConstructBroadcastTree(leaf);
+  int num_of_leaves = 0;
+  BroadcastTree tree = ConstructBroadcastTree(leaf, &num_of_leaves);
   ASSERT_TRUE(tree.Has<BroadcastBranch<BroadcastTree>>());
   const auto& branch = tree.Get<BroadcastBranch<BroadcastTree>>();
   const auto& [cstr_broadcastable,
@@ -96,7 +97,8 @@ TEST(BroadcastTree, SimplifyConstantBroadcast) {
                                     MakeBroadcastDimExpr(expr1, expr2),
                                     MakeBroadcastDimExpr(expr3, expr4)};
   BroadcastLeaf leaf = adt::List<std::vector<DimExpr>>{tensor_shape};
-  BroadcastTree tree = ConstructBroadcastTree(leaf);
+  int num_of_leaves = 0;
+  BroadcastTree tree = ConstructBroadcastTree(leaf, &num_of_leaves);
   ASSERT_TRUE(tree.Has<BroadcastBranch<BroadcastTree>>());
   const auto& branch = tree.Get<BroadcastBranch<BroadcastTree>>();
   const auto& [cstr_broadcastable,

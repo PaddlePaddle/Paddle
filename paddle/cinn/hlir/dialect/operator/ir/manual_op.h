@@ -168,7 +168,8 @@ class IR_API GenerateShapeOp
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
                     const std::vector<pir::Attribute> &output_dim_exprs,
-                    const SymbolBindings &symbol_bindings);
+                    const SymbolBindings &symbol_bindings,
+                    const pir::Type &output_type);
 
   void VerifySig() {}
 
@@ -182,6 +183,24 @@ class IR_API GenerateShapeOp
       const pir::Attribute &symbol_bindings);
 };
 
+class IR_API GenerateXShapeOp
+    : public pir::Op<GenerateXShapeOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.generate_xshape"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input);
+  void VerifySig() {}
+  pir::Value out() { return result(0); }
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values);
+};
+
 }  // namespace dialect
 }  // namespace cinn
 
@@ -190,4 +209,5 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateXShapeOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

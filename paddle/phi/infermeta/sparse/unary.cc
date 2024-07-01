@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
   // TODO(zhangkaihuo) Currently, we cannot get sparse_dim from tensor.
@@ -51,5 +50,4 @@ void CastInferMeta(const MetaTensor& x,
   }
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse

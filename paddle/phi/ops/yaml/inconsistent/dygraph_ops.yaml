@@ -42,31 +42,6 @@
   backward : assign_grad
   inplace : (x -> out)
 
-- op : assign_out_
-  args : (Tensor x, Tensor output)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : assign
-    param : [x]
-  inplace : (output -> out)
-  backward : assign_out__grad
-
-- op : assign_value_
-  args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
-  output : Tensor(out)
-  inplace: (output -> out)
-  infer_meta :
-    func : AssignValueInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : assign_value
-    param : [shape, dtype, values]
-    data_type : dtype
-    backend : place > output
-
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
@@ -91,19 +66,6 @@
     data_type : weight
   backward : c_embedding_grad
 
-- op : cast
-  args : (Tensor x, DataType dtype)
-  output : Tensor(out)
-  infer_meta :
-    func : CastInferMeta
-    spmd_rule : CastInferSpmd
-  kernel :
-    func : cast
-    param : [x, dtype]
-    data_type : x
-  inplace: (x -> out)
-  backward : cast_grad
-
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
   output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
@@ -113,6 +75,7 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : divide
   args : (Tensor x, Tensor y)
@@ -169,18 +132,6 @@
     func : embedding_grad
     data_type : weight
 
-- op : empty
-  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor(out)
-  infer_meta :
-    func : CreateInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : empty
-    param : [shape, dtype]
-    data_type : dtype
-    backend : place
-
 - op : equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -190,17 +141,7 @@
   kernel :
     func : equal
   inplace: (x -> out)
-
-- op : exponential_
-  args : (Tensor x, float lam)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : exponential
-  inplace : (x -> out)
-  backward : exponential__grad
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : floor_divide
   args : (Tensor x, Tensor y)
@@ -210,16 +151,7 @@
   kernel :
     func : floor_divide
   inplace: (x -> out)
-
-- op : full_with_tensor
-  args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
-  output: Tensor(out)
-  infer_meta :
-    func : FullWithTensorInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : full_with_tensor
-    data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -239,18 +171,6 @@
   backward: fused_gemm_epilogue_grad
   optional: reserve_space
 
-- op : gaussian
-  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
-  output: Tensor(out)
-  infer_meta :
-    func : GaussianInferMeta
-    param : [shape, mean, std, seed, dtype]
-  kernel :
-    func : gaussian
-    param : [shape, mean, std, seed, dtype]
-    data_type : dtype
-    backend : place
-
 - op : greater_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -259,6 +179,7 @@
   kernel :
     func : greater_equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -268,6 +189,7 @@
   kernel :
     func : greater_than
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : hardswish
   args : (Tensor x)
@@ -279,15 +201,6 @@
     func : hardswish
   backward : hardswish_grad
 
-- op : increment
-  args : (Tensor x, float value = 1.0)
-  output : Tensor(out)
-  infer_meta :
-    func : IncrementInferMeta
-  kernel :
-    func : increment
-  inplace : (x -> out)
-
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -296,6 +209,7 @@
   kernel :
     func : less_equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -305,39 +219,7 @@
   kernel :
     func : less_than
   inplace: (x -> out)
-
-- op : linspace
-  args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : LinspaceInferMeta
-    param: [start, stop, number, dtype]
-  kernel :
-    func : linspace
-    param: [start, stop, number, dtype]
-    data_type : dtype
-    backend : place
-
-- op : logspace
-  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta:
-    func : LogspaceInferMeta
-    param : [start, stop, num, base, dtype]
-  kernel :
-    func : logspace
-    param : [start, stop, num, base, dtype]
-    data_type : dtype
-    backend : place
-
-- op : logsumexp
-  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
-  output : Tensor(out)
-  infer_meta :
-    func : LogsumexpInferMeta
-  kernel :
-    func : logsumexp
-  backward : logsumexp_grad
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -348,16 +230,6 @@
   kernel :
     func : matmul
   backward : matmul_grad
-
-- op : max
-  args : (Tensor x, IntArray axis={}, bool keepdim=false)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceIntArrayAxisInferMeta
-    spmd_rule: ReductionMaxInferSpmdDynamic
-  kernel :
-    func : max
-  backward : max_grad
 
 - op : maximum
   args : (Tensor x, Tensor y)
@@ -408,48 +280,7 @@
   kernel :
     func : not_equal
   inplace: (x -> out)
-
-- op : pad
-  args : (Tensor x, int[] paddings, Scalar pad_value)
-  output : Tensor
-  infer_meta :
-    func : PadInferMeta
-  kernel :
-    func : pad
-  backward : pad_grad
-
-- op : prod
-  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
-  output : Tensor
-  infer_meta :
-    func : ReduceIntArrayAxisInferMetaBase
-  kernel :
-    func : prod
-  backward : prod_grad
-
-- op : randint
-  args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : RandintInferMeta
-    param : [low, high, shape, dtype]
-  kernel :
-    func : randint
-    param : [low, high, shape, dtype]
-    data_type : dtype
-    backend : place
-
-- op : randperm
-  args : (int n, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : RandpermInferMeta
-    param : [n, dtype]
-  kernel :
-    func : randperm
-    param : [n, dtype]
-    data_type : dtype
-    backend : place
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : remainder
   args : (Tensor x, Tensor y)
@@ -459,16 +290,7 @@
   kernel :
     func : remainder
   inplace : (x -> out)
-
-- op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : RepeatInterleaveInferMeta
-  kernel :
-    func : repeat_interleave
-    data_type : x
-  backward: repeat_interleave_grad
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : reshape
   args : (Tensor x, IntArray shape)
@@ -485,15 +307,6 @@
   intermediate : xshape
   backward: reshape_grad
 
-- op : sequence_mask
-  args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
-  output: Tensor(y)
-  infer_meta:
-    func: SequenceMaskScalarInferMeta
-  kernel:
-    func: sequence_mask_scalar
-    data_type : x
-
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
@@ -504,16 +317,6 @@
   kernel :
     func : set_value
   backward: set_value_grad
-
-- op : slice
-  args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
-  output : Tensor
-  infer_meta :
-    func : SliceRawInferMeta
-    spmd_rule : SliceInferSpmdDynamic
-  kernel :
-    func : slice
-  backward : slice_grad
 
 - op : softmax
   args : (Tensor x, int axis)
@@ -526,25 +329,6 @@
   inplace : (x -> out)
   backward : softmax_grad
 
-- op : split
-  args : (Tensor x, IntArray sections, Scalar(int) axis)
-  output : Tensor[]{sections.size()}
-  infer_meta :
-    func : SplitInferMeta
-  kernel :
-    func : split
-  backward : split_grad
-
-- op : split_with_num
-  args : (Tensor x, int num, Scalar(int) axis)
-  output : Tensor[]{num}
-  infer_meta :
-    func : SplitWithNumInferMeta
-    spmd_rule : SplitWithNumInferSpmdDynamic
-  kernel :
-    func : split_with_num
-  backward : split_with_num_grad
-
 - op : subtract
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -556,17 +340,6 @@
   inplace : (x -> out)
   backward : subtract_grad
 
-- op : sum
-  args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
-  output : Tensor(out)
-  infer_meta :
-    func : SumInferMeta
-    spmd_rule : ReductionSumInferSpmdDynamic
-  kernel :
-    func : sum
-    data_type : x
-  backward : sum_grad
-
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
   output : Tensor(out)
@@ -576,87 +349,6 @@
   kernel :
     func : tile
   backward : tile_grad
-
-- op : transpose
-  args : (Tensor x, int[] perm)
-  output : Tensor(out)
-  infer_meta :
-    func : TransposeInferMeta
-    spmd_rule: TransposeInferSpmd
-  kernel :
-    func : transpose
-  inplace : (x -> out)
-  backward : transpose_grad
-
-- op : tril
-  args : (Tensor x, int diagonal)
-  output : Tensor(out)
-  infer_meta :
-    func : TrilInferMeta
-  kernel :
-    func : tril
-  inplace: (x -> out)
-  backward : tril_grad
-
-- op : tril_indices
-  args : (int rows, int cols, int offset, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : TrilIndicesInferMeta
-    param : [rows, cols, offset, dtype]
-  kernel :
-    func : tril_indices
-    param : [rows, cols, offset, dtype]
-    data_type : dtype
-    backend : place
-
-- op : triu
-  args : (Tensor x, int diagonal)
-  output : Tensor(out)
-  infer_meta :
-    func : TriuInferMeta
-    spmd_rule : TriuInferSpmd
-  kernel :
-    func : triu
-  inplace: (x -> out)
-  backward : triu_grad
-
-- op : triu_indices
-  args : (int row, int col, int offset, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : TriuIndicesInferMeta
-    param : [row, col, offset, dtype]
-  kernel :
-    func : triu_indices
-    param : [row, col, offset, dtype]
-    data_type : dtype
-    backend : place
-
-# python API: paddle.nn.initializer.TruncatedNormal
-- op : truncated_gaussian_random
-  args : (int[] shape, float mean, float std, int seed, float a, float b, DataType dtype=DataType::FLOAT32, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, a, b, dtype]
-  kernel :
-    func : truncated_gaussian_random
-    param : [shape, mean, std, seed, a, b, dtype]
-    backend : place
-    data_type : dtype
-
-- op : uniform
-  args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : UniformRandomInferMeta
-    param: [shape, dtype]
-  kernel :
-    func : uniform
-    param: [shape, dtype, min, max, seed]
-    data_type : dtype
-    backend : place
 
 # The `axis` argument of Python API paddle.unique is not vector
 - op : unique

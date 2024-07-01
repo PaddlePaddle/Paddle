@@ -11,22 +11,22 @@ endif()
 nv_test(
   tensor_test
   SRCS tensor_test.cc
-  DEPS tensor isfinite_op)
+  DEPS tensor)
 if(WITH_GPU)
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 elseif(WITH_ROCM)
   hip_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 else()
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 endif()
 
 nv_test(
@@ -266,42 +266,6 @@ cc_test(
   test_fleet_cc
   SRCS fleet/test_fleet.cc
   DEPS fleet_wrapper gloo_wrapper framework_io string_helper)
-
-if(WITH_CINN)
-  paddle_test(
-    cinn_cache_key_test
-    SRCS
-    paddle2cinn/cinn_cache_key_test.cc
-    DEPS
-    paddle2cinn
-    graph
-    python)
-  set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
-
-  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc)
-  set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
-  # target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
-
-  paddle_test(cinn_zero_tensor_trick_pass_test SRCS
-              paddle2cinn/cinn_zero_tensor_trick_pass_test.cc DEPS paddle2cinn)
-  set_tests_properties(cinn_zero_tensor_trick_pass_test
-                       PROPERTIES LABELS "RUN_TYPE=CINN")
-  target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
-
-  paddle_test(transform_desc_test SRCS paddle2cinn/transform_desc_test.cc DEPS
-              paddle2cinn)
-  set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
-
-  paddle_test(
-    transform_type_test
-    SRCS
-    paddle2cinn/transform_type_test.cc
-    DEPS
-    paddle2cinn
-    cinnapi
-    cinn_op_dialect)
-  set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
-endif()
 
 cc_test(
   workqueue_test

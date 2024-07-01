@@ -25,8 +25,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 const char ConditionalOp::kInputs[] = "Input";        // NOLINT
 const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
@@ -111,7 +110,8 @@ class ConditionalBlockOp : public ConditionalOp {
         execution_config.skip_gc_vars =
             std::set<std::string>(skip_vars.begin(), skip_vars.end());
         // add for performance in gpugraph transformer mode
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         execution_config.used_for_inference = true;
 #endif
         core_.reset(new InterpreterCore(
@@ -334,8 +334,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block,

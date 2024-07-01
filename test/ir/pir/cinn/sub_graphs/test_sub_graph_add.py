@@ -53,7 +53,8 @@ class TestAdd(TestBase):
             paddle.rand(shape=[22, 196, 128], dtype=paddle.float32),
             paddle.rand(shape=[22, 196, 128], dtype=paddle.float32),
         )
-        self.net = AddCase()
+        self.net = AddCase
+        self.with_train = False
         self.atol = 1e-8
 
 

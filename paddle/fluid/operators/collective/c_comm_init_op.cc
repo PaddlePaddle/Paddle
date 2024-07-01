@@ -42,14 +42,11 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CCommInitOp : public framework::OperatorBase {
  public:
@@ -183,8 +180,7 @@ Initialize collective communication context within this trainer
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

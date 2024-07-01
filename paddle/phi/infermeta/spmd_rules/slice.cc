@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -43,7 +42,10 @@ std::vector<int64_t> BuildOutputAxisToInputAxisMap(
 
 SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& axes,
-                            const std::vector<int64_t>& decrease_axis) {
+                            const std::vector<int64_t>& decrease_axis,
+                            const std::vector<int>& starts,
+                            const std::vector<int>& ends,
+                            const std::vector<int>& strides) {
   // Step0: Verify input args based on slice logic
   auto input_shape = common::vectorize(input.dims());
   int input_ndim = static_cast<int>(input_shape.size());
@@ -75,11 +77,18 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
 
   // Step2.3 get new dist attribute for input. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
+  std::vector<int64_t> input_process_mesh =
+      input_dist_attr_src.process_mesh().shape();
   TensorDistAttr input_dist_attr_dst =
       CopyTensorDistAttrForOutput(input_dist_attr_src);
   for (auto axe : axes) {
     int axis = axe < 0 ? axe + input_ndim : axe;
-    input_dims_mapping[axis] = -1;
+    if (!(axis == (input_ndim - 1) && strides.size() == 1 &&
+          (input_shape[axis] / input_process_mesh[input_dims_mapping[axis]]) %
+                  strides[0] ==
+              0)) {
+      input_dims_mapping[axis] = -1;
+    }
   }
   input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
 
@@ -114,13 +123,16 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
                         const std::vector<int64_t>& decrease_axis) {
   // starts, ends, infer_flags and decrease_axis have no impact on the
   // derivation, only to align with the definition in phi api
-  return SliceInferSpmdBase(input, axes, {});
+  return SliceInferSpmdBase(input, axes, {}, starts, ends, {});
 }
 
 SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
                                    const DistMetaTensor& output,
                                    const std::vector<int64_t>& axes,
-                                   const std::vector<int64_t>& decrease_axis) {
+                                   const std::vector<int64_t>& decrease_axis,
+                                   const std::vector<int>& starts,
+                                   const std::vector<int>& ends,
+                                   const std::vector<int>& strides) {
   auto output_shape = common::vectorize(output.dims());
   int out_ndim = output_shape.size();
   auto out_dist_attr = output.dist_attr();
@@ -164,11 +176,18 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
     out_axes[i] = input_axes[input_axis];
   }
 
+  std::vector<int64_t> input_process_mesh =
+      input_dist_attr.process_mesh().shape();
   for (auto axe : axes) {
     int axis = axe < 0 ? axe + input_ndim : axe;
     // the sliced axis cannot be sharded, set its notation
     // with the special '1' to set its dim mapping to -1.
-    input_axes[axis] = '1';
+    if (!(axis == (input_ndim - 1) && strides.size() == 1 &&
+          (input_shape[axis] / input_process_mesh[input_dims_mapping[axis]]) %
+                  strides[0] ==
+              0)) {
+      input_axes[axis] = '1';
+    }
   }
 
   // Step2: Sharding Propagation
@@ -190,9 +209,16 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // step2.3 get new dist attribute for output. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
   out_dims_mapping = GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
+  std::vector<int64_t> output_process_mesh =
+      out_dist_attr.process_mesh().shape();
   for (auto axe : axes) {
     int axis = axe < 0 ? axe + input_ndim : axe;
-    out_dims_mapping[axis] = -1;
+    if (!(axis == (out_ndim - 1) && strides.size() == 1 &&
+          (output_shape[axis] / output_process_mesh[out_dims_mapping[axis]]) %
+                  strides[0] ==
+              0)) {
+      out_dims_mapping[axis] = -1;
+    }
   }
   auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr);
   out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
@@ -221,7 +247,7 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
                                const std::vector<int64_t>& decrease_axis) {
   // starts, ends, infer_flags and decrease_axis have no impact on the
   // derivation, only to align with the definition in phi api
-  return SliceInferSpmdReverseBase(input, output, axes, {});
+  return SliceInferSpmdReverseBase(input, output, axes, {}, starts, ends, {});
 }
 
 SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
@@ -235,7 +261,7 @@ SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
   std::vector<int> start_indexes(starts.GetData().begin(),
                                  starts.GetData().end());
   std::vector<int> end_indexes(ends.GetData().begin(), ends.GetData().end());
-  return SliceInferSpmdBase(input, axes, decrease_axis);
+  return SliceInferSpmdBase(input, axes, decrease_axis, {}, {}, {});
 }
 
 SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
@@ -258,8 +284,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
         [output_axis_to_input_axis_mapping[i]] = i;
   }
   std::vector<int64_t> mapped_axes;
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (const auto& axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     if (reverse_output_axis_to_input_axis_mapping.count(axis) > 0) {
       mapped_axes.push_back(reverse_output_axis_to_input_axis_mapping[axis]);
     }
@@ -356,6 +382,29 @@ SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
   return SliceGradInferBase(input, out_grad, axes, decrease_axis);
 }
 
+SpmdInfo StridedSliceInferSpmd(const DistMetaTensor& input,
+                               const std::vector<int>& axes,
+                               const std::vector<int>& starts,
+                               const std::vector<int>& ends,
+                               const std::vector<int>& strides) {
+  // starts, ends and strides have no impact on the derivation,
+  // only to align with the definition in phi api
+  std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
+  return SliceInferSpmdBase(input, axes_bridge, {}, starts, ends, strides);
+}
+
+SpmdInfo StridedSliceGradInferSpmd(const DistMetaTensor& input,
+                                   const DistMetaTensor& out_grad,
+                                   const std::vector<int>& axes,
+                                   const std::vector<int>& starts,
+                                   const std::vector<int>& ends,
+                                   const std::vector<int>& strides) {
+  // starts, ends and strides have no impact on the derivation,
+  // only to align with the definition in phi api
+  std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
+  return SliceGradInferBase(input, out_grad, axes_bridge, {});
+}
+
 SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
                                       const std::vector<int>& axes,
                                       const IntArray& starts,
@@ -364,7 +413,7 @@ SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
   // starts, ends and strides have no impact on the derivation,
   // only to align with the definition in phi api
   std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
-  return SliceInferSpmdBase(input, axes_bridge, {});
+  return SliceInferSpmdBase(input, axes_bridge, {}, {}, {}, {});
 }
 
 SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
@@ -379,5 +428,4 @@ SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
   return SliceGradInferBase(input, out_grad, axes_bridge, {});
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

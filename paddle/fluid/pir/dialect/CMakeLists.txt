@@ -37,6 +37,10 @@ set(op_info_file_tmp ${op_info_file}.tmp)
 set(op_vjp_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
+set(cache_grad_op_symbol_shape_file
+    ${PIR_DIALECT_BINARY_DIR}/pd_op_cache_grad_op_symbol_shape.cc)
+set(cache_grad_op_symbol_shape_file_tmp ${cache_grad_op_symbol_shape_file}.tmp)
+
 set(op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op.cc)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
@@ -79,6 +83,9 @@ set(op_src_files_tmp
 
 set(op_vjp_src_file_tmp ${op_vjp_source_file_tmp})
 
+set(op_cc_split_num 4)
+set(bwd_op_cc_split_num 2)
+
 # Auto code gen
 execute_process(
   COMMAND ${PYTHON_EXECUTABLE} ${op_parse_file} --op_yaml_path
@@ -95,15 +102,22 @@ execute_process(
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
     --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
-    --op_vjp_cc_file ${op_vjp_src_file_tmp} --with_distributed
-    ${WITH_DISTRIBUTE})
+    --op_vjp_cc_file ${op_vjp_src_file_tmp} --op_cc_split_num
+    ${op_cc_split_num} --bwd_op_cc_split_num ${bwd_op_cc_split_num}
+    --with_distributed ${WITH_DISTRIBUTE})
+
+set(split_op_source_files
+    ${PIR_DIALECT_BINARY_DIR}/pd_op1.cc ${PIR_DIALECT_BINARY_DIR}/pd_op2.cc
+    ${PIR_DIALECT_BINARY_DIR}/pd_op3.cc ${PIR_DIALECT_BINARY_DIR}/pd_op4.cc)
+set(split_bwd_op_source_files ${PIR_DIALECT_BINARY_DIR}/pd_op_bwd1.cc
+                              ${PIR_DIALECT_BINARY_DIR}/pd_op_bwd2.cc)
 
 set(generated_files_pd_op
     "${op_header_file}"
     "${op_info_file}"
-    "${op_source_file}"
+    "${split_op_source_files}"
+    "${split_bwd_op_source_files}"
     "${op_vjp_source_file}"
-    "${bwd_op_source_file}"
     "${fused_op_source_file}"
     "${bwd_fused_op_source_file}"
     "${pir_op_source_file}"
@@ -177,7 +191,7 @@ set(python_c_header_file_tmp ${python_c_header_file}.tmp)
 set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 
 set(trimmed_op_yaml_files
-    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
+    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml},${pir_op_fwd_sparse_yaml},${pir_op_bfd_sparse_yaml}
 )
 
 execute_process(
@@ -204,10 +218,24 @@ execute_process(
 
 set(generated_files_ops_api "${ops_api_source_file}")
 
+set(cache_grad_op_symbol_shape_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/cache_grad_op_symbol_shape_gen.py
+)
+set(cache_grad_op_shape_yaml_files
+    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml}
+)
+
+execute_process(
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${cache_grad_op_symbol_shape_gen_file} --op_yaml_files
+    ${cache_grad_op_shape_yaml_files} --op_compat_yaml_file
+    ${op_compat_yaml_file} --cache_grad_op_symbol_shape_file
+    ${cache_grad_op_symbol_shape_file_tmp})
+
 set(generated_files_pir
     ${generated_files_pd_op} ${generated_files_onednn_pd_op}
     ${generated_files_pd_api} ${generated_files_python_c}
-    ${generated_files_ops_api})
+    ${generated_files_ops_api} ${cache_grad_op_symbol_shape_file})
 foreach(generated_file ${generated_files_pir})
   if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -247,8 +275,8 @@ set(op_dialect_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_attribute.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_type.cc
     ${op_info_file}
-    ${op_source_file}
-    ${bwd_op_source_file}
+    ${split_op_source_files}
+    ${split_bwd_op_source_files}
     ${fused_op_source_file}
     ${bwd_fused_op_source_file}
     ${pir_op_source_file}
@@ -257,7 +285,8 @@ set(op_dialect_srcs
     ${sparse_op_source_file}
     ${bwd_sparse_op_source_file}
     ${api_source_file}
-    ${api_source_file})
+    ${api_source_file}
+    ${cache_grad_op_symbol_shape_file})
 
 if(WITH_ONEDNN)
   set(op_dialect_srcs

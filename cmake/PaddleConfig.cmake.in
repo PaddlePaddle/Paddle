@@ -12,7 +12,7 @@
 get_filename_component(PADDLE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_FILE}/../.." ABSOLUTE)
 
 # include directories
-set(PADDLE_INCLUDE_DIRS 
+set(PADDLE_INCLUDE_DIRS
     ${PADDLE_INSTALL_PREFIX}/include
     ${PADDLE_INSTALL_PREFIX}/include/third_party
 )

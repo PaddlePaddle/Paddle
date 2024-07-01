@@ -32,8 +32,16 @@ void CumprodKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   const DenseTensor* x = &input;
   auto* x_data = x->data<T>();
-  auto* out_data = dev_ctx.template Alloc<T>(out);
+  auto* out_ptr = dev_ctx.template Alloc<T>(out);
   DDim shape = x->dims();
+  DenseTensor out_tmp;
+  T* out_data = nullptr;
+  if (x_data == out_ptr) {
+    out_tmp.Resize(shape);
+    out_data = dev_ctx.template Alloc<T>(&out_tmp);
+  } else {
+    out_data = out_ptr;
+  }
 
   size_t outer_dim = 1;
   size_t mid_dim = 1;
@@ -87,6 +95,9 @@ void CumprodKernel(const Context& dev_ctx,
         }
       }
     }
+  }
+  if (x_data == out_ptr) {
+    memcpy(out_ptr, out_data, out->numel() * sizeof(T));
   }
 }
 

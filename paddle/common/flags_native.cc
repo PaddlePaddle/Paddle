@@ -25,8 +25,7 @@
 #include <string>
 #include <vector>
 
-namespace paddle {
-namespace flags {
+namespace paddle::flags {
 
 std::stringstream& ErrorStream() {
   static std::stringstream err_ss;
@@ -554,5 +553,4 @@ INSTANTIATE_GET_FROM_ENV(std::string);
 
 #undef INSTANTIATE_GET_FROM_ENV
 
-}  // namespace flags
-}  // namespace paddle
+}  // namespace paddle::flags

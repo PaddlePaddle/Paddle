@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numbers
+from typing import TYPE_CHECKING, Literal, Sequence
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -25,10 +28,25 @@ from paddle.base.framework import (
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+    )
+
 __all__ = []
 
 
-def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
+def normalize(
+    x: Tensor,
+    p: float = 2,
+    axis: int = 1,
+    epsilon: float = 1e-12,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
@@ -47,7 +65,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         p (float|int, optional): The exponent value in the norm formulation. Default: 2.
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the output has the same shape and data type with ``x``.
@@ -82,7 +100,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = paddle.to_tensor([epsilon], dtype=x.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
@@ -120,17 +138,17 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
 def batch_norm(
     x,
-    running_mean,
-    running_var,
-    weight=None,
-    bias=None,
-    training=False,
-    momentum=0.9,
-    epsilon=1e-05,
-    data_format="NCHW",
-    use_global_stats=None,
-    name=None,
-):
+    running_mean: Tensor,
+    running_var: Tensor,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    training: bool = False,
+    momentum: float = 0.9,
+    epsilon: float = 1e-05,
+    data_format: DataLayoutND = 'NCHW',
+    use_global_stats: bool | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -147,7 +165,7 @@ def batch_norm(
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC", where `N` is batch size, `C` is the number of the feature map, `D` is the depth of the feature, `H` is the height of the feature map, `W` is the width of the feature map, `L` is the length of the feature map. Default "NCHW".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
-        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str|None, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
         None
@@ -297,8 +315,13 @@ def batch_norm(
 
 
 def layer_norm(
-    x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
-):
+    x: Tensor,
+    normalized_shape: int | Sequence[int],
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    epsilon: float = 1e-05,
+    name: str | None = None,
+) -> Tensor:
     """
     nn.LayerNorm is recommended.
     For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
@@ -352,8 +375,9 @@ def layer_norm(
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
     if input_ndim < normalized_ndim or (
-        isinstance(normalized_shape[0], int)
-        and input_shape[begin_norm_axis:] != normalized_shape
+        not paddle.utils.is_same_shape(
+            input_shape[begin_norm_axis:], normalized_shape
+        )
     ):
         str_normalized_shape = str(normalized_shape)
         raise ValueError(
@@ -412,33 +436,33 @@ def layer_norm(
 
 
 def instance_norm(
-    x,
-    running_mean=None,
-    running_var=None,
-    weight=None,
-    bias=None,
-    use_input_stats=True,
-    momentum=0.9,
-    eps=1e-05,
-    data_format="NCHW",
-    name=None,
-):
+    x: Tensor,
+    running_mean: Tensor | None = None,
+    running_var: Tensor | None = None,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    use_input_stats: bool = True,
+    momentum: float = 0.9,
+    eps: float = 1e-05,
+    data_format: Literal['NC', 'NCL', 'NCHW', 'NCDHW'] = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     """
     It is recommended to use :ref:`api_paddle_nn_InstanceNorm1D` , :ref:`api_paddle_nn_InstanceNorm2D` , :ref:`api_paddle_nn_InstanceNorm3D` to call this method internally.
 
     Parameters:
-        x(Tensor): Input Tensor. It's data type should be float32, float64.
-        running_mean(Tensor, optional): running mean. Default None. Obsolete (that is, no longer usable).
-        running_var(Tensor, optional): running variance. Default None. Obsolete (that is, no longer usable).
-        weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
+        x (Tensor): Input Tensor. It's data type should be float32, float64.
+        running_mean (Tensor, optional): running mean. Default None. Obsolete (that is, no longer usable).
+        running_var (Tensor, optional): running variance. Default None. Obsolete (that is, no longer usable).
+        weight (Tensor, optional): The weight tensor of instance_norm. Default: None.
             If its value is None, this parameter will be initialized by one.
-        bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
+        bias (Tensor, optional): The bias tensor of instance_norm. Default: None.
             If its value is None, this parameter will be initialized by zero.
-        eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
-        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool, optional): Default True. Obsolete (that is, no longer usable).
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Default "NCHW".
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        eps (float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
+        momentum (float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        use_input_stats (bool, optional): Default True. Obsolete (that is, no longer usable).
+        data_format (str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Default "NCHW".
+        name (str|None, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
         None.
@@ -508,8 +532,14 @@ def instance_norm(
 
 
 def local_response_norm(
-    x, size, alpha=1e-4, beta=0.75, k=1.0, data_format="NCHW", name=None
-):
+    x: Tensor,
+    size: int,
+    alpha: float = 0.0001,
+    beta: float = 0.75,
+    k: float = 1.0,
+    data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
     For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
@@ -542,7 +572,7 @@ def local_response_norm(
             the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
             If x is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
             the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name (str, optional): Name for the operation (optional, default is None). For more information,
+        name (str|None, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -640,14 +670,14 @@ def local_response_norm(
 
 
 def group_norm(
-    x,
-    num_groups,
-    epsilon=1e-05,
-    weight=None,
-    bias=None,
-    data_format='NCHW',
-    name=None,
-):
+    x: Tensor,
+    num_groups: int,
+    epsilon: float = 1e-05,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     """
     nn.GroupNorm is recommended.
     For more information, please refer to :ref:`api_paddle_nn_GroupNorm` .
@@ -662,7 +692,7 @@ def group_norm(
         bias(Tensor, optional): The bias Tensor of group_norm, with shape: attr:`[num_channels]`.
             Default: None.
         data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
-        name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
         Tensor, the output has the same shape with ``x``.

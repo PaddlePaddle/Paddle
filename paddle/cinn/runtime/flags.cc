@@ -56,16 +56,21 @@ PD_DEFINE_string(cinn_kernel_execution_label,
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
                  StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./config/"),
+                               "./tile_file/"),
                  "Label used to name file of tile config database");
+
+PD_DEFINE_string(
+    tile_config_policy,
+    StringFromEnv("FLAGS_tile_config_policy", "default"),
+    "Which config does the compiler use, optimal, custom or default");
 
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
                 "How much thread the parallel compile used.");
 
-PD_DEFINE_bool(cinn_enable_config_search,
-               BoolFromEnv("FLAGS_cinn_enable_config_search", false),
+PD_DEFINE_bool(cinn_measure_kernel_time,
+               BoolFromEnv("FLAGS_cinn_measure_kernel_time", false),
                "Whether to enable schedule config search mode.");
 
 PD_DEFINE_bool(cinn_use_op_fusion,
@@ -87,14 +92,6 @@ PD_DEFINE_bool(cinn_bucket_compile,
 PD_DEFINE_bool(group_schedule_tiling_first,
                BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
                "Whether to enable new group scheduler tiling first strategy.");
-
-PD_DEFINE_bool(support_reduce_stride_read,
-               BoolFromEnv("FLAGS_support_reduce_stride_read", false),
-               "Whether to enable stride read in reduced dim.");
-
-PD_DEFINE_bool(support_trivial_stride_read,
-               BoolFromEnv("FLAGS_support_trivial_stride_read", false),
-               "Whether to enable stride read in trivial dim.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
@@ -286,6 +283,9 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+PD_DEFINE_bool(cinn_check_tensor_buffer_map,
+               BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
+               "Whether to check tensor buffer mapping in cinn ir.");
 
 namespace cinn {
 namespace runtime {
@@ -380,6 +380,16 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
   PADDLE_THROW(phi::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
       "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support HygonDCU, please try to "
+      "recompile with -DWITH_ROCM."));
 #endif
 }
 

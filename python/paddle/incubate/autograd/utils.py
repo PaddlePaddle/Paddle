@@ -309,7 +309,9 @@ def map_output_for_composite(op):
 
 
 def flatten(inp):
-    if inp is None or isinstance(inp, paddle.base.framework.Variable):
+    if inp is None or isinstance(
+        inp, (paddle.base.framework.Variable, paddle.pir.Value)
+    ):
         return [inp]
     flattened = []
     for part in inp:
@@ -323,7 +325,7 @@ def flatten_and_remove_none(inp):
 
 
 def as_tensors(xs):
-    if isinstance(xs, framework.Variable):
+    if isinstance(xs, (framework.Variable, paddle.pir.Value)):
         return (xs,)
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)

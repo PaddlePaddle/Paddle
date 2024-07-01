@@ -25,8 +25,7 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_context.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};  // NOLINT
 const char* ReshardOp::attributes_name[1] = {"op_dist_attr"};      // NOLINT
@@ -346,8 +345,7 @@ void ReshardOp::Build(pir::Builder& builder,
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)

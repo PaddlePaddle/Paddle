@@ -72,8 +72,7 @@ typedef SSIZE_T ssize_t;
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
@@ -1014,6 +1013,11 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
     auto* src_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
             ->unsafe_mutable_value();
+    if (!src_tensor->meta().is_contiguous()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s is not contiguous, cannot call share_buffer_to on it.",
+          self->tensor.name()));
+    }
     if (!dst_ptr->defined()) {
       dst_ptr->set_impl(std::make_shared<phi::distributed::DistTensor>());
     }
@@ -1025,6 +1029,11 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
   } else {
     auto* src_tensor =
         static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (!src_tensor->meta().is_contiguous()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s is not contiguous, cannot call share_buffer_to on it.",
+          self->tensor.name()));
+    }
     if (!dst_ptr->defined()) {
       dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
     }
@@ -3518,5 +3527,4 @@ PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
      nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {nullptr, nullptr, 0, nullptr}};
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

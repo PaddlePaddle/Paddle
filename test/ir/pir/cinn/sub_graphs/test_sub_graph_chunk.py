@@ -45,7 +45,8 @@ class TestChunk(TestBase):
         self.inputs = (
             paddle.rand(shape=[10, 2304, 192], dtype=paddle.float32),
         )
-        self.net = ChunkCase()
+        self.net = ChunkCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

@@ -19,8 +19,7 @@
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
@@ -253,5 +252,4 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

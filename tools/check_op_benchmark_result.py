@@ -21,7 +21,7 @@ import sys
 
 def check_path_exists(path):
     """Assert whether file/directory exists."""
-    assert os.path.exists(path), "%s does not exist." % path
+    assert os.path.exists(path), f"{path} does not exist."
 
 
 def parse_case_name(log_file_name):
@@ -48,7 +48,7 @@ def parse_log_file(log_file):
                 pass  # do nothing
 
     if result is None:
-        logging.warning("Parse %s fail!" % log_file)
+        logging.warning(f"Parse {log_file} fail!")
 
     return result
 
@@ -81,29 +81,29 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
     develop_total_time = develop_data.get("total")
     total_time_diff = (pr_total_time - develop_total_time) / develop_total_time
 
-    logging.info("------ OP: %s ------" % case_name)
+    logging.info(f"------ OP: {case_name} ------")
     logging.info(
         f"GPU time change: {gpu_time_diff_str} (develop: {develop_gpu_time:.7f} -> PR: {pr_gpu_time:.7f})"
     )
     logging.info(
         f"Total time change: {total_time_diff * 100:.5f}% (develop: {develop_total_time:.7f} -> PR: {pr_total_time:.7f})"
     )
-    logging.info("backward: %s" % pr_result.get("backward"))
+    logging.info("backward: {}".format(pr_result.get("backward")))
     logging.info("parameters:")
     for line in pr_result.get("parameters").strip().split("\n"):
-        logging.info("\t%s" % line)
+        logging.info(f"\t{line}")
 
     return gpu_time_diff > 0.05
 
 
 def check_accuracy_result(case_name, pr_result):
     """Check accuracy result."""
-    logging.info("------ OP: %s ------" % case_name)
-    logging.info("Accuracy diff: %s" % pr_result.get("diff"))
-    logging.info("backward: %s" % pr_result.get("backward"))
+    logging.info(f"------ OP: {case_name} ------")
+    logging.info("Accuracy diff: {}".format(pr_result.get("diff")))
+    logging.info("backward: {}".format(pr_result.get("backward")))
     logging.info("parameters:")
     for line in pr_result.get("parameters").strip().split("\n"):
-        logging.info("\t%s" % line)
+        logging.info(f"\t{line}")
 
     return not pr_result.get("consistent")
 
@@ -154,11 +154,11 @@ def update_api_info_file(fail_case_list, api_info_file):
 def summary_results(check_results, api_info_file):
     """Summary results and return sys.exit code."""
     for case_name in check_results["speed"]:
-        logging.error("Check speed result with case \"%s\" failed." % case_name)
+        logging.error(f"Check speed result with case \"{case_name}\" failed.")
 
     for case_name in check_results["accuracy"]:
         logging.error(
-            "Check accuracy result with case \"%s\" failed." % case_name
+            f"Check accuracy result with case \"{case_name}\" failed."
         )
 
     if len(check_results["speed"]) and api_info_file:

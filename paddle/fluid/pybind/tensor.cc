@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
@@ -73,7 +72,6 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -159,10 +157,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -215,7 +209,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
            })
-      .def("_slice", &phi::DenseTensor::Slice)
+      .def("_slice",
+           [](phi::DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
+             if (!self.meta().is_contiguous()) {
+               PADDLE_THROW(platform::errors::InvalidArgument(
+                   "Tensor is not contiguous, cannot call "
+                   "_slice on it."));
+             }
+             return self.Slice(begin_idx, end_idx);
+           })
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
            [](const phi::DenseTensor &self) { return self.IsInitialized(); })
@@ -710,6 +712,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_share_buffer_with",
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
+              if (!src.meta().is_contiguous()) {
+                PADDLE_THROW(platform::errors::InvalidArgument(
+                    "Tensor is not contiguous, cannot call "
+                    "share_buffer_with on it."));
+              }
              auto *cuda_ipc_allocation =
                  dynamic_cast<memory::allocation::CudaIpcAllocation *>(
                      src.Holder().get());

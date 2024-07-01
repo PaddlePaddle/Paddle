@@ -45,13 +45,12 @@ using cinn::common::CINNValuePack;
 
 std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
                                 const cinn::common::Target &target,
-                                poly::StageMap stages,
                                 const int &axis,
                                 const bool &is_ascend,
                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
-  target.arch.Visit(adt::match{
+  target.arch.Match(
       [&](common::UnknownArch) {
         PADDLE_THROW(phi::errors::Fatal(
             "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
@@ -66,7 +65,9 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
       [&](common::NVGPUArch) {
         find_func_name.assign("cinn_nvgpu_next_smallest_int32");
       },
-  });
+      [&](common::HygonDCUArchHIP) {
+        find_func_name.assign("cinn_hip_next_smallest_int32");
+      });
   if (is_ascend) {
     index_func_name =
         cinn::hlir::GetExternFuncName(target, A->type(), "lt_num");
@@ -125,13 +126,11 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
         return idx;
       },
       name);
-  stages->InsertLazily(positions);
   return {res, positions};
 }
 
 std::vector<ir::Tensor> Sort(const ir::Tensor &A,
                              const cinn::common::Target &target,
-                             poly::StageMap stages,
                              const int &axis,
                              const bool &is_ascend,
                              const std::string &name) {
@@ -139,8 +138,7 @@ std::vector<ir::Tensor> Sort(const ir::Tensor &A,
   if (pos_axis < 0) {
     pos_axis += A->shape.size();
   }
-  auto sort_index =
-      ArgSort(A, target, stages, pos_axis, is_ascend, name + "_index");
+  auto sort_index = ArgSort(A, target, pos_axis, is_ascend, name + "_index");
   auto res = Compute(
       A->shape,
       [=](const std::vector<Expr> &indices) {
@@ -149,7 +147,6 @@ std::vector<ir::Tensor> Sort(const ir::Tensor &A,
         return A(A_indices);
       },
       name);
-  stages->InsertLazily(sort_index.at(0));
   return {res, sort_index.at(0), sort_index.at(1)};
 }
 
@@ -180,20 +177,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out =
-            Sort(tensor_A, target, stages, axis, is_ascend, tensor_name);
-        stages->InsertLazily(out[0]);
+            Sort(tensor_A, target, axis, is_ascend, tensor_name);
+
         std::vector<CINNValue> res{
             CINNValue(out[0]), CINNValue(out[1]), CINNValue(out[2])};
         CHECK(!out_type.empty())
             << "Output type of Sort is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
+
         *ret = CINNValuePack{res};
       });
 
@@ -263,21 +259,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({tensor_A});
+
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     CHECK_EQ(pack_args.size(), 3U);
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();
-    auto out = ArgSort(tensor_A, target, stages, axis, is_ascend, tensor_name);
+    auto out = ArgSort(tensor_A, target, axis, is_ascend, tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out.at(0));
-    stages->InsertLazily(out.at(1));
     res.push_back(CINNValue(out.at(0)));
     res.push_back(CINNValue(out.at(1)));
     CHECK(!out_type.empty())
         << "Output type of ArgSort is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 

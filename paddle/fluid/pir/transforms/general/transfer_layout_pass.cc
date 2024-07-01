@@ -278,7 +278,7 @@ struct FlowGraph {
       }
     }
 
-    std::unordered_set<Node> nhwc_nodes;
+    std::unordered_set<Node> mutable_nodes;
     for (auto& op : *(program.block())) {
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
@@ -286,10 +286,14 @@ struct FlowGraph {
         continue;
       }
 
+      if (!layout_transform_iface.CanBeModified(&op)) {
+        continue;
+      }
+
       auto prefer_layout = layout_transform_iface.PreferLayout(&op);
       if (prefer_layout == common::DataLayout::NHWC) {
         Node op_node(&op);
-        nhwc_nodes.insert(op_node);
+        mutable_nodes.insert(op_node);
         AddEdge(op_node, dst_node(), INF);
         VLOG(10) << "[PreProcess] node: " << op_node
                  << " should be set to NHWC";
@@ -302,7 +306,7 @@ struct FlowGraph {
     // operation who have a dertermined layout and spread its layout to
     // its output and inputs recursively.
     std::queue<Node> q;
-    for (auto& n : nhwc_nodes) {
+    for (auto& n : mutable_nodes) {
       q.push(n);
     }
     std::unordered_set<Node> is_node_layout_visited;
@@ -362,13 +366,14 @@ struct FlowGraph {
                   // a point of cut edge. So we set its outputs and inputs to
                   // immutable.
                   Node in_node = Node(v.defining_op());
-                  nhwc_nodes.erase(in_node);
-                  VLOG(10) << "erase node: " << in_node << " from nhwc set";
+                  mutable_nodes.erase(in_node);
+                  VLOG(10) << "erase node: " << in_node << " from mutable set";
 
                   for (auto it = v.use_begin(); it != v.use_end(); ++it) {
                     Node out_node(it->owner());
-                    nhwc_nodes.erase(out_node);
-                    VLOG(10) << "erase node: " << out_node << " from nhwc set";
+                    mutable_nodes.erase(out_node);
+                    VLOG(10)
+                        << "erase node: " << out_node << " from mutable set";
                   }
                 }
                 return !can_be_transformed;
@@ -380,8 +385,8 @@ struct FlowGraph {
         continue;
       }
 
-      VLOG(10) << "add node to nhwc set: " << node;
-      nhwc_nodes.insert(node);
+      VLOG(10) << "add node to mutable set: " << node;
+      mutable_nodes.insert(node);
 
       VLOG(10) << "processing node successor: " << node;
 
@@ -403,7 +408,7 @@ struct FlowGraph {
         continue;
       }
       is_node_layout_visited.insert(node);
-      if (nhwc_nodes.count(node) == 0) {
+      if (mutable_nodes.count(node) == 0) {
         VLOG(10) << "add node to nchw set: " << node;
         AddEdge(src_node(), node, INF);
       }
@@ -542,7 +547,7 @@ using Edge = FlowGraph::Edge;
 
 class TransferLayoutPass : public pir::Pass {
  public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 4) {}
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 2) {}
 
   bool CanApplyOn(pir::Operation* op) const override {
     if (!op->isa<pir::ModuleOp>()) {
@@ -647,7 +652,8 @@ class TransferLayoutPass : public pir::Pass {
 
     VLOG(10)
         << "-----------------------[rewrite begin]------------------------";
-
+    int64_t num_of_layout_changed_ops{0};
+    int64_t num_of_transpose_ops{0};
     while (!q.empty()) {
       auto node = q.front();
       q.pop_front();
@@ -664,6 +670,7 @@ class TransferLayoutPass : public pir::Pass {
           if (layout_transformation_iface) {
             layout_transformation_iface.RewriteByLayout(
                 op, common::DataLayout::NHWC);
+            num_of_layout_changed_ops++;
           } else {
             PADDLE_THROW(common::errors::Unimplemented(
                 "Op %s should have a specialized RewriteByLayout function",
@@ -695,6 +702,7 @@ class TransferLayoutPass : public pir::Pass {
             ((src_set.count(node) > 0) ? common::DataLayout::NHWC
                                        : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(dst_value.defining_op());
+        num_of_transpose_ops++;
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
         transpose_op->set_attribute(
@@ -735,6 +743,7 @@ class TransferLayoutPass : public pir::Pass {
             ((src_set.count(node) > 0) ? common::DataLayout::NHWC
                                        : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(value.defining_op());
+        num_of_transpose_ops++;
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(value, perm);
         transpose_op->set_attribute(
@@ -749,6 +758,7 @@ class TransferLayoutPass : public pir::Pass {
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
+    AddStatistics(num_of_transpose_ops, num_of_layout_changed_ops);
   }
 };
 

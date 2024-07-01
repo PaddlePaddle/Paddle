@@ -27,7 +27,9 @@
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/core/generator.h"
@@ -56,8 +58,7 @@ PHI_DEFINE_EXPORTED_int32(graph_edges_debug_node_num,
                           2,
                           "graph debug node num");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::Load_to_ssd(const std::string &path,
@@ -1831,7 +1832,7 @@ Node *GraphShard::find_node(uint64_t id) {
 }
 
 GraphTable::~GraphTable() {  // NOLINT
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   clear_graph();
 #endif
 }
@@ -1961,7 +1962,7 @@ int32_t GraphTable::parse_edge_and_load(
   }
   tasks.clear();
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (node_num_ > 1) {
     graph_partition(true);
   }
@@ -2036,7 +2037,7 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
   }
   // fix node edge nodes
   fix_feature_node_shards(load_slot);
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (node_num_ > 1) {
     graph_partition(false);
   }
@@ -2221,7 +2222,8 @@ int32_t GraphTable::load_node_and_edge_file(
 }
 
 bool GraphTable::is_key_for_self_rank(const uint64_t &id) {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO) && \
+    defined(PADDLE_WITH_PSCORE)
   thread_local auto ps_wrapper =
       ::paddle::framework::PSGPUWrapper::GetInstance();
   if (FLAGS_graph_edges_split_debug && ps_wrapper->GetRankNum() == 1) {
@@ -2233,7 +2235,8 @@ bool GraphTable::is_key_for_self_rank(const uint64_t &id) {
 #endif
 }
 int GraphTable::partition_key_for_rank(const uint64_t &key) {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO) && \
+    defined(PADDLE_WITH_PSCORE)
   thread_local auto ps_wrapper =
       ::paddle::framework::PSGPUWrapper::GetInstance();
   if (FLAGS_graph_edges_split_debug && ps_wrapper->GetRankNum() == 1) {
@@ -2554,7 +2557,7 @@ int32_t GraphTable::load_edges(const std::string &path,
                                bool reverse_edge,
                                const std::string &edge_type,
                                bool use_weight) {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   if (search_level == 2) total_memory_cost = 0;
 #endif
   int idx = 0;
@@ -2600,7 +2603,7 @@ int32_t GraphTable::load_edges(const std::string &path,
   std::string edge_size = edge_type + ":" + std::to_string(valid_count);
   edge_type_size.push_back(edge_size);
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (search_level == 2) {
     if (count > 0) {
       dump_edges_to_ssd(idx);
@@ -2806,7 +2809,7 @@ int32_t GraphTable::random_sample_neighbors(
           int idy = seq_id[i][k];
           int &actual_size = actual_sizes[idy];
           if (node == nullptr) {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
             if (search_level == 2) {
               VLOG(2) << "enter sample from ssd for node_id " << node_id;
               char *buffer_addr = random_sample_neighbor_from_ssd(
@@ -2843,7 +2846,7 @@ int32_t GraphTable::random_sample_neighbors(
             memcpy(buffer_addr + offset, &id, Node::id_size);
             offset += Node::id_size;
             if (need_weight) {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
               weight = node->get_neighbor_weight(x);
 #else
               weight = 1.0;
@@ -3411,7 +3414,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   task_pool_size_ = graph.task_pool_size();
   build_sampler_on_cpu = graph.build_sampler_on_cpu();
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   _db = NULL;
   search_level = graph.search_level();
   if (search_level >= 2) {
@@ -3451,7 +3454,8 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   node_types_.assign(node_types.begin(), node_types.end());
   auto edge_types = graph.edge_types();
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO) && \
+    defined(PADDLE_WITH_PSCORE)
   auto ps_wrapper = ::paddle::framework::PSGPUWrapper::GetInstance();
   node_id_ = ps_wrapper->GetRankId();
   node_num_ = ps_wrapper->GetRankNum();
@@ -3467,7 +3471,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
           << ", graph_edges_split_only_by_src_id="
           << FLAGS_graph_edges_split_only_by_src_id;
   feat_id_map.resize(node_types.size());
-  for (int k = 0; k < edge_types.size(); k++) {
+  for (int k = 0; k < edge_types.size(); k++) {  // NOLINT
     VLOG(0) << "in initialize: get a edge_type " << edge_types[k];
     edge_to_id[edge_types[k]] = k;
     id_to_edge.push_back(edge_types[k]);
@@ -3540,7 +3544,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   edge_shards.resize(id_to_edge.size());
   node_weight.resize(2);
   node_weight[0].resize(id_to_edge.size());
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   partitions.resize(id_to_edge.size());
 #endif
   edge_shards_keys_.resize(id_to_edge.size());
@@ -3722,5 +3726,4 @@ void GraphTable::build_node_iter_type_keys() {
   VLOG(0) << "finish build_node_iter_type_keys";
 }
 
-}  // namespace distributed
-};  // namespace paddle
+}  // namespace paddle::distributed

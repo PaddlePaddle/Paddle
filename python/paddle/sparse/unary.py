@@ -15,9 +15,14 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
-from paddle.base.framework import convert_np_dtype_to_dtype_, core, dygraph_only
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
+    in_dynamic_or_pir_mode,
+)
 from paddle.common_ops_import import Variable
 from paddle.framework import LayerHelper
 
@@ -43,7 +48,7 @@ def sin(x, name=None):
         out = sin(x)
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -225,7 +230,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
     else:
         if axis is None:
@@ -862,7 +867,7 @@ def reshape(x, shape, name=None):
             [1, 2, 2, 3, 3]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_reshape(x, shape)
     else:
         check_variable_and_dtype(
@@ -932,7 +937,7 @@ def isnan(x, name=None):
                    values=[False, False, False, True ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_isnan(x)
     else:
         op_type = 'sparse_isnan'
@@ -999,7 +1004,7 @@ def slice(x, axes, starts, ends, name=None):
                    values=[-4,  2])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_slice(x, axes, starts, ends)
     else:
         attrs = {'axes': axes, 'starts': starts, 'ends': ends}

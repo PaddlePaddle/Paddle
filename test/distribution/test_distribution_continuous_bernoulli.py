@@ -343,31 +343,6 @@ class ContinuousBernoulliTestError(unittest.TestCase):
 
     @parameterize_func(
         [
-            (-0.1, ValueError),
-            (1.1, ValueError),
-        ]
-    )
-    def test_bad_init(self, probs, error):
-        with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, ContinuousBernoulli, probs)
-
-    @parameterize_func(
-        [
-            (
-                paddle.to_tensor([0.3, 0.5]),
-                paddle.to_tensor([-0.1, 1.2]),
-            ),
-        ]
-    )
-    def test_bad_log_prob_value(self, probs, value):
-        with paddle.base.dygraph.guard(self.place):
-            rv = ContinuousBernoulli(probs)
-            self.assertRaises(ValueError, rv.cdf, value)
-            self.assertRaises(ValueError, rv.log_prob, value)
-            self.assertRaises(ValueError, rv.icdf, value)
-
-    @parameterize_func(
-        [
             (
                 paddle.to_tensor([0.3, 0.5]),
                 paddle.to_tensor([0.2, 0.8, 0.6]),

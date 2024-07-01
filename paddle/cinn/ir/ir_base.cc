@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/ir_base.h"
-
 #include <sstream>
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"
@@ -24,7 +23,6 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/common/enforce.h"
-
 namespace cinn {
 namespace ir {
 
@@ -233,7 +231,10 @@ bool Expr::is_cmp() const {
 }
 
 const Expr &IrNode::operand(int i) {
-  CHECK_LT(i, operands.size());
+  PADDLE_ENFORCE_LT(
+      i,
+      operands.size(),
+      phi::errors::InvalidArgument("The index %d is out of range", i));
   return operands[i];
 }
 

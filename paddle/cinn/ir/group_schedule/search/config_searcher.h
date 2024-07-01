@@ -19,6 +19,7 @@
 #include <map>
 #include <vector>
 
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/pir/include/core/program.h"
@@ -28,7 +29,7 @@ namespace ir {
 namespace search {
 
 using ScoreType = float;
-using CandidateType = std::vector<int>;
+using CandidateType = std::vector<int64_t>;
 using ConstraintFunc = std::function<bool(const CandidateType&)>;
 
 class BaseObjectiveFunc {
@@ -38,22 +39,25 @@ class BaseObjectiveFunc {
 
 class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
  public:
-  WeightedSamplingTrailObjectiveFunc(::pir::Program* program,
-                                     const IterSpace& iter_space,
-                                     double sampling_prob = 1.0,
-                                     int max_sampling_times = 65536,
-                                     int repeats = 10);
+  WeightedSamplingTrailObjectiveFunc(
+      ::pir::Program* program,
+      const BucketInfo& bucket_info,
+      double sampling_prob = 1.0,
+      int max_sampling_times = 65536,
+      int repeats = 80,
+      std::vector<std::vector<double>> weights = {});
 
   ScoreType operator()(const CandidateType& candidate) override;
 
  private:
   ::pir::Program* program_;
-  IterSpace iter_space_;
+  BucketInfo bucket_info_;
   Measurer measurer_;
   double sampling_prob_;
   int max_sampling_times_;
   int repeats_;
   int sampling_times_;
+  std::vector<std::vector<double>> weights_;
   std::vector<std::unordered_map<std::string, std::vector<int64_t>>>
       inputs_sampling_;
 

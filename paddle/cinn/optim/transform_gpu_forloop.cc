@@ -426,7 +426,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
 };
 
 void OptimizeExprGPU(Expr *expr) {
-  VLOG(2) << "Before Optimize Expr:\n" << *expr;
+  VLOG(4) << "Before Optimize Expr:\n" << *expr;
 
   // copy var nodes to prevent one modification leading to multiple changes
   RestructureVarNodes restructure_var_nodes;
@@ -458,7 +458,7 @@ void OptimizeExprGPU(Expr *expr) {
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
 
-  VLOG(2) << "After Optimize Expr: \n" << *expr;
+  VLOG(4) << "After Optimize Expr: \n" << *expr;
 }
 
 }  // namespace optim

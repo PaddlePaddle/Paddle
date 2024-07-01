@@ -14,14 +14,13 @@
 
 from functools import reduce
 
+import paddle
 from legacy_test.nets import simple_img_conv_pool
 from legacy_test.test_dist_base import (
     TestDistRunnerBase,
     _insert_comm_op,
     runtime_main,
 )
-
-import paddle
 from paddle import base
 
 paddle.enable_static()
