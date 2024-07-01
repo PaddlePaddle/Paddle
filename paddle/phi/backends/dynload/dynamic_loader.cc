@@ -350,7 +350,7 @@ void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cublas64_11.dll");
 #else
@@ -371,7 +371,7 @@ void* GetCublasDsoHandle() {
     return nullptr;
   }
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so.11");
 #else
@@ -399,7 +399,7 @@ void* GetCublasDsoHandle() {
 void* GetCublasLtDsoHandle() {
 // APIs available after CUDA 10.1
 #if defined(__linux__) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so.11");
 #else
@@ -487,7 +487,7 @@ void* GetCUPTIDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cupti_dir, "libcupti.dylib", false, {cupti_lib_path});
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
         FLAGS_cupti_dir, "libcupti.so.11.8", false, {cupti_lib_path});
@@ -584,7 +584,7 @@ void* GetCusparseDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cusparse64_11.dll");
 #else
@@ -605,7 +605,7 @@ void* GetCusparseDsoHandle() {
     return nullptr;
   }
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cusparse_dir, "libcusparse.so.11");
 #else
@@ -781,7 +781,7 @@ void* GetCUFFTDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.dylib");
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.10");
 #else
@@ -796,7 +796,7 @@ void* GetCUFFTDsoHandle() {
     return nullptr;
   }
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {  // NOLINT
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cufft64_10.dll");
 #else

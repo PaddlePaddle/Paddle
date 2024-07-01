@@ -103,7 +103,7 @@ int32_t MemoryDenseTable::InitializeOptimizer() {
   auto name = common.name();
   auto attrs = common.attributes();
 
-  if (name == "sgd") {
+  if (name == "sgd") {  // NOLINT
     optimizer_ = std::make_shared<DSGD>(common, &values_);
     optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam") {

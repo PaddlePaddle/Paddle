@@ -779,7 +779,7 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "cf") {
-      if (op.isa<pir::TuplePushOp>()) {
+      if (op.isa<pir::TuplePushOp>()) {  // NOLINT
         CREATE_INSTR(TuplePushInstruction);
       } else if (op.isa<pir::TuplePopOp>()) {
         CREATE_INSTR(TuplePopInstruction);
@@ -892,7 +892,7 @@ void PirInterpreter::BuildInstruction() {
                          .AsString();
       VLOG(6) << "process " << op_name;
 
-      if (op.isa<paddle::dialect::OneDNNPhiKernelOp>()) {
+      if (op.isa<paddle::dialect::OneDNNPhiKernelOp>()) {  // NOLINT
         CREATE_INSTR(OneDNNPhiKernelInstruction);
       } else if (op.isa<paddle::dialect::OneDNNMixedPhiKernelOp>()) {
         CREATE_INSTR(OneDNNMixedPhiKernelInstruction);
