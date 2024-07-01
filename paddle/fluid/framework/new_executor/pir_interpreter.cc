@@ -200,7 +200,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::PirInterpreter(
@@ -289,7 +289,7 @@ PirInterpreter::PirInterpreter(
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::~PirInterpreter() {
@@ -1614,6 +1614,11 @@ void PirInterpreter::TraceRunImpl() {
 
   TraceRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done TraceRunInstructionList";
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
 }
 
 void PirInterpreter::MultiThreadRunImpl() {
@@ -1628,6 +1633,11 @@ void PirInterpreter::MultiThreadRunImpl() {
   async_work_queue_ = GetWorkQueue();
   MultiThreadRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done MultiThreadRunInstructionList";
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
 }
 
 void PirInterpreter::TraceRunInstructionList(

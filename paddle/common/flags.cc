@@ -1289,6 +1289,16 @@ PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
                          "Whether enable fuse_parallel_matmul_pass in cinn.");
 
 /**
+ * CINN fallback fusion ops FLAG
+ * Name: FLAGS_enable_fusion_fallback
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
+                         false,
+                         "Whether enable fallback fusion ops in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1720,6 +1730,11 @@ PHI_DEFINE_EXPORTED_int32(
     -1,
     "Max count of eliminate redundant computation in CSE, for debug usage");
 
+PHI_DEFINE_EXPORTED_bool(
+    use_xqa_optim,
+    false,
+    "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
@@ -1760,3 +1775,32 @@ PHI_DEFINE_EXPORTED_string(
 PHI_DEFINE_EXPORTED_bool(enable_collect_shape,
                          false,
                          "Collect shapes of value for TensorRTEngine");
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp32,
+                           1e-6,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_fp32,
+                           1e-6,
+                           "It controls the rtol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp16,
+                           1e-3,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_fp16,
+                           1e-3,
+                           "It controls the rtol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_bf16,
+                           1e-3,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_bf16,
+                           1e-3,
+                           "It controls the rtol of accuracy_check op");

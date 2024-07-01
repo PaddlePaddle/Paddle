@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from functools import partial
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import NotRequired, Unpack
 
 import paddle
 from paddle import nn
@@ -20,6 +28,14 @@ from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
 from ._utils import _make_divisible
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    class _MobileNetV3Options(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
 
 __all__ = []
 
@@ -51,11 +67,11 @@ class SqueezeExcitation(nn.Layer):
 
     def __init__(
         self,
-        input_channels,
-        squeeze_channels,
-        activation=nn.ReLU,
-        scale_activation=nn.Sigmoid,
-    ):
+        input_channels: int,
+        squeeze_channels: int,
+        activation: type[nn.Layer] = nn.ReLU,
+        scale_activation: type[nn.Layer] = nn.Sigmoid,
+    ) -> None:
         super().__init__()
         self.avgpool = nn.AdaptiveAvgPool2D(1)
         self.fc1 = nn.Conv2D(input_channels, squeeze_channels, 1)
@@ -63,14 +79,14 @@ class SqueezeExcitation(nn.Layer):
         self.activation = activation()
         self.scale_activation = scale_activation()
 
-    def _scale(self, input):
+    def _scale(self, input: Tensor) -> Tensor:
         scale = self.avgpool(input)
         scale = self.fc1(scale)
         scale = self.activation(scale)
         scale = self.fc2(scale)
         return self.scale_activation(scale)
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         scale = self._scale(input)
         return scale * input
 
@@ -78,14 +94,14 @@ class SqueezeExcitation(nn.Layer):
 class InvertedResidualConfig:
     def __init__(
         self,
-        in_channels,
-        kernel,
-        expanded_channels,
-        out_channels,
-        use_se,
-        activation,
-        stride,
-        scale=1.0,
+        in_channels: int,
+        kernel: int,
+        expanded_channels: int,
+        out_channels: int,
+        use_se: bool,
+        activation: str,
+        stride: int,
+        scale: float = 1.0,
     ):
         self.in_channels = self.adjust_channels(in_channels, scale=scale)
         self.kernel = kernel
@@ -114,15 +130,15 @@ class InvertedResidualConfig:
 class InvertedResidual(nn.Layer):
     def __init__(
         self,
-        in_channels,
-        expanded_channels,
-        out_channels,
-        filter_size,
-        stride,
-        use_se,
-        activation_layer,
-        norm_layer,
-    ):
+        in_channels: int,
+        expanded_channels: int,
+        out_channels: int,
+        filter_size: int,
+        stride: int,
+        use_se: bool,
+        activation_layer: type[nn.Layer],
+        norm_layer: type[nn.Layer],
+    ) -> None:
         super().__init__()
         self.use_res_connect = stride == 1 and in_channels == out_channels
         self.use_se = use_se
@@ -167,7 +183,7 @@ class InvertedResidual(nn.Layer):
             activation_layer=None,
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         identity = x
         if self.expand:
             x = self.expand_conv(x)
@@ -193,9 +209,18 @@ class MobileNetV3(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
     """
 
+    scale: float
+    num_classes: int
+    with_pool: bool
+
     def __init__(
-        self, config, last_channel, scale=1.0, num_classes=1000, with_pool=True
-    ):
+        self,
+        config: list[InvertedResidualConfig],
+        last_channel: int,
+        scale: float = 1.0,
+        num_classes: int = 1000,
+        with_pool: bool = True,
+    ) -> None:
         super().__init__()
 
         self.config = config
@@ -257,7 +282,7 @@ class MobileNetV3(nn.Layer):
                 nn.Linear(self.last_channel, num_classes),
             )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv(x)
         x = self.blocks(x)
         x = self.lastconv(x)
@@ -301,7 +326,12 @@ class MobileNetV3Small(MobileNetV3):
             [1, 1000]
     """
 
-    def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
+    def __init__(
+        self,
+        scale: float = 1.0,
+        num_classes: int = 1000,
+        with_pool: bool = True,
+    ) -> None:
         config = [
             InvertedResidualConfig(16, 3, 16, 16, True, "relu", 2, scale),
             InvertedResidualConfig(16, 3, 72, 24, False, "relu", 2, scale),
@@ -354,7 +384,12 @@ class MobileNetV3Large(MobileNetV3):
             [1, 1000]
     """
 
-    def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
+    def __init__(
+        self,
+        scale: float = 1.0,
+        num_classes: int = 1000,
+        with_pool: bool = True,
+    ) -> None:
         config = [
             InvertedResidualConfig(16, 3, 16, 16, False, "relu", 1, scale),
             InvertedResidualConfig(16, 3, 64, 24, False, "relu", 2, scale),
@@ -400,7 +435,12 @@ class MobileNetV3Large(MobileNetV3):
         )
 
 
-def _mobilenet_v3(arch, pretrained=False, scale=1.0, **kwargs):
+def _mobilenet_v3(
+    arch: str,
+    pretrained: bool = False,
+    scale: float = 1.0,
+    **kwargs: Unpack[_MobileNetV3Options],
+) -> MobileNetV3:
     if arch == "mobilenet_v3_large":
         model = MobileNetV3Large(scale=scale, **kwargs)
     else:
@@ -419,7 +459,11 @@ def _mobilenet_v3(arch, pretrained=False, scale=1.0, **kwargs):
     return model
 
 
-def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
+def mobilenet_v3_small(
+    pretrained: bool = False,
+    scale: float = 1.0,
+    **kwargs: Unpack[_MobileNetV3Options],
+) -> MobileNetV3Small:
     """MobileNetV3 Small architecture model from
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
@@ -458,7 +502,11 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
     return model
 
 
-def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
+def mobilenet_v3_large(
+    pretrained: bool = False,
+    scale: float = 1.0,
+    **kwargs: Unpack[_MobileNetV3Options],
+) -> MobileNetV3Large:
     """MobileNetV3 Large architecture model from
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 

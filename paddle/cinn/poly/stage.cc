@@ -37,7 +37,7 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace poly {
 void RemoveDuplicate(std::vector<std::vector<Expr>> &indices) {  // NOLINT
@@ -111,8 +111,11 @@ int Stage::GetDimRange(int level) {
   auto &maxv = std::get<1>(_minv_maxv_);
   int max_iv = maxv.get_num_si();
   int min_iv = minv.get_num_si();
-  CHECK_EQ(0, min_iv) << "The min range of level " << level << " in " << id()
-                      << " is not 0!";
+  PADDLE_ENFORCE_EQ(
+      0,
+      min_iv,
+      phi::errors::InvalidArgument(
+          "The min value of the axis should be 0, but got %d", min_iv));
   return max_iv + 1;
 }
 
@@ -120,7 +123,10 @@ std::tuple<Iterator, Iterator> Stage::SplitOuter(const Iterator &level,
                                                  int nparts) {
   int offset = isl_set_find_dim_by_name(
       transformed_domain().get(), isl_dim_set, level.id.c_str());
-  CHECK_GE(offset, 0) << "iterator " << level << " not in " << domain_;
+  PADDLE_ENFORCE_GE(
+      offset,
+      0,
+      phi::errors::InvalidArgument("Offset must greater or equal to 0."));
   AssertAxisIsNotLocked(offset);
   auto _minv_maxv_ = isl_set_get_axis_range(transformed_domain().get(), offset);
   auto &minv = std::get<0>(_minv_maxv_);
@@ -142,7 +148,10 @@ std::tuple<Iterator, Iterator> Stage::Split(int level, int factor) {
 std::tuple<Iterator, Iterator> Stage::Split(const Iterator &level, int factor) {
   int offset = isl_set_find_dim_by_name(
       transformed_domain().get(), isl_dim_set, level.id.c_str());
-  CHECK_GE(offset, 0) << "iterator " << level << " not in " << domain_;
+  PADDLE_ENFORCE_GE(
+      offset,
+      0,
+      phi::errors::InvalidArgument("Offset must greater or equal to 0."));
   AssertAxisIsNotLocked(offset);
 
   auto dim_names = isl_get_dim_names(transform_, isl_dim_out);
@@ -211,7 +220,11 @@ void Stage::Reorder(const std::vector<Iterator> &order) {
     }
   }
 
-  CHECK_EQ(range_iters.size(), in_names.size());
+  PADDLE_ENFORCE_EQ(
+      range_iters.size(),
+      in_names.size(),
+      phi::errors::InvalidArgument(
+          "The size of range_iters should be equal to in_names.size."));
 
   Map transform(domain().ctx(), id(), domain_iters, range_iters, {}, id());
   transform_ = transform_.apply_range(transform.to_isl());
@@ -561,7 +574,11 @@ void Stage::ComputeAt(Stage *other, int level) {
     LOG(ERROR) << "No Access Relation between [" << other->id() << "] and ["
                << this->id() << "]! Please check.";
   }
-  CHECK_EQ(indices.size(), 1) << "indices.size > 1 is not supported yet";
+  PADDLE_ENFORCE_EQ(
+      indices.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of indices should be 1, but got %d", indices.size()));
   std::vector<std::string> target_dims = isl_get_dim_names(other->domain());
   std::set<std::string> target_dims_set;
   for (auto &i : target_dims) {
@@ -743,7 +760,11 @@ void Stage::ComputeAt(Stage *other, int level) {
 void Stage::ComputeAt2(Stage *other, int level) {
   // TODO(Superjomn) Check there are data dependency between `self` and `other`,
   // or the `ComputeAt` is meaningless.
-  CHECK_GE(level, 0) << "level param of ComputeAt2 must be >= 0. Please check!";
+  PADDLE_ENFORCE_GE(
+      level,
+      0,
+      phi::errors::InvalidArgument(
+          "level param of ComputeAt2 must be >= 0. Please check!"));
   this->ChangeDomain(other, level);
   this->CopyTransform(other, level);
   this->ChangeIndex(other);
@@ -829,8 +850,14 @@ Iterator Stage::Fuse(int level0, int level1) {
   AssertAxisIsNotLocked(level0);
   AssertAxisIsNotLocked(level1);
   auto dims = isl_get_dim_names(transformed_domain());
-  CHECK_LT(level0, dims.size());
-  CHECK_LT(level1, dims.size());
+  PADDLE_ENFORCE_LT(level0,
+                    dims.size(),
+                    phi::errors::InvalidArgument(
+                        "level0 should be less than the size of dims"));
+  PADDLE_ENFORCE_LT(level1,
+                    dims.size(),
+                    phi::errors::InvalidArgument(
+                        "level1 should be less than the size of dims"));
 
   Iterator iter0(dims[level0]);
   Iterator iter1(dims[level1]);
@@ -842,7 +869,10 @@ Iterator Stage::Fuse(const std::vector<int> &levels) {
   auto dims = isl_get_dim_names(transformed_domain());
   for (auto i : levels) {
     AssertAxisIsNotLocked(i);
-    CHECK_LT(i, dims.size());
+    PADDLE_ENFORCE_LT(i,
+                      dims.size(),
+                      phi::errors::InvalidArgument(
+                          "level should be less than the size of dims"));
   }
   Iterator fused_axis(dims[levels[0]]);
   for (size_t i = 1; i < levels.size(); i++) {
@@ -859,7 +889,10 @@ Iterator Stage::FuseDirect(const std::vector<int> &levels) {
   auto dims = isl_get_dim_names(transformed_domain());
   for (auto i : levels) {
     AssertAxisIsNotLocked(i);
-    CHECK_LT(i, dims.size());
+    PADDLE_ENFORCE_LT(i,
+                      dims.size(),
+                      phi::errors::InvalidArgument(
+                          "level should be less than the size of dims"));
   }
   std::vector<Iterator> iterators;
   for (size_t i = 0; i < levels.size(); i++) {
@@ -869,16 +902,21 @@ Iterator Stage::FuseDirect(const std::vector<int> &levels) {
 }
 
 Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
-  CHECK_GT(levels.size(), 1);
+  PADDLE_ENFORCE_GT(levels.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The size of levels should be greater than 1"));
   std::vector<int> offsets;
   std::string new_iter_name;
   for (auto &level : levels) {
     int offset = isl_set_find_dim_by_name(
         transformed_domain().get(), isl_dim_set, level.id.c_str());
     if (!offsets.empty())
-      CHECK_EQ(offsets.back() + 1, offset)
-          << "level [" << offsets.back() << "] and level [" << offset
-          << "] should be adjancent";
+      PADDLE_ENFORCE_EQ(
+          offsets.back() + 1,
+          offset,
+          phi::errors::InvalidArgument(
+              "level offsets.back and level offset should be adjancent"));
     AssertAxisIsNotLocked(offset);
     offsets.push_back(offset);
     new_iter_name += utils::StringFormat("%s_", level.id.c_str());
@@ -966,8 +1004,10 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
       transformed_domain().get(), isl_dim_set, level0.id.c_str());
   int offset1 = isl_set_find_dim_by_name(
       transformed_domain().get(), isl_dim_set, level1.id.c_str());
-  CHECK_EQ(offset1, offset0 + 1) << "level [" << level0.id << "] and level ["
-                                 << level1.id << "] should be adjancent";
+  PADDLE_ENFORCE_EQ(offset1,
+                    offset0 + 1,
+                    phi::errors::InvalidArgument(
+                        "level offset1 and level offset0 + 1 should be same"));
   AssertAxisIsNotLocked(offset0);
   AssertAxisIsNotLocked(offset1);
 
@@ -1076,12 +1116,21 @@ void Stage::ShowISL() const {
 }
 
 bool ComputeAtRelation::IsCompatible(Stage *self) {
-  CHECK_GE(level, 0);
+  PADDLE_ENFORCE_GE(level,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "level should be greater than or equal to 0"));
   CHECK(!self->domain().is_null());
   CHECK(!stage->domain().is_null());
 
-  CHECK_LE(level, isl_set_dim(self->transformed_domain().get(), isl_dim_set));
-  CHECK_LE(level, isl_set_dim(stage->transformed_domain().get(), isl_dim_set));
+  PADDLE_ENFORCE_LE(
+      level,
+      isl_set_dim(self->transformed_domain().get(), isl_dim_set),
+      phi::errors::InvalidArgument("level should be less than the dim of set"));
+  PADDLE_ENFORCE_LE(
+      level,
+      isl_set_dim(stage->transformed_domain().get(), isl_dim_set),
+      phi::errors::InvalidArgument("level should be less than the dim of set"));
 
   int level_without_reduce_axis = level;
   if (self->tensor()) {
@@ -1120,9 +1169,18 @@ bool ComputeAtRelation::IsCompatible(Stage *self) {
 
 void Stage::Vectorize(int level, int factor) {
   AssertAxisIsNotLocked(level);
-  CHECK_GE(level, 0);
-  CHECK_LT(level, n_out_dims());
-  CHECK_GT(factor, 0);
+  PADDLE_ENFORCE_GE(level,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "level should be greater than or equal to 0"));
+  PADDLE_ENFORCE_LT(level,
+                    n_out_dims(),
+                    phi::errors::InvalidArgument(
+                        "level should be less than the dim of out dims"));
+  PADDLE_ENFORCE_GT(
+      factor,
+      0,
+      phi::errors::InvalidArgument("factor should be greater than 0"));
   if (factor == 1) {
     VLOG(3) << "Vectorize-factor 1 has no sense, skip it";
     return;
@@ -1162,7 +1220,10 @@ void Stage::Parallel(const std::string &axis) {
 void Stage::Parallel(const Iterator &axis) { return Parallel(axis.id); }
 
 void Stage::Parallel(int level) {
-  CHECK_GE(level, 0);
+  PADDLE_ENFORCE_GE(level,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "level should be greater than or equal to 0"));
   AssertAxisIsNotLocked(level);
   auto transformed_domain = this->transformed_domain();
   VLOG(3) << "transformed_domain" << transformed_domain;
@@ -1178,7 +1239,10 @@ void Stage::Parallel(int level) {
 }
 
 void Stage::Unroll(int level) {
-  CHECK_GE(level, 0);
+  PADDLE_ENFORCE_GE(level,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "level should be greater than or equal to 0"));
   AssertAxisIsNotLocked(level);
   auto transformed_domain = this->transformed_domain();
   if (isl_is_removed_axis(transformed_domain.get(), level)) {
@@ -1194,7 +1258,10 @@ void Stage::Unroll(int level) {
 
 std::string Stage::ith_dim_name(int level) {
   auto dims = isl_get_dim_names(transformed_domain());
-  CHECK_LT(level, dims.size());
+  PADDLE_ENFORCE_LT(level,
+                    dims.size(),
+                    phi::errors::InvalidArgument(
+                        "level should be less than the size of dims"));
   return dims[level];
 }
 
@@ -1251,7 +1318,10 @@ std::vector<std::string> Stage::origin_reduce_axis_names() {
 }
 
 void Stage::Bind(int level, const std::string &axis) {
-  CHECK_LT(level, n_out_dims());
+  PADDLE_ENFORCE_LT(level,
+                    n_out_dims(),
+                    phi::errors::InvalidArgument(
+                        "level should be less than the dim of out dims"));
   LockAxis(level);
 
   if (axis == "threadIdx.x" || axis == "threadIdx.y" || axis == "threadIdx.z") {
@@ -1271,7 +1341,10 @@ void Stage::Bind(int level, const std::string &axis) {
 
 Iterator Stage::axis(int i) const {
   auto names = axis_names();
-  CHECK_LT(i, names.size());
+  PADDLE_ENFORCE_LT(
+      i,
+      names.size(),
+      phi::errors::InvalidArgument("i should be less than the size of names"));
   return Iterator(names[i]);
 }
 Iterator Stage::axis(const std::string &i) const {
@@ -1298,9 +1371,15 @@ void Stage::SyncThreads(StageMap stages) {
       Context::Global().NewName("syncthreads"));
 
   stages->Insert(sync_threads, ir::CreateStage(sync_threads).get());
-  CHECK_EQ(sync_threads->type(), Void());
+  PADDLE_ENFORCE_EQ(
+      sync_threads->type(),
+      Void(),
+      phi::errors::InvalidArgument("sync_threads type should be void"));
   stages[sync_threads]->CtrlDepend(this_tensor);
-  CHECK_LE(this->compute_ats().size(), 1);
+  PADDLE_ENFORCE_LE(this->compute_ats().size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "compute_ats size should be less than or equal to 1"));
   for (auto &compute_at : this->compute_ats()) {
     isl::set sync_domain(
         compute_at.stage->domain().ctx(),
@@ -1351,7 +1430,10 @@ void Stage::SyncThreads(int level,
       Context::Global().NewName("syncthreads"));
 
   stages->Insert(sync_threads, ir::CreateStage(sync_threads).get());
-  CHECK_EQ(sync_threads->type(), Void());
+  PADDLE_ENFORCE_EQ(
+      sync_threads->type(),
+      Void(),
+      phi::errors::InvalidArgument("sync_threads type should be void"));
   this->CtrlDepend(sync_threads);
 
   for (auto &other : before_tensors) {
@@ -1605,8 +1687,14 @@ isl_map *__isl_give GatherAccesses(Stage *stage,
 void Stage::AddForloopInfo(int level, const StageForloopInfo &info) {
   cuda_bind_info_ = true;
   int num_levels = isl_map_dim(transform_.get(), isl_dim_out);
-  CHECK_GE(level, 0);
-  CHECK_LT(level, num_levels);
+  PADDLE_ENFORCE_GE(level,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "level should be greater than or equal to 0"));
+  PADDLE_ENFORCE_LT(level,
+                    num_levels,
+                    phi::errors::InvalidArgument(
+                        "level should be less than the num of levels"));
   auto transformed_domain = this->transformed_domain();
   int removed_axes_counts =
       isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
@@ -1797,17 +1885,26 @@ void Stage::CopyLoopInfo(Stage *other) {
 }
 
 void Stage::LockAxis(uint32_t level) {
-  CHECK_LT(level, n_out_dims()) << "axis level out of range";
+  PADDLE_ENFORCE_LT(level,
+                    n_out_dims(),
+                    phi::errors::InvalidArgument(
+                        "level should be less than the dim of out dims"));
   locked_axis_.insert(level);
 }
 
 void Stage::UnlockAxis(uint32_t level) {
-  CHECK_LT(level, n_out_dims()) << "axis level out of range";
+  PADDLE_ENFORCE_LT(level,
+                    n_out_dims(),
+                    phi::errors::InvalidArgument(
+                        "level should be less than the dim of out dims"));
   locked_axis_.erase(level);
 }
 
 bool Stage::is_axis_locked(uint32_t level) const {
-  CHECK_LT(level, n_out_dims()) << "axis level out of range";
+  PADDLE_ENFORCE_LT(level,
+                    n_out_dims(),
+                    phi::errors::InvalidArgument(
+                        "level should be less than the dim of out dims"));
   return locked_axis_.count(level);
 }
 
@@ -1821,7 +1918,10 @@ int Stage::GetTransformedLevel(int level) {
     // The ComputeAt schedule will insert some consumer axis in the preceding of
     // this, so the raw before ComputeAt should add the numbers of axis
     // inserted.
-    CHECK_EQ(compute_ats().size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        compute_ats().size(),
+        1UL,
+        phi::errors::InvalidArgument("compute_ats size should be 1"));
     auto &compute_at = compute_ats().front();
     return compute_at.level + level + 1;
   }
@@ -1881,26 +1981,6 @@ Stage *_StageMap_::InsertLazily(const ir::Tensor &key, Stage *stage) {
   CHECK(stage);
   data_[key->name].Reset(stage);
   return stage;
-}
-
-StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
-  StageMap stages;
-
-  std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
-
-  for (auto &tensor : tensors) {
-    auto used_tensors = ir::ir_utils::CollectIRNodes(
-        tensor->body(), [](const Expr *x) { return x->as_tensor(); });
-    for (const Expr &x : used_tensors) {
-      all_tensors.insert(x.as_tensor_ref());
-    }
-  }
-
-  for (auto &t : all_tensors) {
-    stages->Insert(t, ir::CreateStage(t).get());
-  }
-
-  return stages;
 }
 
 Stage *_StageMap_::Lookup(const std::string &name) const {

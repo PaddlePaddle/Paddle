@@ -16,14 +16,11 @@
 
 #include <string>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class ProgramDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
     const OpVariant &fwd_op, const OpVariant &bwd_op) {
@@ -205,5 +202,4 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
       program, &fwd_ops, &bwd_ops);
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators

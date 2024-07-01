@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import typing
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
+from typing import Any, Iterator, Sequence
+
+from typing_extensions import Self
 
 from ...base.dygraph.base import param_guard
 from ...base.framework import Parameter
 from .layers import Layer
+
+if typing.TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -67,30 +76,38 @@ class LayerDict(Layer):
 
     """
 
-    def __init__(self, sublayers=None):
+    def __init__(
+        self,
+        sublayers: (
+            LayerDict
+            | typing.Mapping[str, Layer]
+            | Sequence[tuple[str, Layer]]
+            | None
+        ) = None,
+    ) -> None:
         super().__init__()
         if sublayers is not None:
             self.update(sublayers)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Layer:
         return self._sub_layers[key]
 
-    def __setitem__(self, key, sublayer):
+    def __setitem__(self, key: str, sublayer: Layer) -> Layer:
         return self.add_sublayer(key, sublayer)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._sub_layers[key]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._sub_layers)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._sub_layers)
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return key in self._sub_layers
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Clear all the sublayers in the LayerDict.
 
@@ -120,7 +137,7 @@ class LayerDict(Layer):
         """
         self._sub_layers.clear()
 
-    def pop(self, key):
+    def pop(self, key: str) -> Layer:
         """
         Remove the key from the LayerDict and return the layer of the key.
 
@@ -152,7 +169,7 @@ class LayerDict(Layer):
         del self[key]
         return v
 
-    def keys(self):
+    def keys(self) -> Iterable[str]:
         """
         Return the iterable of the keys in LayerDict.
 
@@ -181,7 +198,7 @@ class LayerDict(Layer):
         """
         return self._sub_layers.keys()
 
-    def items(self):
+    def items(self) -> Iterable[tuple[str, Layer]]:
         """
         Return the iterable of the key/value pairs in LayerDict.
 
@@ -210,7 +227,7 @@ class LayerDict(Layer):
         """
         return self._sub_layers.items()
 
-    def values(self):
+    def values(self) -> Iterable[Layer]:
         """
         Return the iterable of the values in LayerDict.
 
@@ -239,7 +256,12 @@ class LayerDict(Layer):
         """
         return self._sub_layers.values()
 
-    def update(self, sublayers):
+    def update(
+        self,
+        sublayers: (
+            LayerDict | typing.Mapping[str, Layer] | Sequence[tuple[str, Layer]]
+        ),
+    ) -> None:
         """
         Update the key/values pairs in sublayers to the LayerDict, overwriting the existing keys.
 
@@ -353,29 +375,29 @@ class ParameterList(Layer):
             [5, 4]
     """
 
-    def __init__(self, parameters=None):
+    def __init__(self, parameters: Iterable[Tensor] | None = None) -> None:
         super().__init__()
         if parameters is not None:
             for idx, param in enumerate(parameters):
                 assert isinstance(param, Parameter)
                 self.add_parameter(str(idx), param)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tensor:
         with param_guard(self._parameters):
             return self._parameters[str(idx)]
 
-    def __setitem__(self, idx, param):
+    def __setitem__(self, idx: int, param: Tensor) -> None:
         assert isinstance(param, Parameter)
         setattr(self, str(idx), param)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._parameters)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tensor]:
         with param_guard(self._parameters):
             return iter(self._parameters.values())
 
-    def append(self, parameter):
+    def append(self, parameter: Tensor) -> Self:
         """Appends a given parameter at the end of the list.
 
         Parameters:
@@ -412,13 +434,13 @@ class LayerList(Layer):
             ...         return x
     """
 
-    def __init__(self, sublayers=None):
+    def __init__(self, sublayers: Iterable[Layer] | None = None) -> None:
         super().__init__()
         if sublayers is not None:
             for idx, layer in enumerate(sublayers):
                 self.add_sublayer(str(idx), layer)
 
-    def _get_abs_idx(self, idx):
+    def _get_abs_idx(self, idx: int) -> int:
         if isinstance(idx, int):
             if not (-len(self) <= idx < len(self)):
                 raise IndexError(
@@ -428,18 +450,18 @@ class LayerList(Layer):
                 idx += len(self)
         return idx
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Layer:
         if isinstance(idx, slice):
             return self.__class__(list(self._sub_layers.values())[idx])
         else:
             idx = self._get_abs_idx(idx)
             return self._sub_layers[str(idx)]
 
-    def __setitem__(self, idx, sublayer):
+    def __setitem__(self, idx: int, sublayer: Layer) -> None:
         idx = self._get_abs_idx(idx)
         return setattr(self, str(idx), sublayer)
 
-    def __delitem__(self, idx):
+    def __delitem__(self, idx: int) -> None:
         if isinstance(idx, slice):
             for k in range(len(self._sub_layers))[idx]:
                 delattr(self, str(k))
@@ -451,13 +473,13 @@ class LayerList(Layer):
             list(zip(str_indices, self._sub_layers.values()))
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._sub_layers)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Layer]:
         return iter(self._sub_layers.values())
 
-    def append(self, sublayer):
+    def append(self, sublayer: Layer) -> Self:
         """
         Appends a sublayer to the end of the list.
 
@@ -478,7 +500,7 @@ class LayerList(Layer):
         self.add_sublayer(str(len(self)), sublayer)
         return self
 
-    def insert(self, index, sublayer):
+    def insert(self, index: int, sublayer: Layer) -> None:
         """
         Insert a sublayer before a given index in the list.
 
@@ -510,7 +532,7 @@ class LayerList(Layer):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer
 
-    def extend(self, sublayers):
+    def extend(self, sublayers: Iterable[Layer]) -> Self:
         """
         Appends sublayers to the end of the list.
 
@@ -575,7 +597,7 @@ class Sequential(Layer):
 
     """
 
-    def __init__(self, *layers):
+    def __init__(self, *layers: Layer | tuple[str, Layer] | list[Any]) -> None:
         super().__init__()
         if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
@@ -584,7 +606,7 @@ class Sequential(Layer):
             for idx, layer in enumerate(layers):
                 self.add_sublayer(str(idx), layer)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str | slice | int) -> Layer:
         if isinstance(name, slice):
             return self.__class__(*(list(self._sub_layers.values())[name]))
         elif isinstance(name, str):
@@ -598,19 +620,19 @@ class Sequential(Layer):
                 raise IndexError(f'index {name} is out of range')
             return list(self._sub_layers.values())[name]
 
-    def __setitem__(self, name, layer):
+    def __setitem__(self, name: str, layer: Layer) -> None:
         assert isinstance(layer, Layer)
         setattr(self, str(name), layer)
 
-    def __delitem__(self, name):
+    def __delitem__(self, name: str) -> None:
         name = str(name)
         assert name in self._sub_layers
         del self._sub_layers[name]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._sub_layers)
 
-    def forward(self, input):
+    def forward(self, input: Any) -> Any:
         for layer in self._sub_layers.values():
             input = layer(input)
         return input

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -181,6 +182,46 @@ class TestFleetDygraph(unittest.TestCase):
             adam.set_state_dict(state_dict)
 
             final_strategy = fleet._final_strategy()
+
+
+class TestFleetBaseSingleError(unittest.TestCase):
+    def setUp(self):
+        os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
+
+    def gen_data(self):
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+        }
+
+    def test_single_run_collective_minimize(self):
+        def test_single_error():
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
+            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=fc_1, size=2, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
+            avg_cost = paddle.mean(x=cost)
+            fleet.init(is_collective=True)
+
+        # in non_distributed mode(use `python` to launch), raise error if has multi cards
+        if (
+            base.core.is_compiled_with_cuda()
+            and base.core.get_cuda_device_count() > 1
+        ):
+            self.assertRaises(ValueError, test_single_error)
+        else:
+            test_single_error()
 
 
 if __name__ == "__main__":

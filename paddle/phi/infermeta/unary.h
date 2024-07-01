@@ -33,6 +33,11 @@ struct MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out);
+
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,
@@ -67,6 +72,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
+
+void BipartiteMatchInferMeta(const MetaTensor& dist_mat,
+                             const std::string& match_type,
+                             float dist_threshold,
+                             MetaTensor* col_to_row_match_indices,
+                             MetaTensor* col_to_row_match_dist);
 
 void TensorToArrayInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
@@ -246,6 +257,11 @@ void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  MetaTensor* out,
                                  MetaTensor* out_scale);
 
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out);
+
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
                           DataType dtype,
@@ -334,6 +350,12 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             bool hard,
                             int axis,
                             MetaTensor* out);
+
+void HashInferMeta(const MetaTensor& x,
+                   int num_hash,
+                   int64_t mod_by,
+                   MetaTensor* out);
+
 void HistogramInferMeta(
     const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
 
@@ -362,7 +384,7 @@ void KthvalueInferMeta(const MetaTensor& x,
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out);
@@ -634,6 +656,14 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  DataType out_dtype,
                                  MetaTensor* y);
 
+void SequencePoolInferMeta(const MetaTensor& x,
+                           bool is_test,
+                           const std::string& pooltype,
+                           float pad_value,
+                           MetaTensor* out,
+                           MetaTensor* max_index,
+                           MetaConfig config = MetaConfig());
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
@@ -779,6 +809,12 @@ void TopKInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaTensor* indices,
                    MetaConfig config = MetaConfig());
+
+void TopkV1InferMeta(const MetaTensor& x,
+                     const Scalar& k_scalar,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaConfig config = MetaConfig());
 
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);

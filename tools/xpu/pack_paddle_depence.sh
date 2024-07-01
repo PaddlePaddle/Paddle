@@ -20,21 +20,11 @@ set -x
 XRE_URL=$1
 XRE_DIR_NAME=$2
 
-XDNN_URL=$3
-XDNN_DIR_NAME=$4
+XHPC_URL=$3
+XHPC_DIR_NAME=$4
 
 XCCL_URL=$5
 XCCL_DIR_NAME=$6
-
-if [[ $# -eq 8 ]]; then
-  echo "Compiling Paddle with XHPC"
-  XHPC_URL=$7
-  XHPC_DIR_NAME=$8
-elif [[ $# -eq 7 ]]; then
-  XHPC_DIR_NAME=$7
-fi
-
-BOS_PATTERN="https://baidu-kunlun-product.su.bcebos.com"
 
 mkdir -p xpu/include/xhpc/xblas
 mkdir -p xpu/include/xhpc/xfa
@@ -42,34 +32,59 @@ mkdir -p xpu/include/xpu
 mkdir -p xpu/lib
 
 function download_from_bos() {
-  wget --no-check-certificate ${XRE_URL} -q -O xre.tar.gz
-  tar xvf xre.tar.gz
+  local url=$1
+  wget --no-check-certificate ${url} -q -O tmp.tar.gz
+  if [[ $? -ne 0 ]]; then
+    echo "downloading failed: ${url}"
+    exit 1
+  fi
+  tar xvf tmp.tar.gz
+  rm -f tmp.tar.gz
+}
 
-  wget --no-check-certificate ${XDNN_URL} -q -O xdnn.tar.gz
-  tar xvf xdnn.tar.gz
+function check_files() {
+  local files=("$@")
+  for file in "${files[@]}";
+  do
+    echo "checking $file"
+    if [[ ! -f $file ]]; then
+        echo "checking failed: $file"
+        exit 1
+    else
+        echo "checking ok: $file"
+    fi
+  done
+}
 
-  wget --no-check-certificate ${XCCL_URL} -q -O xccl.tar.gz
-  tar xvf xccl.tar.gz
+function xre_prepare() {
+  check_files ${XRE_DIR_NAME}/include/xpu/runtime.h ${XRE_DIR_NAME}/so/libxpurt.so
+  cp -r ${XRE_DIR_NAME}/include/xpu/* xpu/include/xpu/
+  cp -r ${XRE_DIR_NAME}/so/* xpu/lib/
 }
 
 function xhpc_prepare() {
-    if ! [ -z ${XHPC_URL} ]; then
-      echo "XHPC_URL: ${XHPC_URL}"
-      wget --no-check-certificate ${XHPC_URL} -q -O xhpc.tar.gz
-      tar xvf xhpc.tar.gz
+  check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so
+  cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
+  cp -r ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
 
-      cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-      cp -r ${XHPC_DIR_NAME}/xblas/so/* xpu/lib/
+  check_files ${XHPC_DIR_NAME}/xdnn/include/xpu/xdnn.h ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so
+  cp -r ${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
+  cp -r ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
-      cp -r ${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
-      cp -r ${XHPC_DIR_NAME}/xdnn/so/* xpu/lib
+  check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
 
-      cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-      cp -r ${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
-    else
-      cp -r ${XDNN_DIR_NAME}/include/xpu/* xpu/include/xpu/
-      cp -r ${XDNN_DIR_NAME}/so/* xpu/lib/
-    fi
+  # remove '#include "xpu/flash_impl.h"' in flash_api.h
+  # TODO(houj04): remove this hack when compile issue is resolved in XHPC
+  sed -i '3d' ${XHPC_DIR_NAME}/xfa/include/flash_api.h
+
+  cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
+  cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+}
+
+function xccl_prepare() {
+  check_files ${XCCL_DIR_NAME}/include/bkcl.h ${XCCL_DIR_NAME}/so/libbkcl.so
+  cp -r ${XCCL_DIR_NAME}/include/* xpu/include/xpu/
+  cp -r ${XCCL_DIR_NAME}/so/* xpu/lib/
 }
 
 function local_prepare() {
@@ -95,7 +110,7 @@ function local_prepare() {
 function local_assemble() {
     # xre assemble
     cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
-    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/libxpurt* xpu/lib/
+    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/* xpu/lib/
 
     # xccl assemble
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/include/* xpu/include/xpu/
@@ -103,16 +118,16 @@ function local_assemble() {
 
     # xhpc assemble
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/* xpu/lib/
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
 
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/so/* xpu/lib
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
 }
 
-if [[ $XRE_URL != *"$BOS_PATTERN"* ]]; then
+if [[ $XRE_URL != "http"* ]]; then
     # below is local way
     build_from="local"
     LOCAL_PATH=$(dirname "$XRE_URL")
@@ -123,11 +138,10 @@ if [[ $XRE_URL != *"$BOS_PATTERN"* ]]; then
 else
     # below is default way
     build_from="bos"
-    download_from_bos
+    download_from_bos ${XRE_URL}
+    download_from_bos ${XHPC_URL}
+    download_from_bos ${XCCL_URL}
+    xre_prepare
     xhpc_prepare
-
-    cp -r $XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
-    cp -r $XRE_DIR_NAME/so/libxpurt* xpu/lib/
-    cp -r $XCCL_DIR_NAME/include/* xpu/include/xpu/
-    cp -r $XCCL_DIR_NAME/so/* xpu/lib/
+    xccl_prepare
 fi

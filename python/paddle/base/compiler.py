@@ -143,8 +143,7 @@ class CompiledProgram:
             self._program = program_or_graph
         else:
             raise TypeError(
-                "The type of program_to_graph parameter is wrong, expected Graph or Program, but received %s"
-                % type(program_or_graph)
+                f"The type of program_to_graph parameter is wrong, expected Graph or Program, but received {type(program_or_graph)}"
             )
 
         self._scope = None
@@ -481,8 +480,7 @@ class IpuDynamicPatcher:
         def patch_getter(self, item):
             if not isinstance(item, CacheKey):
                 raise ValueError(
-                    'type(item) should be CacheKey, but received %s'
-                    % type(item).__name__
+                    f'type(item) should be CacheKey, but received {type(item).__name__}'
                 )
             item_id = hash(item)
             self._recent_key = item_id
@@ -1061,8 +1059,7 @@ class IpuCompiledProgram:
 
         if not isinstance(program, framework.Program):
             raise TypeError(
-                "The type of program is wrong, expected Program, but got %s"
-                % type(program)
+                f"The type of program is wrong, expected Program, but got {type(program)}"
             )
 
         self._program = program

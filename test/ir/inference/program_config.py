@@ -28,7 +28,7 @@ from paddle.base.framework import (
     IrNode,
     Operator,
     OpProtoHolder,
-    convert_np_dtype_to_dtype_,
+    convert_np_dtype_to_proto_type,
 )
 from paddle.static.log_helper import get_logger
 from paddle.static.quantization import (
@@ -182,10 +182,10 @@ class BlockConfig:
                 elif self.vars_var_type[name] == VarType.STEP_SCOPES:
                     var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                     continue
-            var_desc.set_dtype(convert_np_dtype_to_dtype_(np.float32))
+            var_desc.set_dtype(convert_np_dtype_to_proto_type(np.float32))
             if self.vars_dtype is not None and name in self.vars_dtype.keys():
                 var_desc.set_dtype(
-                    convert_np_dtype_to_dtype_(self.vars_dtype[name])
+                    convert_np_dtype_to_proto_type(self.vars_dtype[name])
                 )
 
         for op_config in self.ops:
@@ -226,13 +226,15 @@ class BlockConfig:
                         ):
                             var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                             continue
-                    var_desc.set_dtype(convert_np_dtype_to_dtype_(np.float32))
+                    var_desc.set_dtype(
+                        convert_np_dtype_to_proto_type(np.float32)
+                    )
                     if (
                         op_config.outputs_dtype is not None
                         and v in op_config.outputs_dtype.keys()
                     ):
                         var_desc.set_dtype(
-                            convert_np_dtype_to_dtype_(
+                            convert_np_dtype_to_proto_type(
                                 op_config.outputs_dtype[v]
                             )
                         )
@@ -360,7 +362,7 @@ def create_fake_model(program_config):
     for name, tensor_config in program_config.inputs.items():
         var_desc = main_block_desc.var(name.encode())
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
-        var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
+        var_desc.set_dtype(convert_np_dtype_to_proto_type(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
@@ -376,7 +378,7 @@ def create_fake_model(program_config):
     for name, tensor_config in program_config.weights.items():
         var_desc = main_block_desc.var(name.encode())
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
-        var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
+        var_desc.set_dtype(convert_np_dtype_to_proto_type(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
         var_desc.set_persistable(True)
 
@@ -441,13 +443,15 @@ def create_fake_model(program_config):
                     elif op_config.outputs_var_type[v] == VarType.STEP_SCOPES:
                         var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                         continue
-                var_desc.set_dtype(convert_np_dtype_to_dtype_(np.float32))
+                var_desc.set_dtype(convert_np_dtype_to_proto_type(np.float32))
                 if (
                     op_config.outputs_dtype is not None
                     and v in op_config.outputs_dtype.keys()
                 ):
                     var_desc.set_dtype(
-                        convert_np_dtype_to_dtype_(op_config.outputs_dtype[v])
+                        convert_np_dtype_to_proto_type(
+                            op_config.outputs_dtype[v]
+                        )
                     )
         if op_config.type not in _OP_WITHOUT_KERNEL_SET:
             op_desc.infer_var_type(main_block_desc)

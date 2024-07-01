@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import numpy.typing as npt
+from typing_extensions import Self
 
 import paddle
 from paddle.base import Variable, core
@@ -33,6 +38,10 @@ from paddle.base.libpaddle.pir import (
 
 from ..base.variable_index import _setitem_static
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike, ShapeLike, Size1
+
 __all__ = []
 
 
@@ -41,7 +50,12 @@ def evaluate_flag(val) -> bool:
 
 
 @static_only
-def data(name, shape, dtype=None, lod_level=0):
+def data(
+    name: str,
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    lod_level: int = 0,
+) -> paddle.Tensor:
     """
 
     This function creates a variable on the global block. The global variable
@@ -51,17 +65,17 @@ def data(name, shape, dtype=None, lod_level=0):
     will get from the global dtype by `paddle.get_default_dtype()`.
 
     Args:
-       name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-           for more details.
-       shape (list|tuple): List|Tuple of integers declaring the shape. You can
-           set None or -1 at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as None or -1.
-       dtype (np.dtype|str, optional): The type of the data. Supported
-           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-           uint8. Default: None. When `dtype` is not set, the dtype will get
-           from the global dtype by `paddle.get_default_dtype()`.
-       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. Default: 0.
+        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
+        shape (list|tuple): List|Tuple of integers declaring the shape. You can
+            set None or -1 at a dimension to indicate the dimension can be of any
+            size. For example, it is useful to set changeable batch size as None or -1.
+        dtype (np.dtype|str, optional): The type of the data. Supported
+            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+            uint8. Default: None. When `dtype` is not set, the dtype will get
+            from the global dtype by `paddle.get_default_dtype()`.
+        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+            don't have to set this value. Default: 0.
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -103,9 +117,9 @@ def data(name, shape, dtype=None, lod_level=0):
             >>> print(out)
             [array([[[2.],
                     [2.]],
-                [[2.],
+                   [[2.],
                     [2.]],
-                [[2.],
+                   [[2.],
                     [2.]]], dtype=float32)]
 
     """
@@ -208,7 +222,13 @@ class InputSpec:
             InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label, stop_gradient=False)
     """
 
-    def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
+    def __init__(
+        self,
+        shape: ShapeLike,
+        dtype: DTypeLike = 'float32',
+        name: str | None = None,
+        stop_gradient: bool = False,
+    ) -> None:
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
         # convert dtype into united representation
@@ -223,11 +243,11 @@ class InputSpec:
     def _create_feed_layer(self):
         return data(self.name, shape=self.shape, dtype=self.dtype)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{type(self).__name__}(shape={self.shape}, dtype={self.dtype}, name={self.name}, stop_gradient={self.stop_gradient})'
 
     @classmethod
-    def from_tensor(cls, tensor, name=None):
+    def from_tensor(cls, tensor: Tensor, name: str | None = None) -> Self:
         """
         Generates a InputSpec based on the description of input tensor.
 
@@ -259,7 +279,9 @@ class InputSpec:
             )
 
     @classmethod
-    def from_numpy(cls, ndarray, name=None):
+    def from_numpy(
+        cls, ndarray: npt.NDArray[Any], name: str | None = None
+    ) -> Self:
         """
         Generates a InputSpec based on the description of input np.ndarray.
 
@@ -283,7 +305,7 @@ class InputSpec:
         """
         return cls(ndarray.shape, ndarray.dtype, name)
 
-    def batch(self, batch_size):
+    def batch(self, batch_size: int | Size1) -> Self:
         """
         Inserts `batch_size` in front of the `shape`.
 
@@ -309,7 +331,7 @@ class InputSpec:
                 raise ValueError(
                     f"Length of batch_size: {batch_size} shall be 1, but received {len(batch_size)}."
                 )
-            batch_size = batch_size[1]
+            batch_size = batch_size[0]
         elif not isinstance(batch_size, int):
             raise TypeError(
                 f"type(batch_size) shall be `int`, but received {type(batch_size).__name__}."
@@ -320,7 +342,7 @@ class InputSpec:
 
         return self
 
-    def unbatch(self):
+    def unbatch(self) -> Self:
         """
         Removes the first element of `shape`.
 
@@ -366,7 +388,7 @@ class InputSpec:
 
         return tuple(shape)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         # Note(Aurelius84): `name` is not considered as a field to compute hashkey.
         # Because it's no need to generate a new program in following cases while using
         # @paddle.jit.to_static.
@@ -383,13 +405,13 @@ class InputSpec:
         #  x_var and x_np hold same shape and dtype, they should also share a same program.
         return hash((tuple(self.shape), self.dtype, self.stop_gradient))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Self) -> bool:
         slots = ['shape', 'dtype', 'name', 'stop_gradient']
         return type(self) is type(other) and all(
             getattr(self, attr) == getattr(other, attr) for attr in slots
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         return not self == other
 
 

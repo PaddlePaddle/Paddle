@@ -23,13 +23,12 @@ import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
 from enum import Enum
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
 
 import paddle
-from paddle.framework import Program
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -43,6 +42,9 @@ from .paddle_api_config import (
     paddle_api_list,
     paddle_api_module_prefix,
 )
+
+if TYPE_CHECKING:
+    from paddle.framework import Program
 
 T = TypeVar("T")
 ConstTypes = (int, float, str, bool, type(None))
