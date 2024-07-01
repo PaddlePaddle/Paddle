@@ -450,7 +450,6 @@ bool AnalysisPredictor::Init(
       optimized_model = optimized_model_path + "/" + "_optimized.json";
     } else {
       optimized_model = optimized_model_path + "/" + "_optimized.pdmodel";
-      LOG(INFO) << "optimized_model" << optimized_model;
     }
     std::string optimized_params =
         optimized_model_path + "/" + "_optimized.pdiparams";
@@ -651,9 +650,7 @@ void AnalysisPredictor::ClearExtraParams() {
       }
     }
   }
-  for (auto name : extra_params) {
-    LOG(INFO) << "清除的name " << name;
-  }
+
   scope_->EraseVars(extra_params);
   VLOG(1) << "Clear " << extra_params.size() << " extra params.";
 }
@@ -922,10 +919,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     pass_pm.Run(pir_program_.get());
 
     if (config_.save_optimized_model_) {
-      std::string optimized_model_path = GetOptimizedModelPath();
-      LOG(INFO) << " optimized_model_path" << optimized_model_path;
       std::string optimized_model =
-          optimized_model_path + "/" + "_optimized.json";
+          GetOptimizedModelPath() + "/" + "_optimized.json";
       pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
       LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
