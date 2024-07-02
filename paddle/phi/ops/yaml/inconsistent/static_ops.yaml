@@ -81,6 +81,14 @@
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
 
+- op : beam_search_decode
+  args: (Tensor ids, Tensor scores, int beam_size, int end_id)
+  output: Tensor (sentence_ids), Tensor (sentence_scores)
+  infer_meta:
+    func: BeamSearchDecodeInferMeta
+  kernel:
+    func: beam_search_decode
+
 - op : c_allreduce_avg
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)

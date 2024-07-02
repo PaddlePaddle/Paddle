@@ -413,6 +413,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
@@ -665,6 +666,8 @@ void SequencePoolInferMeta(const MetaTensor& x,
                            MetaConfig config = MetaConfig());
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 

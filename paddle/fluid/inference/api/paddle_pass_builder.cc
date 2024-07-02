@@ -163,15 +163,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "auto_mixed_precision_pass",
 });
 
-const std::vector<std::string> kDlnneSubgraphPasses({
-    "is_test_pass",                  //
-    "delete_dropout_op_pass",        //
-    "simplify_with_basic_ops_pass",  //
-    "conv_bn_fuse_pass",             //
-    "depthwise_conv_bn_fuse_pass",   //
-    "shuffle_channel_detect_pass",   //
-});
-
 // TODO(inference): Most of the existing pass fusion operators do not
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.

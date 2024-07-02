@@ -108,6 +108,11 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
+  list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
+endif()
+
+if(NOT WITH_NCCL)
+  list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
 
 if(WIN32)
