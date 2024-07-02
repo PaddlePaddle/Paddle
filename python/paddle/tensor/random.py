@@ -686,12 +686,12 @@ def gaussian(
             core.DataType.COMPLEX128,
         ]:
             raise TypeError(
-                "if mean is a complex number, dtype should be complex64 or complex128, ",
+                "if mean is a complex number, dtype should be complex64 or complex128, "
                 f"but got dtype = {dtype}",
             )
         if mean.real != mean.imag:
             raise ValueError(
-                "The mean of complex gaussian distribution should be a complex number with ",
+                "The mean of complex gaussian distribution should be a complex number with "
                 f"real part equal imaginary part, but got {mean.real} != {mean.imag}",
             )
         mean = mean.real
@@ -778,12 +778,12 @@ def gaussian_(
             core.DataType.COMPLEX128,
         ]:
             raise TypeError(
-                "if mean is a complex number, x's dtype should be complex64 or complex128, ",
+                "if mean is a complex number, x's dtype should be complex64 or complex128, "
                 f"but dtype = {x.dtype}",
             )
         if mean.real != mean.imag:
             raise ValueError(
-                "The mean of complex gaussian distribution should be a complex number with ",
+                "The mean of complex gaussian distribution should be a complex number with "
                 f"real part equal imaginary part, but got {mean.real} != {mean.imag}",
             )
         mean = mean.real
@@ -803,7 +803,7 @@ def standard_normal(
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
-            Supported data types: float32, float64.
+            Supported data types: float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         name (str|None, optional): Name for the operation (optional, default is None).
@@ -854,8 +854,37 @@ def standard_normal(
              [ 1.52022707, -0.83830303,  0.05261501]])
             >>> # doctest: -SKIP
 
+            >>> # example 4: attr dtype is complex64.
+            >>> paddle.seed(200)
+            >>> shape_tensor = paddle.to_tensor([2, 3])
+            >>> out4 = paddle.standard_normal(shape_tensor, dtype='complex64')
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[ (0.1375531256198883+0.0932074561715126j) ,
+               (0.7955012917518616-0.41801896691322327j),
+              (-0.6730020642280579-0.09163688868284225j)],
+             [ (0.17453041672706604-0.9002832770347595j),
+               (0.16270922124385834-1.3086302280426025j),
+               (0.9428746104240417+0.06869460642337799j)]])
     """
-    return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
+
+    if dtype is not None and not isinstance(
+        dtype, (core.VarDesc.VarType, core.DataType)
+    ):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+        if dtype in [
+            core.VarDesc.VarType.COMPLEX64,
+            core.VarDesc.VarType.COMPLEX64,
+        ]:
+            return gaussian(
+                shape=shape, mean=(0.0 + 0.0j), std=1.0, dtype=dtype, name=name
+            )
+        else:
+            return gaussian(
+                shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name
+            )
+    else:
+        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
 def randn(
@@ -871,7 +900,7 @@ def randn(
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
-            Supported data types: float32, float64.
+            Supported data types: float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         name (str|None, optional): Name for the operation (optional, default is None).
@@ -920,6 +949,19 @@ def randn(
             [[ 0.57575506, -1.60349274, -0.27124876],
              [ 1.08381045,  0.81270242, -0.26763600]])
             >>> # doctest: -SKIP
+
+            >>> # example 4: attr dtype is complex64.
+            >>> paddle.seed(200)
+            >>> shape_tensor = paddle.to_tensor([2, 3])
+            >>> out4 = paddle.randn(shape_tensor, dtype='complex64')
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[ (0.1375531256198883+0.0932074561715126j) ,
+               (0.7955012917518616-0.41801896691322327j),
+              (-0.6730020642280579-0.09163688868284225j)],
+             [ (0.17453041672706604-0.9002832770347595j),
+               (0.16270922124385834-1.3086302280426025j),
+               (0.9428746104240417+0.06869460642337799j)]])
     """
     return standard_normal(shape, dtype, name)
 
@@ -991,6 +1033,25 @@ def normal(
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
+
+            >>> paddle.seed(200)
+            >>> out4 = paddle.normal(mean=1+1j, shape=[2, 3])
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1.137553095817566+1.0932074785232544j)  ,
+              (1.7955012321472168+0.5819810628890991j) ,
+              (0.32699793577194214+0.9083631038665771j)],
+             [(1.1745303869247437+0.09971672296524048j),
+              (1.1627092361450195-0.30863022804260254j),
+              (1.9428746700286865+1.0686945915222168j) ]])
+
+            >>> mean_tensor = paddle.to_tensor([1+1j, 2+2j, 3+3j])
+            >>> out5 = paddle.normal(mean=mean_tensor)
+            >>> print(out5)
+            Tensor(shape=[3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [(1.136009693145752-0.11074113845825195j),
+             (2.529331684112549+2.1968750953674316j) ,
+             (2.2910101413726807+1.8114780187606812j)])
     """
     if not in_dynamic_mode():
         check_type(

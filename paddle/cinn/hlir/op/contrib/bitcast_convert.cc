@@ -73,11 +73,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
         auto out = BitcastConvert(A, out_type[0], tensor_name);
-        auto stages = CreateStages({A});
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 

@@ -296,7 +296,7 @@ def create_test_class(
         if test_class[0] == '__class__':
             continue
         class_obj = test_class[1]
-        cls_name = f"{test_class[0]}_{str(test_type)}"
+        cls_name = f"{test_class[0]}_{test_type}"
         func_globals[cls_name] = type(
             cls_name,
             (class_obj,),
@@ -313,7 +313,7 @@ def create_test_class(
     ):
         base_class, dynamic_classes = test_class_obj.dynamic_create_class()
         for dy_class in dynamic_classes:
-            cls_name = f"{dy_class[0]}_{str(test_type)}"
+            cls_name = f"{dy_class[0]}_{test_type}"
             attr_dict = dy_class[1]
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             attr_dict['in_type_str'] = test_type

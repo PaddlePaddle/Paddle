@@ -25,7 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/utils/dot_lang.h"
 
 namespace cinn {

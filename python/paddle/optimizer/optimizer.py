@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# type: ignore
+# Avoid mypy internal error
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +24,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
-from typing_extensions import NotRequired, TypedDict
 
 import paddle
 import paddle.autograd as imperative_base
@@ -50,18 +53,18 @@ from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
-
-class _ParameterConfig(TypedDict):
-    params: Sequence[Tensor]
-    weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-    learning_rate: NotRequired[float | Tensor | LRScheduler | None]
-
-
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
 
     from ..base.framework import Operator, Program
+
+    class _ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
 
 __all__ = []
@@ -162,8 +165,10 @@ class Optimizer:
             >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters())
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -182,7 +187,7 @@ class Optimizer:
             ...     parameters=[{
             ...         'params': linear_1.parameters()
             ...     }, {
-            ...         'params': linear_2.parameters(),  # type: ignore
+            ...         'params': linear_2.parameters(),
             ...         'weight_decay': 0.001,
             ...         'learning_rate': 0.1
             ...     }],
@@ -240,15 +245,13 @@ class Optimizer:
                         ):
                             logging.info(
                                 "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
-                                "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
-                                % weight_decay.__str__()
+                                f"The weight_decay[{weight_decay}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             )
                             break
 
         if not isinstance(learning_rate, (float, LRScheduler)):
             raise TypeError(
-                "learning rate should be float or LRScheduler, got %s here"
-                % type(learning_rate)
+                f"learning rate should be float or LRScheduler, got {type(learning_rate)} here"
             )
         if grad_clip is not None:
             if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
@@ -606,8 +609,7 @@ class Optimizer:
         """
         if not isinstance(value, (int, float)):
             raise TypeError(
-                "The type of 'value' in optimizer.set_lr must be float, but received %s."
-                % (type(value))
+                f"The type of 'value' in optimizer.set_lr must be float, but received {type(value)}."
             )
         if isinstance(self._learning_rate, LRScheduler):
             raise RuntimeError(
@@ -679,8 +681,7 @@ class Optimizer:
 
         if not isinstance(scheduler, LRScheduler):
             raise TypeError(
-                "The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received %s."
-                % (type(scheduler))
+                f"The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received {type(scheduler)}."
             )
         self._learning_rate = scheduler
 
@@ -1689,8 +1690,7 @@ class Optimizer:
                         repeate_regularizer = True
                         logging.info(
                             "If regularizer of a Parameter has been set by 'base.ParamAttr' or 'base.WeightNormParamAttr' already. "
-                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
-                            % regularization.__str__()
+                            f"The Regularization[{regularization}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         )
                     with param.block.program._optimized_guard([param, grad]):
                         new_grad = self._create_regularization_of_grad(

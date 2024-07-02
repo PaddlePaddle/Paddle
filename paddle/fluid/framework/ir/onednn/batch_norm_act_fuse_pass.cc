@@ -19,9 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -149,9 +147,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
                     found_bn_act_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(batch_norm_act_fuse_pass,
               paddle::framework::ir::FuseBatchNormActOneDNNPass);
