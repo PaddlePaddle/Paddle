@@ -5187,11 +5187,13 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
     if (decimals == 0) {
       return static_cast<T>(round(x));
     } else if (decimals > 0) {
-      MPType ten_pow_deciamls = static_cast<MPType>(pow(10, decimals));
-      return static_cast<T>(round(x * ten_pow_deciamls) / ten_pow_deciamls);
+      float ten_pow_deciamls = powf(10., decimals);
+      return static_cast<T>(round(x * static_cast<MPType>(ten_pow_deciamls)) /
+                            ten_pow_deciamls);
     } else {
-      MPType ten_pow_deciamls = static_cast<MPType>(pow(10, -decimals));
-      return static_cast<T>(round(x / ten_pow_deciamls) * ten_pow_deciamls);
+      float ten_pow_deciamls = powf(10., -decimals);
+      return static_cast<T>(round(x / static_cast<MPType>(ten_pow_deciamls)) *
+                            ten_pow_deciamls);
     }
   }
 };
