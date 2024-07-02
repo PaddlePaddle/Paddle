@@ -1810,6 +1810,7 @@
   view : (x -> out)
   intermediate : xshape
   backward : flatten_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flip
   args : (Tensor x, int[] axis)
