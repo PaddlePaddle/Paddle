@@ -27,6 +27,12 @@ if(WITH_NCCL OR WITH_RCCL)
          collective_helper
          device_context
          ${DEVICE_EVENT_LIBS})
+
+  cc_library(
+    async_load
+    SRCS async_load.cc
+    DEPS device_context place ${DEVICE_EVENT_LIBS})
+
 endif()
 
 if(WITH_XPU_BKCL)

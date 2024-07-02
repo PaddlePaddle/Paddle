@@ -144,9 +144,9 @@ def fetch_all():
         x for x in dir(paddle.dataset) if not x.startswith("__")
     ]:
         if "fetch" in dir(
-            importlib.import_module("paddle.dataset.%s" % module_name)
+            importlib.import_module(f"paddle.dataset.{module_name}")
         ):
-            importlib.import_module('paddle.dataset.%s' % module_name).fetch()
+            importlib.import_module(f'paddle.dataset.{module_name}').fetch()
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
@@ -210,7 +210,7 @@ def cluster_files_reader(
         my_file_list = []
         for idx, fn in enumerate(file_list):
             if idx % trainer_count == trainer_id:
-                print("append file: %s" % fn)
+                print(f"append file: {fn}")
                 my_file_list.append(fn)
         for fn in my_file_list:
             with open(fn, "r") as f:
