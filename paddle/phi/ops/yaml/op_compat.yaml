@@ -3262,6 +3262,12 @@
     out : Out
     xout : XOut
 
+- op : share_data
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : shuffle_batch
   backward: shuffle_batch_grad
   inputs:

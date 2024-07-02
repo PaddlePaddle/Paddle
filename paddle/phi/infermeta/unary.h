@@ -667,6 +667,8 @@ void SequencePoolInferMeta(const MetaTensor& x,
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,

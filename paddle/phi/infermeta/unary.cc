@@ -4025,6 +4025,11 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT32);
 }
 
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void ShardIndexInferMeta(const MetaTensor& in,
                          int index_num,
                          int nshards,

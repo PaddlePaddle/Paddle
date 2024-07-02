@@ -4014,6 +4014,15 @@
   kernel :
     func : shard_index
 
+- op : share_data
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: ShareDataInferMeta
+  kernel:
+    func: share_data {dense -> dense}
+          share_data_sr {selected_rows -> selected_rows}
+
 - op : shuffle_batch
   args : (Tensor x, Tensor seed, int startup_seed=0)
   output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
