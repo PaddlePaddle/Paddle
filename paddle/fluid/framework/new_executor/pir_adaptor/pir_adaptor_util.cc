@@ -554,7 +554,6 @@ void HandleForSpecialOp(pir::Operation* op,
                         .AsString();
 
     auto value = op->operand_source(0);
-    VLOG(0) << "Handle for builtin.shadow_output111";
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
     if (!execution_config.used_for_inference) {
@@ -567,7 +566,6 @@ void HandleForSpecialOp(pir::Operation* op,
         }
       }
     }
-    VLOG(0) << "Handle for builtin.shadow_output222";
 
     // change operand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
@@ -575,7 +573,6 @@ void HandleForSpecialOp(pir::Operation* op,
     if (var_name == orig_name) {
       return;
     }
-    VLOG(0) << "Handle for builtin.shadow_output333";
 
     if (value_exe_info->HasVar(var_name)) {
       value_exe_info->UpdateValue2VarName(value, var_name);
@@ -588,7 +585,6 @@ void HandleForSpecialOp(pir::Operation* op,
       VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
       value_exe_info->Rename(var_name, orig_name);
     }
-    VLOG(0) << "Handle for builtin.shadow_output444";
   } else if (op->isa<pir::ParameterOp>()) {
     VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
