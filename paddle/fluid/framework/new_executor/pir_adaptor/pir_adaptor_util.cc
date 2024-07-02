@@ -554,6 +554,7 @@ void HandleForSpecialOp(pir::Operation* op,
                         .AsString();
 
     auto value = op->operand_source(0);
+    VLOG(0) << "Handle for builtin.shadow_output111";
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
     if (!execution_config.used_for_inference) {
@@ -566,6 +567,7 @@ void HandleForSpecialOp(pir::Operation* op,
         }
       }
     }
+    VLOG(0) << "Handle for builtin.shadow_output222";
 
     // change operand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
@@ -573,6 +575,7 @@ void HandleForSpecialOp(pir::Operation* op,
     if (var_name == orig_name) {
       return;
     }
+    VLOG(0) << "Handle for builtin.shadow_output333";
 
     if (value_exe_info->HasVar(var_name)) {
       value_exe_info->UpdateValue2VarName(value, var_name);
@@ -585,6 +588,7 @@ void HandleForSpecialOp(pir::Operation* op,
       VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
       value_exe_info->Rename(var_name, orig_name);
     }
+    VLOG(0) << "Handle for builtin.shadow_output444";
   } else if (op->isa<pir::ParameterOp>()) {
     VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
@@ -682,6 +686,70 @@ void HandleForSpecialOp(pir::Operation* op,
   }
 }
 
+// NOTE(chenxi67): Here, we only perform inplace processing for variables whose
+// type is TensorArray. For other types of variables, we only share the holder
+// of DenseTensor but not the var*. The reason is that vector<DenseTensor> in
+// TensorArray cannot be shared totally.
+void HandleForTensorArrayInplaceOp(pir::Operation* op,
+                                   const std::string& var_name_prefix,
+                                   ValueExecutionInfo* value_exe_info) {
+  if (op->num_results() < 1) return;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    pir::Value value = op->result(i);
+    if (!IsInvalid(value)) {
+      VLOG(8) << "Number " << i << " result of " << op_name
+              << " is not invalid, so skip build a variable.";
+      continue;
+    }
+    if (!value.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+      BuildValue(value, var_name_prefix, value_exe_info);
+      continue;
+    }
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+      pir::Value inplace_value =
+          op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
+      std::string var_name = value_exe_info->GetVarName(inplace_value);
+      if (var_name != "") {
+        VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+                << " (var: " << var_name << ")";
+        value_exe_info->AddValue2VarName(value, var_name);
+      } else {
+        BuildValue(value, var_name_prefix, value_exe_info);
+      }
+    } else if (yaml_parser.HasView(value_name)) {
+      const std::string& view_name = yaml_parser.ViewName(value_name);
+      pir::Value view_value =
+          op->operand_source(yaml_parser.InputName2Id().at(view_name));
+      // const std::string& var_name = value_2_var_name->at(view_value);
+      std::string var_name = value_exe_info->GetVarName(view_value);
+      if (var_name != "") {
+        VLOG(4) << "view: " << value_name << " -> " << view_name
+                << " (var: " << var_name << ")";
+        value_exe_info->AddValue2VarName(value, var_name);
+      } else {
+        BuildValue(value, var_name_prefix, value_exe_info);
+      }
+    } else {
+      BuildValue(value, var_name_prefix, value_exe_info);
+    }
+  }
+}
+
 // NOTE(zhiqiu): the persistable is created in inner_scope's root, and other
 // is created in inner_scope.
 void BuildScope(const pir::Block& block,
@@ -724,8 +792,17 @@ void BuildScope(const pir::Block& block,
     CheckInputVars(&op, op_name, value_exe_info);
 
     if (op.num_results() < 1) continue;
-    for (size_t i = 0; i < op.num_results(); ++i) {
-      BuildValue(op.result(i), var_name_prefix, value_exe_info);
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      HandleForTensorArrayInplaceOp(&op, var_name_prefix, value_exe_info);
+      continue;
+    } else {
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        BuildValue(op.result(i), var_name_prefix, value_exe_info);
+      }
     }
   }
 

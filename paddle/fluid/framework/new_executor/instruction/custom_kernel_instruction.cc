@@ -420,6 +420,11 @@ CustomKernelInstruction::CustomKernelInstruction(
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
+
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, &value_exec_info_, this);
+  }
 }
 
 void CustomKernelInstruction::UpdateOutputMeta(
@@ -504,7 +509,9 @@ void CustomKernelInstruction::Run() {
                     vec_input_name2id_map_,
                     custom_attrs_);
   UpdateOutputMeta(output_shapes, output_dtypes);
-
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
+  }
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
 }

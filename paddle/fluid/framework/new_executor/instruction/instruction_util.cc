@@ -406,6 +406,9 @@ bool GetCondData(const phi::DenseTensor& cond) {
   return cpu_cond->data<bool>()[0];
 }
 
+// NOTE(chenxi67): Here, we only perform inplace processing for variables whose
+// type is NOT TensorArray. It has already been processed in the previous
+// step(HandleForTensorArrayInplaceOp).
 void HandleForInplaceOp(pir::Operation* op,
                         const ValueExecutionInfo* value_exe_info,
                         InstructionBase* instr) {
@@ -428,6 +431,9 @@ void HandleForInplaceOp(pir::Operation* op,
     if (!IsInvalid(value)) {
       VLOG(8) << "Number " << i << " result of " << op_name
               << " is not invalid, so skip build a variable.";
+      continue;
+    }
+    if (value.type().isa<paddle::dialect::DenseTensorArrayType>()) {
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -477,39 +483,14 @@ void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
   if (src_var->IsType<phi::DenseTensor>()) {
     auto& src_tensor = src_var->Get<phi::DenseTensor>();
     auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
-    if (src_tensor.dims() == tmp_dst_tensor->dims()) {
-      tmp_dst_tensor->ShareBufferWith(src_tensor);
-    } else {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "src_tensor_array.at(i).dims() != tmp_dst_tensor.dims()"));
-    }
+    tmp_dst_tensor->ShareBufferWith(src_tensor);
     return;
   } else if (src_var->IsType<phi::SelectedRows>()) {
     auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
     auto* dst_t = tmp_dst_slr->mutable_value();
     auto& src_slr = src_var->Get<phi::SelectedRows>();
     auto& src_t = src_slr.value();
-    if (src_t.dims() == dst_t->dims()) {
-      dst_t->ShareBufferWith(src_t);
-    } else {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "src_tensor_array.at(i).dims() != tmp_dst_tensor.dims()"));
-    }
-    return;
-  } else if (src_var->IsType<phi::TensorArray>()) {
-    auto src_tensor_array = src_var->Get<phi::TensorArray>();
-    auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
-    if (src_tensor_array.size() == 0) return;
-    dst_tensor_array->resize(src_tensor_array.size());
-    for (size_t i = 0; i < src_tensor_array.size(); ++i) {
-      phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
-      if (src_tensor_array.at(i).dims() == tmp_dst_tensor.dims()) {
-        tmp_dst_tensor.ShareDataWith(src_tensor_array.at(i));
-      } else {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "src_tensor_array.at(i).dims() == tmp_dst_tensor.dims()"));
-      }
-    }
+    dst_t->ShareBufferWith(src_t);
     return;
   } else if (src_var->IsType<VariableRefArray>()) {
     auto src_var_array = src_var->Get<VariableRefArray>();
@@ -522,7 +503,7 @@ void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
-        "or SelectedRowsType or TensorArrayType"));
+        "or SelectedRowsType or VariableRefArray"));
   }
   return;
 }
