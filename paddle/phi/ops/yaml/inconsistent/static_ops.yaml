@@ -757,6 +757,17 @@
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
   traits : pir::SideEffectTrait
 
+- op : sequence_expand
+  args: (Tensor x, Tensor y, int ref_level = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceExpandInferMeta
+  kernel:
+    func: sequence_expand
+    data_type: x
+  backward: sequence_expand_grad
+  no_need_buffer: y
+
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
