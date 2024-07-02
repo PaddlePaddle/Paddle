@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
@@ -316,8 +315,7 @@ boxes.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

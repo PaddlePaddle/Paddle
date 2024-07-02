@@ -56,8 +56,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
         ir::Tensor b = b_expr.as_tensor_ref();
         std::string tensor_name = "triangular_solve_out";
         auto out = pe::Identity(b, tensor_name).front();
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();

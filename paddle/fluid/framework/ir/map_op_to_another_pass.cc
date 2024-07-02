@@ -52,6 +52,10 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
           input_shape[2] == 1 && input_shape[3] == 1) {
         op_desc->SetType(replaced_map[op_type]);
         op_desc->SetAttr("shape", std::vector<int>{0, -1});
+      } else if (start_axis == 2 && stop_axis == 3 && input_shape.size() == 4 &&
+                 input_shape[2] == 1) {
+        op_desc->SetType(replaced_map[op_type]);
+        op_desc->SetAttr("shape", std::vector<int>{0, 0, -1});
       }
     } else if (op_type == "depthwise_conv2d") {
       auto groups = PADDLE_GET_CONST(int, op_desc->GetAttr("groups"));

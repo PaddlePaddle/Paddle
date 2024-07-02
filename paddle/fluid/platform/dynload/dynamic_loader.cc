@@ -19,9 +19,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+namespace paddle::platform::dynload {
 
 void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   phi::dynload::SetPaddleLibPath(py_site_pkg_path);
@@ -77,6 +75,4 @@ void* GetCusparseLtDsoHandle() {
 
 void* GetXPTIDsoHandle() { return phi::dynload::GetXPTIDsoHandle(); }
 
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::dynload

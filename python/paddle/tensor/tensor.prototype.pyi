@@ -293,8 +293,8 @@ class AbstractTensor(Protocol):
     def _grad_ivar(self) -> Tensor | None: ...
 
     # annotation: ${tensor_alias}
-    __qualname__: Literal["Tensor"]
 
 # annotation: ${tensor_end}
 
-class Tensor(AbstractTensor, AbstractEagerParamBase): ...
+class Tensor(AbstractTensor, AbstractEagerParamBase):
+    __qualname__: Literal["Tensor"]
