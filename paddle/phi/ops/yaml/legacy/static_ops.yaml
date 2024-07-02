@@ -103,6 +103,14 @@
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : beam_search_decode
+  args: (Tensor ids, Tensor scores, int beam_size, int end_id)
+  output: Tensor (sentence_ids), Tensor (sentence_scores)
+  infer_meta:
+    func: BeamSearchDecodeInferMeta
+  kernel:
+    func: beam_search_decode
+
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
