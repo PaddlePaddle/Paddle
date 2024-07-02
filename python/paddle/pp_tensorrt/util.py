@@ -1,13 +1,26 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import paddle
+import numpy as np
+import tensorrt as trt
 from paddle import base
 from paddle import pir
 
-import paddle
 import paddle.static as static
 import paddle.nn.functional as F
-from paddle import pir
 import paddle.nn as nn
-import numpy as np
 from paddle.nn import TransformerEncoderLayer, TransformerEncoder
 
 paddle.enable_static()
@@ -30,7 +43,7 @@ def run_pir_pass(program, partition_mode=False):
     pm.enable_print_statistics()
     pm.enable_ir_printing()
     passes = [
-        {'dead_code_elimination_pass': {}},
+        # {'dead_code_elimination_pass': {}},
         {'multihead_matmul_fuse_pass': {}},
         {'transpose_flatten_concat_fuse_pass': {}},
         # {'fused_gemm_epilogue_pass': {}},
@@ -150,7 +163,7 @@ def get_r50_program():
 
     return pir_program, param_mapping
 
-def get_program():
+def get_dummy_program():
     with paddle.pir_utils.IrGuard():
         main_program = paddle.static.Program()
         default_startup_program = paddle.static.Program()
@@ -180,13 +193,7 @@ def get_program():
             x = paddle.matmul(input, weight)
             y = paddle.add(x, bias)
             y = paddle.nn.functional.relu(y)
-            y = paddle.nn.functional.relu(y)
-            # y = paddle.nn.functional.relu(y)
-            # y = paddle.nn.functional.relu(y)
-            # y = paddle.nn.functional.gelu(y)
-            # y = paddle.nn.functional.silu(y)
-            # y = paddle.nn.functional.leaky_relu(y)
-            # y = paddle.nn.functional.swish(y)
+            y = paddle.nn.functional.gelu(y)
         main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
@@ -199,7 +206,6 @@ def get_program():
             param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return main_program, scope, param_dict
 
-# BERT 模型定义
 class BertModel(nn.Layer):
     def __init__(self, vocab_size, hidden_size=768, num_hidden_layers=12, num_attention_heads=12):
         super(BertModel, self).__init__()
@@ -212,8 +218,7 @@ class BertModel(nn.Layer):
         encoded_output = self.encoder(embeddings)
         return encoded_output
 
-# 静态图主程序
-def bert_program():
+def get_bert_program():
     paddle.enable_static()
 
     vocab_size = 30522  # BERT base vocab size
@@ -222,7 +227,6 @@ def bert_program():
     num_attention_heads = 12
     seq_length = 128
 
-    # 创建主程序和启动程序
     with paddle.pir_utils.IrGuard():
         main_program = static.default_main_program()
         startup_program = static.default_startup_program()
@@ -260,7 +264,7 @@ def bert_program():
     return pir_program, scope, param_dict
 
 if __name__ == "__main__":
-    pir_program, scope, param_dict = bert_program()
+    pir_program, scope, param_dict = get_bert_program()
     print(pir_program)
     # 
     pir_program = run_pir_pass(pir_program)

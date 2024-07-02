@@ -1,3 +1,17 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import tensorrt as trt
 import numpy as np
 import paddle
@@ -5,7 +19,7 @@ import paddle.nn.functional as F
 
 # Only Work in TRT 10.x
 
-class PaddlePhiPlugin(trt.IPluginV2DynamicExt):
+class PaddlePhiPlugin(trt.IPluginV2):
     def __init__(self, op_name):
         super(PaddlePhiPlugin, self).__init__()
         self.op_name = op_name
@@ -91,9 +105,9 @@ class PaddlePhiPluginCreator(trt.IPluginCreator):
     def set_plugin_namespace(self, namespace):
         pass
 
-trt.init_libnvinfer_plugins(None, "")
-plugin_creator = PaddlePhiPluginCreator()
-trt.get_plugin_registry().register_creator(plugin_creator, "")
+# trt.init_libnvinfer_plugins(None, "")
+# plugin_creator = PaddlePhiPluginCreator()
+# trt.get_plugin_registry().register_creator(plugin_creator, )
 
 def build_engine(op_name):
     logger = trt.Logger(trt.Logger.WARNING)
@@ -106,6 +120,9 @@ def build_engine(op_name):
     network.mark_output(plugin_layer.get_output(0))
 
     return builder.build_engine(network, config)
+
+GENERAL_PLUGIN_OPS_LIST = [
+]
 
 if __name__ == "__main__":
     op_name = "relu"

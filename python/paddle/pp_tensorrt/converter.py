@@ -1,9 +1,27 @@
-import tensorrt as trt
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle
+import tensorrt as trt
 from paddle import base
 from paddle import pir
-from .util import run_pir_pass, map_dtype
+from paddle.base.core import get_value_shape_range_info
+from util import run_pir_pass, map_dtype
+from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
+from register import converter_registry
+from impls.core import  *
   
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
@@ -20,8 +38,6 @@ class PaddleToTensorRTConverter:
         self.param_dict = param_dict
         
         # input_tensor = self.network.add_input(name="input", dtype=trt.float32, shape=input_shape)
-    
-    
        
     def find_graph_inputs_outputs(self, group_op):
         operations = list(group_op.blocks())[0].ops
@@ -64,22 +80,34 @@ class PaddleToTensorRTConverter:
         # Mapping from Value id to TensorRT ITensor
         value_to_trt_tensor = {}
         for value in input_values:
+            import pdb;pdb.set_trace()
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.parameter":
                 param_name = defining_op.attrs()["parameter_name"]
                 weight = trt.Weights(self.param_dict[param_name])
                 weights[value.id] = weight
                 value_to_trt_tensor[value.id] = weight
-            elif defining_op.name() == "pd_op.data":
+            # elif defining_op.name() == "pd_op.data":
+            else:
                 shape = value.shape
                 dtype = map_dtype(value.dtype.name)
-                min_shape = tuple(dim if dim != -1 else 1 for dim in shape)  # Minimum shape for dynamic dimensions
-                opt_shape = tuple(dim if dim != -1 else 4 for dim in shape)  # Optimal shape for dynamic dimensions
-                max_shape = tuple(dim if dim != -1 else 8 for dim in shape)  # Maximum shape for dynamic dimensions
+                min_shape = get_value_shape_range_info(
+                    value, False, paddle.base.core.ShapeMode.kMIN
+                )
+                opt_shape = get_value_shape_range_info(
+                    value, False, paddle.base.core.ShapeMode.kOPT
+                )
+                max_shape = get_value_shape_range_info(
+                    value, False, paddle.base.core.ShapeMode.kMAX
+                )
+                # min_shape = tuple(dim if dim != -1 else 1 for dim in shape)  # Minimum shape for dynamic dimensions
+                # opt_shape = tuple(dim if dim != -1 else 4 for dim in shape)  # Optimal shape for dynamic dimensions
+                # max_shape = tuple(dim if dim != -1 else 8 for dim in shape)  # Maximum shape for dynamic dimensions
                 input_name = f"input_{value.id}"
                 input_tensor = network.add_input(name=input_name, dtype=dtype, shape=shape)
                 profile.set_shape(input_name, min=min_shape, opt=opt_shape, max=max_shape)
                 value_to_trt_tensor[value.id] = input_tensor
+
                 
         for op in operations:
             operands = [value_to_trt_tensor[operand.source().id] for operand in op.operands()]
@@ -92,73 +120,70 @@ class PaddleToTensorRTConverter:
         
         config = builder.create_builder_config()
         config.add_optimization_profile(profile)
-        return builder.build_engine(network, config)
+        trt_engine = builder.build_engine(network, config)
+        trt_params = paddle.base.libpaddle.TRTEngineParams()
+        trt_params.min_input_shape = {"x": [1, 1]}
+        trt_params.max_input_shape = {"x": [10, 1]}
+        trt_params.optim_input_shape = {"x": [5, 1]}
+        trt_params.engine_serialized_data = str(trt_engine)
+        out = paddle._C_ops.tensorrt_engine(
+            input_values,
+            trt_params,
+            ["x"],
+            ["out"],
+
+            # [[1, 1]],
+            [paddle.base.libpaddle.DataType.FLOAT32],
+        )
     
 
     def convert(self, network, paddle_op, inputs):
-        if paddle_op.name() == "pd_op.add" or  paddle_op.name() == "pd_op.elementwise_add":
-            weight_shape = paddle_op.operands()[1].source().shape
-            weight_tensor = network.add_constant(weight_shape, inputs[1]).get_output(0)
-            
-            weight_shape = paddle_op.operands()[0].source().shape
-            new_bias_shape = weight_shape
-            reshape_layer = network.add_reshape(weight_tensor, new_bias_shape).get_output(0) 
-
-            out = network.add_elementwise(inputs[0], reshape_layer, trt.ElementWiseOperation.SUM)
-            return out
-        elif paddle_op.name() == "pd_op.relu":
-            out = network.add_activation(inputs[0], trt.ActivationType.RELU)
-            return out
-        elif paddle_op.name() == "pd_op.matmul":
-            weight_shape = paddle_op.operands()[1].source().shape
-            weight_tensor = network.add_constant(weight_shape, inputs[1]).get_output(0)
-            out = network.add_matrix_multiply(inputs[0], trt.MatrixOperation.NONE, weight_tensor, trt.MatrixOperation.NONE)
-            return out
-        elif paddle_op.name() == "pd_op.conv2d":
-            strides = paddle_op.attrs()["strides"]
-            padding = paddle_op.attrs()["paddings"]
-            dilations = paddle_op.attrs()["dilations"]
-            actvation = paddle_op.attrs()["actvation"]
-            groups = paddle_op.attrs()["groups"]
-            out = network.add_convolution(
-                inputs[0],
-                weight_shape,
-                weight_tensor,
-                stride=strides,
-                padding=padding,
-                groups=groups,
-                dilations=dilations,
-                actvation=actvation
-            )
-            return out
-        elif paddle_op.name() == "cf.yield":
-            pass
-        elif paddle_op.name() in GENERAL_PLUGIN_OPS_LIST:
-            out = network.add_plugin
+        op_name = paddle_op.name()
+        if op_name in ["cf.yield"]:
+            return
+        elif op_name in GENERAL_PLUGIN_OPS_LIST:
+            out = network.add_plugin_v2(inputs)
         else:
-            raise NotImplementedError(f"Conversion for {paddle_op} not implemented.")
+            converter_func = converter_registry.get(op_name)
+            if converter_func is None:
+                raise NotImplementedError(f"Converter for {op_name} not implemented.")
+            out = converter_func(network, paddle_op, inputs)
+        return out
     
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
             if op.name() == "cinn_op.group":
                 trt_engine = self.convert_subgraph_to_trt(op)
                 print(trt_engine)
+                # create fake tensorrt op
+                
 
-
-def run_pir_pass(program):
-    pm = pir.PassManager(opt_level=4)
-    pm.enable_print_statistics()
-    pm.enable_ir_printing()
-    for pass_item in pass_attr_list:
-        for pass_name, pass_attr in pass_item.items():
-            pm.add_pass(pass_name, pass_attr)
-    pm.run(program)
-    return program
-
-
-        
 def main():
-    program, scope, param_dict = get_program()
+    from util import get_dummy_program
+    program, scope, param_dict = get_dummy_program()
+
+    with paddle.pir_utils.IrGuard():
+        with paddle.static.program_guard(
+            program
+        ):
+            exe = paddle.static.Executor()
+            input_array = np.random.randn(1, 64).astype('float32')
+            out = exe.run(
+                program,
+                feed={"input": input_array},
+                fetch_list=program.list_vars()[-1]
+            )
+            print("first time, the out shape is: ", out[0].shape)
+
+            input_array2 = np.random.randn(8, 64).astype('float32')
+            out = exe.run(
+                program,
+                feed={"input": input_array2},
+                fetch_list=program.list_vars()[-1]
+            )
+            print("second time, the out shape is: ", out[0].shape)
+
+    program = run_pir_pass(program, partition_mode=True)
     converter = PaddleToTensorRTConverter(program, scope)
     converter.convert_program_to_trt()
 
