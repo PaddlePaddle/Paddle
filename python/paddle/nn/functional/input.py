@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -131,12 +132,22 @@ def one_hot(
 @inplace_apis_in_dygraph_only
 def embedding_renorm_(
     x: Tensor, weight: Tensor, max_norm: float, norm_type: float = 2.0
-):
+) -> Tensor:
     r"""
     This operator is used to update the embedding weight by renorm.
     """
     if in_dynamic_mode():
-        return _C_ops.embedding_renorm_(x, weight, max_norm, norm_type)
+        with paddle.set_grad_enabled(False):
+            unique_x = paddle.unique(x)
+            selected_rows = paddle.index_select(weight, unique_x)
+            norm = paddle.norm(selected_rows, p=norm_type, axis=1, keepdim=True)
+            mask = norm > max_norm
+            scale = max_norm / (norm + 1e-7)
+            scale = paddle.where(mask, scale, paddle.ones_like(scale))
+            scale = paddle.expand_as(scale, selected_rows)
+            updated_rows = selected_rows * scale
+            paddle.scatter_(weight, unique_x, updated_rows, overwrite=True)
+            return weight
 
 
 def embedding(

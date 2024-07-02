@@ -20,6 +20,7 @@ import paddle
 
 
 def embedding_renorm_(x, weight, max_norm, norm_type=2.0):
+    weight = weight.copy()
     x = np.reshape(x, (-1,))
     x = np.unique(x)
     x = np.sort(x)
@@ -36,7 +37,7 @@ class TestEmbeddingRenormOp(unittest.TestCase):
     def setUp(self):
         self._init_attr()
         self.dtype = self._init_dtype()
-        x = np.array([[1, 2, 3], [4, 5, 6]]).astype("int64")
+        x = np.array([[2, 1, 3], [4, 5, 6]]).astype("int64")
         weight = np.random.random((10, 4)).astype(self.dtype) * 10
         y_ref = embedding_renorm_(x, weight, self.max_norm, self.norm_type)
         self.inputs = {'X': x, 'Weight': weight}
@@ -47,7 +48,7 @@ class TestEmbeddingRenormOp(unittest.TestCase):
         return "float32"
 
     def _init_attr(self):
-        self.max_norm = 5.0
+        self.max_norm = 1.0
         self.norm_type = 2.0
 
     def test_check_output(self):
@@ -60,6 +61,18 @@ class TestEmbeddingRenormOp(unittest.TestCase):
         np.testing.assert_allclose(
             paddle_result.numpy(), self.outputs['Out'], atol=1e-5
         )
+
+
+class TestEmbeddingRenormOp1(TestEmbeddingRenormOp):
+    def _init_attr(self):
+        self.max_norm = 1.0
+        self.norm_type = 1.0
+
+
+class TestEmbeddingRenormOp2(TestEmbeddingRenormOp):
+    def _init_attr(self):
+        self.max_norm = 1.0
+        self.norm_type = 3.0
 
 
 if __name__ == '__main__':
