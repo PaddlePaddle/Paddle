@@ -912,12 +912,10 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
 
   bool check = true;
-  if (!scale || !bias) {
-    check = false;
-  }
 
-  if ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
-                               contain_unknown_dim(bias.dims()) || C == -1)) {
+  if (!scale || !bias ||
+      ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
+                                contain_unknown_dim(bias.dims()) || C == -1))) {
     check = false;
   }
 
