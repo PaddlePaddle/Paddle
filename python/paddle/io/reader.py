@@ -16,14 +16,16 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
+    PlaceLike,
+    Sequence,
+    TypedDict,
 )
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
+
     from paddle import Tensor
-    from python.paddle.base.core import Place
-    from python.paddle.io.dataloader.collate import default_collate_fn
     from python.paddle.io.dataloader.dataset import Dataset
 
 import copy
@@ -57,6 +59,11 @@ USE_PINNED_MEMORY = None
 # AutoTune Flags
 USE_AUTOTUNE = False
 TUNING_STEPS = 500
+
+
+class _Collate_Fn_State(TypedDict):
+    image: npt.NDArray
+    label: int | npt.NDArray
 
 
 def set_autotune_config(use_autotune, tuning_steps=500):
@@ -398,13 +405,13 @@ class DataLoader:
     """
 
     return_list: bool
-    collate_fn: default_collate_fn | None
+    collate_fn: Callable[[_Collate_Fn_State], None]
     use_buffer_reader: bool
     prefetch_factor: int
-    worker_init_fn: Callable[..., Any] | None
+    worker_init_fn: Callable[[int], None]
     dataset: Dataset
-    feed_list: list[Tensor] | tuple[Tensor]
-    places: list[Place] | tuple[Place] | list[str]
+    feed_list: Sequence[Tensor] | None
+    places: Sequence[PlaceLike] | list[str] | None
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
@@ -412,20 +419,20 @@ class DataLoader:
     def __init__(
         self,
         dataset: Dataset,
-        feed_list: list[Tensor] | tuple[Tensor] | None = None,
-        places: list[Place] | tuple[Place] | list[str] | None = None,
+        feed_list: Sequence[Tensor] | None = None,
+        places: Sequence[PlaceLike] | list[str] | None = None,
         return_list: bool = True,
         batch_sampler: BatchSampler | None = None,
         batch_size: int = 1,
         shuffle: bool = False,
         drop_last: bool = False,
-        collate_fn: Callable[..., default_collate_fn] | None = None,
+        collate_fn: Callable[[_Collate_Fn_State], None] = None,
         num_workers: int = 0,
         use_buffer_reader: bool = True,
         prefetch_factor: int = 2,
         use_shared_memory: bool = True,
         timeout: int = 0,
-        worker_init_fn: Callable[..., Any] | None = None,
+        worker_init_fn: Callable[[int], None] = None,
         persistent_workers: bool = False,
     ) -> None:
         self.return_list = return_list
