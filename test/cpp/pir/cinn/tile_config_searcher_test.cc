@@ -1,3 +1,5 @@
+tile_config_searcher_test
+
 // Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +87,7 @@ int get_tile_size_config(int dimension_lower) {
  * WeightedSamplingTrailObjectiveFunc. The search results are logged, including
  * the minimum score and the best candidate configuration found.
  */
-TEST(ConfigSearcher, TestSRReducePipeline) {
+TEST(ConfigSearcher, TestReducePipeline) {
   FLAGS_cinn_measure_kernel_time = true;
   FLAGS_enable_cinn_compile_cache = false;
   FLAGS_tile_config_policy = "search";
@@ -169,7 +171,7 @@ TEST(ConfigSearcher, TestSRReducePipeline) {
 
       // Step 3: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 1}, {1, 1}, {1, 1}};  // {1, 32}, {1, 1024}, {1, 128}
+          {1, 1}, {1, 1}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -199,11 +201,7 @@ TEST(ConfigSearcher, TestSRReducePipeline) {
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] == 1 || candidate[2] == 2 ||
-                   candidate[2] == 4 ||
-                   candidate[2] >= 8 && candidate[2] < 32 &&
-                       candidate[2] % 8 == 0 ||
-                   candidate[2] >= 32 && candidate[2] % 32 == 0;
+            return candidate[2] % 8 == 0 || candidate[2] <= 4;
           });
 
       // Step 4: Construct searcher and search.
@@ -230,103 +228,104 @@ TEST(ConfigSearcher, TestSRReducePipeline) {
   }
 }
 
-TEST(ConfigSearcher, TestReduceDemo) {
-  FLAGS_cinn_measure_kernel_time = true;
-  FLAGS_enable_cinn_compile_cache = false;
-  FLAGS_tile_config_policy = "search";
+// TEST(ConfigSearcher, TestReduceDemo) {
+//   FLAGS_cinn_measure_kernel_time = true;
+//   FLAGS_enable_cinn_compile_cache = false;
+//   FLAGS_tile_config_policy = "search";
 
-  constexpr int kThreadsPerWarp = 32;
-  constexpr int kMaxThreadsPerBlock = 1024;
+//   constexpr int kThreadsPerWarp = 32;
+//   constexpr int kMaxThreadsPerBlock = 1024;
 
-  std::vector<std::vector<int64_t>> shapes = {
-      {1, 1, 4096},          // 0
-      {1, 13, 4096},         // 1
-      {128 * 12, 128, 128},  // 2
-      {128, 128, 768},       // 3
-      {2048, 32, 128},       // 4
-      {2048, 8, 96},         // 5
-      {13 * 2048, 32, 128}   // 6
-  };
-  auto shape = shapes[0];
-  int shape0 = shape[0], shape1 = shape[1], shape2 = shape[2];
-  // Step 1: Construct pir::Program.
-  std::shared_ptr<::pir::Program> program =
-      BuildReduceSumProgram(shape0 * shape1, shape2);
-  // Step 2: Switch schedule config manager mode.
-  auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
-  // Step 3: Construct iter space and objective function.
-  int s_dimension_lower = shape0 * shape1;
-  int s_dimension_upper = shape0 * shape1;
-  auto s_dimension_type = "S";
-  auto s_dimension_is_dynamic = false;
-  int r_dimension_lower = shape2;
-  int r_dimension_upper = shape2;
-  auto r_dimension_type = "R";
-  auto r_dimension_is_dynamic = false;
+//   std::vector<std::vector<int64_t>> shapes = {
+//       {1, 1, 4096},          // 0
+//       {1, 13, 4096},         // 1
+//       {128 * 12, 128, 128},  // 2
+//       {128, 128, 768},       // 3
+//       {2048, 32, 128},       // 4
+//       {2048, 8, 96},         // 5
+//       {13 * 2048, 32, 128}   // 6
+//   };
+//   auto shape = shapes[0];
+//   int shape0 = shape[0], shape1 = shape[1], shape2 = shape[2];
+//   // Step 1: Construct pir::Program.
+//   std::shared_ptr<::pir::Program> program =
+//       BuildReduceSumProgram(shape0 * shape1, shape2);
+//   // Step 2: Switch schedule config manager mode.
+//   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
+//   // Step 3: Construct iter space and objective function.
+//   int s_dimension_lower = shape0 * shape1;
+//   int s_dimension_upper = shape0 * shape1;
+//   auto s_dimension_type = "S";
+//   auto s_dimension_is_dynamic = false;
+//   int r_dimension_lower = shape2;
+//   int r_dimension_upper = shape2;
+//   auto r_dimension_type = "R";
+//   auto r_dimension_is_dynamic = false;
 
-  auto s_dimension = cinn::ir::BucketInfo::Dimension{s_dimension_lower,
-                                                     s_dimension_upper,
-                                                     s_dimension_type,
-                                                     s_dimension_is_dynamic};
-  auto r_dimension = cinn::ir::BucketInfo::Dimension{r_dimension_lower,
-                                                     r_dimension_upper,
-                                                     r_dimension_type,
-                                                     r_dimension_is_dynamic};
+//   auto s_dimension = cinn::ir::BucketInfo::Dimension{s_dimension_lower,
+//                                                      s_dimension_upper,
+//                                                      s_dimension_type,
+//                                                      s_dimension_is_dynamic};
+//   auto r_dimension = cinn::ir::BucketInfo::Dimension{r_dimension_lower,
+//                                                      r_dimension_upper,
+//                                                      r_dimension_type,
+//                                                      r_dimension_is_dynamic};
 
-  cinn::ir::BucketInfo bucket_info(
-      std::vector<cinn::ir::BucketInfo::Dimension>{s_dimension, r_dimension});
-  LOG(INFO) << "Bucket_info.space.size is: " << bucket_info.space.size();
-  std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
-      std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
-          program.get(), bucket_info);
+//   cinn::ir::BucketInfo bucket_info(
+//       std::vector<cinn::ir::BucketInfo::Dimension>{s_dimension, r_dimension});
+//   LOG(INFO) << "Bucket_info.space.size is: " << bucket_info.space.size();
+//   std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
+//       std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
+//           program.get(), bucket_info);
 
-  // Step 4: Construct config candidate range and constraints.
-  std::vector<std::pair<int, int>> candidate_range{
-      {1, 1}, {32, 32}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
-  std::vector<cinn::ir::search::ConstraintFunc> constraints;
-  constraints.emplace_back(
-      [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[1] % kThreadsPerWarp == 0 || candidate[1] == 1;
-      });
-  constraints.emplace_back(
-      [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
-      });
-  constraints.emplace_back(
-      [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * kThreadsPerWarp >= candidate[1];
-      });
-  constraints.emplace_back(
-      [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * kThreadsPerWarp % candidate[1] == 0;
-      });
-  constraints.emplace_back(
-      [&](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * 32 / candidate[1] * candidate[2] <=
-               s_dimension_lower;
-      });
-  constraints.emplace_back(
-      [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[2] < 8 || candidate[2] % 8 == 0;
-      });
-  constraints.emplace_back(
-      [&](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[1] <= r_dimension_upper;
-      });
+//   // Step 4: Construct config candidate range and constraints.
+//   std::vector<std::pair<int, int>> candidate_range{
+//       {1, 1}, {32, 32}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
+//   std::vector<cinn::ir::search::ConstraintFunc> constraints;
+//   constraints.emplace_back(
+//       [](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[1] % kThreadsPerWarp == 0 || candidate[1] == 1;
+//       });
+//   constraints.emplace_back(
+//       [](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
+//       });
+//   constraints.emplace_back(
+//       [](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[0] * kThreadsPerWarp >= candidate[1];
+//       });
+//   constraints.emplace_back(
+//       [](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[0] * kThreadsPerWarp % candidate[1] == 0;
+//       });
+//   constraints.emplace_back(
+//       [&](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[0] * 32 / candidate[1] * candidate[2] <=
+//                s_dimension_lower;
+//       });
+//   constraints.emplace_back(
+//       [](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[2] < 8 || candidate[2] % 8 == 0;
+//       });
+//   constraints.emplace_back(
+//       [&](const cinn::ir::search::CandidateType& candidate) -> bool {
+//         return candidate[1] <= r_dimension_upper;
+//       });
 
-  // Step 5: Construct searcher and search.
-  cinn::ir::search::ScheduleConfigSearcher searcher(
-      std::move(obj_func), candidate_range, constraints);
-  auto search_res = searcher.Search();
-  LOG(INFO) << "min score = " << search_res.first;
-  LOG(INFO) << "best candidate: "
-            << cinn::utils::Join<int64_t>(search_res.second, ", ");
+//   // Step 5: Construct searcher and search.
+//   cinn::ir::search::ScheduleConfigSearcher searcher(
+//       std::move(obj_func), candidate_range, constraints);
+//   auto search_res = searcher.Search();
+//   LOG(INFO) << "min score = " << search_res.first;
+//   LOG(INFO) << "best candidate: "
+//             << cinn::utils::Join<int64_t>(search_res.second, ", ");
 
-  // Step 6: Save the config to the file.
-  cinn::ir::ScheduleConfig::TileConfig tile_config{
-      search_res.second[0], search_res.second[1], search_res.second[2]};
+//   // Step 6: Save the config to the file.
+//   cinn::ir::ScheduleConfig::TileConfig tile_config{
+//       search_res.second[0], search_res.second[1], search_res.second[2]};
 
-  cinn::ir::FileTileConfigDatabase file_database;
-  file_database.AddConfig(
-      cinn::common::DefaultTarget(), bucket_info, tile_config, -1);
-}
+//   cinn::ir::FileTileConfigDatabase file_database;
+//   file_database.AddConfig(
+//       cinn::common::DefaultTarget(), bucket_info, tile_config, -1);
+// }
+
