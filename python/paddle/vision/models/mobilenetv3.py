@@ -32,6 +32,11 @@ from ._utils import _make_divisible
 if TYPE_CHECKING:
     from paddle import Tensor
 
+    class _MobileNetV3Options(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
+
 __all__ = []
 
 model_urls = {
@@ -44,11 +49,6 @@ model_urls = {
         "118db5792b4e183b925d8e8e334db3df",
     ),
 }
-
-
-class _MobileNetV3Options(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
 
 
 class SqueezeExcitation(nn.Layer):
@@ -94,14 +94,14 @@ class SqueezeExcitation(nn.Layer):
 class InvertedResidualConfig:
     def __init__(
         self,
-        in_channels,
-        kernel,
-        expanded_channels,
-        out_channels,
-        use_se,
-        activation,
-        stride,
-        scale=1.0,
+        in_channels: int,
+        kernel: int,
+        expanded_channels: int,
+        out_channels: int,
+        use_se: bool,
+        activation: str,
+        stride: int,
+        scale: float = 1.0,
     ):
         self.in_channels = self.adjust_channels(in_channels, scale=scale)
         self.kernel = kernel
@@ -136,8 +136,8 @@ class InvertedResidual(nn.Layer):
         filter_size: int,
         stride: int,
         use_se: bool,
-        activation_layer: nn.Layer,
-        norm_layer: nn.Layer,
+        activation_layer: type[nn.Layer],
+        norm_layer: type[nn.Layer],
     ) -> None:
         super().__init__()
         self.use_res_connect = stride == 1 and in_channels == out_channels
@@ -208,6 +208,10 @@ class MobileNetV3(nn.Layer):
             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
     """
+
+    scale: float
+    num_classes: int
+    with_pool: bool
 
     def __init__(
         self,

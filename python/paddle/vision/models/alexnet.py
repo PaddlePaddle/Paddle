@@ -25,7 +25,6 @@ from typing_extensions import NotRequired, Unpack
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle._typing import Size2
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import Conv2D, Dropout, Linear, MaxPool2D, ReLU
 from paddle.nn.initializer import Uniform
@@ -42,10 +41,10 @@ __all__ = []
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import Size2
 
-
-class _AlexNetOptions(TypedDict):
-    num_classes: NotRequired[int]
+    class _AlexNetOptions(TypedDict):
+        num_classes: NotRequired[int]
 
 
 class ConvPoolLayer(nn.Layer):
@@ -108,6 +107,8 @@ class AlexNet(nn.Layer):
             >>> print(out.shape)
             [1, 1000]
     """
+
+    num_classes: int
 
     def __init__(self, num_classes: int = 1000) -> None:
         super().__init__()

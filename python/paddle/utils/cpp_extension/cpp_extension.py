@@ -751,7 +751,7 @@ class EasyInstallCommand(easy_install):
             if will_rename:
                 new_so_path = filename + "_pd_" + ext
                 if not os.path.exists(new_so_path):
-                    os.rename(r'%s' % egg_file, r'%s' % new_so_path)
+                    os.rename(rf'{egg_file}', rf'{new_so_path}')
                 assert os.path.exists(new_so_path)
 
 
