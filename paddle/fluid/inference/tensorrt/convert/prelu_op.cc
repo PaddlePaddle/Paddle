@@ -90,7 +90,7 @@ class PReluOpConverter : public OpConverter {
           }
         } else {
           shape_tensor =
-                Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
+              Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
         }
         reshape_layer->setInput(1, *shape_tensor);
       } else {

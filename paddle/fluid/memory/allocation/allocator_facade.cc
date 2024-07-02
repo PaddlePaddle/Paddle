@@ -439,7 +439,8 @@ class AllocatorFacadePrivate {
     if (auto iter = default_stream_safe_cuda_allocators_.find(place);  // NOLINT
         iter != default_stream_safe_cuda_allocators_.end())
       return iter->second;
-    if (auto iter = default_cuda_malloc_async_allocators_.find(place);  // NOLINT
+    if (auto iter =
+            default_cuda_malloc_async_allocators_.find(place);  // NOLINT
         iter != default_cuda_malloc_async_allocators_.end())
       return iter->second;
     PADDLE_THROW(platform::errors::NotFound(

@@ -284,9 +284,11 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
         RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
       } else {
         current_reserved = DEVICE_MEMORY_STAT_CURRENT_VALUE(  // NOLINT
-            Reserved, place.GetDeviceId());
+            Reserved,
+            place.GetDeviceId());
         peak_reserved = DEVICE_MEMORY_STAT_PEAK_VALUE(  // NOLINT
-            Reserved, place.GetDeviceId());
+            Reserved,
+            place.GetDeviceId());
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
             current_reserved;
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
@@ -450,9 +452,11 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
         RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
       } else {
         current_reserved = DEVICE_MEMORY_STAT_CURRENT_VALUE(  // NOLINT
-            Reserved, place.GetDeviceId());
+            Reserved,
+            place.GetDeviceId());
         peak_reserved = DEVICE_MEMORY_STAT_PEAK_VALUE(  // NOLINT
-            Reserved, place.GetDeviceId());
+            Reserved,
+            place.GetDeviceId());
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
             current_reserved;
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
