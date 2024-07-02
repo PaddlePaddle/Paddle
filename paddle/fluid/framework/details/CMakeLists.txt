@@ -22,7 +22,6 @@ set(op_handle_srcs
     share_tensor_buffer_functor.cc
     computation_op_handle.cc
     share_tensor_buffer_op_handle.cc
-    multi_devices_helper.cc
     variable_visitor.cc
     eager_deletion_op_handle.cc)
 
@@ -78,7 +77,6 @@ set(IR_PASS_DEPS
     multi_batch_merge_pass
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
-    sequential_execution_pass
     add_reader_dependency_pass
     modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass

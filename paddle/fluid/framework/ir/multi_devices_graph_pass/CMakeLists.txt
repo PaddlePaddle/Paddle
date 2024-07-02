@@ -11,10 +11,6 @@ cc_library(
   multi_devices_graph_pass
   SRCS multi_devices_graph_pass.cc
   DEPS detail_op_handle ${ALL_REDUCE_OP_HANDLES})
-cc_library(
-  sequential_execution_pass
-  SRCS sequential_execution_pass.cc
-  DEPS graph graph_helper pass)
 
 cc_library(
   add_reader_dependency_pass

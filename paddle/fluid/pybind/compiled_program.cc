@@ -338,33 +338,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                         >>> build_strategy.debug_graphviz_path = "./graph"
           )DOC")
       .def_property(
-          "enable_sequential_execution",
-          [](const BuildStrategy &self) {
-            return self.enable_sequential_execution_;
-          },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.enable_sequential_execution_ = b;
-          },
-          R"DOC((bool, optional): If set True, the execution order of ops would
-                be the same as what is in the program. Default is False.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.enable_sequential_execution = True
-          )DOC")
-      .def_property(
           "remove_unnecessary_lock",
           [](const BuildStrategy &self) {
             return self.remove_unnecessary_lock_;
@@ -942,12 +915,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self,
              const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
             self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
-          })
-      .def_property(
-          "fix_op_run_order",
-          [](const BuildStrategy &self) { return self.fix_op_run_order_; },
-          [](BuildStrategy &self, bool fix_op_run_order) {
-            self.fix_op_run_order_ = fix_op_run_order;
           })
       .def_property(
           "allow_cuda_graph_capture",

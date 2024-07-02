@@ -220,9 +220,6 @@ class CompiledProgram:
                 self._program._hierarchical_allreduce_inter_nranks
             )
 
-        if self._build_strategy.sync_batch_norm:
-            self._build_strategy.enable_sequential_execution = True
-
         if self._program is not None and self._program._enable_dgc:
             assert (
                 self._build_strategy.num_trainers * len(places) > 1

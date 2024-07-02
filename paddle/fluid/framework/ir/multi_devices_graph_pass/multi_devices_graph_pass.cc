@@ -1024,5 +1024,3 @@ REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::ir::ReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(all_reduce_mode_multi_devices_pass,
                             paddle::framework::ir::AllReduceSSAGraphBuilder);
-REGISTER_MULTI_DEVICES_PASS(no_reduce_multi_devices_pass,
-                            paddle::framework::ir::NoReduceSSAGraphBuilder);
