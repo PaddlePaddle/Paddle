@@ -283,31 +283,47 @@ bool HasValueName(const Value &value) {
   }
 }
 
-std::string GetValueName(Value value) {
+std::optional<std::string> GetValueInputName(Value value) {
+  std::optional<std::string> name;
   if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    return param_op.param_name();
+    name = param_op.param_name();
   } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<StrAttribute>("name").AsString();
+    name = data_op.attribute<StrAttribute>("name").AsString();
   } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
     if (block_arg.is_kwarg()) {
-      return block_arg.keyword();
+      name = block_arg.keyword();
     } else {
-      return "arg_" + std::to_string(block_arg.index());
+      name = "arg_" + std::to_string(block_arg.index());
     }
-  } else if (IsUsedByShadowOutput(value)) {
+  }
+  return name;
+}
+
+std::optional<std::string> GetValueOutputName(Value value) {
+  std::optional<std::string> name;
+  if (IsUsedByShadowOutput(value)) {
     for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
       if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-        return iter->owner()->attribute<StrAttribute>("output_name").AsString();
+        name = iter->owner()->attribute<StrAttribute>("output_name").AsString();
+        break;
       }
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value which is "
-        "shadowoutput "));
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value that "
-        "is persistable"));
   }
+  return name;
+}
+
+std::string GetValueName(Value value) {
+  std::optional<std::string> input_name = GetValueInputName(value);
+  if (input_name.has_value()) return input_name.value();
+
+  VLOG(5) << "GetValueInputName(value) return empty, try to "
+             "GetValueOutputName(value).";
+  std::optional<std::string> output_name = GetValueOutputName(value);
+  if (output_name.has_value()) return output_name.value();
+
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Currently, we can only get name of Value from "
+      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
 }
 
 py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
@@ -1187,6 +1203,20 @@ void BindValue(py::module *m) {
           [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly("has_name",
                              [](Value self) { return HasValueName(self); })
+      // Return all Maybe names of given Value, for example:
+      // DataOp("var_1") -> %0 -> shadow_output("output_2")
+      // Return ["var_1", "output_2"]
+      .def_property_readonly(
+          "names",
+          [](Value self) -> py::list {
+            py::list all_names;
+            std::optional<std::string> input_name = GetValueInputName(self);
+            if (input_name.has_value()) all_names.append(input_name.value());
+
+            std::optional<std::string> output_name = GetValueOutputName(self);
+            if (output_name.has_value()) all_names.append(output_name.value());
+            return all_names;
+          })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
