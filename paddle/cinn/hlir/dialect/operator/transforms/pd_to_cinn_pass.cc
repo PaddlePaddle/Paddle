@@ -687,7 +687,7 @@ class SplitWithNumOpPattern
     return result;
   }
 
-  int64_t GetSpitDim(paddle::dialect::SplitWithNumOp op) {
+  int64_t GetSpitDim(paddle::dialect::SplitWithNumOp op) const {
     const int axis = GetAxis(op);
     return op.x()
         .type()
