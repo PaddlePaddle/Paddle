@@ -298,7 +298,6 @@ try:
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_use_default_grad_op_desc_maker_ops,
-        _is_compiled_with_gpu_graph,
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
         _is_program_version_supported,
@@ -361,9 +360,6 @@ try:
             _set_process_signal_handler,
             _throw_error_if_process_failed,
         )
-
-    # CINN
-    from .libpaddle import is_run_with_cinn  # noqa: F401
 
 except Exception as e:
     if has_paddle_dy_lib:

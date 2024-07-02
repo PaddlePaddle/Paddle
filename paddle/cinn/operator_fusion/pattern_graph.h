@@ -24,7 +24,6 @@ using PatternNodePtrSet = std::unordered_set<PatternNodePtr>;
 
 using MergePatternFn =
     std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
-
 class PatternGraph {
  public:
   PatternGraph(const std::vector<PatternContent>& nodes,

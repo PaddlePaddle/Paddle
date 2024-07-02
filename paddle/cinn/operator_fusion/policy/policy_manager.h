@@ -24,7 +24,7 @@ namespace cinn::fusion {
 
 class PolicyManager {
  public:
-  PolicyManager() {}
+  PolicyManager() = default;
 
   template <typename POLICY>
   void SetPolicy(const std::shared_ptr<POLICY>& policy) {

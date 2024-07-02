@@ -494,8 +494,39 @@ Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
 template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   std::vector<Tensor> concat_x;
-  if (has_dynamic_shape(x[0].shape())) {
-    Tensor out_shape = shape<T>(unsqueeze<T>(x[0], {axis}));
+  bool is_dynamic = false;
+  size_t rank = x[0].shape().size();
+
+  std::vector<int64_t> combined_shape(rank, -1);
+  for (auto& item : x) {
+    auto item_shape = item.shape();
+    for (size_t i = 0; i < item_shape.size(); i++) {
+      if (item_shape[i] == -1) {
+        is_dynamic = true;
+      } else {
+        combined_shape[i] = std::max(combined_shape[i], item_shape[i]);
+      }
+    }
+  }
+
+  if (is_dynamic && has_dynamic_shape(combined_shape)) {
+    std::vector<Tensor> shapes;
+    Tensor temp_shape = shape<T>(x[0]);
+    for (size_t j = 0; j < rank; j++) {
+      if (combined_shape[j] == -1) {
+        shapes.push_back(get_slice<T>(temp_shape, j));
+      } else {
+        shapes.push_back(full<T>({1}, combined_shape[j], temp_shape.type()));
+      }
+    }
+    if (axis < 0) {
+      shapes.insert(shapes.begin() + (axis + rank + 1),
+                    full<T>({1}, 1, temp_shape.type()));
+    } else {
+      shapes.insert(shapes.begin() + axis, full<T>({1}, 1, temp_shape.type()));
+    }
+
+    Tensor out_shape = concat<T>(shapes);
     for (size_t i = 0; i < x.size(); ++i) {
       concat_x.push_back(backend::reshape<T>(x[i], out_shape));
     }
@@ -625,6 +656,23 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
     }
   }
 
+  return res;
+}
+
+template <typename T>
+std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
+  std::vector<Tensor> res;
+  if (axis < 0) {
+    axis = x.shape().size() + axis;
+  }
+  if (x.shape()[axis] == -1) {
+    PADDLE_THROW(phi::errors::Unimplemented("unbind axis must not be dynamic"));
+  }
+  size_t num = x.shape()[axis];
+  std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
+  for (size_t i = 0; i < tmp.size(); i++) {
+    res.push_back(squeeze<T>(tmp[i], {axis}));
+  }
   return res;
 }
 
@@ -1045,12 +1093,17 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto min_reshape = min;
   auto max_reshape = max;
 
+  if (x.shape().size() == 0) {
+    min_reshape = reshape<T>(min_reshape, {});
+    max_reshape = reshape<T>(max_reshape, {});
+  }
+
   if (has_dynamic_shape(x.shape())) {
-    min_reshape = backend::expand_with_tensor<T>(min, shape<T>(x));
-    max_reshape = backend::expand_with_tensor<T>(max, shape<T>(x));
+    min_reshape = backend::expand_with_tensor<T>(min_reshape, shape<T>(x));
+    max_reshape = backend::expand_with_tensor<T>(max_reshape, shape<T>(x));
   } else {
-    min_reshape = expand<T>(min, x.shape());
-    max_reshape = expand<T>(max, x.shape());
+    min_reshape = expand<T>(min_reshape, x.shape());
+    max_reshape = expand<T>(max_reshape, x.shape());
   }
   if (min_reshape.dtype() != x.dtype()) {
     min_reshape = cast<T>(min_reshape, x.dtype());

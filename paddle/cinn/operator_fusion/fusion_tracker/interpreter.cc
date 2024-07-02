@@ -23,7 +23,6 @@ void RunCopyInstr(const std::shared_ptr<CopyInstr>& instr,
                   FusionInterpreter* interpreter) {
   interpreter->scope[instr->new_name_] =
       interpreter->scope[instr->origin_name_];
-  interpreter->scope.erase(instr->origin_name_);
 }
 
 void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
@@ -67,18 +66,24 @@ void RunTrivialInlineInstr(const std::shared_ptr<TrivialInlineInstr>& instr,
 
 void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
                           FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->upstream_]->fusion_ops.size(), 1);
+  VLOG(4) << interpreter->scope[instr->upstream_]->fusion_ops.size();
   PADDLE_ENFORCE_EQ(interpreter->scope[instr->downstream_]->fusion_ops.size(),
-                    1);
+                    1,
+                    "Downstream op must have only one fusion_op.");
   auto upstream_op = std::get<ReduceOp>(
       interpreter->scope[instr->upstream_]->fusion_ops.front());
   auto downstream_op =
       interpreter->scope[instr->downstream_]->fusion_ops.front();
+  // inplace set the upstream
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
   new_pattern->fusion_ops = cinn::hlir::framework::pir::trivial_fusion_detail::
       TransformReduceLoopRange(
           upstream_op, &downstream_op, instr->fake_reduce_iter_idx_);
-  interpreter->scope[instr->result_] = new_pattern;
+  interpreter->scope[instr->out_upstream_] = new_pattern;
+  // inplace set the downstream
+  ScopeElementPtr new_downstream = std::make_shared<ScopeElement>();
+  new_downstream->fusion_ops.push_back(downstream_op);
+  interpreter->scope[instr->out_downstream_] = new_downstream;
 }
 
 void RunTrivialLoopAlignInstr(
@@ -144,7 +149,11 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
 }
 
 std::vector<ir::Expr> FusionInterpreter::Run() {
+  /*
+   * instruction can't inplace change.
+   */
   for (auto instr : tracker->instructions_) {
+    VLOG(4) << "FusionInterpreter Start Run " << instr->DebugStr();
     switch (instr->type()) {
       case T_Copy:
         RunCopyInstr(dynamic_cast_instr_with_err<CopyInstr>(instr), this);
@@ -173,6 +182,10 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
         break;
       case T_Return:
         RunReturnInstr(dynamic_cast_instr_with_err<ReturnInstr>(instr), this);
+        break;
+      case T_TrivialLoopAlign:
+        RunTrivialLoopAlignInstr(
+            dynamic_cast_instr_with_err<TrivialLoopAlignInstr>(instr), this);
         break;
       default:
         PADDLE_THROW("Unsupported Fusion Instrution");

@@ -173,7 +173,6 @@ struct DownstreamGreaterThan {
     return node->downstream().size() > N;
   }
 };
-
 template <typename... Args>
 struct And {};
 
@@ -182,12 +181,22 @@ struct And<A> {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node);
   }
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    return A()(graph, lhs, rhs);
+  }
 };
 
 template <typename A, typename... Args>
 struct And<A, Args...> {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node) && And<Args...>()(graph, node);
+  }
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    return A()(graph, lhs, rhs) && And<Args...>()(graph, lhs, rhs);
   }
 };
 
@@ -212,6 +221,144 @@ template <typename A>
 struct Not {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return !A()(graph, node);
+  }
+};
+
+struct HorizontalFusionConstrain {
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, lhs)) {
+      return false;
+    }
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, rhs)) {
+      return false;
+    }
+    const auto& lhs_pattern =
+        std::get<HorizontalFusionPattern>(lhs->stmt_pattern());
+    const auto& rhs_pattern =
+        std::get<HorizontalFusionPattern>(rhs->stmt_pattern());
+
+    return graph.policy_manager().GetPolicy<GeneralTopoPolicy>()->CanFuse(
+               lhs, rhs) &&
+           IsLoopFrameworkEqual(lhs_pattern.padding_patterns_.back().pattern,
+                                rhs_pattern.padding_patterns_.back().pattern);
+  }
+};
+
+/*
+ * We must limit the output + input + shape_info number and make sure
+ * the number is smaller than 512.
+ */
+struct InputOutputMaximumConstrain {
+  const int MAX_INPUT_OUTPUT_NUMBER = 480;  // cuda only support 512
+  std::vector<pir::Value> GetInputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetInputsValue(ops), GetOutputsValue(ops));
+  }
+  std::vector<pir::Value> GetOutputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetOutputsValue(ops), GetInputsValue(ops));
+  }
+  std::vector<pir::Operation*> GetAllOps(const PatternNodePtr& lhs,
+                                         const PatternNodePtr& rhs) {
+    return UniqueVectorBySet(
+        ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
+                     GetOpsInPattern(rhs->stmt_pattern())));
+  }
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    const auto& all_ops = GetAllOps(lhs, rhs);
+    int input_number = GetInputValuesExceptMiddle(all_ops).size();
+    int output_number = GetOutputValuesExceptMiddle(all_ops).size();
+    return input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
+  }
+};
+
+struct HorizontalCheckMiddleOutputVar {
+  bool DontHaveMiddleVariable(const PatternGraph& graph,
+                              const PatternNodePtr& lhs,
+                              const PatternNodePtr& rhs) {
+    for (const auto& i : lhs->downstream()) {
+      if (i == rhs) return false;
+    }
+    for (const auto& i : lhs->upstream()) {
+      if (i == rhs) return false;
+    }
+    return true;
+  }
+
+  std::vector<ValueDim> SqueezedValueDim(const LoopValueDims& vdims) {
+    return FilterVector(vdims, [](const ValueDim& v) {
+      return !v.empty() && GetDimExprsFromValue(v.v_)[v.idx_] != 1;
+    });
+  }
+
+  bool IdenticalDep(const PatternGraph& graph,
+                    const LoopValueDims& lhs_dims,
+                    const LoopValueDims& rhs_dims) {
+    auto sp = graph.policy_manager().template GetPolicy<RelativeJudgePolicy>();
+    auto get_axes_from_valuedim = [&](const ValueDim& vdim) {
+      return (sp->GetAxesInfoManager()).GetAxes(vdim.v_).axis_names[vdim.idx_];
+    };
+    VLOG(4) << "origin lhs_dims.size() = " << lhs_dims.size();
+    VLOG(4) << "origin rhs_dims.size() = " << rhs_dims.size();
+    std::vector<ValueDim> lhs_squeeze_value_dim = SqueezedValueDim(lhs_dims);
+    std::vector<ValueDim> rhs_squeeze_value_dim = SqueezedValueDim(rhs_dims);
+
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "lhs_squeeze_value_dim is : ";
+      for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
+        VLOG(4) << "    " << i << " = " << lhs_squeeze_value_dim[i].DebugStr();
+        VLOG(4) << "    "
+                << "shardable axes: "
+                << get_axes_from_valuedim(lhs_squeeze_value_dim[i]);
+      }
+      VLOG(4) << "lhs_squeeze_value_dim is : ";
+      if (VLOG_IS_ON(4)) {
+        for (int i = 0; i < rhs_squeeze_value_dim.size(); ++i) {
+          VLOG(4) << "    " << i << " = "
+                  << rhs_squeeze_value_dim[i].DebugStr();
+          VLOG(4) << "    "
+                  << "shardable axes: "
+                  << get_axes_from_valuedim(rhs_squeeze_value_dim[i]);
+        }
+      }
+    }
+
+    // compare non_one value dims of
+    PADDLE_ENFORCE_EQ(lhs_squeeze_value_dim.size(),
+                      rhs_squeeze_value_dim.size(),
+                      "lhs squeezed dims is not equal to rhs squeezed dims");
+    for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
+      if (get_axes_from_valuedim(lhs_squeeze_value_dim[i]) !=
+          get_axes_from_valuedim(rhs_squeeze_value_dim[i]))
+        return false;
+    }
+    return true;
+  }
+  bool IdenticalDepAll(const PatternGraph& graph,
+                       const LoopValueDims& rhs_dims,
+                       const std::vector<LoopValueDims> lhs_dims_vec) {
+    std::function<bool(const LoopValueDims)> is_identical_dep =
+        [&](const LoopValueDims out) {
+          return IdenticalDep(graph, rhs_dims, out);
+        };
+    return All(MapVector(lhs_dims_vec, is_identical_dep));
+  }
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
+    if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
+    const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
+    const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
+    bool identical_dep = true;
+    for (const auto& right_dims : right_dims_vec) {
+      identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
+    }
+    return identical_dep;
   }
 };
 

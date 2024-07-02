@@ -152,7 +152,11 @@ void PatternGraph::HorizontalFusion() {
                    LiftToHorizontalFusionPatternOperation>(this);
 
   GraphTransformer<NodePairPattern,
-                   HorizontalFusionMatcher,
+                   And<HorizontalFusionConstrain,
+                       InputOutputMaximumConstrain,
+                       HorizontalCheckMiddleOutputVar>,  // Avoid two many
+                                                         // inputs and
+                                                         // outputs.
                    HorizontalFusionOperation>(this);
 }
 

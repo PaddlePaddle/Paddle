@@ -12,36 +12,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numbers
 import warnings
-from collections import OrderedDict
+from typing import OrderedDict, Sequence
 
 import numpy as np
+from typing_extensions import TypedDict
 
 import paddle
-from paddle import nn
+from paddle import Tensor, nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
 
 __all__ = []
 
 
-def summary(net, input_size=None, dtypes=None, input=None):
+class ModelSummary(TypedDict):
+    total_params: int
+    trainable_params: int
+
+
+def summary(
+    net: nn.Layer,
+    input_size: (
+        int
+        | tuple[int, ...]
+        | InputSpec
+        | list[tuple[int, ...] | InputSpec]
+        | None
+    ) = None,
+    dtypes: str | Sequence[str] | None = None,
+    input: Tensor | Sequence[Tensor] | dict[str, Tensor] | None = None,
+) -> ModelSummary:
     """Prints a string summary of the network.
 
     Args:
         net (Layer): The network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): Size of input tensor. if model only
+        input_size (tuple|InputSpec|list[tuple|InputSpec]|None, optional): Size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
                     have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
-        dtypes (str, optional): If dtypes is None, 'float32' will be used, Default: None.
-        input (Tensor, optional): If input is given, input_size and dtype will be ignored, Default: None.
+        dtypes (str|Sequence[str]|None, optional): If dtypes is None, 'float32' will be used, Default: None.
+        input (Tensor|Sequence[paddle.Tensor]|dict[str, paddle.Tensor]|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
-        Dict: A summary of the network including total params and total trainable params.
+        dict: A summary of the network including total params and total trainable params.
 
     Examples:
         .. code-block:: python
@@ -171,7 +190,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
         .. code-block:: python
             :name: code-example-3
 
-            >>> # example 3: List/Dict Input Demo
+            >>> # example 3: List Input Demo
             >>> import paddle
             >>> import paddle.nn as nn
 
@@ -231,7 +250,15 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
-            >>> # dict input demo
+
+        .. code-block:: python
+            :name: code-example-4
+
+            >>> # example 4: Dict Input Demo
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> # Dict input demo
             >>> class LeNetDictInput(nn.Layer):
             ...     def __init__(self, num_classes=10):
             ...         super().__init__()
@@ -266,15 +293,15 @@ def summary(net, input_size=None, dtypes=None, input=None):
             ---------------------------------------------------------------------------
              Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-               Conv2D-3       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
-                ReLU-3        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
-              MaxPool2D-3     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-               Conv2D-4       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
-                ReLU-4       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
-              MaxPool2D-4    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-               Linear-4          [[1, 400]]            [1, 120]           48,120
-               Linear-5          [[1, 120]]            [1, 84]            10,164
-               Linear-6          [[1, 84]]             [1, 10]              850
+               Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+               Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+               Linear-1          [[1, 400]]            [1, 120]           48,120
+               Linear-2          [[1, 120]]            [1, 84]            10,164
+               Linear-3          [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
@@ -288,7 +315,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             <BLANKLINE>
             >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
-
     """
     if input_size is None and input is None:
         raise ValueError("input_size and input cannot be None at the same time")

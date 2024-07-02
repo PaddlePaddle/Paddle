@@ -123,21 +123,24 @@ struct TrivialInlineInstr : public FusionInstruction {
 struct TmpTransformInstr : public FusionInstruction {
   TmpTransformInstr(const std::string& upstream,
                     const std::string& downstream,
-                    const std::string& result,
+                    const std::string& out_upstream,
+                    const std::string& out_downstream,
                     const std::vector<size_t>& fake_reduce_iter_idx = {})
       : upstream_(upstream),
         downstream_(downstream),
-        result_(result),
+        out_downstream_(out_downstream),
+        out_upstream_(out_upstream),
         fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
-  virtual InstructionType type() const { return T_TmpTransform; }
+  InstructionType type() const override { return T_TmpTransform; }
   std::string upstream_;
   std::string downstream_;
-  std::string result_;
+  std::string out_upstream_;
+  std::string out_downstream_;
   std::vector<size_t> fake_reduce_iter_idx_;
 
-  virtual std::string DebugStr() const {
-    return "TrivialInlineInstr || " + upstream_ + ", " + downstream_ + " => " +
-           result_;
+  std::string DebugStr() const override {
+    return "TmpTransformInstr || " + upstream_ + ", " + downstream_ + " => " +
+           out_upstream_ + ", " + out_downstream_;
   }
 };
 

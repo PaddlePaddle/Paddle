@@ -121,25 +121,41 @@ struct ReduceTreePattern {
   FusionTrackerPtr tracker_;
 
   void update_tracker() const {
-    std::vector<std::string> tmp_names({GetRootPattern().id()});
-    int count = 0;
-    auto hook = [tracker = tracker_, &tmp_names, &count](
-                    const std::string& up, const std::string& down) {
-      std::string tmp_name = "tmp_" + std::to_string(count++);
-      tracker->append(std::make_shared<TmpTransformInstr>(up, down, tmp_name));
-      tmp_names.emplace_back(tmp_name);
+    int counter = 0;
+    std::function<std::string()> gen_name = [&counter]() {
+      return "tmp_" + std::to_string(counter++);
     };
-    recursive_call(hook);
-
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
+    const std::string& root_name = id();
+    std::vector<std::string> names;
+    UpdateTrackerImpl(root_name,
+                      *this,
+                      std::vector<size_t>(),
+                      gen_name,
+                      this->tracker_,
+                      &names);
+    tracker_->append(std::make_shared<CombineInstr>(names, root_name));
   }
 
-  using Hook = std::function<void(const std::string&, const std::string&)>;
-  void recursive_call(const Hook& hook) const {
-    for (auto child : childs_) {
-      hook(child.GetRootPattern().id(), GetRootPattern().id());
-      child.recursive_call(hook);
+  void UpdateTrackerImpl(const std::string root_name,
+                         const ReduceTreePattern& root,
+                         const std::vector<size_t>& fake_reduce_iter_idx,
+                         const std::function<std::string()>& unique_tmp_name_fn,
+                         FusionTrackerPtr tracker,
+                         std::vector<std::string>* names) const {
+    // Apply a bunch of tracker to get a output_name of ReduceTreePattern.
+    // names and trackers collect all the needed fusion nodes.
+    for (const auto& child : childs_) {
+      const std::string& tmp_name = unique_tmp_name_fn();
+      tracker->append(std::make_shared<TmpTransformInstr>(
+          tmp_name, root_name, tmp_name, root_name, fake_reduce_iter_idx));
+      UpdateTrackerImpl(tmp_name,
+                        child,
+                        fake_reduce_iter_idx,
+                        unique_tmp_name_fn,
+                        tracker,
+                        names);
     }
+    names->push_back(root_name);
   }
 
  private:
@@ -174,34 +190,31 @@ struct ReduceTreePlusTrivialPattern {
   FusionTrackerPtr tracker_;
 
   void update_tracker() const {
-    std::vector<std::string> tmp_names(
-        {sink_trivial.id(), tree.GetRootPattern().id()});
+    int counter = 0;
+    std::function<std::string()> gen_name = [&counter]() {
+      return "tmp_" + std::to_string(counter++);
+    };
+    const std::string& root_name = id();
+    const std::string& tmp_name_for_tree = gen_name();
+    std::vector<std::string> names;
     tracker_->append(
         std::make_shared<TmpTransformInstr>(tree.GetRootPattern().id(),
                                             sink_trivial.id(),
-                                            tree.GetRootPattern().id(),
+                                            tmp_name_for_tree,
+                                            root_name,
                                             fake_reduce_iter_idx));
-
-    int count = 0;
-    auto hook = [tracker = tracker_,
-                 &tmp_names,
-                 fake_reduce = fake_reduce_iter_idx,
-                 &count](const std::string& up, const std::string& down) {
-      std::string tmp_name = "tmp_" + std::to_string(count++);
-      tracker->append(
-          std::make_shared<TmpTransformInstr>(up, down, tmp_name, fake_reduce));
-      tmp_names.emplace_back(tmp_name);
-    };
-
-    tree.recursive_call(hook);
-
-    tracker_->append(
-        std::make_shared<TrivialLoopAlignInstr>(tree.GetRootPattern().id(),
-                                                sink_trivial.id(),
-                                                sink_trivial.id(),
-                                                fake_reduce_iter_idx));
-
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
+    tree.UpdateTrackerImpl(tmp_name_for_tree,
+                           tree,
+                           fake_reduce_iter_idx,
+                           gen_name,
+                           this->tracker_,
+                           &names);
+    names.push_back(root_name);
+    // optimize the loop range of R + T for speed up.
+    tracker_->append(std::make_shared<TrivialLoopAlignInstr>(
+        tmp_name_for_tree, root_name, root_name, fake_reduce_iter_idx));
+    // collect all the Expr and represent the root_name.
+    tracker_->append(std::make_shared<CombineInstr>(names, root_name));
   }
 };
 

@@ -36,6 +36,8 @@ class RelativeJudgePolicy final : public PolicyBase {
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream);
 
+  ShardableAxesInfoManager& GetAxesInfoManager() { return axes_info_; }
+
   std::string Name() { return "RelativeJudgePolicy"; }
 
   std::vector<size_t> GetFakeReduceIterIdx(const PatternNodePtr& upstream,
