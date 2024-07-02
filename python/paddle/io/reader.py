@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Callable,
-    PlaceLike,
     Sequence,
     TypedDict,
 )
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
     from paddle import Tensor
+    from python.paddle._typing.device_like import PlaceLike
     from python.paddle.io.dataloader.dataset import Dataset
 
 import copy
