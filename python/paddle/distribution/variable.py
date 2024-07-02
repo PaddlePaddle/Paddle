@@ -14,15 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle.distribution import constraint
 
 if TYPE_CHECKING:
-    from constraint import Constraint
-
     from paddle import Tensor
+    from paddle.distribution.constraint import Constraint
 
 
 class Variable:
@@ -54,6 +53,7 @@ class Variable:
     def constraint(self, value: Tensor) -> Tensor:
         """Check whether the 'value' meet the constraint conditions of this
         random variable."""
+        assert self._constraint is not None
         return self._constraint(value)
 
 
@@ -95,7 +95,7 @@ class Independent(Variable):
 
 
 class Stack(Variable):
-    def __init__(self, vars, axis: int = 0) -> None:
+    def __init__(self, vars: Sequence[Variable], axis: int = 0) -> None:
         self._vars = vars
         self._axis = axis
 
