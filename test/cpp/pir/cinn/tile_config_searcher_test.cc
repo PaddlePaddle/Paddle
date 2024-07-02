@@ -35,7 +35,7 @@ tile_config_searcher_test
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 
-COMMON_DECLARE_bool(print_ir);
+    COMMON_DECLARE_bool(print_ir);
 PD_DECLARE_bool(cinn_measure_kernel_time);
 PHI_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_string(tile_config_policy);
@@ -251,7 +251,8 @@ TEST(ConfigSearcher, TestReducePipeline) {
 //   std::shared_ptr<::pir::Program> program =
 //       BuildReduceSumProgram(shape0 * shape1, shape2);
 //   // Step 2: Switch schedule config manager mode.
-//   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
+//   auto& schedule_config_manager =
+//   cinn::ir::ScheduleConfigManager::Instance();
 //   // Step 3: Construct iter space and objective function.
 //   int s_dimension_lower = shape0 * shape1;
 //   int s_dimension_upper = shape0 * shape1;
@@ -272,7 +273,8 @@ TEST(ConfigSearcher, TestReducePipeline) {
 //                                                      r_dimension_is_dynamic};
 
 //   cinn::ir::BucketInfo bucket_info(
-//       std::vector<cinn::ir::BucketInfo::Dimension>{s_dimension, r_dimension});
+//       std::vector<cinn::ir::BucketInfo::Dimension>{s_dimension,
+//       r_dimension});
 //   LOG(INFO) << "Bucket_info.space.size is: " << bucket_info.space.size();
 //   std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
 //       std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
@@ -328,4 +330,3 @@ TEST(ConfigSearcher, TestReducePipeline) {
 //   file_database.AddConfig(
 //       cinn::common::DefaultTarget(), bucket_info, tile_config, -1);
 // }
-

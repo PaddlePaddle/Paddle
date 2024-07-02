@@ -32,8 +32,8 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
               schedule_config_search)
 
-  paddle_test(test_tile_config_performance SRCS tile_config_performance_test.cc DEPS
-              schedule_config_search)
+  paddle_test(test_tile_config_performance SRCS tile_config_performance_test.cc
+              DEPS schedule_config_search)
 
   paddle_test(test_file_tile_config SRCS file_tile_config_test.cc)
 
