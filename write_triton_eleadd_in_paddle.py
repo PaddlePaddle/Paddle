@@ -23,7 +23,11 @@ from paddle import _C_ops
 from paddle.base.framework import OpProtoHolder
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
-from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2, get_dtype_str
+from paddle.incubate.tt import (
+    get_dtype_str,
+    paddle_use_triton,
+    tune_and_invoke_part2,
+)
 
 triton_add_template = (
     """
@@ -101,7 +105,6 @@ def add(x, y):
             y,
             out,
             -1,  # n_elements
-            BLOCK_SIZE=2048,
         )
 
     # 上面是已经注册完这个Op了，下面开始真正的调用这个自定义算子啦。

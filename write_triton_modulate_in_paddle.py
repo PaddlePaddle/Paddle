@@ -24,7 +24,11 @@ from paddle import _C_ops
 from paddle.base.framework import OpProtoHolder
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
-from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2, get_dtype_str
+from paddle.incubate.tt import (
+    get_dtype_str,
+    paddle_use_triton,
+    tune_and_invoke_part2,
+)
 
 triton_modulate_template = (
     """
@@ -126,13 +130,13 @@ def triton_modulate(x, scale, shift):
     op_name += f"_{BLOCK_SIZE}"
 
     modulate_kernel_config = [
-        {'num_warps': 4},
+        {'num_warps': 1},
     ]
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         y = paddle.empty_like(x)
         grid = ("M",)
-        modulate_kernel[(op_name, grid, modulate_kernel_config)](
+        modulate_kernel[(op_name, grid)](
             x,
             y,
             scale,
@@ -164,9 +168,13 @@ def triton_modulate(x, scale, shift):
 
 
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
+
 def modulate(x, shift, scale):
     return x * (1 + scale.unsqueeze(axis=1)) + shift.unsqueeze(axis=1)
+
 
 batch = 2
 seq = 3600

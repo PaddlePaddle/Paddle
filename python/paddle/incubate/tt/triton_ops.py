@@ -59,6 +59,8 @@ class KernelInterface:
 
         signature = inspect.signature(func)
         self.arg_names = [v.name for v in signature.parameters.values()]
+        for ele in self.arg_names:
+            assert self.arg_names.count(ele) == 1
         arg_defaults = [v.default for v in signature.parameters.values()]
 
         self.annotations = {
@@ -80,8 +82,14 @@ class KernelInterface:
         import textwrap
 
         py_script = textwrap.dedent(inspect.getsource(func))
-        py_script = py_script[py_script.find("def") :]
-        py_script = py_script.replace(func.__name__, func.__name__)
+
+        import re
+
+        pat = r"def\s" + func.__name__
+        func_begin = re.findall(pat, py_script)
+        assert len(func_begin) == 1
+        func_begin = func_begin[0]
+        py_script = py_script[py_script.find(func_begin) :]
 
         def decorator(*args, **kwargs):
             all_input = []
@@ -89,13 +97,26 @@ class KernelInterface:
             for i in range(len(args)):
                 all_input.append(args[i])
 
-            for i in range(len(self.arg_names)):
+            position_arguments = len(all_input)
+            for i in range(position_arguments, len(self.arg_names)):
                 if self.arg_names[i] in kwargs.keys():
                     all_input.append(kwargs[self.arg_names[i]])
+                else:
+                    # means this input is not specified, it muse be a tl.constexpr.
+                    assert i in self.constexprs
+                    all_input.append(None)
 
             dtypes = []
             x_list = []
             const_args = [self.arg_names[i] for i in self.constexprs]
+            # we dont allow there are two strings in const_args, and one is a substring of the other.
+            for i in const_args:
+                for j in const_args:
+                    if i != j and i.find(j) != -1:
+                        assert (
+                            False
+                        ), "we dont allow there are two strings in tl.constexpr args, and one is a substring of the other, please modify your triton kernel arguments."
+
             const_hint_dict = {}
             for i in range(len(all_input)):
                 ele = all_input[i]
@@ -176,16 +197,35 @@ class KernelInterface:
                     + f""" -s"{address_hint} {value_hint} {const_args}" """
                     + f"""  -g "{lanuch_grid}" """
                 )
+                all_tune_config = list(self.tune_config)
+                if len(all_tune_config) == 0:
+                    # when user do not specify config, we use const_hint_dict as config.
+                    all_tune_config = [const_hint_dict]
+                    # reset const_hint_dict as empty.
+                    const_hint_dict = {}
                 codegen_commands = []
-                for config in self.tune_config:
+                for config in all_tune_config:
                     for key in const_hint_dict.keys():
-                        if key not in config.keys():
-                            config[key] = const_hint_dict[key]
+                        if const_hint_dict[key] is not None:
+                            if key not in config.keys():
+                                config[key] = const_hint_dict[key]
+                            else:
+                                assert (
+                                    False
+                                ), f"you specify {key} both in arguments and config, this is wrong."
+                        else:
+                            assert (
+                                key in config.keys()
+                            ), f"you must specify {key} in your config."
                     if "num_warps" not in config.keys():
                         config['num_warps'] = 4
                     if "num_stages" not in config.keys():
                         config['num_stages'] = 4
 
+                    for key in config:
+                        assert (
+                            config[key] is not None
+                        ), f"{key} must be specified."
                     codegen_command = aot_template.format(
                         **config,
                     )
@@ -213,9 +253,13 @@ class KernelInterface:
         self.decorator = decorator
 
     def __getitem__(self, op_name_and_grid):
+        assert len(op_name_and_grid) >= 2, "len(op_name_and_grid) must >= 2."
         self.op_name = op_name_and_grid[0]
         self.grid = op_name_and_grid[1]
-        self.tune_config = op_name_and_grid[2]
+        if len(op_name_and_grid) == 2:
+            self.tune_config = {}
+        else:
+            self.tune_config = op_name_and_grid[2]
         return self.decorator
 
 
@@ -580,11 +624,6 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
             stride_bn,
             N,
             1,  # C always is rowmajor
-            BLOCK_SIZE_M=128,
-            BLOCK_SIZE_N=128,
-            BLOCK_SIZE_K=128,
-            GROUP_SIZE_M=8,
-            SPLIT_K=1,
         )
 
     if in_dynamic_or_pir_mode():
