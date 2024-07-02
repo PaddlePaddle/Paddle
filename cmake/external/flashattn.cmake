@@ -81,8 +81,8 @@ foreach(arch ${NVCC_ARCH_BIN})
   endif()
 endforeach()
 
-if(NOT DEFINED FA_COMPILE_JOBS)
-  set(FA_COMPILE_JOBS 4)
+if(NOT DEFINED FA_JOB_POOLS_COMPILE)
+  set(FA_JOB_POOLS_COMPILE 4)
 endif()
 
 ExternalProject_Add(
@@ -112,7 +112,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCMAKE_JOB_POOL_COMPILE:STRING=compile
-             -DCMAKE_JOB_POOLS:STRING=compile=${FA_COMPILE_JOBS}
+             -DCMAKE_JOB_POOLS:STRING=compile=${FA_JOB_POOLS_COMPILE}
              -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
              ${EXTERNAL_OPTIONAL_ARGS}
   CMAKE_CACHE_ARGS
