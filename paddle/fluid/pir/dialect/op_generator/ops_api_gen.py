@@ -148,6 +148,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'c_allgather',
     'qkv_unpack_mha',
     'hash',
+    'beam_search_decode',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

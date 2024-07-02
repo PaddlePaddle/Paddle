@@ -60,7 +60,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSplitOp::name(),
     PushDenseOp::name(),
     SeedOp::name(),
-    ShareData_Op::name(),
     GetTensorFromSelectedRowsOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
