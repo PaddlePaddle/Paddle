@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import dirichlet, exponential_family
@@ -91,6 +91,8 @@ class Beta(exponential_family.ExponentialFamily):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1.91923141, -0.38095081])
     """
+    alpha: float | Tensor
+    beta: float | Tensor
 
     def __init__(self, alpha: float | Tensor, beta: float | Tensor) -> None:
         if isinstance(alpha, numbers.Real):
@@ -108,12 +110,12 @@ class Beta(exponential_family.ExponentialFamily):
         super().__init__(self._dirichlet._batch_shape)
 
     @property
-    def mean(self) -> float:
+    def mean(self) -> Tensor:
         """Mean of beta distribution."""
         return self.alpha / (self.alpha + self.beta)
 
     @property
-    def variance(self) -> float:
+    def variance(self) -> Tensor:
         """Variance of beat distribution"""
         sum = self.alpha + self.beta
         return self.alpha * self.beta / (sum.pow(2) * (sum + 1))
@@ -140,7 +142,7 @@ class Beta(exponential_family.ExponentialFamily):
         """
         return self._dirichlet.log_prob(paddle.stack([value, 1.0 - value], -1))
 
-    def sample(self, shape: Sequence[int] | None = None) -> Tensor:
+    def sample(self, shape=()):
         """Sample from beta distribution with sample shape.
 
         Args:
