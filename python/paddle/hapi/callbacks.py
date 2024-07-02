@@ -380,16 +380,16 @@ class ProgBarLogger(Callback):
 
     def _updates(self, logs, mode):
         values = []
-        metrics = getattr(self, '%s_metrics' % (mode))
-        progbar = getattr(self, '%s_progbar' % (mode))
-        steps = getattr(self, '%s_step' % (mode))
+        metrics = getattr(self, f'{mode}_metrics')
+        progbar = getattr(self, f'{mode}_progbar')
+        steps = getattr(self, f'{mode}_step')
 
         for k in metrics:
             if k in logs:
                 values.append((k, logs[k]))
 
-        if self.verbose == 3 and hasattr(self, '_%s_timer' % (mode)):
-            timer = getattr(self, '_%s_timer' % (mode))
+        if self.verbose == 3 and hasattr(self, f'_{mode}_timer'):
+            timer = getattr(self, f'_{mode}_timer')
             cnt = timer['count'] if timer['count'] > 0 else 1.0
             samples = timer['samples'] if timer['samples'] > 0 else 1.0
             values.append(
@@ -814,8 +814,8 @@ class EarlyStopping(Callback):
         self.save_dir = None
         if mode not in ['auto', 'min', 'max']:
             warnings.warn(
-                'EarlyStopping mode %s is unknown, '
-                'fallback to auto mode.' % mode
+                f'EarlyStopping mode {mode} is unknown, '
+                'fallback to auto mode.'
             )
             mode = 'auto'
         if mode == 'min':
@@ -870,8 +870,7 @@ class EarlyStopping(Callback):
                 print('Epoch %d: Early stopping.' % (self.stopped_epoch + 1))
                 if self.save_best_model and self.save_dir is not None:
                     print(
-                        'Best checkpoint has been saved at %s'
-                        % (
+                        'Best checkpoint has been saved at {}'.format(
                             os.path.abspath(
                                 os.path.join(self.save_dir, 'best_model')
                             )
@@ -946,8 +945,8 @@ class VisualDL(Callback):
             visualdl = try_import('visualdl')
             self.writer = visualdl.LogWriter(self.log_dir)
 
-        metrics = getattr(self, '%s_metrics' % (mode))
-        current_step = getattr(self, '%s_step' % (mode))
+        metrics = getattr(self, f'{mode}_metrics')
+        current_step = getattr(self, f'{mode}_step')
 
         if mode == 'train':
             total_step = current_step
@@ -1118,8 +1117,8 @@ class WandbCallback(Callback):
         if not self._is_write():
             return
 
-        metrics = getattr(self, '%s_metrics' % (mode))
-        current_step = getattr(self, '%s_step' % (mode))
+        metrics = getattr(self, f'{mode}_metrics')
+        current_step = getattr(self, f'{mode}_step')
 
         _metrics = {}
 
@@ -1271,8 +1270,8 @@ class ReduceLROnPlateau(Callback):
         """Resets wait counter and cooldown counter."""
         if self.mode not in ['auto', 'min', 'max']:
             warnings.warn(
-                'Learning rate reduction mode %s is unknown, '
-                'fallback to auto mode.' % self.mode
+                f'Learning rate reduction mode {self.mode} is unknown, '
+                'fallback to auto mode.'
             )
             self.mode = 'auto'
         if self.mode == 'min' or (

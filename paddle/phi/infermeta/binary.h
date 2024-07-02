@@ -63,6 +63,14 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void BeamSearchDecodeInferMeta(const MetaTensor& ids,
+                               const MetaTensor& scores,
+                               int beam_size,
+                               int end_id,
+                               MetaTensor* sentence_ids,
+                               MetaTensor* sentence_scores,
+                               MetaConfig config = MetaConfig());
+
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
                        const Scalar& minlength,
@@ -418,6 +426,15 @@ void IdentityLossGradInferMeta(const MetaTensor& x,
                                const MetaTensor& out_grad,
                                const int reduction,
                                MetaTensor* x_grad);
+
+void Im2sequenceInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const std::vector<int>& kernels,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& out_stride,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
 
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,

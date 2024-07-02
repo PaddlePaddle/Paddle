@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/types.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/async_load.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 
@@ -118,9 +119,22 @@ void BindDistributed(py::module *m) {
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
-          .def("rank", &distributed::ProcessGroup::GetRank)
-          .def("size", &distributed::ProcessGroup::GetSize)
-          .def("name", &distributed::ProcessGroup::GetBackendName)
+          .def("rank",
+               &distributed::ProcessGroup::GetRank,
+               py::call_guard<py::gil_scoped_release>())
+          .def("size",
+               &distributed::ProcessGroup::GetSize,
+               py::call_guard<py::gil_scoped_release>())
+          .def("name",
+               &distributed::ProcessGroup::GetBackendName,
+               py::call_guard<py::gil_scoped_release>())
+          .def("_start_coalescing",
+               &distributed::ProcessGroup::StartCoalescing,
+               py::call_guard<py::gil_scoped_release>())
+          .def("_end_coalescing",
+               &distributed::ProcessGroup::EndCoalescing,
+               py::arg("tasks") = std::nullopt,
+               py::call_guard<py::gil_scoped_release>())
           .def(
               "all_reduce",
               [](distributed::ProcessGroup &self,
@@ -1239,6 +1253,60 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);
+
+  py::class_<distributed::AsyncLoad::Task,
+             std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
+      .def("is_completed", &distributed::AsyncLoad::Task::IsCompleted)
+      .def("wait",
+           &distributed::AsyncLoad::Task::Synchronize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("synchronize",
+           &distributed::AsyncLoad::Task::Synchronize,
+           py::call_guard<py::gil_scoped_release>());
+
+  auto AsyncLoad =
+      py::class_<distributed::AsyncLoad>(*m, "AsyncLoad")
+          .def(py::init<>())
+          .def(
+              "offload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Offload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "reload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Reload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>());
 
 #endif
 

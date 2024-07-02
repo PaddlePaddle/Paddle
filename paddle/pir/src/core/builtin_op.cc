@@ -23,17 +23,14 @@ namespace pir {
 
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 
-void PassStopGradientsDefaultly(OperationArgument &argument,  // NOLINT
-                                bool forward_only_op) {
+void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
   VLOG(10) << "Builder construction stop gradient for OpResults.";
   bool stop_gradient = true;
-  if (!forward_only_op) {
-    for (auto value : argument.inputs) {
-      auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
-      if (attr && !attr.data()) {
-        stop_gradient = false;
-        break;
-      }
+  for (auto value : argument.inputs) {
+    auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
+    if (attr && !attr.data()) {
+      stop_gradient = false;
+      break;
     }
   }
   std::vector<pir::Attribute> outs_stop_gradient(

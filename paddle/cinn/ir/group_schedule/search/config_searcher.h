@@ -29,7 +29,7 @@ namespace ir {
 namespace search {
 
 using ScoreType = float;
-using CandidateType = std::vector<int>;
+using CandidateType = std::vector<int64_t>;
 using ConstraintFunc = std::function<bool(const CandidateType&)>;
 
 class BaseObjectiveFunc {

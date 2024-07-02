@@ -392,6 +392,22 @@
         - add_output : RoisNum
           comment : The number of RoIs in each image.
 
+- op : max_pool2d_with_index
+  version :
+    - checkpoint : Upgrade max_pool2d_with_index, add a new attribute [ceil_mode].
+      action :
+        - add_attr : ceil_mode
+          comment : When true, will use ceil instead of floor to compute the output shape.
+          default : "false"
+
+- op : max_pool3d_with_index
+  version :
+    - checkpoint : Upgrade max_pool3d_with_index, add a new attribute [ceil_mode].
+      action :
+        - add_attr : ceil_mode
+          comment : When true, will use ceil instead of floor to compute the output shape.
+          default : "false"
+
 - op : momentum
   version :
     - checkpoint : Upgrade momentum add 4 attributes [regularization_method, regularization_coeff, multi_precision, rescale_grad].

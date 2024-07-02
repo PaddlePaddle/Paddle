@@ -18,9 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
-namespace auto_parallel {
+namespace phi::distributed::auto_parallel {
 
 void DistributedMapper::set_process_id_to_device_ids(
     const std::map<int64_t, std::pair<std::string, std::vector<int64_t>>>&
@@ -143,6 +141,4 @@ bool operator==(const DistributedMapper& lhs, const DistributedMapper& rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed::auto_parallel

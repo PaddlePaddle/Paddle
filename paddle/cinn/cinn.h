@@ -49,7 +49,6 @@ using lang::ReduceMin;
 using lang::ReduceMul;
 using lang::ReduceSum;
 using optim::Optimize;
-using poly::CreateStages;
 
 using lang::logic_and;
 using lang::logic_or;

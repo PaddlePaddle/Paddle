@@ -30,7 +30,7 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240601")
+  set(XPU_XHPC_BASE_DATE "20240626")
 endif()
 set(XPU_XCCL_BASE_VERSION "1.2.1.2")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -52,9 +52,12 @@ if(NOT XPU_XFT_BASE_URL)
   )
 endif()
 
-set(XPU_XPTI_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xpti/dev/${XPU_XPTI_BASE_VERSION}"
-)
+if(WITH_XPTI)
+  set(XPU_XPTI_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xpti/dev/${XPU_XPTI_BASE_VERSION}"
+  )
+  set(XPU_XPTI_DIR_NAME "xpti")
+endif()
 
 if(WITH_XPU_XRE5)
   set(XPU_XRE_BASE_VERSION "5.0.3.1")
@@ -102,7 +105,6 @@ else()
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 endif()
-set(XPU_XPTI_DIR_NAME "xpti")
 
 set(XPU_XRE_URL
     "${XPU_XRE_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
@@ -111,12 +113,13 @@ set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XFT_URL "${XPU_XFT_BASE_URL}/${XPU_XFT_DIR_NAME}.tar.gz")
-set(XPU_XPTI_URL
-    "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz"
-    CACHE STRING "" FORCE)
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
+
+if(WITH_XPTI)
+  set(XPU_XPTI_URL "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz")
+endif()
 
 set(XPU_XHPC_URL
     "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
@@ -168,7 +171,7 @@ ExternalProject_Add(
     ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} && WITH_XPTI=${WITH_XPTI} bash
+    ${XPU_XFT_DIR_NAME} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
