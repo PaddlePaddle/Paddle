@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import os
 
 import triton
@@ -29,6 +30,7 @@ from .triton_utils import (
     compile_file,
     extract_triton_kernel,
     find_so_path,
+    get_dtype_str,
     get_op_name_with_suffix,
     get_pointer_hint,
     get_value_hint,
@@ -37,8 +39,241 @@ from .triton_utils import (
     paddle_custom_op_head_part,
     python_path,
     rename_c_to_cu,
-    tune_and_invoke_part,
+    tune_and_invoke_part2,
 )
+
+
+class KernelInterface:
+    def __init__(
+        self,
+        func,
+        custom_op_template,
+        other_config,
+        key_args=["1"],
+    ):
+        self.func = func
+        self.key_args = key_args
+
+        import inspect
+
+        signature = inspect.signature(func)
+        self.arg_names = [v.name for v in signature.parameters.values()]
+        for ele in self.arg_names:
+            assert self.arg_names.count(ele) == 1
+        arg_defaults = [v.default for v in signature.parameters.values()]
+
+        # self.annotations = {
+        #     name: ty for name, ty in func.__annotations__.items()
+        # }
+        self.annotations = dict(func.__annotations__)
+
+        self.constexprs = [
+            self.arg_names.index(name)
+            for name in self.arg_names
+            if self.annotations.get(name) == triton.language.core.constexpr
+        ]
+
+        self.arg_exclude_constexpr = [
+            self.arg_names[i]
+            for i in range(len(self.arg_names))
+            if i not in self.constexprs
+        ]
+
+        import textwrap
+
+        py_script = textwrap.dedent(inspect.getsource(func))
+
+        import re
+
+        pat = r"def\s" + func.__name__
+        func_begin = re.findall(pat, py_script)
+        assert len(func_begin) == 1
+        func_begin = func_begin[0]
+        py_script = py_script[py_script.find(func_begin) :]
+
+        def decorator(*args, **kwargs):
+            all_input = []
+
+            for i in range(len(args)):
+                all_input.append(args[i])
+
+            position_arguments = len(all_input)
+            for i in range(position_arguments, len(self.arg_names)):
+                if self.arg_names[i] in kwargs.keys():
+                    all_input.append(kwargs[self.arg_names[i]])
+                else:
+                    # means this input is not specified, it muse be a tl.constexpr.
+                    assert i in self.constexprs
+                    all_input.append(None)
+
+            dtypes = []
+            x_list = []
+            const_args = [self.arg_names[i] for i in self.constexprs]
+            # we dont allow there are two strings in const_args, and one is a substring of the other.
+            for i in const_args:
+                for j in const_args:
+                    if i != j and i.find(j) != -1:
+                        # assert (
+                        #     False
+                        # ), "we dont allow there are two strings in tl.constexpr args, and one is a substring of the other, please modify your triton kernel arguments."
+                        raise ValueError(
+                            "we dont allow there are two strings in tl.constexpr args, and one is a substring of the other, please modify your triton kernel arguments."
+                        )
+
+            const_hint_dict = {}
+            for i in range(len(all_input)):
+                ele = all_input[i]
+                if (
+                    type(ele) == paddle.Tensor
+                    or type(ele) == paddle.base.framework.EagerParamBase
+                    or type(ele) == paddle.base.framework.Parameter
+                    or type(ele) == paddle.base.framework.Variable
+                ):
+                    dtypes.append(ele.dtype)
+                elif i in self.constexprs:
+                    const_hint_dict[self.arg_names[i]] = ele
+                else:
+                    x_list.append(ele)
+
+            op_name = self.op_name
+
+            python_package_name = f"{op_name}_package"
+
+            generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
+            print("the kernel cache dir is:", generated_dir)
+            assert (
+                generated_dir is not None
+            ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
+            generated_dir = f"{generated_dir}/{op_name}"
+            os.makedirs(generated_dir, exist_ok=True)
+
+            py_script_file = f"{generated_dir}/triton_kernels.py"
+            extract_triton_kernel(func, py_script_file)
+
+            address_hint = get_pointer_hint(dtypes)
+            value_hint = get_value_hint(x_list)
+            const_args = [f"{{{ele}}}" for ele in const_args]
+            const_args = ",".join(const_args)
+
+            lanuch_grid = list(self.grid)
+            for i in range(len(lanuch_grid)):
+                ele = lanuch_grid[i]
+                if type(ele) == str:
+                    for key in const_hint_dict.keys():
+                        if key in ele:
+                            ele = ele.replace(key, f"{{{key}}}")
+                else:
+                    ele = str(ele)
+
+                lanuch_grid[i] = ele
+            if len(lanuch_grid) < 3:
+                lanuch_grid += ['1'] * (3 - len(lanuch_grid))
+            lanuch_grid = ",".join(lanuch_grid)
+
+            op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
+            op_dict["triton_kernel_args"] = ",".join(self.arg_exclude_constexpr)
+            op_dict["key"] = ",".join(self.key_args)
+            # when tunning, we need to reset the out to zero.
+            if "reset_zero_when_tune" in other_config.keys():
+                op_dict["reset_zero_when_tune"] = other_config[
+                    "reset_zero_when_tune"
+                ]
+
+            paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
+            so_path = find_so_path(generated_dir, python_package_name)
+
+            if so_path is None:
+                print("== we do not find so_path, we need to compile it")
+                with open(paddle_custom_op_file_path, "w") as f:
+                    f.write(
+                        SubstituteTemplate(
+                            paddle_custom_op_head_part + custom_op_template,
+                            op_dict,
+                        )
+                    )
+                    f.close()
+
+                # ahead of time compile command.
+                aot_template = (
+                    f"""{python_path}   {compile_file} {py_script_file}   -n {func.__name__} -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
+                    + """ -w {num_warps} -ns {num_stages} """
+                    + f""" -s"{address_hint} {value_hint} {const_args}" """
+                    + f"""  -g "{lanuch_grid}" """
+                )
+                all_tune_config = list(self.tune_config)
+                if len(all_tune_config) == 0:
+                    # when user do not specify config, we use const_hint_dict as config.
+                    all_tune_config = [const_hint_dict]
+                    # reset const_hint_dict as empty.
+                    const_hint_dict = {}
+                codegen_commands = []
+                for config in all_tune_config:
+                    for key in const_hint_dict.keys():
+                        if const_hint_dict[key] is not None:
+                            if key not in config.keys():
+                                config[key] = const_hint_dict[key]
+                            else:
+                                # assert (
+                                #     False
+                                # ), f"you specify {key} both in arguments and config, this is wrong."
+                                raise ValueError(
+                                    f"you specify {key} both in arguments and config, this is wrong."
+                                )
+                        else:
+                            assert (
+                                key in config.keys()
+                            ), f"you must specify {key} in your config."
+                    if "num_warps" not in config.keys():
+                        config['num_warps'] = 4
+                    if "num_stages" not in config.keys():
+                        config['num_stages'] = 4
+
+                    for key in config:
+                        assert (
+                            config[key] is not None
+                        ), f"{key} must be specified."
+                    codegen_command = aot_template.format(
+                        **config,
+                    )
+                    print(codegen_command)
+                    codegen_commands.append(codegen_command)
+                multi_process_do(codegen_commands)
+
+                link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
+                re = os.system(link_command)
+                assert re == 0
+
+                # rename the .c file to .cu
+                rename_c_to_cu(generated_dir)
+                # build the package to so, not install
+                build_package(generated_dir, python_package_name)
+
+            if op_name not in OpProtoHolder.instance().op_proto_map.keys():
+                so_path = find_so_path(generated_dir, python_package_name)
+                print("== we find so_path: ", so_path)
+                assert so_path is not None
+                paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                    so_path
+                )
+
+        self.decorator = decorator
+
+    def __getitem__(self, op_name_and_grid):
+        assert len(op_name_and_grid) >= 2, "len(op_name_and_grid) must >= 2."
+        self.op_name = op_name_and_grid[0]
+        self.grid = op_name_and_grid[1]
+        if len(op_name_and_grid) == 2:
+            self.tune_config = {}
+        else:
+            self.tune_config = op_name_and_grid[2]
+        return self.decorator
+
+
+def paddle_use_triton(custom_op_template, other_config={}, key=[]):
+    def decorator(func):
+        return KernelInterface(func, custom_op_template, other_config, key)
+
+    return decorator
 
 
 def get_wint8_kernel_config():
@@ -51,29 +286,99 @@ def get_wint8_kernel_config():
                         num_warps = 4
                         if block_m * block_n >= 128 * 256:
                             num_warps = 8
-
                         configs.append(
-                            triton.Config(
-                                {
-                                    "SPLIT_K": split_k,
-                                    "BLOCK_SIZE_M": block_m,
-                                    "BLOCK_SIZE_N": block_n,
-                                    "BLOCK_SIZE_K": block_k,
-                                    "GROUP_SIZE_M": 8,
-                                },
-                                num_stages=num_stages,
-                                num_warps=num_warps,
-                            )
+                            {
+                                "SPLIT_K": split_k,
+                                "BLOCK_SIZE_M": block_m,
+                                "BLOCK_SIZE_N": block_n,
+                                "BLOCK_SIZE_K": block_k,
+                                "GROUP_SIZE_M": 8,
+                                "num_stages": num_stages,
+                                "num_warps": num_warps,
+                            }
                         )
     return configs
 
 
-@triton.autotune(
-    configs=get_wint8_kernel_config(),
-    key=['M', 'N', 'K'],
-    reset_to_zero=['c_ptr'],
+triton_wint8_template = (
+    """
+std::vector<paddle::Tensor> ${op_name}_func(
+    const paddle::Tensor& x,
+    const paddle::Tensor& qweight,
+    const paddle::Tensor& scales,
+    paddle::optional<paddle::Tensor>& bias,
+    bool bool_trans_w) {
+  int M = x.shape()[0];
+  int K = x.shape()[1];
+  int N = scales.shape()[0];
+
+  auto c_out = paddle::full({M, N}, 0, x.dtype(), x.place());
+
+  auto a_ptr = get_tensor_ptr(x);
+  auto b_ptr = get_tensor_ptr(qweight);
+  auto c_ptr = get_tensor_ptr(c_out);
+  auto bs_ptr = get_tensor_ptr(scales);
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
+  if (bias) {
+    bias_ptr = get_tensor_ptr(*bias);
+  }
+
+  int stride_bk = N;
+  int stride_bn = 1;
+
+  if (bool_trans_w) {
+    stride_bk = 1;
+    stride_bn = K;
+  }
+  int stride_am = K;
+  int stride_ak = 1;
+
+  int stride_cm = N;
+  int stride_cn = 1;
+
+  auto run_stream = c_out.stream();
+"""
+    + tune_and_invoke_part2
+    + """
+  return {c_out};
+}
+
+std::vector<std::vector<int64_t>> ${op_name}_InferShape(const std::vector<int64_t>& a_shape,
+                                                        const std::vector<int64_t>& b_shape,
+                                                        const std::vector<int64_t>& c_shape,
+                                                        const std::vector<int64_t>& d_shape,
+                                                        bool bool_trans_w) {
+    if (bool_trans_w) {
+        return {{a_shape[0], b_shape[0]}};
+    } else {
+        return {{a_shape[0], b_shape[1]}};
+    }
+}
+
+std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
+    return {A_dtype};
+}
+
+PD_BUILD_OP(${op_name})
+    .Inputs({"x", "qweight", "scales", paddle::Optional("bias")})
+    .Outputs({"out"})
+    .SetKernelFn(PD_KERNEL(${op_name}_func))
+    .Attrs({"bool_trans_w: bool"})
+    .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
+    .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
+"""
 )
-@triton.jit
+
+wint8_kernel_other_config = {
+    "reset_zero_when_tune": "cudaMemset((void*)c_ptr, 0, sizeof(phi::dtype::float16) * M * N);"
+}
+
+
+@paddle_use_triton(
+    custom_op_template=triton_wint8_template,
+    other_config=wint8_kernel_other_config,
+    key=["M", "N", "K"],
+)
 def wint8_kernel(
     a_ptr,
     b_ptr,
@@ -175,91 +480,6 @@ def wint8_kernel(
         tl.store(c_ptrs, c, mask=c_mask)
     else:
         tl.atomic_add(c_ptrs, c, mask=c_mask)
-
-
-triton_wint8_template = (
-    paddle_custom_op_head_part
-    + """
-std::vector<paddle::Tensor> ${op_name}_func(
-    const paddle::Tensor& x,
-    const paddle::Tensor& qweight,
-    const paddle::Tensor& scales,
-    paddle::optional<paddle::Tensor>& bias,
-    bool bool_trans_w) {
-  int m = x.shape()[0];
-  int k = x.shape()[1];
-  int n = scales.shape()[0];
-
-  auto c_out = paddle::full({m, n}, 0, x.dtype(), x.place());
-
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_weight = get_tensor_ptr(qweight);
-  auto dev_c = get_tensor_ptr(c_out);
-  auto dev_scales = get_tensor_ptr(scales);
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
-  if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
-  }
-
-  int stride_bk = n;
-  int stride_bn = 1;
-
-  if (bool_trans_w) {
-    stride_bk = 1;
-    stride_bn = k;
-  }
-
-auto run_triton_kernel = [&](int algo_id) -> CUresult{
-    return ${op_name}_kernel(c_out.stream(),
-                               dev_x,
-                               dev_weight,
-                               dev_c,
-                               dev_scales,
-                               dev_bias,
-                               m,
-                               n,
-                               k,
-                               k,
-                               1,
-                               stride_bk,
-                               stride_bn,
-                               n,
-                               1,
-                               algo_id);
-};
-
-std::vector<int> problem_size = {m, n, k};
-"""
-    + tune_and_invoke_part
-    + """
-  return {c_out};
-}
-
-std::vector<std::vector<int64_t>> ${op_name}_InferShape(const std::vector<int64_t>& a_shape,
-                                                        const std::vector<int64_t>& b_shape,
-                                                        const std::vector<int64_t>& c_shape,
-                                                        const std::vector<int64_t>& d_shape,
-                                                        bool bool_trans_w) {
-    if (bool_trans_w) {
-        return {{a_shape[0], b_shape[0]}};
-    } else {
-        return {{a_shape[0], b_shape[1]}};
-    }
-}
-
-std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
-    return {A_dtype};
-}
-
-PD_BUILD_OP(${op_name})
-    .Inputs({"x", "qweight", "scales", paddle::Optional("bias")})
-    .Outputs({"out"})
-    .SetKernelFn(PD_KERNEL(${op_name}_func))
-    .Attrs({"bool_trans_w: bool"})
-    .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
-    .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
-"""
-)
 
 
 def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
@@ -374,36 +594,6 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
         stride_bk = N
         stride_bn = 1
 
-    if in_dynamic_or_pir_mode():
-        assert x.is_contiguous(), ""
-        assert qweight.is_contiguous(), ""
-
-        # output = paddle.zeros((M, N), dtype=x.dtype)
-
-        # grid = lambda META: (
-        #     triton.cdiv(M, META['BLOCK_SIZE_M'])
-        #     * triton.cdiv(N, META['BLOCK_SIZE_N']),
-        #     META['SPLIT_K'],
-        # )
-
-        # wint8_kernel[grid](
-        #     x,
-        #     qweight,
-        #     output,
-        #     scales,
-        #     bias,
-        #     M,
-        #     N,
-        #     K,
-        #     K,
-        #     1,  # A always is rowmajor
-        #     stride_bk,
-        #     stride_bn,
-        #     N,
-        #     1,  # C always is rowmajor
-        # )
-        # return output
-
     op_name = "triton_wint8"
     if bool_trans_w:
         op_name = "triton_wint8_trans"
@@ -413,101 +603,34 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
     op_name = get_op_name_with_suffix(op_name, x_list)
 
-    if (
-        op_name in OpProtoHolder.instance().op_proto_map.keys()
-        and in_dynamic_or_pir_mode()
-    ):
-        outs = _C_ops._run_custom_op(
-            op_name, x, qweight, scales, bias, bool_trans_w
-        )
-        return outs[0]
-
-    value_hint = get_value_hint(x_list)
-
-    # output type is same as x, bias type is same as x
-    dtypes = [x.dtype, qweight.dtype, x.dtype, scales.dtype, x.dtype]
-    address_hint = get_pointer_hint(dtypes)
-    assert (
-        x.dtype == paddle.float16
-    ), "weight_only_int8 now only support float16 as input x"
-
-    python_package_name = f"{op_name}_package"
-
-    generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
-    print("the kernel cache dir is:", generated_dir)
-    assert (
-        generated_dir is not None
-    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
-    generated_dir = f"{generated_dir}/{op_name}"
-
-    os.makedirs(generated_dir, exist_ok=True)
-
-    py_script_file = f"{generated_dir}/triton_kernels.py"
-    extract_triton_kernel(wint8_kernel, py_script_file)
-
-    op_dict = {"op_name": op_name, "reset_zero_when_tune": " "}
-    # when tunning, we need to reset the out to zero.
-    op_dict[
-        "reset_zero_when_tune"
-    ] = "cudaMemset((void*)dev_c, 0, sizeof(phi::dtype::float16) * m * n);"
-    paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
-    so_path = find_so_path(generated_dir, python_package_name)
-
-    if so_path is None:
-        with open(paddle_custom_op_file_path, "w") as f:
-            f.write(SubstituteTemplate(triton_wint8_template, op_dict))
-            f.close()
-
-        # ahead of time compile command.
-        aot_template = (
-            f"""{python_path}   {compile_file} {py_script_file}   -n wint8_kernel   -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel """
-            + """ -w {num_warps}   -ns {num_stages}  \
-        -s   "{address_hint} {value_hint}  {block_m},{block_n},{block_k}, {group_size_m}, {split_k}"   \
-        -g   "((M+{block_m}-1)/{block_m}) * ((N+{block_n}-1)/{block_n}), {split_k}, 1" \
-        """
-        )
-
-        codegen_commands = []
-        for config in get_wint8_kernel_config():
-            split_k = config.kwargs["SPLIT_K"]
-            block_m = config.kwargs["BLOCK_SIZE_M"]
-            block_n = config.kwargs["BLOCK_SIZE_N"]
-            block_k = config.kwargs["BLOCK_SIZE_K"]
-            group_size_m = config.kwargs["GROUP_SIZE_M"]
-            num_stages = config.num_stages
-            num_warps = config.num_warps
-
-            if K % (split_k * block_k) != 0:
-                print("config is not supported:", config)
-                continue
-            codegen_command = aot_template.format(
-                address_hint=address_hint,
-                value_hint=value_hint,
-                num_warps=num_warps,
-                num_stages=num_stages,
-                block_m=block_m,
-                block_n=block_n,
-                block_k=block_k,
-                split_k=split_k,
-                group_size_m=group_size_m,
-            )
-            codegen_commands.append(codegen_command)
-
-        multi_process_do(codegen_commands)
-
-        link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
-        re = os.system(link_command)
-        assert re == 0
-
-        # rename the .c file to .cu
-        rename_c_to_cu(generated_dir)
-        # build the package to so, not install
-        build_package(generated_dir, python_package_name)
-
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
-        so_path = find_so_path(generated_dir, python_package_name)
-        print("we find so_path: ", so_path)
-        paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+        assert x.is_contiguous(), ""
+        assert qweight.is_contiguous(), ""
+
+        # below code is register this kernel, will not run this kernel.
+        output = paddle.zeros((1, 1), dtype=x.dtype)
+
+        grid = (
+            "((M+BLOCK_SIZE_M-1)/BLOCK_SIZE_M) * ((N+BLOCK_SIZE_N-1)/BLOCK_SIZE_N)",
+            'SPLIT_K',
+        )
+
+        wint8_kernel[(op_name, grid, get_wint8_kernel_config())](
+            x,
+            qweight,
+            output,
+            scales,
+            bias,
+            M,
+            N,
+            K,
+            K,
+            1,  # A always is rowmajor
+            stride_bk,
+            stride_bn,
+            N,
+            1,  # C always is rowmajor
+        )
 
     if in_dynamic_or_pir_mode():
         outs = _C_ops._run_custom_op(
@@ -534,15 +657,79 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
 
 ########################### adaptive layer norm ###############################
-@triton.jit
+fused_adaLN_scale_residual_template = (
+    """
+
+
+std::vector<paddle::Tensor> ${op_name}_func(
+    const paddle::Tensor &x,
+    const paddle::Tensor &mha_out,
+    const paddle::Tensor &gate_msa,
+    const paddle::Tensor &scale_mlp,
+    const paddle::Tensor &shift_mlp,
+    paddle::optional<paddle::Tensor> &weight,
+    paddle::optional<paddle::Tensor> &bias,
+    float epsilon) {
+  int M = x.dims()[0] * x.dims()[1];
+  int N = x.dims()[2];
+  int seq_size = x.dims()[1];
+  auto resi_out = paddle::empty(x.shape(), x.dtype(), x.place());
+  auto adaLN_out = paddle::empty(x.shape(), x.dtype(), x.place());
+
+  auto x_ptr = get_tensor_ptr(x);
+  auto mha_out_ptr = get_tensor_ptr(mha_out);
+  auto resi_out_ptr = get_tensor_ptr(resi_out);
+  auto adaLN_out_ptr = get_tensor_ptr(adaLN_out);
+  auto gate_msa_ptr = get_tensor_ptr(gate_msa);
+  auto scale_mlp_ptr = get_tensor_ptr(scale_mlp);
+  auto shift_mlp_ptr = get_tensor_ptr(shift_mlp);
+  CUdeviceptr weight_ptr = (CUdeviceptr)(nullptr);
+  if (weight) {
+    weight_ptr = get_tensor_ptr(*weight);
+  }
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
+  if (bias) {
+    bias_ptr = get_tensor_ptr(*bias);
+  }
+  auto  run_stream = adaLN_out.stream();
+"""
+    + tune_and_invoke_part2
+    + """
+    return {resi_out, adaLN_out};
+}
+
+std::vector<std::vector<int64_t>> ${op_name}_InferShape(
+        const std::vector<int64_t>& A_shape) {
+  return {A_shape, A_shape};
+}
+
+std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
+    return {A_dtype, A_dtype};
+}
+
+PD_BUILD_OP(${op_name})
+    .Inputs({"x", "mha_out", "gate_msa", "scale_mlp", "shift_mlp", paddle::Optional("weight"), paddle::Optional("bias")})
+    .Outputs({"resi_out", "adaLN_out"})
+    .SetKernelFn(PD_KERNEL(${op_name}_func))
+    .Attrs({"epsilon: float"})
+    .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
+    .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
+"""
+)
+
+
+@paddle_use_triton(
+    custom_op_template=fused_adaLN_scale_residual_template,
+    key=["M"],
+)
 def fused_adaLN_scale_residual_kernel(
-    mha_out_ptr,  # input: attention result
     x_ptr,  # input: residual input of attention
+    mha_out_ptr,  # input: attention result
     gate_msa_ptr,
-    weight_ptr,
-    bias_ptr,
     scale_mlp_ptr,
     shift_mlp_ptr,
+    weight_ptr,
+    bias_ptr,
     resi_out_ptr,  # output: residual result of attention
     adaLN_out_ptr,  # output: adaptive layer norm result
     M,
@@ -591,86 +778,6 @@ def fused_adaLN_scale_residual_kernel(
     tl.store(adaLN_out_ptr + all_offs, y, mask=all_mask)
 
 
-fused_adaLN_scale_residual_template = (
-    paddle_custom_op_head_part
-    + """
-
-std::vector<paddle::Tensor> ${op_name}_func(
-    const paddle::Tensor &x,
-    const paddle::Tensor &mha_out,
-    const paddle::Tensor &gate_msa,
-    const paddle::Tensor &scale_mlp,
-    const paddle::Tensor &shift_mlp,
-    paddle::optional<paddle::Tensor> &weight,
-    paddle::optional<paddle::Tensor> &bias,
-    float epsilon) {
-  int M = x.dims()[0] * x.dims()[1];
-  int N = x.dims()[2];
-  int seq_size = x.dims()[1];
-  auto resi_out = paddle::empty(x.shape(), x.dtype(), x.place());
-  auto adaLN_out = paddle::empty(x.shape(), x.dtype(), x.place());
-
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_mha_out = get_tensor_ptr(mha_out);
-  auto dev_resi_out = get_tensor_ptr(resi_out);
-  auto dev_adaLN_out = get_tensor_ptr(adaLN_out);
-  auto dev_gate_msa = get_tensor_ptr(gate_msa);
-  auto dev_scale_mlp = get_tensor_ptr(scale_mlp);
-  auto dev_shift_mlp = get_tensor_ptr(shift_mlp);
-  CUdeviceptr dev_weight = (CUdeviceptr)(nullptr);
-  if (weight) {
-    dev_weight = get_tensor_ptr(*weight);
-  }
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
-  if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
-  }
-
-  auto run_triton_kernel = [&](int algo_id) -> CUresult{
-      return ${op_name}_kernel(adaLN_out.stream(),
-                                                           dev_mha_out,
-                                                           dev_x,
-                                                           dev_gate_msa,
-                                                           dev_weight,
-                                                           dev_bias,
-                                                           dev_scale_mlp,
-                                                           dev_shift_mlp,
-                                                           dev_resi_out,
-                                                           dev_adaLN_out,
-                                                           M,
-                                                           N,
-                                                           seq_size,
-                                                           epsilon,
-                                                           algo_id);
-  };
-
-  std::vector<int> problem_size = {M, N};
-"""
-    + tune_and_invoke_part
-    + """
-    return {resi_out, adaLN_out};
-}
-
-std::vector<std::vector<int64_t>> ${op_name}_InferShape(
-        const std::vector<int64_t>& A_shape) {
-  return {A_shape, A_shape};
-}
-
-std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
-    return {A_dtype, A_dtype};
-}
-
-PD_BUILD_OP(${op_name})
-    .Inputs({"x", "mha_out", "gate_msa", "scale_mlp", "shift_mlp", paddle::Optional("weight"), paddle::Optional("bias")})
-    .Outputs({"resi_out", "adaLN_out"})
-    .SetKernelFn(PD_KERNEL(${op_name}_func))
-    .Attrs({"epsilon: float"})
-    .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
-    .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
-"""
-)
-
-
 def fused_adaLN_scale_residual(
     x,
     mha_out,
@@ -681,6 +788,49 @@ def fused_adaLN_scale_residual(
     bias=None,
     epsilon=1e-05,
 ):
+    '''
+    Examples:
+
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
+    import paddle
+
+    batch = 2
+    seq = 3600
+    hidd = 4096
+    dtype= "float16"
+    epsilon = 1e-5
+    x = paddle.rand([batch, seq, hidd], dtype=dtype)
+    mha_out = paddle.rand([batch, seq, hidd], dtype=dtype)
+    weight = paddle.rand([hidd], dtype=dtype)
+    bias = paddle.rand([hidd], dtype=dtype)
+
+    gate_msa = paddle.rand([batch, hidd], dtype=dtype)
+    scale_mlp_x = paddle.rand([batch, hidd], dtype=dtype)
+    shift_mlp_x = paddle.rand([batch, hidd], dtype=dtype)
+
+
+    def modulate(x, shift, scale):
+        return x * (1 + scale.unsqueeze(axis=1)) + shift.unsqueeze(axis=1)
+
+
+    def paddle_fused_adaLN(x, mha_out, gate, hidd, scale, shift, weight, bias, epsilon):
+        resi_out_paddle = mha_out * gate.unsqueeze(axis=1) + x
+        layer_norm_out_paddle = paddle.nn.functional.layer_norm(resi_out_paddle, [hidd], weight, bias, epsilon)
+        adaLN_out_paddle = modulate(layer_norm_out_paddle, shift, scale).to(dtype)
+        return resi_out_paddle, adaLN_out_paddle
+
+
+    for i in range(100):
+        resi_out_triton, adaLN_out_triton = paddle.incubate.tt.fused_adaLN_scale_residual(x, mha_out, gate_msa, scale_mlp_x, shift_mlp_x, weight, bias, epsilon)
+
+    for i in range(100):
+        resi_out_paddle, adaLN_out_paddle = paddle_fused_adaLN(x, mha_out, gate_msa, hidd, scale_mlp_x, shift_mlp_x, weight, bias, epsilon)
+
+    print("adaLN_maxdiff: ", paddle.max(paddle.abs(adaLN_out_paddle - adaLN_out_triton)))
+    print("resi_maxdiff: ", paddle.max(paddle.abs(resi_out_paddle - resi_out_triton)))
+    '''
+
     assert x.shape == mha_out.shape, "x and mha_out should have same shape"
     assert (
         gate_msa.shape == scale_mlp.shape == shift_mlp.shape
@@ -713,47 +863,22 @@ def fused_adaLN_scale_residual(
     N = x.shape[2]
     seq_size = x.shape[1]
     N_npo2 = triton.next_power_of_2(N)
-    # if in_dynamic_or_pir_mode():
-    #     resi_out = paddle.empty_like(x)
-    #     adaLN_out = paddle.empty_like(x)
-    #     fused_adaLN_scale_residual_kernel[(M,)](
-    #         mha_out,
-    #         x,
-    #         gate_msa,
-    #         weight,
-    #         bias,
-    #         scale_mlp,
-    #         shift_mlp,
-    #         resi_out,
-    #         adaLN_out,
-    #         M,
-    #         N,
-    #         seq_size,
-    #         epsilon,
-    #         N_npo2=N_npo2,
-    #     )
-    #     return resi_out, adaLN_out
 
     op_name = "triton_fused_adaLN_scale_residual"
-    if x.dtype == paddle.float16:
-        op_name += "_fp16"
-    elif x.dtype == paddle.float32:
-        op_name += "_fp32"
-    elif x.dtype == paddle.bfloat16:
-        op_name += "_bf16"
-    else:
-        raise NotImplementedError(
-            "triton_fused_adaLN_scale_residual now supports only fp16 and fp32 dtype."
-        )
+    op_name += get_dtype_str(x.dtype)
     op_name += f"_{N_npo2}"
 
-    # if in_dynamic_or_pir_mode && op is already registered, call it directly.
-    if (
-        op_name in OpProtoHolder.instance().op_proto_map.keys()
-        and in_dynamic_or_pir_mode()
-    ):
-        outs = _C_ops._run_custom_op(
-            op_name,
+    fused_adaLN_scale_residual_kernel_config = [
+        {'num_warps': 1},
+    ]
+
+    if op_name not in OpProtoHolder.instance().op_proto_map.keys():
+        resi_out = paddle.empty_like(x)
+        adaLN_out = paddle.empty_like(x)
+        grid = ("M",)
+        fused_adaLN_scale_residual_kernel[
+            (op_name, grid, fused_adaLN_scale_residual_kernel_config)
+        ](
             x,
             mha_out,
             gate_msa,
@@ -761,70 +886,14 @@ def fused_adaLN_scale_residual(
             shift_mlp,
             weight,
             bias,
+            resi_out,
+            adaLN_out,
+            M,
+            N,
+            seq_size,
             epsilon,
-        )
-        return outs[0], outs[1]
-
-    x_list = [M, N, seq_size, epsilon]
-    value_hint = get_value_hint(x_list)
-    dtypes = [x.dtype] * 9
-    address_hint = get_pointer_hint(dtypes)
-
-    python_package_name = f"{op_name}_package"
-    generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
-    print("the kernel cache dir is:", generated_dir)
-    assert (
-        generated_dir is not None
-    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
-    generated_dir = f"{generated_dir}/{op_name}"
-    os.makedirs(generated_dir, exist_ok=True)
-
-    py_script_file = f"{generated_dir}/triton_kernels.py"
-    extract_triton_kernel(fused_adaLN_scale_residual_kernel, py_script_file)
-
-    op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
-    paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
-    so_path = find_so_path(generated_dir, python_package_name)
-
-    if so_path is None:
-        print("== we do not find so_path, we need to compile it")
-        with open(paddle_custom_op_file_path, "w") as f:
-            f.write(
-                SubstituteTemplate(fused_adaLN_scale_residual_template, op_dict)
-            )
-            f.close()
-
-        # ahead of time compile command.
-        aot_template = (
-            f"""{python_path}   {compile_file} {py_script_file}   -n fused_adaLN_scale_residual_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -s "{address_hint} {value_hint}  {N_npo2}"   \
-                             -g "M, 1, 1" \
-                       """
-        )
-
-        codegen_command = aot_template.format(
-            address_hint=address_hint,
-            value_hint=value_hint,
             N_npo2=N_npo2,
         )
-        print(codegen_command)
-        re = os.system(codegen_command)
-        assert re == 0
-
-        link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
-        re = os.system(link_command)
-        assert re == 0
-
-        # rename the .c file to .cu
-        rename_c_to_cu(generated_dir)
-        # build the package to so, not install
-        build_package(generated_dir, python_package_name)
-
-    if op_name not in OpProtoHolder.instance().op_proto_map.keys():
-        so_path = find_so_path(generated_dir, python_package_name)
-        print("== we find so_path: ", so_path)
-        assert so_path is not None
-        paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
 
     if in_dynamic_or_pir_mode():
         print(f"== we are in dynamic mode, op_name: {op_name}")
@@ -865,50 +934,8 @@ def fused_adaLN_scale_residual(
         return resi_out, adaLN_out
 
 
-@triton.jit
-def adaptive_layer_norm_kernel(
-    x_ptr,
-    y_ptr,
-    weight_ptr,
-    bias_ptr,
-    scale_ptr,
-    shift_ptr,
-    M,
-    N,
-    seq_size,
-    epsilon,
-    N_npo2: tl.constexpr,
-):
-    row = tl.program_id(axis=0)
-    x_ptr += row * N
-    y_ptr += row * N
-    scale_ptr += (row // seq_size) * N
-    shift_ptr += (row // seq_size) * N
-    all_offs = tl.arange(0, N_npo2)
-    all_mask = all_offs < N
-
-    x_eles = tl.load(x_ptr + all_offs, mask=all_mask, other=0.0).to(tl.float32)
-    # compute mean var
-    mean = tl.sum(x_eles, axis=0) / N
-    var = tl.sum(x_eles * x_eles, axis=0) / N - mean * mean
-    rstd = 1 / tl.sqrt(var + epsilon)
-    # compute adaLN
-    resi_hat = (x_eles - mean) * rstd
-    if weight_ptr is not None:
-        weights = tl.load(weight_ptr + all_offs, mask=all_mask, other=0.0)
-        resi_hat = resi_hat * weights
-    if bias_ptr is not None:
-        bias = tl.load(bias_ptr + all_offs, mask=all_mask, other=0.0)
-        resi_hat = resi_hat + bias
-    scales = tl.load(scale_ptr + all_offs, mask=all_mask, other=0.0)
-    shifts = tl.load(shift_ptr + all_offs, mask=all_mask, other=0.0)
-    y = resi_hat * (1 + scales) + shifts
-    tl.store(y_ptr + all_offs, y, mask=all_mask)
-
-
 triton_adaptive_layer_norm_template = (
-    paddle_custom_op_head_part
-    + """
+    """
 
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor &x,
@@ -922,37 +949,21 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int seq_size = x.dims()[1];
   auto y = paddle::empty(x.shape(), x.dtype(), x.place());
 
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_y = get_tensor_ptr(y);
-  auto dev_scale = get_tensor_ptr(scale);
-  auto dev_shift = get_tensor_ptr(shift);
-  CUdeviceptr dev_weight = (CUdeviceptr)(nullptr);
+  auto x_ptr = get_tensor_ptr(x);
+  auto y_ptr = get_tensor_ptr(y);
+  auto scale_ptr = get_tensor_ptr(scale);
+  auto shift_ptr = get_tensor_ptr(shift);
+  CUdeviceptr weight_ptr = (CUdeviceptr)(nullptr);
   if (weight) {
-    dev_weight = get_tensor_ptr(*weight);
+    weight_ptr = get_tensor_ptr(*weight);
   }
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
   if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
+    bias_ptr = get_tensor_ptr(*bias);
   }
-
-  auto run_triton_kernel = [&](int algo_id) -> CUresult{
-      return ${op_name}_kernel(y.stream(),
-                                               dev_x,
-                                               dev_y,
-                                               dev_weight,
-                                               dev_bias,
-                                               dev_scale,
-                                               dev_shift,
-                                               M,
-                                               N,
-                                               seq_size,
-                                               epsilon,
-                                               algo_id);
-  };
-
-  std::vector<int> problem_size = {M, N};
+  auto run_stream = y.stream();
 """
-    + tune_and_invoke_part
+    + tune_and_invoke_part2
     + """
   return {y};
 }
@@ -975,6 +986,57 @@ PD_BUILD_OP(${op_name})
     .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
 """
 )
+
+
+@paddle_use_triton(
+    custom_op_template=triton_adaptive_layer_norm_template,
+    key=["M"],
+)
+def adaptive_layer_norm_kernel(
+    x_ptr,
+    y_ptr,
+    weight_ptr,
+    bias_ptr,
+    scale_ptr,
+    shift_ptr,
+    M,
+    N,
+    seq_size,
+    epsilon,
+    BLOCK_SIZE: tl.constexpr,
+):
+    row = tl.program_id(axis=0)
+    x_ptr += row * N
+    y_ptr += row * N
+    # Compute mean
+    _sum = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    _sum_square = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        eles = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
+        _sum += eles
+        _sum_square += eles * eles
+    mean = tl.sum(_sum, axis=0) / N
+    var = tl.sum(_sum_square, axis=0) / N - mean * mean
+    rstd = 1 / tl.sqrt(var + epsilon)
+    # Compute output
+    scale_ptr += (row // seq_size) * N
+    shift_ptr += (row // seq_size) * N
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        mask = cols < N
+        eles = tl.load(x_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+        x_hat = (eles - mean) * rstd
+        if weight_ptr is not None:
+            weights = tl.load(weight_ptr + cols, mask=mask, other=0.0)
+            x_hat = x_hat * weights
+        if bias_ptr is not None:
+            bias = tl.load(bias_ptr + cols, mask=mask, other=0.0)
+            x_hat = x_hat + bias
+        scales = tl.load(scale_ptr + cols, mask=mask, other=0.0)
+        shifts = tl.load(shift_ptr + cols, mask=mask, other=0.0)
+        y = x_hat * (1 + scales) + shifts
+        tl.store(y_ptr + cols, y, mask=mask)
 
 
 def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
@@ -1035,108 +1097,34 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     M = x.shape[0] * x.shape[1]
     N = x.shape[2]
     seq_size = x.shape[1]
-    N_npo2 = triton.next_power_of_2(N)
-
-    # if in_dynamic_or_pir_mode():
-    #     y = paddle.empty_like(x)
-    #     adaptive_layer_norm_kernel[(M,)](
-    #         x,
-    #         y,
-    #         weight,
-    #         bias,
-    #         scale,
-    #         shift,
-    #         M,
-    #         N,
-    #         seq_size,
-    #         epsilon,
-    #         N_npo2=N_npo2,
-    #     )
-    #     return y
+    BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
 
     op_name = "triton_adaptive_layer_norm"
-    if x.dtype == paddle.float16:
-        op_name += "_fp16"
-    elif x.dtype == paddle.float32:
-        op_name += "_fp32"
-    elif x.dtype == paddle.bfloat16:
-        op_name += "_bf16"
-    else:
-        raise NotImplementedError(
-            "triton_adaptive_layer_norm now supports only fp16 and fp32 dtype."
-        )
-    op_name += f"_{N_npo2}"
+    op_name += get_dtype_str(x.dtype)
+    op_name += f"_{BLOCK_SIZE}"
 
-    # if in_dynamic_or_pir_mode && op is already registered, call it directly.
-    if (
-        op_name in OpProtoHolder.instance().op_proto_map.keys()
-        and in_dynamic_or_pir_mode()
-    ):
-        outs = _C_ops._run_custom_op(
-            op_name, x, scale, shift, weight, bias, epsilon
-        )
-        return outs[0]
-
-    x_list = [M, N, seq_size, epsilon]
-    value_hint = get_value_hint(x_list)
-    dtypes = [x.dtype] * 6
-    address_hint = get_pointer_hint(dtypes)
-
-    python_package_name = f"{op_name}_package"
-    generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
-    print("the kernel cache dir is:", generated_dir)
-    assert (
-        generated_dir is not None
-    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
-    generated_dir = f"{generated_dir}/{op_name}"
-    os.makedirs(generated_dir, exist_ok=True)
-
-    py_script_file = f"{generated_dir}/triton_kernels.py"
-    extract_triton_kernel(adaptive_layer_norm_kernel, py_script_file)
-
-    op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
-    paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
-    so_path = find_so_path(generated_dir, python_package_name)
-
-    if so_path is None:
-        print("== we do not find so_path, we need to compile it")
-        with open(paddle_custom_op_file_path, "w") as f:
-            f.write(
-                SubstituteTemplate(triton_adaptive_layer_norm_template, op_dict)
-            )
-            f.close()
-
-        # ahead of time compile command.
-        aot_template = (
-            f"""{python_path}   {compile_file} {py_script_file}   -n adaptive_layer_norm_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -s "{address_hint} {value_hint}  {N_npo2}"   \
-                             -g "M, 1, 1" \
-                       """
-        )
-
-        codegen_command = aot_template.format(
-            address_hint=address_hint,
-            value_hint=value_hint,
-            N_npo2=N_npo2,
-        )
-        print(codegen_command)
-        re = os.system(codegen_command)
-        assert re == 0
-
-        link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
-        re = os.system(link_command)
-        assert re == 0
-
-        # rename the .c file to .cu
-        rename_c_to_cu(generated_dir)
-        # build the package to so, not install
-        build_package(generated_dir, python_package_name)
+    adaptive_layer_norm_kernel_config = [
+        {'num_warps': 1},
+    ]
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
-        so_path = find_so_path(generated_dir, python_package_name)
-        print("== we find so_path: ", so_path)
-        assert so_path is not None
-        paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+        y = paddle.empty_like(x)
+        grid = ("M",)
+        adaptive_layer_norm_kernel[
+            (op_name, grid, adaptive_layer_norm_kernel_config)
+        ](
+            x,
+            y,
+            weight,
+            bias,
+            scale,
+            shift,
+            M,
+            N,
+            seq_size,
+            epsilon,
+            BLOCK_SIZE=BLOCK_SIZE,
+        )
 
     if in_dynamic_or_pir_mode():
         print(f"== we are in dynamic mode, op_name: {op_name}")
@@ -1166,49 +1154,8 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         return out
 
 
-@triton.jit
-def rms_norm_kernel(
-    x_ptr,
-    y_ptr,
-    weight_ptr,
-    bias_ptr,
-    M,
-    N,
-    epsilon,
-    BLOCK_SIZE_M: tl.constexpr,
-    N_npo2: tl.constexpr,
-):
-    row = tl.program_id(axis=0)
-    x_ptr += row * N * BLOCK_SIZE_M
-    y_ptr += row * N * BLOCK_SIZE_M
-
-    offs_am = tl.arange(0, BLOCK_SIZE_M)
-    offs_an = tl.arange(0, N_npo2)
-
-    # compute var
-    all_offs = offs_am[:, None] * N + offs_an[None, :]
-
-    x_eles = tl.load(x_ptr + all_offs, mask=offs_an[None, :] < N, other=0.0).to(
-        tl.float32
-    )
-    var = tl.sum(x_eles * x_eles, axis=1) / N
-
-    resi_hat = x_eles / tl.sqrt(var[:, None] + epsilon)
-
-    if weight_ptr is not None:
-        weights = tl.load(weight_ptr + offs_an, mask=offs_an < N, other=0.0)
-        resi_hat = resi_hat * weights
-
-    if bias_ptr is not None:
-        bias = tl.load(bias_ptr + offs_an, mask=offs_an < N, other=0.0)
-        resi_hat = resi_hat + bias
-
-    tl.store(y_ptr + all_offs, resi_hat, mask=offs_an[None, :] < N)
-
-
 rms_norm_template = (
-    paddle_custom_op_head_part
-    + """
+    """
 
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor &x,
@@ -1219,32 +1166,19 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int N = x.dims()[3];
   auto y = paddle::empty(x.shape(), x.dtype(), x.place());
 
-  auto dev_x = get_tensor_ptr(x);
-  auto dev_y = get_tensor_ptr(y);
-  CUdeviceptr dev_weight = (CUdeviceptr)(nullptr);
+  auto x_ptr = get_tensor_ptr(x);
+  auto y_ptr = get_tensor_ptr(y);
+  CUdeviceptr weight_ptr = (CUdeviceptr)(nullptr);
   if (weight) {
-    dev_weight = get_tensor_ptr(*weight);
+    weight_ptr = get_tensor_ptr(*weight);
   }
-  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
+  CUdeviceptr bias_ptr = (CUdeviceptr)(nullptr);
   if (bias) {
-    dev_bias = get_tensor_ptr(*bias);
+    bias_ptr = get_tensor_ptr(*bias);
   }
-
-  auto run_triton_kernel = [&](int algo_id) -> CUresult{
-      return ${op_name}_kernel(y.stream(),
-                                               dev_x,
-                                               dev_y,
-                                               dev_weight,
-                                               dev_bias,
-                                               M,
-                                               N,
-                                               epsilon,
-                                               algo_id);
-  };
-
-  std::vector<int> problem_size = {M, N};
+  auto run_stream = y.stream();
 """
-    + tune_and_invoke_part
+    + tune_and_invoke_part2
     + """
     return {y};
 }
@@ -1267,6 +1201,49 @@ PD_BUILD_OP(${op_name})
     .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
 """
 )
+
+
+@paddle_use_triton(
+    custom_op_template=rms_norm_template,
+    key=["M"],
+)
+def rms_norm_kernel(
+    x_ptr,
+    y_ptr,
+    weight_ptr,
+    bias_ptr,
+    M,
+    N,
+    epsilon,
+    BLOCK_SIZE_M: tl.constexpr,
+    N_npo2: tl.constexpr,
+):
+    row = tl.program_id(axis=0)
+
+    offs_am = tl.arange(0, BLOCK_SIZE_M)
+    offs_an = tl.arange(0, N_npo2)
+
+    # compute var
+    all_offs = (row * BLOCK_SIZE_M + offs_am[:, None]) % M * N + offs_an[
+        None, :
+    ]
+
+    x_eles = tl.load(x_ptr + all_offs, mask=offs_an[None, :] < N, other=0.0).to(
+        tl.float32
+    )
+    var = tl.sum(x_eles * x_eles, axis=1) / N
+
+    resi_hat = x_eles / tl.sqrt(var[:, None] + epsilon)
+
+    if weight_ptr is not None:
+        weights = tl.load(weight_ptr + offs_an, mask=offs_an < N, other=0.0)
+        resi_hat = resi_hat * weights
+
+    if bias_ptr is not None:
+        bias = tl.load(bias_ptr + offs_an, mask=offs_an < N, other=0.0)
+        resi_hat = resi_hat + bias
+
+    tl.store(y_ptr + all_offs, resi_hat, mask=offs_an[None, :] < N)
 
 
 def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
@@ -1313,108 +1290,31 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     M = x.shape[0] * x.shape[1] * x.shape[2]
     N = x.shape[3]
     N_npo2 = triton.next_power_of_2(N)
-    BLOCK_SIZE_Ms = [1, 2, 4, 8]
-    num_warps_list = [1, 2, 4, 8]
-
-    # if in_dynamic_or_pir_mode():
-    #     y = paddle.empty_like(x)
-    #     rms_norm_kernel[(M+BLOCK_SIZE_M-1)/BLOCK_SIZE_M,)](
-    #         x,
-    #         y,
-    #         weight,
-    #         bias,
-    #         M,
-    #         N,
-    #         epsilon,
-    #         BLOCK_SIZE_M
-    #         N_npo2=N_npo2,
-    #     )
-    #     return y
 
     op_name = "triton_rms_norm"
-    if x.dtype == paddle.float16:
-        op_name += "_fp16"
-    elif x.dtype == paddle.float32:
-        op_name += "_fp32"
-    elif x.dtype == paddle.bfloat16:
-        op_name += "_bf16"
-    else:
-        raise NotImplementedError(
-            "triton_rms_norm now supports only fp16 and fp32 dtype."
-        )
+    op_name += get_dtype_str(x.dtype)
     op_name += f"_{N_npo2}"
 
-    # if in_dynamic_or_pir_mode && op is already registered, call it directly.
-    if (
-        op_name in OpProtoHolder.instance().op_proto_map.keys()
-        and in_dynamic_or_pir_mode()
-    ):
-        outs = _C_ops._run_custom_op(op_name, x, weight, bias, epsilon)
-        return outs[0]
-
-    x_list = [M, N, epsilon]
-    value_hint = get_value_hint(x_list)
-    dtypes = [x.dtype] * 4
-    address_hint = get_pointer_hint(dtypes)
-
-    python_package_name = f"{op_name}_package"
-    generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
-    print("the kernel cache dir is:", generated_dir)
-    assert (
-        generated_dir is not None
-    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
-    generated_dir = f"{generated_dir}/{op_name}"
-    os.makedirs(generated_dir, exist_ok=True)
-
-    py_script_file = f"{generated_dir}/triton_kernels.py"
-    extract_triton_kernel(rms_norm_kernel, py_script_file)
-
-    op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
-    paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
-    so_path = find_so_path(generated_dir, python_package_name)
-
-    if so_path is None:
-        print("== we do not find so_path, we need to compile it")
-        with open(paddle_custom_op_file_path, "w") as f:
-            f.write(SubstituteTemplate(rms_norm_template, op_dict))
-            f.close()
-
-        # ahead of time compile command.
-        aot_template = (
-            f"""{python_path}   {compile_file} {py_script_file}   -n rms_norm_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -w {num_warps} -s "{address_hint} {value_hint} {BLOCK_SIZE_M}, {N_npo2}"   \
-                             -g "(M+{BLOCK_SIZE_M}-1)/{BLOCK_SIZE_M}, 1, 1" \
-                       """
-        )
-        codegen_commands = []
-        for BLOCK_SIZE_M in BLOCK_SIZE_Ms:
-            for num_warps in num_warps_list:
-                codegen_command = aot_template.format(
-                    address_hint=address_hint,
-                    value_hint=value_hint,
-                    BLOCK_SIZE_M=BLOCK_SIZE_M,
-                    num_warps=num_warps,
-                    N_npo2=N_npo2,
-                )
-                print(codegen_command)
-                codegen_commands.append(codegen_command)
-
-        multi_process_do(codegen_commands)
-
-        link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
-        re = os.system(link_command)
-        assert re == 0
-
-        # rename the .c file to .cu
-        rename_c_to_cu(generated_dir)
-        # build the package to so, not install
-        build_package(generated_dir, python_package_name)
+    rms_norm_kernel_config = []
+    if N_npo2 <= 64:
+        rms_norm_kernel_config.append({'BLOCK_SIZE_M': 4, 'num_warps': 1})
+    else:
+        rms_norm_kernel_config.append({'BLOCK_SIZE_M': 1, 'num_warps': 4})
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
-        so_path = find_so_path(generated_dir, python_package_name)
-        print("== we find so_path: ", so_path)
-        assert so_path is not None
-        paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+        y = paddle.empty_like(x)
+        grid = ("((M+BLOCK_SIZE_M-1)/BLOCK_SIZE_M)",)
+        rms_norm_kernel[(op_name, grid, rms_norm_kernel_config)](
+            x,
+            y,
+            weight,
+            x,
+            -1,  # M,
+            N,
+            epsilon,
+            BLOCK_SIZE_M=4,
+            N_npo2=N_npo2,
+        )
 
     if in_dynamic_or_pir_mode():
         print(f"== we are in dynamic mode, op_name: {op_name}")

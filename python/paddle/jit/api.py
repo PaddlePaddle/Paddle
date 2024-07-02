@@ -218,17 +218,18 @@ def paddle_inference_decorator(**kwargs):
         import inspect
         import os
         import sys
+        import textwrap
 
         predictors = [None]
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
         arg_defaults = [v.default for v in signature.parameters.values()]
 
-        import textwrap
-
+        memory_pool_init_size_mb = kwargs.get("memory_pool_init_size_mb", 1000)
         cache_static_model = kwargs.get("cache_static_model", False)
         with_trt = kwargs.get("with_trt", False)
         save_model_dir = kwargs.get("save_model_dir", "/root/.cache/")
+        save_model_dir += "/" + func.__name__
         precision_mode = kwargs.get("precision_mode", "float32")
         switch_ir_optim = kwargs.get("switch_ir_optim", True)
         switch_ir_debug = kwargs.get("switch_ir_debug", False)
@@ -245,11 +246,10 @@ def paddle_inference_decorator(**kwargs):
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
-        py_script = py_script.replace(func.__name__, func.__name__)
         print(py_script)
 
         assert arg_names[0] == "self"
-        save_path = save_model_dir + "/" + func.__name__ + "/infer"
+        save_path = save_model_dir + "/infer"
         d2s_input_info_path = save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
         d2s_input_names = []
@@ -258,8 +258,11 @@ def paddle_inference_decorator(**kwargs):
         if os.path.exists(d2s_input_info_path) and cache_static_model:
             with open(d2s_input_info_path, "r") as f:
                 for line in f.readlines():
-                    name = line.split(":")[0]
-                    shape = line.split(":")[1]
+                    line = line.strip()
+                    name_shape = line.split(":")
+                    assert len(name_shape) == 2
+                    name = name_shape[0]
+                    shape = name_shape[1]
                     if len(shape) > 0:
                         # this is for None input
                         shape = [int(s) for s in shape.split(",")]
@@ -322,7 +325,7 @@ def paddle_inference_decorator(**kwargs):
                 )
                 assert (
                     collected_names == arg_names
-                ), "some arguments are not specified when you invoke your function."
+                ), "some arguments are not specified when you invoke your function, you must specify your all arguments."
 
             # initiate the d2s_input_shapes.
             if len(d2s_input_shapes) == 0:
@@ -437,18 +440,22 @@ def paddle_inference_decorator(**kwargs):
                 input_specs = [input_specs]
                 mylayer = WrappedLayer(args[0])
 
-                to_jit_func = mylayer
-                new_func_name = func.__name__ + "_copy"
-                if hasattr(args[0], new_func_name):
-                    to_jit_func = getattr(args[0], new_func_name)
-                    input_specs = input_specs[0]
-
                 model = paddle.jit.to_static(
-                    to_jit_func,
+                    mylayer,
                     input_spec=input_specs,
                     full_graph=True,
                 )
                 paddle.jit.save(model, save_path, skip_prune_program=True)
+
+                # for name, param in args[0].named_parameters():
+                #     a = paddle.rand((1,))
+                #     paddle.assign(a, param)
+                #     print(param.shape)
+                #     print(name)
+
+                # for name, param in args[0].named_parameters():
+                #     print(name)
+                #     print(param.shape)
 
                 # save d2s_shapes
                 assert len(d2s_input_names) == len(d2s_input_shapes)
@@ -473,9 +480,8 @@ def paddle_inference_decorator(**kwargs):
                             )
 
             # create predictor
-            model_dir = save_model_dir + "/" + func.__name__ + "/"
-            model_file = model_dir + "infer.pdmodel"
-            params_file = model_dir + "infer.pdiparams"
+            model_file = save_model_dir + "/infer.pdmodel"
+            params_file = save_model_dir + "/infer.pdiparams"
             from paddle.inference import Config, PrecisionType, create_predictor
 
             config = Config(model_file, params_file)
@@ -499,14 +505,16 @@ def paddle_inference_decorator(**kwargs):
             gpu_precision = get_infer_precision()
             device_num = paddle.device.get_device()
             gpu_id = (int)(device_num.split(':')[1])
-            config.enable_use_gpu(1000, gpu_id, gpu_precision)
+            config.enable_use_gpu(
+                memory_pool_init_size_mb, gpu_id, gpu_precision
+            )
 
             if with_trt:
                 dynamic_names = []
                 min_input_shape = {}
                 max_input_shape = {}
                 opt_input_shape = {}
-                shape_range_file = model_dir + "/trt_shape.txt"
+                shape_range_file = save_model_dir + "/trt_shape.txt"
                 if collect_shape:
                     config.collect_shape_range_info(shape_range_file)
                 elif os.path.exists(shape_range_file):
