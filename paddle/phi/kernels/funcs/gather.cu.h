@@ -57,14 +57,14 @@ __global__ void GatherNdCUDAKernel(const T* input,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
-      // PADDLE_ENFORCE(
-      //     index_value >= 0 && index_value < input_dims[j],
-      //     "The index is out of bounds, "
-      //     "please check whether the dimensions of index and "
-      //     "input meet the requirements. It should "
-      //     "be less than [%d] and greater than or equal to 0, but received [%d]",
-      //     input_dims[j],
-      //     index_value);
+      PADDLE_ENFORCE(
+          index_value >= 0 && index_value < input_dims[j],
+          "The index is out of bounds, "
+          "please check whether the dimensions of index and "
+          "input meet the requirements. It should "
+          "be less than [%d] and greater than or equal to 0, but received [%d]",
+          input_dims[j],
+          index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -179,14 +179,14 @@ __global__ void GatherGPUKernel(const T* input,
     int64_t index_dim_index = next_idx / outer_dim_size;
     U index_val = index[index_dim_index];
 
-    // PADDLE_ENFORCE(
-    //     index_val >= 0 && index_val < input_index_dim_size,
-    //     "The index is out of bounds, "
-    //     "please check whether the dimensions of index and "
-    //     "input meet the requirements. It should "
-    //     "be less than [%d] and greater than or equal to 0, but received [%d]",
-    //     input_index_dim_size,
-    //     index_val);
+    PADDLE_ENFORCE(
+        index_val >= 0 && index_val < input_index_dim_size,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        input_index_dim_size,
+        index_val);
 
     int64_t out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int64_t input_index =

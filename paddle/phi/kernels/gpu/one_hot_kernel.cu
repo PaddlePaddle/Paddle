@@ -29,12 +29,12 @@ __global__ void FillOutputKernel(const InT* p_in_data,
                                  const int64_t numel,
                                  const int depth) {
   CUDA_KERNEL_LOOP_TYPE(idx, numel, int64_t) {
-    // PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
-    //                "Illegal index value, Input(input) value should be "
-    //                "greater than or equal to 0, and less than depth [%d], "
-    //                "but received [%lld].",
-    //                depth,
-    //                p_in_data[idx]);
+    PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
+                   "Illegal index value, Input(input) value should be "
+                   "greater than or equal to 0, and less than depth [%d], "
+                   "but received [%lld].",
+                   depth,
+                   p_in_data[idx]);
 
     *(p_out_data + (idx * depth) + p_in_data[idx]) = 1.0;
   }

@@ -348,6 +348,7 @@ struct EnforceNotMet : public std::exception {
     }                                                              \
   } while (0)
 #elif defined(__MUSACC__)
+#ifndef RELEASE_MUSA
 #define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)               \
   do {                                                             \
     if (!(_IS_NOT_ERROR)) {                                        \
@@ -359,6 +360,13 @@ struct EnforceNotMet : public std::exception {
     }                                                              \
   } while (0)
 #else
+#define PADDLE_ENFORCE(COND, ...)   \
+    do { \
+      static_cast<void>(COND); \
+    } while (0)
+#endif
+#else
+#ifndef RELEASE_MUSA
 #define PADDLE_ENFORCE(COND, ...)                               \
   do {                                                          \
     auto __cond__ = (COND);                                     \
@@ -366,6 +374,13 @@ struct EnforceNotMet : public std::exception {
       __THROW_ERROR_INTERNAL__(phi::ErrorSummary(__VA_ARGS__)); \
     }                                                           \
   } while (0)
+#else 
+#define PADDLE_ENFORCE(COND, ...)   \
+    do { \
+      static_cast<void>(COND); \
+    } while (0)
+#endif
+
 #endif
 
 /*
@@ -381,18 +396,24 @@ struct EnforceNotMet : public std::exception {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                               \
-  do {                                                                    \
-    if (UNLIKELY(nullptr == (__VAL))) {                                   \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                  \
-      auto __message__ = ::paddle::string::Sprintf(                       \
-          "%s\n  [Hint: " #__VAL " should not be null.]",                 \
-          __summary__.error_message());                                   \
-      __THROW_ERROR_INTERNAL__(                                           \
-          phi::ErrorSummary(__summary__.code(), std::move(__message__))); \
-    }                                                                     \
-  } while (0)
+#ifndef RELEASE_MUSA
+  #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                               \
+    do {                                                                    \
+      if (UNLIKELY(nullptr == (__VAL))) {                                   \
+        auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                  \
+        auto __message__ = ::paddle::string::Sprintf(                       \
+            "%s\n  [Hint: " #__VAL " should not be null.]",                 \
+            __summary__.error_message());                                   \
+        __THROW_ERROR_INTERNAL__(                                           \
+            phi::ErrorSummary(__summary__.code(), std::move(__message__))); \
+      }                                                                     \
+    } while (0)
+#else
+  #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)   \
+    do { \
+      static_cast<void>(__VAL); \
+    } while (0)
+#endif
 
 #define PADDLE_WARN_NOT_NULL(__VAL, ...)                         \
   do {                                                           \
@@ -437,19 +458,44 @@ struct EnforceNotMet : public std::exception {
     }                                                                     \
   } while (0)
 
-#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
-#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
-#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
-#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
-#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
-#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+#define PADDLE_MUSA_DEBUG_BINARY(__VAL1, __VAL2,...) \
+  do { \
+    static_cast<void>(__VAL1); \
+    static_cast<void>(__VAL2); \
+  } while (0)
+#ifndef RELEASE_MUSA
+  #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
+    __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
+  #define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
+    __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
+  #define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
+    __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
+  #define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
+    __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
+  #define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
+    __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
+  #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
+    __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+#else
+  #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...)  \
+    PADDLE_MUSA_DEBUG_BINARY(__VAL0,__VAL1,__VA_ARGS__)
 
+  #define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...)  \
+    PADDLE_MUSA_DEBUG_BINARY(__VAL0,__VAL1,__VA_ARGS__)
+
+  #define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...)   \
+    PADDLE_MUSA_DEBUG_BINARY(__VAL0,__VAL1,__VA_ARGS__)
+
+  #define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...)  \
+    PADDLE_MUSA_DEBUG_BINARY(__VAL0,__VAL1,__VA_ARGS__)
+
+  #define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...)   \
+    PADDLE_MUSA_DEBUG_BINARY(__VAL0,__VAL1,__VA_ARGS__)
+
+  #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...)   \
+    PADDLE_MUSA_DEBUG_BINARY(__VAL0,__VAL1,__VA_ARGS__)
+
+#endif
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
 
 /*

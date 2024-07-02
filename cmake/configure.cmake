@@ -180,6 +180,7 @@ elseif(WITH_MUSA)
   add_definitions(-DPADDLE_WITH_FLASHATTN_MUSA)
   add_definitions(-DEIGEN_USE_GPU)
   add_definitions(-DEIGEN_USE_MUSA)
+  
   if(MUPTI_FOUND)
     include_directories(${CUPTI_INCLUDE_DIR})
     add_definitions(-DPADDLE_WITH_MUPTI)

@@ -47,15 +47,15 @@ __global__ void NormalizeProbability(MT* norm_probs,
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
   if (id < num_distributions * num_categories) {
-    // PADDLE_ENFORCE(
-    //     static_cast<MT>(in_data[id]) >= 0.0,
-    //     "The input of multinomial distribution should be >= 0, but got %f.",
-    //     static_cast<MT>(in_data[id]));
+    PADDLE_ENFORCE(
+        static_cast<MT>(in_data[id]) >= 0.0,
+        "The input of multinomial distribution should be >= 0, but got %f.",
+        static_cast<MT>(in_data[id]));
     int64_t row_id = id / num_categories;
-    // PADDLE_ENFORCE(sum_rows[row_id] > 0.0,
-    //                "The sum of one multinomial distribution probability should "
-    //                "be > 0, but got %f.",
-    //                sum_rows[row_id]);
+    PADDLE_ENFORCE(sum_rows[row_id] > 0.0,
+                   "The sum of one multinomial distribution probability should "
+                   "be > 0, but got %f.",
+                   sum_rows[row_id]);
     norm_probs[id] = static_cast<MT>(in_data[id]) / sum_rows[row_id];
   }
 }

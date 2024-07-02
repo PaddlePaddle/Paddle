@@ -171,9 +171,9 @@ void FlashAttnKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ((dropout>0.0f),true,"return_softmax is only supported when dropout > 0.0");
     PADDLE_ENFORCE_EQ(0,1,"not support");
   }
-  // PADDLE_ENFORCE_EQ(
-  //     q.dims().size() == 4 && k.dims().size() == 4 && v.dims().size() == 4,true,
-  //     "Expect all query, key, value has 4D shape!");
+  PADDLE_ENFORCE_EQ(
+      q.dims().size() == 4 && k.dims().size() == 4 && v.dims().size() == 4,true,
+      "Expect all query, key, value has 4D shape!");
 
   DenseTensor trans_q(q);
   trans_q.transpose_dim1_and_dim2_for_4d_tensor();
@@ -184,16 +184,16 @@ void FlashAttnKernel(const Context& ctx,
   DenseTensor trans_v(v);
   trans_v.transpose_dim1_and_dim2_for_4d_tensor();
 
-  // PADDLE_ENFORCE_EQ(trans_q.dims()[3],
-  //                   trans_k.dims()[3],
-  //                   phi::errors::InvalidArgument(
-  //                       "head_dim of q must be equal to head_dim of k"
-  //                       "but they are %d and %d",trans_q.dims()[3],trans_k.dims()[3]));
-  // PADDLE_ENFORCE_EQ(trans_k.dims()[2],
-  //                   trans_v.dims()[2],
-  //                   phi::errors::InvalidArgument(
-  //                       "seq_len of k must be equal to seq_len of v"
-  //                       "but they are %d and %d",trans_k.dims()[2],trans_v.dims()[2]));  
+  PADDLE_ENFORCE_EQ(trans_q.dims()[3],
+                    trans_k.dims()[3],
+                    phi::errors::InvalidArgument(
+                        "head_dim of q must be equal to head_dim of k"
+                        "but they are %d and %d",trans_q.dims()[3],trans_k.dims()[3]));
+  PADDLE_ENFORCE_EQ(trans_k.dims()[2],
+                    trans_v.dims()[2],
+                    phi::errors::InvalidArgument(
+                        "seq_len of k must be equal to seq_len of v"
+                        "but they are %d and %d",trans_k.dims()[2],trans_v.dims()[2]));  
 
   auto head_dim_q = trans_q.dims()[3]; // head_dim
   auto q_seq_len = trans_q.dims()[2]; // seq_len
@@ -211,25 +211,25 @@ void FlashAttnKernel(const Context& ctx,
   dynload::Tensor con_mask_desc;
   if(attn_mask.get_ptr() && !causal){
     const auto attn_mask_dim_size=attn_mask.get_ptr()->dims().size();
-    // PADDLE_ENFORCE_EQ(
-    //     attn_mask_dim_size,
-    //     4,
-    //     phi::errors::InvalidArgument(
-    //         "The number of dimensions of attn_mask is expected to be "
-    //         "equal to 4, but recieved %d. The shape of attn_mask is {%s}",
-    //         attn_mask_dim_size,
-    //         attn_mask.get_ptr()->dims()));
+    PADDLE_ENFORCE_EQ(
+        attn_mask_dim_size,
+        4,
+        phi::errors::InvalidArgument(
+            "The number of dimensions of attn_mask is expected to be "
+            "equal to 4, but recieved %d. The shape of attn_mask is {%s}",
+            attn_mask_dim_size,
+            attn_mask.get_ptr()->dims()));
 
-    // PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[3]==seqlen_k && \
-    //     attn_mask.get_ptr()->dims()[2]==q_seq_len,true, 
-    //     "the last two dim of attn_mask(%d , %d) should be equal to seqlen_q(%d),seqlen_k(%d)",
-    //     attn_mask.get_ptr()->dims()[2], attn_mask.get_ptr()->dims()[3],q_seq_len,seqlen_k);
+    PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[3]==seqlen_k && \
+        attn_mask.get_ptr()->dims()[2]==q_seq_len,true, 
+        "the last two dim of attn_mask(%d , %d) should be equal to seqlen_q(%d),seqlen_k(%d)",
+        attn_mask.get_ptr()->dims()[2], attn_mask.get_ptr()->dims()[3],q_seq_len,seqlen_k);
 
-    // PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[1]==head_num_q || attn_mask.get_ptr()->dims()[1]==1,true, 
-    //     "mask_dims[1] == 1 || mask_dims[1] == num_heads, but mask_dims[1] is %d, and num_heads_q is %d",attn_mask.get_ptr()->dims()[1],head_num_q);
+    PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[1]==head_num_q || attn_mask.get_ptr()->dims()[1]==1,true, 
+        "mask_dims[1] == 1 || mask_dims[1] == num_heads, but mask_dims[1] is %d, and num_heads_q is %d",attn_mask.get_ptr()->dims()[1],head_num_q);
 
-    // PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[0]==batch_size_,true, 
-    //     "mask_dims[0] == batch_size, but mask_dims[0] is %d, and batch_size is %d",attn_mask.get_ptr()->dims()[0],batch_size_);
+    PADDLE_ENFORCE_EQ(attn_mask.get_ptr()->dims()[0]==batch_size_,true, 
+        "mask_dims[0] == batch_size, but mask_dims[0] is %d, and batch_size is %d",attn_mask.get_ptr()->dims()[0],batch_size_);
     con_mask.Resize(attn_mask.get_ptr()->dims());
     phi ::ContiguousKernel<T, Context>(
           ctx, *attn_mask.get_ptr(), &con_mask); 
