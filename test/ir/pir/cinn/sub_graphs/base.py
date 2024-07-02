@@ -47,6 +47,15 @@ class TestBase(unittest.TestCase):
     def set_flags(self):
         pass
 
+    def calculate_loss(self, out):
+        if isinstance(out, tuple):
+            loss = 0
+            for i in range(len(out)):
+                loss += out[i].mean()
+        else:
+            loss = out.mean()
+        return loss
+
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         paddle.seed(123)
         if to_static:
@@ -96,19 +105,15 @@ class TestBase(unittest.TestCase):
                     st.numpy(), cinn.numpy(), atol=self.atol
                 )
         if self.with_train:
-            if type(st_out) == tuple:
-                st_loss, cinn_loss = 0, 0
-                for i in range(len(st_out)):
-                    st_loss += st_out[i].mean()
-                    cinn_loss += cinn_out[i].mean()
-            else:
-                st_loss = st_out.mean()
-                cinn_loss = cinn_out.mean()
+            st_loss, cinn_loss = self.calculate_loss(
+                st_out
+            ), self.calculate_loss(cinn_out)
             st_loss.backward()
             st_grad = []
             for i in range(len(st_inputs)):
                 if (
                     st_inputs[i].dtype != paddle.int64
+                    and st_inputs[i].dtype != paddle.int32
                     and st_inputs[i].grad is not None
                 ):
                     st_grad.append(st_inputs[i].grad.numpy().copy())
@@ -117,6 +122,7 @@ class TestBase(unittest.TestCase):
             for i in range(len(cinn_inputs)):
                 if (
                     cinn_inputs[i].dtype != paddle.int64
+                    and st_inputs[i].dtype != paddle.int32
                     and cinn_inputs[i].grad is not None
                 ):
                     cinn_grad.append(cinn_inputs[i].grad.numpy().copy())
