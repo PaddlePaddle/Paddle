@@ -19,6 +19,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/type_name.h"
