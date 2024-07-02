@@ -279,46 +279,53 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-            paddle.enable_static()
-            x = paddle.static.data(
-                name="x", shape=[2, 3, 7, 7], dtype="float32"
-            )
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                paddle.enable_static()
+                x = paddle.static.data(
+                    name="x", shape=[2, 3, 7, 7], dtype="float32"
+                )
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[3, 3])
-            out_1 = adaptive_max_pool(x=x)
+                adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
+                    output_size=[3, 3]
+                )
+                out_1 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=5)
-            out_2 = adaptive_max_pool(x=x)
+                adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=5)
+                out_2 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[2, 5])
-            out_3 = adaptive_max_pool(x=x)
+                adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
+                    output_size=[2, 5]
+                )
+                out_3 = adaptive_max_pool(x=x)
 
-            #    adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
-            #        output_size=[3, 3], data_format="NHWC")
-            #    out_4 = adaptive_max_pool(x=x)
+                #    adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
+                #        output_size=[3, 3], data_format="NHWC")
+                #    out_4 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
-                output_size=[None, 3]
-            )
-            out_5 = adaptive_max_pool(x=x)
+                adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
+                    output_size=[None, 3]
+                )
+                out_5 = adaptive_max_pool(x=x)
 
-            exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_5] = exe.run(
-                base.default_main_program(),
-                feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_5],
-            )
+                exe = paddle.static.Executor(place=place)
+                [res_1, res_2, res_3, res_5] = exe.run(
+                    base.default_main_program(),
+                    feed={"x": self.x_np},
+                    fetch_list=[out_1, out_2, out_3, out_5],
+                )
 
-            np.testing.assert_allclose(res_1, self.res_1_np)
+                np.testing.assert_allclose(res_1, self.res_1_np)
 
-            np.testing.assert_allclose(res_2, self.res_2_np)
+                np.testing.assert_allclose(res_2, self.res_2_np)
 
-            np.testing.assert_allclose(res_3, self.res_3_np)
+                np.testing.assert_allclose(res_3, self.res_3_np)
 
-            # np.testing.assert_allclose(res_4, self.res_4_np)
+                # np.testing.assert_allclose(res_4, self.res_4_np)
 
-            np.testing.assert_allclose(res_5, self.res_5_np)
+                np.testing.assert_allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
         for use_cuda in (
