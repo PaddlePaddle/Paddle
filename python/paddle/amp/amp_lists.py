@@ -105,7 +105,7 @@ BF16_BLACK_LIST = FP16_BLACK_LIST
 
 
 # At OD level, ops in WHITE_LIST will use FP16/BF16 and the others will use FP32.
-def white_list() -> dict[str, dict[str, Any]]:
+def white_list() -> dict[str, dict[str, set[str]]]:
     white_list = {
         "float16": {
             "OD": FP16_WHITE_LIST,
