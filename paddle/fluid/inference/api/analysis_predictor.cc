@@ -2293,12 +2293,12 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #endif
         delete prog;
       });
-  // The config and argument take a lot of storage,
-  // when the predictor settings are complete, we release these stores.
+
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
-
+  // The argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
