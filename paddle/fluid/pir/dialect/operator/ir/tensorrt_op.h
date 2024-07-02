@@ -34,7 +34,7 @@ class TensorRTEngineOp
     : public pir::Op<TensorRTEngineOp, paddle::dialect::OpYamlInfoInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd_op.tensorrt_engine_op"; }
+  static const char *name() { return "pd_op.tensorrt_engine"; }
   static const char *attributes_name[12];
   static constexpr uint32_t attributes_num = 12;
   static OpInfoTuple GetOpInfo();

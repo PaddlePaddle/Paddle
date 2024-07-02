@@ -63,7 +63,7 @@ class TensorRTEngineInstruction : public InstructionBase {
   std::vector<int> outputs_rank_;
   std::vector<phi::DataType> outputs_dtype_;
   std::vector<std::string> runtime_output_names_;
-  std::string op_name_ = "pd_op.tensorrt_engine_op";
+  std::string op_name_ = "pd_op.tensorrt_engine";
   ::pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned

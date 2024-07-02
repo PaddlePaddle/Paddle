@@ -47,7 +47,7 @@ inline bool IsCustomOp(pir::Operation* op) {
 
 inline bool IsTensorRTOp(pir::Operation* op) {
   std::string op_name = op->name();
-  return op_name == "pd_op.tensorrt_engine_op";
+  return op_name == "pd_op.tensorrt_engine";
 }
 
 class CustomOpDialect : public pir::Dialect {

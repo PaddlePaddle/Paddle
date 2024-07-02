@@ -170,7 +170,7 @@ class TestBuildOp6(unittest.TestCase):
                 .source()
                 .get_defining_op()
                 .name(),
-                "pd_op.tensorrt_engine_op",
+                "pd_op.tensorrt_engine",
             )
 
 
