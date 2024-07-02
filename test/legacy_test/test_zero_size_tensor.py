@@ -98,7 +98,7 @@ class TestSundryAPI(unittest.TestCase):
             data_np, new_shape, desired_shape = case
             startup_program = paddle.static.Program()
             main_program = paddle.static.Program()
-            executor = paddle.static.Executor(paddle.CUDAPlace(0))
+            executor = paddle.static.Executor(place)
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data(
                     name="x", shape=data_np.shape, dtype='float64'
