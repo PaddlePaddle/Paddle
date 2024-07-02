@@ -1818,7 +1818,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, pool_size, [1, 1], [0, 0], False, True
         )
@@ -1912,7 +1912,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             output_size[0] = in_h
         if output_size[1] is None:
             output_size[1] = in_w
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, output_size, [1, 1], [0, 0], False, True
         )
