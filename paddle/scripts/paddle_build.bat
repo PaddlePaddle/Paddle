@@ -91,7 +91,7 @@ rem          skip them on PR-CI-Windows(CUDA 12.0)
 rem LEVEL 2: run all test
 if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
-if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python38
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python310
 if not defined BUILD_DIR set BUILD_DIR=build
 if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 if not defined WITH_PIP_CUDA_LIBRARIES set WITH_PIP_CUDA_LIBRARIES=OFF
@@ -731,8 +731,8 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\onednn\lib;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
-%PATH%
+%work_dir%\%BUILD_DIR%\paddle;%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^%PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
 if "%WITH_ONNXRUNTIME%"=="ON" (
