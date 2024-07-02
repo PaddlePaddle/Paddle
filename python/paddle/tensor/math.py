@@ -8460,12 +8460,26 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
             >>> res = paddle.cartesian_prod([a, b])
             >>> print(res)
             Tensor(shape=[6, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
-                [[1, 5],
-                 [1, 6],
-                 [2, 5],
-                 [2, 6],
-                 [3, 5],
-                 [3, 6]])
+            [[1, 5],
+             [1, 6],
+             [2, 5],
+             [2, 6],
+             [3, 5],
+             [3, 6]])
+
+            >>> c = paddle.to_tensor([7, 8, 9], dtype='float32')
+            >>> res = paddle.cartesian_prod([c])
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [7., 8., 9.])
+
+            >>> d = paddle.empty([0], dtype='float64')
+            >>> e = paddle.to_tensor([1, 2], dtype='float64')
+            >>> f = paddle.to_tensor([3, 4, 5, 6, 7], dtype='float64')
+            >>> res = paddle.cartesian_prod([d, e, f])
+            >>> print(res)
+            Tensor(shape=[0, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [])
     """
     for tensor in x:
         if len(tensor.shape) != 1:
