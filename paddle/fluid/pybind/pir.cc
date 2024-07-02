@@ -1207,7 +1207,7 @@ void BindValue(py::module *m) {
       // DataOp("var_1") -> %0 -> shadow_output("output_2")
       // Return ["var_1", "output_2"]
       .def_property_readonly(
-          "names",
+          "_names",
           [](Value self) -> py::list {
             py::list all_names;
             std::optional<std::string> input_name = GetValueInputName(self);

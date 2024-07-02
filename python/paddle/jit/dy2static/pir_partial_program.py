@@ -786,7 +786,7 @@ class PartialProgramLayer:
                     forward_name_value_map = {
                         name: item
                         for item in forward_program.list_vars()
-                        for name in item.names
+                        for name in item._names
                     }
 
                     def share_symbol_shape_from_forward_to_backward(
