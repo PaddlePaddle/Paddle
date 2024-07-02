@@ -860,7 +860,7 @@ class TestFunctional(unittest.TestCase):
             test_adjust_brightness(np_img, tensor_img)
             test_adjust_contrast(np_img, tensor_img)
             test_adjust_saturation(np_img, tensor_img)
-            # test_adjust_hue(np_img, tensor_img)
+            test_adjust_hue(np_img, tensor_img)
 
     def test_pad(self):
         np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
