@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils
 import os
 import unittest
 
@@ -279,8 +278,19 @@ class TestDistributedFusedLamb(unittest.TestCase):
             fleet.init(role_maker=get_role_maker())
 
     def config(self):
+        import pathlib
+        import sys
+
+        from launch_utils import strtobool
+
+        sys.path.append(
+            str(
+                pathlib.Path(__file__).resolve().parents[2]
+                / 'python/paddle/distributed/utils'
+            )
+        )
         clip_after_allreduce = bool(
-            distutils.util.strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True'))
+            strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True'))
         )
         max_global_norm = float(os.getenv('MAX_GLOBAL_NORM', -1.0))
         gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))

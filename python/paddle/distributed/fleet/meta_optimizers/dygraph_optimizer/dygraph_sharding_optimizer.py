@@ -14,8 +14,9 @@
 
 ######
 import os
+import pathlib
+import sys
 import warnings
-from distutils.util import strtobool
 from functools import reduce
 
 import paddle
@@ -35,6 +36,9 @@ from ...utils.tensor_fusion_helper import (
     assign_group_by_size,
     fused_parameters,
 )
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[3] / 'utils'))
+from launch_utils import strtobool
 
 
 def _is_trainable(param):

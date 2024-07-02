@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils.util
 import os
+import pathlib
+import sys
 
 import numpy as np
 
@@ -28,6 +29,9 @@ from paddle.distributed.communication.group import (
 
 from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[3] / 'utils'))
+from launch_utils import strtobool
 
 _hcg = None
 # _use_cache = False
@@ -430,9 +434,7 @@ def _batched_p2p_ops(
 
     if len(ops) > 0:
         batch_send_recv_on_calc_stream(ops)
-        if distutils.util.strtobool(
-            os.getenv('FLAGS_p2p_device_synchronize', '0')
-        ):
+        if strtobool(os.getenv('FLAGS_p2p_device_synchronize', '0')):
             paddle.device.cuda.synchronize()
 
     tensors_for_all_gather = []

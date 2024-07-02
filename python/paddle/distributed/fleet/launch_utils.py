@@ -17,6 +17,7 @@ import json
 import logging
 import multiprocessing
 import os
+import pathlib
 import shutil
 import signal
 import socket
@@ -26,10 +27,12 @@ import sys
 import tempfile
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 import paddle.utils.cpp_extension.extension_utils as utils
 from paddle import framework
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / 'utils'))
+from launch_utils import strtobool
 
 logger = logging.getLogger("root")
 logger.propagate = False

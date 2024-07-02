@@ -13,8 +13,12 @@
 # limitations under the License.
 
 import os
+import pathlib
+import sys
 from argparse import REMAINDER, ArgumentParser
-from distutils.util import strtobool
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / 'utils'))
+from launch_utils import strtobool
 
 env_args_mapping = {
     'POD_IP': ('host', str),

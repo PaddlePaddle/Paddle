@@ -20,7 +20,6 @@ import subprocess
 import sys
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 
@@ -552,3 +551,13 @@ def _print_arguments(args):
     for arg, value in sorted(vars(args).items()):
         print(f"{arg}: {value}")
     print("------------------------------------------------")
+
+
+def strtobool(val):
+    val = val.lower()
+    if val in ['y', 'yes', 't', 'true', 'on', '1']:
+        return True
+    elif val in ['n', 'no', 'f', 'false', 'off', '0']:
+        return False
+    else:
+        raise ValueError(f"Invalid truth value {val!r}")
