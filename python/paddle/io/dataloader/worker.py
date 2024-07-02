@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import queue
@@ -76,7 +77,7 @@ class ParentWatchDog:
 _worker_info = None
 
 
-def get_worker_info():
+def get_worker_info() -> WorkerInfo | None:
     """
     Get DataLoader worker process information function, this function is
     used to split data copy in worker process for IterableDataset
