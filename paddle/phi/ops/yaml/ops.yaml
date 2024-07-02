@@ -3633,6 +3633,7 @@
     func : reduce_as
     data_type : x
   backward : reduce_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
