@@ -2003,7 +2003,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
             x, output_size, [1, 1, 1], [0, 0, 0], False, True
