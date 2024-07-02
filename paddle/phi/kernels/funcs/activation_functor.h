@@ -2957,7 +2957,9 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    if (decimals >= 0) {
+    if (decimals == 0) {
+      out.device(d) = x.round();
+    } else if (decimals >= 0) {
       auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
       out.device(d) = (x * ten_pow_deciamls).round() / ten_pow_deciamls;
     } else {
@@ -5182,7 +5184,9 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
 
-    if (decimals >= 0) {
+    if (decimals == 0) {
+      return static_cast<T>(round(x));
+    } else if (decimals > 0) {
       auto ten_pow_deciamls = static_cast<MPType>(std::pow(10, decimals));
       return static_cast<T>(round(x * ten_pow_deciamls) / ten_pow_deciamls);
     } else {
