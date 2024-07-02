@@ -3536,6 +3536,32 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void SequenceExpandInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             int ref_level,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  const auto& x_dims = x.dims();
+  auto out_dims = x_dims;
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Dimension number of Input(X) should be at least 2. But "
+          "received: input rank %u, input shape [%s].",
+          x_dims.size(),
+          x_dims));
+
+  if (config.is_runtime) {
+  } else {
+    out_dims[0] = -1;
+  }
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void ShapeBroadcastInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              MetaTensor* out) {
