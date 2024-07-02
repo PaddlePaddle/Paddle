@@ -222,30 +222,31 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         np.testing.assert_allclose(values2.grad.numpy(), values3.grad.numpy())
 
     def test_add_bias_cast(self):
-        paddle.device.set_device('gpu')
-        indices_data = [[0, 1], [0, 3]]
-        values_data = [[1.0, 1.0], [2.0, 2.0]]
-        shape = [2, 4, 2]
+        device = paddle.device.get_device().split(":")[0]
+        if device == "gpu":
+            indices_data = [[0, 1], [0, 3]]
+            values_data = [[1.0, 1.0], [2.0, 2.0]]
+            shape = [2, 4, 2]
 
-        sp_a = sparse.sparse_coo_tensor(
-            indices_data, values_data, shape, dtype="float16", stop_gradient=False, 
-        )
-        sp_a.retain_grads()
+            sp_a = sparse.sparse_coo_tensor(
+                indices_data,
+                values_data,
+                shape,
+                dtype='float16',
+                stop_gradient=False,
+            )
+            sp_a.retain_grads()
 
-        bias_values = [1.0, 2.0]
+            bias_values = [1.0, 2.0]
 
-        values1 = paddle.to_tensor(values_data, stop_gradient=False)
-        values2 = paddle.to_tensor(bias_values, stop_gradient=False)
-        values3 = paddle.to_tensor(bias_values, stop_gradient=False)
+            values1 = paddle.to_tensor(values_data, stop_gradient=False)
+            values2 = paddle.to_tensor(bias_values, stop_gradient=False)
+            values3 = paddle.to_tensor(bias_values, stop_gradient=False)
 
-        # c.values() = a.values() + b
-        print(values2.is_sparse())
-        print(values2.dtype)
-        sp_c = sparse.add(sp_a, values2)
-        ref_c = values1 + values3
-        np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+            sp_c = sparse.add(sp_a, values2)
+            ref_c = values1 + values3
+            np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
 
 
 if __name__ == "__main__":
-    paddle.device.set_device('cpu')
     unittest.main()
