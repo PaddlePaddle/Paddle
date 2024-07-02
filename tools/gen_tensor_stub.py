@@ -408,7 +408,7 @@ def func_doc_to_method_doc(func_doc: str) -> str:
 
 def try_import_paddle() -> ModuleType | None:
     try:
-        return importlib.import_module('paddlea') # TODO(megemini): `paddlea` used for debug
+        return importlib.import_module('paddle')
     except ModuleNotFoundError:
         traceback.print_exc(file=sys.stderr)
         sys.stderr.write(
