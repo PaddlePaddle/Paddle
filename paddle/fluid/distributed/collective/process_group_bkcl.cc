@@ -308,13 +308,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     CreateBKCLEnvCache(place, key);
   }
 
-  // if (!use_calc_stream) {
-  //   SyncCalcStream(place);
-  // }
-  // TODO(lijin23): The send/recv in BKCL would use a seperate stream now, so we
-  // need to wait calc stream whether we use the calc stream for communication.
-  // May be removed in the future.
-  SyncCalcStream(place);
+  if (!use_calc_stream) {
+    SyncCalcStream(place);
+  }
+
   auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
