@@ -2520,6 +2520,42 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void LegacyCropInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const IntArray& offsets,
+                         const std::vector<int>& shape,
+                         MetaTensor* out) {
+  const auto& x_dim = x.dims();
+  if (!y.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        int64_t(shape.size()),
+        x_dim.size(),
+        phi::errors::InvalidArgument(
+            "The number of elements (%d) of CropOp's "
+            "'shape' attribute should be equal to the number of dimensions "
+            "(%d) of the Input(X).",
+            shape.size(),
+            x_dim.size()));
+    std::vector<int64_t> tensor_shape(shape.size());
+    for (size_t i = 0; i < shape.size(); ++i) {
+      tensor_shape[i] = static_cast<int64_t>(shape[i]);
+    }
+    out->set_dims(common::make_ddim(tensor_shape));
+    out->set_dtype(x.dtype());
+  } else {
+    const auto& y_dim = y.dims();
+    PADDLE_ENFORCE_EQ(common::arity(x_dim),
+                      common::arity(y_dim),
+                      phi::errors::InvalidArgument(
+                          "The number of dimensions (%d) of CropOp's input(X)"
+                          " must be equal to that (%d) of input(Y).",
+                          common::arity(x_dim),
+                          common::arity(y_dim)));
+    out->set_dims(y_dim);
+    out->set_dtype(y.dtype());
+  }
+}
+
 void LimitByCapacityInferMeta(const MetaTensor& expert_count,
                               const MetaTensor& capacity,
                               int n_worker,

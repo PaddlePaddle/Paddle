@@ -459,6 +459,12 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void LegacyCropInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const IntArray& offsets,
+                         const std::vector<int>& shape,
+                         MetaTensor* out);
+
 void LimitByCapacityInferMeta(const MetaTensor& expert_count,
                               const MetaTensor& capacity,
                               int n_worker,
