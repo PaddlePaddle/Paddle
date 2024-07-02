@@ -2064,7 +2064,7 @@ class Engine:
             ), f"DistributedBatchSampler only support one data parallel group, but got [{len(set(self._dp_world_sizes))}] different data parallel groups"
             assert (
                 batch_size % self._dp_world_sizes[0] == 0
-            ), f"batch_size [{str(batch_size)}] is not divisible by dp_world_size [{str(self._dp_world_sizes[0])}]"
+            ), f"batch_size [{batch_size}] is not divisible by dp_world_size [{self._dp_world_sizes[0]}]"
             return batch_size // self._dp_world_sizes[0]
         else:
             assert (
@@ -2165,7 +2165,7 @@ class Engine:
                 continue
             if param_array.dtype != state_dict[name].dtype:
                 self._logger.info(
-                    f"cast {name}'s dtype from '{str(state_dict[name].dtype)}' to '{str(param_array.dtype)}'"
+                    f"cast {name}'s dtype from '{state_dict[name].dtype}' to '{param_array.dtype}'"
                 )
                 state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)

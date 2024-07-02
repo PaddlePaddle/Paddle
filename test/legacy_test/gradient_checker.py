@@ -447,7 +447,7 @@ def grad_check(
         if not np.allclose(a, n, rtol, atol):
             msg = (
                 f'Jacobian mismatch for output {y_idx} in y '
-                f'with respect to input {x_idx} in x on {str(place)},\n'
+                f'with respect to input {x_idx} in x on {place},\n'
                 f'numerical:{n}\nanalytical:{a}\n'
             )
             return fail_test(msg)

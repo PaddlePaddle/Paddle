@@ -50,7 +50,7 @@ except ImportError as e:
             f"""NOTE: You may need to run \"set PATH={executable_path};%PATH%\"
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"{executable_path}\" with your own
-        directory. The original error is: \n {str(e)}"""
+        directory. The original error is: \n {e}"""
         )
     else:
         raise ImportError(
@@ -78,7 +78,7 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from /proc/cpuinfo.\n'
-                'The original error is: %s\n' % str(e)
+                f'The original error is: {e}\n'
             )
         return has_avx
     elif sysstr == 'darwin':
@@ -89,7 +89,7 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
-                'The original error is: %s\n' % str(e)
+                f'The original error is: {e}\n'
             )
         if not has_avx:
             import subprocess
@@ -173,11 +173,11 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Failed getting the AVX flag on Windows.\n'
-                'The original error is: %s\n' % str(e)
+                f'The original error is: {e}\n'
             )
         return (retval & (1 << avx_bit)) > 0
     else:
-        sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
+        sys.stderr.write(f'Do not get AVX flag on {sysstr}\n')
         return False
 
 

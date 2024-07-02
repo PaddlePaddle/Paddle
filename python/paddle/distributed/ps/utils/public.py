@@ -477,8 +477,7 @@ def get_dense_send_context(
 def get_geo_trainer_send_context(attrs):
     if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError(
-            "ps mode: {} not matched {}",
-            format(attrs['ps_mode'], "get_geo_trainer_send_context"),
+            f"ps mode: {attrs['ps_mode']} not matched get_geo_trainer_send_context",
         )
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])
@@ -1801,7 +1800,7 @@ def check_program(program):
             for var_name in input_var_names + output_var_names:
                 if not block._find_var_recursive(str(var_name)):
                     raise ValueError(
-                        f'var: {str(var_name)} needed by op is not found in block: {block_idx}'
+                        f'var: {var_name} needed by op is not found in block: {block_idx}'
                     )
         block_idx += 1
     print('program checked valid')

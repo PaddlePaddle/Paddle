@@ -252,7 +252,7 @@ class FleetTranspiler(Fleet):
 
         if model_dir:
             if not os.path.isdir(model_dir):
-                raise ValueError("There is no directory named '%s'", model_dir)
+                raise ValueError(f"There is no directory named '{model_dir}'")
 
             sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
                 True
