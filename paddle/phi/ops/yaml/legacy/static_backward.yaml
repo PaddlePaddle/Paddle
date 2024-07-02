@@ -323,6 +323,17 @@
     func : rnn_grad
     data_type: out_grad
 
+- backward_op : sequence_softmax_grad
+  forward : sequence_softmax (Tensor x) -> Tensor(out)
+  args: (Tensor x, Tensor out, Tensor out_grad)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: sequence_softmax_grad
+  no_need_buffer: x
+
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis=-1) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)

@@ -695,6 +695,16 @@
   optional : sequence_length, dropout_state_out
   intermediate : reserve
 
+- op : sequence_softmax
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceSoftmaxInferMeta
+  kernel:
+    func: sequence_softmax
+    param: [x]
+  backward: sequence_softmax_grad
+
 - op : shadow_output
   args : (Tensor x, str name)
   output : Tensor(out)

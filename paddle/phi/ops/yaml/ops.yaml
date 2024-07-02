@@ -3965,16 +3965,6 @@
   intermediate: max_index
   backward: sequence_pool_grad
 
-- op : sequence_softmax
-  args: (Tensor x)
-  output: Tensor (out)
-  infer_meta:
-    func: SequenceSoftmaxInferMeta
-  kernel:
-    func: sequence_softmax
-    param: [x]
-  backward: sequence_softmax_grad
-
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
