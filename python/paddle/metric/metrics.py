@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import numpy as np
 
@@ -709,7 +709,7 @@ class Auc(Metric):
 
     def __init__(
         self,
-        curve: str = 'ROC',
+        curve: Literal['ROC', 'PR'] = 'ROC',
         num_thresholds: int = 4095,
         name: str = 'auc',
         *args: Any,
