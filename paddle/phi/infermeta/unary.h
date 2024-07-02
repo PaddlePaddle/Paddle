@@ -413,6 +413,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
