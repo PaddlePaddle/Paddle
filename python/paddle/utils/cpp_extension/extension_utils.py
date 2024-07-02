@@ -1209,21 +1209,25 @@ def _get_api_inputs_str(op_name):
     # input name by `@`, and only use first substr as argument
     params_list = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
-    ins_map = "{%s}" % ','.join(
-        [
-            "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
-            for in_name in in_names
-        ]
+    ins_map = "{{{}}}".format(
+        ','.join(
+            [
+                "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
+                for in_name in in_names
+            ]
+        )
     )
     # e.g: {'num': n}
-    attrs_map = "{%s}" % ",".join(
-        [
-            "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
-            for attr_name in attr_names
-        ]
+    attrs_map = "{{{}}}".format(
+        ",".join(
+            [
+                "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
+                for attr_name in attr_names
+            ]
+        )
     )
     # e.g: ['Out', 'Index']
-    outs_list = "[%s]" % ','.join([f"'{name}'" for name in out_names])
+    outs_list = "[{}]".format(','.join([f"'{name}'" for name in out_names]))
 
     inplace_reverse_idx = core.eager._get_custom_operator_inplace_map(op_name)
 

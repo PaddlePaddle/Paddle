@@ -306,7 +306,7 @@ def predict_test_util(place, mode, stop_gradient=True):
         full_graph=True,
     )
     temp_dir = tempfile.TemporaryDirectory()
-    save_dirname = os.path.join(temp_dir.name, "./inference/%s_infer" % mode)
+    save_dirname = os.path.join(temp_dir.name, f"./inference/{mode}_infer")
 
     paddle.jit.save(rnn, save_dirname)
 

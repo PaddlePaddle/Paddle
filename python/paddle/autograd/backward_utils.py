@@ -50,6 +50,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.multiply",
     "pd_op.relu",
     "pd_op.sigmoid",
+    "pd_op.divide",
 ]
 
 
@@ -449,7 +450,7 @@ def remove_op(block, op, state):
 
             if value in state.sumvaluegrad_to_value:
                 raise ValueError(
-                    'input_grad in [%s] is value which need to sum ', op.name()
+                    f'input_grad in [%s] is value which need to sum {op.name()}'
                 )
     # NOTE(SigureMo): Ensure access to the op's results before removing it.
     # Otherwise, the op will be deconstructed and access the num_results

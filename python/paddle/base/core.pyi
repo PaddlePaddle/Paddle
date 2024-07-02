@@ -78,5 +78,21 @@ class Shard(Placement):
     def __init__(self, arg0: int) -> None: ...
     def get_dim(self) -> int: ...
 
+class finfo:
+    min: float
+    max: float
+    eps: float
+    resolution: float
+    smallest_normal: float
+    tiny: float
+    bits: int
+    dtype: str
+
+class iinfo:
+    min: int
+    max: int
+    bits: int
+    dtype: str
+
 def is_compiled_with_cuda() -> bool: ...
 def set_nan_inf_debug_path(arg0: str) -> None: ...
