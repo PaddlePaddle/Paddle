@@ -1193,7 +1193,8 @@ def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
     print('-'*2, 'End Generate stub file tensor.pyi ... ')
 
 # generate stub file `tensor.pyi`
-generate_tensor_stub('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
+if '${WITH_TENSOR_STUB}' == 'ON':
+    generate_tensor_stub('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
 
 
 with redirect_stdout():

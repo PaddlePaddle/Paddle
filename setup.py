@@ -1954,7 +1954,8 @@ def main():
         )
 
     # generate stub file `tensor.pyi`
-    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+    if env_dict.get("WITH_TENSOR_STUB") == 'ON':
+        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,

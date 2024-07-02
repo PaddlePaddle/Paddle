@@ -408,7 +408,7 @@ def func_doc_to_method_doc(func_doc: str) -> str:
 
 def try_import_paddle() -> ModuleType | None:
     try:
-        return importlib.import_module('paddle')
+        return importlib.import_module('paddlea')  # TODO(megemini): DEBUG
     except ModuleNotFoundError:
         traceback.print_exc(file=sys.stderr)
         sys.stderr.write(
@@ -418,15 +418,24 @@ ERROR: Can NOT import paddle from `tools/gen_tensor_stub.py` before installation
     We COULD import paddle without installation with all libs (.dll or .so) copied into dir `paddle/libs`,
     or path already been set for the system. Try the following steps to locate the problem.
 
-    1. Install the wheel from `build/python/dist`.
-    2. Try to `import paddle` and check the problems.
+    1. Build with `-DWITH_TENSOR_STUB=OFF`.
+    2. Install the wheel from `build/python/dist`.
+    3. Try to `import paddle` and check the problems.
 
 '''
         )
-    return None
+    return
 
 
 def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
+    paddle = try_import_paddle()
+    if not paddle:
+        raise (
+            ModuleNotFoundError(
+                'Can NOT import paddle from `tools/gen_tensor_stub.py`.'
+            )
+        )
+
     tensor_class = eval(module)
 
     members: dict[int, Member] = {}
@@ -548,44 +557,38 @@ def generate_stub_file(input_file=None, output_file=None):
     # Get tensor template
     tensor_template = get_tensor_template(input_file)
 
-    if not try_import_paddle():
-        # Write `tensor.prototype.pyi` to target file
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(tensor_template)
+    all_members: set[int] = set()
+    template_codes: list[tuple[int, int, str]] = []
+    # Get members of Tensor
+    for module, prefix in [
+        ['paddle.Tensor', 'tensor'],
+        ['paddle.base.framework.EagerParamBase', 'eager_param_base'],
+    ]:
+        tensor_members = get_tensor_members(module)
+        logging.debug(f'total members in {module}: {len(tensor_members)}')
 
-    else:
-        all_members: set[int] = set()
-        template_codes: list[tuple[int, int, str]] = []
-        # Get members of Tensor
-        for module, prefix in [
-            ['paddle.Tensor', 'tensor'],
-            ['paddle.base.framework.EagerParamBase', 'eager_param_base'],
-        ]:
-            tensor_members = get_tensor_members(module)
-            logging.debug(f'total members in {module}: {len(tensor_members)}')
+        # Generate the Tensor stub
+        tensor_gen = TensorGen(tensor_template, prefix)
 
-            # Generate the Tensor stub
-            tensor_gen = TensorGen(tensor_template, prefix)
+        for member_id, member in tensor_members.items():
+            if member_id in all_members:
+                continue
 
-            for member_id, member in tensor_members.items():
-                if member_id in all_members:
-                    continue
+            if member.type == "method":
+                tensor_gen.add_method(member)
+                for alias in member.aliases:
+                    tensor_gen.add_alias(alias, member.name)
+            elif member.type == "attribute":
+                tensor_gen.add_attribute(member.name, "Any")
+            elif member.type == "doc":
+                tensor_gen.add_doc(member.doc)
 
-                if member.type == "method":
-                    tensor_gen.add_method(member)
-                    for alias in member.aliases:
-                        tensor_gen.add_alias(alias, member.name)
-                elif member.type == "attribute":
-                    tensor_gen.add_attribute(member.name, "Any")
-                elif member.type == "doc":
-                    tensor_gen.add_doc(member.doc)
+        all_members |= tensor_members.keys()
+        template_codes += tensor_gen.template_codes
 
-            all_members |= tensor_members.keys()
-            template_codes += tensor_gen.template_codes
-
-        # Write to target file
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(TensorGen.codegen(tensor_template, template_codes))
+    # Write to target file
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(TensorGen.codegen(tensor_template, template_codes))
 
 
 def main():

@@ -342,6 +342,7 @@ option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
+option(WITH_TENSOR_STUB "Generate paddle.Tensor stub file after compilation" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
