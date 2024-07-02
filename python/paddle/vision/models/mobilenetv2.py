@@ -31,6 +31,11 @@ from ._utils import _make_divisible
 if TYPE_CHECKING:
     from paddle import Tensor
 
+    class _MobileNetV2Options(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
+
 __all__ = []
 
 model_urls = {
@@ -41,12 +46,6 @@ model_urls = {
 }
 
 
-class _MobileNetV2Options(TypedDict):
-    scale: NotRequired[float]
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
-
-
 class InvertedResidual(nn.Layer):
     def __init__(
         self,
@@ -54,7 +53,7 @@ class InvertedResidual(nn.Layer):
         oup: int,
         stride: int,
         expand_ratio: float,
-        norm_layer: nn.Layer = nn.BatchNorm2D,
+        norm_layer: type[nn.Layer] = nn.BatchNorm2D,
     ) -> None:
         super().__init__()
         self.stride = stride
@@ -124,6 +123,9 @@ class MobileNetV2(nn.Layer):
             >>> print(out.shape)
             [1, 1000]
     """
+
+    num_classes: int
+    with_pool: bool
 
     def __init__(
         self,

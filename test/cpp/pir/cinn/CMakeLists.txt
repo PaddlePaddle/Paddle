@@ -1,7 +1,6 @@
 add_subdirectory(adt)
 
 if(WITH_TESTING AND WITH_CINN)
-  paddle_test(test_pir_compiler SRCS pir_compiler_test.cc)
 
   paddle_test(test_dialect_convert SRCS dialect_convert_test.cc)
 
@@ -38,7 +37,6 @@ if(WITH_TESTING AND WITH_CINN)
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
   set(cinn_unit_tests
-      test_pir_compiler
       test_dialect_convert
       test_add_broadcast_to_elementwise
       test_sub_graph_extract

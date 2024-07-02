@@ -32,6 +32,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/convert_fa_to_qkvmha_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effec_attn_to_flash_attn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
@@ -88,6 +89,18 @@ bool HasDynamicShape(const pir::Program& program) {
 }
 }  // namespace
 
+void ApplyShapeOptimizationPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<::pir::PassManager>()>&
+        CreatePassManager) {
+  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  bool has_dynamic_shape = HasDynamicShape(*program);
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+  pass_manager->Run(program);
+}
+
 void ApplyPdToCinnPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<::pir::PassManager>()>&
@@ -99,6 +112,7 @@ void ApplyPdToCinnPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveAssignOutPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConv2dTransposeFilterPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateConvertFA2QKVMHAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
 
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -114,7 +128,6 @@ void ApplyCinnPreprocessPass(
   bool has_dynamic_shape = HasDynamicShape(*program);
 
   if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -235,6 +248,9 @@ void ApplyCinnPass(::pir::Program* program,
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
   ApplyPdToCinnPass(program, CreatePassManager);
+  // TODO(Hongqing-work): move ApplyShapeOptimizationPass before
+  // ApplyPdToCinnPass after fixing infer shape bug.
+  ApplyShapeOptimizationPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
   PirToPyCodeConverter(program)

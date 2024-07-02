@@ -63,6 +63,14 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void BeamSearchDecodeInferMeta(const MetaTensor& ids,
+                               const MetaTensor& scores,
+                               int beam_size,
+                               int end_id,
+                               MetaTensor* sentence_ids,
+                               MetaTensor* sentence_scores,
+                               MetaConfig config = MetaConfig());
+
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
                        const Scalar& minlength,

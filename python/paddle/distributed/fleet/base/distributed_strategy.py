@@ -776,14 +776,13 @@ class DistributedStrategy:
         def set_sparse_table_config(table_data, config):
             for key in config:
                 if key not in support_sparse_key_list:
-                    raise ValueError("strategy key '%s' not support" % (key))
+                    raise ValueError(f"strategy key '{key}' not support")
             table_class = config.get(
                 "sparse_table_class", "DownpourSparseTable"
             )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
-                    "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
-                    % (table_class)
+                    f"support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual {table_class}"
                 )
             if table_class == "DownpourSparseSSDTable":
                 table_data.table_class = 'SSDSparseTable'
@@ -806,8 +805,7 @@ class DistributedStrategy:
             )
             if accessor_class not in support_sparse_accessor_class:
                 raise ValueError(
-                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'], but actual %s"
-                    % (accessor_class)
+                    f"support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'], but actual {accessor_class}"
                 )
 
             if accessor_class.find("Double") >= 0:
@@ -1110,6 +1108,14 @@ class DistributedStrategy:
         """
         return self.strategy.recompute
 
+    @recompute.setter
+    @is_strict_auto
+    def recompute(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.recompute = flag
+        else:
+            logger.warning("recompute should have value of bool type")
+
     @property
     def sync_nccl_allreduce(self):
         """
@@ -1366,14 +1372,6 @@ class DistributedStrategy:
             self.strategy.nccl_comm_num = value
         else:
             logger.warning("nccl_comm_num should have value of int type")
-
-    @recompute.setter
-    @is_strict_auto
-    def recompute(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.recompute = flag
-        else:
-            logger.warning("recompute should have value of bool type")
 
     @property
     def recompute_configs(self):

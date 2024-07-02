@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle import static
 
 paddle.enable_static()
 
@@ -43,40 +42,6 @@ class TestSeedOpDiffSeed(OpTest):
 
     def test_check_output(self):
         self.check_output(no_check_set=["Out"])
-
-
-class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
-    def setUp(self):
-        paddle.framework.random.set_random_seed_generator('seed0', 123)
-        paddle.framework.random.set_random_seed_generator('seed1', 123)
-        self.rng0 = paddle.framework.random.get_random_seed_generator('seed0')
-        self.rng1 = paddle.framework.random.get_random_seed_generator('seed1')
-        self.places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def check_static_result(self, place):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers import (
-            random,
-        )
-
-        with static.program_guard(static.Program(), static.Program()):
-            res1 = random.determinate_seed('seed0')
-
-            exe = static.Executor(place)
-            res_list = [res1]
-            for i in range(2):
-                (out1,) = exe.run(
-                    static.default_main_program(), fetch_list=res_list
-                )
-                self.assertEqual(
-                    out1,
-                    np.asarray(self.rng1.random()).astype(np.int32),
-                )
-
-    def test_static(self):
-        for place in self.places:
-            self.check_static_result(place=place)
 
 
 if __name__ == '__main__':

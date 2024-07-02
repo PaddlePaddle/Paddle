@@ -327,7 +327,6 @@ void DispatchWithDtype(
     fmha_buf = *fmha_out;
   }
 
-  InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
@@ -471,6 +470,9 @@ void DispatchWithDtype(
 
   if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
+    // VLOGMatrix(
+    //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf before",
+    //     qkv_buf.numel());
     if (rope_emb) {
       if (q_num_head == kv_num_head) {
         rotary_qk_variable(dev_ctx,
@@ -483,7 +485,8 @@ void DispatchWithDtype(
                            q_num_head,
                            max_seq_len,
                            rope_emb.get().dims()[2],
-                           dim_head);
+                           dim_head,
+                           use_neox_style);
       } else {
         gqa_rotary_qk_variable(dev_ctx,
                                qkv_buf.data<T>(),
@@ -496,9 +499,13 @@ void DispatchWithDtype(
                                kv_num_head,
                                max_seq_len,
                                rope_emb.get().dims()[2],
-                               dim_head);
+                               dim_head,
+                               use_neox_style);
       }
     }
+    // VLOGMatrix(
+    //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf after",
+    //     qkv_buf.numel());
     VLOG(3) << "rope end";
     VLOG(3) << "causual: " << causual;
     if (!use_pre_cache) {
@@ -637,7 +644,6 @@ void DispatchWithDtype(
     }
     VLOG(3) << "cache end";
   }
-  // VLOGMatrix(qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf", qkv_buf.numel());
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
   if (max_dec_len_this_time_data > 0) {
