@@ -116,17 +116,15 @@ static void check_cat_sparse_dims(const SparseCooTensor* t,
 }
 
 template <typename IndexT>
-__device__ inline void FindIndex(const IndexT* __restrict__ offsets,
-                                 const IndexT tid_x,
-                                 IndexT* index,
-                                 IndexT* curr_offset) {
+__device__ inline IndexT FindIndex(const IndexT* __restrict__ offsets,
+                                   const IndexT tid_x) {
+  IndexT index = 0;
   IndexT next_offset = offsets[index + 1];
-  curr_offset = offsets[index];
   while (next_offset <= tid_x) {
     ++index;
-    curr_offset = next_offset;
     next_offset = offsets[index + 1];
   }
+  return index;
 }
 
 template <typename IndexT>
@@ -176,9 +174,10 @@ __global__ void ConcatCsr2D0ASetCrowsKernel(
     IndexT* out_crows) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, total_crows_offsets, IndexT) {
     // index mean the number of input  tensor
-    IndexT index = 0;
+
     IndexT curr_offset = 0;
-    FindIndex(in_rows_offsets, tid_x, &index, &curr_offset);
+    IndexT index = FindIndex(in_rows_offsets, tid_x);
+    curr_offset = in_rows_offsets[index];
     IndexT local_col = tid_x - curr_offset + 1;
     out_crows[tid_x + 1] =
         in_crows_vec[index][local_col] + out_crows_offsets[index];
@@ -198,9 +197,8 @@ __global__ void ConcatCsr2D0ASetValueKernel(
     T* out_values,
     IndexT* out_cols) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, total_nnz, IndexT) {
-    IndexT index = 0;
-    IndexT curr_offset = 0;
-    FindIndex(nnz_offsets, tid_x, &index, &curr_offset);
+    IndexT index = FindIndex(nnz_offsets, tid_x);
+    IndexT curr_offset = nnz_offsets[index];
     IndexT left_nnz = tid_x - curr_offset;
     out_values[tid_x] = in_values[index][left_nnz];
     out_cols[tid_x] = in_cols[index][left_nnz];
@@ -229,33 +227,43 @@ __global__ void ConcatCsr2D1AGetHelpArrayKernel(const IndexT total_rows,
 template <typename T,
           typename IndexT,
           typename PointerWrapperT,
-          typename PointerWrapperIndexT>
+          typename PointerWrapperIndexT,
+          unsigned int THREADS_PER_VECTOR>
 __global__ void ConcatCsr2D1ASetValueKernel(
-    const IndexT total_nnz,
+    const IndexT meanNNz,
     const size_t in_num,
     const IndexT rows,
+    const IndexT total_rows,
     PointerWrapperT in_values,
     PointerWrapperIndexT in_cols,
     PointerWrapperIndexT in_crows,
-    const IndexT* __restrict__ rows_nnzs_offsets,
+    IndexT* rows_nnzs_offsets,
     const IndexT* __restrict__ col_offsets,
     T* out_values,
     IndexT* out_cols) {
-  CUDA_KERNEL_LOOP_TYPE(tid_x, total_nnz, IndexT) {
-    IndexT i = 0;
-    IndexT curr_offset = 0;
-    FindIndex(z, tid_x, &i, &curr_offset);
+  CUDA_KERNEL_LOOP_TYPE(tid_x, meanNNz, IndexT) {
+    // THREADS_PER_VECTOR 处理1行
+    const IndexT thread_lane =
+        threadIdx.x % THREADS_PER_VECTOR;  // thread index within the vector
+    const IndexT row_id = tid_x / THREADS_PER_VECTOR;  // global vector index
+    if (row_id < rows) {
+      // i mean the num of input tensor
+      for (int i = 0; i < in_num; i++) {
+        const IndexT row_start = in_crows[i][row_id];
+        const IndexT row_end = in_crows[i][row_id + 1];
+        IndexT index = in_num * row_id + i;
+        IndexT left_nnz = rows_nnzs_offsets[index];
+        for (IndexT pos = row_start + thread_lane; pos < row_end;
+             pos += THREADS_PER_VECTOR) {
+          // pos - row_start 指的是当前row中的对应位置
+          IndexT out_pos = left_nnz + pos - row_start;
+          out_values[out_pos] = in_values[i][pos];
 
-    IndexT left_nnz = tid_x - curr_offset;
-
-    IndexT index = i % in_num;
-    IndexT now_rows = i / in_num;
-
-    IndexT total_offset = left_nnz + in_crows[index][now_rows];
-
-    out_values[tid_x] = in_values[index][total_offset];
-    // need to add the previous tensor's col number in this line
-    out_cols[tid_x] = in_cols[index][total_offset] + col_offsets[index];
+          // need to add the previous tensor's col number in this line
+          out_cols[out_pos] = in_cols[i][pos] + col_offsets[i];
+        }
+      }
+    }
   }
 }
 
@@ -825,24 +833,126 @@ void ConcatCsrGPU2D1A(const Context& dev_ctx,
       thrust::device_pointer_cast(d_rows_nnzs) + total_rows + 1,
       d_rows_nnzs);
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_nnz, 1);
-  ConcatCsr2D1ASetValueKernel<T,
-                              int64_t,
-                              decltype(d_in_values_vec),
-                              decltype(d_in_cols_vec)>
-      <<<config.block_per_grid.x,
-         config.thread_per_block.x,
-         0,
-         dev_ctx.stream()>>>(total_nnz,
-                             in_num,
-                             rows,
-                             d_in_values_vec,
-                             d_in_cols_vec,
-                             d_in_crows_vec,
-                             d_rows_nnzs,
-                             d_col_offsets_ptr,
-                             d_out_values,
-                             d_out_cols);
+  int mean_col_num = (total_nnz + (total_rows - 1)) / total_rows;
+
+  if (mean_col_num <= 2) {
+    const int THREADS_PER_VECTOR = 2;
+    int64_t meanNnz = THREADS_PER_VECTOR * rows;
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, meanNnz, 1);
+    ConcatCsr2D1ASetValueKernel<T,
+                                int64_t,
+                                decltype(d_in_values_vec),
+                                decltype(d_in_cols_vec),
+                                THREADS_PER_VECTOR>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(meanNnz,
+                               in_num,
+                               rows,
+                               total_rows,
+                               d_in_values_vec,
+                               d_in_cols_vec,
+                               d_in_crows_vec,
+                               d_rows_nnzs,
+                               d_col_offsets_ptr,
+                               d_out_values,
+                               d_out_cols);
+  } else if (mean_col_num > 2 && mean_col_num <= 4) {
+    const int THREADS_PER_VECTOR = 4;
+    int64_t meanNnz = THREADS_PER_VECTOR * rows;
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, meanNnz, 1);
+    ConcatCsr2D1ASetValueKernel<T,
+                                int64_t,
+                                decltype(d_in_values_vec),
+                                decltype(d_in_cols_vec),
+                                THREADS_PER_VECTOR>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(meanNnz,
+                               in_num,
+                               rows,
+                               total_rows,
+                               d_in_values_vec,
+                               d_in_cols_vec,
+                               d_in_crows_vec,
+                               d_rows_nnzs,
+                               d_col_offsets_ptr,
+                               d_out_values,
+                               d_out_cols);
+  } else if (mean_col_num > 4 && mean_col_num <= 8) {
+    const int THREADS_PER_VECTOR = 8;
+
+    int64_t meanNnz = THREADS_PER_VECTOR * rows;
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, meanNnz, 1);
+    ConcatCsr2D1ASetValueKernel<T,
+                                int64_t,
+                                decltype(d_in_values_vec),
+                                decltype(d_in_cols_vec),
+                                THREADS_PER_VECTOR>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(meanNnz,
+                               in_num,
+                               rows,
+                               total_rows,
+                               d_in_values_vec,
+                               d_in_cols_vec,
+                               d_in_crows_vec,
+                               d_rows_nnzs,
+                               d_col_offsets_ptr,
+                               d_out_values,
+                               d_out_cols);
+  } else if (mean_col_num > 8 && mean_col_num <= 16) {
+    const int THREADS_PER_VECTOR = 16;
+    int64_t meanNnz = THREADS_PER_VECTOR * rows;
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, meanNnz, 1);
+    ConcatCsr2D1ASetValueKernel<T,
+                                int64_t,
+                                decltype(d_in_values_vec),
+                                decltype(d_in_cols_vec),
+                                THREADS_PER_VECTOR>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(meanNnz,
+                               in_num,
+                               rows,
+                               total_rows,
+                               d_in_values_vec,
+                               d_in_cols_vec,
+                               d_in_crows_vec,
+                               d_rows_nnzs,
+                               d_col_offsets_ptr,
+                               d_out_values,
+                               d_out_cols);
+  } else if (mean_col_num > 16) {
+    const int THREADS_PER_VECTOR = 32;
+    // 注 超过32的情况下,一行至多让一个warp处理
+    int64_t meanNnz = THREADS_PER_VECTOR * rows;
+    const unsigned int VECTORS_PER_BLOCK = 8;
+    const unsigned int NUM_BLOCKS = static_cast<unsigned int>(
+        (rows + (VECTORS_PER_BLOCK - 1)) / VECTORS_PER_BLOCK);
+
+    ConcatCsr2D1ASetValueKernel<T,
+                                int64_t,
+                                decltype(d_in_values_vec),
+                                decltype(d_in_cols_vec),
+                                THREADS_PER_VECTOR>
+        <<<NUM_BLOCKS, 256, 0, dev_ctx.stream()>>>(meanNnz,
+                                                   in_num,
+                                                   rows,
+                                                   total_rows,
+                                                   d_in_values_vec,
+                                                   d_in_cols_vec,
+                                                   d_in_crows_vec,
+                                                   d_rows_nnzs,
+                                                   d_col_offsets_ptr,
+                                                   d_out_values,
+                                                   d_out_cols);
+  }
 
   config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, in_num, rows);
 
@@ -940,6 +1050,8 @@ void ConcatCsrGPU3D1A(const Context& dev_ctx,
       dev_ctx, in_num, cols_vec_data, &dev_cols_vec_ptr);
 
   phi::funcs::SetConstant<GPUContext, int64_t> set_zero;
+  // 每一个crow的头部都是0
+  set_zero(dev_ctx, &out_crows, 0);
 
   phi::Allocator::AllocationPtr dev_rows_nums_ptr{nullptr};
   DArray<int64_t> d_rows_nums(dev_ctx, rows_nums, &dev_rows_nums_ptr);
