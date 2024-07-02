@@ -2377,7 +2377,7 @@ def histogram_bin_edges(
             >>> import paddle
 
             >>> inputs = paddle.to_tensor([1, 2, 1])
-            >>> result = paddle.histogram_bin_edges(inputs, bins=4, range=(0, 3))
+            >>> result = paddle.histogram_bin_edges(inputs, bins=4, min=0, max=3)
             >>> print(result)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.75000000, 1.50000000, 2.25000000, 3.        ])

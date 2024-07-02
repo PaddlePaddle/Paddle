@@ -34,7 +34,7 @@ class TestHistogramBinEdgesOp(unittest.TestCase):
             x_var, bins=self.bin, min=self.range[0], max=self.range[1]
         )
         out = np.array(out_var)
-        self.assertTrue(np.allclose(self.out, out))
+        np.testing.assert_allclose(self.out, out, rtol=1e-5, atol=1e-5)
 
     def test_case(self):
         self.check_with_place(paddle.CPUPlace())
