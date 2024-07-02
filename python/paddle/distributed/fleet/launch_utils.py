@@ -17,7 +17,6 @@ import json
 import logging
 import multiprocessing
 import os
-import pathlib
 import shutil
 import signal
 import socket
@@ -30,9 +29,7 @@ from contextlib import closing
 
 import paddle.utils.cpp_extension.extension_utils as utils
 from paddle import framework
-
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / 'utils'))
-from launch_utils import strtobool
+from paddle.utils import strtobool
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -1858,11 +1855,11 @@ class ParameterServerLauncher:
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[
-                    stage_id + 1
-                ]
-                if stage_id <= self.stage_num - 1
-                else "",
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": (
+                    self.stage_heter_map[stage_id + 1]
+                    if stage_id <= self.stage_num - 1
+                    else ""
+                ),
                 "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[
                     stage_id - 1
                 ],

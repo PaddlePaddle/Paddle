@@ -23,6 +23,7 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
 from paddle.incubate import DistributedFusedLamb
 from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
+from paddle.utils import strtobool
 from paddle.vision.models import resnet18 as resnet
 
 
@@ -278,17 +279,6 @@ class TestDistributedFusedLamb(unittest.TestCase):
             fleet.init(role_maker=get_role_maker())
 
     def config(self):
-        import pathlib
-        import sys
-
-        from launch_utils import strtobool
-
-        sys.path.append(
-            str(
-                pathlib.Path(__file__).resolve().parents[2]
-                / 'python/paddle/distributed/utils'
-            )
-        )
         clip_after_allreduce = bool(
             strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True'))
         )
@@ -301,9 +291,11 @@ class TestDistributedFusedLamb(unittest.TestCase):
         return {
             'clip_after_allreduce': clip_after_allreduce,
             'gradient_accumulation_steps': gm_steps,
-            'grad_clip': paddle.nn.ClipGradByGlobalNorm(max_global_norm)
-            if max_global_norm > 0
-            else None,
+            'grad_clip': (
+                paddle.nn.ClipGradByGlobalNorm(max_global_norm)
+                if max_global_norm > 0
+                else None
+            ),
             'use_master_acc_grad': use_master_acc_grad,
         }
 

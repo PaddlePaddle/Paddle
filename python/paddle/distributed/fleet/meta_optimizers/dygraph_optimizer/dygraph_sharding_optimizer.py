@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-######
+
 import os
-import pathlib
-import sys
 import warnings
 from functools import reduce
 
@@ -28,6 +26,7 @@ from paddle.distributed.communication.reduce import (
     ReduceOp,
     is_avg_reduce_op_supported,
 )
+from paddle.utils import strtobool
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
@@ -36,9 +35,6 @@ from ...utils.tensor_fusion_helper import (
     assign_group_by_size,
     fused_parameters,
 )
-
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[3] / 'utils'))
-from launch_utils import strtobool
 
 
 def _is_trainable(param):

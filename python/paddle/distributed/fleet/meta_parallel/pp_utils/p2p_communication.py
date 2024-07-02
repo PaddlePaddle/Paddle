@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import pathlib
-import sys
 
 import numpy as np
 
@@ -26,12 +24,10 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number
-
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[3] / 'utils'))
-from launch_utils import strtobool
 
 _hcg = None
 # _use_cache = False
