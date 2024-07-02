@@ -56,7 +56,9 @@ def getFNDAFile(rootPath, test):
                     symbol = tmp_data[1]
                     if symbol in fnda_base_dict:
                         if (hit - fnda_base_dict[symbol]) > 0:
-                            fnda_str = f'FNDA:{str(hit - fnda_base_dict[symbol])},{symbol}'
+                            fnda_str = (
+                                f'FNDA:{hit - fnda_base_dict[symbol]},{symbol}'
+                            )
                             os.system(f'echo {fnda_str} >> {fn_filename}')
                     else:
                         os.system(f'echo {message} >> {fn_filename}')

@@ -59,7 +59,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSoftmaxWithCrossEntropyGradOp::name(),
     CSplitOp::name(),
     PushDenseOp::name(),
-    ShareData_Op::name(),
     GetTensorFromSelectedRowsOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
@@ -69,9 +68,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     NceGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-#ifdef PADDLE_WITH_DNNL
-    paddle::onednn::dialect::MultiGruOp::name(),
-#endif
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
     CReduceMaxOp::name(),
