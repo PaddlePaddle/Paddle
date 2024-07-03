@@ -139,6 +139,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace paddle {
 namespace {
@@ -416,6 +417,11 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
             "context memory of multiple predictors."));
   } else {
     predictor_id_ = inference::GetUniqueId();
+  }
+
+  if (FLAGS_enable_pir_api) {
+    config_.EnableNewExecutor(true);
+    config_.EnableNewIR(true);
   }
 }
 
