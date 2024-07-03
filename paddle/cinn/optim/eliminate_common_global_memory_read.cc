@@ -197,6 +197,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
       global_store_buffer_names_.insert(store_buffer->name);
     }
+    ir::IRMutator<>::Visit(op, expr);
   }
 
   std::vector<ForVarExtent> for_var_extents_;
