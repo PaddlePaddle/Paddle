@@ -363,6 +363,7 @@ ir::Tensor Tril(const ir::Tensor& A,
 ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
                          const cinn::dialect::SymbolBindings& symbol_bindings,
                          const std::vector<symbol::DimExpr>& output_dim_exprs,
+                         const Type out_type,
                          const std::string& name) {
   if (output_dim_exprs.size() != 1) {
     VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
@@ -377,7 +378,11 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
   auto res = Compute(
       {Expr(1)},
       [=, &converter](const std::vector<Expr>& indice) {
-        return converter.ConvertToIrExpr(output_dim_exprs[0]);
+        auto out = converter.ConvertToIrExpr(output_dim_exprs[0]);
+        if (out->type() != out_type) {
+          out = ir::Cast::Make(out_type, out);
+        }
+        return out;
       },
       name);
   return res;

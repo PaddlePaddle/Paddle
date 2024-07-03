@@ -109,7 +109,7 @@ if(WITH_GPU)
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
       FLAGS_pir_apply_shape_optimization_pass=1 FLAGS_cinn_bucket_compile=True
       FLAGS_group_schedule_tiling_first=1 FLAGS_enable_pir_api=1
-      ${PYTHON_EXECUTABLE}
+      FLAGS_prim_enable_dynamic=1 FLAGS_prim_all=true ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_cinn_reduce_symbolic_demo.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_cinn_reduce_symbolic_demo

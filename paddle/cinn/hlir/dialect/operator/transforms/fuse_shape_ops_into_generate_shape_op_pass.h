@@ -22,6 +22,7 @@ namespace dialect {
 namespace ir {
 
 std::unique_ptr<pir::Pass> CreateFuseShapeOpsIntoGenerateShapeOpPass();
+std::unique_ptr<pir::Pass> CreateSplitMultiOutputGenerateShapeOpPass();
 
 }  // namespace ir
 }  // namespace dialect

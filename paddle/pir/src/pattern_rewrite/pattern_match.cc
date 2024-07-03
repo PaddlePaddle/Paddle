@@ -158,6 +158,8 @@ void RewriterBase::ReplaceUseIf(Value from,
   for (auto it = from.use_begin(); it != from.use_end();) {
     if (functor(*it))
       UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
+    else
+      it++;
   }
 }
 

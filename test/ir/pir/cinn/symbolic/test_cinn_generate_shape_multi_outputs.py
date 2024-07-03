@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,31 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
+import unittest
 from os.path import dirname
 
 import numpy as np
 
-sys.path.append(dirname(dirname(__file__)))
-
-import unittest
-
-import utils
-
 import paddle
 from paddle.static import InputSpec
 
-
-def reduce_mean(x):
-    return paddle.mean(x, axis=-1)
+sys.path.append(dirname(dirname(__file__)))
+import utils
 
 
 class CINNSubGraphNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fn = reduce_mean
 
-    def forward(self, x):
-        out = self.fn(x)
+    def forward(self, x, y):
+        out = x * paddle.to_tensor(list(y.shape))
         return out
 
 
@@ -50,70 +43,34 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.x_shape = [64, 128]
+        self.x_shape = [2, 2]
+        self.y_shape = [3, 4]
         self.x = paddle.randn(self.x_shape, dtype="float32")
-        self.x.stop_gradient = False
+        self.x.stop_gradient = True
+        self.y = paddle.randn(self.y_shape, dtype="float32")
+        self.y.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
         input_spec = [
-            InputSpec(shape=[None, 128], dtype='float32'),
-        ]
-        net = utils.apply_to_static(net, use_cinn, input_spec)
-        net.eval()
-        out = net(self.x)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
-
-        return out
-
-    def test_eval_symbolic(self):
-        cinn_out = self.eval_symbolic(use_cinn=True)
-        dy_out = self.eval_symbolic(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-4)
-
-
-class TestCinnReduceSymbolLarge(unittest.TestCase):
-    """
-    Test Pir API + @to_static + CINN.
-    """
-
-    def setUp(self):
-        paddle.seed(2022)
-        self.prepare_data()
-
-    def prepare_data(self):
-        self.x_shape = [16, 163840]
-        self.x = paddle.randn(self.x_shape, dtype="float32")
-        self.x.stop_gradient = False
-
-    def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
-
-    def eval_symbolic(self, use_cinn):
-        paddle.seed(2022)
-        net = CINNSubGraphNet()
-        input_spec = [
+            InputSpec(shape=[None, 2], dtype='float32'),
             InputSpec(shape=[None, None], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x)
+        out = net(self.x, self.y)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
-
         return out
 
     def test_eval_symbolic(self):
         cinn_out = self.eval_symbolic(use_cinn=True)
         dy_out = self.eval_symbolic(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-4)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':

@@ -160,6 +160,7 @@ ir::Tensor GenerateShape(
     const std::vector<ir::Tensor>& inputs,
     const cinn::dialect::SymbolBindings& symbol_bindings,
     const std::vector<symbol::DimExpr>& output_dim_exprs,
+    const Type out_type,
     const std::string& name = UniqName("T_Generate_Shape_out"));
 
 // This operator checks if all x and y satisfy the condition: |x - y| <= atol +

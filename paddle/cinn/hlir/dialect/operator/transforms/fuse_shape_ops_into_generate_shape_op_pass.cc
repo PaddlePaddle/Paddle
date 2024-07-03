@@ -403,7 +403,7 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
   bool Match(pir::Operation* op) const override {
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    if (!IsSingleElementShapeOp(op, &shape_analysis)) return false;
+    if (!IsShapeOp(op, &shape_analysis)) return false;
     if (op->isa<cinn::dialect::GenerateShapeOp>()) return false;
 
     // all user op's output should has no data of shape expr
@@ -411,7 +411,7 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
     if (output.use_empty()) return false;
     for (auto iter = output.use_begin(); iter != output.use_end(); ++iter) {
       auto* user = iter->owner();
-      if (IsSingleElementShapeOp(user, &shape_analysis)) return false;
+      if (IsShapeOp(user, &shape_analysis)) return false;
       if (user->isa<cinn::dialect::GenerateShapeOp>()) return false;
     }
 
@@ -444,9 +444,8 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
   }
 
  private:
-  bool IsSingleElementShapeOp(
-      pir::Operation* op,
-      pir::ShapeConstraintIRAnalysis* shape_analysis) const {
+  bool IsShapeOp(pir::Operation* op,
+                 pir::ShapeConstraintIRAnalysis* shape_analysis) const {
     if (op->num_operands() == 0) return false;
     if (op->num_results() != 1) return false;
 
@@ -460,9 +459,7 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
     if (!dtype.isa<pir::Int32Type>() && !dtype.isa<pir::Int64Type>()) {
       return false;
     }
-
-    // Only process the op which output is a single element
-    return out_shape.data()->size() == 1;
+    return true;
   }
 };
 
@@ -491,6 +488,108 @@ class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
 
 std::unique_ptr<pir::Pass> CreateFuseShapeOpsIntoGenerateShapeOpPass() {
   return std::make_unique<FuseShapeOpsIntoGenerateShapeOpPass>();
+}
+
+class SplitMultiOutputGenerateShapeOpPattern : public pir::RewritePattern {
+ public:
+  explicit SplitMultiOutputGenerateShapeOpPattern(pir::IrContext* context)
+      : pir::RewritePattern(MatchAnyOpTypeTag(),
+                            1 /*benefit*/,
+                            context,
+                            {} /*generated_names*/) {}
+
+  bool Match(pir::Operation* op) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (!op->isa<cinn::dialect::GenerateShapeOp>()) return false;
+    auto output_data =
+        shape_analysis.GetShapeOrDataForValue(op->result(0)).data();
+    if (!output_data.has_value() || output_data.value().size() <= 1)
+      return false;
+    bool all_used_as_shape_info = [&]() -> bool {
+      for (int i = 0; i < op->num_operands(); i++) {
+        if (!this->is_shape_info_operand(op->operand(i))) return false;
+      }
+      return true;
+    }();
+    return !all_used_as_shape_info;
+  }
+
+  void Rewrite(pir::Operation* op,
+               pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+    auto ShapeOrDataDimExprs4Value =
+        [&shape_analysis](
+            pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+      return shape_analysis.GetShapeOrDataForValue(value);
+    };
+    auto output_data =
+        shape_analysis.GetShapeOrDataForValue(op->result(0)).data();
+    CHECK(output_data.has_value());
+    std::vector<pir::Value> gs_outputs;
+    for (int i = 0; i < output_data.value().size(); i++) {
+      auto split_out = rewriter
+                           .Build<paddle::dialect::SliceOp>(
+                               /*input=*/op->result(0),
+                               /*axes=*/std::vector<int64_t>{0},
+                               /*starts=*/std::vector<int64_t>{i},
+                               /*ends=*/std::vector<int64_t>{i + 1},
+                               /*infer_flags=*/std::vector<int64_t>{},
+                               /*decrease_axis=*/std::vector<int64_t>{})
+                           .result(0);
+      auto opt_generated_shape = GetOutOfRewrittenGenerateShapeOp(
+          split_out, &rewriter, ShapeOrDataDimExprs4Value);
+      CHECK(opt_generated_shape.has_value());
+      gs_outputs.push_back(opt_generated_shape.value());
+    }
+    auto concat_op = rewriter.Build<cinn::dialect::ConcatOp>(gs_outputs, 0);
+    auto should_replace = [&](pir::OpOperand operand) -> bool {
+      return !this->is_shape_info_operand(operand);
+    };
+    rewriter.ReplaceUseIf(op->result(0), concat_op->result(0), should_replace);
+    if (op->use_empty()) {
+      rewriter.EraseOp(op);
+    }
+  }
+
+ private:
+  bool is_shape_info_operand(pir::OpOperand operand) const {
+    auto operand_owner = operand.owner();
+    auto operand_index = operand.index();
+    if (operand_owner->isa<paddle::dialect::SliceOp>() && operand_index != 0) {
+      return true;
+    }
+    if (operand_owner->isa<paddle::dialect::ExpandOp>() && operand_index == 1) {
+      return true;
+    }
+    if (operand_owner->isa<paddle::dialect::ReshapeOp>() &&
+        operand_index == 1) {
+      return true;
+    }
+    return false;
+  }
+};
+
+class SplitMultiOutputGenerateShapeOpPass : public pir::PatternRewritePass {
+ public:
+  SplitMultiOutputGenerateShapeOpPass()
+      : pir::PatternRewritePass("split_multi_output_generate_shape_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<SplitMultiOutputGenerateShapeOpPattern>(context);
+    return ps;
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateSplitMultiOutputGenerateShapeOpPass() {
+  return std::make_unique<SplitMultiOutputGenerateShapeOpPass>();
 }
 
 }  // namespace ir

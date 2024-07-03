@@ -1258,31 +1258,31 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
   auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
       attrs.attr_store.at("symbol_bindings"));
 
-  framework::CINNCompute generate_shape_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE(!args.empty(),
-                       ::common::errors::InvalidArgument(
-                           "Invalid argument. The input arguments of "
-                           "generate_shape compute is empty! Please check."));
-        CINNValuePack pack_args = args[0];
-        PADDLE_ENFORCE_GE(pack_args->size(),
-                          1U,
-                          ::common::errors::InvalidArgument(
-                              "At least 1 input tensors for generate_shape "
-                              "compute, but now get %d.",
-                              pack_args->size()));
+  framework::CINNCompute generate_shape_compute([=](lang::Args args,
+                                                    lang::RetValue *ret) {
+    PADDLE_ENFORCE(!args.empty(),
+                   ::common::errors::InvalidArgument(
+                       "Invalid argument. The input arguments of "
+                       "generate_shape compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args->size(),
+                      1U,
+                      ::common::errors::InvalidArgument(
+                          "At least 1 input tensors for generate_shape "
+                          "compute, but now get %d.",
+                          pack_args->size()));
 
-        std::string tensor_name = pack_args.back().operator std::string();
-        ir::Tensor out = pe::GenerateShape(
-            inputs, symbol_bindings, output_dim_exprs, tensor_name);
-        std::vector<CINNValue> res;
-        res.push_back(CINNValue(out));
-        PADDLE_ENFORCE(!out_type.empty(),
-                       ::common::errors::InvalidArgument(
-                           "Invalid argument. The output type of "
-                           "generate_shape is empty! Please check."));
-        *ret = CINNValuePack{res};
-      });
+    std::string tensor_name = pack_args.back().operator std::string();
+    ir::Tensor out = pe::GenerateShape(
+        inputs, symbol_bindings, output_dim_exprs, out_type[0], tensor_name);
+    std::vector<CINNValue> res;
+    res.push_back(CINNValue(out));
+    PADDLE_ENFORCE(!out_type.empty(),
+                   ::common::errors::InvalidArgument(
+                       "Invalid argument. The output type of "
+                       "generate_shape is empty! Please check."));
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(
