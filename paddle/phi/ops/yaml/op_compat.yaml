@@ -3237,6 +3237,13 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_expand
+  backward: sequence_expand_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+
 - op : sequence_mask
   inputs:
     x : X
@@ -3251,8 +3258,12 @@
 
 - op : sequence_softmax
   backward : sequence_softmax_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
   extra :
-    attrs : [str data_format = "AnyLayout"]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = false]
 
 - op : sgd_ (sgd)
   inputs :

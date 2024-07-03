@@ -726,6 +726,27 @@
     backend: place
   traits : pir::SideEffectTrait
 
+- op : sequence_expand
+  args: (Tensor x, Tensor y, int ref_level = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceExpandInferMeta
+  kernel:
+    func: sequence_expand
+    data_type: x
+  backward: sequence_expand_grad
+  no_need_buffer: y
+
+- op : sequence_softmax
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceSoftmaxInferMeta
+  kernel:
+    func: sequence_softmax
+    param: [x]
+  backward: sequence_softmax_grad
+
 - op : shadow_output
   args : (Tensor x, str name)
   output : Tensor(out)

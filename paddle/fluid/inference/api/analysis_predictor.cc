@@ -441,11 +441,12 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
+
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
     std::string optimized_model;
-    if (load_pir_model_) {
+    if (config_.new_ir_enabled()) {
       optimized_model = optimized_model_path + "/" + "_optimized.json";
     } else {
       optimized_model = optimized_model_path + "/" + "_optimized.pdmodel";
@@ -454,6 +455,9 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
+      if (config_.new_ir_enabled()) {
+        load_pir_model_ = true;
+      }
       LOG(INFO) << "Load Optimized model from " << optimized_model
                 << " and Load Optimized optimized_params from "
                 << optimized_params;
@@ -470,7 +474,6 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
-
   InitPlace();
 
   if (!CreateExecutor()) {
@@ -652,6 +655,7 @@ void AnalysisPredictor::ClearExtraParams() {
       }
     }
   }
+
   scope_->EraseVars(extra_params);
   VLOG(1) << "Clear " << extra_params.size() << " extra params.";
 }
@@ -1063,23 +1067,23 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
   for (size_t i = 0; i < len; ++i) {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
+
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
-        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-        const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
-        pir::Type type_ = pir::GetDataTypeFromValue(value);
-        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-        dev_ctx->Alloc(tensor_temp, type_data);
       } else {
         PADDLE_THROW(platform::errors::Unavailable(
             "Only support parameter data of type DenseTensor."));
       }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+    tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+    const phi::DeviceContext *dev_ctx = pool.Get(place_);
+    pir::Type type_ = pir::GetDataTypeFromValue(value);
+    phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+    dev_ctx->Alloc(tensor_temp, type_data);
     tensor_out.push_back(tensor_temp);
   }
 
@@ -1108,7 +1112,6 @@ bool AnalysisPredictor::PreparePirProgram() {
       platform::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
   pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
   if (!SaveOrLoadPirParameters(false)) {
     return false;
@@ -1238,7 +1241,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
   }
 
-  if (load_pir_model_) {
+  if (config_.new_ir_enabled()) {
     executor_->Prepare(sub_scope_);
   } else {
     DisablePrepareDataOpt(inference_program_, 0, false);
@@ -1259,7 +1262,6 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    VLOG(1) << "predictor program " << *pir_program_;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -1653,9 +1655,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (config_.new_ir_enabled()) {
-    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
-  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1665,6 +1664,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -1730,9 +1732,6 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (config_.new_ir_enabled()) {
-    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
-  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1742,6 +1741,9 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -2276,13 +2278,12 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #endif
         delete prog;
       });
-  // The config and argument take a lot of storage,
-  // when the predictor settings are complete, we release these stores.
-  config_.PartiallyRelease();
+
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
-
+  // The argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
@@ -2703,6 +2704,12 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    auto *scope = sub_scope_ ? sub_scope_ : scope_.get();
+    if (scope != nullptr) {
+      ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+    }
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }

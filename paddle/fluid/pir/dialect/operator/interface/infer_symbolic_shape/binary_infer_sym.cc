@@ -516,6 +516,14 @@ bool AccuracyCheckOpInferSymbolicShape(
   return true;
 }
 
+bool ReduceAsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &target_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), target_shape);
+  return true;
+}
+
 bool TakeAlongAxisOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // input
