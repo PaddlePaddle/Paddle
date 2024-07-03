@@ -113,14 +113,18 @@ class Uniform(distribution.Distribution):
 
     def __init__(
         self,
-        low: float
-        | Sequence[float]
-        | npt.NDArray[np.float32 | np.float64]
-        | Tensor,
-        high: float
-        | Sequence[float]
-        | npt.NDArray[np.float32 | np.float64]
-        | Tensor,
+        low: (
+            float
+            | Sequence[float]
+            | npt.NDArray[np.float32 | np.float64]
+            | Tensor
+        ),
+        high: (
+            float
+            | Sequence[float]
+            | npt.NDArray[np.float32 | np.float64]
+            | Tensor
+        ),
         name: str | None = None,
     ) -> None:
         if not in_dynamic_mode():
