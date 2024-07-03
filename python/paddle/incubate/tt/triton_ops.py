@@ -97,8 +97,8 @@ class KernelInterface:
             for i in range(len(args)):
                 all_input.append(args[i])
 
-            position_arguments = len(all_input)
-            for i in range(position_arguments, len(self.arg_names)):
+            position_arguments_num = len(all_input)
+            for i in range(position_arguments_num, len(self.arg_names)):
                 if self.arg_names[i] in kwargs.keys():
                     all_input.append(kwargs[self.arg_names[i]])
                 else:
@@ -113,9 +113,9 @@ class KernelInterface:
             for i in const_args:
                 for j in const_args:
                     if i != j and i.find(j) != -1:
-                        assert (
-                            False
-                        ), "we dont allow there are two strings in tl.constexpr args, and one is a substring of the other, please modify your triton kernel arguments."
+                        raise ValueError(
+                            f"We find {i}, {j} in tl.constexpr args, and {j} is a substring of {i}, please modify your triton kernel arguments names to avoid this."
+                        )
 
             const_hint_dict = {}
             for i in range(len(all_input)):
@@ -210,9 +210,9 @@ class KernelInterface:
                             if key not in config.keys():
                                 config[key] = const_hint_dict[key]
                             else:
-                                assert (
-                                    False
-                                ), f"you specify {key} both in arguments and config, this is wrong."
+                                raise ValueError(
+                                    f"you specify {key} both in arguments and config, this is wrong."
+                                )
                         else:
                             assert (
                                 key in config.keys()

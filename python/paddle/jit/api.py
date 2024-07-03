@@ -223,6 +223,12 @@ def paddle_inference_decorator(**kwargs):
         predictors = [None]
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
+
+        if "*" in str(signature):
+            raise ValueError(
+                f"your function named {func.__name__} definition has * or ** args, please modify your function definition, but when calling this function, you can still use positional arguments."
+            )
+
         arg_defaults = [v.default for v in signature.parameters.values()]
 
         memory_pool_init_size_mb = kwargs.get("memory_pool_init_size_mb", 1000)
@@ -311,11 +317,17 @@ def paddle_inference_decorator(**kwargs):
                 if i > 0:
                     input_tensor_lists += get_tensor(args[i], arg_names[i])
 
+            position_arguments_num = len(args)
             # some are invoked from keyword arguments.
-            for i in range(len(arg_names)):
+            for i in range(position_arguments_num, len(arg_names)):
                 if arg_names[i] in kwargs.keys():
                     this_input = kwargs[arg_names[i]]
                     input_tensor_lists += get_tensor(this_input, arg_names[i])
+                    collected_names.append(arg_names[i])
+                else:
+                    this_input = arg_defaults[i]
+                    assert this_input == None
+                    input_tensor_lists += [this_input]
                     collected_names.append(arg_names[i])
 
             if collected_names != arg_names:
@@ -402,12 +414,16 @@ def paddle_inference_decorator(**kwargs):
                             get_d2s_spec(args[i], name=arg_names[i])
                         )
                 # second we handle Keyword Arguments
-                for i in range(len(arg_names)):
+                for i in range(position_arguments_num, len(arg_names)):
                     if arg_names[i] in kwargs.keys():
                         this_input = kwargs[arg_names[i]]
                         input_specs.append(
                             get_d2s_spec(this_input, name=arg_names[i])
                         )
+                    else:
+                        this_input = arg_defaults[i]
+                        assert this_input == None
+                        input_specs.append(None)
 
                 # update the input_spec's shape for doing d2s
                 d2s_shapes_id = 0
