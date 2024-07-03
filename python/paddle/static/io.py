@@ -946,16 +946,13 @@ def load_inference_model(path_prefix, executor, **kwargs):
                 predicate=is_persistable,
                 filename=params_filename,
             )
-
     feed_target_names = program.desc.get_feed_target_names()
-    fetch_target_names = program.desc.get_fetch_target_names()
-    fetch_targets = [
-        program.global_block().var(name) for name in fetch_target_names
-    ]
-    if paddle.__version__.startswith('3.0.0'):
+    if paddle.framework.in_pir_executor_mode():
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
             block = program.global_block()
+            remove_op_list = []
+            fetch_targets = []
             for op in block.ops:
                 if op.name() == "pd_op.feed":
                     var_name = op.attrs()["name"]
@@ -968,8 +965,18 @@ def load_inference_model(path_prefix, executor, **kwargs):
                         )
                         org_value.replace_all_uses_with(value)
                         value.get_defining_op().move_before(op)
-                    block.remove_op(op)
+                    remove_op_list.append(op)
+            for op in remove_op_list:
+                block.remove_op(op)
+            for op in block.ops:
+                if op.name() == "pd_op.fetch":
+                    fetch_targets.append(op.operand_source(0))
 
+    else:
+        fetch_target_names = program.desc.get_fetch_target_names()
+        fetch_targets = [
+            program.global_block().var(name) for name in fetch_target_names
+        ]
     return [program, feed_target_names, fetch_targets]
 
 

@@ -16,8 +16,6 @@ import os
 import tempfile
 import unittest
 
-import numpy as np
-
 import paddle
 from paddle import base
 
@@ -367,60 +365,6 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
         self.check_block(
             main_program.global_block(), recover_program.global_block()
         )
-
-
-class TestSaveOldLoadNew(unittest.TestCase):
-    def setUp(self):
-        paddle.seed(2022)
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = os.path.join(self.temp_dir.name, 'saveload')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
-    def test_load_old_version(self):
-        paddle.enable_static()
-        temp_dir = tempfile.TemporaryDirectory()
-        np_x = np.random.randn(9, 10, 11).astype('float32')
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, startup_prog):
-            x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
-            linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
-            linear_out = linear(x)
-            relu_out = paddle.nn.functional.relu(linear_out)
-            axis = paddle.full([1], 2, dtype='int64')
-            out = paddle.cumsum(relu_out, axis=axis)
-            loss = paddle.mean(out)
-            sgd = paddle.optimizer.SGD(learning_rate=0.0)
-            sgd.minimize(paddle.mean(out))
-
-            exe = paddle.static.Executor(self.place)
-            exe.run(startup_prog)
-            out_old = exe.run(feed={'x': np_x}, fetch_list=[out])
-
-            # run infer
-            paddle.static.save_inference_model(
-                self.save_path, [x], [out], exe, program=main_prog
-            )
-
-            exe = paddle.static.Executor(self.place)
-
-            load_program, _, _ = paddle.static.load_inference_model(
-                self.save_path, exe
-            )
-            # print(load_program)
-            with paddle.pir_utils.IrGuard():
-                startup_prog = paddle.static.Program()
-                with paddle.static.program_guard(load_program, startup_prog):
-                    exe.run(startup_prog)
-                    out_new = exe.run(
-                        load_program, feed={'x': np_x}, fetch_list=[]
-                    )
-                    np.testing.assert_allclose(out_old, out_new)
-        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

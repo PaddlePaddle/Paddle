@@ -112,8 +112,8 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
       attrs_json.size(),
       4,
       common::errors::InvalidArgument(
-          "builtin ParameterOp has %d 's  attributes, which should be 4"),
-      attrs_json.size());
+          "builtin ParameterOp has %d 's  attributes, which should be 4",
+          attrs_json.size()));
   pir::AttributeMap attributes;
   pir::IrContext* ctx = pir::IrContext::Instance();
   attributes.insert(
