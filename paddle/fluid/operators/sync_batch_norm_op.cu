@@ -155,7 +155,7 @@ void SyncBatchNormKernel(const Context& ctx,
                                         2 * C + 1,
                                         static_cast<ncclDataType_t>(dtype),
                                         ncclSum,
-                                        comm,
+                                        comm->comm(),
                                         stream));
         VLOG(3) << "Sync result using all reduce with old comm";
       }
