@@ -39,7 +39,7 @@ from .triton_utils import (
     paddle_custom_op_head_part,
     python_path,
     rename_c_to_cu,
-    tune_and_invoke_part2,
+    tune_and_invoke_part,
 )
 
 
@@ -332,7 +332,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
 
   auto run_stream = c_out.stream();
 """
-    + tune_and_invoke_part2
+    + tune_and_invoke_part
     + """
   return {c_out};
 }
@@ -687,7 +687,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
   }
   auto  run_stream = adaLN_out.stream();
 """
-    + tune_and_invoke_part2
+    + tune_and_invoke_part
     + """
     return {resi_out, adaLN_out};
 }
@@ -957,7 +957,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
   }
   auto run_stream = y.stream();
 """
-    + tune_and_invoke_part2
+    + tune_and_invoke_part
     + """
   return {y};
 }
@@ -1172,7 +1172,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
   }
   auto run_stream = y.stream();
 """
-    + tune_and_invoke_part2
+    + tune_and_invoke_part
     + """
     return {y};
 }
