@@ -22,11 +22,15 @@ try:
         rms_norm,
         weight_only_int8,
     )
-    from .triton_utils import paddle_custom_op_head_part, tune_and_invoke_part2, get_dtype_str
+    from .triton_utils import (
+        get_dtype_str,
+        paddle_custom_op_head_part,
+        tune_and_invoke_part,
+    )
 
     __all__ += [
         "paddle_custom_op_head_part",
-        "tune_and_invoke_part2",
+        "tune_and_invoke_part",
         "paddle_use_triton",
         "weight_only_int8",
         "adaptive_layer_norm",

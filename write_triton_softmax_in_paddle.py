@@ -24,7 +24,7 @@ from paddle import _C_ops
 from paddle.base.framework import OpProtoHolder
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
-from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part2
+from paddle.incubate.tt import paddle_use_triton, tune_and_invoke_part
 
 triton_softmax_template = (
     """
@@ -44,7 +44,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
 
   auto run_stream = x.stream();
 """
-    + tune_and_invoke_part2
+    + tune_and_invoke_part
     + """
   return {out};
 }

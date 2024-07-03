@@ -26,7 +26,7 @@ from paddle.framework import in_dynamic_or_pir_mode
 from paddle.incubate.tt import (
     get_dtype_str,
     paddle_use_triton,
-    tune_and_invoke_part2,
+    tune_and_invoke_part,
 )
 
 triton_add_template = (
@@ -47,7 +47,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
 
   auto run_stream = x.stream();
 """
-    + tune_and_invoke_part2
+    + tune_and_invoke_part
     + """
   return {out};
 }
