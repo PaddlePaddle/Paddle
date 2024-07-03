@@ -391,6 +391,10 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
+  if (FLAGS_enable_pir_api) {
+    config_.EnableNewExecutor(true);
+    config_.EnableNewIR(true);
+  }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
     if (config_.new_ir_enabled()) {
@@ -417,11 +421,6 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
             "context memory of multiple predictors."));
   } else {
     predictor_id_ = inference::GetUniqueId();
-  }
-
-  if (FLAGS_enable_pir_api) {
-    config_.EnableNewExecutor(true);
-    config_.EnableNewIR(true);
   }
 }
 
