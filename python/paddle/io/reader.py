@@ -11,22 +11,118 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
+import numbers
 from typing import (
     TYPE_CHECKING,
+    Any,
+    AnyStr,
     Callable,
+    Mapping,
+    Protocol,
     Sequence,
-    TypedDict,
+    TypeVar,
+    overload,
 )
 
-if TYPE_CHECKING:
-    import numpy.typing as npt
+import numpy as np
+import numpy.typing as npt
 
+import paddle
+
+if TYPE_CHECKING:
     from paddle import Tensor
-    from python.paddle._typing.device_like import PlaceLike
-    from python.paddle.io.dataloader.dataset import Dataset
+    from paddle._typing import PlaceLike
+    from paddle.io.dataloader.dataset import Dataset
+
+    _K = TypeVar('_K')
+    _V = TypeVar('_V')
+
+
+@overload
+def default_collate_fn(
+    batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number],
+) -> npt.NDArray[Any]:
+    ...
+
+
+@overload
+def default_collate_fn(batch: Sequence[Tensor]) -> Tensor:
+    ...
+
+
+@overload
+def default_collate_fn(batch: Sequence[AnyStr]) -> AnyStr:
+    ...
+
+
+@overload
+def default_collate_fn(batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
+    ...
+
+
+@overload
+def default_collate_fn(batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
+    ...
+
+
+def default_collate_fn(batch):
+    sample = batch[0]
+    if isinstance(sample, np.ndarray):
+        batch = np.stack(batch, axis=0)
+        return batch
+    elif isinstance(sample, paddle.Tensor):
+        return paddle.stack(batch, axis=0)
+    elif isinstance(sample, numbers.Number):
+        batch = np.array(batch)
+        return batch
+    elif isinstance(sample, (str, bytes)):
+        return batch
+    elif isinstance(sample, Mapping):
+        return {
+            key: default_collate_fn([d[key] for d in batch]) for key in sample
+        }
+    elif isinstance(sample, Sequence):
+        sample_fields_num = len(sample)
+        if not all(len(sample) == sample_fields_num for sample in iter(batch)):
+            raise RuntimeError(
+                "fields number not same among samples in a batch"
+            )
+        return [default_collate_fn(fields) for fields in zip(*batch)]
+
+    raise TypeError(
+        "batch data con only contains: tensor, numpy.ndarray, "
+        f"dict, list, number, but got {type(sample)}"
+    )
+
+
+class _CollateFn(Protocol):
+    @overload
+    def __call__(
+        self, batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number]
+    ) -> npt.NDArray[Any]:
+        ...
+
+    @overload
+    def __call__(self, batch: Sequence[Tensor]) -> Tensor:
+        ...
+
+    @overload
+    def __call__(self, batch: Sequence[AnyStr]) -> AnyStr:
+        ...
+
+    @overload
+    def __call__(self, batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
+        ...
+
+    @overload
+    def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
+        ...
+
+
+fn: _CollateFn = default_collate_fn
+
 
 import copy
 import logging
@@ -34,8 +130,6 @@ import multiprocessing
 import sys
 import time
 import warnings
-
-import paddle
 
 from ..base.framework import (
     _current_expected_place,
@@ -59,11 +153,6 @@ USE_PINNED_MEMORY = None
 # AutoTune Flags
 USE_AUTOTUNE = False
 TUNING_STEPS = 500
-
-
-class _Collate_Fn_State(TypedDict):
-    image: npt.NDArray
-    label: int | npt.NDArray
 
 
 def set_autotune_config(use_autotune, tuning_steps=500):
@@ -405,13 +494,13 @@ class DataLoader:
     """
 
     return_list: bool
-    collate_fn: Callable[[_Collate_Fn_State], None]
+    collate_fn: Callable[[_CollateFn], None]
     use_buffer_reader: bool
     prefetch_factor: int
     worker_init_fn: Callable[[int], None]
     dataset: Dataset
     feed_list: Sequence[Tensor] | None
-    places: Sequence[PlaceLike] | list[str] | None
+    places: Sequence[PlaceLike] | None
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
@@ -426,7 +515,7 @@ class DataLoader:
         batch_size: int = 1,
         shuffle: bool = False,
         drop_last: bool = False,
-        collate_fn: Callable[[_Collate_Fn_State], None] = None,
+        collate_fn: Callable[[_CollateFn], None] = None,
         num_workers: int = 0,
         use_buffer_reader: bool = True,
         prefetch_factor: int = 2,
@@ -531,7 +620,7 @@ class DataLoader:
         self._iterator = None
         self.num_workers = AuToTune(self).__call__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         if self.dataset_kind == _DatasetKind.ITER:
             raise ValueError("length of IterableDataset not supported")
         else:
@@ -540,7 +629,9 @@ class DataLoader:
             else:
                 return len(self.dataset)
 
-    def __iter__(self):
+    def __iter__(
+        self,
+    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
@@ -552,5 +643,7 @@ class DataLoader:
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    def __call__(self):
+    def __call__(
+        self,
+    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
         return self.__iter__()
