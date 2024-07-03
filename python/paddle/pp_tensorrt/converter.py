@@ -159,14 +159,15 @@ class PaddleToTensorRTConverter:
         CACHE_FILE = "./engine.trt"
         with open(CACHE_FILE, "wb") as f:
             f.write(trt_engine.serialize())
-        engine_binary = open(CACHE_FILE, "rb").read()
-        base64_encoded = base64.b64encode(engine_binary)
-        base64_string = base64_encoded.decode('utf-8')
-        trt_params.engine_serialized_data = base64_string
+        # engine_binary = open(CACHE_FILE, "rb").read()
+        # base64_encoded = base64.b64encode(engine_binary)
+        # base64_string = base64_encoded.decode('utf-8')
+        trt_params.engine_serialized_data = CACHE_FILE
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             program
         ):
-            import pdb;pdb.set_trace()
+            # import pdb;pdb.set_trace()
+            pir.set_insertion_point(group_op)
             out = paddle._C_ops.tensorrt_engine(
                 input_values,
                 trt_params,
@@ -175,13 +176,8 @@ class PaddleToTensorRTConverter:
                 out_shapes,
                 out_types
             )
+
         return out
-            
-            # assert len(out) == len(output_values)
-            # for i in range(len(output_values)):
-            #     output_values[i].replace_all_uses_with(out[i])
-            
-    
 
     def convert(self, network, paddle_op, inputs):
         op_name = paddle_op.name()
@@ -199,13 +195,13 @@ class PaddleToTensorRTConverter:
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
             if op.name() == "cinn_op.group":
+                print(f"!!! start process {op.name()}")
                 new_out = self.convert_subgraph_to_trt(self.program, op)
                 orin_out_values = op.results()
                 for o_i in range(len(orin_out_values)):
                     orin_out_values[o_i].replace_all_uses_with(new_out[o_i])
                 self.program.global_block().remove_op(op)
-                import pdb;pdb.set_trace()
-                
+                # print(self.program)
 
 def main():
     from util import get_dummy_program
@@ -236,6 +232,19 @@ def main():
     program = run_pir_pass(program, partition_mode=True)
     converter = PaddleToTensorRTConverter(program, scope)
     converter.convert_program_to_trt()
+    with paddle.pir_utils.IrGuard():
+        with paddle.static.program_guard(
+            program
+        ):
+            exe = paddle.static.Executor()
+            fetch_list=program.list_vars()[-1]
+            input_array = np.random.randn(1, 64).astype('float32')
+            out = exe.run(
+                program,
+                feed={"input": input_array},
+                fetch_list=fetch_list
+            )
+            print(out)
 
 if __name__ == "__main__":
     main()
