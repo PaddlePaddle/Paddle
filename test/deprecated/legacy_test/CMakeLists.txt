@@ -221,12 +221,6 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
 
-if(WITH_COVERAGE
-   OR WIN32
-   OR WITH_NV_JETSON)
-  list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
-endif()
-
 list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if((WITH_ROCM OR WITH_GPU) OR NOT WITH_MKLML)
