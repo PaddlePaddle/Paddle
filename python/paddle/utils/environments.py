@@ -22,6 +22,16 @@ from typing_extensions import Self
 T = TypeVar("T")
 
 
+def strtobool(val):
+    val = val.lower()
+    if val in ['y', 'yes', 't', 'true', 'on', '1']:
+        return True
+    elif val in ['n', 'no', 'f', 'false', 'off', '0']:
+        return False
+    else:
+        raise ValueError(f"Invalid truth value {val!r}")
+
+
 class EnvironmentVariable(Generic[T]):
     name: str
     default: T
@@ -57,16 +67,14 @@ class StringEnvironmentVariable(EnvironmentVariable[str]):
 
 
 class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
-    BOOLEAN_IS_SET = ("y", "yes", "t", "true", "on", "1")
-
     def __init__(self, name: str, default: bool):
         super().__init__(name, default)
         assert isinstance(default, bool), "default must be a boolean"
 
     def get(self) -> bool:
-        default = str(self.default).lower()
-        env_str = os.getenv(self.name, default).lower()
-        return env_str in BooleanEnvironmentVariable.BOOLEAN_IS_SET
+        default = str(self.default)
+        env_str = os.getenv(self.name, default)
+        return strtobool(env_str)
 
     def set(self, value: bool) -> None:
         assert isinstance(value, bool), "value must be a boolean"

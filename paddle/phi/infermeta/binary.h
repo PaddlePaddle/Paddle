@@ -619,6 +619,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool right,
                            MetaTensor* out);
 
+void SequenceExpandInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             int ref_level,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
