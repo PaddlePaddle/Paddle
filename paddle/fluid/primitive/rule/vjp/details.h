@@ -106,7 +106,7 @@ void divide_grad(const Tensor& x,
   if (dy) {
     // dy = -(x/y^2) * dout
     auto dy_res = -(x / (y * y)) * out_grad;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_tmp = reduce_as<T>(dy_res, y);
       set_output<T>(dy_tmp, dy);
     } else {
@@ -126,7 +126,7 @@ void divide_grad(const Tensor& x,
     // dx = (1/y) * dout
     Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
     auto dx_res = one_tensor / y * out_grad;
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_tmp = reduce_as<T>(dx_res, x);
       set_output<T>(dx_tmp, dx);
     } else {
@@ -577,7 +577,7 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_tmp = reduce_as<T>(out_grad, y);
       set_output<T>(dy_tmp, dy);
     } else {
@@ -595,7 +595,7 @@ void add_grad(const Tensor& x,
     }
   }
   if (dx) {
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_tmp = reduce_as<T>(out_grad, x);
       set_output<T>(dx_tmp, dx);
     } else {
@@ -621,7 +621,7 @@ void subtract_grad(const Tensor& x,
                    Tensor* dy) {
   if (dy) {
     auto scale_out_grad = scale<T>(out_grad, -1.0, 0.0, true);
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_tmp = reduce_as<T>(scale_out_grad, y);
       set_output<T>(dy_tmp, dy);
     } else {
@@ -638,7 +638,7 @@ void subtract_grad(const Tensor& x,
     }
   }
   if (dx) {
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_tmp = reduce_as<T>(out_grad, x);
       set_output<T>(dx_tmp, dx);
     } else {
@@ -664,7 +664,8 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = out_grad * y;
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) ||
+        has_dynamic_shape(x_grad_unreduce.shape())) {
       auto x_grad_reduced = reduce_as<T>(x_grad_unreduce, x);
       set_output<T>(x_grad_reduced, x_grad);
     } else {
@@ -683,7 +684,8 @@ void multiply_grad(const Tensor& x,
   }
   if (y_grad) {
     auto y_grad_unreduce = out_grad * x;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) ||
+        has_dynamic_shape(y_grad_unreduce.shape())) {
       auto y_grad_reduced = reduce_as<T>(y_grad_unreduce, y);
       set_output<T>(y_grad_reduced, y_grad);
     } else {
