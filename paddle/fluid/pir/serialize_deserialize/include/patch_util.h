@@ -135,10 +135,12 @@ Json GetAttrTypeJson(const YAML::Node &action) {
 }
 Json YamlPaser(const std::string &yaml_file) {
   std::ifstream fin;
+  std::cout << yaml_file << std::endl;
   fin.open(yaml_file);
   if (!fin) {
-    PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
-                                          yaml_file.c_str()));
+    // PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
+    //                                       yaml_file.c_str()));
+    fin.open("../src/patch.yaml");
   }
   YAML::Node root = YAML::Load(fin);
   Json json_patch;

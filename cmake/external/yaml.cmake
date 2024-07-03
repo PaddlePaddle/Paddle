@@ -33,15 +33,13 @@ if(WIN32)
       CACHE FILEPATH "yaml library." FORCE)
   set(YAML_CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
   set(YAML_CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-  if(MSVC_STATIC_CRT)
-    foreach(flag_var
-            CMAKE_CUDA_FLAGS CMAKE_CUDA_FLAGS_DEBUG CMAKE_CUDA_FLAGS_RELEASE
-            CMAKE_CUDA_FLAGS_MINSIZEREL CMAKE_CUDA_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "-MD")
-        string(REGEX REPLACE "-MD" "-MT" ${flag_var} "${${flag_var}}")
-      endif()
-    endforeach()
-  endif()
+  foreach(flag_var
+          CMAKE_CUDA_FLAGS CMAKE_CUDA_FLAGS_DEBUG CMAKE_CUDA_FLAGS_RELEASE
+          CMAKE_CUDA_FLAGS_MINSIZEREL CMAKE_CUDA_FLAGS_RELWITHDEBINFO)
+    if(${flag_var} MATCHES "-MD")
+      string(REGEX REPLACE "-MD" "-MT" ${flag_var} "${${flag_var}}")
+    endif()
+  endforeach()
 else()
   set(YAML_LIBRARIES
       "${YAML_INSTALL_DIR}/lib/libyaml-cpp.a"

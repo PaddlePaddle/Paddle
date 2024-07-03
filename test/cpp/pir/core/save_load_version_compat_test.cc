@@ -45,7 +45,6 @@ TEST(save_load_version_compat, op_patch_test) {
   std::string cur_file = std::string(__FILE__);
   std::string yaml_file =
       cur_file.substr(0, cur_file.rfind('/')) + "/patch.yaml";
-  std::cout << yaml_file << std::endl;
   builder.BuildPatch(yaml_file);
   std::cout << "wwww: " << std::endl;
 }
