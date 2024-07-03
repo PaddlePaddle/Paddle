@@ -109,8 +109,9 @@ class TestAnchorFusion(unittest.TestCase):
 
     def test_anchor_fusion_4(self):
         def func(x):
-            a = x + 1
-            b = x + 2
+            m = x + 1
+            a = m + 1
+            b = m + 2
             c = a * 2
             d = a / 2
             return b, c, d

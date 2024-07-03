@@ -81,10 +81,13 @@ struct InitPatternInstr : public FusionInstruction {
   // we can't just use operation* to identify a unique op because pass change
   // the program.
   int idx_in_fusion_op = -1;
+  std::string op_name;
 
  public:
   InitPatternInstr(pir::Operation* op, const std::string& result)
-      : op_(op), result_(result) {}
+      : op_(op), result_(result) {
+    op_name = op->name();
+  }
   void set_idx(int idx) { idx_in_fusion_op = idx; }
   int get_idx() const {
     if (idx_in_fusion_op == -1) {
@@ -98,7 +101,7 @@ struct InitPatternInstr : public FusionInstruction {
 
   virtual std::string DebugStr() const {
     std::ostringstream ss;
-    ss << "InitPatternInstr || " + op_->name() + " => " + result_ + " index = ("
+    ss << "InitPatternInstr || " + op_name + " => " + result_ + " index = ("
        << idx_in_fusion_op << ")";
     return ss.str();
   }

@@ -22,7 +22,7 @@ namespace cinn::fusion {
 void RunCopyInstr(const std::shared_ptr<CopyInstr>& instr,
                   FusionInterpreter* interpreter) {
   interpreter->scope[instr->new_name_] =
-      interpreter->scope[instr->origin_name_];
+      interpreter->scope.at(instr->origin_name_);
 }
 
 void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
@@ -30,7 +30,7 @@ void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
   // TODO(@wuzhanfei)
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
   for (const auto& name : instr->names_) {
-    const auto& to_insert = interpreter->scope[name];
+    const auto& to_insert = interpreter->scope.at(name);
     new_pattern->Extend(to_insert->fusion_ops);
   }
   interpreter->scope[instr->result_] = new_pattern;
@@ -142,7 +142,7 @@ void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
 void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
                     FusionInterpreter* interpreter) {
   for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
-    auto exprs = std::visit(FusibleOp2Expr(), fusion_op);
+    auto exprs = std::visit(GetSplitedExprFromFusionOp(), fusion_op);
     interpreter->ret_expr.insert(
         interpreter->ret_expr.end(), exprs.begin(), exprs.end());
   }

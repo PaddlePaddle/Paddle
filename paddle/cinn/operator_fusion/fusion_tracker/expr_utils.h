@@ -26,6 +26,15 @@ struct FusibleOp2Expr {
     return {op.GetFuncBody()};
   }
   std::vector<ir::Expr> operator()(const ReduceOp& op) {
+    return {op.GetFuncBody()};
+  }
+};
+
+struct GetSplitedExprFromFusionOp {
+  std::vector<ir::Expr> operator()(const TrivialOp& op) {
+    return {op.GetFuncBody()};
+  }
+  std::vector<ir::Expr> operator()(const ReduceOp& op) {
     const auto& t_r = SplitReduceOp(op);
     return {t_r.first.GetFuncBody(), t_r.second.GetFuncBody()};
   }

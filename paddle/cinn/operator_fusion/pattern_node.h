@@ -55,6 +55,9 @@ struct PatternNode {
     for (const auto& d : downstream_) {
       ss << d << ", ";
     }
+    ss << "Ops in pattern: \n################" << std::endl;
+    ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
+    ss << "################" << std::endl;
     return ss.str();
   }
 
