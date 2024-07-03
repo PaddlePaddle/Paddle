@@ -22,6 +22,7 @@ from util import run_pir_pass, map_dtype
 from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
 from register import converter_registry
 from impls.core import  *
+paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
   
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
@@ -115,8 +116,10 @@ class PaddleToTensorRTConverter:
 
             for idx, result in enumerate(op.results()):
                 value_to_trt_tensor[result.id] = layer.get_output(idx)
+        out_shapes = []
         for result_value in output_values:
             network.mark_output(value_to_trt_tensor[result_value.id])
+            out_shapes.append(result_value.shape)
         
         config = builder.create_builder_config()
         config.add_optimization_profile(profile)
@@ -131,10 +134,11 @@ class PaddleToTensorRTConverter:
             trt_params,
             ["x"],
             ["out"],
-
+            out_shapes,
             # [[1, 1]],
             [paddle.base.libpaddle.DataType.FLOAT32],
         )
+        paddle.
     
 
     def convert(self, network, paddle_op, inputs):
