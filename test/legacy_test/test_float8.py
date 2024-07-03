@@ -64,24 +64,24 @@ class TestFP8CastOp(unittest.TestCase):
 
     def test_cast(self):
         if core.is_compiled_with_cuda():
-            self.device = "gpu"
-            paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
-                # test fp32 to fp8 (dtype)
-                input = paddle.full(self.shape, 100000.0)
-                input1 = input.astype(self.dtype)
-                self.assertTrue(input1.dtype == self.dtype_dict[self.dtype])
-                # test fp8 to fp32 (dtype)
-                input2 = input1.astype("float32")
-                self.assertTrue(input2.dtype == core.VarDesc.VarType.FP32)
-                # test fp32 to fp8 (value clip)
-                expect = paddle.full(
-                    self.shape,
-                    E4M3_MAX_POS
-                    if self.dtype == "float8_e4m3fn"
-                    else E5M2_MAX_POS,
-                )
-                self.assertTrue(paddle.equal_all(input2, expect))
+            for self.device in ["cpu", "gpu"]:
+                paddle.device.set_device(self.device)
+                for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+                    # test fp32 to fp8 (dtype)
+                    input = paddle.full(self.shape, 100000.0)
+                    input1 = input.astype(self.dtype)
+                    self.assertTrue(input1.dtype == self.dtype_dict[self.dtype])
+                    # test fp8 to fp32 (dtype)
+                    input2 = input1.astype("float32")
+                    self.assertTrue(input2.dtype == core.VarDesc.VarType.FP32)
+                    # test fp32 to fp8 (value clip)
+                    expect = paddle.full(
+                        self.shape,
+                        E4M3_MAX_POS
+                        if self.dtype == "float8_e4m3fn"
+                        else E5M2_MAX_POS,
+                    )
+                    self.assertTrue(paddle.equal_all(input2, expect))
         else:
             self.device = "cpu"
             paddle.device.set_device(self.device)
@@ -112,14 +112,14 @@ class TestFP8FullOp(unittest.TestCase):
 
     def test_ones(self):
         if core.is_compiled_with_cuda():
-            self.device = "gpu"
-            paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
-                input = paddle.ones([1, 2], dtype=self.dtype)
-                self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
-                input_fp32 = input.astype("float32")
-                expect = paddle.to_tensor([[1, 1]]).astype("float32")
-                self.assertTrue(paddle.equal_all(expect, input_fp32))
+            for self.device in ["cpu", "gpu"]:
+                paddle.device.set_device(self.device)
+                for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+                    input = paddle.ones([1, 2], dtype=self.dtype)
+                    self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
+                    input_fp32 = input.astype("float32")
+                    expect = paddle.to_tensor([[1, 1]]).astype("float32")
+                    self.assertTrue(paddle.equal_all(expect, input_fp32))
         else:
             self.device = "cpu"
             paddle.device.set_device(self.device)
@@ -132,14 +132,14 @@ class TestFP8FullOp(unittest.TestCase):
 
     def test_zeros(self):
         if core.is_compiled_with_cuda():
-            self.device = "gpu"
-            paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
-                input = paddle.zeros([1, 2], dtype=self.dtype)
-                self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
-                input_fp32 = input.astype("float32")
-                expect = paddle.to_tensor([[0, 0]]).astype("float32")
-                self.assertTrue(paddle.equal_all(expect, input_fp32))
+            for self.device in ["cpu", "gpu"]:
+                paddle.device.set_device(self.device)
+                for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+                    input = paddle.zeros([1, 2], dtype=self.dtype)
+                    self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
+                    input_fp32 = input.astype("float32")
+                    expect = paddle.to_tensor([[0, 0]]).astype("float32")
+                    self.assertTrue(paddle.equal_all(expect, input_fp32))
         else:
             self.device = "cpu"
             paddle.device.set_device(self.device)
