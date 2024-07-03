@@ -81,6 +81,14 @@
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
 
+- op : beam_search_decode
+  args: (Tensor ids, Tensor scores, int beam_size, int end_id)
+  output: Tensor (sentence_ids), Tensor (sentence_scores)
+  infer_meta:
+    func: BeamSearchDecodeInferMeta
+  kernel:
+    func: beam_search_decode
+
 - op : c_allreduce_avg
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)
@@ -181,14 +189,14 @@
   inplace: (input -> output)
 
 - op : dequantize_linear
-  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int qmin = -128, int qmax = 127, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
   infer_meta :
     func : QuantizeLinearInferMeta
     param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
   kernel :
     func : quantize_linear
-    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, qmin, qmax, round_type, is_test, only_observer]
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
@@ -406,6 +414,17 @@
     func : hardswish
   backward : hardswish_grad
 
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+    param: [x, num_hash, mod_by]
+  kernel:
+    func: hash
+    param: [x, num_hash, mod_by]
+    data_type: x
+
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -445,14 +464,15 @@
   output : Tensor(out)
 
 - op : lrn
-  args : (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
-  output : Tensor(out), Tensor(mid_out)
-  infer_meta :
-    func : LrnInferMeta
+  args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
+  output: Tensor (out), Tensor (mid_out)
+  infer_meta:
+    func: LrnInferMeta
     param : [x, n]
-  kernel :
-    func : lrn
-  backward : lrn_grad
+  kernel:
+    func: lrn
+    data_type: x
+  backward: lrn_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -646,14 +666,14 @@
 # so ,the out_scale is optional. Currently, we can't modify the op definition of dequantize_linear/quantize_linear and it can cause incompatibility problem
 # We need modify dequantize_linear/quantize_linear yaml and make it more reasonable when we abandon Fluid op.
 - op : quantize_linear
-  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int qmin = -128, int qmax = 127, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
   infer_meta :
     func : QuantizeLinearInferMeta
     param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
   kernel :
     func : quantize_linear
-    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, qmin, qmax, round_type, is_test, only_observer]
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
@@ -745,6 +765,27 @@
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
   traits : pir::SideEffectTrait
 
+- op : sequence_expand
+  args: (Tensor x, Tensor y, int ref_level = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceExpandInferMeta
+  kernel:
+    func: sequence_expand
+    data_type: x
+  backward: sequence_expand_grad
+  no_need_buffer: y
+
+- op : sequence_softmax
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceSoftmaxInferMeta
+  kernel:
+    func: sequence_softmax
+    param: [x]
+  backward: sequence_softmax_grad
+
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
@@ -809,6 +850,17 @@
   inplace : (x -> out)
   backward : softmax_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : sparse_momentum
+  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func: SparseMomentumInferMeta
+    param: [param, grad, velocity, index, learning_rate]
+  kernel:
+    func: sparse_momentum
+    data_type: param
+  optional: master_param, master_param_out
 
 - op : subtract
   args : (Tensor x, Tensor y)
@@ -937,14 +989,3 @@
   kernel:
     func: partial_send
     param: [x, ring_id, peer, use_calc_stream, num, id]
-
-- op: sparse_momentum
-  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
-  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
-  infer_meta:
-    func: SparseMomentumInferMeta
-    param: [param, learning_rate, velocity]
-  kernel:
-    func: sparse_momentum
-    data_type: param
-  optional: master_param, master_param_out

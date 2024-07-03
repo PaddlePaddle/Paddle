@@ -78,7 +78,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
                 if op.op().type() == self.op_name():
                     op_node = op
                     break
-            assert op_node != "", "op of type %s not found" % self.op_name()
+            assert op_node != "", f"op of type {self.op_name()} not found"
 
             qpass = Quant2Int8MkldnnPass(
                 self.quantized_ops,

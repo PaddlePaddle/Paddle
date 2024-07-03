@@ -229,7 +229,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
     class TestElementwiseMulOpLargeShape3(ElementwiseMulOp):
         def init_data(self):
             self.x = self.gen_data_depend_on_dtype([8192, 1728])
-            self.y = self.gen_data_depend_on_dtype([8192])
+            self.y = self.gen_data_depend_on_dtype([8192, 1])
             self.cal_y = self.y.reshape([8192, 1])
 
 

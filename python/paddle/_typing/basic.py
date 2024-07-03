@@ -18,7 +18,6 @@ from typing import (
     Any,
     Dict,
     List,
-    Literal,
     Sequence,
     Tuple,
     TypeVar,
@@ -27,12 +26,14 @@ from typing import (
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import TypeAlias
+from typing_extensions import Never, TypeAlias
 
 from .backport import EllipsisType
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import ParamAttr, Tensor
+    from paddle.nn.initializer import Initializer
+    from paddle.regularizer import WeightDecayRegularizer
 
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
@@ -59,4 +60,13 @@ NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
 
-PaddingMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']
+ParamAttrLike: TypeAlias = Union[
+    "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
+]
+
+
+def unreached() -> Never:
+    """Mark a code path as unreachable.
+    Refer to https://typing.readthedocs.io/en/latest/source/unreachable.html#marking-code-as-unreachable
+    """
+    raise RuntimeError("Unreachable code path")

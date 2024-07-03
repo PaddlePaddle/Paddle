@@ -198,10 +198,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
                 )
-                assert structured_name is not None, (
-                    "Cannot find saved variable (%s)'s structured name in saved model."
-                    % var_name
-                )
+                assert (
+                    structured_name is not None
+                ), f"Cannot find saved variable ({var_name})'s structured name in saved model."
                 structured_para_dict[structured_name] = load_param_dict[
                     var_name
                 ]
@@ -339,8 +338,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.load` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.load` is not supported."
             )
 
     # construct inner config
@@ -364,8 +362,7 @@ def _parse_save_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.save` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.save` is not supported."
             )
 
     # construct inner config
@@ -783,7 +780,7 @@ def save(obj, path, protocol=4, **configs):
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            ...     d_model=100, warmup_steps=100, verbose=True)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
             ...     parameters=emb.parameters())
@@ -932,7 +929,7 @@ def _legacy_save(obj, path, protocol=2):
     if not isinstance(obj, dict):
         raise NotImplementedError(
             "Now only supports save state_dict of Layer or Optimizer, "
-            "expect dict, but received %s." % type(obj)
+            f"expect dict, but received {type(obj)}."
         )
 
     if len(obj) == 0:
@@ -1044,7 +1041,7 @@ def load(path, **configs):
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            ...     d_model=100, warmup_steps=100, verbose=True)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
             ...     parameters=emb.parameters())

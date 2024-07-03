@@ -19,13 +19,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle._typing import DTypeLike
 
 from .. import core, framework
 from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,

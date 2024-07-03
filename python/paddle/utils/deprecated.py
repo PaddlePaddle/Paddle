@@ -122,10 +122,10 @@ def deprecated(
                     f'API "{func.__module__}.{func.__name__}" has been deprecated.'
                 )
 
-            warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
+            warningmsg = f"\033[93m\nWarning:\n{msg} \033[0m"
             # ensure ANSI escape sequences print correctly in cmd and powershell
             if sys.platform.lower() == 'win32':
-                warningmsg = "\nWarning:\n%s " % (msg)
+                warningmsg = f"\nWarning:\n{msg} "
 
             v_current = parse_version(paddle.__version__)
             v_current += [0] * (4 - len(v_current))

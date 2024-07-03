@@ -487,10 +487,7 @@ void PD_ConfigSetExecStream(__pd_keep PD_Config* pd_config, void* stream) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->SetExecStream(stream);
 }
-void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  config->PartiallyRelease();
-}
+
 void PD_ConfigDeletePass(__pd_keep PD_Config* pd_config, const char* pass) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->pass_builder()->DeletePass(pass);

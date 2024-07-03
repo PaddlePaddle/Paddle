@@ -82,10 +82,9 @@ class DGCMomentumOptimizer(Optimizer):
                 raise TypeError(
                     "The type of grad_clip should be 'ClipGradByNorm', because DGCMomentumOptimizer only support ClipGradByNorm"
                 )
-            assert isinstance(num_trainers, int), (
-                "The type of num_trainers should be 'int', but received %s"
-                % type(num_trainers)
-            )
+            assert isinstance(
+                num_trainers, int
+            ), f"The type of num_trainers should be 'int', but received {type(num_trainers)}"
             assert (
                 num_trainers > 0
             ), "The value of num_trainers should be greater than 0!"
