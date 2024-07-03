@@ -13,9 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -105,11 +106,21 @@ class Uniform(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.50000000])
     """
+    low: float | Sequence[float] | npt.NDArray[np.float32 | np.float64] | Tensor
+    high: float | Sequence[float] | npt.NDArray[
+        np.float32 | np.float64
+    ] | Tensor
 
     def __init__(
         self,
-        low: float | list | tuple | np.ndarray | Tensor,
-        high: float | list | tuple | np.ndarray | Tensor,
+        low: float
+        | Sequence[float]
+        | npt.NDArray[np.float32 | np.float64]
+        | Tensor,
+        high: float
+        | Sequence[float]
+        | npt.NDArray[np.float32 | np.float64]
+        | Tensor,
         name: str | None = None,
     ) -> None:
         if not in_dynamic_mode():
@@ -176,7 +187,7 @@ class Uniform(distribution.Distribution):
 
         super().__init__(self.low.shape)
 
-    def sample(self, shape: list, seed: int = 0) -> Tensor:
+    def sample(self, shape: list[int], seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
