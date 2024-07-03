@@ -23,9 +23,6 @@ import paddle.nn.functional as F
 import paddle.nn as nn
 from paddle.nn import TransformerEncoderLayer, TransformerEncoder
 
-paddle.enable_static()
-paddle.seed(56)
-
 def map_dtype(pd_dtype):
     if pd_dtype == "FLOAT32":
         return trt.float32
@@ -152,6 +149,7 @@ class StaticResNet50:
         # static.set_program_state(self.infer_program, params)
 
 def get_r50_program():
+    paddle.enable_static()
     static_resnet50 = StaticResNet50()
     place = paddle.CPUPlace()
     exe = static.Executor(place)
@@ -164,6 +162,7 @@ def get_r50_program():
     return pir_program, param_mapping
 
 def get_dummy_program():
+    paddle.enable_static()
     with paddle.pir_utils.IrGuard():
         main_program = paddle.static.Program()
         default_startup_program = paddle.static.Program()
@@ -191,9 +190,10 @@ def get_dummy_program():
                 ),
             )
             x = paddle.matmul(input, weight)
-            y = paddle.add(x, bias)
-            y = paddle.nn.functional.relu(y)
+            x_1 = paddle.add(x, bias)
+            y = paddle.nn.functional.relu(x_1)
             y = paddle.nn.functional.gelu(y)
+            y_2 = paddle.nn.functional.gelu(x_1)
         main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
