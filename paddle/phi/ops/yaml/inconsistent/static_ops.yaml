@@ -28,6 +28,7 @@
     func: add_n
     param: [inputs]
   backward : add_n_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all_reduce
   args : (Tensor x, int ring_id = 0, int reduce_type = 0)

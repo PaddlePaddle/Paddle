@@ -453,6 +453,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule: SoftmaxGradInferSpmd
   kernel :
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)

@@ -48,6 +48,7 @@ import gen as vjp_gen
 # for some unittests these need to export symbol op compiled with dynamic lib.
 need_export_symbol_op_list = [
     'Add_Op',
+    'AddNOp',
     'AbsOp',
     'FullOp',
     'UniformOp',

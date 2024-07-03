@@ -18,7 +18,10 @@ SpmdInfo AddNInferSpmd(
     const std::vector<phi::distributed::DistMetaTensor>& inputs) {
   auto N = inputs.size();
   PADDLE_ENFORCE_GT(
-      N, 0, phi::errors::InvalidArgument("The inputs tensor's size of AddNOp"));
+      N,
+      0,
+      phi::errors::InvalidArgument(
+          "The inputs tensor's size of AddNOp must greater than 0."));
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::vector<std::pair<std::string, std::vector<int64_t>>>
       tensor_axes_to_dim_pairs;

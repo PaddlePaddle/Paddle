@@ -26,9 +26,9 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp,
     paddle::dialect::ArrayPopOp
 #else
-
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/element_wise_binary.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -207,7 +207,7 @@ std::vector<pir::Type> AddN_Op::InferMeta(
 
 bool AddN_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  return details::AddNOpInferSymbolicShape(this->operation(), infer_context);
+  return AddNOpInferSymbolicShape(this->operation(), infer_context);
 }
 
 OpInfoTuple AddNArrayOp::GetOpInfo() {
