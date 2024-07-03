@@ -205,6 +205,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
         paddle.enable_static()
         scope = core.Scope()
+        np.random.seed(0)
         if self.dtype == np.uint16:
             data = convert_float_to_uint16(
                 np.random.random(size=self.dshape).astype(np.float32) * 4.0 - 2
