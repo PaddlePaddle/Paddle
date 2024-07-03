@@ -2628,8 +2628,25 @@ class TestRound_decimals1(TestRound):
     def init_decimals(self):
         self.decimals = 2
 
+    def test_round_api(self):
+        with dynamic_guard():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    x_np = (
+                        np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+                        * 100
+                    )
+                    out_expect = np.round(x_np, decimals=self.decimals)
+                    x_paddle = paddle.to_tensor(
+                        x_np, dtype=self.dtype, place=device
+                    )
+                    y = paddle.round(x_paddle, decimals=self.decimals)
+                    np.testing.assert_allclose(y.numpy(), out_expect, rtol=1e-3)
 
-class TestRound_decimals2(TestRound):
+
+class TestRound_decimals2(TestRound_decimals1):
     def init_decimals(self):
         self.decimals = -1
 

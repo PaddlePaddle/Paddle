@@ -2959,7 +2959,7 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out) const {
     if (decimals == 0) {
       out.device(d) = x.round();
-    } else if (decimals >= 0) {
+    } else if (decimals > 0) {
       auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
       out.device(d) = (x * ten_pow_deciamls).round() / ten_pow_deciamls;
     } else {
