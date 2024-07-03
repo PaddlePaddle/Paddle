@@ -46,7 +46,7 @@ if [ ! -d "$cutlass_repo_directory" ]; then
         echo "Cutlass folder exists in the submodule and is being copied to the current directory..."
         cp -r "$SOURCE_CUTLASS_DIR" cutlass
         cd cutlass
-        echo "Copy the.git directory of cutlass to the current directory"
+        echo "Copy the .git directory of cutlass to the current directory"
         rm -rf .git
         cp -r "$SOURCE_CUTLASS_GIT_DIR" .git
         sed -i '6c\ \ worktree = ../' .git/config
