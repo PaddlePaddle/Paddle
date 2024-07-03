@@ -715,15 +715,20 @@ void elementwise_pow_grad(const Tensor& x,
     auto lnx = log<T>(x);
     auto x_pow_y = elementwise_pow<T>(x, y);
     auto dy_res = lnx * x_pow_y * out_grad;
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-      set_output<T>(dy_tmp, dy);
+    if (has_dynamic_shape(out_grad.shape()) || has_dynamic_shape(y.shape())) {
+      auto dy_reduce_res = reduce_as<T>(dy_res, y);
+      set_output<T>(dy_reduce_res, dy);
     } else {
-      set_output<T>(dy_res, dy);
+      if (out_grad.dims() != y.dims()) {
+        phi::DDim reduce_dim =
+            get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        auto dy_reduce_res =
+            dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      } else {
+        set_output<T>(dy_res, dy);
+      }
     }
   }  // indicate we will compute dy
   if (dx) {
@@ -731,15 +736,19 @@ void elementwise_pow_grad(const Tensor& x,
     auto tmp_z = y - 1.0;
     auto x_pow_z = elementwise_pow<T>(x, tmp_z);
     auto dx_res = y * x_pow_z * out_grad;
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-      set_output<T>(dx_tmp, dx);
-
+    if (has_dynamic_shape(out_grad.shape()) || has_dynamic_shape(x.shape())) {
+      auto dx_reduce_res = reduce_as<T>(dx_res, x);
+      set_output<T>(dx_reduce_res, dx);
     } else {
-      set_output<T>(dx_res, dx);
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto dx_reduce_res =
+            dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      } else {
+        set_output<T>(dx_res, dx);
+      }
     }
   }  // indicate we will compute dx
 }
