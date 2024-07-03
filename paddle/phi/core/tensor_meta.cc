@@ -212,7 +212,7 @@ bool DenseTensorMeta::valid() const noexcept {
 }
 
 bool DenseTensorMeta::is_contiguous() const {
-  bool is_contiguous = strides == calc_strides(dims);
+  bool is_contiguous = (strides == calc_strides(dims));
   if (!is_contiguous && !FLAGS_use_stride_kernel) {
     PADDLE_THROW(
         phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Not contiguous "
