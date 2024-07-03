@@ -37,6 +37,29 @@ namespace dialect {
 namespace ir {
 using paddle::dialect::details::GetExprVecFromShape;
 
+bool IsUsedByShadowOutput(const pir::Value& value) {
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool HasValueName(const pir::Value& value) {
+  if (value.impl() == nullptr || !value.type()) {
+    return false;
+  }
+
+  if (value.defining_op()->isa<::pir::ParameterOp>() ||
+      value.defining_op()->isa<paddle::dialect::DataOp>() ||
+      value.isa<pir::BlockArgument>() || IsUsedByShadowOutput(value)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool RemoveOp(pir::Operation* op,
               pir::PatternRewriter* rewriter,
               bool check_dtype = false) {
@@ -83,10 +106,27 @@ bool RemoveOp(pir::Operation* op,
                    .dtype());
   };
 
+  auto parent = op->GetParentOp();
+  VLOG(1) << "op->name(): " << op->name();
+  VLOG(1) << "parent: " << parent;
+  if (parent) {
+    VLOG(1) << "parent->name(): " << parent->name();
+    VLOG(1) << "parent->num_results(): " << parent->num_results();
+  }
+
+  const auto& BothHasName = [&]() -> bool {
+    if (op->GetParentOp()->isa<cinn::dialect::GroupOp>()) {
+      return HasValueName(input) && HasValueName(op->GetParentOp()->result(0));
+    }
+
+    return HasValueName(input) && HasValueName(output);
+  };
+
   const auto CanRemove = [&]() -> bool {
     if (!IsSameShape()) return false;
     if (check_dtype && !IsSameDataType()) return false;
     if (UsedByShadowOutput(input) && UsedByShadowOutput(output)) return false;
+    if (BothHasName()) return false;
     return true;
   };
 
