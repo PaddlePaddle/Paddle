@@ -106,10 +106,8 @@ class Uniform(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.50000000])
     """
-    low: float | Sequence[float] | npt.NDArray[np.float32 | np.float64] | Tensor
-    high: float | Sequence[float] | npt.NDArray[
-        np.float32 | np.float64
-    ] | Tensor
+    low: Tensor
+    high: Tensor
 
     def __init__(
         self,
