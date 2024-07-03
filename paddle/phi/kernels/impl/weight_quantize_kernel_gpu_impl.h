@@ -310,8 +310,7 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
   if (n < total_vec_n) {
     const int4* vec_weight_data_ptr =
         reinterpret_cast<const int4*>(weight_data);
-    int* vec_quanted_weight_data =
-        reinterpret_cast<int*>(quanted_weight_data);
+    int* vec_quanted_weight_data = reinterpret_cast<int*>(quanted_weight_data);
     phi::AlignedVector<float, VectorSize> abs_max;
 #pragma unroll
     for (int i = 0; i < VectorSize; ++i) {
