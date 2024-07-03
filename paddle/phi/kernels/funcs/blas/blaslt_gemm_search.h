@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#pragma once
 
 #pragma once
 
@@ -68,22 +66,22 @@ class CublasLtAlgoCache {
   }
 
   template <typename InT, typename OutT>
-  void TestMatmulRun(cublasLtHandle_t handle,
-                     cublasLtMatmulDesc_t matmul_desc,
-                     cublasLtMatrixLayout_t a_desc,
-                     cublasLtMatrixLayout_t b_desc,
-                     cublasLtMatrixLayout_t bias_desc,
-                     cublasLtMatrixLayout_t c_desc,
-                     void* alpha,
-                     void* beta,
-                     const InT* a,
-                     const InT* b,
-                     const OutT* bias,
-                     OutT* c,
-                     CublasLtAlgoSelectorParam& param,  // NOLINT
-                     cudaEvent_t& start_event,          // NOLINT
-                     cudaEvent_t& stop_event,           // NOLINT
-                     cudaStream_t stream) {
+  void RunAndMeasureAlgo(cublasLtHandle_t handle,
+                         cublasLtMatmulDesc_t matmul_desc,
+                         cublasLtMatrixLayout_t a_desc,
+                         cublasLtMatrixLayout_t b_desc,
+                         cublasLtMatrixLayout_t bias_desc,
+                         cublasLtMatrixLayout_t c_desc,
+                         void* alpha,
+                         void* beta,
+                         const InT* a,
+                         const InT* b,
+                         const OutT* bias,
+                         OutT* c,
+                         CublasLtAlgoSelectorParam& param,  // NOLINT
+                         cudaEvent_t& start_event,          // NOLINT
+                         cudaEvent_t& stop_event,           // NOLINT
+                         cudaStream_t stream) {
     cublasStatus_t status;
     cublasLtMatmulHeuristicResult_t heuristic_result;
     status = dynload::cublasLtMatmulAlgoCheck(handle,
@@ -478,22 +476,22 @@ class CublasLtAlgoCache {
             << params.size();
 
     for (int i = 0; i < step; i++) {
-      TestMatmulRun(handle,
-                    matmul_desc,
-                    a_desc,
-                    b_desc,
-                    bias_desc,
-                    c_desc,
-                    alpha,
-                    beta,
-                    a,
-                    b,
-                    bias,
-                    c,
-                    params[i],
-                    start_event,
-                    stop_event,
-                    stream);
+      RunAndMeasureAlgo(handle,
+                        matmul_desc,
+                        a_desc,
+                        b_desc,
+                        bias_desc,
+                        c_desc,
+                        alpha,
+                        beta,
+                        a,
+                        b,
+                        bias,
+                        c,
+                        params[i],
+                        start_event,
+                        stop_event,
+                        stream);
     }
     std::sort(params.begin(), params.end(), compare_algo_time);
 
@@ -576,7 +574,7 @@ class CublasLtAlgoCache {
   std::string config_filename_{"./paddle_cublaslt_cache"};
   std::unordered_map<int64_t, cublasLtMatmulAlgo_t> map_;
   int search_times_;
-  const int requested_algo_count_ = 100;
+  static constexpr int requested_algo_count_ = 100;
   std::mutex cache_mutex_;
   bool has_config_file_;
 
