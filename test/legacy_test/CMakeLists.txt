@@ -439,8 +439,6 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_layers)
-list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
-list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -493,7 +491,6 @@ set(TEST_OPS_WITH_GC
     test_scatter_op
     test_concat_op
     test_elementwise_add_op
-    test_lookup_table_op
     test_elementwise_sub_op
     test_gather_op
     test_mean_op
@@ -578,11 +575,6 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fused_dot_product_attention_op_static MODULES
                   test_fused_dot_product_attention_op_static)
 endif()
-
-py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS
-                ${GC_ENVS})
-py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS
-                ${GC_ENVS})
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -1049,7 +1041,6 @@ set(STATIC_BUILD_TESTS
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
-    test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_decayed_adagrad_op
     test_eig_op
@@ -1153,8 +1144,6 @@ set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_linalg_cholesky_inverse PROPERTIES TIMEOUT 100)
 set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_bicubic_interp_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_depthwise_conv
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES TIMEOUT 120)
@@ -1175,7 +1164,6 @@ set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_nearest_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pad3d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1190,7 +1178,6 @@ else()
 endif()
 set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
-set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
