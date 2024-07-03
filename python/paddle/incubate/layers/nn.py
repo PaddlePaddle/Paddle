@@ -20,14 +20,18 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.base.framework import Variable, convert_np_dtype_to_dtype_,in_dynamic_or_pir_mode
+from paddle.base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dynamic_or_pir_mode,
+)
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
 
@@ -418,8 +422,24 @@ def search_pyramid_hash(
                 )
         distribute_update_vars_str = ",".join(distribute_update_vars)
     if in_dynamic_or_pir_mode():
-        res,drop_pos=_C_ops.pyramid_hash(input_vars['X'],input_vars['W'],input_vars['WhiteList'],input_vars['BlackList'],
-        num_emb,space_len,pyramid_layer,rand_len,drop_out_percent,int(is_training),use_filter,white_list_len,black_list_len,seed,lr,distribute_update_vars_str)
+        res, drop_pos = _C_ops.pyramid_hash(
+            input_vars['X'],
+            input_vars['W'],
+            input_vars['WhiteList'],
+            input_vars['BlackList'],
+            num_emb,
+            space_len,
+            pyramid_layer,
+            rand_len,
+            drop_out_percent,
+            int(is_training),
+            use_filter,
+            white_list_len,
+            black_list_len,
+            seed,
+            lr,
+            distribute_update_vars_str,
+        )
         return res
     else:
         res = helper.create_variable_for_type_inference(dtype)
