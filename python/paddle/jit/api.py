@@ -233,12 +233,15 @@ def paddle_inference_decorator(**kwargs):
 
         memory_pool_init_size_mb = kwargs.get("memory_pool_init_size_mb", 1000)
         cache_static_model = kwargs.get("cache_static_model", False)
-        with_trt = kwargs.get("with_trt", False)
         save_model_dir = kwargs.get("save_model_dir", "/root/.cache/")
         save_model_dir += "/" + func.__name__
         precision_mode = kwargs.get("precision_mode", "float32")
         switch_ir_optim = kwargs.get("switch_ir_optim", True)
         switch_ir_debug = kwargs.get("switch_ir_debug", False)
+
+        with_trt = kwargs.get("with_trt", False)
+        trt_precision_mode = kwargs.get("trt_precision_mode", "float32")
+        trt_use_static = kwargs.get("trt_use_static", False)
         collect_shape = kwargs.get("collect_shape", False)
         default_delete_pass_lists = [
             "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",
@@ -252,7 +255,6 @@ def paddle_inference_decorator(**kwargs):
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
-        print(py_script)
 
         assert arg_names[0] == "self"
         save_path = save_model_dir + "/infer"
@@ -306,7 +308,7 @@ def paddle_inference_decorator(**kwargs):
                     return [None]
                 else:
                     raise AssertionError(
-                        f'''we only support adding @paddle.incubate.layers.inference in functions whose arguments are paddle.Tensor or list[paddle.Tensor],
+                        f'''we only support adding @paddle.jit.to_static(backend='paddle_inference', ) in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
                         but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
                     )
 
@@ -508,21 +510,24 @@ def paddle_inference_decorator(**kwargs):
                 config.exp_enable_use_cutlass()
             config.enable_new_ir(enable_new_ir)
 
-            def get_infer_precision():
-                if precision_mode == "float32":
+            def get_infer_precision(precision_str):
+                if precision_str == "float32":
                     return PrecisionType.Float32
-                elif precision_mode == "float16":
+                elif precision_str == "float16":
                     return PrecisionType.Half
-                elif precision_mode == "bfloat16":
+                elif precision_str == "bfloat16":
                     return PrecisionType.Bfloat16
                 else:
-                    raise AssertionError("unsupported precision_mode")
+                    raise AssertionError(
+                        f"unsupported precision {precision_str}"
+                    )
 
-            gpu_precision = get_infer_precision()
             device_num = paddle.device.get_device()
             gpu_id = (int)(device_num.split(':')[1])
             config.enable_use_gpu(
-                memory_pool_init_size_mb, gpu_id, gpu_precision
+                memory_pool_init_size_mb,
+                gpu_id,
+                get_infer_precision(precision_mode),
             )
 
             if with_trt:
@@ -553,15 +558,15 @@ def paddle_inference_decorator(**kwargs):
                     config.set_trt_dynamic_shape_info(
                         min_input_shape, max_input_shape, opt_input_shape
                     )
+                    config.enable_tensorrt_engine(
+                        workspace_size=1 << 30,
+                        max_batch_size=1,
+                        min_subgraph_size=3,
+                        precision_mode=get_infer_precision(trt_precision_mode),
+                        use_static=trt_use_static,
+                        use_calib_mode=False,
+                    )
 
-                config.enable_tensorrt_engine(
-                    workspace_size=1 << 30,
-                    max_batch_size=1,
-                    min_subgraph_size=3,
-                    precision_mode=get_infer_precision(),
-                    use_static=True,
-                    use_calib_mode=False,
-                )
             if predictors[0] is not None:
                 predictors[0] = None
 
