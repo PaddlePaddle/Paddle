@@ -116,9 +116,9 @@ def get_worker_info() -> WorkerInfo | None:
             ...             iter_start = self.start
             ...             iter_end = self.end
             ...         else:
-            ...             per_worker = int(  # type: ignore
+            ...             per_worker = int(
             ...                 math.ceil((self.end - self.start) / float(
-            ...                     worker_info.num_workers)))
+            ...                     worker_info.num_workers)))  # type: ignore
             ...             worker_id = worker_info.id  # type: ignore
             ...             iter_start = self.start + worker_id * per_worker
             ...             iter_end = min(iter_start + per_worker, self.end)
