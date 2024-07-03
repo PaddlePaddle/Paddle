@@ -408,7 +408,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
 
 // NOTE(chenxi67): Here, we only perform inplace processing for variables whose
 // type is NOT TensorArray. It has already been processed in the previous
-// step(HandleForTensorArrayInplaceOp).
+// step(HandleForInplaceVarOp).
 void HandleForInplaceOp(pir::Operation* op,
                         const ValueExecutionInfo* value_exe_info,
                         InstructionBase* instr) {
@@ -433,7 +433,7 @@ void HandleForInplaceOp(pir::Operation* op,
               << " is not invalid, so skip build a variable.";
       continue;
     }
-    if (value.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    if (IsNeedVarInplace(op, value, op_name)) {
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];

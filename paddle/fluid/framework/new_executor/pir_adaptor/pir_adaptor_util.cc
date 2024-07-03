@@ -682,13 +682,21 @@ void HandleForSpecialOp(pir::Operation* op,
   }
 }
 
-// NOTE(chenxi67): Here, we only perform inplace processing for variables whose
-// type is TensorArray. For other types of variables, we only share the holder
-// of DenseTensor but not the var*. The reason is that vector<DenseTensor> in
-// TensorArray cannot be shared totally.
-void HandleForTensorArrayInplaceOp(pir::Operation* op,
-                                   const std::string& var_name_prefix,
-                                   ValueExecutionInfo* value_exe_info) {
+bool IsNeedVarInplace(pir::Operation* op,
+                      pir::Value value,
+                      std::string op_name) {
+  return (value.type().isa<paddle::dialect::DenseTensorArrayType>() ||
+          op_name == "pd_op.assign_value_");
+}
+
+// NOTE(chenxi67): Here, we only perform inplace processing for variables that
+// need to be inplaced by var (mostly, whose type is TensorArray or re-Allocated
+// Densetensor). For other types of variables, we only share the holder of
+// DenseTensor but not the var*. The reason is that vector<DenseTensor> in
+// TensorArray (or re-Allocated Densetensor) cannot be shared totally.
+void HandleForInplaceVarOp(pir::Operation* op,
+                           const std::string& var_name_prefix,
+                           ValueExecutionInfo* value_exe_info) {
   if (op->num_results() < 1) return;
   pir::IrContext* ctx = pir::IrContext::Instance();
   std::string op_name = op->name();
@@ -710,7 +718,7 @@ void HandleForTensorArrayInplaceOp(pir::Operation* op,
               << " is not invalid, so skip build a variable.";
       continue;
     }
-    if (!value.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    if (!IsNeedVarInplace(op, value, op_name)) {
       BuildValue(value, var_name_prefix, value_exe_info);
       continue;
     }
@@ -793,7 +801,7 @@ void BuildScope(const pir::Block& block,
             .at("is_inplace")
             .dyn_cast<pir::BoolAttribute>()
             .data()) {
-      HandleForTensorArrayInplaceOp(&op, var_name_prefix, value_exe_info);
+      HandleForInplaceVarOp(&op, var_name_prefix, value_exe_info);
       continue;
     } else {
       for (size_t i = 0; i < op.num_results(); ++i) {
