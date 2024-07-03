@@ -40,6 +40,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -96,9 +97,9 @@ using paddle::dialect::SparseCsrTensorType;
 using paddle::dialect::WhileOp;
 using pir::TuplePopOp;
 
+using paddle::dialect::IntArrayAttribute;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
-
 using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
@@ -123,7 +124,6 @@ using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
-COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 
 namespace paddle {
 namespace pybind {
@@ -261,15 +261,22 @@ void SetValueName(Value value, const std::string name) {
   }
 }
 
+bool IsUsedByShadowOutput(const pir::Value &value) {
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool HasValueName(const Value &value) {
   if (IsFakeValue(value)) {
     return false;
   }
   if (value.defining_op()->isa<::pir::ParameterOp>() ||
       value.defining_op()->isa<paddle::dialect::DataOp>() ||
-      value.isa<BlockArgument>() ||
-      (value.first_use() &&
-       (value.first_use().owner()->isa<::pir::ShadowOutputOp>()))) {
+      value.isa<BlockArgument>() || IsUsedByShadowOutput(value)) {
     return true;
   } else {
     return false;
@@ -287,15 +294,15 @@ std::string GetValueName(Value value) {
     } else {
       return "arg_" + std::to_string(block_arg.index());
     }
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<StrAttribute>("output_name").AsString();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only get name of Value which is "
-          "shadowoutput "));
+  } else if (IsUsedByShadowOutput(value)) {
+    for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+      if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+        return iter->owner()->attribute<StrAttribute>("output_name").AsString();
+      }
     }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value which is "
+        "shadowoutput "));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get name of Value that "
@@ -543,7 +550,11 @@ void BindProgram(py::module *m) {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
                }
              }
-           });
+           })
+      .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
+      });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -663,10 +674,15 @@ void BindBlock(py::module *m) {
              }
              return param_list;
            })
-      .def("refresh_stopgradient", [](Block &self) {
-        for (auto &op : self) {
-          RefreshOpStopgradients(&op);
-        }
+      .def("refresh_stopgradient",
+           [](Block &self) {
+             for (auto &op : self) {
+               RefreshOpStopgradients(&op);
+             }
+           })
+      .def("_sync_with_cpp", [](const Block &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
       });
 }
 
@@ -759,6 +775,14 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name,
                  pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
+      .def("set_int_array_attr",
+           [](Operation &self,
+              std::string &attr_name,
+              const std::vector<int64_t> &val) {
+             auto attr = IntArrayAttribute::get(pir::IrContext::Instance(),
+                                                phi::IntArray(val));
+             self.set_attribute(attr_name, attr);
            })
       .def("attrs",
            [](Operation &self) -> py::dict {
@@ -1107,7 +1131,8 @@ pir::Value apply(Value self, py::object func) {
           return py::cast<py::none>(Py_None);                                \
         }                                                                    \
         auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
-        py::object obj = py::object(py::handle(py_data), true);              \
+        py::object obj =                                                     \
+            py::reinterpret_borrow<py::object>(py::handle(py_data));         \
         return obj;                                                          \
       },                                                                     \
       [](Value self, py::object obj) {                                       \
@@ -1281,20 +1306,20 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
-      .def("dist_attr",
-           [](Value self) -> py::object {
-             auto type = self.type();
-             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
-      .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+      .def("update_dist_attr",
+           [](Value &self, TensorDistAttribute dist_attr) {
+             self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+           })
+      .def_property_readonly("process_mesh", [](Value &self) -> py::object {
+        auto type = self.type();
+        if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+          return py::cast(
+              dist_type.tensor_dist_attr().process_mesh_attr().process_mesh());
+        } else {
+          return py::cast<py::none>(Py_None);
+        }
       });
 }
 
@@ -1340,14 +1365,6 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
-      .def("dist_attr",
-           [](Type self) -> py::object {
-             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       .def_property(
           "_local_shape",
           [](Type self) {
@@ -1366,6 +1383,13 @@ void BindType(py::module *m) {
            [](Type self) -> py::object {
              if (auto vec_type = self.dyn_cast<VectorType>()) {
                return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_dist_type",
+           [](Type &self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type);
              }
              return py::cast<py::none>(Py_None);
            })
@@ -2458,23 +2482,12 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
   return program;
 }
 
-void DumpPirPyCodeIfNeed(const std::shared_ptr<Program> &program,
-                         const std::string &file_name) {
-#ifdef PADDLE_WITH_CINN
-  ::cinn::dialect::ir::PirToPyCodeConverter(program.get())
-      .file_name(file_name)
-      .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
-      .SaveIfFlagEnabled();
-#endif
-}
-
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
   m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
-  m->def("dump_pir_py_code_if_need", DumpPirPyCodeIfNeed);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
@@ -2554,7 +2567,48 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
            return_value_policy::reference)
       .def("data",
            &symbol::ShapeOrDataDimExprs::data,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("is_equal",
+           [](symbol::ShapeOrDataDimExprs &self,
+              std::vector<int64_t> expect_shape,
+              std::vector<int64_t> expect_data = {}) -> bool {
+             VLOG(3) << "Start compare shape and data.";
+
+             const auto &compare_func =
+                 [&](const std::vector<int64_t> &expect,
+                     const std::vector<symbol::DimExpr> &actual) -> bool {
+               if (actual.size() != expect.size()) {
+                 LOG(ERROR) << "expect size " << expect.size()
+                            << " is not equal to actual size " << actual.size()
+                            << " .";
+                 return false;
+               } else if (actual.empty()) {
+                 return true;
+               }
+               for (size_t i = 0; i < actual.size(); i++) {
+                 if (!actual.at(i).isa<int64_t>()) {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "In OpTest, only supports cases where the type of "
+                       "DimExpr "
+                       "is int64_t."));
+                   return false;
+                 }
+                 if (actual.at(i) != expect.at(i)) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
+                              << " is not equal to actual[" << i
+                              << "]: " << actual.at(i) << " .";
+                   return false;
+                 }
+               }
+               return true;
+             };
+
+             // compare shape
+             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+
+             // TODO(gongshaotian): compare data
+             return compare_func(expect_shape, actual_shape);
+           });
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {
@@ -2575,7 +2629,10 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
            &pir::ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
            return_value_policy::reference)
       .def("set_shape_or_data_for_var",
-           &pir::ShapeConstraintIRAnalysis::SetShapeOrDataForValue);
+           &pir::ShapeConstraintIRAnalysis::SetShapeOrDataForValue)
+      .def("register_symbol_cstr_from_shape_analysis",
+           &pir::ShapeConstraintIRAnalysis::
+               RegisterSymbolConstraintFromShapeAnalysis);
 }
 
 void BindPir(pybind11::module *module) {

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import paddle
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.distribution import exponential_family
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 class Dirichlet(exponential_family.ExponentialFamily):
@@ -69,7 +71,8 @@ class Dirichlet(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, concentration):
-        if concentration.dim() < 1:
+        if concentration.dim() < 1 or math.prod(concentration.shape) == 0:
+            # 0-dim tensor or 0-sized tensor is invalid
             raise ValueError(
                 "`concentration` parameter must be at least one dimensional"
             )
@@ -156,7 +159,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
 
 def _dirichlet(concentration, name=None):
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.dirichlet(concentration)
     else:
         op_type = 'dirichlet'

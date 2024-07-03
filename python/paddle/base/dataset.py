@@ -60,9 +60,7 @@ class DatasetFactory:
             dataset = globals()[datafeed_class]()
             return dataset
         except:
-            raise ValueError(
-                "datafeed class %s does not exist" % datafeed_class
-            )
+            raise ValueError(f"datafeed class {datafeed_class} does not exist")
 
 
 class DatasetBase:

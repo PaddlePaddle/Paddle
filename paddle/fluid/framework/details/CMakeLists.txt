@@ -13,15 +13,12 @@ set(op_handle_srcs
     nan_inf_utils_detail.cc
     all_reduce_op_handle.cc
     fused_all_reduce_op_handle.cc
-    grad_merge_all_reduce_op_handle.cc
     reduce_op_handle.cc
     broadcast_op_handle.cc
     fused_broadcast_op_handle.cc
     var_handle.cc
     op_handle_base.cc
     scale_loss_grad_op_handle.cc
-    fetch_op_handle.cc
-    fetch_async_op_handle.cc
     share_tensor_buffer_functor.cc
     computation_op_handle.cc
     share_tensor_buffer_op_handle.cc
@@ -78,8 +75,6 @@ add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
 set(IR_PASS_DEPS
     graph_viz_pass
     multi_devices_graph_pass
-    multi_devices_graph_print_pass
-    multi_devices_graph_check_pass
     fuse_elewise_add_act_pass
     fuse_bn_act_pass
     fuse_bn_add_act_pass
@@ -87,12 +82,9 @@ set(IR_PASS_DEPS
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
     sequential_execution_pass
-    all_reduce_deps_pass
     add_reader_dependency_pass
     modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass
-    fuse_all_reduce_op_pass
-    backward_optimizer_op_deps_pass
     fuse_adam_op_pass
     fuse_sgd_op_pass
     fuse_momentum_op_pass
@@ -109,10 +101,6 @@ set(IR_PASS_DEPS
 if(WITH_CUDNN_FRONTEND)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_dot_product_attention_pass)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_resunit_pass)
-endif()
-
-if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()
 
 if(NOT APPLE

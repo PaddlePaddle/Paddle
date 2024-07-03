@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.communication.reduce import ReduceOp
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction, is_partial, is_replicated
@@ -43,12 +42,12 @@ class PToRReshardFunction(ReshardFunction):
         src_mesh = src_dist_attr.process_mesh
         src_reduce_type = src_dist_attr.partial_status[0]
         reduce_mean = False
-        if src_reduce_type == ReduceOp.AVG:
-            src_reduce_type = ReduceOp.SUM
+        if src_reduce_type == paddle.base.core.ReduceType.kRedAvg:
+            src_reduce_type = paddle.base.core.ReduceType.kRedSum
             reduce_mean = True
 
         group = new_process_group(sorted(src_mesh.process_ids))
-        reduced_value = paddle._C_ops.c_allreduce_sum_(
+        reduced_value = paddle._C_ops.c_allreduce_sum(
             src_value, group.id, True, False
         )
 

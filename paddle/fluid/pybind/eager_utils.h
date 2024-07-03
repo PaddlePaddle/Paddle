@@ -68,8 +68,6 @@ static T PyObjectCast(PyObject* obj) {
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
-bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
-bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
@@ -506,6 +504,10 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
 void BindEagerUtils(PyObject* module);
+
+std::tuple<std::vector<int64_t>,
+           paddle::flat_hash_map<int64_t, phi::ReduceType>>
+CvtPlacements(phi::distributed::Placements placements, int ndim);
 
 }  // namespace pybind
 }  // namespace paddle

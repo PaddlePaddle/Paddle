@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import hashlib
 import inspect
-import sys
 import warnings
+from typing import TYPE_CHECKING, Any, Callable, overload
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops, profiler
@@ -38,6 +41,11 @@ from ..framework import (
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike, PlaceLike, TensorIndex
+
+
 _grad_scalar = None
 
 
@@ -47,11 +55,11 @@ class TensorHookRemoveHelper:
     NOTE(wuweilong):the operation weakref.ref(tensor) will cause some unexpected errors in eager mode.
     """
 
-    def __init__(self, tensor, hook_id):
+    def __init__(self, tensor: Tensor, hook_id: int) -> None:
         self._tensor = tensor
         self._hook_id = hook_id
 
-    def remove(self):
+    def remove(self) -> bool:
         """
         Remove reference Tensor's hook.
 
@@ -163,7 +171,9 @@ def monkey_patch_tensor():
 
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
     @framework.dygraph_only
-    def set_value(self, value):
+    def set_value(
+        self: Tensor, value: Tensor | npt.NDArray[Any] | dict[str, int] | str
+    ) -> None:
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -249,7 +259,11 @@ def monkey_patch_tensor():
             )
 
     @framework.dygraph_only
-    def backward(self, grad_tensor=None, retain_graph=False):
+    def backward(
+        self: Tensor,
+        grad_tensor: Tensor | None = None,
+        retain_graph: bool = False,
+    ) -> None:
         """
         Run backward of current Graph which starts from current Tensor.
 
@@ -258,17 +272,17 @@ def monkey_patch_tensor():
         You can clear gradient by ``Tensor.clear_grad()`` .
 
         Args:
-            grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None,
-            the initial gradient values of the current Tensor would be Tensor filled with 1.0;
-            if `grad_tensor` is not None, it must have the same length as the current Tensor.
-            The default value is None.
-
+            grad_tensor(Tensor|None, optional): initial gradient values of the current Tensor. If `grad_tensor` is None,
+                the initial gradient values of the current Tensor would be Tensor filled with 1.0;
+                if `grad_tensor` is not None, it must have the same length as the current Tensor.
+                The default value is None.
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
+
         Returns:
-            NoneType: None
+            None
 
         Examples:
             .. code-block:: python
@@ -349,7 +363,9 @@ def monkey_patch_tensor():
         level=1,
         reason="Please use tensor.grad, which returns the tensor value of the gradient.",
     )
-    def gradient(self):
+    def gradient(
+        self: Tensor,
+    ) -> npt.NDArray[Any] | tuple[npt.NDArray[Any], npt.NDArray[Any]] | None:
         """
         .. warning::
           This API will be deprecated in the future, it is recommended to use
@@ -379,7 +395,7 @@ def monkey_patch_tensor():
         return np.array(self.grad)
 
     @framework.dygraph_only
-    def apply_(self, func):
+    def apply_(self: Tensor, func: Callable[[Tensor], Tensor]) -> Tensor:
         """
         Inplace apply the python function to the tensor.
 
@@ -427,7 +443,7 @@ def monkey_patch_tensor():
             )
         return self._apply_(func)
 
-    def apply(self, func):
+    def apply(self, func: Callable[[Tensor], Tensor]) -> Tensor:
         """
         Apply the python function to the tensor.
 
@@ -477,7 +493,9 @@ def monkey_patch_tensor():
         return self._apply(func)
 
     @framework.dygraph_only
-    def register_hook(self, hook):
+    def register_hook(
+        self: Tensor, hook: Callable[[Tensor], Tensor | None]
+    ) -> TensorHookRemoveHelper:
         """
         Registers a backward hook for current Tensor.
 
@@ -550,7 +568,12 @@ def monkey_patch_tensor():
         return helper
 
     @framework.dygraph_only
-    def _to(self, device=None, dtype=None, blocking=None):
+    def _to(
+        self: Tensor,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+        blocking: bool | None = None,
+    ) -> Tensor:
         if device is None and dtype is None and blocking is None:
             return self
 
@@ -635,8 +658,24 @@ def monkey_patch_tensor():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
 
+    @overload
+    def to(
+        self: Tensor, device: PlaceLike, blocking: bool | None = ...
+    ) -> Tensor:
+        ...
+
+    @overload
+    def to(
+        self: Tensor, dtype: DTypeLike, blocking: bool | None = ...
+    ) -> Tensor:
+        ...
+
+    @overload
+    def to(self: Tensor, other: Tensor, blocking: bool | None = ...) -> Tensor:
+        ...
+
     @framework.dygraph_only
-    def to(self, *args, **kwargs):
+    def to(self: Tensor, *args, **kwargs):
         """
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
         are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
@@ -758,50 +797,13 @@ def monkey_patch_tensor():
                 )
         return self._to(device, dtype, blocking)
 
-    @property
-    def grad(self):
-        """
-        .. warning::
-          This API will return the tensor value of the gradient. If you want
-          to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`.
-
-        Get the Gradient of Current Tensor.
-
-        Returns:
-            Tensor: the gradient of current Tensor
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
-                >>> y = paddle.pow(x, 4.0)
-                >>> y.backward()
-                >>> print("grad of x: {}".format(x.grad))
-                grad of x: Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=False, 500.)
-
-        """
-        msg = (
-            'tensor.grad will return the tensor value of the gradient.'
-            ' This is an incompatible upgrade for tensor.grad API. '
-            ' It\'s return type changes from numpy.ndarray in version 2.0 to paddle.Tensor in version 2.1.0. '
-            ' If you want to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`'
-        )
-        warning_msg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
-        # ensure ANSI escape sequences print correctly in cmd and powershell
-        if sys.platform.lower() == 'win32':
-            warning_msg = "\nWarning:\n%s " % (msg)
-        warnings.warn(warning_msg)
-        return self._grad_ivar()
-
-    def clear_grad(self):
+    def clear_grad(self: Tensor) -> None:
         """
         The alias of clear_gradient().
         """
         self.clear_gradient()
 
-    def item(self, *args):
+    def item(self: Tensor, *args: int) -> float | bool | complex:
         """
         Convert element at specific position in Tensor into Python scalars. If the position is not specified, the Tensor must be a
         single-element Tensor.
@@ -857,7 +859,7 @@ def monkey_patch_tensor():
         return scalar.item()
 
     @property
-    def inplace_version(self):
+    def inplace_version(self: Tensor) -> int:
         """
         The inplace version of current Tensor.
         The version number is incremented whenever the current Tensor is modified through an inplace operation.
@@ -879,7 +881,7 @@ def monkey_patch_tensor():
         """
         return self._inplace_version()
 
-    def __str__(self):
+    def __str__(self: Tensor) -> str:
         """
         Convert a Tensor object to a readable string.
 
@@ -900,7 +902,7 @@ def monkey_patch_tensor():
 
         return tensor_to_string(self)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Tensor]) -> Tensor:
         """
         Deep copy Tensor, it will always performs Tensor copy.
 
@@ -930,7 +932,7 @@ def monkey_patch_tensor():
     def block(self):
         return framework.default_main_program().global_block()
 
-    def __nonzero__(self):
+    def __nonzero__(self: Tensor) -> bool:
         # np.prod([]) -> np.float64, so use int
         numel = int(np.prod(self.shape))
         assert (
@@ -939,10 +941,12 @@ def monkey_patch_tensor():
         assert self._is_initialized(), "tensor not initialized"
         return bool(np.array(self) > 0)
 
-    def __bool__(self):
+    def __bool__(self: Tensor) -> bool:
         return self.__nonzero__()
 
-    def __array__(self, dtype=None):
+    def __array__(
+        self: Tensor, dtype: npt.DTypeLike | None = None
+    ) -> npt.NDArray[Any]:
         """
         Returns a numpy array shows the value of current Tensor.
 
@@ -982,11 +986,18 @@ def monkey_patch_tensor():
 
         return tuple(item)
 
-    def __getitem__(self, item):
+    def __getitem__(
+        self,
+        item: TensorIndex,
+    ) -> Tensor:
         item = pre_deal_index(self, item)
         return self._getitem_dygraph(item)
 
-    def __setitem__(self, item, value):
+    def __setitem__(
+        self,
+        item: TensorIndex,
+        value: Tensor | npt.NDArray[Any] | complex | bool,
+    ) -> None:
         item = pre_deal_index(self, item)
         return self._setitem_dygraph(item, value)
 
@@ -1001,19 +1012,19 @@ def monkey_patch_tensor():
             )
 
     @framework.dygraph_only
-    def value(self):
+    def value(self: Tensor) -> Tensor:
         return self
 
     @framework.dygraph_only
-    def _slice(self, begin_idx, end_idx):
+    def _slice(self: Tensor, begin_idx: int, end_idx: int) -> Tensor:
         return core.eager.Tensor(self.get_tensor()._slice(begin_idx, end_idx))
 
     @framework.dygraph_only
-    def _numel(self):
+    def _numel(self: Tensor) -> int:
         return self.get_tensor()._numel()
 
     @framework.dygraph_only
-    def _clear_data(self):
+    def _clear_data(self: Tensor) -> None:
         self.get_tensor()._clear()
 
     @framework.dygraph_only
@@ -1021,7 +1032,7 @@ def monkey_patch_tensor():
         return self._tensor_use_gpudnn(use_gpudnn)
 
     @framework.dygraph_only
-    def _uva(self, device_id=0):
+    def _uva(self: Tensor, device_id: int = 0) -> None:
         '''
         Returns self tensor with the UVA(unified virtual addressing).
 
@@ -1041,7 +1052,7 @@ def monkey_patch_tensor():
         self._tensor_uva(device_id)
 
     @framework.dygraph_only
-    def cpu(self):
+    def cpu(self: Tensor) -> Tensor:
         if self.place.is_cpu_place():
             return self
         else:
@@ -1051,7 +1062,9 @@ def monkey_patch_tensor():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id=None, blocking=True):
+    def cuda(
+        self: Tensor, device_id: int | None = None, blocking: bool = True
+    ) -> Tensor:
         if device_id is None:
             res_place = framework._current_expected_place()
             if not isinstance(res_place, core.CUDAPlace):
@@ -1070,7 +1083,7 @@ def monkey_patch_tensor():
             return res
 
     @framework.dygraph_only
-    def pin_memory(self, blocking=True):
+    def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
         if self.place.is_cuda_pinned_place():
             return self
         else:
@@ -1080,7 +1093,7 @@ def monkey_patch_tensor():
             return res
 
     @framework.dygraph_only
-    def values(self):
+    def values(self: Tensor) -> Tensor:
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1105,7 +1118,7 @@ def monkey_patch_tensor():
         return _C_ops.sparse_values(self)
 
     @framework.dygraph_only
-    def to_dense(self):
+    def to_dense(self: Tensor) -> Tensor:
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1134,7 +1147,7 @@ def monkey_patch_tensor():
         return _C_ops.sparse_to_dense(self)
 
     @framework.dygraph_only
-    def to_sparse_coo(self, sparse_dim):
+    def to_sparse_coo(self: Tensor, sparse_dim: int) -> Tensor:
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1161,7 +1174,7 @@ def monkey_patch_tensor():
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     @framework.dygraph_only
-    def _md5sum(self):
+    def _md5sum(self: Tensor) -> str:
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1188,7 +1201,7 @@ def monkey_patch_tensor():
         return hash(id(self))
 
     @framework.dygraph_only
-    def coalesce(self, name=None):
+    def coalesce(self: Tensor, name: str | None = None) -> Tensor:
         r"""
         the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
 

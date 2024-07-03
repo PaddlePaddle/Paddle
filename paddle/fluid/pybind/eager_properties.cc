@@ -411,12 +411,13 @@ Examples:
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
         >>> import paddle.distributed as dist
+        >>> from paddle.base import core
 
         >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
 
         >>> a = paddle.to_tensor([[1,2,3],
         ...                       [5,6,7]])
-        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
+        >>> d_tensor = dist.shard_tensor(a, mesh, [core.Shard(0), core.Shard(1)])
 
         >>> print(d_tensor.process_mesh)
 
@@ -463,7 +464,7 @@ Examples:
 
         >>> a = paddle.to_tensor([[1,2,3],
         ...                       [5,6,7]])
-        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
+        >>> d_tensor = dist.shard_tensor(a, mesh, [core.Shard(0), core.Shard(1)])
 
         >>> print(d_tensor.placements)
 

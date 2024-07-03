@@ -54,7 +54,7 @@ class Converter:
             )
         if not isinstance(tensors_dict, dict):
             raise TypeError(
-                f"The type of 'tensors_dict' should be 'dict', but got '{str(type(tensors_dict))}'."
+                f"The type of 'tensors_dict' should be 'dict', but got '{type(tensors_dict)}'."
             )
         return tensors_dict
 
@@ -67,7 +67,7 @@ class Converter:
         if not isinstance(pre_strategy, dict):
             raise TypeError(
                 "The type of 'pre_strategy' should be 'dict', "
-                f"but got '{str(type(pre_strategy))}'."
+                f"but got '{type(pre_strategy)}'."
             )
         return pre_strategy
 
@@ -80,7 +80,7 @@ class Converter:
         if not isinstance(cur_strategy, dict):
             raise TypeError(
                 "The type of 'cur_strategy' should be 'dict', "
-                f"but got '{str(type(cur_strategy))}'."
+                f"but got '{type(cur_strategy)}'."
             )
         return cur_strategy
 
@@ -150,7 +150,7 @@ class Converter:
                 )
             except ValueError as err:
                 raise ValueError(
-                    f"Fail to convert tensor '{str(tensor_name)}'. " + str(err)
+                    f"Fail to convert tensor '{tensor_name}'. {err}"
                 )
 
         for tensor_name in self._pre_strategy:
@@ -176,15 +176,15 @@ class Converter:
         tensor_not_in_cur = set(tensor_not_in_cur) - set(tensor_match_with_cur)
         if tensor_not_in_pre:
             warnings.warn(
-                f"tensors [{str(tensor_not_in_pre)}] are not found in last training strategy."
+                f"tensors [{tensor_not_in_pre}] are not found in last training strategy."
             )
         if tensor_not_in_cur:
             warnings.warn(
-                f"tensors [{str(tensor_not_in_cur)}] are not found in current training strategy."
+                f"tensors [{tensor_not_in_cur}] are not found in current training strategy."
             )
         if tensor_not_in_ckpt:
             warnings.warn(
-                f"tensors [{str(tensor_not_in_ckpt)}] are found in pre_strategy, but are not found"
+                f"tensors [{tensor_not_in_ckpt}] are found in pre_strategy, but are not found"
                 "in checkpoint files, please check your checkpoint files."
             )
 
@@ -215,8 +215,7 @@ class Converter:
                             )
                         except ValueError as err:
                             raise ValueError(
-                                f"Fail to convert tensor '{str(cur_name)}' by '{str(pre_name)}'. "
-                                + str(err)
+                                f"Fail to convert tensor '{cur_name}' by '{pre_name}'. {err}"
                             )
                         self._logger.info(
                             f"tensor [{cur_name}] is matched with tensor [{pre_name}]"
@@ -302,7 +301,7 @@ class Converter:
 
         if len(partition_tensor_list) != 1:
             raise ValueError(
-                f"Fail to merge tensor with dist_attr '{str(dist_attr)}'."
+                f"Fail to merge tensor with dist_attr '{dist_attr}'."
             )
         complete_tensor = partition_tensor_list[0][0]
         return complete_tensor
@@ -327,7 +326,7 @@ class Converter:
         )
         if sliced_tensor_index not in range(len(sliced_tensor_list)):
             raise ValueError(
-                f"Fail to slice tensor with dist_attr '{str(dist_attr)}'."
+                f"Fail to slice tensor with dist_attr '{dist_attr}'."
             )
         sliced_tensor = sliced_tensor_list[sliced_tensor_index]
         return sliced_tensor

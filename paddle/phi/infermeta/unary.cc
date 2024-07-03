@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/flatten2_utils.h"
+#include "paddle/phi/kernels/funcs/hash_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -45,6 +46,16 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   return common::make_ddim(x_vec);
 }
 }  // namespace detail
+
+void AddPositionEncodingInferMeta(const MetaTensor& x,
+                                  float alpha,
+                                  float beta,
+                                  MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
 
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
@@ -203,6 +214,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
     dims[axis] = -1;
   }
   out->set_dims(dims);
+  out->set_dtype(x.dtype());
   out_index->set_dtype(DataType::INT32);
   out_index->set_dims(common::make_ddim({-1}));
 }
@@ -453,6 +465,23 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
   output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
   out->set_dims(output_dim);
+}
+
+void BipartiteMatchInferMeta(const MetaTensor& dist_mat,
+                             const std::string& match_type,
+                             float dist_threshold,
+                             MetaTensor* col_to_row_match_indices,
+                             MetaTensor* col_to_row_match_dist) {
+  const auto& dims = dist_mat.dims();
+  PADDLE_ENFORCE_EQ(
+      dims.size(),
+      2,
+      phi::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
+
+  col_to_row_match_indices->set_dims(dims);
+  col_to_row_match_indices->set_dtype(DataType::INT32);
+  col_to_row_match_dist->set_dims(dims);
+  col_to_row_match_dist->set_dtype(dist_mat.dtype());
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
@@ -1365,6 +1394,11 @@ void FillAnyLikeInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FetchBarrierInferMeta(const std::vector<const MetaTensor*>& x,
+                           int trainer_id,
+                           const std::vector<std::string>& endpoints,
+                           std::vector<MetaTensor*> out) {}
+
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -2021,6 +2055,23 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
   UnchangedInferMetaCheckAxis(x, axis, out);
 }
 
+void HashInferMeta(const MetaTensor& x,
+                   int num_hash,
+                   int64_t mod_by,
+                   MetaTensor* out) {
+  const auto& dims = x.dims();
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The input of hash_op's dimensions must be 2"));
+  std::vector<int64_t> out_dims;
+  phi::funcs::HashOutputSize(dims, out_dims, num_hash);
+
+  out->set_dims(common::make_ddim(out_dims));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void HistogramInferMeta(
     const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
   PADDLE_ENFORCE_GE(bins,
@@ -2491,6 +2542,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config) {
@@ -2549,7 +2601,8 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
             funcs::MaxPoolOutputSize(static_cast<int>(x_dims[i + 2]),
                                      kernel_size_[i],
                                      paddings_[i],
-                                     strides[i]));
+                                     strides[i],
+                                     ceil_mode));
       }
     }
   }
@@ -3970,6 +4023,11 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   auto in_dim = input.dims();
   out->set_dims(common::make_ddim({in_dim.size()}));
   out->set_dtype(DataType::INT32);
+}
+
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void ShardIndexInferMeta(const MetaTensor& in,
@@ -5766,10 +5824,11 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* scale) {
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(

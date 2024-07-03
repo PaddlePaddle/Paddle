@@ -164,12 +164,20 @@ def layer_norm_net1(x):
     return paddle.nn.functional.layer_norm(x, x.shape[1:])
 
 
+def instance_norm_net(x):
+    return paddle.nn.functional.instance_norm(x)
+
+
 def flatten_net(x):
     return paddle.flatten(x, 1, 2)
 
 
 def meshgrid_net(x, y):
     return paddle.meshgrid(x, y)
+
+
+def unbind_net(x):
+    return paddle.unbind(x)
 
 
 class TestPrimBase(unittest.TestCase):
@@ -247,6 +255,19 @@ class TestEmbedding(TestPrimBase):
         self.tol = 1e-6
 
 
+class TestUnbind(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [4, 5, 6]
+        self.init_x_shape = [4, 5, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = unbind_net
+        self.necessary_ops = "pd_op.unbind"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimFullLike(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
@@ -279,6 +300,19 @@ class TestPrimClip(TestPrimBase):
         self.dtype = "float32"
         self.x_shape = [1, 300, 4096]
         self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = clip_net
+        self.necessary_ops = "pd_op.clip"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimClip2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = []
+        self.init_x_shape = []
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = clip_net
         self.necessary_ops = "pd_op.clip"
@@ -454,6 +488,19 @@ class TestPrimLayernorm(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = layer_norm_net1
         self.necessary_ops = "pd_op.layer_norm"
+        self.enable_cinn = False
+        self.tol = 5e-6
+
+
+class TestPrimInstancenorm(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [2, 32, 128]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = instance_norm_net
+        self.necessary_ops = "pd_op.instance_norm"
         self.enable_cinn = False
         self.tol = 5e-6
 
