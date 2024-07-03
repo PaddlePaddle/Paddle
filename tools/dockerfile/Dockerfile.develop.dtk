@@ -94,7 +94,7 @@ RUN yum clean all && \
 # Install DTK
 RUN wget -q https://cancon.hpccube.com:65024/file/1/DTK-24.04.1/CentOS7.6/DTK-24.04.1-CentOS7.6-x86_64.tar.gz && \
     tar zxf DTK-24.04.1-CentOS7.6-x86_64.tar.gz && rm -rf DTK-24.04.1-CentOS7.6-x86_64.tar.gz
-# Replace if you use other device type: Z100, Z100L, K100, e.g.
+# Replace if you use other device type, e.g. Z100, Z100L, K100
 RUN wget -q https://paddle-device.bj.bcebos.com/dcu/hyhal-K100AI.tar.gz && \
     tar zxf hyhal-K100AI.tar.gz && rm -rf hyhal-K100AI.tar.gz
 RUN echo "source /opt/dtk-24.04.1/env.sh" >> /root/.bashrc
