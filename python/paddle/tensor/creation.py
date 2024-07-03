@@ -16,21 +16,13 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, Sequence, overload
+from typing import TYPE_CHECKING, Any, Sequence, overload
 
 import numpy as np
 import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import (
-    DTypeLike,
-    NestedNumbericSequence,
-    Numberic,
-    PlaceLike,
-    ShapeLike,
-    TensorLike,
-)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -54,6 +46,17 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumbericSequence,
+        Numberic,
+        ParamAttrLike,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 __all__ = []
 
@@ -174,7 +177,7 @@ def create_parameter(
     shape: ShapeLike,
     dtype: DTypeLike,
     name: str | None = None,
-    attr: ParamAttr | None = None,
+    attr: ParamAttrLike | None = None,
     is_bias: bool = False,
     default_initializer: paddle.nn.initializer.Initializer | None = None,
 ) -> paddle.Tensor:
@@ -1910,7 +1913,7 @@ def diag_embed(
         input_shape = list(input.shape)
         assert len(input_shape) >= 1, (
             "Input must be at least 1-dimensional, "
-            "But received Input's dimensional: %s.\n" % len(input_shape)
+            f"But received Input's dimensional: {len(input_shape)}.\n"
         )
 
         assert np.abs(dim1) <= len(input_shape), (

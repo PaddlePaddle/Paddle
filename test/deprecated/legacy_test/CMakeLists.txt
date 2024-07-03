@@ -653,7 +653,7 @@ set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
+
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated
                        PROPERTIES TIMEOUT 1200)

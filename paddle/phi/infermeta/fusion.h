@@ -1130,4 +1130,10 @@ void FusedSeqpoolCvmGradInferMeta(
     MetaTensor* cvm_grad,
     MetaConfig config = MetaConfig());
 
+void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                  const std::string& pooltype,
+                                  int axis,
+                                  MetaTensor* out,
+                                  MetaConfig config = MetaConfig());
+
 }  // namespace phi

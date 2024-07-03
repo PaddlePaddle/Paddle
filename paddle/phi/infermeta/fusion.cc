@@ -2492,7 +2492,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
+      (contain_unknown_dim(scale_dim) || contain_unknown_dim(bias_dim))) {
     check = false;
   }
 
@@ -5074,6 +5074,49 @@ void FusedSeqpoolCvmGradInferMeta(
     x_grad[i]->set_dims(x[i]->dims());
     x_grad[i]->set_dtype(x[i]->dtype());
   }
+}
+
+void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                  const std::string& pooltype,
+                                  int axis,
+                                  MetaTensor* out,
+                                  MetaConfig config) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Inputs(X) of FusionSeqPoolConcatOp should be greater "
+                        "than 1, but received value is %d.",
+                        x.size()));
+  PADDLE_ENFORCE_EQ(
+      axis,
+      1,
+      phi::errors::InvalidArgument("FusionSeqPoolConcatOp only supports concat "
+                                   "axis=1 yet, but received axis value is %d",
+                                   axis));
+  std::vector<DDim> ins_dims;
+  ins_dims.reserve(x.size());
+  std::transform(x.begin(),
+                 x.end(),
+                 std::back_inserter(ins_dims),
+                 [](const MetaTensor* var) { return var->dims(); });
+  const size_t n = ins_dims.size();
+  PADDLE_ENFORCE_GT(n,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "Input tensors count should be greater than 0, "
+                        "but received value is %d.",
+                        n));
+
+  // The output height should be confirmed in Compute,
+  // since input lod is not accessible here.
+  PADDLE_ENFORCE_EQ(ins_dims[0].size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims size of first input should be equal to 2, "
+                        "but received value is %d.",
+                        ins_dims[0].size()));
+  out->set_dims({-1, ins_dims[0][axis] * static_cast<int>(n)});
+  out->set_dtype(x[0]->dtype());
 }
 
 }  // namespace phi

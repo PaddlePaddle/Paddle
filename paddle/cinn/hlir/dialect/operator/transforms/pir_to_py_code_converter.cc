@@ -81,9 +81,19 @@ void VisitFeedName(const pir::Program& program,
   const auto& GetDataOpName = [](const pir::Operation& op) -> std::string {
     return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
   };
+  const auto& IsFeedOp = [](const pir::Operation& op) -> bool {
+    return op.isa<paddle::dialect::FeedOp>();
+  };
+  const auto& GetFeedOpName = [](const pir::Operation& op) -> std::string {
+    return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  };
   for (const auto& op : block) {
     if (IsDataOp(op)) {
       DoEachFeadName(GetDataOpName(op));
+    } else if (IsFeedOp(op)) {
+      DoEachFeadName(GetFeedOpName(op));
+    } else {
+      // Do nothing.
     }
   }
   for (const auto& [name, _] : block.kwargs()) {

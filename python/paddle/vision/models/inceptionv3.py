@@ -37,6 +37,11 @@ from ..ops import ConvNormActivation
 if TYPE_CHECKING:
     from paddle import Tensor
 
+    class _InceptionV3Options(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
+
 __all__ = []
 
 model_urls = {
@@ -45,11 +50,6 @@ model_urls = {
         "649a4547c3243e8b59c656f41fe330b8",
     )
 }
-
-
-class _InceptionV3Options(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
 
 
 class InceptionStem(nn.Layer):
@@ -530,6 +530,9 @@ class InceptionV3(nn.Layer):
             >>> print(out.shape)
             [1, 1000]
     """
+
+    num_classes: int
+    with_pool: bool
 
     def __init__(self, num_classes: int = 1000, with_pool: bool = True) -> None:
         super().__init__()

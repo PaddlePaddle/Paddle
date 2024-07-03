@@ -74,7 +74,7 @@ __global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
 template <typename T>
 __global__ void ClipAndQuantKernel(const T *in,
                                    const T *scale,
-                                   const int bin_cnt,
+                                   const int qmax,
                                    const int round_type,
                                    const int n,
                                    T *out) {
@@ -85,22 +85,32 @@ __global__ void ClipAndQuantKernel(const T *in,
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
   ComputeDataType inv_s = phi::funcs::inverse(s);
-  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+  ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
-      x = bin_cnt_t * inv_s * x;
-      x = phi::funcs::roundWithTiesToEven(x);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = qmax_t * inv_s * x;
+      if (qmax_t == static_cast<ComputeDataType>(448)) {
+        x = float8_e4m3fn(x);
+      } else if (qmax_t == static_cast<ComputeDataType>(57344)) {
+        x = float8_e5m2(x);
+      } else {
+        x = roundWithTiesToEven(x);
+      }
+      ComputeDataType max_bound = qmax_t;
+      ComputeDataType min_bound = -qmax_t - static_cast<ComputeDataType>(1);
+      if (qmax_t == static_cast<ComputeDataType>(448) ||
+          qmax_t == static_cast<ComputeDataType>(57344)) {
+        min_bound = -qmax_t;
+      }
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out[i] = static_cast<T>(x);
     } else {
       ComputeDataType v = x > s ? s : x;
       v = v < -s ? -s : v;
-      v = bin_cnt_t * inv_s * v;
+      v = qmax_t * inv_s * v;
       out[i] = static_cast<T>(round(v));
     }
   }

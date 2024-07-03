@@ -522,6 +522,16 @@
   optional : fc_bias
   intermediate : fc_out
 
+- op : fusion_seqpool_concat
+  args: (Tensor[] x, str pooltype = "SUM", int axis = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: FusionSeqpoolConcatInferMeta
+  kernel:
+    func: fusion_seqpool_concat
+    data_type: x
+  support_dygraph_mode : true
+
 - op : fusion_seqpool_cvm_concat
   args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", bool use_cvm = true, int axis = 1)
   output: Tensor (out)
