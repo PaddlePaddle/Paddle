@@ -87,6 +87,7 @@ list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -107,6 +108,11 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
+  list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
+endif()
+
+if(NOT WITH_NCCL)
+  list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
 
 if(WIN32)
@@ -206,7 +212,6 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
@@ -570,6 +575,8 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
                   test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
+  py_test_modules(test_fused_dot_product_attention_op_static MODULES
+                  test_fused_dot_product_attention_op_static)
 endif()
 
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS
@@ -1030,6 +1037,8 @@ set_tests_properties(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_adagrad_op
+    test_adamw_op
+    test_bincount_op
     test_batch_norm_op
     test_nce
     test_layer_norm_op
@@ -1091,6 +1100,9 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
     FLAGS_new_executor_static_build=true)
 endforeach()
+
+py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
+                FLAGS_inner_op_parallelism=4)
 
 set(PIR_COVERAGE_TESTS test_fused_feedforward_pass)
 if(NOT WITH_GPU)
@@ -1177,6 +1189,7 @@ else()
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
 endif()
 set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
+set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
@@ -1191,3 +1204,4 @@ set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
+set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)

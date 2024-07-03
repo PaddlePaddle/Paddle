@@ -8,15 +8,8 @@ add_custom_command(
 add_custom_target(COPY_CINN_PYTHON_TESTS ALL
                   DEPENDS ${CMAKE_BINARY_DIR}/test/__init__.py)
 
-set(BASIC_TEST_NAMES
-    test_matmul
-    test_common
-    test_packed_func
-    test_pe_elementwise
-    test_pe_reduction
-    test_pe_transform
-    test_op_broadcast
-    #    test_op_transform
+set(BASIC_TEST_NAMES test_common test_packed_func
+                     #    test_op_transform
 )
 
 foreach(basic_test_name ${BASIC_TEST_NAMES})
@@ -48,14 +41,6 @@ endif()
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_ops.py "${WITH_GPU}"
 #    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #)
-
-add_test(
-  NAME test_cinn_op_benchmark
-  COMMAND
-    ${CMAKE_COMMAND} -E env
-    PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_op_benchmark.py "${WITH_GPU}"
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 #ADD_TEST(NAME test_cinn_real_facedet
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
@@ -111,6 +96,9 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "passes/test_*.py")
 
+  set(EXCLUDE_PASS ${EXCLUDE_PASS} test_fusion_fallback_pass)
+  set(EXCLUDE_PASS ${EXCLUDE_PASS} test_accuracy_check_pass)
+
   foreach(pass_test_name ${EXCLUDE_PASS})
     list(REMOVE_ITEM CINN_PASS_TEST passes/${pass_test_name}.py)
   endforeach()
@@ -125,6 +113,34 @@ if(WITH_GPU)
         python3 ${CMAKE_CURRENT_SOURCE_DIR}/${pass_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
+
+  # test fusion_fallback_pass
+  add_test(
+    NAME test_fusion_fallback_pass
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+      FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+      FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cudnn_deterministic=true FLAGS_enable_fusion_fallback=1
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/passes/test_fusion_fallback_pass.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+  # test accuracy_check_pass
+  add_test(
+    NAME test_accuracy_check_pass
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+      FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+      FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cudnn_deterministic=true FLAGS_enable_cinn_accuracy_check=1
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/passes/test_accuracy_check_pass.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   file(
     GLOB CINN_RUNTIME_TEST

@@ -47,7 +47,6 @@ class TestRelu6(TestBase):
             paddle.rand(shape=[22, 144, 56, 56], dtype=paddle.float32),
         )
         self.net = Relu6Case
-        self.with_train = False
 
 
 if __name__ == '__main__':

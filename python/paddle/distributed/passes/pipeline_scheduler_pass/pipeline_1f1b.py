@@ -297,7 +297,7 @@ class Pipeline1F1BPass(PipelinePassBase):
                 time *= 8
             return time
         except Exception as e:
-            logger.info(f"The cost of {op} is unknown since {repr(e)}.")
+            logger.info(f"The cost of {op} is unknown since {e!r}.")
             return 0.0
 
     def _partial_programs(self, program):

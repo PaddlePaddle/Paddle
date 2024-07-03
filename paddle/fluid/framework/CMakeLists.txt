@@ -81,9 +81,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-if(WITH_CINN)
-  add_subdirectory(paddle2cinn)
-endif()
+
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -891,8 +889,7 @@ cc_library(
        eager_deletion_pass
        buffer_shared_inplace_op_pass
        buffer_shared_cross_op_memory_reuse_pass
-       inplace_addto_op_pass
-       set_reader_device_info_utils)
+       inplace_addto_op_pass)
 
 cc_library(
   executor_cache

@@ -66,7 +66,7 @@ def to_tensor(pic, data_format='CHW'):
         img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
     elif pic.mode == 'I;16':
         # cast and reshape not support int16
-        img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
     elif pic.mode == 'F':
         img = paddle.to_tensor(np.array(pic, np.float32, copy=False))
     elif pic.mode == '1':
@@ -402,11 +402,10 @@ def adjust_hue(img, hue_factor):
     h, s, v = img.convert('HSV').split()
 
     np_h = np.array(h, dtype=np.uint8)
-    # uint8 addition take cares of rotation across boundaries
-    with np.errstate(over='ignore'):
-        np_h += np.uint8(hue_factor * 255)
+    np_h = np_h.astype(np.int16)
+    np_h = (np_h + int(hue_factor * 255)) % 256
+    np_h = np_h.astype(np.uint8)
     h = Image.fromarray(np_h, 'L')
-
     img = Image.merge('HSV', (h, s, v)).convert(input_mode)
     return img
 

@@ -15,6 +15,7 @@
 import fcntl
 import inspect
 import os
+import unittest
 
 import numpy as np
 
@@ -295,7 +296,7 @@ def create_test_class(
         if test_class[0] == '__class__':
             continue
         class_obj = test_class[1]
-        cls_name = f"{test_class[0]}_{str(test_type)}"
+        cls_name = f"{test_class[0]}_{test_type}"
         func_globals[cls_name] = type(
             cls_name,
             (class_obj,),
@@ -312,7 +313,7 @@ def create_test_class(
     ):
         base_class, dynamic_classes = test_class_obj.dynamic_create_class()
         for dy_class in dynamic_classes:
-            cls_name = f"{dy_class[0]}_{str(test_type)}"
+            cls_name = f"{dy_class[0]}_{test_type}"
             attr_dict = dy_class[1]
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             attr_dict['in_type_str'] = test_type
@@ -322,6 +323,17 @@ def create_test_class(
     record_op_test(op_name, test_type)
     if not no_grad:
         record_op_test(op_name + '_grad', test_type)
+
+
+def check_run_big_shape_test():
+    def wrapper(cls):
+        run_big_shape_test_flag = os.environ.get("FLAGS_xpu_big_shape_test")
+        return unittest.skipIf(
+            not (run_big_shape_test_flag and run_big_shape_test_flag == "true"),
+            "skip big shape test.",
+        )(cls)
+
+    return wrapper
 
 
 def get_test_cover_info():

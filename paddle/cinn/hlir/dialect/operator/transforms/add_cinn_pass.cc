@@ -31,11 +31,13 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/convert_fa_to_qkvmha_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effec_attn_to_flash_attn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_parallel_matmul_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fusion_fallback_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
@@ -53,9 +55,11 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_debug);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
+COMMON_DECLARE_bool(enable_fusion_fallback);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
@@ -84,6 +88,18 @@ bool HasDynamicShape(const pir::Program& program) {
 }
 }  // namespace
 
+void ApplyShapeOptimizationPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<::pir::PassManager>()>&
+        CreatePassManager) {
+  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  bool has_dynamic_shape = HasDynamicShape(*program);
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+  pass_manager->Run(program);
+}
+
 void ApplyPdToCinnPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<::pir::PassManager>()>&
@@ -95,6 +111,7 @@ void ApplyPdToCinnPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveAssignOutPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConv2dTransposeFilterPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateConvertFA2QKVMHAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
 
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -110,7 +127,6 @@ void ApplyCinnPreprocessPass(
   bool has_dynamic_shape = HasDynamicShape(*program);
 
   if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -188,6 +204,10 @@ void ApplyCinnLowerPass(
     VLOG(0) << "Enable CINN Accuracy Check Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
   }
+  if (FLAGS_enable_fusion_fallback) {
+    VLOG(0) << "Enable Fusion Fallback Pass";
+    pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
+  }
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
@@ -226,6 +246,7 @@ void ApplyCinnPass(::pir::Program* program,
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
+  ApplyShapeOptimizationPass(program, CreatePassManager);
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
@@ -240,6 +261,12 @@ void ApplyCinnPass(::pir::Program* program,
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
+  if (FLAGS_pir_debug) {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+    std::cout << "Program before lowering: \n"
+              << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+              << std::endl;
+  }
   ApplyCinnLowerPass(program, CreatePassManager);
 }
 

@@ -50,6 +50,7 @@ VJPS_BLACK_LIST = [
 ]
 
 BACKENDS_BLACK_LIST = [
+    'accuracy_check',
     'copy_to',
     'add_n_grad',
     "allclose",
@@ -74,6 +75,7 @@ UNARY_PRIM_VJP_OPS = [
     'sin_grad',
     'cos_grad',
     'tanh_grad',
+    'square_grad',
 ]
 
 # prim op with two inputs and one output, with no attribute

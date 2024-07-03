@@ -84,7 +84,7 @@ void Program::CopyToBlock(IrMapping& ir_mapping, Block* insert_block) const {
         break;
       }
     }
-    if (skip_op) {
+    if (skip_op || op.isa<pir::ShadowOutputOp>()) {
       continue;
     }
 

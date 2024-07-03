@@ -142,6 +142,9 @@ if '${WITH_ONEDNN}' == 'ON':
     cinnlibs.append('${ONEDNN_SHARED_LIB}')
 
 cinnlibs.append('${PHI_LIB}')
+cinnlibs.append('${PHI_CORE_LIB}')
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
+    cinnlibs.append('${PHI_GPU_LIB}')
 cinnlibs.append('${IR_LIB}')
 cinnlibs.append('${COMMON_LIB}')
 

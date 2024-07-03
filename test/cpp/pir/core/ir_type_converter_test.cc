@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -85,3 +86,23 @@ void test_index_type() {
 }
 
 TEST(IndexTypeConverterTest, index_type) { test_index_type(); }
+
+TEST(AttributeConverterTest, int2bool) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  auto& attr_translator = paddle::translator::AttributeTranslator::instance();
+  int v = 0;
+  paddle::framework::Attribute attr(v);
+  pir::Attribute pir_attr = attr_translator("pir::BoolAttribute", attr);
+  EXPECT_TRUE(pir_attr.isa<pir::BoolAttribute>());
+
+  int64_t v1 = 0;
+  paddle::framework::Attribute attr1(v1);
+  pir_attr = attr_translator("pir::BoolAttribute", attr1);
+  EXPECT_TRUE(pir_attr.isa<pir::BoolAttribute>());
+
+  pir_attr =
+      attr_translator("pir::BoolAttribute", paddle::framework::Attribute());
+  EXPECT_TRUE(pir_attr.isa<pir::BoolAttribute>());
+}

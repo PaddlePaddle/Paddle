@@ -77,6 +77,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -181,7 +182,6 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -479,8 +479,6 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
-py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
-                FLAGS_inner_op_parallelism=4)
 
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
                 FLAGS_cudnn_deterministic=1)
@@ -502,6 +500,8 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
                   test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
+  py_test_modules(test_fused_dot_product_attention_op_static MODULES
+                  test_fused_dot_product_attention_op_static)
 endif()
 
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
@@ -650,11 +650,10 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
-set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
+
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated
                        PROPERTIES TIMEOUT 1200)
@@ -703,7 +702,6 @@ set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
@@ -751,11 +749,9 @@ set_tests_properties(test_conditional_block_deprecated
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_adamw_op
     test_adamw_op_deprecated
     test_arg_min_max_op
     test_batch_norm_op_deprecated
-    test_bincount_op
     test_decoupled_py_reader_deprecated
     test_fetch_lod_tensor_array
     test_fuse_bn_act_pass_deprecated

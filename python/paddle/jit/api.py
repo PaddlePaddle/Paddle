@@ -23,21 +23,28 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from contextlib import contextmanager
 from types import ModuleType
 from typing import (
+    TYPE_CHECKING,
     Any,
+    Callable,
     Protocol,
     TypedDict,
     TypeVar,
     overload,
 )
 
-from typing_extensions import Literal, NotRequired, ParamSpec, TypeAlias, Unpack
+from typing_extensions import (
+    Literal,
+    NotRequired,
+    ParamSpec,
+    TypeAlias,
+    Unpack,
+)
 
 import paddle
-from paddle._typing import NestedSequence
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -56,7 +63,6 @@ from paddle.base.framework import (
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
-from paddle.static import InputSpec
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -81,7 +87,12 @@ from .translated_layer import (
     TranslatedLayer,
 )
 
+if TYPE_CHECKING:
+    from paddle._typing import NestedStructure
+    from paddle.static import InputSpec
+
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
 
 _LayerT = TypeVar("_LayerT", bound=Layer)
 _RetT = TypeVar("_RetT")
@@ -150,12 +161,12 @@ def _check_and_set_backend(backend, build_strategy):
         build_strategy.build_cinn_pass = True
 
 
-class ToStaticOptions(TypedDict):
+class _ToStaticOptions(TypedDict):
     property: NotRequired[bool]
     full_graph: NotRequired[bool]
 
 
-class ToStaticDecorator(Protocol):
+class _ToStaticDecorator(Protocol):
     @overload
     def __call__(self, function: _LayerT) -> _LayerT:
         ...
@@ -170,10 +181,10 @@ class ToStaticDecorator(Protocol):
 @overload
 def to_static(
     function: _LayerT,
-    input_spec: NestedSequence[InputSpec] | None = ...,
+    input_spec: NestedStructure[InputSpec] | None = ...,
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
+    **kwargs: Unpack[_ToStaticOptions],
 ) -> _LayerT:
     ...
 
@@ -181,33 +192,22 @@ def to_static(
 @overload
 def to_static(
     function: Callable[_InputT, _RetT],
-    input_spec: NestedSequence[InputSpec] | None = ...,
+    input_spec: NestedStructure[InputSpec] | None = ...,
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
+    **kwargs: Unpack[_ToStaticOptions],
 ) -> StaticFunction[_InputT, _RetT]:
     ...
 
 
 @overload
 def to_static(
-    function: Any,
-    input_spec: NestedSequence[InputSpec] | None = ...,
-    build_strategy: BuildStrategy | None = ...,
-    backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
-) -> Any:
-    ...
-
-
-@overload
-def to_static(
     function: None = ...,
-    input_spec: NestedSequence[InputSpec] | None = ...,
+    input_spec: NestedStructure[InputSpec] | None = ...,
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
-) -> ToStaticDecorator:
+    **kwargs: Unpack[_ToStaticOptions],
+) -> _ToStaticDecorator:
     ...
 
 
@@ -332,7 +332,7 @@ def to_static(
     return decorated
 
 
-class NotToStaticDecorator(Protocol):
+class _NotToStaticDecorator(Protocol):
     @overload
     def __call__(
         self, func: Callable[_InputT, _RetT]
@@ -340,7 +340,7 @@ class NotToStaticDecorator(Protocol):
         ...
 
     @overload
-    def __call__(self, func: None = ...) -> NotToStaticDecorator:
+    def __call__(self, func: None = ...) -> _NotToStaticDecorator:
         ...
 
 
@@ -350,7 +350,7 @@ def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
 
 
 @overload
-def not_to_static(func: None = ...) -> NotToStaticDecorator:
+def not_to_static(func: None = ...) -> _NotToStaticDecorator:
     ...
 
 
@@ -627,6 +627,14 @@ def _get_input_var_and_names(inputs, input_spec, input_names_after_prune):
     return result_var_list, result_name_list
 
 
+def _contains_dict(output):
+    if isinstance(output, dict):
+        return True
+    if isinstance(output, Sequence) and not isinstance(output, str):
+        return any(_contains_dict(i) for i in output)
+    return False
+
+
 def _get_output_vars(outputs, output_spec, with_hook=False):
     name_no_exists_error = (
         "The tensor `%s` does not exists. "
@@ -646,6 +654,10 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
             "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
         )
     result_list = []
+    if _contains_dict(outputs):
+        warnings.warn(
+            "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys."
+        )
     if use_pir_api():
         from paddle.autograd.backward_utils import ValueSet
 
@@ -859,9 +871,25 @@ def _remove_save_pre_hook(hook):
     _save_pre_hooks_lock.release()
 
 
+class _SaveFunction(Protocol):
+    def __call__(
+        self,
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = ...,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
+        ...
+
+
 @wrap_decorator
-def _run_save_pre_hooks(func):
-    def wrapper(layer, path, input_spec=None, **configs):
+def _run_save_pre_hooks(func: _SaveFunction) -> _SaveFunction:
+    def wrapper(
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
@@ -906,9 +934,9 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(
-    layer: Callable[_InputT, _RetT],
+    layer: Layer | Callable[..., Any],
     path: str,
-    input_spec: InputSpec | None = None,
+    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
     **configs: Unpack[_SaveLoadOptions],
 ) -> None:
     """
