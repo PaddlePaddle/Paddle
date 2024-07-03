@@ -252,7 +252,6 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
           "should be larger than 0. But received X's dimensions %d.",
           inputs_shape.size()));
   symbol::TensorShapeOrDataDimExprs candidate_shape = inputs_shape.front();
-  size_t candidate_idx = 0;
   for (size_t i = 1; i < inputs_shape.size(); ++i) {
     // 0D tensor
     if (inputs_shape[i].shape().size() == 0) {
@@ -260,12 +259,11 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
     }
     if (candidate_shape.shape().size() == 0) {
       candidate_shape = inputs_shape[i];
-      candidate_idx = i;
       continue;
     }
-    for (size_t i = 0; i < candidate_shape.shape().size(); ++i) {
-      infer_context->AddEqualCstr(candidate_shape.shape()[i],
-                                  inputs_shape[i].shape()[i]);
+    for (size_t j = 0; j < candidate_shape.shape().size(); ++j) {
+      infer_context->AddEqualCstr(candidate_shape.shape()[j],
+                                  inputs_shape[i].shape()[j]);
     }
   }
   infer_context->SetShapeOrDataForValue(
