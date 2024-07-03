@@ -621,7 +621,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 ):
                     print("sparse_table_to_index ", sparse_table_to_index)
                     print("emb_to_table ", emb_to_table)
-                    raise ValueError("key error: %s" % key)
+                    raise ValueError(f"key error: {key}")
                 if strategy.get(key) is None:
                     strategy[key] = {}
                 st = strategy[key]

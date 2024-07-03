@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle import nn
 from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
@@ -19,9 +23,39 @@ from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
 
+if TYPE_CHECKING:
+    from typing import Literal, TypedDict
+
+    from typing_extensions import NotRequired, Unpack
+
+    from paddle import Tensor
+    from paddle._typing import Size2
+
+    _ShuffleNetArch = Literal[
+        'shufflenet_v2_x0_25',
+        'shufflenet_v2_x0_33',
+        'shufflenet_v2_x0_5',
+        'shufflenet_v2_x1_0',
+        'shufflenet_v2_x1_5',
+        'shufflenet_v2_x2_0',
+        'shufflenet_v2_swish',
+    ]
+
+    _ActivationType = Literal['relu', 'swish']
+
+    class _ShuffleNetOptions(TypedDict):
+        act: NotRequired[_ActivationType | None]
+        with_pool: NotRequired[bool]
+        num_classes: NotRequired[int]
+
+    class _ShuffleNetSwishOptions(TypedDict):
+        with_pool: NotRequired[bool]
+        num_classes: NotRequired[int]
+
+
 __all__ = []
 
-model_urls = {
+model_urls: dict[str, tuple[str, str]] = {
     "shufflenet_v2_x0_25": (
         "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_25.pdparams",
         "1e509b4c140eeb096bb16e214796d03b",
@@ -53,7 +87,7 @@ model_urls = {
 }
 
 
-def create_activation_layer(act):
+def create_activation_layer(act: _ActivationType | None) -> nn.Layer | None:
     if act == "swish":
         return nn.Swish
     elif act == "relu":
@@ -64,7 +98,7 @@ def create_activation_layer(act):
         raise RuntimeError(f"The activation function is not supported: {act}")
 
 
-def channel_shuffle(x, groups):
+def channel_shuffle(x: Tensor, groups: int) -> Tensor:
     batch_size, num_channels, height, width = x.shape[0:4]
     channels_per_group = num_channels // groups
 
@@ -83,8 +117,12 @@ def channel_shuffle(x, groups):
 
 class InvertedResidual(nn.Layer):
     def __init__(
-        self, in_channels, out_channels, stride, activation_layer=nn.ReLU
-    ):
+        self,
+        in_channels: int,
+        out_channels: int,
+        stride: Size2,
+        activation_layer: type[nn.Layer] = nn.ReLU,
+    ) -> None:
         super().__init__()
         self._conv_pw = ConvNormActivation(
             in_channels=in_channels // 2,
@@ -114,7 +152,7 @@ class InvertedResidual(nn.Layer):
             activation_layer=activation_layer,
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs: Tensor) -> Tensor:
         x1, x2 = paddle.split(
             inputs,
             num_or_sections=[inputs.shape[1] // 2, inputs.shape[1] // 2],
@@ -129,8 +167,12 @@ class InvertedResidual(nn.Layer):
 
 class InvertedResidualDS(nn.Layer):
     def __init__(
-        self, in_channels, out_channels, stride, activation_layer=nn.ReLU
-    ):
+        self,
+        in_channels: int,
+        out_channels: int,
+        stride: Size2,
+        activation_layer: type[nn.Layer] = nn.ReLU,
+    ) -> None:
         super().__init__()
 
         # branch1
@@ -181,7 +223,7 @@ class InvertedResidualDS(nn.Layer):
             activation_layer=activation_layer,
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs: Tensor) -> Tensor:
         x1 = self._conv_dw_1(inputs)
         x1 = self._conv_linear_1(x1)
         x2 = self._conv_pw_2(inputs)
@@ -219,7 +261,17 @@ class ShuffleNetV2(nn.Layer):
             [1, 1000]
     """
 
-    def __init__(self, scale=1.0, act="relu", num_classes=1000, with_pool=True):
+    scale: float
+    num_classes: int
+    with_pool: bool
+
+    def __init__(
+        self,
+        scale: float = 1.0,
+        act: _ActivationType | None = "relu",
+        num_classes: int = 1000,
+        with_pool: bool = True,
+    ) -> None:
         super().__init__()
         self.scale = scale
         self.num_classes = num_classes
@@ -297,7 +349,7 @@ class ShuffleNetV2(nn.Layer):
             self._out_c = stage_out_channels[-1]
             self._fc = Linear(stage_out_channels[-1], num_classes)
 
-    def forward(self, inputs):
+    def forward(self, inputs: Tensor) -> Tensor:
         x = self._conv1(inputs)
         x = self._max_pool(x)
         for inv in self._block_list:
@@ -313,8 +365,13 @@ class ShuffleNetV2(nn.Layer):
         return x
 
 
-def _shufflenet_v2(arch, pretrained=False, **kwargs):
-    model = ShuffleNetV2(**kwargs)
+def _shufflenet_v2(
+    arch: _ShuffleNetArch,
+    pretrained: bool = False,
+    scale: float = 1.0,
+    **kwargs: Unpack[_ShuffleNetOptions],
+) -> ShuffleNetV2:
+    model = ShuffleNetV2(scale=scale, **kwargs)
     if pretrained:
         assert (
             arch in model_urls
@@ -328,7 +385,9 @@ def _shufflenet_v2(arch, pretrained=False, **kwargs):
     return model
 
 
-def shufflenet_v2_x0_25(pretrained=False, **kwargs):
+def shufflenet_v2_x0_25(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with 0.25x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
@@ -363,7 +422,9 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
     )
 
 
-def shufflenet_v2_x0_33(pretrained=False, **kwargs):
+def shufflenet_v2_x0_33(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with 0.33x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
@@ -398,7 +459,9 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
     )
 
 
-def shufflenet_v2_x0_5(pretrained=False, **kwargs):
+def shufflenet_v2_x0_5(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with 0.5x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
@@ -433,7 +496,9 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
     )
 
 
-def shufflenet_v2_x1_0(pretrained=False, **kwargs):
+def shufflenet_v2_x1_0(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with 1.0x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
@@ -468,7 +533,9 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
     )
 
 
-def shufflenet_v2_x1_5(pretrained=False, **kwargs):
+def shufflenet_v2_x1_5(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with 1.5x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
@@ -503,7 +570,9 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
     )
 
 
-def shufflenet_v2_x2_0(pretrained=False, **kwargs):
+def shufflenet_v2_x2_0(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with 2.0x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
@@ -538,7 +607,9 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
     )
 
 
-def shufflenet_v2_swish(pretrained=False, **kwargs):
+def shufflenet_v2_swish(
+    pretrained: bool = False, **kwargs: Unpack[_ShuffleNetSwishOptions]
+) -> ShuffleNetV2:
     """ShuffleNetV2 with swish activation function, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 

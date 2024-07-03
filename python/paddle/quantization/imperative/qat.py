@@ -338,7 +338,7 @@ class ImperativeQuantizeInputs:
             assert (
                 not isinstance(layer, str)
                 and layer in self.fake_quant_input_layers
-            ), ("%s is unsupported to be quantized." % layer)
+            ), f"{layer} is unsupported to be quantized."
 
         quantize_type = {
             'abs_max',
@@ -352,14 +352,13 @@ class ImperativeQuantizeInputs:
             weight_quantize_type != 'moving_average_abs_max'
             and weight_quantize_type in quantize_type
         ), (
-            "Unsupported weight_quantize_type: %s. It can only "
-            "be abs_max or channel_wise_abs_max." % weight_quantize_type
+            f"Unsupported weight_quantize_type: {weight_quantize_type}. It can only "
+            "be abs_max or channel_wise_abs_max."
         )
         # TODO (jc): activation_quantize_type supports range_abs_max
         assert activation_quantize_type in act_quantize_type, (
-            "Unsupported activation_quantize_type: %s. It can "
+            f"Unsupported activation_quantize_type: {activation_quantize_type}. It can "
             "only be moving_average_abs_max or lsq_act now."
-            % activation_quantize_type
         )
 
         bits_check = (
@@ -436,9 +435,9 @@ class ImperativeQuantizeInputs:
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
-        assert quant_layer_name is not None, (
-            "The layer %s is unsupported to be quantized." % layer.full_name()
-        )
+        assert (
+            quant_layer_name is not None
+        ), f"The layer {layer.full_name()} is unsupported to be quantized."
 
         return quant_layers.__dict__[quant_layer_name](layer, **self._kwargs)
 

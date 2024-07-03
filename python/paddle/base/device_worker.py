@@ -164,7 +164,7 @@ class Hogwild(DeviceWorker):
             prog_id_to_worker = opt_info["program_id_to_worker"]
             if prog_id_to_worker.get(program_id) is None:
                 raise ValueError(
-                    "%s not found in program_id_to_worker" % program_id
+                    f"{program_id} not found in program_id_to_worker"
                 )
             worker = opt_info["program_id_to_worker"][program_id]
             for i in worker.get_desc().dense_table:
@@ -311,7 +311,7 @@ class DownpourLite(DeviceWorker):
             prog_id_to_worker = opt_info["program_id_to_worker"]
             if prog_id_to_worker.get(program_id) is None:
                 raise ValueError(
-                    "%s not found in program_id_to_worker" % program_id
+                    f"{program_id} not found in program_id_to_worker"
                 )
             worker = opt_info["program_id_to_worker"][program_id]
             for i in worker.get_desc().dense_table:
@@ -425,9 +425,7 @@ class DownpourSGD(DeviceWorker):
             raise ValueError("opt_info must have program_id_to_worker")
         prog_id_to_worker = opt_info["program_id_to_worker"]
         if prog_id_to_worker.get(program_id) is None:
-            raise ValueError(
-                "%s not found in program_id_to_worker" % program_id
-            )
+            raise ValueError(f"{program_id} not found in program_id_to_worker")
         worker = opt_info["program_id_to_worker"][program_id]
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
@@ -535,9 +533,7 @@ class DownpourSGDOPT(DeviceWorker):
             raise ValueError("opt_info must have program_id_to_worker")
         prog_id_to_worker = opt_info["program_id_to_worker"]
         if prog_id_to_worker.get(program_id) is None:
-            raise ValueError(
-                "%s not found in program_id_to_worker" % program_id
-            )
+            raise ValueError(f"{program_id} not found in program_id_to_worker")
         worker = opt_info["program_id_to_worker"][program_id]
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
