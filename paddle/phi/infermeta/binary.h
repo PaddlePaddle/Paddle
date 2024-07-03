@@ -544,6 +544,18 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                             bool hermitian,
                             MetaTensor* out);
 
+void MulticlassNmsv1InferMeta(const MetaTensor& b_boxes,
+                              const MetaTensor& scores,
+                              float score_threshold,
+                              int nms_top_k,
+                              int keep_top_k,
+                              float nms_threshold,
+                              float nms_eta,
+                              bool normalized,
+                              int background_label,
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,
