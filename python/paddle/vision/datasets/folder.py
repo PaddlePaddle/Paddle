@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
 
 from typing_extensions import TypeAlias
 
@@ -47,9 +47,7 @@ from paddle.utils import try_import
 __all__ = []
 
 
-def has_valid_extension(
-    filename: str, extensions: list[str] | tuple[str, ...]
-) -> bool:
+def has_valid_extension(filename: str, extensions: Sequence[str]) -> bool:
     """Checks if a file is a valid extension.
 
     Args:
@@ -231,7 +229,7 @@ class DatasetFolder(Dataset):
     """
 
     loader: Callable[..., _ImageDataType] | None
-    extensions: _AllowedExtensions | None
+    extensions: Sequence[_AllowedExtensions] | None
     transform: _Transform[Any, Any] | None
     classes: list[str]
     class_to_idx: dict[str, int]
@@ -243,7 +241,7 @@ class DatasetFolder(Dataset):
         self,
         root: str,
         loader: Callable[..., _ImageDataType] | None = None,
-        extensions: _AllowedExtensions | None = None,
+        extensions: Sequence[_AllowedExtensions] | None = None,
         transform: _Transform[Any, Any] | None = None,
         is_valid_file: _ImageDataType | None = None,
     ) -> None:
@@ -467,7 +465,7 @@ class ImageFolder(Dataset):
     """
 
     loader: Callable[..., _ImageDataType] | None
-    extensions: _AllowedExtensions | None
+    extensions: Sequence[_AllowedExtensions] | None
     samples: list[str]
     transform: _Transform[Any, Any] | None
 
@@ -475,7 +473,7 @@ class ImageFolder(Dataset):
         self,
         root: str,
         loader: Callable[..., _ImageDataType] | None = None,
-        extensions: _AllowedExtensions | None = None,
+        extensions: Sequence[_AllowedExtensions] | None = None,
         transform: _Transform[Any, Any] | None = None,
         is_valid_file: _ImageDataType | None = None,
     ) -> None:
@@ -510,7 +508,7 @@ class ImageFolder(Dataset):
         self.samples = samples
         self.transform = transform
 
-    def __getitem__(self, index: int) -> tuple[_ImageDataType]:
+    def __getitem__(self, index: int) -> list[_ImageDataType]:
         """
         Args:
             index (int): Index
