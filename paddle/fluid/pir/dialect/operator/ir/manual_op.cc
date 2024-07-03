@@ -263,16 +263,10 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
       candidate_idx = i;
       continue;
     }
-    PADDLE_ENFORCE_EQ(candidate_shape,
-                      inputs_shape[i],
-                      common::errors::InvalidArgument(
-                          "The input tensor X of AddNOp must"
-                          " have same shape. But received X[%d]'s shape = "
-                          "[%s], X[%d]'s shape = [%s].",
-                          candidate_idx,
-                          candidate_shape,
-                          i,
-                          inputs_shape[i]));
+    for (size_t i = 0; i < candidate_shape.shape().size(); ++i) {
+      infer_context->AddEqualCstr(candidate_shape.shape()[i],
+                                  inputs_shape[i].shape()[i]);
+    }
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::ShapeOrDataDimExprs{candidate_shape});
