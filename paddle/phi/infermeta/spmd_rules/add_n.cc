@@ -51,7 +51,7 @@ SpmdInfo AddNInferSpmd(
   std::vector<int64_t> dims_mapping =
       GetDimsMappingForAxes(axes, axis_to_dim_map);
 
-  std::vector<ArgDistAttr> inputs_spmd_info;
+  std::vector<TensorDistAttr> inputs_spmd_info;
   for (const auto& input : inputs) {
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(input.dist_attr());
@@ -60,7 +60,7 @@ SpmdInfo AddNInferSpmd(
   }
   // Handle input tensor partial(TODO)
 
-  return {inputs_spmd_info, {inputs_spmd_info[0]}};
+  return {{inputs_spmd_info}, {inputs_spmd_info[0]}};
 }
 
 }  // namespace phi::distributed
