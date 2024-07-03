@@ -170,6 +170,10 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
       ConcatDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
+    case phi::DataType::BFLOAT16:
+      SplitDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
+          dev_ctx, t_in, p_list);
+      break;
     case phi::DataType::FLOAT32:
       ConcatDenseTensor<phi::XPUContext, float>()(dev_ctx, t_list, p_out);
       break;
@@ -239,6 +243,10 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
   switch (type) {
     case phi::DataType::FLOAT16:
       SplitDenseTensor<phi::XPUContext, phi::dtype::float16>()(
+          dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::BFLOAT16:
+      SplitDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
           dev_ctx, t_in, p_list);
       break;
     case phi::DataType::FLOAT32:
