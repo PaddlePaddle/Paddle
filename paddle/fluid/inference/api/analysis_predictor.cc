@@ -1661,9 +1661,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (config_.new_ir_enabled()) {
-    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
-  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1673,6 +1670,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -1738,9 +1738,6 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (config_.new_ir_enabled()) {
-    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
-  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1750,6 +1747,9 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -2710,6 +2710,12 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    auto *scope = sub_scope_ ? sub_scope_ : scope_.get();
+    if (scope != nullptr) {
+      ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+    }
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }

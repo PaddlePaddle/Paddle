@@ -21,7 +21,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ...utils import InnerError, NameGenerator
-from .guard import StringifyExpression, stringify_pyobject, union_free_vars
+from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 
 if TYPE_CHECKING:
     from typing import Sequence
@@ -60,7 +60,7 @@ class Tracker:
         raise NotImplementedError()
 
     # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not tracable.
-    def trace_value_from_frame(self) -> StringifyExpression:
+    def trace_value_from_frame(self) -> StringifiedExpression:
         """
         Trace the value of the tracked variables from the frame. It used for generating the guard.
 
@@ -207,8 +207,8 @@ class LocalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_fast(self.name)
 
-    def trace_value_from_frame(self) -> StringifyExpression:
-        return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
+    def trace_value_from_frame(self) -> StringifiedExpression:
+        return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
 
     def __repr__(self) -> str:
         return f"LocalTracker(name={self.name})"
@@ -219,7 +219,7 @@ class CellTracker(LocalTracker):
         codegen.gen_load_deref(self.name)
 
     def trace_value_from_frame(self):
-        return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
+        return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
 
     def __repr__(self) -> str:
         return f"CellTracker(name={self.name})"
@@ -240,8 +240,8 @@ class GlobalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
 
-    def trace_value_from_frame(self) -> StringifyExpression:
-        return StringifyExpression(f"frame.f_globals['{self.name}']", [], {})
+    def trace_value_from_frame(self) -> StringifiedExpression:
+        return StringifiedExpression(f"frame.f_globals['{self.name}']", [], {})
 
     def __repr__(self) -> str:
         return f"GlobalTracker(name={self.name})"
@@ -262,8 +262,8 @@ class BuiltinTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
 
-    def trace_value_from_frame(self) -> StringifyExpression:
-        return StringifyExpression(
+    def trace_value_from_frame(self) -> StringifiedExpression:
+        return StringifiedExpression(
             f"builtins.__dict__['{self.name}']", [], {"builtins": builtins}
         )
 
@@ -288,7 +288,7 @@ class ConstTracker(Tracker):
 
     def trace_value_from_frame(self):
         value_str, value_free_vars = stringify_pyobject(self.value)
-        return StringifyExpression(
+        return StringifiedExpression(
             value_str, [], union_free_vars(value_free_vars)
         )
 
@@ -337,7 +337,7 @@ class BinaryOperatorTracker(Tracker):
         sub_exprs = [x.tracker.trace_value_from_frame() for x in self.operands]
         sub_frees = [x.free_vars for x in sub_exprs]
         expr = f"({{}} {self.get_operator_symbol()} {{}})"
-        return StringifyExpression(
+        return StringifiedExpression(
             expr,
             list(sub_exprs),
             union_free_vars(*list(sub_frees)),
@@ -371,7 +371,7 @@ class GetAttrTracker(Tracker):
             expr = f"{{}}.{self.attr}"
         else:
             expr = f"getattr({{}}, '{self.attr}')"
-        return StringifyExpression(
+        return StringifiedExpression(
             expr,
             [obj_tracer],
             union_free_vars(obj_tracer.free_vars),
@@ -414,7 +414,7 @@ class GetItemTracker(Tracker):
     def trace_value_from_frame(self):
         container_tracer = self.container.tracker.trace_value_from_frame()
         key_string, key_free_vars = stringify_pyobject(self.key)
-        return StringifyExpression(
+        return StringifiedExpression(
             f"{{}}[{key_string}]",
             [container_tracer],
             union_free_vars(container_tracer.free_vars, key_free_vars),
@@ -447,7 +447,7 @@ class GetIterTracker(Tracker):
 
     def trace_value_from_frame(self):
         iter_source_tracer = self.iter_source.tracker.trace_value_from_frame()
-        return StringifyExpression(
+        return StringifiedExpression(
             "iter({})",
             [iter_source_tracer],
             union_free_vars(iter_source_tracer.free_vars),
@@ -500,7 +500,7 @@ class CreateLayerTracker(Tracker):
         expr += ", ".join(f"{k}={{}}" for k in kwarg_tracers_dict.keys())
         expr += ")"
 
-        return StringifyExpression(
+        return StringifiedExpression(
             expr,
             [class_tracer] + arg_tracers + kwarg_tracers,
             union_free_vars(
