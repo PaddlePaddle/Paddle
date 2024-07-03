@@ -301,7 +301,7 @@ def paddle_inference_decorator(**kwargs):
                     for ele in run_time_args:
                         assert isinstance(
                             ele, paddle.Tensor
-                        ), "the elements in list must be paddle.Tensor"
+                        ), f"the elements in {arg_name} must be paddle.Tensor"
                         this_input_tensor_lists.append(ele)
                     return this_input_tensor_lists
                 elif run_time_args is None:
@@ -328,7 +328,10 @@ def paddle_inference_decorator(**kwargs):
                     collected_names.append(arg_names[i])
                 else:
                     this_input = arg_defaults[i]
-                    assert this_input == None
+                    if this_input is not None:
+                        raise ValueError(
+                            f"{arg_names[i]}'s default value must be None."
+                        )
                     input_tensor_lists += [this_input]
                     collected_names.append(arg_names[i])
 
@@ -424,7 +427,10 @@ def paddle_inference_decorator(**kwargs):
                         )
                     else:
                         this_input = arg_defaults[i]
-                        assert this_input == None
+                        if this_input is not None:
+                            raise ValueError(
+                                f"{arg_names[i]}'s default value must be None."
+                            )
                         input_specs.append(None)
 
                 # update the input_spec's shape for doing d2s
