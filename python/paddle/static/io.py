@@ -952,6 +952,23 @@ def load_inference_model(path_prefix, executor, **kwargs):
     fetch_targets = [
         program.global_block().var(name) for name in fetch_target_names
     ]
+    if paddle.__version__.startswith('3.0.0'):
+        with paddle.pir_utils.IrGuard():
+            program = paddle.pir.translate_to_pir(program.desc)
+            block = program.global_block()
+            for op in block.ops:
+                if op.name() == "pd_op.feed":
+                    var_name = op.attrs()["name"]
+                    org_value = op.result(0)
+                    with block:
+                        value = paddle.static.data(
+                            name=var_name,
+                            shape=org_value.shape,
+                            dtype=org_value.dtype,
+                        )
+                        org_value.replace_all_uses_with(value)
+                        value.get_defining_op().move_before(op)
+                    block.remove_op(op)
 
     return [program, feed_target_names, fetch_targets]
 
