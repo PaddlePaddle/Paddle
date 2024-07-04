@@ -23,9 +23,9 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
-
 namespace phi {
 
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
@@ -46,6 +46,22 @@ enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
   CHECK_CASE(1, flags, kernel_name, __VA_ARGS__)  \
   CHECK_CASE(2, flags, kernel_name, __VA_ARGS__)  \
   CHECK_CASE(3, flags, kernel_name, __VA_ARGS__)
+
+#define CHECK_CASE_VEC(i, flags, vec_size, kernel_name, ...)           \
+  if (i == flags) {                                                    \
+    kernel_name<T, AccT, i, vec_size>                                  \
+        <<<grid_nhwc, block_nhwc, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+  }
+
+// 0 for no scale, no bias
+// 1 for has scale, no bias
+// 2 for no scale, has bias
+// 3 for has scale, has bias
+#define UNROLL_ALL_CASES_VEC(flags, vec_size, kernel_name, ...) \
+  CHECK_CASE_VEC(0, flags, vec_size, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_VEC(1, flags, vec_size, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_VEC(2, flags, vec_size, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_VEC(3, flags, vec_size, kernel_name, __VA_ARGS__)
 
 template <typename T>
 __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
