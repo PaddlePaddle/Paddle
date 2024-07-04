@@ -100,13 +100,6 @@ class TestFP8CastOp(unittest.TestCase):
                 # test fp32 to fp8 (dtype)
                 input = paddle.full(self.shape, 100000.0)
                 input1 = input.astype(self.dtype)
-
-                print("input1: ", input1)
-                print("input1.dtype: ", input1.dtype)
-                print(
-                    "self.dtype_dict[self.dtype]: ", self.dtype_dict[self.dtype]
-                )
-
                 self.assertTrue(input1.dtype == self.dtype_dict[self.dtype])
                 # test fp8 to fp32 (dtype)
                 input2 = input1.astype("float32")
@@ -152,13 +145,6 @@ class TestFP8FullOp(unittest.TestCase):
             paddle.device.set_device(self.device)
             for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
                 input = paddle.ones([1, 2], dtype=self.dtype)
-
-                print("input: ", input)
-                print("input.dtype: ", input.dtype)
-                print(
-                    "self.dtype_dict[self.dtype]: ", self.dtype_dict[self.dtype]
-                )
-
                 self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                 input_fp32 = input.astype("float32")
                 expect = paddle.to_tensor([[1, 1]]).astype("float32")
@@ -179,13 +165,6 @@ class TestFP8FullOp(unittest.TestCase):
             paddle.device.set_device(self.device)
             for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
                 input = paddle.zeros([1, 2], dtype=self.dtype)
-
-                print("input: ", input)
-                print("input.dtype: ", input.dtype)
-                print(
-                    "self.dtype_dict[self.dtype]: ", self.dtype_dict[self.dtype]
-                )
-
                 self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                 input_fp32 = input.astype("float32")
                 expect = paddle.to_tensor([[0, 0]]).astype("float32")
