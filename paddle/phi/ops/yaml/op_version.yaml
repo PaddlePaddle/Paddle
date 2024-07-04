@@ -494,6 +494,14 @@
         - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
 
+- op : round
+  version :
+    - checkpoint : Add a new attribute [deciamls] to round
+      action :
+        - add_attr : decimals
+          comment : The number of decimal places rounded
+          default : 0.0
+
 - op : softmax_with_cross_entropy
   version :
     - checkpoint : Add a new attribute [use_softmax]
