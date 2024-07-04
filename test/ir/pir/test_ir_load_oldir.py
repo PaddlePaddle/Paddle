@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 
 
-class TestLoadPdmodelTranslatePir(unittest.TestCase):
+class TestALoadPdmodelTranslatePir(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -83,6 +83,45 @@ class TestLoadPdmodelTranslatePir(unittest.TestCase):
                 exe.run(startup_prog)
                 out_new = exe.run(load_program, feed={'x': np_x}, fetch_list=[])
                 np.testing.assert_allclose(out_old, out_new)
+
+
+class TestJitSaveOp(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, "pir_save_load")
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        path = os.path.join(self.model_path, "linear")
+
+        paddle.jit.save(
+            linear,
+            path,
+            input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
+        )
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_with_pir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+        exe = paddle.static.Executor(place)
+
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.io.load_inference_model(
+            self.model_path,
+            executor=exe,
+            model_filename="linear.pdmodel",
+            params_filename="linear.pdiparams",
+        )
 
 
 if __name__ == '__main__':
