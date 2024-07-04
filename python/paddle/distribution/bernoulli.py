@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -25,6 +27,10 @@ from paddle.nn.functional import (
     sigmoid,
     softplus,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import ShapeLike
 
 # Smallest representable number
 EPS = {
@@ -91,7 +97,11 @@ class Bernoulli(exponential_family.ExponentialFamily):
             0.61086434)
     """
 
-    def __init__(self, probs, name=None):
+    name: str
+    probs: Tensor
+    logits: Tensor
+
+    def __init__(self, probs: float | Tensor, name: str | None = None) -> None:
         self.name = name or 'Bernoulli'
         if not in_dynamic_mode():
             check_type(
@@ -116,7 +126,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         super().__init__(batch_shape=self.probs.shape, event_shape=())
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of Bernoulli distribution.
 
         Returns:
@@ -125,7 +135,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         return self.probs
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of Bernoulli distribution.
 
         Returns:
@@ -133,7 +143,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         return paddle.multiply(self.probs, (1 - self.probs))
 
-    def sample(self, shape):
+    def sample(self, shape: ShapeLike) -> Tensor:
         """Sample from Bernoulli distribution.
 
         Args:
@@ -180,7 +190,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return paddle.bernoulli(self.probs.expand(shape), name=name)
 
-    def rsample(self, shape, temperature=1.0):
+    def rsample(self, shape: ShapeLike, temperature: float = 1.0) -> Tensor:
         """Sample from Bernoulli distribution (reparameterized).
 
         The `rsample` is a continuously approximate of Bernoulli distribution reparameterized sample method.
@@ -275,7 +285,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             temperature,
         )
 
-    def cdf(self, value):
+    def cdf(self, value: Tensor) -> Tensor:
         r"""Cumulative distribution function(CDF) evaluated at value.
 
         .. math::
@@ -322,7 +332,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             name=name,
         )
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log of probability density function.
 
         Args:
@@ -353,7 +363,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             logits, value, reduction='none', name=name
         )
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         r"""Probability density function(PDF) evaluated at value.
 
         .. math::
@@ -388,7 +398,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         return self.log_prob(value).exp(name=name)
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Entropy of Bernoulli distribution.
 
         .. math::
@@ -418,7 +428,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             self.logits, self.probs, reduction='none', name=name
         )
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Bernoulli) -> Tensor:
         r"""The KL-divergence between two Bernoulli distributions.
 
         .. math::
