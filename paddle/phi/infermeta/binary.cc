@@ -2240,6 +2240,47 @@ void HingeLossInferMeta(const MetaTensor& logits,
   loss->set_dtype(logits.dtype());
 }
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t bins,
+                        int min,
+                        int max,
+                        bool density,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_GE(bins,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The bins should be greater than or equal to 1."
+                        "But received nbins is %d",
+                        bins));
+  PADDLE_ENFORCE_GE(
+      max,
+      min,
+      phi::errors::InvalidArgument("max must be larger or equal to min."
+                                   "But received max is %d, min is %d",
+                                   max,
+                                   min));
+  if (weight) {
+    auto weight_dims = weight.dims();
+    PADDLE_ENFORCE_EQ(
+        weight_dims,
+        input.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of weight should be equal to the shape of input."
+            "But received weight shape is [%s], input shape is [%s]",
+            weight_dims,
+            input.dims()));
+  }
+
+  out->set_dims({bins});
+  out->share_lod(input);
+  if (density || weight) {
+    out->set_dtype(DataType::FLOAT32);
+  } else {
+    out->set_dtype(DataType::INT64);
+  }
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,
