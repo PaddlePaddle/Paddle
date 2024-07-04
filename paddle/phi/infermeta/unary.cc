@@ -4263,6 +4263,11 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
   y->set_dtype(out_dtype);
 }
 
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
 void SplitInferMeta(const MetaTensor& x,
                     const IntArray& sections,
                     const Scalar& axis,
@@ -5823,12 +5828,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
        (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+#endif
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
