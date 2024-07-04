@@ -429,7 +429,8 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
          !(dense_tensor &&
            NeedTransform2Contiguous(is_stride_kernel,
                                     dense_tensor->meta().is_contiguous())))) {
-      if (NeedTransform2Contiguous(is_stride_kernel,
+      if (dense_tensor != nullptr &&
+          NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor->meta().is_contiguous())) {
         phi::DenseTensor out =
             *(static_cast<phi::DenseTensor*>(tensor_in.get()));
