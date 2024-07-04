@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
+    Callable,
     TypedDict,
 )
 
@@ -53,7 +54,7 @@ class InvertedResidual(nn.Layer):
         oup: int,
         stride: int,
         expand_ratio: float,
-        norm_layer: type[nn.Layer] = nn.BatchNorm2D,
+        norm_layer: Callable[..., nn.Layer] = nn.BatchNorm2D,
     ) -> None:
         super().__init__()
         self.stride = stride
