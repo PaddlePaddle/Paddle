@@ -407,6 +407,14 @@ void HingeLossInferMeta(const MetaTensor& logits,
                         const MetaTensor& labels,
                         MetaTensor* loss);
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t bins,
+                        int min,
+                        int max,
+                        bool density,
+                        MetaTensor* out);
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,
