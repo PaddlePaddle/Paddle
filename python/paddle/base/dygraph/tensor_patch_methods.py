@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import os
 import warnings
 from typing import TYPE_CHECKING, Any, Callable, overload
 
@@ -558,6 +559,7 @@ def monkey_patch_tensor():
                 >>> # remove hook
                 >>> h.remove()
         """
+        os.environ['XPU_CDNN_CLUSTER_PARALLEL'] = str(0)
         if self.stop_gradient is True:
             raise RuntimeError(
                 "Cannot register hook on a tensor that stop gradient."
