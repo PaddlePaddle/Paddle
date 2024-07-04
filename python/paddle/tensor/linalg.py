@@ -2299,7 +2299,7 @@ def histogram(
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: shape is (nbins,), the counts or density of the histogram.
+        Tensor, shape is (nbins,), the counts or density of the histogram.
 
     Examples:
         .. code-block:: python
