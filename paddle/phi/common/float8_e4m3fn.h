@@ -69,7 +69,7 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     const uint32_t sign = fb.ui & UINT32_C(0x80000000);
     fb.ui ^= sign;
     if (fb.ui >= fp8_max) {
-      result = 0x7f;
+      result = 0x7e;
     } else {
       if (fb.ui < (UINT32_C(121) << 23)) {
         fb.f = fb.f + denorm_mask.f;
