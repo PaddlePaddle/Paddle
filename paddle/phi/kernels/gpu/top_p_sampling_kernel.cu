@@ -330,7 +330,7 @@ __device__ inline T exponential_transform(T val, T lambda) {
 template <typename T, int MaxLength, int TopPBeamTopK, int BlockSize>
 __global__ void KeMatrixTopPBeamTopK(const T* src,
                                      const T* threshold,
-                                     curandState_t* dev_curand_states,
+                                     curandState_t* states,
                                      T* top_ps,
                                      int64_t* out_id,  // topk id
                                      T* out_val,       // topk val
@@ -404,8 +404,8 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
       if (!flag) {
         float val = static_cast<float>(beam_max[i].v);
         sum_prob += val;
-        float random_ratio = exponential_transform(
-            curand_uniform(dev_curand_states + bid), 1.0f);
+        float random_ratio =
+            exponential_transform(curand_uniform(states + bid), 1.0f);
 
         float random_val = (val >= threshold_now ? val : 0.f) / random_ratio;
         if (max_val < random_val) {
@@ -435,7 +435,7 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
 template <typename T, int MaxLength, int TopPBeamTopK, int BlockSize>
 __global__ void KeMatrixTopPBeamTopKFt(const T* src,
                                        const T* threshold,
-                                       curandState_t* dev_curand_states,
+                                       curandState_t* states,
                                        T* top_ps,
                                        int64_t* out_id,  // topk id
                                        T* out_val,       // topk val
@@ -495,7 +495,7 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
   }
   if (tid == 0) {
     count_iter_begin[bid] = count_iter[bid];
-    float rand_top_p = curand_uniform(dev_curand_states + bid) * top_p_num;
+    float rand_top_p = curand_uniform(states + bid) * top_p_num;
     top_ps[bid] = (T)rand_top_p;
     float sum_prob = 0.0f;
     bool flag = false;
@@ -566,7 +566,7 @@ template <typename T, typename Context, int TopKMaxLength, int TopPBeamTopK>
 void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                   const T* src,
                                   const T* threshold,
-                                  curandState_t* dev_curand_states,
+                                  curandState_t* states,
                                   T* top_ps,
                                   int64_t* out_id,  // topk id
                                   T* out_val,       // topk val
@@ -586,7 +586,7 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
           KeMatrixTopPBeamTopKFt<T, TopKMaxLength, TopPBeamTopK, kBlockDim>
           <<<bs, kBlockDim, 0, dev_ctx.stream()>>>(src,
                                                    threshold,
-                                                   dev_curand_states,
+                                                   states,
                                                    top_ps,
                                                    out_id,
                                                    out_val,
@@ -607,7 +607,7 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
           KeMatrixTopPBeamTopK<T, TopKMaxLength, TopPBeamTopK, kBlockDim>
           <<<bs, kBlockDim, 0, dev_ctx.stream()>>>(src,
                                                    threshold,
-                                                   dev_curand_states,
+                                                   states,
                                                    top_ps,
                                                    out_id,
                                                    out_val,
@@ -660,7 +660,7 @@ __global__ void topp_sampling(T* sorted_probs,
                               int64_t* out_id,
                               const T* top_ps,
                               const T* threshold,
-                              curandState_t* dev_curand_states,
+                              curandState_t* states,
                               const int p_num,
                               const int vocab_size,
                               const bool need_batch_random,
@@ -716,7 +716,7 @@ __global__ void topp_sampling(T* sorted_probs,
     if (thread_offset < p_t ||
         (thread_offset >= p_t && thread_offset - thread_count < p_t)) {
       float random_ratio =
-          exponential_transform(curand_uniform(dev_curand_states + bid), 1.0f);
+          exponential_transform(curand_uniform(states + bid), 1.0f);
       float tmp_val =
           (thread_count >= threshold_now ? thread_count : 0.f) / random_ratio;
       if (static_cast<float>(max_thread_pair.v) < tmp_val) {
@@ -792,7 +792,7 @@ __global__ void topp_sampling_ft(T* sorted_probs,
                                  int64_t* out_id,
                                  const T* top_ps,
                                  const T* threshold,
-                                 curandState_t* dev_curand_states,
+                                 curandState_t* states,
                                  const int p_num,
                                  const int vocab_size,
                                  const bool need_batch_random,
@@ -958,7 +958,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                           int64_t* out_id,
                           const T* top_ps,
                           const T* threshold,
-                          curandState_t* dev_curand_states,
+                          curandState_t* states,
                           const int p_num,
                           const int vocab_size,
                           const int bs,
@@ -977,7 +977,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                    out_id,
                                                    top_ps,
                                                    threshold,
-                                                   dev_curand_states,
+                                                   states,
                                                    p_num,
                                                    vocab_size,
                                                    need_batch_random,
@@ -996,7 +996,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                    out_id,
                                                    top_ps,
                                                    threshold,
-                                                   dev_curand_states,
+                                                   states,
                                                    p_num,
                                                    vocab_size,
                                                    need_batch_random,
@@ -1158,20 +1158,19 @@ void TopPSamplingKernel(const Context& dev_ctx,
       PD_THROW("the input data shape has error in the FillIndex kernel.");
   }
   int64_t* infer_seed = SafeGetTensorPtr<int64_t>(topp_seed);
-  curandState_t* dev_curand_states{nullptr};
+  curandState_t* states{nullptr};
   phi::Allocator::AllocationPtr curand_states_buf{nullptr};
   curand_states_buf = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bs * sizeof(curandState_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  dev_curand_states =
-      reinterpret_cast<curandState_t*>(curand_states_buf->ptr());
+  states = reinterpret_cast<curandState_t*>(curand_states_buf->ptr());
   uint64_t seed_now = seed;
   uint64_t offset = 0;
   bool need_batch_random = false;
 
   if (infer_seed) {
-    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, infer_seed, bs);
+    setup_kernel<<<1, 256, 0, cu_stream>>>(states, infer_seed, bs);
   } else {
     if (seed == -1) {
       need_batch_random = true;
@@ -1181,10 +1180,10 @@ void TopPSamplingKernel(const Context& dev_ctx,
       seed = seed_offset.first;
       offset = seed_offset.second;
       setup_kernel<<<1, 256, 0, cu_stream>>>(
-          dev_curand_states, seed, offset, bs, need_batch_random);
+          states, seed, offset, bs, need_batch_random);
     } else {
       setup_kernel<<<1, 256, 0, cu_stream>>>(
-          dev_curand_states, seed, offset, bs, need_batch_random);
+          states, seed, offset, bs, need_batch_random);
     }
   }
 
@@ -1205,7 +1204,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
       dev_ctx,
       x.data<T>(),
       threshold_data,
-      dev_curand_states,
+      states,
       ps_now.data<T>(),
       ids_ptr,
       out_ptr,
@@ -1272,7 +1271,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
                           ids_ptr,
                           ps_now.data<T>(),
                           threshold_data,
-                          dev_curand_states,
+                          states,
                           p_num,
                           vocab_size,
                           bs,
