@@ -527,8 +527,7 @@ def amp_guard(
                         _current_expected_place().get_device_id()
                     )
                     warnings.warn(
-                        '%s does not support float16 amp.'
-                        % core.XPUVersion(xpu_version)
+                        f'{core.XPUVersion(xpu_version)} does not support float16 amp.'
                     )
                     enable = False
                 elif (dtype == 'bfloat16') and not _is_xpu_bfloat16_supported():
@@ -536,8 +535,7 @@ def amp_guard(
                         _current_expected_place().get_device_id()
                     )
                     warnings.warn(
-                        '%s does not support bfloat16 amp.'
-                        % core.XPUVersion(xpu_version)
+                        f'{core.XPUVersion(xpu_version)} does not support bfloat16 amp.'
                     )
                     enable = False
             # For custom device:

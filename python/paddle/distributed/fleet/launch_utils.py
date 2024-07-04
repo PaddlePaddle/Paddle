@@ -26,10 +26,10 @@ import sys
 import tempfile
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 import paddle.utils.cpp_extension.extension_utils as utils
 from paddle import framework
+from paddle.utils import strtobool
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -1855,11 +1855,11 @@ class ParameterServerLauncher:
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[
-                    stage_id + 1
-                ]
-                if stage_id <= self.stage_num - 1
-                else "",
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": (
+                    self.stage_heter_map[stage_id + 1]
+                    if stage_id <= self.stage_num - 1
+                    else ""
+                ),
                 "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[
                     stage_id - 1
                 ],

@@ -513,15 +513,11 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
                                                  rewriter,
                                                  rewriter.block(),
                                                  &group_map);
-  // 2. simply every condition block
-  auto* program = group->ops().front()->GetParentProgram();
-  VLOG(6) << "Before simply condition block: " << *program;
 
-  SimplyConditionBlock(rewriter, &group_map);
-  VLOG(6) << "After simply condition block: " << *program;
-
-  // 3. compile condition block to jit_kernel_op
+  // 2. compile condition block to jit_kernel_op
   CompileGroupToJitKernelOp(rewriter, &group_map);
+
+  auto* program = group->ops().front()->GetParentProgram();
   VLOG(6) << "compile condition block to jit_kernel_op: " << *program;
 
   return cond_op;

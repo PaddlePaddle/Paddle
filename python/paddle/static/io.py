@@ -684,8 +684,7 @@ def deserialize_persistables(program, data, executor):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `base.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `base.Program`, but received `{type(program)}`"
         )
     # load params to a tmp program
     load_program = Program()
@@ -838,7 +837,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
 
             >>> [inference_program, feed_target_names, fetch_targets] = (
             ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32) # type: ignore[var-annotated]
             >>> results = exe.run(inference_program,
             ...               feed={feed_target_names[0]: tensor_img},
             ...               fetch_list=fetch_targets)
