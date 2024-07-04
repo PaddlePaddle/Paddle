@@ -127,6 +127,11 @@ MeasureResult Measurer::Result() const {
           << ::common::PerformanceReporter::Report(kernel_record);
   auto avg_kernel_execute_time =
       ::common::PerformanceReporter::TrimMean(kernel_execute_durations);
+  LOG(INFO) << "print kernel_execute_duration";
+  for (auto& k_duration : kernel_execute_durations) {
+    LOG(INFO) << k_duration.count() << " ";
+  }
+  LOG(INFO) << "end of print kernel_execute_duration";
 
   result.compile_time = compile_time;
   result.avg_total_execute_time = avg_total_execute_time;

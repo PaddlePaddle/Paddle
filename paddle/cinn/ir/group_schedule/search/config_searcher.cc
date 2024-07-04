@@ -75,6 +75,10 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
                                                                   &rand_seed_);
       samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
     }
+    LOG(INFO) << "Add sample";
+    for (auto& s : samples) {
+      LOG(INFO) << s;
+    }
     return samples;
   };
 

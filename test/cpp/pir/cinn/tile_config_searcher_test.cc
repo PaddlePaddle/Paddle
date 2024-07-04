@@ -63,7 +63,9 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
 // Get the tile size configuration for the given dimension lower bound
 // dynamically.
 int get_tile_size_config(int dimension_lower) {
-  if (dimension_lower < 128) {
+  if (dimension_lower < 32) {
+    return 30;
+  } else if (dimension_lower < 128) {
     return 32;
   } else if (dimension_lower < 512) {
     return 128;
@@ -96,20 +98,20 @@ TEST(ConfigSearcher, TestReducePipeline) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Define the search space bounds and sampling probabilities.
-  constexpr int spatial_left_bound = 32;
+  constexpr int spatial_left_bound = 2;
   constexpr int spatial_right_bound =
-      512;  // for easy test, set to 32. for the whole test, set to 4096
-  constexpr int reduce_left_bound = 32;
+      4096;  // for easy test, set to 32. for the whole test, set to 4096
+  constexpr int reduce_left_bound = 2;
   constexpr int reduce_right_bound =
-      512;  // for easy test : set to 32. for the whole test, set to 4096
-  constexpr bool is_spatial_dynamic = true;
+      4096;  // for easy test : set to 32. for the whole test, set to 4096
+  constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
   // now each has the same weight
   constexpr double s_w = 0.05;
   constexpr double r_w = 0.05;
   constexpr double sampling_prob = 1.0;
-  constexpr int kMaxSamplingTimes = 200;
-  constexpr int kRepeats = 60;
+  constexpr int kMaxSamplingTimes = 600;
+  constexpr int kRepeats = 56;
 
   // Define the initial grid size for the spatial and reduction dimensions
   int spatial_tile_config = 0, reduce_tile_config = 0;
@@ -183,7 +185,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
       // Step 4: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 8}, {1, 256}, {1, 8}};  // {1, 8}, {1, 256}, {1, 256}
+          {1, 8}, {1, 512}, {1, 32}};  // {1, 8}, {1, 256}, {1, 256}
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -210,10 +212,10 @@ TEST(ConfigSearcher, TestReducePipeline) {
                        candidate[2] <=
                    s_dimension_lower;
           });
-      constraints.emplace_back(
-          [&](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[1] <= r_dimension_lower;
-          });
+      // constraints.emplace_back(
+      //     [&](const cinn::ir::search::CandidateType& candidate) -> bool {
+      //       return candidate[1] <= r_dimension_lower;
+      //     });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[2] == 1 || candidate[2] == 2 ||
@@ -254,6 +256,8 @@ TEST(ConfigSearcher, TestReducePipeline) {
         bucket_info.space[1].upper_bound =
             r_dimension_lower + reduce_tile_config - 1;
       }
+      file_database.AddConfig(
+          cinn::common::DefaultTarget(), bucket_info, tile_bestconfig, 0);
 
       LOG(INFO) << "spatial tile dimension lower bound = " << s_dimension_lower
                 << ", reduce tile dimension lower bound = " << r_dimension_lower
