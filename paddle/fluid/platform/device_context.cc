@@ -121,6 +121,8 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
                                 custom_ctx->stream());
     }
     dev_ctx->SetAllocator(instance.GetAllocator(p, custom_ctx->stream()).get());
+    phi::CustomPinnedPlace pinned(p.GetDeviceType());
+    dev_ctx->SetPinnedAllocator(instance.GetAllocator(pinned).get());
     dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
 #endif
   } else {

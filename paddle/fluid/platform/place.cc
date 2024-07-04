@@ -49,9 +49,16 @@ bool is_custom_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CUSTOM;
 }
 
+bool is_custom_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::CUSTOMPINNED;
+}
+
 bool places_are_same_class(const Place &p1, const Place &p2) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (is_custom_place(p1) && is_custom_place(p2)) {
+    return p1.GetDeviceType() == p2.GetDeviceType();
+  }
+  if (is_custom_pinned_place(p1) && is_custom_pinned_place(p2)) {
     return p1.GetDeviceType() == p2.GetDeviceType();
   }
 #endif
@@ -78,7 +85,7 @@ std::string PlaceHelper::GetDeviceType(const Place &place) {
     return "gpu";
   } else if (is_xpu_place(place)) {
     return "xpu";
-  } else if (is_custom_place(place)) {
+  } else if (is_custom_place(place) || is_custom_pinned_place(place)) {
     return place.GetDeviceType();
   } else {
     PADDLE_THROW(platform::errors::Fatal(

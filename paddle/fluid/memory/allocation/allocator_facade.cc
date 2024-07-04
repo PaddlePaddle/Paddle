@@ -71,7 +71,9 @@
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/memory/allocation/custom_pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_custom_device_allocator.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #endif
 
 #include "paddle/fluid/platform/flags.h"
@@ -236,6 +238,7 @@ class AllocatorFacadePrivate {
             InitNaiveBestFitCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id));
           }
+          InitCustomPinnedAllocator(platform::CustomPinnedPlace(dev_type));
         }
 #endif
         break;
@@ -302,6 +305,7 @@ class AllocatorFacadePrivate {
             InitAutoGrowthCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
           }
+          InitCustomPinnedAllocator(platform::CustomPinnedPlace(dev_type));
         }
         if (FLAGS_use_stream_safe_cuda_allocator) {
           WrapStreamSafeCustomDeviceAllocatorForDefault();
@@ -1340,6 +1344,22 @@ class AllocatorFacadePrivate {
     return std::make_shared<CustomAllocator>(p);
   }
 
+  void InitCustomPinnedAllocator(platform::CustomPinnedPlace p) {
+    if (FLAGS_use_auto_growth_pinned_allocator) {
+      auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+      VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+              << FLAGS_auto_growth_chunk_size_in_mb;
+      auto pinned_allocator = std::make_shared<CustomCPUPinnedAllocator>(p);
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+          pinned_allocator,
+          phi::backends::cpu::CpuMinChunkSize(),
+          chunk_size,
+          allow_free_idle_chunk_);
+    } else {
+      allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+    }
+  }
+
   void InitStreamSafeCustomDeviceAllocator(platform::CustomPlace p,
                                            phi::stream::stream_t stream) {
     PADDLE_ENFORCE_EQ(
@@ -1451,6 +1471,9 @@ class AllocatorFacadePrivate {
         platform::CustomPlace p(dev_type, dev_id);
         system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
       }
+      platform::CustomPinnedPlace pinned(dev_type);
+      system_allocators_[pinned] =
+          std::make_shared<CustomCPUPinnedAllocator>(pinned);
     }
 #endif
   }
@@ -1484,6 +1507,7 @@ class AllocatorFacadePrivate {
       for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
         places.emplace_back(platform::CustomPlace(dev_type, dev_id));
       }
+      places.emplace_back(platform::CustomPinnedPlace(dev_type));
     }
 #endif
 

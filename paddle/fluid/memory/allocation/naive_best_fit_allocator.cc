@@ -475,10 +475,29 @@ class BuddyAllocatorList {
     return allocators_[dev_id].get();
   }
 
+  BuddyAllocator *GetPinned() {
+    std::call_once(pinned_init_flags_, [this] {
+      phi::DeviceManager::SetDevice(device_type_, 0);
+      platform::CustomPlace place(device_type_, 0);
+      pinned_allocator_ = std::make_unique<BuddyAllocator>(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::CustomPinnedAllocator(device_type_)),
+          // 64k required for CUDAPinnedMinChunkSize is too large
+          phi::backends::cpu::CpuMinChunkSize(),
+          // CUDAPinnedMaxChunkSize is adjusted by
+          // FLAGS_fraction_of_cuda_pinned_memory_to_use
+          phi::backends::cpu::CUDAPinnedMaxChunkSize(),
+          phi::DeviceManager::GetExtraPaddingSize(place));
+    });
+    return pinned_allocator_.get();
+  }
+
  private:
   std::string device_type_;
   std::unordered_map<size_t, std::unique_ptr<std::once_flag>> init_flags_;
   std::unordered_map<size_t, std::unique_ptr<BuddyAllocator>> allocators_;
+  std::unique_ptr<BuddyAllocator> pinned_allocator_;
+  std::once_flag pinned_init_flags_;
 };
 
 BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
@@ -487,9 +506,13 @@ BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
     return BuddyAllocatorList::Instance(
                platform::PlaceHelper::GetDeviceType(place))
         ->Get(platform::PlaceHelper::GetDeviceId(place));
+  } else if (platform::is_custom_pinned_place(place)) {
+    return BuddyAllocatorList::Instance(
+               platform::PlaceHelper::GetDeviceType(place))
+        ->GetPinned();
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("place must be CustomPlace"));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "place must be CustomPlace or CustomPinnedPlace"));
   }
 }
 #endif
@@ -560,6 +583,64 @@ size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void *Alloc<platform::CustomPinnedPlace>(
+    const platform::CustomPinnedPlace &place, size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  auto *buddy_allocator = GetBuddyAllocator(place);
+  auto *ptr = buddy_allocator->Alloc(size);
+  if (ptr == nullptr) {
+    LOG(WARNING) << "Cannot allocate " << size
+                 << " bytes in CustomPinnedPlace for device type: "
+                 << place.GetDeviceType();
+  } else {
+    if (FLAGS_init_allocated_mem) {
+      memset(ptr, 0xEF, size);
+    }
+  }
+  VLOG(10) << "  pointer=" << ptr;
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+template <>
+void Free<platform::CustomPinnedPlace>(const platform::CustomPinnedPlace &place,
+                                       void *p,
+                                       size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  if (phi::DeviceManager::HasDeviceType(place.GetDeviceType())) {
+    GetBuddyAllocator(place)->Free(p);
+  }
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+template <>
+uint64_t Release<platform::CustomPinnedPlace>(
+    const platform::CustomPinnedPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return GetBuddyAllocator(place)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+template <>
+size_t Used<platform::CustomPinnedPlace>(
+    const platform::CustomPinnedPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return GetBuddyAllocator(place)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 

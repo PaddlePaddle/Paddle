@@ -32,6 +32,7 @@ using CUDAPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using IPUPlace = phi::IPUPlace;
 using CustomPlace = phi::CustomPlace;
+using CustomPinnedPlace = phi::CustomPinnedPlace;
 
 using PlaceList = std::vector<Place>;
 
@@ -50,6 +51,7 @@ bool is_ipu_place(const Place &);
 TEST_API bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool is_custom_place(const Place &p);
+bool is_custom_pinned_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
@@ -104,6 +106,16 @@ typename Visitor::result_type VisitPlace(const Place &place,
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Paddle is not compiled with CUSTOM. Cannot visit custom device"));
+#endif
+    }
+    case phi::AllocationType::CUSTOMPINNED: {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      platform::CustomPinnedPlace p(place.GetDeviceType());
+      return visitor(p);
+#else
+      PADDLE_THROW(
+          platform::errors::Unavailable("Paddle is not compiled with CUSTOM. "
+                                        "Cannot visit custom pinned device"));
 #endif
     }
     default: {

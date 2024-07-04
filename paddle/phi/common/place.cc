@@ -39,6 +39,8 @@ const char *AllocationTypeStr(AllocationType type) {
       return "ipu";
     case AllocationType::CUSTOM:
       return "custom_device";
+    case AllocationType::CUSTOMPINNED:
+      return "custom_device_pinned";
     default:
       PD_THROW("Invalid phi device type.");
       return {};
@@ -57,11 +59,16 @@ std::string Place::DebugString() const {
   if (alloc_type_ == AllocationType::CUSTOM) {
     os << phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
         device_type_id_);
+  } else if (alloc_type_ == AllocationType::CUSTOMPINNED) {
+    os << phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+              device_type_id_)
+       << "_pinned";
   } else {
     os << AllocationTypeStr(alloc_type_);
   }
   if (alloc_type_ == AllocationType::GPUPINNED ||
-      alloc_type_ == AllocationType::CPU) {
+      alloc_type_ == AllocationType::CPU ||
+      alloc_type_ == AllocationType::CUSTOMPINNED) {
     os << ")";
   } else {
     os << ":" << std::to_string(device) << ")";

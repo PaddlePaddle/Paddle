@@ -83,6 +83,20 @@ class CustomAllocator : public SystemAllocator {
   std::string dev_type_;
   size_t dev_id_;
 };
+
+class CustomPinnedAllocator : public SystemAllocator {
+ public:
+  explicit CustomPinnedAllocator(const std::string& device_type)
+      : dev_type_(device_type) {}
+
+  virtual void* Alloc(size_t* index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t plug_pinned_alloc_size = 0;
+  std::string dev_type_;
+};
 #endif
 
 }  // namespace detail

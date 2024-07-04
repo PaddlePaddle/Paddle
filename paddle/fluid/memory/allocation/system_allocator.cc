@@ -344,6 +344,47 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
 }
 
 bool CustomAllocator::UseGpu() const { return true; }
+
+void* CustomPinnedAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+  void* p;
+  auto place = platform::CustomPinnedPlace(dev_type_);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+  p = device->MemoryAllocateHost(size);
+  if (LIKELY(p)) {
+    VLOG(4) << "CustomPinnedAllocator::Alloc " << p << " size " << size;
+    *index = 0;
+    plug_pinned_alloc_size += size;
+    HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+    platform::RecordMemEvent(
+        p, place, size, platform::TracerMemEventType::ReservedAllocate);
+  } else {
+    return nullptr;
+  }
+  return p;
+}
+void CustomPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "CustomPinnedAllocator::Free " << p << " size " << size;
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(plug_pinned_alloc_size,
+                    size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size,
+                        plug_pinned_alloc_size));
+  plug_pinned_alloc_size -= size;
+  auto place = platform::CustomPinnedPlace(dev_type_);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+  device->MemoryDeallocateHost(p, size);
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+  platform::RecordMemEvent(
+      p, place, size, platform::TracerMemEventType::ReservedFree);
+}
+bool CustomPinnedAllocator::UseGpu() const { return false; }
 #endif
 
 }  // namespace paddle::memory::detail
