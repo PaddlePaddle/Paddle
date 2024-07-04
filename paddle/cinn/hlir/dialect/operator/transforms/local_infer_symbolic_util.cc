@@ -75,9 +75,14 @@ void InitLocalShapeAnalysis(const pir::Operation& op,
         }
         return symbol::ShapeOrDataDimExprs(ret);
       };
+  auto NewSymbolReplacedNull =
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(null_shape_or_data);
+      };
   auto GetNewSymbolReplaced = [&](const auto& value_dim_exprs) {
     auto patterns = common::Overloaded{NewSymbolReplacedTensor,
-                                       NewSymbolReplacedTensorList};
+                                       NewSymbolReplacedTensorList,
+                                       NewSymbolReplacedNull};
     return std::visit(patterns, value_dim_exprs.variant());
   };
   VisitEachInputAndDimExprs([&](auto value, const auto& value_dim_exprs) {

@@ -117,15 +117,16 @@ class Adamax(Optimizer):
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            >>> adam = paddle.optimizer.Adamax(learning_rate=0.1,
-            ...         parameters=linear.parameters(),
-            ...         beta1=beta1,
-            ...         beta2=beta2,
-            ...         weight_decay=0.01
+            >>> adamax = paddle.optimizer.Adamax(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     weight_decay=0.01
             ... )
             >>> out.backward()
-            >>> adam.step()
-            >>> adam.clear_grad()
+            >>> adamax.step()
+            >>> adamax.clear_grad()
 
 
             >>> # Note that the learning_rate of linear_2 is 0.01.
@@ -135,7 +136,7 @@ class Adamax(Optimizer):
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adamax(
+            >>> adamax = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
             ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
@@ -149,9 +150,10 @@ class Adamax(Optimizer):
             ...     beta1=0.9
             ... )
             >>> out.backward()
-            >>> adam.step()
-            >>> adam.clear_grad()
+            >>> adamax.step()
+            >>> adamax.clear_grad()
     """
+
     type: str
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -163,9 +165,9 @@ class Adamax(Optimizer):
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
         epsilon: float | Tensor = 1e-8,
-        parameters: Sequence[Tensor]
-        | Sequence[_AdamaxParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdamaxParameterConfig] | None
+        ) = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,

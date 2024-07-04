@@ -54,6 +54,8 @@ ParamsT CreateParamsImpl(common::ARMArch) {
 
 ParamsT CreateParamsImpl(common::NVGPUArch) { return CreateCudaParams(); }
 
+ParamsT CreateParamsImpl(common::HygonDCUArchHIP) { return CreateCudaParams(); }
+
 ParamsT CreateParams(common::Arch arch) {
   return std::visit([](const auto &impl) { return CreateParamsImpl(impl); },
                     arch.variant());
@@ -2919,6 +2921,16 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
                     [&](common::X86Arch) {},
                     [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
                     [&](common::NVGPUArch) {
+                      if (fused_shape > target.max_num_threads()) {
+                        stages[last_output]->Split(0, target.max_num_threads());
+                        stages[last_output]->Bind(0, "blockIdx.x");
+                        stages[last_output]->Bind(1, "threadIdx.x");
+                        compute_at_level++;
+                      } else {
+                        stages[last_output]->Bind(0, "threadIdx.x");
+                      }
+                    },
+                    [&](common::HygonDCUArchHIP) {
                       if (fused_shape > target.max_num_threads()) {
                         stages[last_output]->Split(0, target.max_num_threads());
                         stages[last_output]->Bind(0, "blockIdx.x");

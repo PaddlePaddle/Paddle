@@ -17,7 +17,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
 namespace cinn::dialect {
-using paddle::dialect::details::CreateShapeOrDataForXShape;
 
 bool BroadcastOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -195,11 +194,6 @@ bool ReshapeOpInferSymbolicShape(
   }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-  // NOTE(Aureliue84): Parse XShape symbolic expression which is used for
-  // backward process. It will be removed after normolizing ReshapeGrad(out,
-  // xshape) into ReshapeGrad(out, x).
-  infer_context->SetShapeOrDataForValue(op->result(1),
-                                        CreateShapeOrDataForXShape(x_dim_expr));
 
   return true;
 }

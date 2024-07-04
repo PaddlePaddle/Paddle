@@ -380,8 +380,12 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
   int top_num = TopPBeamTopK;
   float top_p_num = static_cast<float>(top_ps[bid]);
   const int offset = bid * vocab_size;
-  int64_t* topk_ids_now = topk_ids + bid * k;
-  T* topk_scores_now = topk_scores + bid * k;
+  int64_t* topk_ids_now = nullptr;
+  T* topk_scores_now = nullptr;
+  if (k > 0) {
+    topk_ids_now = topk_ids + bid * k;
+    topk_scores_now = topk_scores + bid * k;
+  }
 
   __shared__ Pair<T> shared_max[BlockSize / 32];
   __shared__ Pair<T> beam_max[TopPBeamTopK];
@@ -422,7 +426,7 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
     float max_val = 0.f;
     int max_id = -1;
     for (int i = 0; i < TopPBeamTopK; i++) {
-      if (i < k) {
+      if (k > 0 && i < k) {
         topk_ids_now[i] = static_cast<int64_t>(beam_max[i].id);
         topk_scores_now[i] = beam_max[i].v;
       }
@@ -514,8 +518,12 @@ __global__ void KeMatrixTopPBeamTopKTruncated(const T* src,
 #endif
   int top_num = TopPBeamTopK;
   float top_p_num = static_cast<float>(top_ps[bid]);
-  int64_t* topk_ids_now = topk_ids + bid * k;
-  T* topk_scores_now = topk_scores + bid * k;
+  int64_t* topk_ids_now = nullptr;
+  T* topk_scores_now = nullptr;
+  if (k > 0) {
+    topk_ids_now = topk_ids + bid * k;
+    topk_scores_now = topk_scores + bid * k;
+  }
 
   __shared__ Pair<T> shared_max[BlockSize / 32];
   __shared__ Pair<T> beam_max[TopPBeamTopK];
@@ -559,7 +567,7 @@ __global__ void KeMatrixTopPBeamTopKTruncated(const T* src,
     float sum_prob = 0.0f;
     bool flag = false;
     for (int i = 0; i < TopPBeamTopK; i++) {
-      if (i < k) {
+      if (k > 0 && i < k) {
         topk_ids_now[i] = static_cast<int64_t>(beam_max[i].id);
         topk_scores_now[i] = beam_max[i].v;
       }
@@ -1288,7 +1296,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
                         const DenseTensor& ps,
                         const paddle::optional<DenseTensor>& threshold,
                         const paddle::optional<DenseTensor>& topp_seed,
-                        int random_seed,
+                        int seed,
                         int k,
                         const std::string& mode,
                         DenseTensor* out,
@@ -1306,8 +1314,12 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int vocab_size = in_dims[1];
   T* out_ptr = dev_ctx.template Alloc<T>(out);
   int64_t* ids_ptr = dev_ctx.template Alloc<int64_t>(ids);
-  T* topk_scores_data = dev_ctx.template Alloc<T>(topk_scores);
-  int64_t* topk_ids_data = dev_ctx.template Alloc<int64_t>(topk_ids);
+  T* topk_scores_data = nullptr;
+  int64_t* topk_ids_data = nullptr;
+  if (k > 0) {
+    topk_scores_data = dev_ctx.template Alloc<T>(topk_scores);
+    topk_ids_data = dev_ctx.template Alloc<int64_t>(topk_ids);
+  }
 
   DenseTensor ps_now;
   ps_now.Resize(phi::make_ddim({bs, 1}));
@@ -1335,16 +1347,16 @@ void TopPSamplingKernel(const Context& dev_ctx,
       PD_THROW("the input data shape has error in the FillIndex kernel.");
   }
   int64_t* infer_seed = SafeGetTensorPtr<int64_t>(topp_seed);
-  uint64_t seed = random_seed;
+  uint64_t seed_now = seed;
   uint64_t offset = 0;
   bool need_batch_random = false;
-  if (seed == -1) {
+  if (seed_now == -1) {
     VLOG(1) << "use paddle seed gen";
     need_batch_random = true;
     auto gen_cuda = dev_ctx.GetGenerator();
     uint64_t increment = x.numel() * 4;
     auto seed_offset = gen_cuda->IncrementOffset(increment);
-    seed = seed_offset.first;
+    seed_now = seed_offset.first;
     offset = seed_offset.second;
   }
 
@@ -1372,7 +1384,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
       topk_scores_data,
       vocab_size,
       infer_seed,
-      seed,
+      seed_now,
       offset,
       count_iter.data<int>(),
       count_iter_begin.data<int>(),
@@ -1434,8 +1446,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
                           ids_ptr,
                           ps_now.data<T>(),
                           threshold_data,
-                          nullptr,
-                          seed,
+                          infer_seed,
+                          seed_now,
                           offset,
                           p_num,
                           vocab_size,

@@ -23,8 +23,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 static DDim GetDimsDebug(const Scope& scope,
                          const std::string& name,
@@ -409,5 +408,4 @@ std::string InstructionBase::DebugStringEx(
   ss << "}.";
   return ss.str();
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
