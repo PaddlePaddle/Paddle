@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
 
 import numpy as np
@@ -4721,8 +4722,6 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     )
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
-                    import math
-
                     if math.prod(x.shape):
                         assert dim_idx < len(x.shape), (
                             "The index of 0 in `shape` must be less than "
