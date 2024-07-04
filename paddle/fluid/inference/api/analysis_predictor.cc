@@ -1017,6 +1017,8 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   pir_feeds_.clear();
+  // CreateFeedFetchVar(sub_scope_);
+  std::vector<phi::DenseTensor *> tensor_feed;
   for (auto op : pir_program_->block()->ops()) {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
     if (op->isa<paddle::dialect::FetchOp>()) {
@@ -1032,24 +1034,21 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      sub_scope_->Var(data_name);
       idx2feeds_[feed_idx] = data_name;
       feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
     }
 
-    for (auto var : op->results()) {
-      std::string var_name;
+    if (op->isa<::pir::ParameterOp>()) {
+      std::string var_name =
+          op->attribute<pir::StrAttribute>("parameter_name").AsString();
+      auto var = op->result(0);
       auto is_persistable =
           var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
       if (is_persistable && is_persistable.data()) {
-        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
-          var_name = param_op.param_name();
-          param_name_var_pairs.emplace_back(var_name, var);
-        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
-          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-          param_name_var_pairs.emplace_back(var_name, var);
-        }
+        param_name_var_pairs.emplace_back(var_name, var);
       }
     }
   }
@@ -1077,19 +1076,20 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+        const phi::DeviceContext *dev_ctx = nullptr;
+        dev_ctx = pool.Get(place_);
+        pir::Type type_ = pir::GetDataTypeFromValue(value);
+        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+        dev_ctx->Alloc(tensor_temp, type_data);
       } else {
         PADDLE_THROW(platform::errors::Unavailable(
             "Only support parameter data of type DenseTensor."));
       }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-    tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-
-    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-    const phi::DeviceContext *dev_ctx = pool.Get(place_);
-    pir::Type type_ = pir::GetDataTypeFromValue(value);
-    phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-    dev_ctx->Alloc(tensor_temp, type_data);
     tensor_out.push_back(tensor_temp);
   }
 
@@ -2470,8 +2470,10 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::InvalidArgument("The scope should not be nullptr."));
+  LOG(INFO) << "Entering CreateFeedFetchVar function.";
   auto *var = scope->Var(framework::kFeedOpType);
   var->GetMutable<framework::FeedList>();
+  LOG(INFO) << "FeedList has done";
   var = scope->Var(framework::kFetchOpType);
   var->GetMutable<framework::FetchList>();
 }
