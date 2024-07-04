@@ -258,9 +258,9 @@ void ApplyCinnPass(::pir::Program* program,
   PirToPyCodeConverter(program)
       .file_name("fusion_op_programs.py")
       .SaveIfFlagEnabled();
-  LOG(INFO) << "FusionOp count before lowering : *****[ "
-            << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
-            << " ]*****";
+  // LOG(INFO) << "FusionOp count before lowering : *****[ "
+  //           << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
+  //           << " ]*****";
   if (FLAGS_pir_debug) {
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
     std::cout << "Program before lowering: \n"

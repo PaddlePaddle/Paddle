@@ -133,7 +133,7 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
   // Define the search space bounds and sampling probabilities.
   constexpr int spatial_left_bound = 32;
-  constexpr int spatial_right_bound = 256;
+  constexpr int spatial_right_bound = 512;
   constexpr int reduce_left_bound = 32;
   constexpr int reduce_right_bound = 1024;
   constexpr bool is_spatial_dynamic = false;
@@ -143,7 +143,8 @@ TEST(ConfigSearcher, TestReducePipeline) {
   constexpr double r_w = 0.05;
   constexpr double sampling_prob = 1.0;
   constexpr int kMaxSamplingTimes = 65536;
-  constexpr int kRepeats = 80;
+  constexpr int kRepeats = 5;
+  constexpr int test_num = 5;
 
   // Define the initial grid size for the spatial and reduction dimensions
   int spatial_tile_config = 0, reduce_tile_config = 0;
@@ -173,6 +174,14 @@ TEST(ConfigSearcher, TestReducePipeline) {
                     true,
                     ::common::errors::InvalidArgument(
                         "Cannot open the file to write:  %s", dump_path));
+  os << "BucketInfo"
+     << " \t\t\t\t\t\t"
+     << "baseline score"
+     << "\t"
+     << "best score"
+     << "\t"
+     << "percentage"
+     << "\n";
 
   for (int s_dimension_lower = spatial_left_bound;
        s_dimension_lower <= spatial_right_bound;
@@ -271,33 +280,52 @@ TEST(ConfigSearcher, TestReducePipeline) {
       // Use the config in group_tile_config.cc
       cinn::ir::search::CandidateType default_candidate;
       FLAGS_tile_config_policy = "default";
-      cinn::ir::search::ScoreType baseline_score =
-          (*obj_func)(default_candidate);
-      FLAGS_tile_config_policy = "optimal";
-      LOG(INFO) << "=====================using optimal======================";
-      cinn::ir::search::ScoreType best_score = (*obj_func)(best_candidate);
 
-      LOG(INFO) << "Best score: " << best_score;
-      LOG(INFO) << "Baseline score: " << baseline_score;
+      cinn::ir::search::ScoreType min_baseline_score = 0;
+      cinn::ir::search::ScoreType min_best_score = 0;
+      for (int i = 0; i < test_num; i++) {
+        FLAGS_tile_config_policy = "default";
+        // LOG(INFO) << "=====================using
+        // default======================";
+        cinn::ir::search::ScoreType temp_baseline_score =
+            (*obj_func)(default_candidate);
+        FLAGS_tile_config_policy = "search";
+        // LOG(INFO) << "=====================using
+        // optimal======================";
+        cinn::ir::search::ScoreType temp_best_score =
+            (*obj_func)(best_candidate);
+        LOG(INFO) << "temp best score: " << temp_best_score;
+        LOG(INFO) << "temp baseline score: " << temp_baseline_score;
+        min_baseline_score =
+            (min_baseline_score == 0)
+                ? temp_baseline_score
+                : std::min(temp_baseline_score, min_baseline_score);
+        min_best_score = (min_best_score == 0)
+                             ? temp_best_score
+                             : std::min(temp_best_score, min_best_score);
+      }
+
+      LOG(INFO) << "Best score: " << min_best_score;
+      LOG(INFO) << "Baseline score: " << min_baseline_score;
       LOG(INFO) << "Best candidate: " << best_candidate[0] << " "
                 << best_candidate[1] << " " << best_candidate[2];
       // Write to csv file
       cinn::ir::search::ScoreType optim_percentage =
-          best_score / baseline_score;
+          min_best_score / min_baseline_score;
       std::stringstream ss;
-      ss << " { ";
+      ss << "{ ";
       for (int i = 0; i < iter_space_type.size(); ++i) {
         ss << iter_space_type[i].first << "_" << iter_space_type[i].second
            << ": " << bucket_info.space[i].lower_bound << "-"
-           << bucket_info.space[i].upper_bound << "  ";
+           << bucket_info.space[i].upper_bound << " ";
       }
-      ss << "} ";
-      os << ss.str() << ",";
-      os << " { " << best_candidate[0] << " " << best_candidate[1] << " "
-         << best_candidate[2] << " } "
-         << ",";
-      os << std::setprecision(3) << "  " << baseline_score << "," << best_score
-         << "," << optim_percentage << "\n";
+      ss << "}";
+      os << ss.str() << " \t ";
+      os << "{ " << best_candidate[0] << " " << best_candidate[1] << " "
+         << best_candidate[2] << " }"
+         << " \t ";
+      os << std::setprecision(3) << "  " << min_baseline_score << " \t "
+         << min_best_score << " \t " << optim_percentage << "\n";
     }
   }
   os.close();
