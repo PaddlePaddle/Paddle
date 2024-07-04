@@ -264,6 +264,11 @@ class AllocatorFacadePrivate {
         // application, treating it separately can avoid lots of overhead of
         // acquiring default stream and applying read-write lock.
         if (FLAGS_use_cuda_malloc_async_allocator) {
+          PADDLE_ENFORCE_EQ(FLAGS_use_cuda_managed_memory,
+                            false,
+                            platform::errors::InvalidArgument(
+                                "Async allocator cannot be used with CUDA "
+                                "managed memory."));
           WrapCUDAMallocAsyncAllocatorForDefault();
           is_cuda_malloc_async_allocator_used_ = true;
         } else {
@@ -871,6 +876,11 @@ class AllocatorFacadePrivate {
             "the allocator strategy %d is unsupported for multi-stream",
             static_cast<int>(strategy_)));
     if (FLAGS_use_cuda_malloc_async_allocator) {
+      PADDLE_ENFORCE_EQ(
+          FLAGS_use_cuda_managed_memory,
+          false,
+          platform::errors::InvalidArgument(
+              "Async allocator cannot be used with CUDA managed memory."));
       VLOG(8) << "[CUDAMallocAsyncAllocator] Init CUDA allocator for stream "
               << stream << " in place " << p;
       InitCUDAMallocAsyncAllocator(p, stream);
