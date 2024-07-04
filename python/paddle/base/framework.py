@@ -381,11 +381,8 @@ def in_pir_executor_mode() -> bool:
         bool: Whether paddle runs in pir executor mode.
 
     """
-    flag_1 = paddle.base.framework.get_flags("FLAGS_enable_pir_in_executor")[
-        "FLAGS_enable_pir_in_executor"
-    ]
     flag = str(os.environ.get("FLAGS_enable_pir_in_executor")).lower()
-    return flag in ("true", "1") or flag_1
+    return flag in ("true", "1")
 
 
 def in_cinn_mode() -> bool:
