@@ -35,6 +35,12 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
+#ifdef PADDLE_WITH_HIP
+#define GPU(str) hip##str
+#else
+#define GPU(str) cu##str
+#endif
+
 // #define DEBUG_TOPP
 
 namespace phi {
@@ -330,7 +336,7 @@ __device__ inline T exponential_transform(T val, T lambda) {
 template <typename T, int MaxLength, int TopPBeamTopK, int BlockSize>
 __global__ void KeMatrixTopPBeamTopK(const T* src,
                                      const T* threshold,
-                                     curandState_t* states,
+                                     GPU(randState_t) * states,
                                      T* top_ps,
                                      int64_t* out_id,  // topk id
                                      T* out_val,       // topk val
@@ -404,9 +410,13 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
       if (!flag) {
         float val = static_cast<float>(beam_max[i].v);
         sum_prob += val;
+#ifdef PADDLE_WITH_HIP
+        float random_ratio =
+            exponential_transform(hiprand_uniform(states + bid), 1.0f);
+#else
         float random_ratio =
             exponential_transform(curand_uniform(states + bid), 1.0f);
-
+#endif
         float random_val = (val >= threshold_now ? val : 0.f) / random_ratio;
         if (max_val < random_val) {
           max_val = random_val;
@@ -435,7 +445,7 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
 template <typename T, int MaxLength, int TopPBeamTopK, int BlockSize>
 __global__ void KeMatrixTopPBeamTopKFt(const T* src,
                                        const T* threshold,
-                                       curandState_t* states,
+                                       GPU(randState_t) * states,
                                        T* top_ps,
                                        int64_t* out_id,  // topk id
                                        T* out_val,       // topk val
@@ -495,7 +505,11 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
   }
   if (tid == 0) {
     count_iter_begin[bid] = count_iter[bid];
+#ifdef PADDLE_WITH_HIP
+    float rand_top_p = hiprand_uniform(states + bid) * top_p_num;
+#else
     float rand_top_p = curand_uniform(states + bid) * top_p_num;
+#endif
     top_ps[bid] = (T)rand_top_p;
     float sum_prob = 0.0f;
     bool flag = false;
@@ -566,7 +580,7 @@ template <typename T, typename Context, int TopKMaxLength, int TopPBeamTopK>
 void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                   const T* src,
                                   const T* threshold,
-                                  curandState_t* states,
+                                  GPU(randState_t) * states,
                                   T* top_ps,
                                   int64_t* out_id,  // topk id
                                   T* out_val,       // topk val
@@ -660,7 +674,7 @@ __global__ void topp_sampling(T* sorted_probs,
                               int64_t* out_id,
                               const T* top_ps,
                               const T* threshold,
-                              curandState_t* states,
+                              GPU(randState_t) * states,
                               const int p_num,
                               const int vocab_size,
                               const bool need_batch_random,
@@ -715,8 +729,13 @@ __global__ void topp_sampling(T* sorted_probs,
 
     if (thread_offset < p_t ||
         (thread_offset >= p_t && thread_offset - thread_count < p_t)) {
+#ifdef PADDLE_WITH_HIP
+      float random_ratio =
+          exponential_transform(hiprand_uniform(states + bid), 1.0f);
+#else
       float random_ratio =
           exponential_transform(curand_uniform(states + bid), 1.0f);
+#endif
       float tmp_val =
           (thread_count >= threshold_now ? thread_count : 0.f) / random_ratio;
       if (static_cast<float>(max_thread_pair.v) < tmp_val) {
@@ -792,7 +811,7 @@ __global__ void topp_sampling_ft(T* sorted_probs,
                                  int64_t* out_id,
                                  const T* top_ps,
                                  const T* threshold,
-                                 curandState_t* states,
+                                 GPU(randState_t) * states,
                                  const int p_num,
                                  const int vocab_size,
                                  const bool need_batch_random,
@@ -958,7 +977,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                           int64_t* out_id,
                           const T* top_ps,
                           const T* threshold,
-                          curandState_t* states,
+                          GPU(randState_t) * states,
                           const int p_num,
                           const int vocab_size,
                           const int bs,
@@ -1008,41 +1027,20 @@ void DispatchTopPSampling(const Context& dev_ctx,
   }
 }
 
+__global__ void setup_kernel(GPU(randState_t) * state,
+                             int64_t* seed,
+                             const int bs) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
 #ifdef PADDLE_WITH_HIP
-__global__ void setup_kernel(hiprandState_t* state,
-                             int64_t* seed,
-                             const int bs) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     hiprand_init(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
-  }
-}
-
-__global__ void setup_kernel(hiprandState_t* state,
-                             const uint64_t seed,
-                             const uint64_t offset,
-                             const int bs,
-                             const bool need_batch_random) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
-    if (need_batch_random) {
-      hiprand_init(seed, i, offset, &state[i]);
-    } else {
-      hiprand_init(seed, 0, offset, &state[i]);
-    }
-  }
-}
 #else
-__global__ void setup_kernel(curandState_t* state,
-                             int64_t* seed,
-                             const int bs) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     curand_init(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
+#endif
   }
 }
 
-__global__ void setup_kernel(curandState_t* state,
+__global__ void setup_kernel(GPU(randState_t) * state,
                              const uint64_t seed,
                              const uint64_t offset,
                              const int bs,
@@ -1050,13 +1048,20 @@ __global__ void setup_kernel(curandState_t* state,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     if (need_batch_random) {
+#ifdef PADDLE_WITH_HIP
+      hiprand_init(seed, i, offset, &state[i]);
+#else
       curand_init(seed, i, offset, &state[i]);
+#endif
     } else {
+#ifdef PADDLE_WITH_HIP
+      hiprand_init(seed, 0, offset, &state[i]);
+#else
       curand_init(seed, 0, offset, &state[i]);
+#endif
     }
   }
 }
-#endif
 
 #ifdef PADDLE_WITH_HIP
 template <typename T>
@@ -1158,13 +1163,15 @@ void TopPSamplingKernel(const Context& dev_ctx,
       PD_THROW("the input data shape has error in the FillIndex kernel.");
   }
   int64_t* infer_seed = SafeGetTensorPtr<int64_t>(topp_seed);
-  curandState_t* states{nullptr};
-  phi::Allocator::AllocationPtr curand_states_buf{nullptr};
-  curand_states_buf = phi::memory_utils::Alloc(
+
+  GPU(randState_t) * states{nullptr};
+  phi::Allocator::AllocationPtr rand_states_buf{nullptr};
+  rand_states_buf = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
-      bs * sizeof(curandState_t),
+      bs * sizeof(GPU(randState_t)),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  states = reinterpret_cast<curandState_t*>(curand_states_buf->ptr());
+  states = reinterpret_cast<GPU(randState_t)*>(rand_states_buf->ptr());
+
   uint64_t seed_now = seed;
   uint64_t offset = 0;
   bool need_batch_random = false;
