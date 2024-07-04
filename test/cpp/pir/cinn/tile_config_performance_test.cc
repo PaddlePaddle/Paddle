@@ -134,16 +134,15 @@ int get_tile_size_config(int dimension_lower) {
 TEST(ConfigSearcher, TestReducePipeline) {
   FLAGS_enable_cinn_compile_cache = false;
   FLAGS_cinn_measure_kernel_time = true;
-  LOG(INFO) << "TestReducePipeline" << std::endl;
 
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Define the search space bounds and sampling probabilities.
   constexpr int spatial_left_bound = 32;
-  constexpr int spatial_right_bound = 64;
+  constexpr int spatial_right_bound = 4096;
   constexpr int reduce_left_bound = 32;
-  constexpr int reduce_right_bound = 64;
+  constexpr int reduce_right_bound = 4096;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
   // now each has the same weight
@@ -287,13 +286,9 @@ TEST(ConfigSearcher, TestReducePipeline) {
       cinn::ir::search::CandidateType default_candidate;
       cinn::ir::search::ScoreType baseline_score = 0.01;
       for (int i = 0; i < 3; i++) {
-        LOG(INFO)
-            << "=====================Using Default=======================";
         FLAGS_tile_config_policy = "default";
         cinn::ir::search::ScoreType temp_baseline_score =
             (*obj_func)(default_candidate);
-        LOG(INFO)
-            << "=====================Using Optimal=======================";
         FLAGS_tile_config_policy = "search";
         cinn::ir::search::ScoreType temp_best_score =
             (*obj_func)(best_candidate);
@@ -310,8 +305,8 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
       LOG(INFO) << "Best score: " << best_score;
       LOG(INFO) << "Baseline score: " << baseline_score;
-      // LOG(INFO) << "Best candidate: " << best_candidate[0] << " "
-      //           << best_candidate[1] << " " << best_candidate[2];
+      LOG(INFO) << "Best candidate: " << best_candidate[0] << " "
+                << best_candidate[1] << " " << best_candidate[2];
       // Write to csv file
       cinn::ir::search::ScoreType optim_percentage =
           (1 / best_score - 1 / baseline_score) * baseline_score;
@@ -324,9 +319,6 @@ TEST(ConfigSearcher, TestReducePipeline) {
       }
       ss << "} ";
       os << ss.str() << " \t ";
-      // os << " { " << best_candidate[0] << " "
-      //            << best_candidate[1] << " " << best_candidate[2] << " } " <<
-      //            ",";
       os << std::setprecision(3) << "  " << baseline_score << " \t "
          << best_score << " \t " << optim_percentage << "\n";
     }
