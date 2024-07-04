@@ -49,13 +49,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
         all_tensor_map_(all_tensor_map),
         stages_(stages) {}
 
-  void operator()(Expr *expr) {
-    ir::IRMutator<>::Visit(expr, expr);
-    for (int i = 0; i < tensor_names.size(); i++) {
-      for (auto &var : replace_var[i]) {
-      }
-    }
-  }
+  void operator()(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::_Var_ *expr, Expr *op) override {
     if (inline_code && temp_buffer) {
