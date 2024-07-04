@@ -24,19 +24,17 @@ from typing_extensions import NotRequired, Unpack
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle._typing import Size2
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, Conv2D, Dropout, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import Size2
 
-
-class _SqueezeNetOptions(TypedDict):
-    version: NotRequired[str]
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
+    class _SqueezeNetOptions(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
 
 
 __all__ = []
@@ -131,6 +129,10 @@ class SqueezeNet(nn.Layer):
             >>> print(out.shape)
             [1, 1000]
     """
+
+    version: str
+    num_classes: int
+    with_pool: bool
 
     def __init__(
         self, version: str, num_classes: int = 1000, with_pool: bool = True

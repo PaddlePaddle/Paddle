@@ -15,25 +15,12 @@
 #pragma once
 
 #include <numeric>
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
 namespace paddle {
 namespace primitive {
 namespace details {
-
-template <typename T>
-static Tensor get_slice(const Tensor& x, int64_t idx) {
-  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
-}
-
-template <typename T>
-static Tensor get_slice_vec(const Tensor& x,
-                            int64_t start_idx,
-                            int64_t end_idx) {
-  return slice<T>(x, {0}, {start_idx}, {end_idx}, {1}, {});
-}
 
 template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
@@ -953,6 +940,78 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
     const paddle::optional<Tensor>& scale,
     const paddle::optional<Tensor>& bias,
     float epsilon) {
+  if (has_dynamic_shape(x.shape())) {
+    auto org_dtype = x.dtype();
+    Tensor x_cast = x;
+
+    bool need_cast = is_half_dtype(org_dtype);
+    if (need_cast) {
+      x_cast = cast<T>(x, DataType::FLOAT32);
+    }
+
+    std::vector<int64_t> axis;
+    auto x_dim = x.shape();
+    for (size_t i = 2; i < x_dim.size(); i++) {
+      axis.push_back(static_cast<int64_t>(i));
+    }
+
+    // out = (x - mean(x)) / sqrt(var + epsilon))
+    // var = mean((x-mean(x))^2)
+    auto mean_ = mean_decomp<T>(x_cast, axis, true);
+    auto difference = x_cast - mean_;
+    auto var_tmp1 = difference * difference;
+    auto variance = mean_decomp<T>(var_tmp1, axis, true);
+    auto var_shape = shape<T>(variance);
+    auto var_tmp3 = variance + full_scalar<T>(epsilon, variance.dtype());
+    auto rsqrt_var = rsqrt<T>(var_tmp3);
+    auto out = difference * rsqrt_var;
+
+    int dim_size = x_dim.size();
+    auto x_shape_tensor = shape<T>(x);
+    std::vector<Tensor> slice_shape_concat;
+
+    auto shape_1 = full<T>({1}, 1, x_shape_tensor.dtype());
+    auto shape_2 =
+        cast<T>(get_slice<T>(x_shape_tensor, 1), x_shape_tensor.dtype());
+    auto shape_3 = full<T>({dim_size - 2}, 1, x_shape_tensor.dtype());
+
+    slice_shape_concat.push_back(shape_1);
+    slice_shape_concat.push_back(shape_2);
+    slice_shape_concat.push_back(shape_3);
+    auto slice_shape_tensor = concat<T>(slice_shape_concat, 0);
+
+    Tensor scale_cast;
+    if (scale) {
+      scale_cast =
+          backend::reshape_with_tensor<T>(scale.get(), slice_shape_tensor);
+      if (need_cast) {
+        scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
+      }
+      out = out * scale_cast;
+    }
+    Tensor bias_cast;
+    if (bias) {
+      bias_cast =
+          backend::reshape_with_tensor<T>(bias.get(), slice_shape_tensor);
+      if (need_cast) {
+        bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
+      }
+      out = out + bias_cast;
+    }
+
+    std::vector<int64_t> res_shape(1, -1);
+    auto mean_out = reshape<T>(mean_, res_shape);
+    auto variance_out = reshape<T>(rsqrt_var, res_shape);
+
+    Tensor res;
+    if (need_cast) {
+      res = cast<T>(out, org_dtype);
+    } else {
+      res = out;
+    }
+
+    return std::make_tuple(res, mean_out, variance_out);
+  }
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 

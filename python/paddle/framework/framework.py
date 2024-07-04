@@ -49,7 +49,7 @@ def set_default_dtype(d):
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
-                ", but received %s" % d.__name__
+                f", but received {d.__name__}"
             )
     else:
         if isinstance(d, paddle.dtype):
@@ -67,7 +67,7 @@ def set_default_dtype(d):
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64, bfloat16] "
-                ", but received %s" % str(d)
+                f", but received {d}"
             )
 
     LayerHelperBase.set_default_dtype(d)

@@ -77,15 +77,21 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    "PLR1701",
     "PLR1711",
     "PLR1722",
     "PLW3301",
 
+    # Flake8-simplify
+    "SIM101",
+
     # Pygrep-hooks
     "PGH004",
 
+    # Flake8-type-checking
+    "TCH",
+
     # Ruff-specific rules
+    "RUF010",
     "RUF100",
 ]
 unfixable = [
