@@ -48,7 +48,7 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
   for (int i = 0; i < index_ndim; ++i) {
     out_dims_mapping.emplace_back(index_dims_mapping[i]);
   }
-  for (int i = index_axis; i < x_ndim; ++i) {
+  for (int i = index_axis; i < x_ndim - 1; ++i) {
     out_dims_mapping.emplace_back(x_dims_mapping[i]);
   }
 
