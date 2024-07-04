@@ -4095,8 +4095,8 @@ bool AssignOut_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
       infer_context->GetShapeOrDataForValue(operand_source(0));
-  const auto &inplace_output_shape =
-      infer_context->GetShapeOrDataForValue(operand_source(1));
+  // const auto &inplace_output_shape =
+  //     infer_context->GetShapeOrDataForValue(operand_source(1));
   infer_context->SetShapeOrDataForValue(result(0), x_shape);
   // TODO(Hongqing-work): add this after fixing while op error
   // CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
