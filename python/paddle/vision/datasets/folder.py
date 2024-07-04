@@ -209,7 +209,7 @@ class DatasetFolder(Dataset):
             >>> data_folder_2 = DatasetFolder(
             ...     fake_data_dir,
             ...     loader=lambda x: cv2.imread(x),  # load image with OpenCV
-            ...     extensions=(".jpg",),  # type: ignore # only load *.jpg files
+            ...     extensions=(".jpg",),  # only load *.jpg files
             ...     transform=transform,  # apply transform to every image
             ... )
 
@@ -222,7 +222,7 @@ class DatasetFolder(Dataset):
 
             >>> for img, label in iter(data_folder_2):
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label) # type: ignore
+            ...     print(type(img), img.shape, label)  # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 0
 
             >>> shutil.rmtree(fake_data_dir)
@@ -445,7 +445,7 @@ class ImageFolder(Dataset):
             >>> image_folder_2 = ImageFolder(
             ...     fake_data_dir,
             ...     loader=lambda x: cv2.imread(x),  # load image with OpenCV
-            ...     extensions=(".jpg",),   # type: ignore # only load *.jpg files
+            ...     extensions=(".jpg",),  # only load *.jpg files
             ...     transform=transform,  # apply transform to every image
             ... )
 
@@ -458,7 +458,7 @@ class ImageFolder(Dataset):
 
             >>> for (img,) in iter(image_folder_2):
             ...     # do something with img
-            ...     print(type(img), img.shape) # type: ignore
+            ...     print(type(img), img.shape)  # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 64, 64]
 
             >>> shutil.rmtree(fake_data_dir)
