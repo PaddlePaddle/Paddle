@@ -19,7 +19,6 @@ function(cinn_cc_library TARGET_NAME)
     endif()
 
     if(cinn_cc_library_DEPS)
-      # remove link to python, see notes at:
       if("${cinn_cc_library_DEPS};" MATCHES "python;")
         list(REMOVE_ITEM cinn_cc_library_DEPS python)
         add_dependencies(${TARGET_NAME} python)
