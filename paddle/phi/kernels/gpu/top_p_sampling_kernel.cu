@@ -351,8 +351,12 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
   int top_num = TopPBeamTopK;
   float top_p_num = static_cast<float>(top_ps[bid]);
   const int offset = bid * vocab_size;
-  int64_t* topk_ids_now = topk_ids + bid * k;
-  T* topk_scores_now = topk_scores + bid * k;
+  int64_t* topk_ids_now = nullptr;
+  T* topk_scores_now = nullptr;
+  if (k > 0) {
+    topk_ids_now = topk_ids + bid * k;
+    topk_scores_now = topk_scores + bid * k;
+  }
 
   __shared__ Pair<T> shared_max[BlockSize / 32];
   __shared__ Pair<T> beam_max[TopPBeamTopK];
@@ -451,8 +455,12 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
 
   int top_num = TopPBeamTopK;
   float top_p_num = static_cast<float>(top_ps[bid]);
-  int64_t* topk_ids_now = topk_ids + bid * k;
-  T* topk_scores_now = topk_scores + bid * k;
+  int64_t* topk_ids_now = nullptr;
+  T* topk_scores_now = nullptr;
+  if (k > 0) {
+    topk_ids_now = topk_ids + bid * k;
+    topk_scores_now = topk_scores + bid * k;
+  }
 
   __shared__ Pair<T> shared_max[BlockSize / 32];
   __shared__ Pair<T> beam_max[TopPBeamTopK];
@@ -812,7 +820,11 @@ __global__ void topp_sampling_ft(T* sorted_probs,
   typedef cub::BlockReduce<int, BLOCK_SIZE> BlockReduce;
   __shared__ typename BlockScan::TempStorage temp_storage;
   __shared__ typename BlockReduce::TempStorage temp_storage_reduce;
+#ifdef PADDLE_WITH_HIP
+  __shared__ uint64_t selected_shared[NUM_WARPS];
+#else
   __shared__ uint32_t selected_shared[NUM_WARPS];
+#endif
   int threshold_id = 0;
 
   // Initialize running total
@@ -847,7 +859,11 @@ __global__ void topp_sampling_ft(T* sorted_probs,
     BlockScan(temp_storage)
         .InclusiveSum(thread_count, thread_offset, prefix_op);
 
+#ifdef PADDLE_WITH_HIP
+    uint64_t activate_mask = __ballot(rand_p <= thread_offset);
+#else
     uint32_t activate_mask = __ballot_sync(FINAL_MASK, rand_p <= thread_offset);
+#endif
 
     i_activate = i;
     if (activate_mask != 0) {
@@ -904,7 +920,7 @@ __global__ void topp_sampling_ft(T* sorted_probs,
       for (int i = 0; i < active_lane_id; i++) {
         printf("p %d, value: %f\n",
                i,
-               static_cast<float>((sorted_probs[offset + i])));
+               static_cast<float>(sorted_probs[offset + i]));
       }
 #endif
       if (val < threshold_now) {
