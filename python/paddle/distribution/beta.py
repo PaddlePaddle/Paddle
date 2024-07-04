@@ -91,8 +91,8 @@ class Beta(exponential_family.ExponentialFamily):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1.91923141, -0.38095081])
     """
-    alpha: float | Tensor
-    beta: float | Tensor
+    alpha: Tensor
+    beta: Tensor
 
     def __init__(self, alpha: float | Tensor, beta: float | Tensor) -> None:
         if isinstance(alpha, numbers.Real):
