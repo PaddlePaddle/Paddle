@@ -2296,7 +2296,7 @@ def histogram(
             weight towards the bin count (instead of 1). Default: None.
         density (bool, optional): If False, the result will contain the count (or total weight) in each bin. If True, the result is the
             value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, shape is (nbins,), the counts or density of the histogram.
@@ -2366,7 +2366,7 @@ def histogram_bin_edges(
         bins (int, optional): number of histogram bins.
         min (int, optional): lower end of the range (inclusive). Default: 0.
         max (int, optional): upper end of the range (inclusive). Default: 0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, the values of the histogram and the bin edges. The output data type will be float32.
