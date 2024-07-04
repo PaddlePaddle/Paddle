@@ -1042,7 +1042,6 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       std::string var_name =
           op->attribute<pir::StrAttribute>("parameter_name").AsString();
       auto var = op->result(0);
-
       param_name_var_pairs.emplace_back(var_name, var);
     }
   }
