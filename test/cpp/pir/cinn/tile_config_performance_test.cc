@@ -123,13 +123,11 @@ int get_tile_size_config(int dimension_lower) {
 /**
  * @brief Test case for the ConfigSearcher.
  *
- * This test case performs a search for the best configuration using the
- * ConfigSearcher. It iterates over different spatial and reduce tile sizes and
- * constructs a pir::Program. The search is performed using a
- * ScheduleConfigSearcher, which takes into account candidate ranges and
- * constraints. The objective function used for the search is a
- * WeightedSamplingTrailObjectiveFunc. The search results are logged, including
- * the minimum score and the best candidate configuration found.
+ * This test case performs a perormance test for the best configuration derived
+ * from the ConfigSearcher. It iterates over different spatial and reduce tile
+ * sizes and constructs a pir::Program. The objective function used for the
+ * search is a WeightedSamplingTrailObjectiveFunc. The performance results are
+ * logged, including the default score and the best candidate score.
  */
 TEST(ConfigSearcher, TestReducePipeline) {
   FLAGS_enable_cinn_compile_cache = false;

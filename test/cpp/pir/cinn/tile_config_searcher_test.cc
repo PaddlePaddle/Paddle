@@ -212,10 +212,6 @@ TEST(ConfigSearcher, TestReducePipeline) {
                        candidate[2] <=
                    s_dimension_lower;
           });
-      // constraints.emplace_back(
-      //     [&](const cinn::ir::search::CandidateType& candidate) -> bool {
-      //       return candidate[1] <= r_dimension_lower;
-      //     });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[2] == 1 || candidate[2] == 2 ||
