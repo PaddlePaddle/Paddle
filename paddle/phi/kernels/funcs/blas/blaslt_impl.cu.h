@@ -496,27 +496,48 @@ struct CublasLtBase {
     // I wonder is there any smarter idea for workspace setting, currently I
     // just followed the settings from the NVIDIA colleague`s setting.
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-    phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
+    phi::Allocator::AllocationPtr workspace = nullptr;
 
-    if (planner != nullptr) {
-      if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune() &&
-          (!desc->is_cached)) {
-        SearchBestAlgo(ctx,
-                       cublaslt_handle,
-                       desc,
-                       static_cast<void*>(&alpha),
-                       static_cast<void*>(&beta),
-                       y_ptr,
-                       x_ptr,
-                       out_ptr,
-                       workspace->ptr(),
-                       workspace_size);
-        MatmulDescT* best_desc = new MatmulDescT(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched CublasltDescriptor] ");
+    if (FLAGS_enable_blaslt_global_search && planner != nullptr &&
+        !desc->is_cached) {
+      SearchBestAlgoGlobal(ctx,
+                           cublaslt_handle,
+                           desc,
+                           static_cast<void*>(&alpha),
+                           static_cast<void*>(&beta),
+                           y_ptr,
+                           x_ptr,
+                           out_ptr,
+                           workspace,
+                           workspace_size);
+      MatmulDescT* best_desc = new MatmulDescT(*desc);
+      VLOG(6) << best_desc->GetDescResultString(
+          "[Searched CublasltDescriptor] ");
 
-        auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-        cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
+      auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+      cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
+    } else {
+      workspace = GetWorkspace(ctx, workspace_size);
+      if (planner != nullptr) {
+        if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune() &&
+            (!desc->is_cached)) {
+          SearchBestAlgo(ctx,
+                         cublaslt_handle,
+                         desc,
+                         static_cast<void*>(&alpha),
+                         static_cast<void*>(&beta),
+                         y_ptr,
+                         x_ptr,
+                         out_ptr,
+                         workspace->ptr(),
+                         workspace_size);
+          MatmulDescT* best_desc = new MatmulDescT(*desc);
+          VLOG(6) << best_desc->GetDescResultString(
+              "[Searched CublasltDescriptor] ");
+
+          auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+          cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
+        }
       }
     }
 
@@ -538,6 +559,77 @@ struct CublasLtBase {
                                 workspace->ptr(),
                                 workspace_size,
                                 ctx.stream()));
+  }
+
+  static void SearchBestAlgoGlobal(
+      const phi::GPUContext& ctx,
+      const cublasLtHandle_t& lt_handle,
+      MatmulDescT* desc,
+      const void* alpha,
+      const void* beta,
+      const void* y_data,
+      const void* x_data,
+      void* out_data,
+      phi::Allocator::AllocationPtr& workspace,  // NOLINT
+      size_t& workspace_size) {                  // NOLINT
+    void* bias_ptr = nullptr;
+    cublasLtMatmulAlgo_t* algo =
+        cublaslt_internal::CublasLtAlgoCache::Instance().CublasLtAlgoSelect(
+            lt_handle,
+            desc->M_,
+            desc->N_,
+            desc->K_,
+            1,
+            y_data,
+            x_data,
+            bias_ptr,
+            out_data,
+            const_cast<void*>(alpha),
+            const_cast<void*>(beta),
+            desc->op_desc,
+            desc->y_desc,
+            desc->x_desc,
+            desc->out_desc,
+            desc->out_desc,
+            desc->compute_type_,
+            desc->scale_type_,
+            desc->y_type_,
+            desc->x_type_,
+            desc->out_type_,
+            desc->out_type_,
+            ctx.stream());
+    if (algo == nullptr) {
+      LOG(WARNING) << "CublasLtAlgoSelect failed, result is empty! We attempt "
+                      "to use Heuristic search.";
+      workspace_size = static_cast<size_t>(64) * 1024 * 1024;
+      workspace = GetWorkspace(ctx, workspace_size);
+      SearchBestAlgo(ctx,
+                     lt_handle,
+                     desc,
+                     static_cast<void*>(&alpha),
+                     static_cast<void*>(&beta),
+                     y_data,
+                     x_data,
+                     out_data,
+                     workspace->ptr(),
+                     workspace_size);
+    } else {
+      cublasLtMatmulHeuristicResult_t heurResult;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulAlgoCheck(ctx.cublaslt_handle(),
+                                           desc->op_desc,
+                                           desc->y_desc,
+                                           desc->x_desc,
+                                           desc->out_desc,
+                                           desc->out_desc,
+                                           algo,
+                                           &heurResult));
+      cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
+      *best_algo = *algo;
+      workspace_size = heurResult.workspaceSize;
+      workspace = phi::memory_utils::Alloc(
+          phi::GPUPlace(backends::gpu::GetCurrentDeviceId()), workspace_size);
+    }
   }
 
   static void SearchBestAlgo(const phi::GPUContext& ctx,
