@@ -36,8 +36,8 @@ if(WIN32)
   foreach(flag_var
           CMAKE_CUDA_FLAGS CMAKE_CUDA_FLAGS_DEBUG CMAKE_CUDA_FLAGS_RELEASE
           CMAKE_CUDA_FLAGS_MINSIZEREL CMAKE_CUDA_FLAGS_RELWITHDEBINFO)
-    if(${flag_var} MATCHES "-MD")
-      string(REGEX REPLACE "-MD" "-MT" ${flag_var} "${${flag_var}}")
+    if(${flag_var} MATCHES "/MD")
+      string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
     endif()
   endforeach()
 else()
@@ -56,19 +56,22 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
              -DYAML_BUILD_SHARED_LIBS=OFF
+             -DYAML_MSVC_SHARED_RT=OFF
              -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_INSTALL_PREFIX=${YAML_INSTALL_DIR}
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
              -DCMAKE_CXX_FLAGS_RELEASE=${YAML_CMAKE_CXX_FLAGS_RELEASE}
              -DCMAKE_CXX_FLAGS_DEBUG=${YAML_CMAKE_CXX_FLAGS_DEBUG}
+             #-DWITH_ROCM=${WITH_ROCM}
   CMAKE_CACHE_ARGS
     -DCMAKE_INSTALL_PREFIX:PATH=${YAML_INSTALL_DIR}
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+    ${EXTERNAL_OPTIONAL_ARGS}
   BUILD_BYPRODUCTS ${YAML_LIBRARIES})
 
 add_library(yaml STATIC IMPORTED GLOBAL)
 set_property(TARGET yaml PROPERTY IMPORTED_LOCATION ${YAML_LIBRARIES})
 add_dependencies(yaml extern_yaml)
-link_directories(${YAML_INSTALL_DIR}/lib/)
-target_link_libraries(yaml INTERFACE ${YAML_LIBRARIES})
+#link_directories(${YAML_INSTALL_DIR}/lib/)
+#target_link_libraries(yaml INTERFACE ${YAML_LIBRARIES})
