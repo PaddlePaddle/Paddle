@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& index) {
-  // Step0: Verify Input Args Based on Gather Logic
+  // Step0: Verify Input Args Based on Gather_Nd Logic
   // extract and check x_ndim, x_shape, x_dist_attr_src and
   // x_dims_mapping_src with the macro
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
@@ -45,7 +45,7 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
   }
 
   std::vector<int64_t> out_dims_mapping;
-  for (int i = 0; i < index_ndim - 1; ++i) {
+  for (int i = 0; i < index_ndim; ++i) {
     out_dims_mapping.emplace_back(index_dims_mapping[i]);
   }
   for (int i = index_axis; i < x_ndim; ++i) {
@@ -59,15 +59,8 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(index_dist_attr_src);
   index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
 
-  std::vector<int64_t> out_shape;
-  for (int i = 0; i < index_ndim - 1; ++i) {
-    out_shape.emplace_back(index_shape[i]);
-  }
-  for (int i = static_cast<int>(index_shape[index_ndim - 1]); i < x_ndim; ++i) {
-    out_shape.emplace_back(x_shape[i]);
-  }
-
-  TensorDistAttr out_dist_attr = TensorDistAttr(out_shape);
+  TensorDistAttr out_dist_attr =
+      CopyTensorDistAttrForOutput(index_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
   LOG_SPMD_INPUT(x);
@@ -80,7 +73,7 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
 SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
                                   const DistMetaTensor& index,
                                   const DistMetaTensor& out) {
-  // Step0: Verify Input Args Based on Gather Logic
+  // Step0: Verify Input Args Based on Gather_Nd Logic
   // extract and check out_ndim, out_shape, out_dist_attr_src and
   // out_dims_mapping_src with the macro
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
@@ -115,6 +108,35 @@ SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
   LOG_SPMD_INPUT(index);
   VLOG(4) << std::endl;
   return {{x_dist_attr_dst, index_dist_attr_dst}, {out_dist_attr_src}};
+}
+
+SpmdInfo GatherGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& index,
+                             const DistMetaTensor& out_grad) {
+  EXTRACT_SHAPE_AND_DIST_ATTR(x);
+  EXTRACT_SHAPE_AND_DIST_ATTR(index);
+  EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
+
+  std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
+  std::vector<int64_t> out_grad_dims_mapping_dst(out_grad_dims_mapping_src);
+
+  TensorDistAttr out_grad_dist_attr_dst(out_grad_dist_attr_src);
+  out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
+
+  std::vector<int64_t> index_dims_mapping_dst(index_dims_mapping_src);
+  TensorDistAttr index_dist_attr_dst(index_dims_mapping_src);
+  index_dist_attr_dst.set_dims_mapping(index_dims_mapping_dst);
+
+  std::vector<int64_t> x_grad_dims_mapping(x_dims_mapping_src);
+  for (int i = 0; i < x_ndim; ++i) {
+    x_grad_dims_mapping[i] = out_grad_dims_mapping_dst[i];
+  }
+
+  TensorDistAttr x_grad_dist_attr(x_dist_attr_src);
+  x_grad_dist_attr.set_dims_mapping(x_grad_dims_mapping);
+
+  return {{x_dist_attr_src, index_dist_attr_dst, out_grad_dist_attr_dst},
+          {x_grad_dist_attr}};
 }
 
 }  // namespace phi::distributed

@@ -2079,6 +2079,7 @@
   output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
+    spmd_rule : GatherNdInferSpmd
   kernel :
     func : gather_nd
     data_type : x
