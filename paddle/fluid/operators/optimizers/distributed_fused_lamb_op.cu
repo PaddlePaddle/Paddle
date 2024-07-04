@@ -13,6 +13,7 @@
 // limitations under the License.
 
 // #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/kernels/funcs/multi_tensor_apply_util.h"
 
 #include "paddle/phi/backends/context_pool.h"
