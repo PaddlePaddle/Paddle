@@ -1847,8 +1847,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       } else {
         transed_sub_tensor =
             index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
-        self->tensor.set_autograd_meta(
-            transed_sub_tensor.mutable_autograd_meta());
       }
 
       if (out_is_view) {
