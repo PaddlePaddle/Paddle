@@ -2648,7 +2648,7 @@ parallel_list="^test_block_multihead_attention$|\
 ^test_fused_flash_attn_pass$|\
 ^test_fused_multi_transformer_op$|\
 ^test_fused_multi_transformer_int8_op$|\
-^test_flash_attention$|\
+^test_flash_attention2$|\
 ^test_flash_attention_deterministic$|\
 ^test_fused_gate_attention_op$"
 get_quickly_disable_ut||disable_ut_quickly='disable_ut'
