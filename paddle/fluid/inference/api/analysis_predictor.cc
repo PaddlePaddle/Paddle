@@ -139,6 +139,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace paddle {
 namespace {
@@ -389,6 +390,10 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
       device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
+  }
+  if (FLAGS_enable_pir_api) {
+    config_.EnableNewExecutor(true);
+    config_.EnableNewIR(true);
   }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
