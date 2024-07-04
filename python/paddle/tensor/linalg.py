@@ -2295,7 +2295,7 @@ def histogram(
         weight (Tensor, optional): If provided, it must have the same shape as input. Each value in input contributes its associated
             weight towards the bin count (instead of 1). Default: None.
         density (bool, optional): If False, the result will contain the count (or total weight) in each bin. If True, the result is the
-        value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
+            value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
