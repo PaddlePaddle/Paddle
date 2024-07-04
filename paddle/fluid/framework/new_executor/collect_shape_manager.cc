@@ -123,7 +123,6 @@ void CollectShapeManager::StatisticShapeRangeInfo() {
         for (auto const &it : shape_data) {
           auto val = it.first;
           auto shapes = it.second;
-
           std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
           std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
           std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
@@ -173,7 +172,8 @@ std::vector<int32_t> CollectShapeManager::GetValueShapeRangeInfo(
                     op_value2kernel_value_.end(),
                     ::common::errors::NotFound(
                         "Can't find kernel_value that corresponding to "
-                        "op_value, maybe origin program has changed."));
+                        "op_value, maybe origin program has changed or not "
+                        "open FLAGS_enable_collect_shape."));
   auto kernel_val = op_value2kernel_value_[op_val];
   if (shape_mode == ShapeMode::kMIN) {
     if (is_shape_tensor) {

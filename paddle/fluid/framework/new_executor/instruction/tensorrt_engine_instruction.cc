@@ -238,6 +238,13 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
                               "can not find var[%s] in scope", in_var_name));
   auto var = scope.FindVar(in_var_name);
   auto &variable_array = var->Get<VariableRefArray>();
+  PADDLE_ENFORCE_EQ(variable_array.size(),
+                    input_names_.size(),
+                    phi::errors::InvalidArgument(
+                        "Input tensor num(%d) is not equal with the input "
+                        "names num(%d) in TensorRTEngineInstruction",
+                        variable_array.size(),
+                        input_names_.size()));
   for (size_t i = 0; i < variable_array.size(); ++i) {
     if (!variable_array[i]->IsType<phi::DenseTensor>()) {
       PADDLE_THROW(
