@@ -197,6 +197,8 @@ def sync_params_buffers(
             )
     else:
         for var in model_vars:
+            # NOTE(shenliang03): Now, we dont support contiguous tensor in dp
+            var = var.contiguous()
             paddle.distributed.broadcast(
                 var, src=src_rank, group=comm_group, sync_op=True
             )
