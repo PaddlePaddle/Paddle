@@ -160,13 +160,13 @@ class ReshapeOp : public framework::OperatorWithKernel {
         if (in_size == 0) {
           // zero-sized tensor case
           // index i could be < in_dims.size(): such as [3, 2, 0] -> [0, 0] is
-          // [0, 0]; [3, 2, 0] -> [10, 0] is [10, 0] index i could be >=
+          // [0, 0], [3, 2, 0] -> [10, 0] is [10, 0]; index i could be >=
           // in_dims.size(): such as [3, 2, 0] -> [1, 3, 0, 0] is [1, 3, 0, 0]
           output_shape[i] = 0;
         } else {
           // in other cases 0 means keep in_dims[i] unchanged
-          // index i should only be < in_dims.size(): such as [3, 2, 1] -> [0,
-          // 0] is [3, 2]; [3, 2, 1] -> [3, 2, 0] is [3, 2, 1]
+          // index i must be < in_dims.size(): such as [3, 2, 1] -> [0, 0]
+          // is [3, 2] or [3, 2, 1] -> [3, 2, 0] is [3, 2, 1]
           PADDLE_ENFORCE_LT(
               static_cast<int>(i),
               in_dims.size(),
