@@ -122,9 +122,9 @@ void SyncBatchNormKernel(const Context& ctx,
                             "variable FLAGS_dynamic_static_unified_comm True. "
                             "But ring_id(%d) is "
                             "not found in comm_context_manager.",
-                            std::to_string(rid)));
+                            std::to_string(ring_id)));
       auto* comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(rid)));
+          comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
                         phi::errors::Unavailable(
