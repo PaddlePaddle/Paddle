@@ -2353,10 +2353,10 @@ def histogram(
 def histogram_bin_edges(
     input: Tensor,
     bins: int = 100,
-    min: float = 0,
-    max: float = 0,
+    min: int = 0,
+    max: int = 0,
     name: str | None = None,
-):
+) -> Tensor:
     """
     Computes only the edges of the bins used by the histogram function.
     If min and max are both zero, the minimum and maximum values of the data are used.
