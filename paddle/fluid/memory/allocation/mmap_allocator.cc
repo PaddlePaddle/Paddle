@@ -30,9 +30,7 @@
 
 COMMON_DECLARE_bool(use_shm_cache);
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 std::string GetIPCName() {
   static std::random_device rd;
@@ -421,8 +419,6 @@ void MemoryMapAllocationPool::Clear() {
 
 MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
 
 #endif

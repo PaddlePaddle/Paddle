@@ -19,10 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 static std::unordered_set<std::string> elementwise_op_types;
 
@@ -149,7 +146,4 @@ std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(
   return SubgraphDetector(graph, teller)();
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

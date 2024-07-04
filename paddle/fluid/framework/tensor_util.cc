@@ -32,8 +32,7 @@ limitations under the License. */
 #include "dnnl_debug.h"  // NOLINT
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
@@ -963,8 +962,7 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   return os;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace phi {
 

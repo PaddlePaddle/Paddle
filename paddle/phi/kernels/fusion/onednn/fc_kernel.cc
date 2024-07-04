@@ -22,8 +22,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
@@ -696,8 +695,7 @@ void FCKernel(const Context& dev_ctx,
                            }));
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fc,
                    OneDNN,

@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     Graph *graph, const std::string &transpose_type) const {
@@ -203,9 +201,7 @@ FuseQuantTranspose2DequantOneDNNPass::
       .End();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(quant_transpose2_dequant_onednn_fuse_pass,
               paddle::framework::ir::FuseQuantTranspose2DequantOneDNNPass);

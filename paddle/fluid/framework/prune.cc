@@ -20,8 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 const char kFeedOpType[] = "feed";    // NOLINT
 const char kFetchOpType[] = "fetch";  // NOLINT
@@ -686,7 +685,6 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   // Step 4. Return a tuple
   return std::make_tuple(framework::ProgramDesc(pruned_desc),
                          pruned_progin_block_id_map);
-}  // namespace framework
+}
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/softmax_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void SoftmaxCsrKernel(const Context& dev_ctx,
@@ -172,8 +171,7 @@ void SoftmaxCooKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(softmax_csr,
                    CPU,

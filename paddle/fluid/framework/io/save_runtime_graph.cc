@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/port.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void save_string(std::string content,
                  std::string type,
@@ -113,5 +112,4 @@ void save_runtime_cinn_graph(const ir::Graph& graph,
   save_graph(graph, "graph", saved_path + "/subgraph.txt");
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

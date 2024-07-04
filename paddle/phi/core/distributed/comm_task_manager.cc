@@ -37,8 +37,7 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 std::thread CommTaskManager::comm_task_loop_thread_;
 std::thread CommTaskManager::comm_task_clear_loop_thread_;
@@ -276,5 +275,4 @@ bool CommTaskManager::IsTimeout() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              current_timepoint - last_update_time_) >= timeout_;
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

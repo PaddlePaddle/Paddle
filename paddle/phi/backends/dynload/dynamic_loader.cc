@@ -72,8 +72,7 @@ PHI_DEFINE_string(rccl_dir,
 PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 struct PathNode {
   PathNode() = default;
@@ -851,5 +850,4 @@ void* GetXPTIDsoHandle() {
   return nullptr;
 #endif
 }
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

@@ -43,12 +43,12 @@
 
 #include "paddle/fluid/framework/raw_tensor.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // Besides registering variable type id, it is helpful to register a
 // var_id -> std::type_index map (for example, get type names according to id)
-namespace detail {
+}  // namespace paddle::framework
+namespace paddle::framework::detail {
 
 template <int kStart, int kEnd, bool kStop>
 struct VarIdToTypeIndexMapInitializerImpl {
@@ -126,7 +126,8 @@ struct VarIdToTypeIndexMapHolder {
   std::unordered_map<std::type_index, int> type_to_id_map_;
 };
 
-}  // namespace detail
+}  // namespace paddle::framework::detail
+namespace paddle::framework {
 
 const std::type_index &VarTraitIdToTypeIndex(int var_id) {
   return detail::VarIdToTypeIndexMapHolder::ToTypeIndex(var_id);
@@ -140,5 +141,4 @@ int TypeIndexToVarTraitId(const std::type_index &type) {
   return detail::VarIdToTypeIndexMapHolder::ToTypeId(type);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
