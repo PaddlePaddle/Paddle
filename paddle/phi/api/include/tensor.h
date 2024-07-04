@@ -106,15 +106,6 @@ class PADDLE_API Tensor final {
   explicit Tensor(std::shared_ptr<phi::TensorBase> tensor_impl);
 
   /**
-   * @brief Construct a new Tensor object on the target place.
-   *
-   * This is a deprecated method and may be removed in the future!!!
-   *
-   * @param place
-   */
-  explicit Tensor(const Place& place);
-
-  /**
    * @brief Construct a new Tensor object on the target place
    * with specified shape.
    *

@@ -63,23 +63,6 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
 }
 
-Tensor::Tensor(const Place &place) {
-  LOG_FIRST_N(WARNING, 1)
-      << "The Tensor(place) constructor is deprecated since version "
-         "2.3, and will be removed in version 2.4! Please use "
-         "`paddle::empty/full` method to create a new "
-         "Tensor instead. "
-         "Reason: A legal tensor cannot be constructed only based on "
-         "the `place`, and datatype, shape, layout, etc. is also "
-         "required.";
-  DefaultAllocator alloc(place);
-  impl_ = std::make_shared<phi::DenseTensor>(
-      &alloc,
-      phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                           common::make_ddim({}),
-                           phi::DataLayout::NCHW));
-}
-
 Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
   LOG_FIRST_N(WARNING, 1)
       << "The Tensor(place, shape) constructor is deprecated since "
