@@ -56,10 +56,16 @@ def check_fp8_support() -> bool:
 
 class TestFP8CastOp(unittest.TestCase):
     def setUp(self):
-        self.dtype_dict = {
-            "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
-            "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
-        }
+        if paddle.framework.use_pir_api():
+            self.dtype_dict = {
+                "float8_e4m3fn": core.DataType.FLOAT8_E4M3FN,
+                "float8_e5m2": core.DataType.FLOAT8_E5M2,
+            }
+        else:
+            self.dtype_dict = {
+                "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+                "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+            }
         self.shape = (16, 16)
 
     def test_cast(self):
@@ -73,7 +79,12 @@ class TestFP8CastOp(unittest.TestCase):
                     self.assertTrue(input1.dtype == self.dtype_dict[self.dtype])
                     # test fp8 to fp32 (dtype)
                     input2 = input1.astype("float32")
-                    self.assertTrue(input2.dtype == core.VarDesc.VarType.FP32)
+                    if paddle.framework.use_pir_api():
+                        self.assertTrue(input2.dtype == core.DataType.FLOAT32)
+                    else:
+                        self.assertTrue(
+                            input2.dtype == core.VarDesc.VarType.FP32
+                        )
                     # test fp32 to fp8 (value clip)
                     expect = paddle.full(
                         self.shape,
@@ -99,7 +110,10 @@ class TestFP8CastOp(unittest.TestCase):
                 self.assertTrue(input1.dtype == self.dtype_dict[self.dtype])
                 # test fp8 to fp32 (dtype)
                 input2 = input1.astype("float32")
-                self.assertTrue(input2.dtype == core.VarDesc.VarType.FP32)
+                if paddle.framework.use_pir_api():
+                    self.assertTrue(input2.dtype == core.DataType.FLOAT32)
+                else:
+                    self.assertTrue(input2.dtype == core.VarDesc.VarType.FP32)
                 # test fp32 to fp8 (value clip)
                 expect = paddle.full(
                     self.shape,
@@ -112,10 +126,16 @@ class TestFP8CastOp(unittest.TestCase):
 
 class TestFP8FullOp(unittest.TestCase):
     def setUp(self):
-        self.dtype_dict = {
-            "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
-            "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
-        }
+        if paddle.framework.use_pir_api():
+            self.dtype_dict = {
+                "float8_e4m3fn": core.DataType.FLOAT8_E4M3FN,
+                "float8_e5m2": core.DataType.FLOAT8_E5M2,
+            }
+        else:
+            self.dtype_dict = {
+                "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+                "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+            }
 
     def test_ones(self):
         if core.is_compiled_with_cuda():
