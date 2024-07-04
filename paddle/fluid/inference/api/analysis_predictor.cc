@@ -1042,11 +1042,8 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       std::string var_name =
           op->attribute<pir::StrAttribute>("parameter_name").AsString();
       auto var = op->result(0);
-      auto is_persistable =
-          var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
-      if (is_persistable && is_persistable.data()) {
-        param_name_var_pairs.emplace_back(var_name, var);
-      }
+
+      param_name_var_pairs.emplace_back(var_name, var);
     }
   }
 
