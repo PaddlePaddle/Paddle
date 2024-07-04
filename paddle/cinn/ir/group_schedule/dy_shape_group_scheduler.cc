@@ -55,9 +55,6 @@ void DynamicShapeGroupScheduler::InitBuckets() {
   };
 
   auto InitBucket = [&](BucketInfo&& bucket_info, ScheduleConfig&& config) {
-    LOG(INFO) << "InitBucket Config " << config.tile_config.warp_num << " "
-              << config.tile_config.tree_reduce_num << " "
-              << config.tile_config.spatial_inner_num;
     std::unique_ptr<ir::IRSchedule> ir_sch =
         std::make_unique<ir::IRSchedule>(*ir_sch_);
     std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph =
@@ -133,7 +130,6 @@ void DynamicShapeGroupScheduler::InitBuckets() {
   for (std::pair<BucketInfo, ScheduleConfig>&& config : configs) {
     InitBucket(std::move(config.first), std::move(config.second));
   }
-  LOG(INFO) << "bucket_contexts_.size" << bucket_contexts_.size();
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
