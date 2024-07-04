@@ -1256,13 +1256,6 @@ void AnalysisConfig::DisableGlogInfo() {
   Update();
 }
 
-void AnalysisConfig::PartiallyRelease() {
-  prog_file_.clear();
-  prog_file_.shrink_to_fit();
-  params_file_.clear();
-  params_file_.shrink_to_fit();
-}
-
 void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
 std::string AnalysisConfig::Summary() {

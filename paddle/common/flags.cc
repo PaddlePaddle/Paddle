@@ -281,6 +281,21 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
                           "Exhaustive search times for cuDNN convolution, "
                           "default is -1, not exhaustive search");
 
+#ifdef PADDLE_WITH_HIP
+/**
+ * MIOPEN related FLAG
+ * Name: FLAGS_batch_norm_use_miopen
+ * Since Version:
+ * Value Range:
+ * Example:
+ * Note: Use MIOpen batch norm instead of native
+ */
+PHI_DEFINE_EXPORTED_bool(batch_norm_use_miopen,
+                         false,
+                         "Whether use MIOpen batch norm or not, "
+                         "default is false, not use miopen bn");
+#endif
+
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_batchnorm_spatial_persistent
@@ -1742,6 +1757,18 @@ PHI_DEFINE_EXPORTED_string(
     "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
+
+/**
+ * Apply global search in blaslt FLAG
+ * Name: enable_blaslt_global_search
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply global search in blaslt.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_blaslt_global_search,
+                         false,
+                         "Whether to use global search in blaslt.");
 
 PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                            "",

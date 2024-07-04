@@ -18,7 +18,6 @@ import math
 import os
 import pathlib
 import sys
-from distutils.util import strtobool
 
 import yaml
 from decomp_interface_gen_op_list import (
@@ -1306,6 +1305,7 @@ def AutoCodeGen(
             dialect_name == "pd_op"
             and op_info.backward_name
             and not op_info.is_sparse_op
+            and all_op_info_items[op_info.backward_name].kernel_map is not None
         ):
             op_interfaces += [
                 "paddle::dialect::CacheGradOpSymbolicShapeInterface"
@@ -2419,6 +2419,16 @@ def OpGenerator(
     ):
         with open(op_vjp_cc_file, 'w') as f:
             f.write(vjp_source_file_str)
+
+
+def strtobool(val):
+    val = val.lower()
+    if val in ['y', 'yes', 't', 'true', 'on', '1']:
+        return True
+    elif val in ['n', 'no', 'f', 'false', 'off', '0']:
+        return False
+    else:
+        raise ValueError(f"Invalid truth value {val!r}")
 
 
 # =====================================

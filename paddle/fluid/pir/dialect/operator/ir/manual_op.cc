@@ -232,6 +232,52 @@ std::vector<pir::Type> AddNOp::InferMeta(
   return argument_outputs;
 }
 
+namespace details {
+bool AddNOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_list_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  PADDLE_ENFORCE_EQ(
+      input_list_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
+      true,
+      common::errors::InvalidArgument(
+          "The type of inputs shape should be TensorListShapeOrDataDimExprs"));
+  const auto &inputs_shape =
+      input_list_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  PADDLE_ENFORCE_GT(
+      inputs_shape.size(),
+      0,
+      common::errors::InvalidArgument(
+          "The input tensor X's dimensions of AddNOp "
+          "should be larger than 0. But received X's dimensions %d.",
+          inputs_shape.size()));
+  symbol::TensorShapeOrDataDimExprs candidate_shape = inputs_shape.front();
+  for (size_t i = 1; i < inputs_shape.size(); ++i) {
+    // 0D tensor
+    if (inputs_shape[i].shape().size() == 0) {
+      continue;
+    }
+    if (candidate_shape.shape().size() == 0) {
+      candidate_shape = inputs_shape[i];
+      continue;
+    }
+    for (size_t j = 0; j < candidate_shape.shape().size(); ++j) {
+      infer_context->AddEqualCstr(candidate_shape.shape()[j],
+                                  inputs_shape[i].shape()[j]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{candidate_shape});
+
+  return true;
+}
+
+}  // namespace details
+
+bool AddNOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
+  return details::AddNOpInferSymbolicShape(this->operation(), infer_context);
+}
+
 OpInfoTuple AddN_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
@@ -378,6 +424,11 @@ std::vector<pir::Type> AddN_Op::InferMeta(
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
+}
+
+bool AddN_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  return details::AddNOpInferSymbolicShape(this->operation(), infer_context);
 }
 
 OpInfoTuple AddNArrayOp::GetOpInfo() {
