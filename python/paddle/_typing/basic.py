@@ -13,16 +13,27 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Sequence, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import TypeAlias
+from typing_extensions import Never, TypeAlias
 
 from .backport import EllipsisType
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import ParamAttr, Tensor
+    from paddle.nn.initializer import Initializer
+    from paddle.regularizer import WeightDecayRegularizer
 
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
@@ -40,7 +51,22 @@ TensorIndex: TypeAlias = Union[
 _T = TypeVar("_T")
 
 NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
+NestedList = Union[_T, List["NestedList[_T]"]]
+NestedStructure = Union[
+    _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
+]
 IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
+
+ParamAttrLike: TypeAlias = Union[
+    "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
+]
+
+
+def unreached() -> Never:
+    """Mark a code path as unreachable.
+    Refer to https://typing.readthedocs.io/en/latest/source/unreachable.html#marking-code-as-unreachable
+    """
+    raise RuntimeError("Unreachable code path")

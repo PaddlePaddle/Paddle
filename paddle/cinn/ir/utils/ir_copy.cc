@@ -253,6 +253,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> functions;
     std::vector<Expr> submodules;
     std::vector<Expr> predicates;
+    std::vector<int> priorities;
     Expr infer_shape_func;
     for (auto& expr : op->buffers) {
       buffers.push_back(Visit(&expr));
@@ -269,6 +270,11 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     for (auto& expr : op->predicates) {
       predicates.push_back(Visit(&expr));
     }
+
+    for (int priority : op->priorities) {
+      priorities.push_back(priority);
+    }
+
     if (op->infer_shape_func.defined()) {
       infer_shape_func = Visit(&op->infer_shape_func);
     }
@@ -278,6 +284,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     res->functions = functions;
     res->submodules = submodules;
     res->predicates = predicates;
+    res->priorities = priorities;
     res->infer_shape_func = infer_shape_func;
 
     return Expr(res);

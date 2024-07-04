@@ -81,9 +81,19 @@ void VisitFeedName(const pir::Program& program,
   const auto& GetDataOpName = [](const pir::Operation& op) -> std::string {
     return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
   };
+  const auto& IsFeedOp = [](const pir::Operation& op) -> bool {
+    return op.isa<paddle::dialect::FeedOp>();
+  };
+  const auto& GetFeedOpName = [](const pir::Operation& op) -> std::string {
+    return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  };
   for (const auto& op : block) {
     if (IsDataOp(op)) {
       DoEachFeadName(GetDataOpName(op));
+    } else if (IsFeedOp(op)) {
+      DoEachFeadName(GetFeedOpName(op));
+    } else {
+      // Do nothing.
     }
   }
   for (const auto& [name, _] : block.kwargs()) {
@@ -94,7 +104,7 @@ void VisitFeedName(const pir::Program& program,
 std::optional<std::vector<int64_t>> GetTensorData(
     const phi::DenseTensor& tensor) {
   constexpr int kLimit = 64;
-  if (tensor.numel() > kLimit) return std::nullopt;
+  if (tensor.numel() > kLimit || !tensor.IsInitialized()) return std::nullopt;
   if (tensor.dtype() == phi::DataType::INT64) {
     return phi::GetVectorFromTensor<int64_t>(&tensor);
   }
@@ -629,6 +639,9 @@ struct PirToPyCodeConverterHelper {
         },
         [](const symbol::TensorListShapeOrDataDimExprs& impl) {
           return ConvertTensorListShapeOrData(impl);
+        },
+        [](const symbol::NullShapeOrDataDimExpr& impl) {
+          return std::string("self.s_null()");
         });
   }
 

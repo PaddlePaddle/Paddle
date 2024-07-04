@@ -167,13 +167,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     CHECK(out.size() == 1U) << "The size of Repeat's output should be 1";
 
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({tensor_A});
     for (auto &t : out) {
-      stages->InsertLazily(t);
       res.push_back(cinn::common::CINNValue(t));
     }
 
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = cinn::common::CINNValuePack{res};
   });
 
@@ -198,16 +195,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::X86Arch) {
-                          pe::IRScheduleInjectiveCPU(
-                              ir_sch, output_shapes.front(), target, true);
-                        },
-                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::NVGPUArch) {
-                          pe::IRGpuScheduleInjective(
-                              ir_sch, output_shapes.front(), target);
-                        });
+      target.arch.Match(
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            pe::IRScheduleInjectiveCPU(
+                ir_sch, output_shapes.front(), target, true);
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
+          },
+          [&](common::HygonDCUArchHIP) {
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
+          });
     }
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};

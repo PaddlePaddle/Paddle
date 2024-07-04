@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include <optional>
+
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/common.h"
-#include "paddle/cinn/hlir/framework/program.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
 namespace cinn {
@@ -69,8 +70,6 @@ class CompilationResult {
   void SetLoweredFuncs(int idx, const std::vector<ir::LoweredFunc>& funcs);
   void SetSourceCode(int idx, const std::string& source_code);
   void SetSourcePtx(int idx, const std::string& source_ptx);
-  void SetInstruction(int idx, std::unique_ptr<Instruction> instruction);
-  void SetRuntimeProgram(std::unique_ptr<Program> runtime_program);
 
   // Getters
   bool IsSuccess() const;
@@ -85,9 +84,6 @@ class CompilationResult {
   std::string SourceCode(int idx) const;
   std::vector<std::string> SourcePtxs() const;
   std::string SourcePtx(int idx) const;
-  const std::vector<std::unique_ptr<Instruction>>& RuntimeInstructions() const;
-  const std::unique_ptr<Instruction>& RuntimeInstruction(int idx) const;
-  std::unique_ptr<Program> RuntimeProgram();
 
  private:
   std::vector<CompilationStatus> status_;
@@ -95,8 +91,6 @@ class CompilationResult {
   std::vector<std::optional<std::vector<ir::LoweredFunc>>> lowered_funcs_;
   std::vector<std::optional<std::string>> source_codes_;
   std::vector<std::optional<std::string>> source_ptxs_;
-  std::vector<std::unique_ptr<Instruction>> instructions_;
-  std::unique_ptr<Program> runtime_program_;
   int size_;
 };
 

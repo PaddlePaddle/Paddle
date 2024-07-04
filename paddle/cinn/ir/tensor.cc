@@ -704,12 +704,7 @@ bool _Tensor_::Uses(const Tensor &other) const {
   return !loads.empty();
 }
 
-ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape,
-                             poly::StageMap stages) const {
-  PADDLE_ENFORCE_EQ(stages[this]->inlined(),
-                    false,
-                    ::common::errors::PreconditionNotMet(
-                        "Required stage tensor shall not be inlined."));
+ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape) const {
   auto op = BufferShareOp::Make();
   auto n = make_shared<_Tensor_>();
   auto selft = Tensor(const_cast<ir::_Tensor_ *>(this));
@@ -740,10 +735,6 @@ ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape,
   n->InitAxis();
 
   auto t = Tensor(n);
-  stages->InsertLazily(t);
-
-  stages[n]->ShareBufferWith(stages[this]);
-  stages[n]->CtrlDepend(selft);
   return t;
 }
 
@@ -755,7 +746,7 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
       [=](const std::vector<Expr> &axis) { return t(axis); },
       Context::Global().NewName(this->name + "_copied"));
   stages->InsertLazily(copied);
-  auto res = copied->Reshape(shape, stages);
+  auto res = copied->Reshape(shape);
   stages->InsertLazily(res);
   return res;
 }
