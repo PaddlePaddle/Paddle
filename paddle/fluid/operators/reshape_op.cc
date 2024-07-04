@@ -157,23 +157,29 @@ class ReshapeOp : public framework::OperatorWithKernel {
         unk_dim_idx = static_cast<int>(i);
         output_shape[i] = shape[i];
       } else if (shape[i] == 0) {
-        if (static_cast<int>(i) < in_dims.size()) {
-          if (in_size == 0) {
-            // such as [3, 2, 0] -> [0, 0] is [0, 0]; [3, 2, 0] -> [10, 0] is
-            // [10, 0]
-            output_shape[i] = 0;
-          } else {
-            // such as [3, 2, 1] -> [0, 0] is [3, 2]; [3, 2, 1] -> [3, 2, 0] is
-            // [3, 2, 1]
-            output_shape[i] = in_dims[static_cast<int>(i)];
-          }
+        if (in_size == 0) {
+          // zero-sized tensor case
+          // index i could be < in_dims.size(): such as [3, 2, 0] -> [0, 0] is
+          // [0, 0]; [3, 2, 0] -> [10, 0] is [10, 0] index i could be >=
+          // in_dims.size(): such as [3, 2, 0] -> [1, 3, 0, 0] is [1, 3, 0, 0]
+          output_shape[i] = 0;
         } else {
-          PADDLE_ENFORCE_EQ(
-              in_size,
-              0,
-              phi::errors::InvalidArgument("If The index of 0 in `shape` >= "
-                                           "the input tensor X's dimensions, "
-                                           "It can only be Zero-Sized Tensor"));
+          // in other cases 0 means keep in_dims[i] unchanged
+          // index i should only be < in_dims.size(): such as [3, 2, 1] -> [0,
+          // 0] is [3, 2]; [3, 2, 1] -> [3, 2, 0] is [3, 2, 1]
+          PADDLE_ENFORCE_LT(
+              static_cast<int>(i),
+              in_dims.size(),
+              phi::errors::InvalidArgument(
+                  "The index of 0 in `shape` must be less than "
+                  "the input tensor X's dimensions. "
+                  "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
+                  "X's dimensions = %d.",
+                  phi::make_ddim(shape),
+                  i,
+                  in_dims,
+                  in_dims.size()));
+          output_shape[i] = in_dims[static_cast<int>(i)];
         }
         capacity *= output_shape[i];
       } else {
