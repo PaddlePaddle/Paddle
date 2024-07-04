@@ -708,7 +708,7 @@ function(nv_test TARGET_NAME)
     target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main phi)
+                          ${os_dependency_modules} paddle_gtest_main phi python)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})

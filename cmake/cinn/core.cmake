@@ -19,7 +19,11 @@ function(cinn_cc_library TARGET_NAME)
     endif()
 
     if(cinn_cc_library_DEPS)
-      # Don't need link libwarpctc.so
+      # remove link to python, see notes at:
+      if("${cinn_cc_library_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cinn_cc_library_DEPS python)
+        add_dependencies(${TARGET_NAME} python)
+      endif()
       target_link_libraries(${TARGET_NAME} ${cinn_cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cinn_cc_library_DEPS})
     endif()
