@@ -21,9 +21,7 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class CustomPluginCreater : public OpConverter {
  public:
@@ -338,9 +336,7 @@ class CustomGenericPluginCreater : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);

@@ -1328,11 +1328,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
-{transdata2strided}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}
 {self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
 {code_indent}  }}
+{code_indent}  dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{transdata2strided}
 {code_indent}  {self.gene_return_code()}"""
 
     def get_condition_code(self, kernel_name):

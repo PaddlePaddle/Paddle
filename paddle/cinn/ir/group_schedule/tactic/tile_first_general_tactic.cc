@@ -46,17 +46,25 @@ bool IsWarpReduce(const ScheduleConfig& config) {
 }
 
 bool UseContinuousDataTile(const ScheduleConfig& config) {
-  const auto& raw_reduce_axis = config.base_info->raw_reduce_axis;
-  const auto raw_data_rank = config.base_info->raw_data_rank;
-  if (raw_reduce_axis.empty()) {
-    return true;
-  }
-  for (size_t i = 1; i < raw_reduce_axis.size(); i++) {
-    if (raw_reduce_axis[i] != raw_reduce_axis[i - 1] + 1) {
-      return false;
+  const auto& ReduceAxisContinuous = [&]() {
+    const auto& raw_reduce_axis = config.base_info->raw_reduce_axis;
+    const auto raw_data_rank = config.base_info->raw_data_rank;
+    if (raw_reduce_axis.empty()) {
+      return true;
     }
-  }
-  return raw_reduce_axis.back() + 1 == raw_data_rank;
+    for (size_t i = 1; i < raw_reduce_axis.size(); i++) {
+      if (raw_reduce_axis[i] != raw_reduce_axis[i - 1] + 1) {
+        return false;
+      }
+    }
+    return raw_reduce_axis.back() + 1 == raw_data_rank;
+  };
+  const auto& IsLastAxisReduce = [&]() {
+    const auto& raw_reduce_axis = config.base_info->raw_reduce_axis;
+    const auto raw_data_rank = config.base_info->raw_data_rank;
+    return raw_reduce_axis.back() + 1 == raw_data_rank;
+  };
+  return ReduceAxisContinuous() || IsLastAxisReduce();
 }
 
 class TileFirstGeneralTactic final : public ScheduleTactic {
@@ -265,11 +273,13 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeDiscreteFlattenAxis(
     ir::IRSchedule* sch, const std::string& block_id) {
-  if (vec_spatial_axis_first_.size() >= 2) {
-    sch->Fuse(block_id, vec_spatial_axis_first_);
-  }
+  // Note: We need to fuse loops from bottom to top,
+  // because the loop index will be changed when the upper loops fused.
   if (vec_spatial_axis_last_.size() >= 2) {
     sch->Fuse(block_id, vec_spatial_axis_last_);
+  }
+  if (vec_spatial_axis_first_.size() >= 2) {
+    sch->Fuse(block_id, vec_spatial_axis_first_);
   }
 }
 

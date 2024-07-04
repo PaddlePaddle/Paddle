@@ -17,7 +17,6 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
 namespace cinn {

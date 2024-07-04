@@ -2242,8 +2242,7 @@ class Model:
                     )
                 if self._is_shape_inferred:
                     warnings.warn(
-                        "'inputs' was not specified when Model initialization, so the input shape to be saved will be the shape derived from the user's actual inputs. The input shape to be saved is %s. For saving correct input shapes, please provide 'inputs' for Model initialization."
-                        % self._input_info[0]
+                        f"'inputs' was not specified when Model initialization, so the input shape to be saved will be the shape derived from the user's actual inputs. The input shape to be saved is {self._input_info[0]}. For saving correct input shapes, please provide 'inputs' for Model initialization."
                     )
 
                 paddle.jit.save(layer, path, input_spec=self._inputs)
