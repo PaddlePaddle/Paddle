@@ -130,11 +130,12 @@ def conda_build(paddle_version, var):
     if sysstr == "Linux":
         # cpu安装包编译
         name = 'paddlepaddle'
+        cuda_str = 'cpu'
         for i in range(len(var.py_str)):
             packages_string = var.py_str[i] + "_cpu_many_linux"
             python_version = var.py_ver[var.py_str[i]]
-            template_full(name, paddle_version, packages_string, python_version, 'cpu')
-            gen_build_scripts(name, 'cpu', paddle_version)
+            template_full(name, paddle_version, packages_string, python_version, cuda_str)
+            gen_build_scripts(name, cuda_str, paddle_version)
             os.system("conda build .")
 
         # gpu安装包编译
@@ -150,11 +151,12 @@ def conda_build(paddle_version, var):
     elif sysstr == "Windows":
         # cpu安装包编译
         name = 'paddlepaddle'
+        cuda_str = 'cpu'
         for i in range(len(var.py_str)):
             packages_string = var.py_str[i] + "_cpu_windows"
             python_version = var.py_ver[var.py_str[i]]
             template_full(name, paddle_version, packages_string, python_version, cuda_str)
-            gen_build_scripts(name, 'cpu', paddle_version)
+            gen_build_scripts(name, cuda_str, paddle_version)
             os.system("conda build .")
 
         # gpu安装包编译
@@ -169,11 +171,12 @@ def conda_build(paddle_version, var):
     elif sysstr == "Darwin":
         # cpu安装包编译
         name = 'paddlepaddle'
+        cuda_str = 'cpu'
         for i in range(len(var.py_str)):
             packages_string = var.py_str[i] + "_mac"
             python_version = var.py_ver[var.py_str[i]]
             template_full(name, paddle_version, packages_string, python_version, cuda_str)
-            gen_build_scripts(name, 'cpu', paddle_version)
+            gen_build_scripts(name, cuda_str, paddle_version)
             os.system("conda build .")
 
 
