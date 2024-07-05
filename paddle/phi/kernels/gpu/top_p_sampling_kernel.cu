@@ -1037,34 +1037,6 @@ __global__ void setup_kernel(GPU(randState_t) * state,
   }
 }
 
-#ifdef PADDLE_WITH_HIP
-template <typename T>
-__global__ void print_kernel(T* input, int size) {
-  for (int i = 0; i < size; i++) {
-    printf("[");
-    if (i != size - 1) {
-      printf("%f, ", static_cast<float>(input[i]));
-    } else {
-      printf("%f]\n", static_cast<float>(input[i]));
-    }
-  }
-}
-#else
-template <typename T>
-__global__ void print_kernel(T* input, int size) {
-  for (int i = 0; i < size; i++) {
-    std::stringstream ss;
-    ss << "[";
-    if (i != size - 1) {
-      ss << static_cast<float>(input[i]) << ", ";
-    } else {
-      ss << static_cast<float>(input[i]) << "]\n";
-    }
-    VLOG(0) << ss.str();
-  }
-}
-#endif
-
 template <typename T>
 T* SafeGetTensorPtr(const DenseTensor& t) {
   return const_cast<T*>(t.data<T>());
