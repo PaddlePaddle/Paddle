@@ -4334,6 +4334,7 @@
     spmd_rule: TransposeInferSpmd
   kernel :
     func : transpose
+  inplace : (x -> out)
   backward : transpose_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
