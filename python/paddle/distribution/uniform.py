@@ -13,10 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
-import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -28,6 +27,7 @@ from paddle.tensor import random
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import TensorLike
 
 
 class Uniform(distribution.Distribution):
@@ -111,18 +111,8 @@ class Uniform(distribution.Distribution):
 
     def __init__(
         self,
-        low: (
-            float
-            | Sequence[float]
-            | npt.NDArray[np.float32 | np.float64]
-            | Tensor
-        ),
-        high: (
-            float
-            | Sequence[float]
-            | npt.NDArray[np.float32 | np.float64]
-            | Tensor
-        ),
+        low: TensorLike,
+        high: TensorLike,
         name: str | None = None,
     ) -> None:
         if not in_dynamic_mode():
