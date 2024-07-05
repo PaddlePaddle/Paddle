@@ -211,7 +211,7 @@ class FleetUtil:
 
         """
         auc_value = self.get_global_auc(scope, stat_pos, stat_neg)
-        self.rank0_print(print_prefix + " global auc = %s" % auc_value)
+        self.rank0_print(f"{print_prefix} global auc = {auc_value}")
 
     def get_global_auc(
         self,
@@ -378,7 +378,7 @@ class FleetUtil:
         elif mode == "patch":
             xbox_dict["id"] = str(int(time.time()))
         else:
-            print("warning: unknown mode %s, set it to patch" % mode)
+            print(f"warning: unknown mode {mode}, set it to patch")
             mode = "patch"
             xbox_dict["id"] = str(int(time.time()))
         xbox_dict["key"] = str(xbox_base_key)
@@ -451,7 +451,7 @@ class FleetUtil:
             suffix_name = f"/{day}/{pass_id}/"
             model_path = output_path.rstrip("/") + suffix_name
         else:
-            suffix_name = "/%s/0/" % day
+            suffix_name = f"/{day}/0/"
             model_path = output_path.rstrip("/") + suffix_name
 
         if fleet.worker_index() == 0:
@@ -564,7 +564,7 @@ class FleetUtil:
                 donefile_name = "xbox_patch_done.txt"
         else:
             mode = "base"
-            suffix_name = "/%s/base/" % day
+            suffix_name = f"/{day}/base/"
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_base_done.txt"
@@ -692,7 +692,7 @@ class FleetUtil:
             client = HDFSClient(hadoop_home, configs)
             if client.is_file(donefile_path):
                 self.rank0_error(
-                    "not write because %s already exists" % donefile_path
+                    f"not write because {donefile_path} already exists"
                 )
             else:
                 meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" % (
@@ -702,7 +702,7 @@ class FleetUtil:
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 client.upload(donefile_name, model_path)
-                self.rank0_error("write %s succeed" % donefile_path)
+                self.rank0_error(f"write {donefile_path} succeed")
         if self.mode == "pscore":
             fleet.barrier_worker()
         else:
@@ -730,7 +730,7 @@ class FleetUtil:
         pass_id = str(pass_id)
         suffix_name = f"/{day}/{pass_id}/"
         load_path = output_path + suffix_name
-        self.rank0_error("going to load_model %s" % load_path)
+        self.rank0_error(f"going to load_model {load_path}")
         self.load_fleet_model(load_path)
         self.rank0_error("load_model done")
 
@@ -756,7 +756,7 @@ class FleetUtil:
         pass_id = str(pass_id)
         suffix_name = f"/{day}/{pass_id}/"
         model_path = output_path + suffix_name
-        self.rank0_print("going to save_model %s" % model_path)
+        self.rank0_print(f"going to save_model {model_path}")
         self.save_fleet_model(model_path)
         self.rank0_print("save_model done")
 
@@ -778,9 +778,9 @@ class FleetUtil:
 
         """
         day = str(day)
-        suffix_name = "/%s/0/" % day
+        suffix_name = f"/{day}/0/"
         model_path = output_path + suffix_name
-        self.rank0_print("going to save_model %s" % model_path)
+        self.rank0_print(f"going to save_model {model_path}")
         fleet.save_persistables(None, model_path, mode=3)
         self.rank0_print("save_batch_model done")
 
@@ -806,7 +806,7 @@ class FleetUtil:
         pass_id = str(pass_id)
         suffix_name = f"/{day}/delta-{pass_id}/"
         model_path = output_path + suffix_name
-        self.rank0_print("going to save_delta_model %s" % model_path)
+        self.rank0_print(f"going to save_delta_model {model_path}")
         fleet.save_persistables(None, model_path, mode=1)
         self.rank0_print("save_delta_model done")
 
@@ -828,7 +828,7 @@ class FleetUtil:
 
         """
         day = str(day)
-        suffix_name = "/%s/base/" % day
+        suffix_name = f"/{day}/base/"
         model_path = output_path + suffix_name
         self.rank0_print("going to save_xbox_base_model " + model_path)
         fleet.save_persistables(None, model_path, mode=2)
@@ -864,7 +864,7 @@ class FleetUtil:
         table_id = kwargs.get("table_id", 0)
         suffix_name = f"/{day}/delta-{pass_id}"
         model_path = output_path.rstrip("/") + suffix_name
-        self.rank0_print("going to save_cache_model %s" % model_path)
+        self.rank0_print(f"going to save_cache_model {model_path}")
         key_num = fleet.save_cache_model(
             None, model_path, mode=mode, table_id=table_id
         )
@@ -896,9 +896,9 @@ class FleetUtil:
         """
         day = str(day)
         table_id = kwargs.get("table_id", 0)
-        suffix_name = "/%s/base" % day
+        suffix_name = f"/{day}/base"
         model_path = output_path.rstrip("/") + suffix_name
-        self.rank0_print("going to save_cache_base_model %s" % model_path)
+        self.rank0_print(f"going to save_cache_base_model {model_path}")
         key_num = fleet.save_cache_model(
             None, model_path, mode=2, table_id=table_id
         )
@@ -1460,23 +1460,23 @@ class FleetUtil:
             self.rank0_print("not found auc bucket")
             return [None] * 9
         elif scope.find_var(sqrerr_name) is None:
-            self.rank0_print("not found sqrerr_name=%s" % sqrerr_name)
+            self.rank0_print(f"not found sqrerr_name={sqrerr_name}")
             return [None] * 9
         elif scope.find_var(abserr_name) is None:
-            self.rank0_print("not found abserr_name=%s" % abserr_name)
+            self.rank0_print(f"not found abserr_name={abserr_name}")
             return [None] * 9
         elif scope.find_var(prob_name) is None:
-            self.rank0_print("not found prob_name=%s" % prob_name)
+            self.rank0_print(f"not found prob_name={prob_name}")
             return [None] * 9
         elif scope.find_var(q_name) is None:
-            self.rank0_print("not found q_name=%s" % q_name)
+            self.rank0_print(f"not found q_name={q_name}")
             return [None] * 9
         elif scope.find_var(pos_ins_num_name) is None:
-            self.rank0_print("not found pos_ins_num_name=%s" % pos_ins_num_name)
+            self.rank0_print(f"not found pos_ins_num_name={pos_ins_num_name}")
             return [None] * 9
         elif scope.find_var(total_ins_num_name) is None:
             self.rank0_print(
-                "not found total_ins_num_name=%s" % total_ins_num_name
+                f"not found total_ins_num_name={total_ins_num_name}"
             )
             return [None] * 9
 
@@ -1665,23 +1665,23 @@ class FleetUtil:
             self.rank0_print("not found auc bucket")
             return
         elif scope.find_var(sqrerr_name) is None:
-            self.rank0_print("not found sqrerr_name=%s" % sqrerr_name)
+            self.rank0_print(f"not found sqrerr_name={sqrerr_name}")
             return
         elif scope.find_var(abserr_name) is None:
-            self.rank0_print("not found abserr_name=%s" % abserr_name)
+            self.rank0_print(f"not found abserr_name={abserr_name}")
             return
         elif scope.find_var(prob_name) is None:
-            self.rank0_print("not found prob_name=%s" % prob_name)
+            self.rank0_print(f"not found prob_name={prob_name}")
             return
         elif scope.find_var(q_name) is None:
-            self.rank0_print("not found q_name=%s" % q_name)
+            self.rank0_print(f"not found q_name={q_name}")
             return
         elif scope.find_var(pos_ins_num_name) is None:
-            self.rank0_print("not found pos_ins_num_name=%s" % pos_ins_num_name)
+            self.rank0_print(f"not found pos_ins_num_name={pos_ins_num_name}")
             return
         elif scope.find_var(total_ins_num_name) is None:
             self.rank0_print(
-                "not found total_ins_num_name=%s" % total_ins_num_name
+                f"not found total_ins_num_name={total_ins_num_name}"
             )
             return
 
@@ -2027,7 +2027,7 @@ class GPUPSUtil(FleetUtil):
             suffix_name = f"/{day}/{pass_id}/"
             model_path = output_path.rstrip("/") + suffix_name
         else:
-            suffix_name = "/%s/0/" % day
+            suffix_name = f"/{day}/0/"
             model_path = output_path.rstrip("/") + suffix_name
 
         if fleet.worker_index() == 0:
@@ -2133,7 +2133,7 @@ class GPUPSUtil(FleetUtil):
                 donefile_name = "xbox_patch_done.txt"
         else:
             mode = "base"
-            suffix_name = "/%s/base/" % day
+            suffix_name = f"/{day}/base/"
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_base_done.txt"
@@ -2154,7 +2154,7 @@ class GPUPSUtil(FleetUtil):
             )
 
             if self._afs.is_exist(donefile_path):
-                self.rank0_info("exist %s succeed" % (donefile_path))
+                self.rank0_info(f"exist {donefile_path} succeed")
                 self._afs.download(donefile_path, donefile_name)
                 pre_content = ""
                 with open(donefile_name, "r") as f:
@@ -2164,7 +2164,7 @@ class GPUPSUtil(FleetUtil):
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
 
                 os.remove(donefile_name)
-                self.rank0_info("remove %s succeed" % (donefile_name))
+                self.rank0_info(f"remove {donefile_name} succeed")
                 exist = False
                 if (
                     int(day) < int(last_day)
@@ -2250,7 +2250,7 @@ class GPUPSUtil(FleetUtil):
 
             if self._afs.is_file(donefile_path):
                 self.rank0_error(
-                    "not write because %s already exists" % donefile_path
+                    f"not write because {donefile_path} already exists"
                 )
             else:
                 meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" % (
@@ -2260,7 +2260,7 @@ class GPUPSUtil(FleetUtil):
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 self._afs.upload(donefile_name, donefile_path)
-                self.rank0_error("write %s succeed" % donefile_path)
+                self.rank0_error(f"write {donefile_path} succeed")
 
     def _get_xbox_str(
         self,
@@ -2279,7 +2279,7 @@ class GPUPSUtil(FleetUtil):
         elif mode == "patch":
             xbox_dict["id"] = str(int(time.time()))
         else:
-            print("warning: unknown mode %s, set it to patch" % mode)
+            print(f"warning: unknown mode {mode}, set it to patch")
             mode = "patch"
             xbox_dict["id"] = str(int(time.time()))
         xbox_dict["key"] = str(xbox_base_key)

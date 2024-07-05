@@ -14,7 +14,6 @@
 
 from ...layers.mpu.random import (  # noqa: F401
     RNGStatesTracker,
-    determinate_seed,
     dropout,
     get_rng_state_tracker,
     model_parallel_random_seed,

@@ -27,10 +27,13 @@ class TestCollectiveBatchIsendIrecv(unittest.TestCase):
     def test_collective_batch_isend_irecv(self):
         rank = dist.get_rank()
         world_size = dist.get_world_size()
-        send_t = paddle.arange(2) + rank
-        # paddle.tensor([0, 1])  # Rank-0
-        # paddle.tensor([1, 2])  # Rank-1
-        recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
+        paddle.seed(1024)
+        length = 2000
+
+        base = paddle.randint(0, 100, [length])
+        send_t = base + rank
+        recv_t = paddle.empty(shape=[length], dtype=send_t.dtype)
+
         send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
         recv_op = dist.P2POp(
             dist.irecv, recv_t, (rank - 1 + world_size) % world_size
@@ -40,10 +43,9 @@ class TestCollectiveBatchIsendIrecv(unittest.TestCase):
         for task in tasks:
             task.wait()
 
-        if rank == 0:
-            np.testing.assert_allclose(recv_t.numpy(), [1, 2])
-        elif rank == 1:
-            np.testing.assert_allclose(recv_t.numpy(), [0, 1])
+        res = recv_t - (rank - 1 + world_size) % world_size
+        res = paddle.sum(base - res)
+        np.testing.assert_allclose(res.numpy(), [0])
 
 
 if __name__ == '__main__':

@@ -187,11 +187,20 @@ class DeleteDropoutOpPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
+    const auto &full_orig_op = pat.Op(paddle::dialect::FullOp::name(),
+                                      {
+                                          {"dtype", pat.Attr("dtype")},
+                                          {"place", pat.Attr("place")},
+                                          {"shape", pat.Attr("shape")},
+                                          {"value", pat.Attr("value")},
+                                      });
+    full_orig_op({}, {&pat.Tensor("p")});
     const auto &dropout_op =
         pat.Op("pd_op.dropout",
                {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mode")}});
-    dropout_op({&pat.Tensor("dropout_in"), &pat.Tensor("none")},
-               {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
+    dropout_op(
+        {&pat.Tensor("dropout_in"), &pat.InputNoneTensor(), &pat.Tensor("p")},
+        {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto is_test = match_ctx.Attr<bool>("is_test");
       auto mode = match_ctx.Attr<std::string>("mode");
@@ -208,12 +217,22 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
-    const auto &dropout_op = pat.Op("pd_op.dropout",
-                                    {{"p", pat.Attr("p")},
-                                     {"is_test", pat.Attr("is_test")},
-                                     {"mode", pat.Attr("mode")}});
-    dropout_op({&pat.Tensor("dropout_in"), &pat.Tensor("none")},
-               {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
+    const auto &full_orig_op = pat.Op(paddle::dialect::FullOp::name(),
+                                      {
+                                          {"dtype", pat.Attr("dtype")},
+                                          {"place", pat.Attr("place")},
+                                          {"shape", pat.Attr("shape")},
+                                          {"value", pat.Attr("value")},
+                                      });
+    full_orig_op({}, {&pat.Tensor("p")});
+
+    const auto &dropout_op =
+        pat.Op("pd_op.dropout",
+               {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mode")}});
+    dropout_op(
+        {&pat.Tensor("dropout_in"), &pat.InputNoneTensor(), &pat.Tensor("p")},
+        {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
+
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto is_test = match_ctx.Attr<bool>("is_test");
       auto mode = match_ctx.Attr<std::string>("mode");
@@ -224,7 +243,7 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
 
     const auto &res_scale_input = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return 1.f - match_ctx.Attr<float>("p");
+          return 1.f - match_ctx.Attr<float>("value");
         });
 
     const auto &full_op_res = res.Op(

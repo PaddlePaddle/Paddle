@@ -326,6 +326,16 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : histogram
+  version :
+    - checkpoint : Upgrade histogram, add a new Input [Weight] and a new attribute [density]
+      action :
+        - add_input : Weight
+          comment : The weight of each value in the input tensor.
+        - add_attr : density
+          comment : If true, the histogram is normalized to form a probability density.
+          default : "false"
+
 - op : instance_norm
   version :
     - checkpoint : Change dispensable of attribute from False to True in instance_norm.
@@ -391,6 +401,22 @@
       action :
         - add_output : RoisNum
           comment : The number of RoIs in each image.
+
+- op : max_pool2d_with_index
+  version :
+    - checkpoint : Upgrade max_pool2d_with_index, add a new attribute [ceil_mode].
+      action :
+        - add_attr : ceil_mode
+          comment : When true, will use ceil instead of floor to compute the output shape.
+          default : "false"
+
+- op : max_pool3d_with_index
+  version :
+    - checkpoint : Upgrade max_pool3d_with_index, add a new attribute [ceil_mode].
+      action :
+        - add_attr : ceil_mode
+          comment : When true, will use ceil instead of floor to compute the output shape.
+          default : "false"
 
 - op : momentum
   version :
@@ -477,6 +503,14 @@
       action :
         - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
+
+- op : round
+  version :
+    - checkpoint : Add a new attribute [deciamls] to round
+      action :
+        - add_attr : decimals
+          comment : The number of decimal places rounded
+          default : 0.0
 
 - op : softmax_with_cross_entropy
   version :

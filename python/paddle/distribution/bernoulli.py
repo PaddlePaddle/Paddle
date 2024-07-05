@@ -97,7 +97,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 probs,
                 'probs',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 self.name,
             )
 
@@ -149,7 +149,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
-                >>> rv = Bernoulli(paddle.full((1), 0.3))
+                >>> rv = Bernoulli(paddle.full([1], 0.3))
                 >>> print(rv.sample([100]).shape)
                 [100, 1]
 
@@ -170,7 +170,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 shape,
                 'shape',
-                (np.ndarray, Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple, paddle.pir.Value),
                 name,
             )
 
@@ -205,7 +205,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> paddle.seed(1)
                 >>> from paddle.distribution import Bernoulli
 
-                >>> rv = Bernoulli(paddle.full((1), 0.3))
+                >>> rv = Bernoulli(paddle.full([1], 0.3))
                 >>> print(rv.sample([100]).shape)
                 [100, 1]
 
@@ -248,7 +248,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 shape,
                 'shape',
-                (np.ndarray, Variable, list, tuple),
+                (np.ndarray, Variable, paddle.pir.Value, list, tuple),
                 name,
             )
             check_type(
@@ -307,7 +307,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_cdf'
         if not in_dynamic_mode():
-            check_type(value, 'value', Variable, name)
+            check_type(value, 'value', (Variable, paddle.pir.Value), name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
         probs, value = paddle.broadcast_tensors([self.probs, value])
@@ -345,7 +345,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_log_prob'
         if not in_dynamic_mode():
-            check_type(value, 'value', Variable, name)
+            check_type(value, 'value', (Variable, paddle.pir.Value), name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
         logits, value = paddle.broadcast_tensors([self.logits, value])
@@ -384,7 +384,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_prob'
         if not in_dynamic_mode():
-            check_type(value, 'value', Variable, name)
+            check_type(value, 'value', (Variable, paddle.pir.Value), name)
 
         return self.log_prob(value).exp(name=name)
 

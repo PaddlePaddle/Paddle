@@ -232,6 +232,52 @@ std::vector<pir::Type> AddNOp::InferMeta(
   return argument_outputs;
 }
 
+namespace details {
+bool AddNOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_list_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  PADDLE_ENFORCE_EQ(
+      input_list_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
+      true,
+      common::errors::InvalidArgument(
+          "The type of inputs shape should be TensorListShapeOrDataDimExprs"));
+  const auto &inputs_shape =
+      input_list_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  PADDLE_ENFORCE_GT(
+      inputs_shape.size(),
+      0,
+      common::errors::InvalidArgument(
+          "The input tensor X's dimensions of AddNOp "
+          "should be larger than 0. But received X's dimensions %d.",
+          inputs_shape.size()));
+  symbol::TensorShapeOrDataDimExprs candidate_shape = inputs_shape.front();
+  for (size_t i = 1; i < inputs_shape.size(); ++i) {
+    // 0D tensor
+    if (inputs_shape[i].shape().size() == 0) {
+      continue;
+    }
+    if (candidate_shape.shape().size() == 0) {
+      candidate_shape = inputs_shape[i];
+      continue;
+    }
+    for (size_t j = 0; j < candidate_shape.shape().size(); ++j) {
+      infer_context->AddEqualCstr(candidate_shape.shape()[j],
+                                  inputs_shape[i].shape()[j]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{candidate_shape});
+
+  return true;
+}
+
+}  // namespace details
+
+bool AddNOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
+  return details::AddNOpInferSymbolicShape(this->operation(), infer_context);
+}
+
 OpInfoTuple AddN_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
@@ -378,6 +424,11 @@ std::vector<pir::Type> AddN_Op::InferMeta(
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
+}
+
+bool AddN_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  return details::AddNOpInferSymbolicShape(this->operation(), infer_context);
 }
 
 OpInfoTuple AddNArrayOp::GetOpInfo() {
@@ -3355,6 +3406,15 @@ std::vector<pir::Type> ExpandOp::InferMeta(
         auto tmp = ParseValueShape(item, is_from_tensor);
         vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
       }
+    } else if (shape.isa<pir::OpResult>() &&
+               shape.defining_op()->isa<paddle::dialect::ShapeOp>()) {
+      // tensor_shape may come from shape op
+      // x0.shape = [-1,3]
+      // tensor_shape = shape(x0)
+      // y = reshape(x, tensor_shape)
+      pir::Value inputs = shape.defining_op()->operand_source(0);
+      vec_shape = common::vectorize(
+          inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     } else if (shape.type().isa<pir::VectorType>()) {
       size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
       vec_shape = std::vector<int64_t>(shape_size, -2);
@@ -3362,6 +3422,45 @@ std::vector<pir::Type> ExpandOp::InferMeta(
     } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
       common::DDim shape_dim =
           shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+
+      if (shape.isa<pir::OpResult>() &&
+          shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
+        // tensor_shape may come from concat
+        // tensor_shape = concat([full(1), full(2)])
+        // y = reshape(x, tensor_shape)
+        const std::vector<pir::Value> &inputs = shape.defining_op()
+                                                    ->operand_source(0)
+                                                    .defining_op()
+                                                    ->operands_source();
+
+        if (shape_dim.size() == 1 &&
+            shape_dim[0] == static_cast<int64_t>(inputs.size())) {
+          for (auto item : inputs) {
+            if (item.defining_op()->isa<paddle::dialect::ShapeOp>()) {
+              pir::Value shape_input = item.defining_op()->operand_source(0);
+              int64_t value = shape_input.type()
+                                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                                  .dims()[0];
+              vec_shape.push_back(value);
+
+            } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+              auto shape_item = shape.defining_op()
+                                    ->dyn_cast<paddle::dialect::FullOp>()
+                                    .attribute("value")
+                                    .dyn_cast<pir::FloatAttribute>()
+                                    .data();
+              vec_shape.push_back(static_cast<int64_t>(shape_item));
+
+            } else {
+              vec_shape.push_back(-1);
+            }
+            // From expand infermeta, -2 means this dim from tensor var.
+            std::replace(vec_shape.begin(), vec_shape.end(), -1, -2);
+          }
+          return vec_shape;
+        }
+      }
+
       size_t shape_size = common::product(shape_dim);
       if (common::contain_unknown_dim(shape_dim)) {
         shape_size = 1;
@@ -3866,6 +3965,7 @@ void AssignOut_Op::Build(pir::Builder &builder,
   std::vector<pir::Type> argument_outputs =
       AssignOut_Op::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   constexpr char kStopGradientAttrName[] = "stop_gradient";
   auto stop_gradient0 =
       argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
@@ -3970,6 +4070,22 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // Auto Parallel condition
+  if (auto dist_type = input_values[1].type().dyn_cast<DistTypeInterface>()) {
+    ProcessMeshAttribute op_mesh = dist_type.process_mesh_attr();
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs{
+        dist_type.tensor_dist_attr(),
+        dist_type.tensor_dist_attr(),
+    },
+        dist_result_attrs{dist_type.tensor_dist_attr()};
+    argument_outputs.push_back(dist_type);
+    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
   argument_outputs.push_back(out_dense_tensor_type);
 
   return argument_outputs;
@@ -3979,14 +4095,15 @@ bool AssignOut_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
       infer_context->GetShapeOrDataForValue(operand_source(0));
-  const auto &inplace_output_shape =
-      infer_context->GetShapeOrDataForValue(operand_source(1));
+  // const auto &inplace_output_shape =
+  //     infer_context->GetShapeOrDataForValue(operand_source(1));
   infer_context->SetShapeOrDataForValue(result(0), x_shape);
-  CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
-  for (size_t i = 0; i < x_shape.shape().size(); ++i) {
-    infer_context->AddEqualCstr(x_shape.shape()[i],
-                                inplace_output_shape.shape()[i]);
-  }
+  // TODO(Hongqing-work): add this after fixing while op error
+  // CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
+  // for (size_t i = 0; i < x_shape.shape().size(); ++i) {
+  //   infer_context->AddEqualCstr(x_shape.shape()[i],
+  //                               inplace_output_shape.shape()[i]);
+  // }
   return true;
 }
 

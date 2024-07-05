@@ -66,6 +66,10 @@ class CompiledProgram {
   void InitProgramPrivateMemberInfo(const BuildStrategy &build_strategy,
                                     size_t device_count);
 
+  void InitReaderQueueDeviceCount(ir::Graph *graph,
+                                  const Scope &scope,
+                                  size_t dev_cnt);
+
   void CreateLocalScopes(Scope *global_scope,
                          const std::vector<Scope *> &local_scopes,
                          bool create_new);

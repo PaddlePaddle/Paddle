@@ -75,6 +75,7 @@ UNARY_PRIM_VJP_OPS = [
     'sin_grad',
     'cos_grad',
     'tanh_grad',
+    'square_grad',
 ]
 
 # prim op with two inputs and one output, with no attribute

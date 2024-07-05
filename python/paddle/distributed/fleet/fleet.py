@@ -83,8 +83,7 @@ def _is_non_distributed_check_(func):
             and cls._role_maker._is_non_distributed() is True
         ):
             logger.warning(
-                "%s() function doesn't work when use non_distributed fleet."
-                % (func.__name__)
+                f"{func.__name__}() function doesn't work when use non_distributed fleet."
             )
             return
 

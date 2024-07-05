@@ -93,8 +93,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcast(
           }
         }
         auto out = pe_func(A, B, tensor_name, axis);
-        auto stages = CreateStages({A, B, out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -140,8 +139,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
           }
         }
         auto out = pe_func(A, B, tensor_name, axis);
-        auto stages = CreateStages({A, B, out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -282,8 +280,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe::BroadcastTo(A, out_shape, broadcast_axes, tensor_name);
-    auto stages = CreateStages({A, out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -334,8 +331,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe::BroadcastTo(A, out_shape, tensor_name);
-    auto stages = CreateStages({A, out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -561,7 +557,7 @@ CINN_REGISTER_HELPER(broadcast_ops) {
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))
       .set_attr("generate_equations",
                 MakeOpFunction(cinn::hlir::op::GenerateEquationsForBroadcastTo))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))
 #endif

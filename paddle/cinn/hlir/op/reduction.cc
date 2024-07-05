@@ -69,17 +69,17 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     ReduceFunc common_reduce_func) {
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
-  if (attrs.attr_store.count("dim")) {
+  if (attrs.attr_store.count("axis")) {
     reduce_axes = [&] {
       if (absl::holds_alternative<std::vector<int64_t>>(
-              attrs.attr_store.at("dim"))) {
+              attrs.attr_store.at("axis"))) {
         const auto &dim_attr =
-            absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+            absl::get<std::vector<int64_t>>(attrs.attr_store.at("axis"));
         return std::vector<int>(dim_attr.begin(), dim_attr.end());
       } else if (absl::holds_alternative<std::vector<int>>(
-                     attrs.attr_store.at("dim"))) {
-        return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
-      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+                     attrs.attr_store.at("axis"))) {
+        return absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(
@@ -106,9 +106,9 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
-  bool keep_dim = false;
-  if (attrs.attr_store.count("keep_dim")) {
-    keep_dim = absl::get<bool>(attrs.attr_store.at("keep_dim"));
+  bool keepdim = false;
+  if (attrs.attr_store.count("keepdim")) {
+    keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
   auto WithoutLastDimInReduce = [](const std::vector<ir::Expr> &inshape,
@@ -133,66 +133,80 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
 
   framework::CINNCompute reduction_compute([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name
-                         << " compute is empty! Please check.";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of %s compute is empty! Please check.",
+            op_name));
     CINNValuePack arg_packs = args[0];
-    CHECK_EQ(arg_packs.size(), 2U)
-        << "There should be 2 input args for " << op_name << " compute";
-    CHECK(arg_packs[1].is_string());
+    PADDLE_ENFORCE_EQ(
+        arg_packs.size(),
+        2U,
+        phi::errors::InvalidArgument(
+            "There should be 2 input args for %s compute", op_name));
+    PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The arg_packs[1] is not empty! Please check."));
     std::string tensor_name = arg_packs[1].operator std::string();
     Expr x_expr = arg_packs[0];
-    CHECK(x_expr.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The x_expr can not as tensor! Please check."));
     ir::Tensor x = x_expr.as_tensor_ref();
 
     std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
                                                       "reduce_any"};
-    CHECK(!bool_reduce_op.count(op_name) || x->type().is_bool())
-        << "The type of input argument " << x->name << " of " << op_name
-        << " should be bool, but get " << x->type() << "! Please check.";
+    PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The type of input argument %s of %s should be bool, "
+                          "but get %s! Please check.",
+                          x->name,
+                          op_name,
+                          x->type().to_string()));
 
     const auto &NaiveCompute = [&]() {
       VLOG(3) << "Do Reduce Compute!";
-      auto out = common_reduce_func(x, reduce_axes, keep_dim, tensor_name);
-      auto stages = CreateStages({out});
+      auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
 
-      std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+      std::vector<CINNValue> cinn_values{CINNValue(out)};
       *ret = CINNValuePack{cinn_values};
     };
-    target.arch.Match(
-        [&](common::NVGPUArch) {
-          if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
-            if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
-              VLOG(3) << "Do Two Step Block Reduce Compute!";
-              auto res = gpu_reduce_with_last_axis_func(
-                  x, reduce_axes, keep_dim, tensor_name);
-              auto stages = CreateStages(res);
+    auto reductionComputeNvHygon = [&] {
+      if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
+        if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
+          VLOG(3) << "Do Two Step Block Reduce Compute!";
+          auto res = gpu_reduce_with_last_axis_func(
+              x, reduce_axes, keepdim, tensor_name);
 
-              std::vector<CINNValue> cinn_values;
-              for (auto &t : res) {
-                cinn_values.emplace_back(t);
-              }
-              cinn_values.emplace_back(stages);
-              *ret = CINNValuePack{cinn_values};
-            } else {
-              VLOG(3) << "Do Block Shuffle Reduce Compute!";
-              auto res = gpu_reduce_without_last_axis_func(
-                  x, reduce_axes, keep_dim, tensor_name);
-              auto stages = CreateStages(res);
-
-              std::vector<CINNValue> cinn_values;
-              for (auto &t : res) {
-                cinn_values.emplace_back(t);
-              }
-              cinn_values.emplace_back(stages);
-              *ret = CINNValuePack{cinn_values};
-            }
-          } else {
-            NaiveCompute();
+          std::vector<CINNValue> cinn_values;
+          for (auto &t : res) {
+            cinn_values.emplace_back(t);
           }
-        },
+          *ret = CINNValuePack{cinn_values};
+        } else {
+          VLOG(3) << "Do Block Shuffle Reduce Compute!";
+          auto res = gpu_reduce_without_last_axis_func(
+              x, reduce_axes, keepdim, tensor_name);
+
+          std::vector<CINNValue> cinn_values;
+          for (auto &t : res) {
+            cinn_values.emplace_back(t);
+          }
+          *ret = CINNValuePack{cinn_values};
+        }
+      } else {
+        NaiveCompute();
+      }
+    };
+    target.arch.Match(
+        [&](common::NVGPUArch) { reductionComputeNvHygon(); },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) { NaiveCompute(); });
+                         common::ARMArch>) { NaiveCompute(); },
+        [&](common::HygonDCUArchHIP) { reductionComputeNvHygon(); });
   });
 
   framework::CINNSchedule reduction_schedule([=](lang::Args args,
@@ -328,28 +342,35 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         }
       }
     };
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::ARMArch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::NVGPUArch) {
-          if (!FLAGS_cinn_new_group_scheduler) {
-            ReduceSchedule();
-          } else {
-            std::vector<CINNValue> res{
-                CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-            *ret = CINNValuePack{res};
-          }
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
+                        std::vector<CINNValue> res{
+                            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                        *ret = CINNValuePack{res};
+                      },
+                      [&](common::ARMArch) {
+                        std::vector<CINNValue> res{
+                            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                        *ret = CINNValuePack{res};
+                      },
+                      [&](common::NVGPUArch) {
+                        if (!FLAGS_cinn_new_group_scheduler) {
+                          ReduceSchedule();
+                        } else {
+                          std::vector<CINNValue> res{
+                              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                          *ret = CINNValuePack{res};
+                        }
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        if (!FLAGS_cinn_new_group_scheduler) {
+                          ReduceSchedule();
+                        } else {
+                          std::vector<CINNValue> res{
+                              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                          *ret = CINNValuePack{res};
+                        }
+                      });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -371,17 +392,17 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     ReduceFunc common_reduce_func) {
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
-  if (attrs.attr_store.count("dim")) {
+  if (attrs.attr_store.count("axis")) {
     reduce_axes = [&] {
       if (absl::holds_alternative<std::vector<int64_t>>(
-              attrs.attr_store.at("dim"))) {
+              attrs.attr_store.at("axis"))) {
         const auto &dim_attr =
-            absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+            absl::get<std::vector<int64_t>>(attrs.attr_store.at("axis"));
         return std::vector<int>(dim_attr.begin(), dim_attr.end());
       } else if (absl::holds_alternative<std::vector<int>>(
-                     attrs.attr_store.at("dim"))) {
-        return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
-      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+                     attrs.attr_store.at("axis"))) {
+        return absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(
@@ -407,9 +428,9 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
-  bool keep_dim = false;
-  if (attrs.attr_store.count("keep_dim")) {
-    keep_dim = absl::get<bool>(attrs.attr_store.at("keep_dim"));
+  bool keepdim = false;
+  if (attrs.attr_store.count("keepdim")) {
+    keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
   framework::CINNCompute reduction_compute(
@@ -432,10 +453,9 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
             << " should be bool, but get " << x->type() << "! Please check.";
 
         VLOG(3) << "Do Reduce Compute!";
-        auto out = common_reduce_func(x, reduce_axes, keep_dim, tensor_name);
-        auto stages = CreateStages({out});
+        auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
 
-        std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> cinn_values{CINNValue(out)};
         *ret = CINNValuePack{cinn_values};
       });
 
@@ -559,33 +579,34 @@ std::vector<shape_t> InferShapeForReduction(
     const std::vector<shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
   CHECK(inputs_shape.size() == 1UL || inputs_shape.size() == 3UL);
-  std::vector<int> dim;
-  bool keep_dim = false;
-  if (attrs.find("dim") != attrs.end()) {
-    dim = absl::get<std::vector<int>>(attrs.at("dim"));
+  std::vector<int> axis;
+  bool keepdim = false;
+  if (attrs.find("axis") != attrs.end()) {
+    axis = absl::get<std::vector<int>>(attrs.at("axis"));
   }
 
-  if (attrs.find("keep_dim") != attrs.end()) {
-    keep_dim = absl::get<bool>(attrs.at("keep_dim"));
+  if (attrs.find("keepdim") != attrs.end()) {
+    keepdim = absl::get<bool>(attrs.at("keepdim"));
   }
 
   auto ndim = inputs_shape[0].size();
-  CHECK_LE(dim.size(), ndim) << "reduce dim should no more than the input size";
+  CHECK_LE(axis.size(), ndim)
+      << "reduce dim should no more than the input size";
 
-  if (dim.empty()) {
+  if (axis.empty()) {
     for (int i = 0; i < ndim; ++i) {
-      dim.emplace_back(i);
+      axis.emplace_back(i);
     }
   } else {
-    std::for_each(dim.begin(), dim.end(), [&ndim](int &x) {
+    std::for_each(axis.begin(), axis.end(), [&ndim](int &x) {
       if (x < 0) x += ndim;
     });
   }
 
   std::vector<int> out_shapes;
   for (size_t i = 0; i < ndim; ++i) {
-    if (std::find(dim.begin(), dim.end(), i) != dim.end()) {
-      if (keep_dim) {
+    if (std::find(axis.begin(), axis.end(), i) != axis.end()) {
+      if (keepdim) {
         out_shapes.push_back(1);
       }
     } else {
@@ -599,8 +620,8 @@ std::vector<shape_t> InferShapeForReduction(
 
   VLOG(4) << "Reduce from input shape ["
           << cinn::utils::Join(inputs_shape[0], ",") << "] to output shape ["
-          << cinn::utils::Join(out_shapes, ",") << "] with reduce dim ["
-          << cinn::utils::Join(dim, ",") << "] and keep_dim is " << keep_dim;
+          << cinn::utils::Join(out_shapes, ",") << "] with reduce axis ["
+          << cinn::utils::Join(axis, ",") << "] and keepdim is " << keepdim;
 
   return {out_shapes};
 }
@@ -608,10 +629,10 @@ std::vector<shape_t> InferShapeForReduction(
 void GenerateEquationsForReduction(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
-  const bool keep_dim = ctx->Attr<bool>("keep_dim");
-  const auto &dim = ctx->Attr<std::vector<int>>("dim");
+  const bool keepdim = ctx->Attr<bool>("keepdim");
+  const auto &axis = ctx->Attr<std::vector<int>>("axis");
   std::vector<int> aligned_dim{};
-  for (int d : dim) {
+  for (int d : axis) {
     aligned_dim.push_back((d + ctx->GetInTensorsRanks().at(0)) %
                           ctx->GetInTensorsRanks().at(0));
   }
@@ -625,7 +646,7 @@ void GenerateEquationsForReduction(cinn::adt::config::OpEquationContext *ctx) {
   for (std::size_t in_axis = 0; in_axis < ctx->GetInTensorsRanks().at(0);
        ++in_axis) {
     if (IsReduceAxis(in_axis)) {
-      if (keep_dim) {
+      if (keepdim) {
         ctx->Equal(ctx->GetOutIteratorTuple(0)->at(in_axis),
                    ctx->GetConstantIterator(ctx->GetInIndex(0), 0));
         out_axis += 1;

@@ -819,7 +819,6 @@ def gen_build_func_str(
         op_non_mutable_attribute_name_list,
         op_non_mutable_attribute_type_list,
     )
-
     build_outputs_str = f"""
   std::vector<pir::Type> argument_outputs = {op_info.class_name}::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);

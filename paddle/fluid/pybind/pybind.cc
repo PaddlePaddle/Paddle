@@ -85,7 +85,6 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -134,6 +133,7 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/utils/none.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -209,6 +209,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
+#include "paddle/fluid/pir/dialect/operator/trait/forward_only.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
@@ -365,14 +366,6 @@ bool IsCompiledWithCINN() {
 
 bool IsCompiledWithHETERPS() {
 #ifndef PADDLE_WITH_HETERPS
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithGPUGRAPH() {
-#ifndef PADDLE_WITH_GPU_GRAPH
   return false;
 #else
   return true;
@@ -857,6 +850,13 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::Value>> &outputs,
          const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
+        // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+        // api, which has amp strategy. But Prim already process cast operation
+        // and we need to disable amp strategy here.
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
         py::list res;
         std::vector<std::vector<pir::Value>> vjp_res;
 
@@ -969,6 +969,20 @@ void BindVjp(pybind11::module *m) {
 
            Returns:
                out (bool): True means that the op has custom vjp rules, False means it does not.
+           )DOC");
+  m->def(
+      "is_forward_only",
+      [](pir::Operation &op) -> py::bool_ {
+        return op.info().HasTrait<paddle::dialect::ForwardOnlyTrait>();
+      },
+      R"DOC(
+           Return whether an op is forward only op.
+
+           Args:
+               op (pir::Operation): op to be checked
+
+           Returns:
+               out (bool): True means that the op is forward only op, False means it does not.
            )DOC");
 }
 
@@ -1294,7 +1308,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return common::vectorize(operators::details::BroadcastTwoDims(
+        return common::vectorize(phi::funcs::BroadcastTwoDims(
             common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
       });
 
@@ -2364,7 +2378,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
-  m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
@@ -3193,6 +3206,8 @@ All parameter, weight, gradient are variables in Paddle.
       .value("COMPLEX128", phi::DataType::COMPLEX128)
       .value("FLOAT16", phi::DataType::FLOAT16)
       .value("BFLOAT16", phi::DataType::BFLOAT16)
+      .value("FLOAT8_E4M3FN", phi::DataType::FLOAT8_E4M3FN)
+      .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .export_values();
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

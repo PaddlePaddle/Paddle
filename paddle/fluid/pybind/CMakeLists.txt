@@ -177,7 +177,7 @@ endif()
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
@@ -363,6 +363,16 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi_core.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
+        DEPENDS phi)
+      if(WITH_GPU OR WITH_ROCM)
+        add_custom_command(
+          OUTPUT ${op_impl_path}/phi_gpu.dll
+          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
+          DEPENDS phi)
+      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 

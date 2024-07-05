@@ -168,6 +168,8 @@ class Accessor:
             graph_sgd_param.feature_learning_rate = 0.05
 
         ctr_accessor_param = accessor_proto.ctr_accessor_param
+        if not ctr_accessor_param.HasField("zero_init"):
+            ctr_accessor_param.zero_init = True
         if accessor_proto.embedx_dim == 0:
             ctr_accessor_param.zero_init = False
         if not ctr_accessor_param.HasField("nonclk_coeff"):
@@ -764,6 +766,8 @@ class SparseTable(Table):
             warnings.warn(
                 "The accessor of sparse table is not set, use default value."
             )
+        if usr_table_proto.HasField("use_gpu_graph"):
+            table_proto.use_gpu_graph = usr_table_proto.use_gpu_graph
 
         table_proto.accessor.ParseFromString(
             usr_table_proto.accessor.SerializeToString()
@@ -1053,6 +1057,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['use_ps_gpu'] = context['valid_strategy'].a_sync_configs[
             'use_ps_gpu'
         ]
+        self.context['use_gpu_graph'] = context[
+            'valid_strategy'
+        ].a_sync_configs['use_gpu_graph']
         self.context['is_sync'] = (
             True if self.context['ps_mode'] == DistributedMode.SYNC else False
         )

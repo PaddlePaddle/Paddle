@@ -242,15 +242,13 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     value[common_feature_value.ClickIndex()] = 0;
     value[common_feature_value.SlotIndex()] = -1;
     value[common_feature_value.MfDimIndex()] = -1;
+    bool zero_init = _config.ctr_accessor_param().zero_init();
     _embed_sgd_rule->InitValue(
         value + common_feature_value.EmbedWIndex(),
         value + common_feature_value.EmbedG2SumIndex(),
-#ifdef PADDLE_WITH_GPU_GRAPH
-        false);  // adam embed init not zero, adagrad embed init zero; gpubox
-                 // set true for adam
-#else
-        true);  //  gpups use adagrad thus set false
-#endif
+        zero_init);  // adam embed init not zero, adagrad embed init zero;
+                     // pglbox set false for adam, gpups set true for adagrad
+                     // users can set this in python config, default is true
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);
