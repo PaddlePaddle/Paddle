@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -135,7 +135,7 @@ class TestConv2dTransposeElmentwiseBnOneDNNPassPattern(PassTest):
                 out = bn(paddle.add(conv2d(x), bias))
                 out = paddle.assign(out)
                 self.pass_attr_list = [
-                    {'conv2d_transpose_eltwiseadd_bn_fuse_pass': {}}
+                    {'conv2d_transpose_bias_bn_fuse_pass': {}}
                 ]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),

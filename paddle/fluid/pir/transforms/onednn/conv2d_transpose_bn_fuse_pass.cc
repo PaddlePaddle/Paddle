@@ -444,5 +444,5 @@ std::unique_ptr<Pass> CreateConv2dTransposeEltwiseaddBnOneDNNFusePass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(conv2d_transpose_bn_fuse_pass, ConvTransposeBnOneDNNFusePass);
-REGISTER_IR_PASS(conv2d_transpose_eltwiseadd_bn_fuse_pass,
+REGISTER_IR_PASS(conv2d_transpose_bias_bn_fuse_pass,
                  ConvTransposeEltwiseaddBnOneDNNFusePass);
