@@ -169,7 +169,15 @@ void ArrayReadInferMeta(const MetaTensor& array,
                         MetaTensor* out,
                         MetaConfig config) {
   if (!config.is_runtime) {
-    out->set_dims({-1});
+    auto dims = array.dims();
+    if (dims.size() > 1) {
+      for (int i = 0; i < dims.size(); ++i) {
+        dims[i] = -1;
+      }
+      out->set_dims(dims);
+    } else {
+      out->set_dims({-1});
+    }
   } else {
     double index = i.to<int64_t>();
     out->set_dims(array.dims(index));  // NOLINT
@@ -228,7 +236,7 @@ void BCELossInferMeta(const MetaTensor& input,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(input_dims) <= 0 || common::product(label_dims) <= 0)) {
+      (contain_unknown_dim(input_dims) || contain_unknown_dim(label_dims))) {
     check = false;
   }
 
@@ -247,6 +255,14 @@ void BCELossInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
   out->share_lod(input);
 }
+
+void BeamSearchDecodeInferMeta(const MetaTensor& ids,
+                               const MetaTensor& scores,
+                               int beam_size,
+                               int end_id,
+                               MetaTensor* sentence_ids,
+                               MetaTensor* sentence_scores,
+                               MetaConfig config) {}
 
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
@@ -628,34 +644,34 @@ void ConvInferMeta(const MetaTensor& input,
                                    ? filter_dims[filter_dims.size() - 1]
                                    : filter_dims[1];
 
-  PADDLE_ENFORCE_EQ(
-      input_channels,
-      filter_channels * groups,
-      phi::errors::InvalidArgument(
-          "The number of input's channels should be equal to filter's channels "
-          "* groups for Op(Conv). But received: the input's channels is %d, "
-          "the input's shape is [%s]; the filter's channels is %d, the "
-          "filter's shape is [%s]; the groups is %d, the data_format is %s. "
-          "The error may come from wrong data_format setting.",
-          input_channels,
-          in_dims,
-          filter_channels,
-          filter_dims,
-          groups,
-          data_format));
-  PADDLE_ENFORCE_EQ(
-      filter_dims[0] % groups,
-      0,
-      phi::errors::InvalidArgument(
-          "The number of output's channels (filter's first dimension) of "
-          "Op(Conv) should be divided by groups. But received: "
-          "the output channels is %d, the filter's shape is [%s], "
-          "the groups is %d.",
-          filter_dims[0],
-          filter_dims,
-          groups));
-
   if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        input_channels,
+        filter_channels * groups,
+        phi::errors::InvalidArgument(
+            "The number of input's channels should be equal to filter's "
+            "channels "
+            "* groups for Op(Conv). But received: the input's channels is %d, "
+            "the input's shape is [%s]; the filter's channels is %d, the "
+            "filter's shape is [%s]; the groups is %d, the data_format is %s. "
+            "The error may come from wrong data_format setting.",
+            input_channels,
+            in_dims,
+            filter_channels,
+            filter_dims,
+            groups,
+            data_format));
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % groups,
+        0,
+        phi::errors::InvalidArgument(
+            "The number of output's channels (filter's first dimension) of "
+            "Op(Conv) should be divided by groups. But received: "
+            "the output channels is %d, the filter's shape is [%s], "
+            "the groups is %d.",
+            filter_dims[0],
+            filter_dims,
+            groups));
     PADDLE_ENFORCE_GT(
         filter_dims[0],
         0,
@@ -2315,6 +2331,38 @@ void IndexSampleInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void Im2sequenceInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const std::vector<int>& kernels,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& out_stride,
+                          MetaTensor* out,
+                          MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      x.initialized(),
+      true,
+      phi::errors::NotFound("The input 'X' of Im2SequenceOp is not found."));
+  PADDLE_ENFORCE_EQ(
+      out != nullptr,
+      true,
+      phi::errors::NotFound("The output 'Out' of Im2SequenceOp is not found."));
+  const auto& in_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(in_dim.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The dimensions size of input 'X' in Im2SequenceOp "
+                        "should be 4. But "
+                        "received dimensions size=[%d], dimensions=[%s].",
+                        in_dim.size(),
+                        in_dim));
+  auto img_channels = in_dim[1];
+
+  out->set_dims({in_dim[0], img_channels * kernels[0] * kernels[1]});
+  out->set_dtype(x.dtype());
+}
+
 void IndexSelectInferMeta(const MetaTensor& x,
                           const MetaTensor& index,
                           int dim,
@@ -3494,6 +3542,32 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void SequenceExpandInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             int ref_level,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  const auto& x_dims = x.dims();
+  auto out_dims = x_dims;
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Dimension number of Input(X) should be at least 2. But "
+          "received: input rank %u, input shape [%s].",
+          x_dims.size(),
+          x_dims));
+
+  if (config.is_runtime) {
+  } else {
+    out_dims[0] = -1;
+  }
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void ShapeBroadcastInferMeta(const MetaTensor& x,

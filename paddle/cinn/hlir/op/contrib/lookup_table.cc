@@ -101,7 +101,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
     auto tensor_B = B.as_tensor_ref();
-    auto stages = CreateStages({tensor_A, tensor_B});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", B shape: " << utils::Join(tensor_B->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
@@ -110,11 +109,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
 
     ir::Tensor out = LookupTable(tensor_A, tensor_B, padding_idx, tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     CHECK(!out_type.empty())
         << "Output type of " << op_name << " is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 

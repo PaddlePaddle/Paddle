@@ -104,8 +104,7 @@ class LayerHelperBase:
             return value
         else:
             raise TypeError(
-                "The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received %s"
-                % type(value)
+                f"The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received {type(value)}"
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):

@@ -39,8 +39,7 @@ PD_DEFINE_int32(pserver_table_save_max_retry,
                 3,
                 "pserver_table_save_max_retry");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int32_t MemorySparseTable::Initialize() {
   auto &profiler = CostProfiler::instance();
@@ -1298,5 +1297,4 @@ int32_t MemorySparseTable::Shrink(const std::string &param) {
 
 void MemorySparseTable::Clear() { VLOG(0) << "clear coming soon"; }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

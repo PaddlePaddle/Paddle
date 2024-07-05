@@ -49,6 +49,15 @@ void ConcatKernel(const Context& dev_ctx,
                         axis,
                         x[0]->dims().size()));
 
+  std::vector<phi::DDim> x_dims;
+  for (size_t i = 0; i < x.size(); ++i) {
+    x_dims.push_back(x[i]->dims());
+  }
+
+  phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  out->Resize(out_dims);
+  dev_ctx.template Alloc<T>(out);
+
   // If axis is 0, the lod of the output is not the same as inputs.
 
   if (axis == 0 && x[0]->lod().size() > 0) {
@@ -80,8 +89,6 @@ void ConcatKernel(const Context& dev_ctx,
       }
     }
   }
-
-  dev_ctx.template Alloc<T>(out);
 
   std::vector<std::vector<int>> xdims_list;
   std::vector<const XPUType*> ptrs;

@@ -202,10 +202,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
                             tensor_name);
 
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({indices, on_value, off_value});
-    stages->InsertLazily(out);
     res.push_back(cinn::common::CINNValue(out));
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = cinn::common::CINNValuePack{res};
   });
 

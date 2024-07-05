@@ -912,9 +912,10 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
 
   bool check = true;
+
   if (!scale || !bias ||
-      ((!config.is_runtime) && (common::product(scale.dims()) <= 0 ||
-                                common::product(bias.dims()) <= 0))) {
+      ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
+                                contain_unknown_dim(bias.dims()) || C == -1))) {
     check = false;
   }
 
@@ -4947,7 +4948,7 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(x_dims) <= 0 || common::product(labels_dims) <= 0)) {
+      (contain_unknown_dim(x_dims) || contain_unknown_dim(labels_dims))) {
     check = false;
   }
 
@@ -5177,6 +5178,37 @@ void SparseAttentionInferMeta(const MetaTensor& q,
   softmax->set_dims({batch_size, num_heads, sparse_nnz});
   out->share_lod(q);
   out->set_dtype(q.dtype());
+}
+
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& velocity,
+                             const MetaTensor& index,
+                             const MetaTensor& learning_rate,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out) {
+  auto lr_dims = common::product(learning_rate.dims());
+  PADDLE_ENFORCE_EQ(lr_dims == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        lr_dims));
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dim,
+      velocity.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Velocity of SparseMomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dim,
+          velocity.dims()));
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param_out != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
 }
 
 void StackInferMeta(const std::vector<const MetaTensor*>& x,

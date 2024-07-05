@@ -396,6 +396,12 @@
   outputs :
     out : Out
 
+- op : beam_search_decode
+  inputs:
+    {ids : Ids, scores : Scores}
+  outputs:
+    {sentence_ids : SentenceIds, sentence_scores : SentenceScores}
+
 - op : bernoulli
   inputs :
     x : X
@@ -880,6 +886,12 @@
   outputs :
     out : Out
 
+- op : dgc_clip_by_norm
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : dgc_momentum
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
@@ -1237,6 +1249,12 @@
 
 - op : feed
   outputs: {out: Out}
+
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : fft_c2c
   inputs: {x: X}
@@ -1619,6 +1637,13 @@
   outputs :
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
 
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
+
 - op : fused_transpose
   inputs:
     {x : X}
@@ -1699,6 +1724,12 @@
   outputs :
     out : Out
     fc_out : FCOut
+
+- op : fusion_seqpool_concat
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : fusion_transpose_flatten_concat
   inputs :
@@ -1863,6 +1894,14 @@
   outputs :
     out : Out
 
+- op : hash
+  inputs:
+    x : X
+  attrs :
+    runtime_shape : ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE
+  outputs:
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   inputs :
@@ -1900,6 +1939,12 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
 
 - op : imag
   backward : imag_grad
@@ -2058,6 +2103,23 @@
     negative_slope : alpha
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : legacy_expand (expand)
+  backward : legacy_expand_grad (expand_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : expand_times
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : ExpandTimes
+      tensors_name : expand_times_tensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [legacy_expand, legacy_expand_grad]
 
 - op : lerp
   backward : lerp_grad
@@ -2476,6 +2538,7 @@
     hidden : Hidden
   attrs :
     {scale_data : Scale_data,  shift_data : Shift_data}
+  manual_signature : [multi_gru]
 
 - op : multiclass_nms3
   inputs :
@@ -3172,6 +3235,13 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_expand
+  backward: sequence_expand_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+
 - op : sequence_mask
   inputs:
     x : X
@@ -3186,8 +3256,12 @@
 
 - op : sequence_softmax
   backward : sequence_softmax_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
   extra :
-    attrs : [str data_format = "AnyLayout"]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = false]
 
 - op : sgd_ (sgd)
   inputs :
@@ -3221,6 +3295,12 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : share_data
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : shuffle_batch
   backward: shuffle_batch_grad
@@ -4443,10 +4523,12 @@
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  attrs:
+    axis: axis
   scalar:
-   axis:
-     datatype : int
-     tensor_name : Axis
+    axis:
+      data_type : int
+      tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad

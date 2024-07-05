@@ -435,6 +435,16 @@
     data_type : param
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
+- op : batch_fc
+  args : (Tensor input, Tensor w, Tensor bias)
+  output : Tensor(out)
+  infer_meta:
+    func : BatchFCInferMeta
+  kernel :
+    func : batch_fc
+    data_type: input
+  backward: batch_fc_grad
+
 - op : bce_loss
   args : (Tensor input, Tensor label)
   output : Tensor
@@ -1253,6 +1263,18 @@
   data_transform :
     skip_transform : current_step, nranks
 
+- op : dgc_clip_by_norm
+  args: (Tensor x, Tensor current_step, float max_norm, float rampup_begin_step = -1.0)
+  output: Tensor(out)
+  infer_meta:
+    func: ClipByNormInferMeta
+    param: [x, max_norm]
+  kernel:
+    func: dgc_clip_by_norm {dense, dense -> dense}
+          dgc_clip_by_norm_sr {selected_rows, dense -> selected_rows}
+  data_transform :
+    skip_transform : current_step
+
 - op : dgc_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
     master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov
@@ -1788,6 +1810,7 @@
   view : (x -> out)
   intermediate : xshape
   backward : flatten_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flip
   args : (Tensor x, int[] axis)
@@ -2321,6 +2344,17 @@
     func : identity_loss
   inplace: (x -> out)
   backward : identity_loss_grad
+
+- op : im2sequence
+  args: (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1})
+  output: Tensor (out)
+  infer_meta:
+    func: Im2sequenceInferMeta
+  kernel:
+    func: im2sequence
+  optional: y
+  backward: im2sequence_grad
 
 - op : imag
   args : (Tensor x)
@@ -2948,7 +2982,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : max_pool2d_with_index
-  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false)
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : MaxPoolWithIndexInferMeta
@@ -2957,7 +2991,7 @@
   backward : max_pool2d_with_index_grad
 
 - op : max_pool3d_with_index
-  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false)
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : MaxPoolWithIndexInferMeta
@@ -3600,6 +3634,7 @@
     func : reduce_as
     data_type : x
   backward : reduce_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
@@ -3753,10 +3788,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : round
-  args : (Tensor x)
+  args : (Tensor x, int decimals = 0 )
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : round
   inplace : (x -> out)
@@ -3980,6 +4016,15 @@
     func : ShardIndexInferMeta
   kernel :
     func : shard_index
+
+- op : share_data
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: ShareDataInferMeta
+  kernel:
+    func: share_data {dense -> dense}
+          share_data_sr {selected_rows -> selected_rows}
 
 - op : shuffle_batch
   args : (Tensor x, Tensor seed, int startup_seed=0)

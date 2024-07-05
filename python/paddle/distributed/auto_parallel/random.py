@@ -88,7 +88,7 @@ def determinate_rng(
     # instead of using offsets to coordinate seed across devices.
     if len(process_mesh.shape) > 4:
         raise NotImplementedError(
-            f"Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {str(process_mesh)}"
+            f"Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {process_mesh}"
         )
     global _basic_seed
     seed_ = _basic_seed
