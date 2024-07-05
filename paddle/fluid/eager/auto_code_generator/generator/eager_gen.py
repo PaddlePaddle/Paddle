@@ -157,12 +157,24 @@ strided_op_list = {
     "view_dtype",
 }
 
-
-strided_op_no_need_flags_check_list = {
-    "flatten",
-    "reshape",
-    "squeeze",
-    "unsqueeze",
+strided_op_need_flags_check_list = {
+    "as_complex_",
+    "as_real_",
+    "as_strided_",
+    "real_",
+    "imag_",
+    "diagonal_",
+    "flatten_infer_",
+    "slice_",
+    "squeeze_infer_",
+    "strided_slice_",
+    "strided_slice_raw_",
+    "tensor_unfold_",
+    "transpose_",
+    "unbind_",
+    "unsqueeze_infer_",
+    "view_shape_",
+    "view_dtype_",
 }
 
 
@@ -1988,10 +2000,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
         strided_flags_check = ""
-        if (
-            is_inplaced
-            and (forward_api_name in strided_op_list)
-            and (forward_api_name not in strided_op_no_need_flags_check_list)
+        print("forward_api_name = ", forward_api_name)
+        if is_inplaced and (
+            forward_api_name in strided_op_need_flags_check_list
         ):
             strided_flags_check = STRIDED_FLAGS_CHECK_TEMPLATE
         # Generate forward_definition_str and forward_declaration_str
