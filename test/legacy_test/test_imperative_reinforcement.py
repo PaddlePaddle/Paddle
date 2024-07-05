@@ -59,7 +59,13 @@ class TestImperativeMnist(unittest.TestCase):
 
         def run_dygraph():
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
 
             policy = Policy(input_size=4)
 
@@ -113,7 +119,13 @@ class TestImperativeMnist(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
 
             exe = base.Executor(
                 base.CPUPlace()
@@ -149,19 +161,25 @@ class TestImperativeMnist(unittest.TestCase):
             # initialize params and fetch them
             static_param_init_value = {}
             static_param_name_list = []
+            static_params = []
             for param in policy.parameters():
                 static_param_name_list.append(param.name)
+                static_params.append(param)
 
             out = exe.run(
                 base.default_startup_program(),
-                fetch_list=static_param_name_list,
             )
 
             for i in range(len(static_param_name_list)):
-                static_param_init_value[static_param_name_list[i]] = out[i]
+                param_name = static_param_name_list[i]
+                static_param_init_value[param_name] = np.asarray(
+                    paddle.static.global_scope()
+                    .find_var(param_name)
+                    .get_tensor()
+                )
 
-            fetch_list = [st_loss.name]
-            fetch_list.extend(static_param_name_list)
+            fetch_list = [st_loss]
+            fetch_list.extend(static_params)
 
             out = exe.run(
                 base.default_main_program(),
