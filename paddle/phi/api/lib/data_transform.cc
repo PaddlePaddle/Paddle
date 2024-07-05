@@ -433,7 +433,6 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
       if (NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor->meta().is_contiguous()) &&
           tensor_in->initialized()) {
-        std::cout << "lala" << std::endl;
         phi::DenseTensor out =
             *(static_cast<phi::DenseTensor*>(tensor_in.get()));
         out = Trans2Contiguous(out);
