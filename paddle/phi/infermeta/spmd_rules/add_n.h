@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
 
 #pragma once
 
-#include <map>
-#include <set>
-#include <string>
+#include <vector>
 
-#include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 
-namespace cinn {
-namespace optim {}  // namespace optim
-}  // namespace cinn
+namespace phi {
+namespace distributed {
+SpmdInfo AddNInferSpmd(
+    const std::vector<phi::distributed::DistMetaTensor>& input);
+}
+}  // namespace phi
