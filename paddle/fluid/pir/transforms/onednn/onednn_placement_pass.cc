@@ -204,7 +204,6 @@ class OneDNNPlacementPass : public pir::PatternRewritePass {
     patternCreator.CreatePatterns<paddle::dialect::Subtract_Op>(ps);
     patternCreator.CreatePatterns<paddle::dialect::SumOp>(ps);
     patternCreator.CreatePatterns<paddle::dialect::SwishOp>(ps);
-    patternCreator.CreatePatterns<paddle::dialect::Transpose_Op>(ps);
     patternCreator.CreatePatterns<paddle::dialect::AddDoubleGradOp>(ps);
     patternCreator.CreatePatterns<paddle::dialect::AddDoubleGrad_Op>(ps);
     patternCreator.CreatePatterns<paddle::dialect::AddGrad_Op>(ps);
