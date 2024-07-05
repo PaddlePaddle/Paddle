@@ -90,7 +90,7 @@ def template_full(name, version, packages_string, python_version, cuda_str):
 
 def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=None):
     sysstr = platform.system()
-    if sysstr == "Linux":
+    if sysstr == "Linux" or sysstr == "Darwin":
         build_filename = "build.sh"
     elif platform.system() == 'Windows':
         build_filename = "bld.bat"
