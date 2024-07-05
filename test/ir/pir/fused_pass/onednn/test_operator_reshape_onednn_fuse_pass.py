@@ -173,5 +173,71 @@ class TestFcReshapeFusePass(PassTest):
         self.check_pass_correct()
 
 
+class TestFcReshapeTransposeFusePass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for x_shape in [[8, 2]]:
+            for w_shape in [[2, 3]]:
+                for y_shape in [[3], [1, 3]]:
+                    with paddle.pir_utils.IrGuard():
+                        start_prog = paddle.static.Program()
+                        main_prog = paddle.static.Program()
+                        with paddle.pir.core.program_guard(
+                            main_prog, start_prog
+                        ):
+                            x = paddle.static.data(
+                                name='x', shape=x_shape, dtype='float32'
+                            )
+                            w = paddle.static.data(
+                                name='w', shape=w_shape, dtype='float32'
+                            )
+                            y = paddle.static.data(
+                                name='y', shape=y_shape, dtype='float32'
+                            )
+                            fc = paddle.add(paddle.matmul(x, w), y)
+                            out = paddle.reshape(x=fc, shape=[6, 2, 2])
+                            transpose = paddle.transpose(out, [0, 2, 1])
+                            out = paddle.assign(transpose)
+                            self.pass_attr_list = [
+                                {'matmul_add_act_fuse_pass': {}},
+                                {"fc_onednn_enable_pass": {}},
+                                {'operator_reshape_onednn_fuse_pass': {}},
+                            ]
+                            self.feeds = {
+                                "x": np.random.random(x_shape).astype(
+                                    "float32"
+                                ),
+                                "w": np.random.random(w_shape).astype(
+                                    "float32"
+                                ),
+                                "y": np.random.random(y_shape).astype(
+                                    "float32"
+                                ),
+                            }
+                            self.fetch_list = [out]
+                            self.valid_op_map = {
+                                "pd_op.add": 0,
+                                "pd_op.matmul": 0,
+                                "pd_op.fc": 0,
+                                "pd_op.scale": 0,
+                                "pd_op.reshape": 0,
+                                "onednn_op.fc": 1,
+                                "pd_op.transpose": 1,
+                            }
+
+                            return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
 if __name__ == "__main__":
     unittest.main()
