@@ -896,7 +896,7 @@ def flashmask_attention(
             - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 2],
               indicating bidirectional attention. The values represent the starting row index of the left
               lower triangular mask and the ending row index of the right upper triangular mask in the dense mask.
-            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4],
+            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] (not implemented),
               indicating bidirectional attention. The values represent the start and end row indices of the
               left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask.
         dropout (float): The dropout ratio. Default is 0.0.
