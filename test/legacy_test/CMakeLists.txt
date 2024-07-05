@@ -541,9 +541,6 @@ if(WITH_GPU
 endif()
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
                 FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_resnet
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
                 FLAGS_cudnn_deterministic=1)
 py_test_modules(
@@ -552,10 +549,13 @@ py_test_modules(
 py_test_modules(
   test_imperative_resnet_sorted_gradient MODULES
   test_imperative_resnet_sorted_gradient ENVS FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_resnet_sorted_gradient
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext
                 ENVS FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_resnet
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+set_tests_properties(test_imperative_resnet_sorted_gradient
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 set_tests_properties(test_imperative_se_resnext
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 
