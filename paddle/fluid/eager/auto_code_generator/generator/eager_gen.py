@@ -158,6 +158,14 @@ strided_op_list = {
 }
 
 
+strided_op_no_need_flags_check_list = {
+    "flatten",
+    "reshape",
+    "squeeze",
+    "unsqueeze",
+}
+
+
 #########
 # Utils #
 #########
@@ -302,6 +310,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -368,10 +377,17 @@ BEFORE_LOG_PRINT_TEMPLATE = """
   }}
 """
 
+STRIDED_FLAGS_CHECK_TEMPLATE = """
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(phi::errors::Fatal(\"FLAGS_use_stride_kernel is closed. Inplace strided API should not be called!\"));
+  }
+"""
+
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -481,6 +497,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(use_stride_kernel);
 {}
 """
 
@@ -1970,6 +1987,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
+        strided_flags_check = ""
+        if (
+            is_inplaced
+            and (forward_api_name in strided_op_list)
+            and (forward_api_name not in strided_op_no_need_flags_check_list)
+        ):
+            strided_flags_check = STRIDED_FLAGS_CHECK_TEMPLATE
         # Generate forward_definition_str and forward_declaration_str
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
@@ -1980,6 +2004,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_ad_function_name,
                     inputs_args_definition_str,
                     forward_api_name,
+                    strided_flags_check,
                     dygraph_event_str,
                     amp_logic_str,
                     type_promotion_logic_str,
@@ -2003,6 +2028,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_ad_function_name,
                 inputs_args_definition_str,
                 forward_api_name,
+                strided_flags_check,
                 dygraph_event_str,
                 amp_logic_str,
                 type_promotion_logic_str,
