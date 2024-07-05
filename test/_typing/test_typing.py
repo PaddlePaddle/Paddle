@@ -11,3 +11,53 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
+import pathlib
+import unittest
+
+from mypy import api as mypy_api
+
+FILE_PATH = pathlib.Path(__file__).resolve().parent
+BASE_PATH = FILE_PATH.parent.parent
+CONFIG_FILE = BASE_PATH / 'pyproject.toml'
+CACHE_DIR = BASE_PATH / '.mypy_cache'
+
+
+class _TestTyping:
+    debug: bool = False
+    config_file: str = CONFIG_FILE
+    cache_dir: str = CACHE_DIR
+    test_dir: str = ''
+
+    def test_cases(self) -> None:
+        _, _, exit_status = mypy_api.run(
+            (["--show-traceback"] if self.debug else [])
+            + [
+                f'--config-file={self.config_file}',
+                f'--cache-dir={self.cache_dir}',
+                str(self.test_dir),
+            ]
+        )
+
+        self.assertTrue(exit_status == 0)
+
+
+class TestPass(unittest.TestCase, _TestTyping):
+    def setUp(self) -> None:
+        self.test_dir = FILE_PATH / 'pass'
+
+
+class TestFail(unittest.TestCase, _TestTyping):
+    def setUp(self) -> None:
+        self.test_dir = FILE_PATH / 'fail'
+
+
+class TestReveal(unittest.TestCase, _TestTyping):
+    def setUp(self) -> None:
+        self.test_dir = FILE_PATH / 'reveal'
+
+
+if __name__ == '__main__':
+    unittest.main()
