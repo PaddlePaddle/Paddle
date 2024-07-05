@@ -62,7 +62,7 @@ ExternalProject_Add(
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
              -DCMAKE_CXX_FLAGS_RELEASE=${YAML_CMAKE_CXX_FLAGS_RELEASE}
              -DCMAKE_CXX_FLAGS_DEBUG=${YAML_CMAKE_CXX_FLAGS_DEBUG}
-             #-DWITH_ROCM=${WITH_ROCM}
+             -DWITH_ROCM=${WITH_ROCM}
   CMAKE_CACHE_ARGS
     -DCMAKE_INSTALL_PREFIX:PATH=${YAML_INSTALL_DIR}
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
@@ -73,5 +73,3 @@ ExternalProject_Add(
 add_library(yaml STATIC IMPORTED GLOBAL)
 set_property(TARGET yaml PROPERTY IMPORTED_LOCATION ${YAML_LIBRARIES})
 add_dependencies(yaml extern_yaml)
-#link_directories(${YAML_INSTALL_DIR}/lib/)
-#target_link_libraries(yaml INTERFACE ${YAML_LIBRARIES})
