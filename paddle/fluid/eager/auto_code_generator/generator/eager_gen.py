@@ -497,7 +497,6 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
-COMMON_DECLARE_bool(use_stride_kernel);
 {}
 """
 
@@ -530,6 +529,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(use_stride_kernel);
 {}
 {}
 """
