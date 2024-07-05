@@ -223,9 +223,11 @@ def make_all_inputs(input_fields):
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
-            lod_level=input_descs[input_field][2]
-            if len(input_descs[input_field]) == 3
-            else 0,
+            lod_level=(
+                input_descs[input_field][2]
+                if len(input_descs[input_field]) == 3
+                else 0
+            ),
         )
         inputs.append(input_var)
     return inputs
@@ -287,11 +289,17 @@ input_descs = {
     "enc_output": [(batch_size, seq_len, ModelHyperParams.d_model), "float32"],
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "lbl_word": [(batch_size * seq_len, 1), "int64"],
+    "lbl_word": [
+        (-1 if batch_size == -1 else batch_size * seq_len, 1),
+        "int64",
+    ],
     # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "lbl_weight": [(batch_size * seq_len, 1), "float32"],
+    "lbl_weight": [
+        (-1 if batch_size == -1 else batch_size * seq_len, 1),
+        "float32",
+    ],
     # This input is used in beam-search decoder.
     "init_score": [(batch_size, 1), "float32", 2],
     # This input is used in beam-search decoder for the first gather
@@ -1112,7 +1120,13 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             # NOTE(xiongkun03): In new executor, the inplace strategy is on by default, which will cause result of sumop have some differences. So we disable inplace.
             base.set_flags({'FLAGS_new_executor_use_inplace': False})
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1191,7 +1205,13 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1237,6 +1257,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             static_param_updated = {}
             static_param_init = {}
             static_param_name_list = []
+            static_params = []
             (
                 static_sum_cost,
                 static_avg_cost,
@@ -1246,12 +1267,17 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             optimizer.minimize(static_avg_cost)
             for param in transformer.parameters():
                 static_param_name_list.append(param.name)
+                static_params.append(param)
             out = exe.run(
                 base.default_startup_program(),
-                fetch_list=static_param_name_list,
             )
             for i in range(len(static_param_name_list)):
-                static_param_init[static_param_name_list[i]] = out[i]
+                param_name = static_param_name_list[i]
+                static_param_init[param_name] = np.asarray(
+                    paddle.static.global_scope()
+                    .find_var(param_name)
+                    .get_tensor()
+                )
             static_sum_cost_value = None
             static_avg_cost_value = None
             static_predict_value = None
@@ -1265,7 +1291,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     static_token_num,
                 ]
 
-                fetch_list.extend(static_param_name_list)
+                fetch_list.extend(static_params)
                 out = exe.run(
                     base.default_main_program(),
                     feed=feed_dict,
