@@ -25,4 +25,4 @@ class A:
 
 
 b1: TensorLike = A()  # type: ignore[assignment]
-# b2: TensorLike = 'str'  # type: ignore[assignment]
+b2: TensorLike = 'str'  # type: ignore[assignment]

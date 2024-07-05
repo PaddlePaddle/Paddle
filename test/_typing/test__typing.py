@@ -21,7 +21,7 @@ from mypy import api as mypy_api
 
 FILE_PATH = pathlib.Path(__file__).resolve().parent
 TEST_PATH = FILE_PATH / '_typing'
-BASE_PATH = FILE_PATH.parent.parent
+BASE_PATH = FILE_PATH.parent.parent.parent
 CONFIG_FILE = BASE_PATH / 'pyproject.toml'
 CACHE_DIR = BASE_PATH / '.mypy_cache'
 

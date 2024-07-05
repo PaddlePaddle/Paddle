@@ -16,12 +16,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
+import paddle
+
 if TYPE_CHECKING:
     from paddle._typing import TensorLike
 
-# a1: TensorLike = paddle.to_tensor(0.3)
+a1: TensorLike = paddle.to_tensor(0.3)
 a2: TensorLike = 0.3
-# a3: TensorLike = [0.3]
-# a4: TensorLike = [[0.3], [0.3]]
-# a5: TensorLike = ((0.3,), (0.3,))
-# a6: TensorLike = np.array(a2)
+a3: TensorLike = [0.3]
+a4: TensorLike = [[0.3], [0.3]]
+a5: TensorLike = ((0.3,), (0.3,))
+a6: TensorLike = np.array(a2)

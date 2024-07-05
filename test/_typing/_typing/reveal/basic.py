@@ -28,4 +28,4 @@ def test(a: TensorLike) -> Tensor:
 
 
 a1: TensorLike = 0.3
-# b1: Tensor = test(a1)
+b1: Tensor = test(a1)
