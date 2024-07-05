@@ -131,6 +131,7 @@ def fused_dot_product_attention(
     attn_mask: Tensor = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
+    scaling_factor: float = None,
     training: bool = True,
     name: str = None,
 ):
@@ -155,6 +156,7 @@ def fused_dot_product_attention(
                 key, value that is added to the attention score.
         dropout_p (float): The dropout probability.
         is_causal (bool): A flag indicating whether it is causal masking or not. If True, the mask will be ignored.
+        scaling_factor (float): The scaling factor for the attention scores.
         training (bool): A flag indicating whether it is in train phrase or not.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
@@ -191,8 +193,9 @@ def fused_dot_product_attention(
 
     cu_seqlen_q = None
     cu_seqlen_k = None
-    head_dim = query.shape[3]
-    scaling_factor = head_dim**-0.5
+    if scaling_factor is None:
+        head_dim = query.shape[3]
+        scaling_factor = head_dim**-0.5
     if in_dynamic_or_pir_mode():
         out, _, _ = _C_ops.fused_dot_product_attention(
             query,
