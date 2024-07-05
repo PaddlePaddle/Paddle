@@ -559,6 +559,8 @@ def monkey_patch_tensor():
                 >>> # remove hook
                 >>> h.remove()
         """
+        # XPU CDNN cluster parallel is not compatible with hook.
+        # Turn off the CDNN cluster parallel if any hook is registered.
         os.environ['XPU_CDNN_CLUSTER_PARALLEL'] = str(0)
         if self.stop_gradient is True:
             raise RuntimeError(
