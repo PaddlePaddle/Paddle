@@ -77,10 +77,10 @@ struct Masked_multihead_attention_params {
   bool add_qkv_bias;
   bool neox_rotary_style;
 
-  int steps_per_block;
-  float *qk_sum_max_split_seq;
-  int split_seq = -1;
-  float *split_out;
+  // int steps_per_block;
+  // float *qk_sum_max_split_seq;
+  // int split_seq = -1;
+  // float *split_out;
 };
 
 template <typename T,
@@ -90,8 +90,7 @@ template <typename T,
           int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK,
           typename LoadFunc,
-          typename StoreFunc,
-          bool SPLIT>
+          typename StoreFunc>
 __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
@@ -613,172 +612,174 @@ __global__ void masked_multihead_attention_kernel(
 #endif
 }
 
-// v2 only works with seq of 102400 length or less
-template <typename T, int Dh, int Dh_MAX, typename StoreFunc>
-__global__ void post_process_kernel_kai_v2(
-    Masked_multihead_attention_params<T> params, StoreFunc store_func) {
-  const int bi = blockIdx.y;
-  const int tid = threadIdx.x;
-  const int hi = blockIdx.x;
-  const int bhi = (bi * params.num_head + hi);
-  const int bhsi = (bi * params.num_head + hi) * params.split_seq;
-  extern __shared__ float2 qk_sum_max_smem[];
+// // v2 only works with seq of 102400 length or less
+// template <typename T, int Dh, int Dh_MAX, typename StoreFunc>
+// __global__ void post_process_kernel_kai_v2(
+//     Masked_multihead_attention_params<T> params, StoreFunc store_func) {
+//   const int bi = blockIdx.y;
+//   const int tid = threadIdx.x;
+//   const int hi = blockIdx.x;
+//   const int bhi = (bi * params.num_head + hi);
+//   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
+//   extern __shared__ float2 qk_sum_max_smem[];
 
-  int act_time_step = params.sequence_lengths == nullptr
-                          ? params.timestep
-                          : params.sequence_lengths[bi];
-  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
+//   int act_time_step = params.sequence_lengths == nullptr
+//                           ? params.timestep
+//                           : params.sequence_lengths[bi];
+//   int real_split_each_batch = (act_time_step - 1) / params.steps_per_block +
+//   1;
 
-  for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
-    qk_sum_max_smem[i] = *reinterpret_cast<float2 *>(
-        &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
-  }
-  __syncthreads();
+//   for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
+//     qk_sum_max_smem[i] = *reinterpret_cast<float2 *>(
+//         &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
+//   }
+//   __syncthreads();
 
-  float max = -FLT_MAX;
-  float sum = 0;
-  float v = 0;
-  if (tid < Dh) {
-#pragma unroll
-    for (int i = 0; i < real_split_each_batch; ++i) {
-      float2 sum_max = qk_sum_max_smem[i];
-      float tmp_max = sum_max.y;
-      max = tmp_max > max ? tmp_max : max;
-    }
-#pragma unroll
-    for (int i = 0; i < real_split_each_batch; ++i) {
-      float2 sum_max = qk_sum_max_smem[i];
-      // split_out:[bsz , num_head, split_seq, dim_head]
-      float this_v = params.split_out[(bhsi + i) * Dh + tid];
+//   float max = -FLT_MAX;
+//   float sum = 0;
+//   float v = 0;
+//   if (tid < Dh) {
+// #pragma unroll
+//     for (int i = 0; i < real_split_each_batch; ++i) {
+//       float2 sum_max = qk_sum_max_smem[i];
+//       float tmp_max = sum_max.y;
+//       max = tmp_max > max ? tmp_max : max;
+//     }
+// #pragma unroll
+//     for (int i = 0; i < real_split_each_batch; ++i) {
+//       float2 sum_max = qk_sum_max_smem[i];
+//       // split_out:[bsz , num_head, split_seq, dim_head]
+//       float this_v = params.split_out[(bhsi + i) * Dh + tid];
 
-      float real_this_sum = sum_max.x * __expf(sum_max.y - max);
-      v += real_this_sum * this_v;
-      // v += this_v * __expf(this_max - max);
-      sum += real_this_sum;
-    }
+//       float real_this_sum = sum_max.x * __expf(sum_max.y - max);
+//       v += real_this_sum * this_v;
+//       // v += this_v * __expf(this_max - max);
+//       sum += real_this_sum;
+//     }
 
-    v /= sum;
-    T tmp_v = (T)v;
-    store_func.template store<T>(tmp_v, bhi * Dh + tid);
-    // params.out[bhi * Dh + tid] = (T)(v);
-  }
-}
+//     v /= sum;
+//     T tmp_v = (T)v;
+//     store_func.template store<T>(tmp_v, bhi * Dh + tid);
+//     // params.out[bhi * Dh + tid] = (T)(v);
+//   }
+// }
 
-// v3 launch more threads to handle long loop delays caused by very long seq
-// (e.g.) 10240Seq / 128StepsPerBlock = 80 loops. With 4x threads that's 20
-// loops
-template <typename T,
-          int Dh,
-          int Dh_MAX,
-          int SPLTS_PER_BLOCK,
-          typename StoreFunc>
-__global__ void post_process_kernel_kai_v3(
-    Masked_multihead_attention_params<T> params, StoreFunc store_func) {
-  const int bi = blockIdx.y;
-  const int tid = threadIdx.x;
-  const int hi = blockIdx.x;
-  const int bhi = (bi * params.num_head + hi);
-  const int bhsi = (bi * params.num_head + hi) * params.split_seq;
+// // v3 launch more threads to handle long loop delays caused by very long seq
+// // (e.g.) 10240Seq / 128StepsPerBlock = 80 loops. With 4x threads that's 20
+// // loops
+// template <typename T,
+//           int Dh,
+//           int Dh_MAX,
+//           int SPLTS_PER_BLOCK,
+//           typename StoreFunc>
+// __global__ void post_process_kernel_kai_v3(
+//     Masked_multihead_attention_params<T> params, StoreFunc store_func) {
+//   const int bi = blockIdx.y;
+//   const int tid = threadIdx.x;
+//   const int hi = blockIdx.x;
+//   const int bhi = (bi * params.num_head + hi);
+//   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
 
-  int act_time_step = params.sequence_lengths == nullptr
-                          ? params.timestep
-                          : params.sequence_lengths[bi];
-  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
+//   int act_time_step = params.sequence_lengths == nullptr
+//                           ? params.timestep
+//                           : params.sequence_lengths[bi];
+//   int real_split_each_batch = (act_time_step - 1) / params.steps_per_block +
+//   1;
 
-  extern __shared__ float2 qk_sum_max_smem[];
-  float max = -FLT_MAX;
-  const int WARP_SIZE = 32;
-  int WARPS_PER_BLOCK = blockDim.x / WARP_SIZE;
+//   extern __shared__ float2 qk_sum_max_smem[];
+//   float max = -FLT_MAX;
+//   const int WARP_SIZE = 32;
+//   int WARPS_PER_BLOCK = blockDim.x / WARP_SIZE;
 
-  for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
-    float2 sum_max = *reinterpret_cast<float2 *>(
-        &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
-    max = fmaxf(sum_max.y, max);
-    qk_sum_max_smem[i] = sum_max;
-  }
-#pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
-  }
+//   for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
+//     float2 sum_max = *reinterpret_cast<float2 *>(
+//         &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
+//     max = fmaxf(sum_max.y, max);
+//     qk_sum_max_smem[i] = sum_max;
+//   }
+// #pragma unroll
+//   for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+//     max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
+//   }
 
-  __shared__ float max_smem[32];
-  const int warp = tid / WARP_SIZE;
-  const int lane = tid % WARP_SIZE;
-  if (lane == 0) {
-    max_smem[warp] = max;
-  }
-  __syncthreads();
+//   __shared__ float max_smem[32];
+//   const int warp = tid / WARP_SIZE;
+//   const int lane = tid % WARP_SIZE;
+//   if (lane == 0) {
+//     max_smem[warp] = max;
+//   }
+//   __syncthreads();
 
-  max = lane < WARPS_PER_BLOCK ? max_smem[lane] : -FLT_MAX;
-#pragma unroll
-  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
-  }
+//   max = lane < WARPS_PER_BLOCK ? max_smem[lane] : -FLT_MAX;
+// #pragma unroll
+//   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+//     max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
+//   }
 
-  max = __shfl_sync(uint32_t(-1), max, 0);
+//   max = __shfl_sync(uint32_t(-1), max, 0);
 
-  __shared__ float redu_smem[SPLTS_PER_BLOCK / 2][2][Dh_MAX];
-  float sum = 0;
-  float v = 0;
-  int split_group_idx = tid / Dh_MAX;
-  if ((tid % Dh_MAX) < Dh) {
-#pragma unroll
-    for (int i = split_group_idx; i < real_split_each_batch;
-         i += SPLTS_PER_BLOCK) {
-      float2 sum_max = qk_sum_max_smem[i];
-      float this_v = params.split_out[(bhsi + i) * Dh + (tid % Dh_MAX)];
+//   __shared__ float redu_smem[SPLTS_PER_BLOCK / 2][2][Dh_MAX];
+//   float sum = 0;
+//   float v = 0;
+//   int split_group_idx = tid / Dh_MAX;
+//   if ((tid % Dh_MAX) < Dh) {
+// #pragma unroll
+//     for (int i = split_group_idx; i < real_split_each_batch;
+//          i += SPLTS_PER_BLOCK) {
+//       float2 sum_max = qk_sum_max_smem[i];
+//       float this_v = params.split_out[(bhsi + i) * Dh + (tid % Dh_MAX)];
 
-      float real_this_sum = sum_max.x * __expf(sum_max.y - max);
-      v += real_this_sum * this_v;
-      sum += real_this_sum;
-    }
-    //  Multi split_seq merge into one
-    for (int active_groups = SPLTS_PER_BLOCK; active_groups >= 2;
-         active_groups /= 2) {
-      int midpoint = active_groups / 2;
-      if (split_group_idx >= midpoint && split_group_idx < active_groups) {
-        redu_smem[split_group_idx - midpoint][0][tid % Dh_MAX] = v;
-        redu_smem[split_group_idx - midpoint][1][tid % Dh_MAX] = sum;
-      }
-      __syncthreads();
-      if (split_group_idx < midpoint) {
-        v += redu_smem[split_group_idx][0][tid % Dh_MAX];
-        sum += redu_smem[split_group_idx][1][tid % Dh_MAX];
-      }
-      __syncthreads();
-    }
-    if (split_group_idx == 0) {
-      v /= sum;
-      T tmp_v = (T)v;
-      store_func.template store<T>(tmp_v, bhi * Dh + tid);
-    }
-  }
-}
+//       float real_this_sum = sum_max.x * __expf(sum_max.y - max);
+//       v += real_this_sum * this_v;
+//       sum += real_this_sum;
+//     }
+//     //  Multi split_seq merge into one
+//     for (int active_groups = SPLTS_PER_BLOCK; active_groups >= 2;
+//          active_groups /= 2) {
+//       int midpoint = active_groups / 2;
+//       if (split_group_idx >= midpoint && split_group_idx < active_groups) {
+//         redu_smem[split_group_idx - midpoint][0][tid % Dh_MAX] = v;
+//         redu_smem[split_group_idx - midpoint][1][tid % Dh_MAX] = sum;
+//       }
+//       __syncthreads();
+//       if (split_group_idx < midpoint) {
+//         v += redu_smem[split_group_idx][0][tid % Dh_MAX];
+//         sum += redu_smem[split_group_idx][1][tid % Dh_MAX];
+//       }
+//       __syncthreads();
+//     }
+//     if (split_group_idx == 0) {
+//       v /= sum;
+//       T tmp_v = (T)v;
+//       store_func.template store<T>(tmp_v, bhi * Dh + tid);
+//     }
+//   }
+// }
 
-template <typename T, bool SPLIT>
-inline size_t smem_size_in_bytes(
-    const Masked_multihead_attention_params<T> &params,
-    int dim_head,
-    int threads_per_value,
-    int threads_per_block) {
-  size_t qk_sz = div_up(params.timestep + 1, 4) * 16;
-  if constexpr (SPLIT) {
-    qk_sz = div_up(params.steps_per_block + 1, 4) * 16;
-  }
-  size_t logits_sz = 0;
+// template <typename T, bool SPLIT>
+// inline size_t smem_size_in_bytes(
+//     const Masked_multihead_attention_params<T> &params,
+//     int dim_head,
+//     int threads_per_value,
+//     int threads_per_block) {
+//   size_t qk_sz = div_up(params.timestep + 1, 4) * 16;
+//   if constexpr (SPLIT) {
+//     qk_sz = div_up(params.steps_per_block + 1, 4) * 16;
+//   }
+//   size_t logits_sz = 0;
 
-#ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS  // NOLINT
-  if (sizeof(T) != 4) {
-    logits_sz = div_up(params.max_seq_length, 4) * 4 * sizeof(T);
-  }
-#endif  // NOLINT
-  size_t softmax_sz = qk_sz + logits_sz;
+// #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS  // NOLINT
+//   if (sizeof(T) != 4) {
+//     logits_sz = div_up(params.max_seq_length, 4) * 4 * sizeof(T);
+//   }
+// #endif  // NOLINT
+//   size_t softmax_sz = qk_sz + logits_sz;
 
-  int rows_per_red = threads_per_block / threads_per_value;
-  size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
+//   int rows_per_red = threads_per_block / threads_per_value;
+//   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
 
-  return max(softmax_sz, red_sz);
-}
+//   return max(softmax_sz, red_sz);
+// }
 
 template <typename T, bool SPLIT>
 inline size_t smem_size_in_bytes_kai(
@@ -788,9 +789,9 @@ inline size_t smem_size_in_bytes_kai(
     int threads_per_block) {
   // for qk_smem and logits_smem(both float)
   size_t qk_sz = div_up(params.timestep, 4) * 16;
-  if (SPLIT && params.split_seq > 1) {
-    qk_sz = div_up(params.steps_per_block, 4) * 16;
-  }
+  // if (SPLIT && params.split_seq > 1) {
+  //   qk_sz = div_up(params.steps_per_block, 4) * 16;
+  // }
   // for reduce (logits dot V) result
   int rows_per_red = threads_per_block / threads_per_value;
   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
@@ -816,13 +817,12 @@ inline size_t smem_size_in_bytes_kai(
                                         THDS_PER_VALUE,                   \
                                         THDS_PER_BLOCK,                   \
                                         decltype(load_func),              \
-                                        decltype(store_func),             \
-                                        SPLIT>;                           \
+                                        decltype(store_func)>;            \
   if (smem_sz > 0xc000) {                                                 \
     cudaFuncSetAttribute(                                                 \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
   }                                                                       \
-  dim3 grid(params.num_head, params.batch_size, params.split_seq);        \
+  dim3 grid(params.num_head, params.batch_size, 1);                       \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
       params, load_func, store_func)
 
@@ -898,19 +898,20 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   }
 }
 
-#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)                  \
-  case dim_head_:                                                             \
-    fmha_launch_kernel<T,                                                     \
-                       dim_head_,                                             \
-                       dim_head_max_,                                         \
-                       decltype(load_func),                                   \
-                       decltype(store_func),                                  \
-                       SPLIT>(params, stream, load_func, store_func);         \
-    if (!SPLIT || params.split_seq == 1) return;                              \
-    post_process_kernel_kai_v3<T, dim_head_, dim_head_max_, SPLTS_PER_BLOCK_> \
-        <<<grid, SPLTS_PER_BLOCK_ * dim_head_max_, smem_sz, stream>>>(        \
-            params, store_func);                                              \
+#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)          \
+  case dim_head_:                                                     \
+    fmha_launch_kernel<T,                                             \
+                       dim_head_,                                     \
+                       dim_head_max_,                                 \
+                       decltype(load_func),                           \
+                       decltype(store_func),                          \
+                       SPLIT>(params, stream, load_func, store_func); \
     break;
+
+// if (!SPLIT || params.split_seq == 1) return;
+// post_process_kernel_kai_v3<T, dim_head_, dim_head_max_, SPLTS_PER_BLOCK_>
+//     <<<grid, SPLTS_PER_BLOCK_ * dim_head_max_, smem_sz, stream>>>(
+//         params, store_func);
 
 template <typename T, typename LoadFunc, typename StoreFunc, bool SPLIT>
 void fmha_impl(const phi::GPUContext &dev_ctx,
@@ -919,7 +920,7 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                LoadFunc load_func,
                StoreFunc store_func) {
   dim3 grid(params.num_head, params.batch_size);
-  int smem_sz = params.split_seq * sizeof(float2);
+  // int smem_sz = params.split_seq * sizeof(float2);
   constexpr int SPLTS_PER_BLOCK_ = 4;
   auto stream = dev_ctx.stream();
   switch (dim_head) {
@@ -1165,32 +1166,33 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
 
-  params.steps_per_block = timestep;  // if not SPLIT, this is unuseful.
-  params.split_seq = 1;               // if not SPLIT, grid.z==1
+  // params.steps_per_block = timestep;  // if not SPLIT, this is unuseful.
+  // params.split_seq = 1;               // if not SPLIT, grid.z==1
 
   /// TODO: how to define SPLIT
   constexpr bool SPLIT = false;
-  if (SPLIT) {
-    // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
-    int steps_per_block = timestep < 256 ? 256 : 128;
-    params.steps_per_block = steps_per_block;
-    params.split_seq = (timestep - 1) / steps_per_block + 1;
-    int split_seq = params.split_seq;
+  // if (SPLIT) {
+  //   // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
+  //   int steps_per_block = timestep < 256 ? 256 : 128;
+  //   params.steps_per_block = steps_per_block;
+  //   params.split_seq = (timestep - 1) / steps_per_block + 1;
+  //   int split_seq = params.split_seq;
 
-    phi::DenseTensor qk_sum_max_split_seq;
-    // 2 means sum and max.
-    qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
-    dev_ctx.template Alloc<float>(&qk_sum_max_split_seq,
-                                  qk_sum_max_split_seq.numel() * sizeof(float));
-    params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
-    // In fact, split_out is not necessarily needed（split_seq==1）
-    phi::DenseTensor split_out;
-    split_out.Resize({{bsz, num_head, split_seq, dim_head}});
-    dev_ctx.template Alloc<float>(&split_out,
-                                  split_out.numel() * sizeof(float));
-    params.split_out = split_out.data<float>();
-    params.out = out->data<T>();
-  }
+  //   phi::DenseTensor qk_sum_max_split_seq;
+  //   // 2 means sum and max.
+  //   qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
+  //   dev_ctx.template Alloc<float>(&qk_sum_max_split_seq,
+  //                                 qk_sum_max_split_seq.numel() *
+  //                                 sizeof(float));
+  //   params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
+  //   // In fact, split_out is not necessarily needed（split_seq==1）
+  //   phi::DenseTensor split_out;
+  //   split_out.Resize({{bsz, num_head, split_seq, dim_head}});
+  //   dev_ctx.template Alloc<float>(&split_out,
+  //                                 split_out.numel() * sizeof(float));
+  //   params.split_out = split_out.data<float>();
+  //   params.out = out->data<T>();
+  // }
 
   if (out_shift) {
     DispatchFMHA<T, SPLIT>(dev_ctx,
