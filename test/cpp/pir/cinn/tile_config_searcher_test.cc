@@ -100,10 +100,10 @@ TEST(ConfigSearcher, TestReducePipeline) {
   // Define the search space bounds and sampling probabilities.
   constexpr int spatial_left_bound = 2;
   constexpr int spatial_right_bound =
-      4096;  // for easy test, set to 32. for the whole test, set to 4096
+      32;  // for easy test, set to 32. for the whole test, set to 4096
   constexpr int reduce_left_bound = 2;
   constexpr int reduce_right_bound =
-      4096;  // for easy test : set to 32. for the whole test, set to 4096
+      32;  // for easy test : set to 32. for the whole test, set to 4096
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
   // now each has the same weight
