@@ -57,7 +57,7 @@ NestedStructure = Union[
 
 IntSequence = Sequence[int]
 
-Numberic: TypeAlias = Union[int, float, complex, np.number[Any], "Tensor"]
+Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorLike: TypeAlias = Union[
