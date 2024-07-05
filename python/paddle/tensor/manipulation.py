@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
 
 import numpy as np
@@ -4721,12 +4722,13 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     )
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
-                    assert dim_idx < len(x.shape), (
-                        "The index of 0 in `shape` must be less than "
-                        "the input tensor X's dimensions. "
-                        "But received shape[%d] = 0, X's dimensions = %d."
-                        % (dim_idx, len(x.shape))
-                    )
+                    if math.prod(x.shape):
+                        assert dim_idx < len(x.shape), (
+                            "The index of 0 in `shape` must be less than "
+                            "the input tensor X's dimensions. "
+                            "But received shape[%d] = 0, X's dimensions = %d."
+                            % (dim_idx, len(x.shape))
+                        )
                 else:
                     assert dim_size > 0, (
                         "Each dimension value of 'shape' in reshape must not "
