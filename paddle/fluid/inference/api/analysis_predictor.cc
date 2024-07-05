@@ -139,6 +139,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace paddle {
 namespace {
@@ -389,6 +390,10 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
       device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
+  }
+  if (FLAGS_enable_pir_api) {
+    config_.EnableNewExecutor(true);
+    config_.EnableNewIR(true);
   }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
@@ -1026,25 +1031,18 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      sub_scope_->Var(data_name);
       idx2feeds_[feed_idx] = data_name;
       feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
     }
 
-    for (auto var : op->results()) {
-      std::string var_name;
-      auto is_persistable =
-          var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
-      if (is_persistable && is_persistable.data()) {
-        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
-          var_name = param_op.param_name();
-          param_name_var_pairs.emplace_back(var_name, var);
-        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
-          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-          param_name_var_pairs.emplace_back(var_name, var);
-        }
-      }
+    if (op->isa<::pir::ParameterOp>()) {
+      std::string var_name =
+          op->attribute<pir::StrAttribute>("parameter_name").AsString();
+      auto var = op->result(0);
+      param_name_var_pairs.emplace_back(var_name, var);
     }
   }
 
@@ -1071,19 +1069,20 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+        const phi::DeviceContext *dev_ctx = nullptr;
+        dev_ctx = pool.Get(place_);
+        pir::Type type_ = pir::GetDataTypeFromValue(value);
+        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+        dev_ctx->Alloc(tensor_temp, type_data);
       } else {
         PADDLE_THROW(platform::errors::Unavailable(
             "Only support parameter data of type DenseTensor."));
       }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-    tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-
-    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-    const phi::DeviceContext *dev_ctx = pool.Get(place_);
-    pir::Type type_ = pir::GetDataTypeFromValue(value);
-    phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-    dev_ctx->Alloc(tensor_temp, type_data);
     tensor_out.push_back(tensor_temp);
   }
 

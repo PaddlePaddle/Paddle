@@ -1305,6 +1305,7 @@ def AutoCodeGen(
             dialect_name == "pd_op"
             and op_info.backward_name
             and not op_info.is_sparse_op
+            and all_op_info_items[op_info.backward_name].kernel_map is not None
         ):
             op_interfaces += [
                 "paddle::dialect::CacheGradOpSymbolicShapeInterface"
