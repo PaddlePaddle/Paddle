@@ -30,7 +30,6 @@ template <typename T>
 struct Masked_multihead_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
   T *out;
-
   // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
   const T *qkv;
   // bias, [3, num_head, dim_head]
@@ -98,7 +97,7 @@ __global__ void masked_multihead_attention_kernel(
     LoadFunc load_func,
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  const int bi = blockIdx.y;
+  const int bi = blockIdx.z;
   // params.sequence_lengths[bi] means how many k and v we have cached in
   // cache_kv.
   if (params.sequence_lengths && params.sequence_lengths[bi] < 0) {
@@ -133,7 +132,7 @@ __global__ void masked_multihead_attention_kernel(
   const int beami = bi % params.beam_width;
   // real batch id
   const int bbi = bi / params.beam_width;
-  const int hi = blockIdx.x;
+  const int hi = blockIdx.y;
   const int bhi = bi * params.num_head + hi;
 
   const int kv_num_head = params.kv_num_head;
@@ -160,18 +159,19 @@ __global__ void masked_multihead_attention_kernel(
 
   // with SPLIT, The last single q*k*v is computed by the last threadBlock of
   // split_index
-  const int split_index = blockIdx.z;
+  const int split_index = blockIdx.x;
   int start_seq = 0;
   int end_seq = act_time_step;
   bool is_last_block = false;
 
   if constexpr (SPLIT) {
-    int real_split_each_batch_kai =
+    int real_split_each_batch =
         (act_time_step - 1) / params.steps_per_block + 1;
+    if (split_index >= real_split_each_batch) return;
+
     start_seq = split_index * params.steps_per_block;
     end_seq = start_seq + params.steps_per_block;
-    if (split_index >= real_split_each_batch_kai) return;
-    if (split_index == real_split_each_batch_kai - 1) {
+    if (split_index == real_split_each_batch - 1) {
       end_seq = act_time_step;
       is_last_block = true;
     }
@@ -688,10 +688,9 @@ __global__ void post_process_kernel_kai_v2(
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
-  int real_split_each_batch_kai =
-      (act_time_step - 1) / params.steps_per_block + 1;
+  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
 
-  for (int i = tid; i < real_split_each_batch_kai; i += blockDim.x) {
+  for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
     qk_sum_max_smem[i] = *reinterpret_cast<float2 *>(
         &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
   }
@@ -702,13 +701,13 @@ __global__ void post_process_kernel_kai_v2(
   float v = 0;
   if (tid < Dh) {
 #pragma unroll
-    for (int i = 0; i < real_split_each_batch_kai; ++i) {
+    for (int i = 0; i < real_split_each_batch; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       float tmp_max = sum_max.y;
       max = tmp_max > max ? tmp_max : max;
     }
 #pragma unroll
-    for (int i = 0; i < real_split_each_batch_kai; ++i) {
+    for (int i = 0; i < real_split_each_batch; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       // split_out:[bsz , num_head, split_seq, dim_head]
       float this_v = params.split_out[(bhsi + i) * Dh + tid];
@@ -745,15 +744,14 @@ __global__ void post_process_kernel_kai_v3(
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
-  int real_split_each_batch_kai =
-      (act_time_step - 1) / params.steps_per_block + 1;
+  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
 
   extern __shared__ float2 qk_sum_max_smem[];
   float max = -FLT_MAX;
   const int WARP_SIZE = 32;
   int WARPS_PER_BLOCK = blockDim.x / WARP_SIZE;
 
-  for (int i = tid; i < real_split_each_batch_kai; i += blockDim.x) {
+  for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
     float2 sum_max = *reinterpret_cast<float2 *>(
         &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
     max = fmaxf(sum_max.y, max);
@@ -786,7 +784,7 @@ __global__ void post_process_kernel_kai_v3(
   int split_group_idx = tid / Dh_MAX;
   if ((tid % Dh_MAX) < Dh) {
 #pragma unroll
-    for (int i = split_group_idx; i < real_split_each_batch_kai;
+    for (int i = split_group_idx; i < real_split_each_batch;
          i += SPLTS_PER_BLOCK) {
       float2 sum_max = qk_sum_max_smem[i];
       float this_v = params.split_out[(bhsi + i) * Dh + (tid % Dh_MAX)];
@@ -885,7 +883,7 @@ inline size_t smem_size_in_bytes_kai(
     cudaFuncSetAttribute(                                                 \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
   }                                                                       \
-  dim3 grid(params.num_head, params.batch_size, params.split_seq);        \
+  dim3 grid(params.split_seq, params.num_head, params.batch_size);        \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
       params, load_func, store_func)
 
