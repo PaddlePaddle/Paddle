@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/backends/codegen_host_base.h"
+#include "paddle/cinn/backends/codegen_invoke_module.h"
 
 #include <vector>
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
-llvm::Value* CodeGenHostBase::LowerHostFunc(const ir::_LoweredFunc_* func) {
+llvm::Value* CodeGenInvokeModule::LowerInvokeFunc(
+    const ir::_LoweredFunc_* func) {
   // Create the function
   // @{
   auto* function_type = GenFunctionTypeFromCinnFunction(func, true);
@@ -61,7 +62,8 @@ llvm::Value* CodeGenHostBase::LowerHostFunc(const ir::_LoweredFunc_* func) {
   return f_;
 }
 
-llvm::Value* CodeGenHostBase::LowerParseArgsValueCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenInvokeModule::LowerParseArgsValueCall(
+    const ir::Call* call_ir) {
   auto ret_type = CinnTypeToLLVMType(Int(64), m_);
   std::vector<llvm::Type*> args_type;
   PADDLE_ENFORCE_EQ(
@@ -82,6 +84,19 @@ llvm::Value* CodeGenHostBase::LowerParseArgsValueCall(const ir::Call* call_ir) {
   call_args.push_back(std::addressof(*f_->arg_begin()));
   call_args.push_back(b_->getInt32(call_ir->read_args[1].as_int32()));
   return b_->CreateCall(call_func, call_args);
+}
+
+llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
+  std::vector<llvm::Value*> ll_function_args;
+  std::transform(f_->arg_begin(),
+                 f_->arg_end(),
+                 std::back_inserter(ll_function_args),
+                 [](auto& arg) { return std::addressof(arg); });
+  // TODO(Hongqing-work): Add check for parameter type
+  llvm::Function* call_func = m_->getFunction(op->name);
+  CHECK(call_func) << "Unknown function referenced. [" << op->name << "]";
+  b_->CreateCall(call_func, ll_function_args);
+  return nullptr;
 }
 }  // namespace backends
 }  // namespace cinn

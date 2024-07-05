@@ -6,9 +6,8 @@ gather_srcs(
   outputs.cc
   codegen_c.cc
   codegen_c_x86.cc
-  codegen_host_base.cc
   codegen_cuda_host.cc
-  codegen_switch_host.cc
+  codegen_invoke_module.cc
   extern_func_emitter.cc
   extern_func_emitter_builtin.cc
   function_prototype.cc

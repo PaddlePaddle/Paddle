@@ -15,7 +15,7 @@
 #pragma once
 #include <memory>
 
-#include "paddle/cinn/backends/codegen_host_base.h"
+#include "paddle/cinn/backends/codegen_invoke_module.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
@@ -27,16 +27,17 @@ namespace backends {
  * CodeGenCUDA_Host takes a CINN Module with CUDA host functions and output a
  * LLVM module.
  */
-class CodeGenCUDA_Host : public CodeGenHostBase {
+class CodeGenCUDA_Host : public CodeGenHost {
  public:
   explicit CodeGenCUDA_Host(llvm::Module *m,
                             llvm::IRBuilder<> *b,
                             const std::shared_ptr<SymbolTable> &vars = nullptr)
-      : CodeGenHostBase(m, b, vars) {}
+      : CodeGenHost(m, b, vars) {}
 
+  // TODO(Hongqing-work): remove this after we clear some old codes.
   llvm::Value *Visit(const ir::_LoweredFunc_ *func) override {
     if (FLAGS_cinn_bucket_compile) {
-      return CodeGenHostBase::Visit(func);
+      return CodeGenHost::Visit(func);
     }
     return LowerGPUKernelLauncher(func);
   }
@@ -45,7 +46,7 @@ class CodeGenCUDA_Host : public CodeGenHostBase {
     if (op->name == runtime::intrinsic::call_cuda_kernel) {
       return LowerCUDAKernelCall(op);
     } else {
-      return CodeGenHostBase::Visit(op);
+      return CodeGenHost::Visit(op);
     }
   }
 
