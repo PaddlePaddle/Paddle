@@ -117,6 +117,15 @@ class PADDLE_API Tensor final {
   Tensor(const Place& place, const std::vector<int64_t>& shape);
 
   /**
+   * @brief Construct a new Tensor object on the target place.
+   *
+   * This is a deprecated method and may be removed in the future!!!
+   *
+   * @param place
+   */
+  explicit Tensor(const Place& place);
+
+  /**
    * @brief Construct a new Tensor object by a TensorBase pointer and name
    *
    * @param tensor_impl
