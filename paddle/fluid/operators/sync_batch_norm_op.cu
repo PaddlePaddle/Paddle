@@ -145,7 +145,8 @@ void SyncBatchNormKernel(const Context& ctx,
         paddle::platform::GpuStreamSync(stream);
       }
     } else {
-      ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+      ncclComm_t comm =
+          static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
       if (comm == nullptr) {
         comm = ctx.nccl_comm();
       }
