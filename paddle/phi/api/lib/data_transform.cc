@@ -380,7 +380,8 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
       if (NeedTransform2Contiguous(is_stride_kernel,
-                                   dense_tensor.meta().is_contiguous())) {
+                                   dense_tensor.meta().is_contiguous()) &&
+          dense_tensor.initialized()) {
         phi::DenseTensor out = dense_tensor;
         out = Trans2Contiguous(out);
         return std::make_shared<phi::DenseTensor>(std::move(out));
@@ -430,7 +431,9 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
            NeedTransform2Contiguous(is_stride_kernel,
                                     dense_tensor->meta().is_contiguous())))) {
       if (NeedTransform2Contiguous(is_stride_kernel,
-                                   dense_tensor->meta().is_contiguous())) {
+                                   dense_tensor->meta().is_contiguous()) &&
+          tensor_in->initialized()) {
+        std::cout << "lala" << std::endl;
         phi::DenseTensor out =
             *(static_cast<phi::DenseTensor*>(tensor_in.get()));
         out = Trans2Contiguous(out);
@@ -478,7 +481,8 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
         !NeedTransform2Contiguous(
             false, selected_rows.value().meta().is_contiguous())) {
       if (NeedTransform2Contiguous(
-              false, selected_rows.value().meta().is_contiguous())) {
+              false, selected_rows.value().meta().is_contiguous()) &&
+          selected_rows.initialized()) {
         auto out_new = std::make_shared<phi::SelectedRows>(
             selected_rows.rows(), selected_rows.height());
         auto dense_out = Trans2Contiguous(selected_rows.value());
@@ -972,7 +976,8 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
       if (NeedTransform2Contiguous(is_stride_kernel,
-                                   dense_tensor.meta().is_contiguous())) {
+                                   dense_tensor.meta().is_contiguous()) &&
+          dense_tensor.initialized()) {
         auto dist_out = std::make_shared<phi::distributed::DistTensor>(
             dist_tensor->dims(), dist_tensor->dist_attr());
         auto* out = dist_out->unsafe_mutable_value();
@@ -1019,7 +1024,8 @@ PrepareDataForDistTensor(
            !NeedTransform2Contiguous(is_stride_kernel,
                                      dense_tensor.meta().is_contiguous()))) {
         if (NeedTransform2Contiguous(is_stride_kernel,
-                                     dense_tensor.meta().is_contiguous())) {
+                                     dense_tensor.meta().is_contiguous()) &&
+            dense_tensor.initialized()) {
           phi::DenseTensor trans_in_tensor = Trans2Contiguous(dense_tensor);
           out.push_back(std::make_shared<phi::distributed::DistTensor>(
               std::make_shared<phi::DenseTensor>(trans_in_tensor),
