@@ -33,7 +33,7 @@ class _TestTyping:
     test_dir: str = ''
 
     def test_cases(self) -> None:
-        _, _, exit_status = mypy_api.run(
+        normal_report, error_report, exit_status = mypy_api.run(
             (["--show-traceback"] if self.debug else [])
             + [
                 f'--config-file={self.config_file}',
@@ -41,6 +41,18 @@ class _TestTyping:
                 str(self.test_dir),
             ]
         )
+        if exit_status != 0:
+            print('-' * 20)
+            print(f'>>> test_dir: {self.test_dir}')
+            print(f'>>> FILE_PATH: {FILE_PATH}')
+            print(f'>>> TEST_PATH: {TEST_PATH}')
+            print(f'>>> BASE_PATH: {BASE_PATH}')
+            print(f'>>> CONFIG_FILE: {CONFIG_FILE}')
+            print(f'>>> CACHE_DIR: {CACHE_DIR}')
+            print('>>> normal_report ...')
+            print(normal_report)
+            print('>>> error_report ...')
+            print(error_report)
 
         self.assertTrue(exit_status == 0)
 
