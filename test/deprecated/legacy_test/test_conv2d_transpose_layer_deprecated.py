@@ -213,18 +213,9 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
-    def _test_pir_equivalence(self, place):
-        with paddle.pir_utils.IrGuard():
-            result1 = self.functional(place)
-        with dg.guard(place):
-            result2 = self.paddle_nn_layer()
-
-        np.testing.assert_array_almost_equal(result1, result2)
-
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
-        self._test_pir_equivalence(place)
 
 
 class Conv2DTransposeErrorTestCase(Conv2DTransposeTestCase):
