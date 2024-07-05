@@ -367,96 +367,6 @@ Expr *_Tensor_::mutable_body() {
   CINN_NOT_IMPLEMENTED
 }
 
-ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
-                                   const Target &target) const {
-  PADDLE_ENFORCE_EQ(contains_reduce_axis(),
-                    true,
-                    ::common::errors::PreconditionNotMet(
-                        "InitReduction only works on a reduce tensor"));
-  // return if already exists.
-  std::string init_reduce_tensor_name = GenReduceInitTensorNameOf(name);
-  if (stages->Lookup(init_reduce_tensor_name))
-    return stages[this]->LookupCtrlDepend(init_reduce_tensor_name);
-
-  // create a new init tensor.
-  auto init_tensor = lang::Compute(
-      domain,
-      [=](const std::vector<Expr> &axis) { return GetReduceInitVal(); },
-      init_reduce_tensor_name);
-  stages->InsertLazily(init_tensor);
-  std::string this_transform = isl_map_to_str(stages[this]->transform().get());
-  isl::ctx this_ctx = stages[this]->transform().ctx();
-  isl::map temp_transform(this_ctx, this_transform);
-  int reduce_axis_num = this->reduce_axis.size();
-  auto dim_out_names =
-      poly::isl_get_dim_names(stages[this]->transform(), isl_dim_out);
-  auto dim_in_size = isl_map_dim(stages[this]->transform().get(), isl_dim_in);
-  auto dim_in_names =
-      poly::isl_get_dim_names(stages[this]->transform(), isl_dim_in);
-  std::vector<std::string> reduce_axis_input =
-      stages[this]->origin_reduce_axis_names();
-  auto origin_domain = stages[this]->domain();
-  auto reduce_axis_output = poly::GetRelatedOutputAxes(
-      temp_transform, origin_domain, reduce_axis_input);
-  std::set<std::string> reduce_axis_output_set;
-  for (auto &i : reduce_axis_output) {
-    reduce_axis_output_set.insert(i);
-  }
-  int compute_at_axis = -1;
-  for (auto &i : dim_out_names) {
-    if (reduce_axis_output_set.count(i) == 0) {
-      compute_at_axis++;
-    } else {
-      break;
-    }
-  }
-
-  temp_transform = poly::RemoveAxesByOutputNames(
-      temp_transform, origin_domain, reduce_axis_output);
-
-  //! When the first axis is not reduce axis, do ComputeAt.
-  if (compute_at_axis >= 0) {
-    stages[init_tensor]->ComputeAt2(stages[this], compute_at_axis);
-    init_tensor->new_indices = this->new_indices;
-    stages[this]->CtrlDepend(init_tensor);
-    stages[init_tensor]->ShareBufferWith(stages[this]);
-    init_tensor->shape = shape;
-    return init_tensor;
-  }
-  //! When reduce axes are reordered to front, ComputeAt is illegal.
-  //! So we just copy transform and forloopInfo.
-  isl_map_set_tuple_name(
-      temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
-  isl_map_set_tuple_name(
-      temp_transform.get(), isl_dim_out, init_reduce_tensor_name.c_str());
-  stages[init_tensor]->SetTransform(temp_transform);
-  auto init_dim_out_names =
-      poly::isl_get_dim_names(temp_transform, isl_dim_out);
-  std::map<int, poly::StageForloopInfo> temp_forloop_info =
-      stages[this]->forloop_infos();
-  std::map<int, poly::StageForloopInfo> init_forloop_info;
-  for (auto &i : temp_forloop_info) {
-    for (int j = 0; j < init_dim_out_names.size(); j++) {
-      if (i.first < 0) continue;
-      int new_i = poly::isl_get_original_axes_from_optimized_level(
-          stages[this]->transformed_domain().get(), i.first);
-      if (dim_out_names[new_i] == init_dim_out_names[j]) {
-        stages[init_tensor]->AddForloopInfo(j, i.second);
-      }
-    }
-  }
-  init_tensor->new_indices = this->new_indices;
-  stages[this]->CtrlDepend(init_tensor);
-  stages[init_tensor]->ShareBufferWith(stages[this]);
-  init_tensor->shape = shape;
-  return init_tensor;
-}
-
-ir::Tensor _Tensor_::GetInitTensor(poly::StageMap stages,
-                                   const Target &target) const {
-  return InitReduction(stages, target);
-}
-
 Expr _Tensor_::tensor_store_expanded_body() {
   PADDLE_ENFORCE_EQ(is_placeholder_node(),
                     false,
@@ -738,16 +648,13 @@ ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape) const {
   return t;
 }
 
-ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
-                                   poly::StageMap stages) const {
+ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape) const {
   auto t = ir::Tensor(const_cast<ir::_Tensor_ *>(this));
   auto copied = Compute(
       domain,
       [=](const std::vector<Expr> &axis) { return t(axis); },
       Context::Global().NewName(this->name + "_copied"));
-  stages->InsertLazily(copied);
   auto res = copied->Reshape(shape);
-  stages->InsertLazily(res);
   return res;
 }
 
@@ -806,10 +713,6 @@ Expr _Tensor_::GetReduceInitVal() const {
                     ::common::errors::PreconditionNotMet(
                         "Required tensor is a reduce type."));
   return body().As<ir::Reduce>()->init;
-}
-
-bool _Tensor_::IsReduceInited(poly::StageMap stages) const {
-  return stages->Lookup(GenReduceInitTensorNameOf(name));
 }
 
 void _Tensor_::Verify() const {

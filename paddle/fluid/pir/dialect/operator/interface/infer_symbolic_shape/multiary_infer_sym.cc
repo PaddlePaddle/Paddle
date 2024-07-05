@@ -33,6 +33,61 @@ bool BicubicInterpOpInferSymbolicShape(
   int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
   int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
   int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
+  const std::vector<float> &scale = details::GetVectorAttr<float>(op, "scale");
+
+  const bool has_size_tensor = [&] {
+    pir::Value size_tensor = op->operand_source(2);
+    if (!size_tensor || !size_tensor.type()) {
+      return false;
+    }
+    const auto &list_size_tensor =
+        size_tensor.type().dyn_cast<pir::VectorType>();
+    return list_size_tensor && !list_size_tensor.empty();
+  }();
+  auto GetSizeTensorDataExpr =
+      [&](pir::Value value) -> std::vector<symbol::DimExpr> {
+    const symbol::ShapeOrDataDimExprs &size_tensor_shape =
+        infer_context->GetShapeOrDataForValue(value);
+    PADDLE_ENFORCE_EQ(
+        size_tensor_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
+        true,
+        common::errors::InvalidArgument(
+            "The size_tensor of Interpolation should be type of "
+            "TensorListShapeOrDataDimExprs"));
+    const auto &size_tensor_list_shape =
+        size_tensor_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    std::vector<symbol::DimExpr> result;
+    result.reserve(size_tensor_list_shape.size());
+    for (const auto &tensor_shape : size_tensor_list_shape) {
+      result.push_back(tensor_shape.data()->front());
+    }
+    return result;
+  };
+  auto GetOutSizeDataExpr =
+      [&](pir::Value value) -> std::vector<symbol::DimExpr> {
+    const symbol::ShapeOrDataDimExprs &out_size_tensor_shape =
+        infer_context->GetShapeOrDataForValue(value);
+    PADDLE_ENFORCE_EQ(
+        out_size_tensor_shape.data().has_value(),
+        true,
+        common::errors::InvalidArgument(
+            "The output size of Interpolation should have data value."));
+    return out_size_tensor_shape.data().value();
+  };
+  auto GetOutDimByScale = [&](const symbol::DimExpr &in_dim,
+                              float scale) -> symbol::DimExpr {
+    PADDLE_ENFORCE_GT(scale,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The scale in Attr(scale) of Operator(interpolate) "
+                          "should be greater than 0, but received value is %d.",
+                          scale));
+    if (in_dim.isa<int64_t>()) {
+      return symbol::DimExpr{
+          static_cast<int64_t>(in_dim.dyn_cast<int64_t>() * scale)};
+    }
+    return symbol::DimExpr{infer_context->GetNextSymName()};
+  };
 
   std::vector<int> size_tensor;
   if (out_d != -1) size_tensor.push_back(out_d);
@@ -79,97 +134,113 @@ bool BicubicInterpOpInferSymbolicShape(
     return true;
   } else if (x.shape().size() == 4) {
     // shape check for 2D interpolate for input tensor shape NCHW
-    if (!size_tensor.empty()) {
+    auto GetOutHW = [&]() -> std::tuple<symbol::DimExpr, symbol::DimExpr> {
       // top priority size
-      std::vector<symbol::DimExpr> dim_out;
-      if (data_layout == DataLayout::kNCHW) {
-        dim_out = {x.shape()[0],
-                   x.shape()[1],
-                   symbol::DimExpr{out_h},
-                   symbol::DimExpr{out_w}};
-      } else {
-        dim_out = {x.shape()[0],
-                   symbol::DimExpr{out_h},
-                   symbol::DimExpr{out_w},
-                   x.shape()[3]};
+      if (has_size_tensor) {
+        const auto &size_tensor_list_shape =
+            GetSizeTensorDataExpr(op->operand_source(2));
+        PADDLE_ENFORCE_EQ(size_tensor_list_shape.size(),
+                          2,
+                          common::errors::InvalidArgument(
+                              "The size of size_tensor list should be 2."));
+        return std::make_tuple(size_tensor_list_shape.at(0),
+                               size_tensor_list_shape.at(1));
+      }
+      // has out_size tensor
+      if (op->operand_source(1)) {
+        const auto &out_size_data = GetOutSizeDataExpr(op->operand_source(1));
+        return std::make_tuple(symbol::DimExpr{out_size_data[0]},
+                               symbol::DimExpr{out_size_data[1]});
+      }
+      // has scale
+      if (scale.size() == 2) {
+        float scale_h = scale[0];
+        float scale_w = scale[1];
+        const auto &in_h =
+            data_layout == DataLayout::kNCHW ? x.shape()[2] : x.shape()[1];
+        const auto &in_w =
+            data_layout == DataLayout::kNCHW ? x.shape()[3] : x.shape()[2];
+        return std::make_tuple(GetOutDimByScale(in_h, scale_h),
+                               GetOutDimByScale(in_w, scale_w));
       }
 
-      symbol::ShapeOrDataDimExprs shape_data{
-          symbol::TensorShapeOrDataDimExprs(dim_out)};
-      pir::Value res = op->result(0);
-      infer_context->SetShapeOrDataForValue(res, shape_data);
-      return true;
-    }
+      return std::make_tuple(symbol::DimExpr{out_h}, symbol::DimExpr{out_w});
+    };
 
-    symbol::DimExpr out_h_tmp{0};
-    symbol::DimExpr out_w_tmp{0};
-    const auto &next_sym = infer_context->GetNextSymName();
-    out_h_tmp = symbol::DimExpr(next_sym);
-    out_w_tmp = symbol::DimExpr(next_sym);
-
-    std::vector<symbol::DimExpr> dim_out;
-    if (data_layout == DataLayout::kNCHW) {
-      dim_out = {x.shape()[0], x.shape()[1], out_h_tmp, out_w_tmp};
-    } else {
-      dim_out = {x.shape()[0], out_h_tmp, out_w_tmp, x.shape()[3]};
-    }
+    const std::vector<symbol::DimExpr> dim_out = [&] {
+      const auto &[out_h_sym, out_w_sym] = GetOutHW();
+      if (data_layout == DataLayout::kNCHW) {
+        return std::vector<symbol::DimExpr>{
+            x.shape()[0], x.shape()[1], out_h_sym, out_w_sym};
+      } else {
+        return std::vector<symbol::DimExpr>{
+            x.shape()[0], out_h_sym, out_w_sym, x.shape()[3]};
+      }
+    }();
 
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(dim_out)};
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
 
-    pir::Value res = op->result(0);
-    infer_context->SetShapeOrDataForValue(res, shape_data);
     return true;
   } else if (x.shape().size() == 5) {
-    // shape check for 3D interpolate for input tensor shape NCDHW
-    if (!size_tensor.empty()) {
+    auto GetOutDHW =
+        [&]() -> std::tuple<symbol::DimExpr, symbol::DimExpr, symbol::DimExpr> {
       // top priority size
-      std::vector<symbol::DimExpr> dim_out;
-      if (data_layout == DataLayout::kNCHW) {
-        dim_out = {x.shape()[0],
-                   x.shape()[1],
-                   symbol::DimExpr{out_d},
-                   symbol::DimExpr{out_h},
-                   symbol::DimExpr{out_w}};
-      } else {
-        dim_out = {x.shape()[0],
-                   symbol::DimExpr{out_d},
-                   symbol::DimExpr{out_h},
-                   symbol::DimExpr{out_w},
-                   x.shape()[4]};
+      if (has_size_tensor) {
+        const auto &size_tensor_list_shape =
+            GetSizeTensorDataExpr(op->operand_source(2));
+        PADDLE_ENFORCE_EQ(size_tensor_list_shape.size(),
+                          3,
+                          common::errors::InvalidArgument(
+                              "The size of size_tensor list should be 3."));
+        return std::make_tuple(size_tensor_list_shape.at(0),
+                               size_tensor_list_shape.at(1),
+                               size_tensor_list_shape.at(2));
+      }
+      // has out_size tensor
+      if (op->operand_source(1)) {
+        const auto &out_size_data = GetOutSizeDataExpr(op->operand_source(1));
+        return std::make_tuple(symbol::DimExpr{out_size_data[0]},
+                               symbol::DimExpr{out_size_data[1]},
+                               symbol::DimExpr{out_size_data[2]});
+      }
+      // has scale
+      if (scale.size() == 3) {
+        float scale_d = scale[0];
+        float scale_h = scale[1];
+        float scale_w = scale[2];
+        const auto &in_d =
+            data_layout == DataLayout::kNCHW ? x.shape()[2] : x.shape()[1];
+        const auto &in_h =
+            data_layout == DataLayout::kNCHW ? x.shape()[3] : x.shape()[2];
+        const auto &in_w =
+            data_layout == DataLayout::kNCHW ? x.shape()[4] : x.shape()[3];
+        return std::make_tuple(GetOutDimByScale(in_d, scale_d),
+                               GetOutDimByScale(in_h, scale_h),
+                               GetOutDimByScale(in_w, scale_w));
       }
 
-      symbol::ShapeOrDataDimExprs shape_data{
-          symbol::TensorShapeOrDataDimExprs(dim_out)};
+      return std::make_tuple(symbol::DimExpr{out_d},
+                             symbol::DimExpr{out_h},
+                             symbol::DimExpr{out_w});
+    };
 
-      pir::Value res = op->result(0);
-      infer_context->SetShapeOrDataForValue(res, shape_data);
-      return true;
-    }
-
-    symbol::DimExpr out_d_tmp{0};
-    symbol::DimExpr out_h_tmp{0};
-    symbol::DimExpr out_w_tmp{0};
-    const auto &next_sym = infer_context->GetNextSymName();
-    out_d_tmp = symbol::DimExpr(next_sym);
-    out_h_tmp = symbol::DimExpr(next_sym);
-    out_w_tmp = symbol::DimExpr(next_sym);
-
-    std::vector<symbol::DimExpr> dim_out;
-
-    if (data_layout == DataLayout::kNCHW) {
-      dim_out = {x.shape()[0], x.shape()[1], out_d_tmp, out_h_tmp, out_w_tmp};
-    } else {
-      dim_out = {x.shape()[0], out_d_tmp, out_h_tmp, out_w_tmp, x.shape()[4]};
-    }
+    const std::vector<symbol::DimExpr> dim_out = [&] {
+      const auto &[out_d_sym, out_h_sym, out_w_sym] = GetOutDHW();
+      if (data_layout == DataLayout::kNCHW) {
+        return std::vector<symbol::DimExpr>{
+            x.shape()[0], x.shape()[1], out_d_sym, out_h_sym, out_w_sym};
+      } else {
+        return std::vector<symbol::DimExpr>{
+            x.shape()[0], out_d_sym, out_h_sym, out_w_sym, x.shape()[4]};
+      }
+    }();
 
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(dim_out)};
-
-    pir::Value res = op->result(0);
-    infer_context->SetShapeOrDataForValue(res, shape_data);
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
-
   } else {
     PADDLE_THROW(phi::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
   }

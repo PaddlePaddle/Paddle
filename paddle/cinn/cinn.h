@@ -39,7 +39,6 @@ using lang::Buffer;
 using lang::CallExtern;
 using lang::CallLowered;
 using lang::Compute;
-using lang::Lower;
 using lang::LowerToAst;
 using lang::Placeholder;
 using lang::ReduceAll;

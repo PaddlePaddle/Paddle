@@ -1954,7 +1954,15 @@ def main():
         )
 
     # generate stub file `tensor.pyi`
-    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+    if os.getenv("SKIP_STUB_GEN", '').lower() not in [
+        'y',
+        'yes',
+        't',
+        'true',
+        'on',
+        '1',
+    ]:
+        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,
