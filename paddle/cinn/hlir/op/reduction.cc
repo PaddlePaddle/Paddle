@@ -724,27 +724,18 @@ std::vector<std::vector<std::string>> InferLayoutForBnOptimize(
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(reduce_ops) {
-#define CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_strategy__, dtype__)       \
-  CINN_REGISTER_OP(op__)                                                       \
-      .describe(#op__ " function")                                             \
-      .set_num_inputs(1)                                                       \
-      .set_num_outputs(1)                                                      \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)          \
-      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
-          "CINNStrategySymbolic",                                              \
-          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)                \
-      .set_attr("infershape",                                                  \
-                MakeOpFunction(cinn::hlir::op::InferShapeForReduction))        \
-      .set_attr(                                                               \
-          "inferdtype",                                                        \
-          MakeOpFunction(cinn::hlir::op::InferDtypeForReduction##dtype__))     \
-      .set_attr("generate_equations",                                          \
-                MakeOpFunction(cinn::hlir::op::GenerateEquationsForReduction)) \
-      .set_attr("inferlayout",                                                 \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForReduction))       \
-      .set_attr<cinn::hlir::framework::OpPatternKind>(                         \
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kReduction)       \
+#define CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_strategy__, dtype__) \
+  CINN_REGISTER_OP(op__)                                                 \
+      .describe(#op__ " function")                                       \
+      .set_num_inputs(1)                                                 \
+      .set_num_outputs(1)                                                \
+      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)    \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(        \
+          "CINNStrategySymbolic",                                        \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)          \
+      .set_attr<cinn::hlir::framework::OpPatternKind>(                   \
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kReduction) \
       .set_support_level(4);
 
 #define CINN_REGISTER_REDUCTION(op__, op_strategy__) \

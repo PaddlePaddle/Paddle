@@ -296,10 +296,6 @@ CINN_REGISTER_HELPER(gather_nd_ops) {
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForGatherNdSymbolic)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForGatherNd)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForGatherNd))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForGatherNd))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);

@@ -105,10 +105,6 @@ CINN_REGISTER_HELPER(gaussian_random_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForGaussianRandom)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForGaussianRandom))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForGaussianRandom))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

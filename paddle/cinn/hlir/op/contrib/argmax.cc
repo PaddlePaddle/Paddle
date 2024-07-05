@@ -267,10 +267,6 @@ CINN_REGISTER_HELPER(argmax_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForArgmax)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForArgmax))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForArgmax))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

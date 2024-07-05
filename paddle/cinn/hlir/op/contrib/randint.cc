@@ -100,10 +100,6 @@ CINN_REGISTER_HELPER(randint_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRandInt)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForRandInt))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForRandInt))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

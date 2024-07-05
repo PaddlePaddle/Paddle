@@ -152,10 +152,6 @@ CINN_REGISTER_HELPER(logical_right_shift_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForLogicalRightShift)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForLogicalRightShift))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalRightShift))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);

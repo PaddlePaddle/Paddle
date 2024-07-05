@@ -88,10 +88,6 @@ CINN_REGISTER_HELPER(assert_true_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForAssertTrue)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForAssertTrue))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForAssertTrue))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

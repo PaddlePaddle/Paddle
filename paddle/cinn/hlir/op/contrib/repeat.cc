@@ -231,10 +231,6 @@ CINN_REGISTER_HELPER(repeat_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRepeat)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForRepeat))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForRepeat))
       .set_support_level(4);
 
   return true;

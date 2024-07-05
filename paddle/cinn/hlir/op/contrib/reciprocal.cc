@@ -196,10 +196,6 @@ CINN_REGISTER_HELPER(reciprocal_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForReciprocal)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForReciprocalSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForReciprocal))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForReciprocal))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);

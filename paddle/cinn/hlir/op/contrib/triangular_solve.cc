@@ -124,10 +124,6 @@ CINN_REGISTER_HELPER(triangular_solve_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForTriangularSolve)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForTriangularSolve))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForTriangularSolve))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

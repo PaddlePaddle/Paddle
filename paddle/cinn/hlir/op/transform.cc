@@ -2172,31 +2172,6 @@ std::vector<std::vector<std::string>> InferLayoutForSliceAssign(
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(transform_ops) {
-  CINN_REGISTER_OP(matmul)
-      .describe(
-          "This operator is used to perform (batched) matrix multiplication "
-          "over the last two dimensions of the input "
-          "tensors X and Y.")
-      .set_num_inputs(2)
-#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
-      .set_num_outputs(1)
-#else
-      .set_num_outputs(2)
-#endif
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForMatMul)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForMatMul))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForMatMul))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForMatMul))
-#endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-
   CINN_REGISTER_OP(split)
       .describe(
           "This operator is used to split tensors X to 'sections' sub-tensor "
@@ -2205,14 +2180,6 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(0)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSplit)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForSplit))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForSplit))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForSplit))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
@@ -2227,14 +2194,6 @@ CINN_REGISTER_HELPER(transform_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForConcat)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForConcatSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForConcat))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForConcat))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForConcat))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
@@ -2247,14 +2206,6 @@ CINN_REGISTER_HELPER(transform_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForReverse)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForReverseSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForReverse))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLayoutTransform))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForReverse))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
@@ -2267,80 +2218,6 @@ CINN_REGISTER_HELPER(transform_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForTranspose)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForTransposeSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForTranspose))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLayoutTransform))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForTranspose))
-#endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(mul)
-      .describe(
-          "This operator is used to perform matrix multiplication for input X "
-          "and Y.")
-      .set_num_inputs(2)
-      .set_num_outputs(2)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForMul)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForMul))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForMul))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForMul))
-#endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-
-#ifdef CINN_WITH_CUDA
-  CINN_REGISTER_OP(cublas_gemm)
-      .describe("This operator uses cublas to compute the gemm.")
-      .set_num_inputs(3)
-      .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForCublasGemm)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForCublasGemm))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForCublasGemm))
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(cublas_matmul)
-      .describe("This operator uses cublas to compute the matmul.")
-      .set_num_inputs(2)
-      .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForMatMul)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForMatMul))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForMatMul))
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-#endif
-
-  CINN_REGISTER_OP(layout_transform)
-      .describe("This operator is used to transform op's layouts")
-      .set_num_inputs(1)
-      .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForLayoutTransform)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForLayoutTransform))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLayoutTransform))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForLayoutTransform))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
@@ -2353,14 +2230,6 @@ CINN_REGISTER_HELPER(transform_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForSlice)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForSliceSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForSlice))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForSlice))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForSlice))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
@@ -2373,12 +2242,6 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSliceAssign)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForSliceAssign))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForSliceAssign))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForSliceAssign))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -2394,12 +2257,6 @@ CINN_REGISTER_HELPER(transform_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForGather)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForGatherSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForGather))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForGather))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForGather))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
@@ -2411,12 +2268,6 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForScatterAssign)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForScatterAssign))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForScatterAssign))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForScatterAssign))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
@@ -2429,12 +2280,6 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForScatterAdd)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForScatterAdd))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForScatterAdd))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForScatterAdd))
       // Because the scatter_add operator calls the external function by passing
       // pointers, the code generated by operator fusion will have out-of-bounds
       // access. It should not fuse with any other injective operators, though
