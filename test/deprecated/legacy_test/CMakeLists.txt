@@ -651,8 +651,6 @@ endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_transformer_sorted_gradient
-                     PROPERTIES TIMEOUT 120)
 
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated
@@ -705,11 +703,6 @@ set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-endif()
-
-if(APPLE)
-  set_tests_properties(test_imperative_transformer_sorted_gradient
-                       PROPERTIES TIMEOUT 300)
 endif()
 
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
