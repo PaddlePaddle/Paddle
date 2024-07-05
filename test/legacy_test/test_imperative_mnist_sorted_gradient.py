@@ -110,16 +110,23 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             # initialize params and fetch them
             static_param_init_value = {}
             static_param_name_list = []
+            static_params = []
+
             for param in mnist.parameters():
                 static_param_name_list.append(param.name)
+                static_params.append(param)
 
             out = exe.run(
                 base.default_startup_program(),
-                fetch_list=static_param_name_list,
             )
 
             for i in range(len(static_param_name_list)):
-                static_param_init_value[static_param_name_list[i]] = out[i]
+                param_name = static_param_name_list[i]
+                static_param_init_value[param_name] = np.asarray(
+                    paddle.static.global_scope()
+                    .find_var(param_name)
+                    .get_tensor()
+                )
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
@@ -132,8 +139,8 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                         .reshape([128, 1])
                     )
 
-                    fetch_list = [avg_loss.name]
-                    fetch_list.extend(static_param_name_list)
+                    fetch_list = [avg_loss]
+                    fetch_list.extend(static_params)
                     out = exe.run(
                         base.default_main_program(),
                         feed={"pixel": static_x_data, "label": y_data},
@@ -167,4 +174,5 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
