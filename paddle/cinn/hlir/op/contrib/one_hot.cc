@@ -99,55 +99,6 @@ ir::Tensor OneHot(const ir::Tensor& indices,
   return res;
 }
 
-std::vector<framework::shape_t> InferShapeForOneHot(
-    const std::vector<framework::shape_t>& inputs_shape,
-    const framework::AttrMapType& attrs) {
-  CHECK_EQ(inputs_shape.size(), 3UL)
-      << "The number of one_hot's input should be 3";
-
-  int depth;
-  int axis;
-
-  for (auto& iter : attrs) {
-    if (iter.first == "depth") {
-      depth = absl::get<int>(iter.second);
-    } else if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
-    }
-  }
-
-  const std::vector<int>& in_shape = inputs_shape[0];
-  int ndim = static_cast<int>(in_shape.size());
-  int true_axis = (axis == -1) ? in_shape.size() : axis;
-  int indices_index = 0;
-  std::vector<int> new_shape;
-
-  for (int i = 0; i < ndim + 1; ++i) {
-    if (i == true_axis) {
-      new_shape.push_back(depth);
-    } else {
-      new_shape.push_back(in_shape[indices_index++]);
-    }
-  }
-
-  std::vector<std::vector<int>> res{new_shape};
-  return res;
-}
-
-std::vector<Type> InferDtypeForOneHot(const std::vector<Type>& inputs_type,
-                                      const framework::AttrMapType& attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-
-  std::string dtype = "float32";
-  if (attrs.find("dtype") != attrs.end()) {
-    dtype = absl::get<std::string>(attrs.at("dtype"));
-  }
-
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  return res;
-}
-
 std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     const framework::NodeAttr& attrs,
     const std::vector<ir::Tensor>& inputs,

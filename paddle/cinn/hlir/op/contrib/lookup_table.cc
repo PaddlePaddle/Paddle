@@ -123,25 +123,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForLookupTable(
-    const std::vector<framework::shape_t>& inputs_shape,
-    const framework::AttrMapType& attrs) {
-  CHECK(!inputs_shape.empty() && !inputs_shape[0].empty())
-      << "The input's shape size is 0! Please check again.";
-
-  auto res = inputs_shape[1];
-  res.back() = inputs_shape[0].back();
-  return {res};
-}
-
-std::vector<Type> InferDtypeForLookupTable(
-    const std::vector<Type>& inputs_type, const framework::AttrMapType& attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

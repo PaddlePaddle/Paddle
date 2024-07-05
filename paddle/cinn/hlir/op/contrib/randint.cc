@@ -73,22 +73,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForRandInt(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForRandInt(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("shape"));
-  auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  CHECK(!shape.empty()) << "shape attr is empty!";
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForRandInt(const std::vector<Type> &inputs_type,
-                                       const framework::AttrMapType &attrs) {
-  std::string dtype = "int32";
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

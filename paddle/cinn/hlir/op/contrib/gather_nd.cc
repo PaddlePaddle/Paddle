@@ -257,32 +257,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
   return strategy;
 }
 
-std::vector<std::vector<int>> InferShapeForGatherNd(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 2U)
-      << "The input's shape size should be 2! Please check again.";
-  std::vector<int> x_shape = inputs_shape[0];
-  std::vector<int> index_shape = inputs_shape[1];
-  CHECK_GE(index_shape.size(), 1U) << "Index shape must greater or equal to 1!";
-  CHECK_LE(index_shape.back(), x_shape.size())
-      << "Index shape[-1] must be no more than x.rank! Please check again.";
-  std::vector<int> output_shape;
-  output_shape.insert(
-      output_shape.end(), index_shape.begin(), index_shape.end() - 1);
-  output_shape.insert(
-      output_shape.end(), x_shape.begin() + index_shape.back(), x_shape.end());
-  return {output_shape};
-}
-
-std::vector<Type> InferDtypeForGatherNd(const std::vector<Type> &inputs_type,
-                                        const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

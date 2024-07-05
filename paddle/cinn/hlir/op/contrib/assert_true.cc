@@ -66,17 +66,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForAssertTrue(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  return inputs_shape;
-}
-
-std::vector<Type> InferDtypeForAssertTrue(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  return inputs_type;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

@@ -73,27 +73,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForGaussianRandom(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("shape"));
-  auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForGaussianRandom(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  std::string dtype = "float32";
-  if (attrs.find("dtype") != attrs.end()) {
-    dtype = absl::get<std::string>(attrs.at("dtype"));
-  }
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  CHECK(res[0].is_float(32) || res[0].is_float(64))
-      << "gaussian_random only support float32 and float64, but here " << res[0]
-      << "! Please check.";
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

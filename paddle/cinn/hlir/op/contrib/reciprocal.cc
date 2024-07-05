@@ -166,23 +166,6 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForReciprocal(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty())
-      << "The input's shape size is empty! Please check again.";
-  std::vector<framework::shape_t> res{inputs_shape[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForReciprocal(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

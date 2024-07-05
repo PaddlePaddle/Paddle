@@ -193,69 +193,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForArgmax(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1UL);
-  auto ndim = inputs_shape[0].size();
-  int axis;
-  bool keep_dim;
-
-  CHECK(attrs.find("axis") != attrs.end());
-  axis = absl::get<int>(attrs.at("axis"));
-  if (ndim > 0) {
-    if (axis < 0) {
-      axis = static_cast<int>(ndim) + axis;
-    }
-    CHECK_LT(axis, ndim) << "Axis must be less than tensor's dim";
-    CHECK_GE(axis, 0) << "Axis must be more than 0";
-  } else {
-    // 0D Tensor
-    CHECK(axis == 0 || axis == -1)
-        << "Axis must be 0 or -1 if input tensor is 0-dim";
-  }
-
-  CHECK(attrs.find("keep_dim") != attrs.end());
-  keep_dim = absl::get<bool>(attrs.at("keep_dim"));
-
-  std::vector<int> out_shapes;
-  for (size_t i = 0; i < ndim; ++i) {
-    if (axis == i) {
-      if (keep_dim) {
-        out_shapes.push_back(1);
-      }
-    } else {
-      out_shapes.push_back(inputs_shape[0][i]);
-    }
-  }
-
-  if (keep_dim) {
-    CHECK_EQ(ndim, out_shapes.size());
-  } else {
-    CHECK(ndim - 1 == out_shapes.size() || ndim == 0 && out_shapes.empty());
-  }
-
-  return {out_shapes};
-}
-
-std::vector<Type> InferDtypeForArgmax(const std::vector<Type> &inputs_type,
-                                      const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  return {Int(32)};
-}
-
-std::vector<std::vector<std::string>> InferLayoutForArgmax(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  CHECK_EQ(input_shapes.size(), 1U)
-      << "The input's shape size is not 1! Please check again.";
-  CHECK_EQ(input_layouts.size(), 1U)
-      << "The input's layout size is not 1! Please check again.";
-  return {input_layouts, input_layouts};
-}
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
