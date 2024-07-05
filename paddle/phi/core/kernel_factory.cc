@@ -29,7 +29,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
-                         true,
+                         false,
                          "Whether to use stride kernel if op support stride.");
 
 COMMON_DECLARE_int32(low_precision_op_list);
