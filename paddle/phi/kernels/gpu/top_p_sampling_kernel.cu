@@ -410,13 +410,8 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
       if (!flag) {
         float val = static_cast<float>(beam_max[i].v);
         sum_prob += val;
-#ifdef PADDLE_WITH_HIP
         float random_ratio =
-            exponential_transform(hiprand_uniform(states + bid), 1.0f);
-#else
-        float random_ratio =
-            exponential_transform(curand_uniform(states + bid), 1.0f);
-#endif
+            exponential_transform(GPU(rand_uniform)(states + bid), 1.0f);
         float random_val = (val >= threshold_now ? val : 0.f) / random_ratio;
         if (max_val < random_val) {
           max_val = random_val;
@@ -505,11 +500,7 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
   }
   if (tid == 0) {
     count_iter_begin[bid] = count_iter[bid];
-#ifdef PADDLE_WITH_HIP
-    float rand_top_p = hiprand_uniform(states + bid) * top_p_num;
-#else
-    float rand_top_p = curand_uniform(states + bid) * top_p_num;
-#endif
+    float rand_top_p = GPU(rand_uniform)(states + bid) * top_p_num;
     top_ps[bid] = (T)rand_top_p;
     float sum_prob = 0.0f;
     bool flag = false;
@@ -729,13 +720,8 @@ __global__ void topp_sampling(T* sorted_probs,
 
     if (thread_offset < p_t ||
         (thread_offset >= p_t && thread_offset - thread_count < p_t)) {
-#ifdef PADDLE_WITH_HIP
       float random_ratio =
-          exponential_transform(hiprand_uniform(states + bid), 1.0f);
-#else
-      float random_ratio =
-          exponential_transform(curand_uniform(states + bid), 1.0f);
-#endif
+          exponential_transform(GPU(rand_uniform)(states + bid), 1.0f);
       float tmp_val =
           (thread_count >= threshold_now ? thread_count : 0.f) / random_ratio;
       if (static_cast<float>(max_thread_pair.v) < tmp_val) {
@@ -1032,11 +1018,7 @@ __global__ void setup_kernel(GPU(randState_t) * state,
                              const int bs) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
-#ifdef PADDLE_WITH_HIP
-    hiprand_init(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
-#else
-    curand_init(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
-#endif
+    GPU(rand_init)(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
   }
 }
 
@@ -1048,17 +1030,9 @@ __global__ void setup_kernel(GPU(randState_t) * state,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     if (need_batch_random) {
-#ifdef PADDLE_WITH_HIP
-      hiprand_init(seed, i, offset, &state[i]);
-#else
-      curand_init(seed, i, offset, &state[i]);
-#endif
+      GPU(rand_init)(seed, i, offset, &state[i]);
     } else {
-#ifdef PADDLE_WITH_HIP
-      hiprand_init(seed, 0, offset, &state[i]);
-#else
-      curand_init(seed, 0, offset, &state[i]);
-#endif
+      GPU(rand_init)(seed, 0, offset, &state[i]);
     }
   }
 }
