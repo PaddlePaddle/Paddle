@@ -2540,6 +2540,14 @@
     {scale_data : Scale_data,  shift_data : Shift_data}
   manual_signature : [multi_gru]
 
+- op : multiclass_nms
+  inputs:
+    {bboxes : BBoxes, scores : Scores}
+  outputs:
+    out : Out
+  get_expected_kernel_type :
+    multiclass_nms : GetMulticlassNmsExpectedKernelType
+
 - op : multiclass_nms3
   inputs :
     {bboxes : BBoxes, scores : Scores, rois_num : RoisNum}
