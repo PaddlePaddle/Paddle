@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import convert_float_to_uint16, convert_uint16_to_float
+from stride_util import is_stride_supported
 
 import paddle
 from paddle.base import core
@@ -1130,6 +1131,7 @@ class TestGetitemBasicIndexOutputView(unittest.TestCase):
         # Stride now only supports in dygraph mode
         paddle.disable_static()
 
+    @unittest.skipIf(not is_stride_supported(), "stride not supported")
     def test_index_is_int(self):
         np_data = np.ones((5, 5, 5), dtype='float32')
         np_tmp = np_data[3, 2]
@@ -1141,6 +1143,7 @@ class TestGetitemBasicIndexOutputView(unittest.TestCase):
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    @unittest.skipIf(not is_stride_supported(), "stride not supported")
     def test_index_is_0dTensor(self):
         np_data = np.ones((5, 5, 5), dtype='float32')
         np_tmp = np_data[3, 2]
@@ -1152,6 +1155,7 @@ class TestGetitemBasicIndexOutputView(unittest.TestCase):
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    @unittest.skipIf(not is_stride_supported(), "stride not supported")
     def test_index_is_slice(self):
         np_data = np.ones((5, 5, 5), dtype='float32')
         np_tmp = np_data[::2, :, 0:4]

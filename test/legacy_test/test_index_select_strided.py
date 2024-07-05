@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
+from stride_util import is_stride_supported
 
 import paddle
 from paddle import base
 
 
+@unittest.skipIf(not is_stride_supported(), "stride not supported")
 class TestIndexSelectStrided(unittest.TestCase):
     def setUp(self):
         self.shape = [3, 3]

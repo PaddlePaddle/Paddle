@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
+from stride_util import is_stride_supported
 
 import paddle
 from paddle import base
 
 
+@unittest.skipIf(not is_stride_supported(), "stride not supported")
 class TestTensorUnfold(unittest.TestCase):
     def setUp(self):
         self.shape = [5, 5]
@@ -59,6 +61,7 @@ class TestTensorUnfold(unittest.TestCase):
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
 
 
+@unittest.skipIf(not is_stride_supported(), "stride not supported")
 class TestTensorUnfold2(unittest.TestCase):
     def setUp(self):
         self.shape = [12]

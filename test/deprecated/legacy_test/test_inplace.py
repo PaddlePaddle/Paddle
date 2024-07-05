@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import _C_ops
 
 
 class TestInplace(unittest.TestCase):
@@ -812,7 +813,7 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
         var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
         with self.assertRaisesRegex(
             TypeError,
-            'y must be scalar type, but received: %s ' % (type([2])),
+            f'y must be scalar type, but received: {type([2])} ',
         ):
             paddle.pow_(var, [2])
 
@@ -1693,6 +1694,9 @@ class TestDygrapInplaceMultiply(TestDygraphInplaceWithContinuous):
         return paddle.multiply(var, self.y)
 
 
+@unittest.skipIf(
+    not hasattr(_C_ops, "transpose_"), "_C_ops.transpose_ is not supported."
+)
 class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20])
@@ -1719,6 +1723,9 @@ class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 3)
 
 
+@unittest.skipIf(
+    not hasattr(_C_ops, "transpose_"), "_C_ops.transpose_ is not supported."
+)
 class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.transpose_(var, [1, 0, 2])
@@ -1843,6 +1850,9 @@ class TestDygraphInplaceBitwiseRightShift_logic(TestDygraphInplaceLogicAnd):
             self.inplace_api_processing(broadcast_input)
 
 
+@unittest.skipIf(
+    not hasattr(_C_ops, "transpose_"), "_C_ops.transpose_ is not supported."
+)
 class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.random((20, 40))
