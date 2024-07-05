@@ -429,6 +429,8 @@ endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
+list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
+list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
