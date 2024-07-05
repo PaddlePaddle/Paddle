@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 REGISTER_FILE_SYMBOLS(aligned_allocator);
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 // For memory address alignment
 class AlignedAllocation : public Allocation {
@@ -70,6 +68,4 @@ void AlignedAllocator::FreeImpl(phi::Allocation* allocation) {
   delete allocation;
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

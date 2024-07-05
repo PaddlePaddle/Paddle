@@ -257,34 +257,10 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   int32_t num_levels = max_level - min_level + 1;
   int64_t batch_size = 1;
 
-  symbol::DimExpr num_rois = [&]() {
-    pir::Value rois_num = op->operand_source(1);
-    const auto &rois_num_shape_or_data =
-        infer_context->GetShapeOrDataForValue(rois_num);
-
-    batch_size = rois_num_shape_or_data.shape()[0].Get<int64_t>();
-    PADDLE_ENFORCE_EQ(rois_num_shape_or_data.data().has_value(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "InferSymbolicShape of DistributeFpnProposalsdOp "
-                          "only support input with rois_num."));
-
-    symbol::DimExpr rois_total_num = 0;
-    for (int i = 0; i < batch_size; i++) {
-      const auto &rois_num_value = rois_num_shape_or_data.data().value()[i];
-
-      CHECK(rois_num_value.isa<int64_t>() || rois_num_value.isa<std::string>())
-          << "rois_num must be int64 or SymName.";
-      if (rois_num_value.isa<int64_t>()) {
-        return symbol::DimExpr(rois_num_value.Get<int64_t>());
-      } else {
-        return symbol::DimExpr(rois_num_value.Get<std::string>());
-      }
-      rois_total_num = rois_total_num + rois_num_value;
-    }
-
-    return rois_total_num;
-  }();
+  symbol::DimExpr num_rois =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .shape()
+          .at(0);
 
   const auto &multi_rois_out_shape = [&]() {
     symbol::TensorListShapeOrDataDimExprs multi_rois_out_shape;
@@ -300,8 +276,8 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(level_dim));
         last_dim = last_dim - level_dim[0];
       }
-      multi_rois_out_shape.emplace_back(
-          symbol::TensorShapeOrDataDimExprs({last_dim, 4}));
+      multi_rois_out_shape.emplace_back(symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName(), 4}));
     }
 
     return multi_rois_out_shape;
@@ -330,6 +306,79 @@ bool EinsumOpInferSymbolicShape(pir::Operation *op,
   PADDLE_THROW(phi::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
+}
+
+bool FlattenOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &attributes = op->attributes();
+  int start_axis =
+      attributes.at("start_axis").dyn_cast<pir::Int32Attribute>().data();
+  int stop_axis =
+      attributes.at("stop_axis").dyn_cast<pir::Int32Attribute>().data();
+
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  int in_dims_size = x_shape.size();
+
+  if (in_dims_size == 0) {
+    PADDLE_ENFORCE_EQ(
+        start_axis == 0 || start_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The start_axis should be 0 or -1 when "
+                                     "the input tensor is a 0D-Tensor"));
+    PADDLE_ENFORCE_EQ(
+        stop_axis == 0 || stop_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The stop_axis should be 0 or -1 when the "
+                                     "input tensor is a 0D-Tensor"));
+    // this can ensure out shape {1}
+    start_axis = 0;
+    stop_axis = -1;
+  }
+
+  if (start_axis < 0) {
+    start_axis = start_axis + in_dims_size;
+  }
+  if (stop_axis < 0) {
+    stop_axis = stop_axis + in_dims_size;
+  }
+  if (in_dims_size > 0) {
+    PADDLE_ENFORCE_GE(
+        stop_axis,
+        start_axis,
+        phi::errors::InvalidArgument("The stop_axis should be greater"
+                                     "than or equal to start_axis."));
+  }
+
+  symbol::DimExpr outer{1};
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
+  for (int i = 0; i < start_axis; ++i) {
+    out_shape.push_back(x_shape[i]);
+  }
+  for (int i = start_axis; i <= stop_axis; i++) {
+    outer = outer * x_shape[i];
+  }
+  out_shape.push_back(outer);
+  for (int i = stop_axis + 1; i < in_dims_size; i++) {
+    out_shape.push_back(x_shape[i]);
+  }
+
+  symbol::ShapeOrDataDimExprs out_shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), out_shape_data);
+
+  std::vector<symbol::DimExpr> xshape_shape = x_shape;
+  xshape_shape.insert(xshape_shape.begin(), symbol::DimExpr{0});
+  symbol::ShapeOrDataDimExprs xshape_shape_data{
+      symbol::TensorShapeOrDataDimExprs(xshape_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(1), xshape_shape_data);
+  return true;
+}
+
+bool Flatten_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
 bool KthvalueOpInferSymbolicShape(
@@ -825,13 +874,26 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  int64_t axis = op->operand_source(1)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
+  const symbol::ShapeOrDataDimExprs &axis_shape_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  PADDLE_ENFORCE_EQ(
+      axis_shape_data.data().has_value(),
+      true,
+      phi::errors::InvalidArgument(
+          "In InferSymbolicShape, axis of SplitWithNumOp is null"));
+  const std::vector<symbol::DimExpr> &axis_data =
+      axis_shape_data.data().value();
+  PADDLE_ENFORCE_EQ(
+      axis_data.size() == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "In SplitWithNumOp, data of axis should be one dimension"));
+  if (!axis_data[0].isa<int64_t>()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of axis must be int64_t"));
+  }
+  int64_t axis = axis_data[0].dyn_cast<int64_t>();
+
   const auto &attributes = op->attributes();
   int num = attributes.at("num").dyn_cast<pir::Int32Attribute>().data();
   const auto &x_s_or_d =

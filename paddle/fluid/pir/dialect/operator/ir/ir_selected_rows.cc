@@ -47,12 +47,11 @@ IrSelectedRows& IrSelectedRows::operator=(const IrSelectedRows& other) {
   return *this;
 }
 
-IrSelectedRows& IrSelectedRows::operator=(
-    IrSelectedRows&& other) noexcept {  // NOLINT
-  dims_ = std::move(other.dims());
+IrSelectedRows& IrSelectedRows::operator=(IrSelectedRows&& other) noexcept {
+  dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
-  lod_ = std::move(other.lod());
+  lod_ = other.lod();
   offset_ = other.offset();
   return *this;
 }

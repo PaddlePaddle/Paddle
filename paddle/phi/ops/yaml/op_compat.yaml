@@ -116,6 +116,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : add_position_encoding
+  backward: add_position_encoding_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : addmm
   backward : addmm_grad
   inputs :
@@ -126,6 +133,13 @@
     {alpha : Alpha, beta : Beta}
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : affine_channel
+  backward: affine_channel_grad
+  inputs:
+    {x : X, scale : Scale, bias : Bias}
+  outputs:
+    out : Out
 
 - op : affine_grid
   backward : affine_grid_grad
@@ -329,6 +343,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : attention_lstm
+  backward: attention_lstm_grad
+  inputs:
+    {x : X, c0 : C0, h0 : H0, attention_weight : AttentionWeight, attention_bias : AttentionBias, attention_scalar : AttentionScalar, attention_scalar_bias : AttentionScalarBias, lstm_weight : LSTMWeight, lstm_bias : LSTMBias}
+  outputs:
+    {hidden : Hidden, cell : Cell, attentioned_x : AttentionedX, attention_fc_out : AttentionFCOut, lstm_x : LSTMX, lstm_out : LSTMOUT}
+
 - op : auc
   inputs :
     {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
@@ -374,6 +395,12 @@
     {input : X, label : Label}
   outputs :
     out : Out
+
+- op : beam_search_decode
+  inputs:
+    {ids : Ids, scores : Scores}
+  outputs:
+    {sentence_ids : SentenceIds, sentence_scores : SentenceScores}
 
 - op : bernoulli
   inputs :
@@ -763,6 +790,13 @@
       data_type : int
       support_tensor : true
 
+- op : cvm
+  backward: cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Y
+
 - op : data_norm
   backward : data_norm_grad
   extra :
@@ -850,6 +884,12 @@
   inputs :
     x : Input
   outputs :
+    out : Out
+
+- op : dgc_clip_by_norm
+  inputs:
+    x : X
+  outputs:
     out : Out
 
 - op : dgc_momentum
@@ -1210,6 +1250,12 @@
 - op : feed
   outputs: {out: Out}
 
+- op : fetch_barrier
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -1528,6 +1574,12 @@
   outputs :
     out : Out
 
+- op : fused_embedding_fc_lstm
+  inputs:
+    {ids : Ids, embeddings : Embeddings, weight_h : WeightH, bias : Bias, h0 : H0, c0 : C0}
+  outputs:
+    {hidden : Hidden, cell : Cell, xx : XX, batched_input : BatchedInput, batched_hidden : BatchedHidden, batched_cell : BatchedCell, reordered_h0 : ReorderedH0, reordered_c0 : ReorderedC0}
+
 - op : fused_fc_elementwise_layernorm
   inputs :
     x : X
@@ -1584,6 +1636,13 @@
     {x : X, y : Y, reserve_space: ReserveSpace, out_grad : DOut}
   outputs :
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
+
+- op : fused_seqpool_cvm
+  backward: fused_seqpool_cvm_grad
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
 
 - op : fused_transpose
   inputs:
@@ -1665,6 +1724,12 @@
   outputs :
     out : Out
     fc_out : FCOut
+
+- op : fusion_seqpool_concat
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : fusion_transpose_flatten_concat
   inputs :
@@ -1829,6 +1894,14 @@
   outputs :
     out : Out
 
+- op : hash
+  inputs:
+    x : X
+  attrs :
+    runtime_shape : ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE
+  outputs:
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   inputs :
@@ -1840,9 +1913,16 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
 
+- op : hinge_loss
+  backward: hinge_loss_grad
+  inputs:
+    {logits : Logits, labels : Labels}
+  outputs:
+    loss : Loss
+
 - op : histogram
   inputs :
-    input : X
+    {input: X, weight : Weight}
   outputs :
     out : Out
 
@@ -1859,6 +1939,12 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : im2sequence
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
 
 - op : imag
   backward : imag_grad
@@ -2017,6 +2103,23 @@
     negative_slope : alpha
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : legacy_expand (expand)
+  backward : legacy_expand_grad (expand_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : expand_times
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : ExpandTimes
+      tensors_name : expand_times_tensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [legacy_expand, legacy_expand_grad]
 
 - op : lerp
   backward : lerp_grad
@@ -2203,6 +2306,13 @@
     {x : X, mask : Mask}
   outputs :
     out : Y
+
+- op : match_matrix_tensor
+  backward: match_matrix_tensor_grad
+  inputs:
+    {x : X, y : Y, w : W}
+  outputs:
+    {out : Out, tmp : Tmp}
 
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
@@ -2428,6 +2538,15 @@
     hidden : Hidden
   attrs :
     {scale_data : Scale_data,  shift_data : Shift_data}
+  manual_signature : [multi_gru]
+
+- op : multiclass_nms
+  inputs:
+    {bboxes : BBoxes, scores : Scores}
+  outputs:
+    out : Out
+  get_expected_kernel_type :
+    multiclass_nms : GetMulticlassNmsExpectedKernelType
 
 - op : multiclass_nms3
   inputs :
@@ -2730,9 +2849,9 @@
   outputs:
     out : Out
   attrs:
-    { dims : dim,  keep_dim : keep_dim}
+    { axis : dim,  keepdim : keep_dim}
   int_array:
-    dims :
+    axis :
       data_type : int
       support_tensor : true
   extra :
@@ -3124,6 +3243,13 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_expand
+  backward: sequence_expand_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+
 - op : sequence_mask
   inputs:
     x : X
@@ -3138,8 +3264,12 @@
 
 - op : sequence_softmax
   backward : sequence_softmax_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
   extra :
-    attrs : [str data_format = "AnyLayout"]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = false]
 
 - op : sgd_ (sgd)
   inputs :
@@ -3173,6 +3303,12 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : share_data
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : shuffle_batch
   backward: shuffle_batch_grad
@@ -4169,6 +4305,12 @@
   outputs:
     {out: Out}
 
+- op: lookup_table_dequant
+  inputs:
+    {w : W, ids : Ids}
+  outputs:
+    out : Out
+
 - op: lstm
   backward: lstm_grad
   inputs:
@@ -4389,10 +4531,12 @@
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  attrs:
+    axis: axis
   scalar:
-   axis:
-     datatype : int
-     tensor_name : Axis
+    axis:
+      data_type : int
+      tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad

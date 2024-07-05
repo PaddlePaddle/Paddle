@@ -255,40 +255,6 @@ if(WITH_GPU OR WITH_ROCM)
       CACHE FILEPATH "PHI GPU Library" FORCE)
 endif()
 
-# NOTE(silverling): what we are doing here is to build a library `phi_kernel_gpu`
-# that contains all GPU kernels implementation. This can allow paddle be built
-# with more CUDA archs and reduce the binary size of `phi` library.
-if(WITH_GPU OR WITH_ROCM)
-  if(WITH_GPU)
-    nv_library(
-      phi_kernel_gpu ${PHI_BUILD_TYPE}
-      SRCS ${PHI_KERNEL_GPU_SRCS}
-      DEPS ${PHI_DEPS})
-  elseif(WITH_ROCM)
-    hip_library(
-      phi_kernel_gpu ${PHI_BUILD_TYPE}
-      SRCS ${PHI_KERNEL_GPU_SRCS}
-      DEPS ${PHI_DEPS})
-  endif()
-
-  # NOTE(silverling): making library `phi` depend on `phi_kernel_gpu` (even `phi` does not use it)
-  # will make targets that depend on `phi` also automatically depend on `phi_kernel_gpu`.
-  # This will make users' life easier.
-  target_link_libraries(phi phi_kernel_gpu)
-
-  # NOTE(silverling): `phi_kernel_gpu` needs symbols from `phi`.
-  # When it's a shared library, it will work with no problem.
-  # But when it's a static library, it must be linked to `phi` at link time explicitly.
-  if(NOT WITH_SHARED_PHI)
-    target_link_libraries(phi_kernel_gpu phi)
-  endif()
-
-  string(REPLACE "phi" "phi_kernel_gpu" PHI_KERNEL_GPU_NAME ${PHI_NAME})
-  set(PHI_KERNEL_GPU_LIB
-      "${CMAKE_CURRENT_BINARY_DIR}/${PHI_KERNEL_GPU_NAME}"
-      CACHE FILEPATH "PHI Kernel GPU Library" FORCE)
-endif()
-
 if(MKL_FOUND AND WITH_ONEMKL)
   target_include_directories(phi_core PRIVATE ${MKL_INCLUDE})
 endif()

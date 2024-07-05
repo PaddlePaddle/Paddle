@@ -21,8 +21,7 @@ PADDLE_DEFINE_EXPORTED_bool(prim_all, false, "enable prim_all or not");
 PADDLE_DEFINE_EXPORTED_bool(prim_forward, false, "enable prim_forward or not");
 PADDLE_DEFINE_EXPORTED_bool(prim_backward, false, "enable prim_backward not");
 
-namespace paddle {
-namespace prim {
+namespace paddle::prim {
 bool PrimCommonUtils::IsBwdPrimEnabled() {
   bool res = StaticCompositeContext::Instance().IsBwdPrimEnabled();
   return res || FLAGS_prim_all || FLAGS_prim_backward;
@@ -77,5 +76,4 @@ void PrimCommonUtils::SetTargetGradName(
   StaticCompositeContext::Instance().SetTargetGradName(m);
 }
 
-}  // namespace prim
-}  // namespace paddle
+}  // namespace paddle::prim

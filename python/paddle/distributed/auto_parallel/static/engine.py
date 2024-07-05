@@ -283,7 +283,7 @@ class Engine:
     def _prepare_data_spec_from_dataloader(self, dataloader):
         inputs_spec = []
         labels_spec = []
-        data = next(iter(dataloader))
+        data = next(dataloader())
         if hasattr(dataloader, "batch_sampler"):
             batch_sampler = dataloader.batch_sampler
         else:
@@ -664,6 +664,8 @@ class Engine:
                     self._optimizer._apply_optimize(
                         loss, startup_program, params_grads=params_grads
                     )
+                    # re-run apply_mix2dist_pass to dist accumulator.
+                    apply_mix2dist_pass(dist_program)
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
@@ -1081,34 +1083,50 @@ class Engine:
             # 6. vpp init adaption
 
             # self._init_lr(self._pir_dense_main_progs[mode])
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
                 startup_prog = self._startup_progs[mode].clone()
+                dist_main_prog = self._pir_dist_main_progs[mode]
+                name_map_value = {}
+                for op in dist_main_prog.global_block().ops:
+                    if op.name() == "pd_op.data":
+                        var_name = op.str_attr("name")
+                        assert var_name not in name_map_value
+                        name_map_value[var_name] = op.result(0)
                 del_ops = []
                 block = startup_prog.global_block()
                 for op in block.ops:
                     if op.name() == "builtin.set_parameter":
-                        para_name = op.str_attr("parameter_name")
-                        scope_var = global_scope().find_var(para_name)
-                        if (
-                            scope_var
-                            and scope_var.get_tensor()._is_initialized()
-                        ):
-                            param = op.operand_source(0)
-                            initial_op = param.get_defining_op()
-                            new_param = block.add_kwarg(para_name, param.type())
-                            new_param.persistable = True
-                            param.replace_all_uses_with(new_param)
-                            del_ops.append(op)
-                            del_ops.append(initial_op)
-                            continue
+                        var_name = op.str_attr("parameter_name")
+                    elif op.name() == "builtin.shadow_output":
+                        var_name = op.str_attr("output_name")
+                    else:
+                        continue
+                    scope_var = global_scope().find_var(var_name)
+                    if scope_var and scope_var.get_tensor()._is_initialized():
+                        param = op.operand_source(0)
+                        initial_op = param.get_defining_op()
+                        new_param = block.add_kwarg(var_name, param.type())
+                        new_param.persistable = True
+                        param.replace_all_uses_with(new_param)
+                        del_ops.append(op)
+                        del_ops.append(initial_op)
+                    elif var_name in name_map_value:
+                        local_shape = name_map_value[var_name]._local_shape
+                        global_shape = name_map_value[var_name].shape
+                        if local_shape != global_shape:
+                            src_value = op.operand_source(0)
+                            assert src_value.shape == global_shape
+                            initial_op = src_value.get_defining_op()
+                            assert initial_op.name() == "pd_op.full"
+                            initial_op.set_int_array_attr("shape", local_shape)
+                            src_value.set_type(name_map_value[var_name].type())
                 for del_op in del_ops:
                     del_op.erase()
                 self._executor.run(startup_prog)
-            self.program_helper.init_pir(
-                self._pir_dist_main_progs[mode], self._place
-            )
-
             return
 
         if self._strategy.seed:
@@ -2046,7 +2064,7 @@ class Engine:
             ), f"DistributedBatchSampler only support one data parallel group, but got [{len(set(self._dp_world_sizes))}] different data parallel groups"
             assert (
                 batch_size % self._dp_world_sizes[0] == 0
-            ), f"batch_size [{str(batch_size)}] is not divisible by dp_world_size [{str(self._dp_world_sizes[0])}]"
+            ), f"batch_size [{batch_size}] is not divisible by dp_world_size [{self._dp_world_sizes[0]}]"
             return batch_size // self._dp_world_sizes[0]
         else:
             assert (
@@ -2147,7 +2165,7 @@ class Engine:
                 continue
             if param_array.dtype != state_dict[name].dtype:
                 self._logger.info(
-                    f"cast {name}'s dtype from '{str(state_dict[name].dtype)}' to '{str(param_array.dtype)}'"
+                    f"cast {name}'s dtype from '{state_dict[name].dtype}' to '{param_array.dtype}'"
                 )
                 state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)

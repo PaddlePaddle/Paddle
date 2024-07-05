@@ -199,7 +199,7 @@ class DeleteDropoutOpPattern : public paddle::drr::DrrPatternBase {
         pat.Op("pd_op.dropout",
                {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mode")}});
     dropout_op(
-        {&pat.Tensor("dropout_in"), &pat.Tensor("none"), &pat.Tensor("p")},
+        {&pat.Tensor("dropout_in"), &pat.InputNoneTensor(), &pat.Tensor("p")},
         {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto is_test = match_ctx.Attr<bool>("is_test");
@@ -230,7 +230,7 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
         pat.Op("pd_op.dropout",
                {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mode")}});
     dropout_op(
-        {&pat.Tensor("dropout_in"), &pat.Tensor("none"), &pat.Tensor("p")},
+        {&pat.Tensor("dropout_in"), &pat.InputNoneTensor(), &pat.Tensor("p")},
         {&pat.Tensor("dropout_out"), &pat.Tensor("dropout_mask")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {

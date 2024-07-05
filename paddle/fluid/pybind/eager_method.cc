@@ -1013,6 +1013,60 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
     auto* src_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
             ->unsafe_mutable_value();
+    if (!src_tensor->meta().is_contiguous()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s is not contiguous, cannot call share_buffer_to on it.",
+          self->tensor.name()));
+    }
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::distributed::DistTensor>());
+    }
+    auto dst_tensor =
+        static_cast<phi::distributed::DistTensor*>(dst_ptr->impl().get())
+            ->unsafe_mutable_value();
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
+  } else {
+    auto* src_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (!src_tensor->meta().is_contiguous()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s is not contiguous, cannot call share_buffer_to on it.",
+          self->tensor.name()));
+    }
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
+  }
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__unsafe_share_buffer_to(TensorObject* self,
+                                                PyObject* args,
+                                                PyObject* kwargs) {
+  EAGER_TRY
+  paddle::Tensor* dst_ptr =
+      &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
+  if (!self->tensor.initialized()) {
+    if (self->tensor.numel() == 0) {
+      // Do nothing for 0-size Tensor
+      Py_RETURN_NONE;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized! please initialize "
+          "src tensor before share_buffer_with to other.",
+          self->tensor.name()));
+    }
+  }
+  if (self->tensor.is_dist_tensor()) {
+    auto* src_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
     if (!dst_ptr->defined()) {
       dst_ptr->set_impl(std::make_shared<phi::distributed::DistTensor>());
     }
@@ -3276,6 +3330,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_share_buffer_to",
      (PyCFunction)(void (*)())tensor__share_buffer_to,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_unsafe_share_buffer_to",
+     (PyCFunction)(void (*)())tensor__unsafe_share_buffer_to,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_is_shared_buffer_with",
