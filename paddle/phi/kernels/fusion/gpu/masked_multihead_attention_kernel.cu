@@ -157,18 +157,14 @@ __global__ void masked_multihead_attention_kernel(
                           ? params.timestep
                           : params.sequence_lengths[bi];
 
-  // with SPLIT, The last single q*k*v is computed by the last threadBlock of
-  // split_index
-  const int split_index = blockIdx.z;
-  int start_seq = 0;
-  int end_seq = act_time_step;
-  bool is_last_block = false;
+  // int start_seq = 0;
+  // int end_seq = act_time_step;
+  // bool is_last_block = false;
 
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
   int qkv_base_offset = bi * (params.num_head + 2 * kv_num_head) * Dh + hi * Dh;
 
-  // QK_VEC_SIZE is only used for compute q dot k .
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
@@ -190,11 +186,6 @@ __global__ void masked_multihead_attention_kernel(
     k_bias_base = params.qkv_bias + params.num_head * Dh;
   }
 
-  // q and k have only head_dim scalar elements.
-  // below only compute q dot k = 1 element.
-  // q has QK_VECS_PER_WARP elements, [Qk_vec, Qk_vec, ..., Qk_vec]
-  // k has QK_VECS_PER_WARP elements: [Qk_vec, Qk_vec, ..., Qk_vec]
-  // per cuda thread read a Qk_vec of q and k and compute q dot k.
   if (tid < QK_VECS_PER_WARP) {
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
     int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
@@ -214,8 +205,7 @@ __global__ void masked_multihead_attention_kernel(
     // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
-    if ((Dh == Dh_MAX ||
-         tid * QK_VEC_SIZE < Dh)) {  // && (!SPLIT || is_last_block)
+    if ((Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)) {
       load_func.template load<Qk_vec>(k,
                                       params.num_head * Dh + qk_offset -
                                           hi * Dh +
@@ -352,7 +342,6 @@ __global__ void masked_multihead_attention_kernel(
     }
 
     qk = dot<Qk_vec, Qk_vec>(q, k);
-    // QK_VECS_PER_WARP is <= WARP_SIZE, reduce it within a warp!
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
@@ -361,15 +350,12 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-  // when QK_VECS_PER_WARP > WARP_SIZE, we need to reduce the qk in smem!
-  if (QK_VECS_PER_WARP > WARP_SIZE) {  // && (!SPLIT || is_last_block)
+  if (QK_VECS_PER_WARP > WARP_SIZE) {
     constexpr int WARPS_PER_RED =
         (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
-
-  // Let only the last cuda TheradBlock compute the final q*k.
-  if (tid == 0) {  // && (!SPLIT || is_last_block)
+  if (tid == 0) {
     // NOTE(wangxi): mask must be 0.0
     // T mask = params.attn_mask[
     //    bi * (params.timestep + 1) + params.timestep];
@@ -381,7 +367,7 @@ __global__ void masked_multihead_attention_kernel(
       qk += static_cast<float>(mask);
     }
     qk_max = qk;
-    qk_smem[act_time_step - start_seq] = qk;
+    qk_smem[act_time_step] = qk;
   }
   __syncthreads();
 
@@ -391,7 +377,7 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
   constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
 
-  int ko = tid / THREADS_PER_KEY + start_seq;
+  int ko = tid / THREADS_PER_KEY;
   int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
 
   static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
@@ -408,12 +394,11 @@ __global__ void masked_multihead_attention_kernel(
 
   T *k_cache = &params.cache_kv[kv_bhi * params.max_seq_length * Dh + ki];
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
-  int ti_end = div_up(end_seq - start_seq, K_PER_WARP) * K_PER_WARP + start_seq;
+  int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
 
   const int *beam_offsets = params.beam_cache_offset
                                 ? &params.beam_cache_offset[bi_seq_len_offset]
                                 : nullptr;
-
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
     const int beam_offset = beam_offsets ? beam_offsets[ti] * params.num_head *
                                                params.max_seq_length * Dh
@@ -424,7 +409,7 @@ __global__ void masked_multihead_attention_kernel(
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + ti;
-      if (ti < end_seq) {
+      if (ti < act_time_step) {
         if (beam_offset) {
           k[ii] =
               (Dh == Dh_MAX || jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
@@ -446,7 +431,7 @@ __global__ void masked_multihead_attention_kernel(
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
 
     // bool is_mask = false;
-    if (ti < end_seq && tid % THREADS_PER_KEY == 0) {
+    if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
       auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
       // T mask = params.attn_mask[mask_bhi * (params.timestep + 1) + ti];
@@ -456,7 +441,7 @@ __global__ void masked_multihead_attention_kernel(
       }
       qk_max = fmaxf(qk_max, qk);
 
-      qk_smem[ti - start_seq] = qk;
+      qk_smem[ti] = qk;
     }
   }
 
@@ -482,9 +467,8 @@ __global__ void masked_multihead_attention_kernel(
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
-  int useful_smem_index = end_seq - start_seq;
   float sum = 0.f;
-  for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
+  for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
     // bool is_mask = false;
     // float logit = is_mask ? 0.f : __expf(qk_smem[ti] - qk_max);
     float logit = __expf(qk_smem[ti] - qk_max);
@@ -497,10 +481,9 @@ __global__ void masked_multihead_attention_kernel(
   // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
-  for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
+  for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
     convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
   }
-
   __syncthreads();
 
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
@@ -514,7 +497,7 @@ __global__ void masked_multihead_attention_kernel(
   // vi means the head_dim index processed by this cuda thread in the value.
   // so this cuda thread compute [1, k] * [k, vi:vi+V_VEC_SIZE] and k starts
   // from vo and increases by a step V_PER_ITER.
-  int vo = tid / THREADS_PER_VALUE + start_seq;
+  int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
   T *v_cache = &params.cache_kv[params.cache_batch_size * kv_num_head *
@@ -535,7 +518,7 @@ __global__ void masked_multihead_attention_kernel(
   // V_PER_ITER is used to strip-mined the seq dimension.
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
-    for (int ti = vo; ti < end_seq; ti += V_PER_ITER) {
+    for (int ti = vo; ti < act_time_step; ti += V_PER_ITER) {
       const int beam_offset =
           beam_offsets
               ? beam_offsets[ti] * params.num_head * params.max_seq_length * Dh
@@ -548,10 +531,10 @@ __global__ void masked_multihead_attention_kernel(
         v = *reinterpret_cast<const V_vec *>(&v_cache[ti * Dh]);
       }
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
-      float logit = logits_smem[ti - start_seq];
+      float logit = logits_smem[ti];
       out = fma(logit, cast_to_float(v), out);
 #else
-      DataType_ logit = static_cast<DataType_>(logits_smem[ti - start_seq]);
+      DataType_ logit = static_cast<DataType_>(logits_smem[ti]);
       // Update the partial sums.
       out = fma(logit, v, out);
 #endif
@@ -561,8 +544,7 @@ __global__ void masked_multihead_attention_kernel(
   V_vec v_bias;
   zero(v_bias);
   // now we process the last v.
-  if (vo == (act_time_step % V_PER_ITER + start_seq) &&
-      (Dh == Dh_MAX || vi < Dh)) {  // && (!SPLIT || is_last_block)
+  if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
@@ -580,9 +562,9 @@ __global__ void masked_multihead_attention_kernel(
     *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
-    out = fma(logits_smem[act_time_step - start_seq], cast_to_float(v), out);
+    out = fma(logits_smem[act_time_step], cast_to_float(v), out);
 #else
-    out = fma(logits_smem[act_time_step - start_seq], v, out);
+    out = fma(logits_smem[act_time_step], v, out);
 #endif
   }
 
@@ -590,32 +572,30 @@ __global__ void masked_multihead_attention_kernel(
 
   // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
-    int vo_blk = vo - start_seq;  // vo id of current block
+    // int vo_blk = vo - start_seq;  // vo id of current block
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2;
          active_groups /= 2) {
       int midpoint = active_groups / 2;
-      if (vo_blk >= midpoint && vo_blk < active_groups &&
-          (Dh == Dh_MAX || vi < Dh)) {
+      if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-        convert_from_float(*reinterpret_cast<V_vec *>(
-                               &out_smem[(vo_blk - midpoint) * Dh + vi]),
-                           out);
+        convert_from_float(
+            *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]),
+            out);
 #else
-        *reinterpret_cast<V_vec *>(&out_smem[(vo_blk - midpoint) * Dh + vi]) =
-            out;
+        *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]) = out;
 #endif
       }
       __syncthreads();
-      if (vo_blk < midpoint && (Dh == Dh_MAX || vi < Dh)) {
-        out = add(*reinterpret_cast<const V_vec *>(&out_smem[vo_blk * Dh + vi]),
-                  out);
+      if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+        out =
+            add(*reinterpret_cast<const V_vec *>(&out_smem[vo * Dh + vi]), out);
       }
       __syncthreads();
     }
   }
 
-  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
+  if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
@@ -626,7 +606,7 @@ __global__ void masked_multihead_attention_kernel(
                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
-  return;
+  // return;
 
 #else
   assert(false);
