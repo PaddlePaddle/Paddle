@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, TypeAlias, Union
+from typing import TYPE_CHECKING, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,6 +27,8 @@ from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
 if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
     from paddle import Tensor
     from paddle._typing import NestedSequence
 
