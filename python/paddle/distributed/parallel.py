@@ -399,6 +399,13 @@ class DataParallel(layers.Layer):
                     self.group, paddle.distributed.collective.Group
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
+                [
+                    warnings.warn(
+                        f"param [{name}] is not contiguous, please check it and make it contiguous."
+                    )
+                    for name, param in self._layers.named_parameters()
+                    if not param.is_contiguous()
+                ]
             # sync buffer and params
             sync_params_buffers(self._layers, fuse_params=False)
 
