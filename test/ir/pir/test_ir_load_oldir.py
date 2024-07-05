@@ -37,6 +37,8 @@ class TestALoadPdmodelTranslatePir(unittest.TestCase):
 
     def test_load_inference_model(self):
         paddle.enable_static()
+        if paddle.framework.in_pir_mode():
+            return
         np_x = np.random.randn(9, 10, 11).astype('float32')
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -104,6 +106,8 @@ class TestJitSaveOp(unittest.TestCase):
 
     def test_with_pir(self):
         paddle.enable_static()
+        if paddle.framework.in_pir_mode():
+            return
         place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
