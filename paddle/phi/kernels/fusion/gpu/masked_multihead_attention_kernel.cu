@@ -97,7 +97,7 @@ __global__ void masked_multihead_attention_kernel(
     LoadFunc load_func,
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  const int bi = blockIdx.z;
+  const int bi = blockIdx.y;
   // params.sequence_lengths[bi] means how many k and v we have cached in
   // cache_kv.
   if (params.sequence_lengths && params.sequence_lengths[bi] < 0) {
@@ -132,7 +132,7 @@ __global__ void masked_multihead_attention_kernel(
   const int beami = bi % params.beam_width;
   // real batch id
   const int bbi = bi / params.beam_width;
-  const int hi = blockIdx.y;
+  const int hi = blockIdx.x;
   const int bhi = bi * params.num_head + hi;
 
   const int kv_num_head = params.kv_num_head;
@@ -159,23 +159,10 @@ __global__ void masked_multihead_attention_kernel(
 
   // with SPLIT, The last single q*k*v is computed by the last threadBlock of
   // split_index
-  const int split_index = blockIdx.x;
+  const int split_index = blockIdx.z;
   int start_seq = 0;
   int end_seq = act_time_step;
   bool is_last_block = false;
-
-  if constexpr (SPLIT) {
-    int real_split_each_batch =
-        (act_time_step - 1) / params.steps_per_block + 1;
-    if (split_index >= real_split_each_batch) return;
-
-    start_seq = split_index * params.steps_per_block;
-    end_seq = start_seq + params.steps_per_block;
-    if (split_index == real_split_each_batch - 1) {
-      end_seq = act_time_step;
-      is_last_block = true;
-    }
-  }
 
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
@@ -227,7 +214,8 @@ __global__ void masked_multihead_attention_kernel(
     // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
-    if ((Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) && (!SPLIT || is_last_block)) {
+    if ((Dh == Dh_MAX ||
+         tid * QK_VEC_SIZE < Dh)) {  // && (!SPLIT || is_last_block)
       load_func.template load<Qk_vec>(k,
                                       params.num_head * Dh + qk_offset -
                                           hi * Dh +
@@ -354,36 +342,34 @@ __global__ void masked_multihead_attention_kernel(
 
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
-    if (!SPLIT || is_last_block) {
-      int co = tid / QK_VECS_IN_16B;
-      int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
-      int offset = kv_bhi * params.max_seq_length * Dh +
-                   co * params.max_seq_length * QK_ELTS_IN_16B +
-                   act_time_step * QK_ELTS_IN_16B + ci;
-      if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
-        *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
-      }
+    int co = tid / QK_VECS_IN_16B;
+    int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
+    int offset = kv_bhi * params.max_seq_length * Dh +
+                 co * params.max_seq_length * QK_ELTS_IN_16B +
+                 act_time_step * QK_ELTS_IN_16B + ci;
+    if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
+      *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+    }
 
-      qk = dot<Qk_vec, Qk_vec>(q, k);
-      // QK_VECS_PER_WARP is <= WARP_SIZE, reduce it within a warp!
-      if (QK_VECS_PER_WARP <= WARP_SIZE) {
+    qk = dot<Qk_vec, Qk_vec>(q, k);
+    // QK_VECS_PER_WARP is <= WARP_SIZE, reduce it within a warp!
+    if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
-        for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
-          qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
-        }
+      for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+        qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
       }
     }
   }
 
   // when QK_VECS_PER_WARP > WARP_SIZE, we need to reduce the qk in smem!
-  if (QK_VECS_PER_WARP > WARP_SIZE && (!SPLIT || is_last_block)) {
+  if (QK_VECS_PER_WARP > WARP_SIZE) {  // && (!SPLIT || is_last_block)
     constexpr int WARPS_PER_RED =
         (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
 
   // Let only the last cuda TheradBlock compute the final q*k.
-  if (tid == 0 && (!SPLIT || is_last_block)) {
+  if (tid == 0) {  // && (!SPLIT || is_last_block)
     // NOTE(wangxi): mask must be 0.0
     // T mask = params.attn_mask[
     //    bi * (params.timestep + 1) + params.timestep];
@@ -428,7 +414,6 @@ __global__ void masked_multihead_attention_kernel(
                                 ? &params.beam_cache_offset[bi_seq_len_offset]
                                 : nullptr;
 
-#pragma unroll
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
     const int beam_offset = beam_offsets ? beam_offsets[ti] * params.num_head *
                                                params.max_seq_length * Dh
@@ -498,9 +483,6 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
   int useful_smem_index = end_seq - start_seq;
-  if (SPLIT && !is_last_block) {
-    useful_smem_index = end_seq - start_seq - 1;
-  }
   float sum = 0.f;
   for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
     // bool is_mask = false;
@@ -511,13 +493,6 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
-
-  int bhsi = bhi * params.split_seq;
-  if (SPLIT && (tid == 0)) {
-    float2 sum_max = {sum, qk_max};
-    *reinterpret_cast<float2 *>(
-        &params.qk_sum_max_split_seq[(bhsi + split_index) * 2]) = sum_max;
-  }
 
   // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
@@ -560,7 +535,6 @@ __global__ void masked_multihead_attention_kernel(
   // V_PER_ITER is used to strip-mined the seq dimension.
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
-#pragma unroll
     for (int ti = vo; ti < end_seq; ti += V_PER_ITER) {
       const int beam_offset =
           beam_offsets
@@ -588,7 +562,7 @@ __global__ void masked_multihead_attention_kernel(
   zero(v_bias);
   // now we process the last v.
   if (vo == (act_time_step % V_PER_ITER + start_seq) &&
-      (Dh == Dh_MAX || vi < Dh) && (!SPLIT || is_last_block)) {
+      (Dh == Dh_MAX || vi < Dh)) {  // && (!SPLIT || is_last_block)
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
@@ -641,33 +615,18 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-  // for shortSeq postProcessKernel is not necessary
-  if (!SPLIT || params.split_seq == 1) {
-    if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-      V_vec tmp_out;
-      convert_from_float(tmp_out, out);
-      store_func.template store<V_vec>(
-          tmp_out, thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
-#else
-      store_func.template store<V_vec>(
-          out, thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
-#endif
-    }
-    return;
-  }
-
-  /// TODO: cum_offsets should be considered here
   if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-    *(reinterpret_cast<V_vec_acum *>(
-        &params.split_out[(bhsi + split_index) * Dh + vi])) = out;
+    V_vec tmp_out;
+    convert_from_float(tmp_out, out);
+    store_func.template store<V_vec>(tmp_out,
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
-    *(reinterpret_cast<V_vec_acum_fp32_<V_vec>::Type *>(
-        &params.split_out[(bhsi + split_index) * Dh + vi])) =
-        cast_to_float(out);
+    store_func.template store<V_vec>(out,
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
+  return;
 
 #else
   assert(false);
@@ -883,7 +842,7 @@ inline size_t smem_size_in_bytes_kai(
     cudaFuncSetAttribute(                                                 \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
   }                                                                       \
-  dim3 grid(params.split_seq, params.num_head, params.batch_size);        \
+  dim3 grid(params.num_head, params.batch_size, params.split_seq);        \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
       params, load_func, store_func)
 
