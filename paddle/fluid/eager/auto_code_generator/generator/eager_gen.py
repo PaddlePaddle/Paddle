@@ -2000,7 +2000,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
         strided_flags_check = ""
-        print("forward_api_name = ", forward_api_name)
         if is_inplaced and (
             forward_api_name in strided_op_need_flags_check_list
         ):
