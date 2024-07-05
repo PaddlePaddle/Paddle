@@ -9,8 +9,7 @@ opencv-python>= 4.10.0.84
 visualdl==2.5.3
 paddle2onnx>=0.9.6
 scipy>=1.6, !=1.7.2, !=1.7.3 ; platform_system == "Windows"
-scipy>=1.13 ; python_version>="3.8" and platform_system != "Windows"
-scipy<1.13 ; python_version<="3.8" and platform_system != "Windows"
+scipy>=1.13 ; platform_system != "Windows"
 prettytable
 distro
 autograd==1.4
