@@ -30,13 +30,7 @@ class TestPythonOperatorOverride(unittest.TestCase):
         y_data = np.random.random(size=shape).astype(dtype)
         python_out = fn(x_data, y_data)
 
-        # x_var = paddle.static.create_global_var(
-        #     name='x', shape=shape, value=0.0, dtype=dtype, persistable=True
-        # )
         x_var = paddle.static.data(name='x', shape=shape, dtype=dtype)
-        # y_var = paddle.static.create_global_var(
-        #     name='y', shape=shape, value=0.0, dtype=dtype, persistable=True
-        # )
         y_var = paddle.static.data(name='y', shape=shape, dtype=dtype)
         out = fn(x_var, y_var)
 
