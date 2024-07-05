@@ -145,7 +145,10 @@ void SyncBatchNormKernel(const Context& ctx,
         paddle::platform::GpuStreamSync(stream);
       }
     } else {
-      auto comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id);
+      ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+      if (comm == nullptr) {
+        comm = ctx.nccl_comm();
+      }
       if (comm) {
         int dtype = phi::ToNCCLDataType(mean_out->dtype());
         // In-place operation
@@ -155,7 +158,7 @@ void SyncBatchNormKernel(const Context& ctx,
                                         2 * C + 1,
                                         static_cast<ncclDataType_t>(dtype),
                                         ncclSum,
-                                        comm->comm(),
+                                        comm,
                                         stream));
         VLOG(3) << "Sync result using all reduce with old comm";
       }
