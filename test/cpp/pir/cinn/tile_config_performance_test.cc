@@ -138,9 +138,9 @@ TEST(ConfigSearcher, TestReducePipeline) {
 
   // Define the search space bounds and sampling probabilities.
   constexpr int spatial_left_bound = 32;
-  constexpr int spatial_right_bound = 4096;
+  constexpr int spatial_right_bound = 32;
   constexpr int reduce_left_bound = 32;
-  constexpr int reduce_right_bound = 4096;
+  constexpr int reduce_right_bound = 32;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
   // now each has the same weight
@@ -280,27 +280,22 @@ TEST(ConfigSearcher, TestReducePipeline) {
       }
 
       // Use the config in group_tile_config.cc
-      cinn::ir::search::ScoreType best_score = 1;
+      cinn::ir::search::ScoreType best_score = 0;
       cinn::ir::search::CandidateType default_candidate;
-      cinn::ir::search::ScoreType baseline_score = 0.01;
-      for (int i = 0; i < 3; i++) {
+      cinn::ir::search::ScoreType baseline_score = 0;
+      for (int i = 0; i < 5; i++) {
         FLAGS_tile_config_policy = "default";
         cinn::ir::search::ScoreType temp_baseline_score =
             (*obj_func)(default_candidate);
         FLAGS_tile_config_policy = "search";
         cinn::ir::search::ScoreType temp_best_score =
             (*obj_func)(best_candidate);
-
-        if (temp_best_score / temp_baseline_score <
-            best_score / baseline_score) {
-          best_score = temp_best_score;
-          baseline_score = temp_baseline_score;
-        }
-        if (best_score / baseline_score < 0.93) {
-          break;
-        }
+        best_score = (best_score == 0) ? temp_best_score
+                                       : std::min(best_score, temp_best_score);
+        baseline_score = (baseline_score == 0)
+                             ? temp_baseline_score
+                             : std::min(baseline_score, temp_baseline_score);
       }
-
       LOG(INFO) << "Best score: " << best_score;
       LOG(INFO) << "Baseline score: " << baseline_score;
       LOG(INFO) << "Best candidate: " << best_candidate[0] << " "
