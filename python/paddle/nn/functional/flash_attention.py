@@ -936,8 +936,12 @@ def flashmask_attention(
     ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
 
     if causal:
-        if startend_row_indices.shape[-1] in [1, 2]:
+        if startend_row_indices.shape[-1] == 1:
             pass
+        elif startend_row_indices.shape[-1] == 2:
+            raise NotImplementedError(
+                "ending row index is not implemented yet."
+            )
         else:
             raise ValueError(
                 f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
