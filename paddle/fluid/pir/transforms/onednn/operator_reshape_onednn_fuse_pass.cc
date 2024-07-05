@@ -78,8 +78,7 @@ class FusedTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
 
       for (auto item : reshape2_shape) {
         if (item == 0) {
-          VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims, "
-                     "skipping";
+          VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims";
           return false;
         } else if (item == -1) {
           ++num_of_minus_ones;
@@ -87,9 +86,7 @@ class FusedTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
       }
 
       if (num_of_minus_ones > 1) {
-        VLOG(4)
-            << "Number of -1 values inside of reshape2 shouldn't be greater "
-               "than one in op+reshape2 oneDNN fuse pass, skipping";
+        VLOG(4) << "Number of -1 values inside of reshape2 should be 0 or 1";
         return false;
       }
       return true;
@@ -102,8 +99,7 @@ class FusedTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
           match_ctx.Attr<std::vector<int>>("fused_reshape2_shape");
 
       if (fused_unsqueeze2_axes.size() > 0 || fused_reshape2_shape.size()) {
-        VLOG(4) << "Cannot do " << fusable_ops_ << " + reshape fuse, because "
-                << fusable_ops_ << " is already fused with unsqueeze/reshape!";
+        VLOG(4) << fusable_ops_ << " is already fused with unsqueeze/reshape";
         return false;
       }
       return true;
@@ -202,8 +198,7 @@ class FcReshapeFusePattern : public paddle::drr::DrrPatternBase {
 
       for (auto item : reshape2_shape) {
         if (item == 0) {
-          VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims, "
-                     "skipping";
+          VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims";
           return false;
         } else if (item == -1) {
           ++num_of_minus_ones;
@@ -211,9 +206,7 @@ class FcReshapeFusePattern : public paddle::drr::DrrPatternBase {
       }
 
       if (num_of_minus_ones > 1) {
-        VLOG(4)
-            << "Number of -1 values inside of reshape2 shouldn't be greater "
-               "than one in op+reshape2 oneDNN fuse pass, skipping";
+        VLOG(4) << "Number of -1 values inside of reshape2 should be 0 or 1";
         return false;
       }
       return true;
@@ -224,8 +217,7 @@ class FcReshapeFusePattern : public paddle::drr::DrrPatternBase {
           match_ctx.Attr<std::vector<int>>("fused_reshape2_shape");
 
       if (fused_reshape2_shape.size()) {
-        VLOG(4) << "Cannot do " << fusable_ops_ << " + reshape fuse, because "
-                << fusable_ops_ << " is already fused with reshape!";
+        VLOG(4) << fusable_ops_ << " is already fused with reshape";
         return false;
       }
       return true;
@@ -311,17 +303,15 @@ class TransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
 
       for (auto item : reshape2_shape) {
         if (item == 0) {
-          VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims, "
-                     "skipping";
+          VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims";
           return false;
         } else if (item == -1) {
           ++num_of_minus_ones;
         }
       }
+
       if (num_of_minus_ones > 1) {
-        VLOG(4)
-            << "Number of -1 values inside of reshape2 shouldn't be greater "
-               "than one in op+reshape2 oneDNN fuse pass, skipping";
+        VLOG(4) << "Number of -1 values inside of reshape2 should be 0 or 1";
         return false;
       }
       return true;
