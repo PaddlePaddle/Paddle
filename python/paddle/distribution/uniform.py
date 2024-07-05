@@ -13,9 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, TypeAlias, Union
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -27,7 +28,15 @@ from paddle.tensor import random
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import TensorLike
+    from paddle._typing import NestedSequence
+
+    _UniformBoundary: TypeAlias = Union[
+        float,
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[Union[np.float32, np.float64]],
+        Tensor,
+    ]
 
 
 class Uniform(distribution.Distribution):
@@ -106,13 +115,14 @@ class Uniform(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.50000000])
     """
+
     low: Tensor
     high: Tensor
 
     def __init__(
         self,
-        low: TensorLike,
-        high: TensorLike,
+        low: _UniformBoundary,
+        high: _UniformBoundary,
         name: str | None = None,
     ) -> None:
         if not in_dynamic_mode():
