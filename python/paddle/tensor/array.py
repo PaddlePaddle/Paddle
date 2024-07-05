@@ -363,6 +363,7 @@ def create_array(
             dtype = paddle.base.framework.convert_np_dtype_to_dtype_(dtype)
         out = paddle._pir_ops.create_array(dtype)
         for val in array:
+            val = paddle.cast(val, dtype)
             paddle._pir_ops.array_write_(out, val, array_length(out))
         return out
     else:

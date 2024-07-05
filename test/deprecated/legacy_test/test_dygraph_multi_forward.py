@@ -109,7 +109,6 @@ class TestDygraphMultiForward(unittest.TestCase):
 
         with base.dygraph.guard():
             paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(
                 learning_rate=1e-3, parameters=mnist.parameters()
@@ -149,7 +148,6 @@ class TestDygraphMultiForward(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
             exe = base.Executor(
                 base.CPUPlace()
                 if not core.is_compiled_with_cuda()
@@ -180,13 +178,16 @@ class TestDygraphMultiForward(unittest.TestCase):
             for param in mnist.parameters():
                 static_param_name_list.append(param.name)
 
-            out = exe.run(
-                base.default_startup_program(),
-                fetch_list=static_param_name_list,
+            exe.run(
+                paddle.static.default_startup_program(),
             )
 
             for i in range(len(static_param_name_list)):
-                static_param_init_value[static_param_name_list[i]] = out[i]
+                static_param_init_value[static_param_name_list[i]] = np.asarray(
+                    paddle.base.executor.global_scope()
+                    .find_var(static_param_name_list[i])
+                    .get_tensor()
+                )
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
@@ -199,7 +200,7 @@ class TestDygraphMultiForward(unittest.TestCase):
                         .reshape([128, 1])
                     )
 
-                    fetch_list = [avg_loss.name]
+                    fetch_list = [avg_loss]
                     out = exe.run(
                         base.default_main_program(),
                         feed={"pixel": static_x_data, "label": y_data},
