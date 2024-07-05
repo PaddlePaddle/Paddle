@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import logging
 import numpy as np
 import paddle
 from paddle import base
 from paddle import pir
+from paddle.base.log_helper import get_logger
 from paddle.base.core import get_value_shape_range_info
 from util import run_pir_pass, map_dtype
 from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
 from register import converter_registry
 from impls.core import  *
-paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
 
-from paddle.base.log_helper import get_logger
+
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -48,8 +47,7 @@ class PaddleToTensorRTConverter:
             # weights = trt.Weights(weight_array)
             param_dict.update({name: weight_array})
         self.param_dict = param_dict
-        
-        # input_tensor = self.network.add_input(name="input", dtype=trt.float32, shape=input_shape)
+        paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
        
     def find_graph_inputs_outputs(self, group_op):
         operations = list(group_op.blocks())[0].ops
@@ -96,14 +94,13 @@ class PaddleToTensorRTConverter:
         max_shape_map = {}
         input_names = []
         for value in input_values:
-            # import pdb;pdb.set_trace()
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.parameter":
                 param_name = defining_op.attrs()["parameter_name"]
                 weight = trt.Weights(self.param_dict[param_name])
                 weights[value.id] = weight
                 value_to_trt_tensor[value.id] = weight
-            # elif defining_op.name() == "pd_op.data":
+                input_names.append("")
             else:
                 shape = value.shape
                 dtype = map_dtype(value.dtype.name)
@@ -116,9 +113,7 @@ class PaddleToTensorRTConverter:
                 max_shape = get_value_shape_range_info(
                     value, False, paddle.base.core.ShapeMode.kMAX
                 )
-                # min_shape = tuple(dim if dim != -1 else 1 for dim in shape)  # Minimum shape for dynamic dimensions
-                # opt_shape = tuple(dim if dim != -1 else 4 for dim in shape)  # Optimal shape for dynamic dimensions
-                # max_shape = tuple(dim if dim != -1 else 8 for dim in shape)  # Maximum shape for dynamic dimensions
+                
                 input_name = f"input_{value.id}"
                 input_tensor = network.add_input(name=input_name, dtype=dtype, shape=shape)
                 _logger.info(f"set min_shape of {value} as {min_shape}")
@@ -145,7 +140,6 @@ class PaddleToTensorRTConverter:
             output_tensor = value_to_trt_tensor[result_value.id]
             network.mark_output(output_tensor)
             out_names.append(output_tensor.name)
-            # import pdb;pdb.set_trace()
             out_shapes.append(result_value.shape)
             out_types.append(result_value.dtype)
         
@@ -159,14 +153,10 @@ class PaddleToTensorRTConverter:
         CACHE_FILE = "./engine.trt"
         with open(CACHE_FILE, "wb") as f:
             f.write(trt_engine.serialize())
-        # engine_binary = open(CACHE_FILE, "rb").read()
-        # base64_encoded = base64.b64encode(engine_binary)
-        # base64_string = base64_encoded.decode('utf-8')
         trt_params.engine_serialized_data = CACHE_FILE
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             program
         ):
-            # import pdb;pdb.set_trace()
             pir.set_insertion_point(group_op)
             out = paddle._C_ops.tensorrt_engine(
                 input_values,
@@ -201,50 +191,3 @@ class PaddleToTensorRTConverter:
                 for o_i in range(len(orin_out_values)):
                     orin_out_values[o_i].replace_all_uses_with(new_out[o_i])
                 self.program.global_block().remove_op(op)
-                # print(self.program)
-
-def main():
-    from util import get_dummy_program
-    program, scope, param_dict = get_dummy_program()
-
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(
-            program
-        ):
-            exe = paddle.static.Executor()
-            fetch_list=program.list_vars()[-1]
-            input_array = np.random.randn(1, 64).astype('float32')
-            out = exe.run(
-                program,
-                feed={"input": input_array},
-                fetch_list=fetch_list
-            )
-            print("first time, the out shape is: ", out[0].shape)
-
-            input_array2 = np.random.randn(8, 64).astype('float32')
-            out = exe.run(
-                program,
-                feed={"input": input_array2},
-                fetch_list=fetch_list
-            )
-            print("second time, the out shape is: ", out[0].shape)
-
-    program = run_pir_pass(program, partition_mode=True)
-    converter = PaddleToTensorRTConverter(program, scope)
-    converter.convert_program_to_trt()
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(
-            program
-        ):
-            exe = paddle.static.Executor()
-            fetch_list=program.list_vars()[-1]
-            input_array = np.random.randn(1, 64).astype('float32')
-            out = exe.run(
-                program,
-                feed={"input": input_array},
-                fetch_list=fetch_list
-            )
-            print(out)
-
-if __name__ == "__main__":
-    main()

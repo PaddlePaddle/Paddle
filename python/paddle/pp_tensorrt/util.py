@@ -266,9 +266,7 @@ def get_bert_program():
 if __name__ == "__main__":
     pir_program, scope, param_dict = get_bert_program()
     print(pir_program)
-    # 
     pir_program = run_pir_pass(pir_program)
-    import pdb;pdb.set_trace()
     print(pir_program)
     x = np.ones([1, 768]).astype('int64')
     place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
