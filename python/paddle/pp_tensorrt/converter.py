@@ -24,8 +24,7 @@ from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
 from register import converter_registry
 from impls.core import  *
 
-
-
+paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -47,7 +46,7 @@ class PaddleToTensorRTConverter:
             # weights = trt.Weights(weight_array)
             param_dict.update({name: weight_array})
         self.param_dict = param_dict
-        paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
+        
        
     def find_graph_inputs_outputs(self, group_op):
         operations = list(group_op.blocks())[0].ops
