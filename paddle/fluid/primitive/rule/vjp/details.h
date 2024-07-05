@@ -733,13 +733,16 @@ void elementwise_pow_grad(const Tensor& x,
   }  // indicate we will compute dy
   if (dx) {
     // dx = y * x^(y-1)
-    auto tmp_z = y - 1.0;
-    auto x_pow_z = elementwise_pow<T>(x, tmp_z);
-    auto dx_res = y * x_pow_z * out_grad;
     if (has_dynamic_shape(out_grad.shape()) || has_dynamic_shape(x.shape())) {
+      Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
+      Tensor x_pow_z = elementwise_pow<T>(x, y - one_tensor);
+      Tensor dx_res = y * x_pow_z * out_grad;
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
       set_output<T>(dx_reduce_res, dx);
     } else {
+      auto tmp_z = y - 1.0;
+      auto x_pow_z = elementwise_pow<T>(x, tmp_z);
+      auto dx_res = y * x_pow_z * out_grad;
       if (out_grad.dims() != x.dims()) {
         auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
         auto dx_reduce_res =
@@ -759,9 +762,16 @@ void pow_grad(const Tensor& x,
               const Scalar& y,
               Tensor* x_grad) {
   if (x_grad) {
-    auto y_value = y.to<float>();
-    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
-    set_output<T>(dx_res, x_grad);
+    if (has_dynamic_shape(x.shape())) {
+      Tensor y_tensor = backend::full_with_tensor<T>(shape<T>(x), y, x.dtype());
+      Tensor one_tensor = full_scalar<T>(1.0, x.dtype());
+      auto dx_res = y_tensor * elementwise_pow<T>(x, y - one_tensor) * out_grad;
+      set_output<T>(dx_res, x_grad);
+    } else {
+      auto y_value = y.to<float>();
+      auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+      set_output<T>(dx_res, x_grad);
+    }
   }
 }
 
