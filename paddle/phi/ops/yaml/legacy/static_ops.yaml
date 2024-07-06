@@ -910,3 +910,14 @@
     data_type: x
     param : [x, indices, ksize, strides, paddings,output_size, data_format]
   backward: unpool_grad
+
+- op: multiclass_nms
+  args: (Tensor bboxes, Tensor scores, float score_threshold,
+    int nms_top_k, int keep_top_k, float nms_threshold = 0.3, float nms_eta = 1.0,
+    bool normalized = true, int background_label = 0)
+  output: Tensor (out)
+  infer_meta:
+    func: MulticlassNmsv1InferMeta
+  kernel:
+    func: multiclass_nms
+    data_type: scores

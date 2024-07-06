@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include <vector>
+
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
+
 namespace phi {
-
-template <typename T, typename Context>
-void HistogramKernel(const Context& dev_ctx,
-                     const DenseTensor& input,
-                     const paddle::optional<DenseTensor>& weight,
-                     int64_t bins,
-                     int min,
-                     int max,
-                     bool density,
-                     DenseTensor* output);
-
+namespace distributed {
+SpmdInfo AddNInferSpmd(
+    const std::vector<phi::distributed::DistMetaTensor>& input);
+}
 }  // namespace phi

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Callable, Literal, Sequence, overload
 
 import numpy as np
 
@@ -1902,8 +1902,8 @@ class ConvNormActivation(Sequential):
         stride: Size2 = 1,
         padding: _PaddingSizeMode | Size2 | Size4 | str | None = None,
         groups: int = 1,
-        norm_layer: type[nn.Layer] = BatchNorm2D,
-        activation_layer: type[nn.Layer] = ReLU,
+        norm_layer: Callable[..., nn.Layer] = BatchNorm2D,
+        activation_layer: Callable[..., nn.Layer] = ReLU,
         dilation: int = 1,
         bias: bool | None = None,
     ) -> None:
