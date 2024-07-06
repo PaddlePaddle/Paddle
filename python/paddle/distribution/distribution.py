@@ -137,11 +137,11 @@ class Distribution:
         """
         raise NotImplementedError
 
-    def _extend_shape(self, sample_shape: Tensor) -> Tensor:
+    def _extend_shape(self, sample_shape: Sequence[int] | Tensor) -> Tensor:
         """compute shape of the sample
 
         Args:
-            sample_shape (Tensor): sample shape
+            sample_shape (Sequence[int]|Tensor): sample shape
 
         Returns:
             Tensor: generated sample data shape
