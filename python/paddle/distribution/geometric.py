@@ -75,7 +75,7 @@ class Geometric(distribution.Distribution):
 
     probs: Tensor
 
-    def __init__(self, probs: numbers.Real | Tensor) -> None:
+    def __init__(self, probs: float | Tensor) -> None:
         if isinstance(
             probs,
             (numbers.Real, paddle.Tensor, framework.Variable, paddle.pir.Value),
