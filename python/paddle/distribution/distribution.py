@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the distribution functions
-# __all__ = ['Categorical',
-#            'MultivariateNormalDiag',
-#            'Normal',
-#            'Uniform']
-
 from __future__ import annotations
 
 import warnings
@@ -154,7 +148,7 @@ class Distribution:
 
     def _validate_args(
         self, *args: TensorLike | NestedNumbericSequence
-    ) -> TypeGuard[tuple[Tensor, ...]]:
+    ) -> TypeGuard[Tensor]:
         """
         Argument validation for distribution args
         Args:
