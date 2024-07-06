@@ -23,7 +23,7 @@ from paddle.distribution.gamma import Gamma
 from paddle.framework import in_dynamic_mode
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import Tensor, dtype
 
 __all__ = ["Chi2"]
 
@@ -46,6 +46,10 @@ class Chi2(Gamma):
             [1]
 
     """
+
+    df: Tensor
+    rate: Tensor
+    dtype: dtype
 
     def __init__(self, df: float | Tensor) -> None:
         if not in_dynamic_mode():
