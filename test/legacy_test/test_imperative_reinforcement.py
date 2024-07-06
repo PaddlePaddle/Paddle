@@ -20,6 +20,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.nn.functional as F
 from paddle import base
+from paddle.base import core
 
 
 class Policy(paddle.nn.Layer):
@@ -46,11 +47,6 @@ class TestImperativeMnist(unittest.TestCase):
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
-        place = (
-            paddle.CPUPlace()
-            if not paddle.is_compiled_with_cuda()
-            else paddle.CUDAPlace(0)
-        )
 
         state = np.random.normal(size=4).astype("float32")
         state_list = state.tolist()
@@ -111,10 +107,10 @@ class TestImperativeMnist(unittest.TestCase):
 
             return dy_out, dy_param_init_value, dy_param_value
 
-        with base.dygraph.guard(place):
+        with base.dygraph.guard():
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
-        with base.dygraph.guard(place):
+        with base.dygraph.guard():
             (
                 eager_out,
                 eager_param_init_value,
@@ -131,7 +127,11 @@ class TestImperativeMnist(unittest.TestCase):
             else:
                 paddle.framework.random._manual_program_seed(seed)
 
-            exe = paddle.static.Executor(place)
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
 
             policy = Policy(input_size=4)
 

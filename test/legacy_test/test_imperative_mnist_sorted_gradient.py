@@ -20,19 +20,15 @@ from test_imperative_mnist import MNIST
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
     def test_mnist_sort_gradient_float32(self):
         seed = 90
         epoch_num = 1
-        place = (
-            paddle.CPUPlace()
-            if not paddle.is_compiled_with_cuda()
-            else paddle.CUDAPlace(0)
-        )
 
-        with base.dygraph.guard(place):
+        with base.dygraph.guard():
             paddle.seed(seed)
             base.set_flags({'FLAGS_sort_sum_gradient': True})
 
@@ -86,7 +82,11 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
         with new_program_scope():
             paddle.seed(seed)
 
-            exe = paddle.static.Executor(place)
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
 
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(learning_rate=1e-3)

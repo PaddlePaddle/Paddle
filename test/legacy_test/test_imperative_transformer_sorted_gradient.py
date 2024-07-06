@@ -20,6 +20,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.nn.functional as F
 from paddle import base
+from paddle.base import core
 from paddle.base.dygraph import guard
 from paddle.nn import Layer, Linear
 
@@ -1114,11 +1115,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
     def transformer_sort_gradient_float32(self, is_sparse):
         seed = 90
-        place = (
-            paddle.CPUPlace()
-            if not paddle.is_compiled_with_cuda()
-            else paddle.CUDAPlace(0)
-        )
 
         def run_dygraph():
             # NOTE(xiongkun03): In new executor, the inplace strategy is on by default, which will cause result of sumop have some differences. So we disable inplace.
@@ -1237,7 +1233,11 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 is_test=False,
                 is_sparse=is_sparse,
             )
-            exe = paddle.static.Executor(place)
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
             optimizer = paddle.optimizer.SGD(learning_rate=0.003)
 
             data_input_names = (
@@ -1308,7 +1308,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         ] = out[k]
 
         # compare eager result with imperative result
-        with guard(place):
+        with guard():
             base.set_flags({'FLAGS_sort_sum_gradient': False})
             (
                 dy_avg_cost_value,
@@ -1319,7 +1319,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 dy_param_updated,
             ) = run_dygraph()
 
-        with guard(place):
+        with guard():
             (
                 eager_avg_cost_value,
                 eager_sum_cost_value,

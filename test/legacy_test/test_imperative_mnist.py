@@ -20,6 +20,7 @@ from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 from paddle import base
+from paddle.base import core
 from paddle.nn import Linear
 
 
@@ -118,13 +119,7 @@ class TestImperativeMnist(unittest.TestCase):
 
         traced_layer = None
 
-        place = (
-            paddle.CPUPlace()
-            if not paddle.is_compiled_with_cuda()
-            else paddle.CUDAPlace(0)
-        )
-
-        with base.dygraph.guard(place):
+        with base.dygraph.guard():
             paddle.seed(seed)
 
             mnist = MNIST()
@@ -183,7 +178,11 @@ class TestImperativeMnist(unittest.TestCase):
         with new_program_scope():
             paddle.seed(seed)
 
-            exe = paddle.static.Executor(place)
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
 
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(learning_rate=1e-3)
