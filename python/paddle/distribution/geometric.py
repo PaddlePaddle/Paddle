@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -193,11 +193,11 @@ class Geometric(distribution.Distribution):
                 f"Expected type of k is number.Real|framework.Variable|Value, but got {type(k)}"
             )
 
-    def sample(self, shape: tuple[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Sample from Geometric distribution with sample shape.
 
         Args:
-            shape (tuple(int)): Sample shape.
+            shape (Sequence[int]): Sample shape.
 
         Returns:
             Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -219,11 +219,11 @@ class Geometric(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape: tuple[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
-            shape(tuple(int)): The shape of generated samples.
+            shape(Sequence[int]): The shape of generated samples.
 
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
