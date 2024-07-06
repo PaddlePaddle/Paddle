@@ -18,7 +18,10 @@
 #            'Normal',
 #            'Uniform']
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -30,6 +33,12 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeGuard
+
+    from paddle import Tensor
+    from paddle._typing import NestedNumbericSequence, TensorLike
 
 
 class Distribution:
@@ -46,7 +55,9 @@ class Distribution:
             multivariate distribution, the event shape is [n].
     """
 
-    def __init__(self, batch_shape=(), event_shape=()):
+    def __init__(
+        self, batch_shape: Sequence[int] = (), event_shape: Sequence[int] = ()
+    ) -> None:
         self._batch_shape = (
             batch_shape
             if isinstance(batch_shape, tuple)
@@ -61,7 +72,7 @@ class Distribution:
         super().__init__()
 
     @property
-    def batch_shape(self):
+    def batch_shape(self) -> Sequence[int]:
         """Returns batch shape of distribution
 
         Returns:
@@ -70,7 +81,7 @@ class Distribution:
         return self._batch_shape
 
     @property
-    def event_shape(self):
+    def event_shape(self) -> Sequence[int]:
         """Returns event shape of distribution
 
         Returns:
@@ -79,32 +90,32 @@ class Distribution:
         return self._event_shape
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of distribution"""
         raise NotImplementedError
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of distribution"""
         raise NotImplementedError
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Sampling from the distribution."""
         raise NotImplementedError
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """reparameterized sample"""
         raise NotImplementedError
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """The entropy of the distribution."""
         raise NotImplementedError
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Distribution) -> Tensor:
         """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density/mass function evaluated at value.
 
         Args:
@@ -112,11 +123,11 @@ class Distribution:
         """
         return self.log_prob(value).exp()
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function."""
         raise NotImplementedError
 
-    def probs(self, value):
+    def probs(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
 
         Note:
@@ -126,7 +137,7 @@ class Distribution:
         """
         raise NotImplementedError
 
-    def _extend_shape(self, sample_shape):
+    def _extend_shape(self, sample_shape: Tensor) -> Tensor:
         """compute shape of the sample
 
         Args:
@@ -141,7 +152,9 @@ class Distribution:
             + tuple(self._event_shape)
         )
 
-    def _validate_args(self, *args):
+    def _validate_args(
+        self, *args: TensorLike | NestedNumbericSequence
+    ) -> TypeGuard[tuple[Tensor, ...]]:
         """
         Argument validation for distribution args
         Args:
@@ -164,7 +177,9 @@ class Distribution:
 
         return is_variable
 
-    def _to_tensor(self, *args):
+    def _to_tensor(
+        self, *args: TensorLike | NestedNumbericSequence
+    ) -> tuple[Tensor, ...]:
         """
         Argument convert args to Tensor
 
@@ -221,7 +236,9 @@ class Distribution:
 
         return tuple(variable_args)
 
-    def _check_values_dtype_in_probs(self, param, value):
+    def _check_values_dtype_in_probs(
+        self, param: Tensor, value: Tensor
+    ) -> Tensor:
         """
         Log_prob and probs methods have input ``value``, if value's dtype is different from param,
         convert value's dtype to be consistent with param's dtype.
@@ -265,7 +282,9 @@ class Distribution:
             return paddle.cast(value, dtype=param.dtype)
         return value
 
-    def _probs_to_logits(self, probs, is_binary=False):
+    def _probs_to_logits(
+        self, probs: float | Tensor, is_binary: bool = False
+    ) -> Tensor:
         r"""
         Converts probabilities into logits. For the binary, probs denotes the
         probability of occurrence of the event indexed by `1`. For the
@@ -278,7 +297,9 @@ class Distribution:
             else paddle.log(probs)
         )
 
-    def _logits_to_probs(self, logits, is_binary=False):
+    def _logits_to_probs(
+        self, logits: float | Tensor, is_binary: bool = False
+    ) -> Tensor:
         r"""
         Converts logits into probabilities. For the binary, each value denotes
         log odds, whereas for the multi-dimensional case, the values along the
