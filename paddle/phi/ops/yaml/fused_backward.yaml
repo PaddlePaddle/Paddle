@@ -126,3 +126,4 @@
     func: resnet_unit_grad
     data_type: x
   optional: z, filter_z, conv_z, scale_z, bias_z, saved_mean_z, saved_invstd_z
+  support_dygraph_mode : true
