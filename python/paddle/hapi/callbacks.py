@@ -95,9 +95,8 @@ def config_callbacks(
 class CallbackList:
     def __init__(self, callbacks: Sequence[Callback] | None = None) -> None:
         # copy
-        self.callbacks: list[Callback] = (
-            list(callbacks) if isinstance(callbacks, (list, tuple)) else []
-        )
+        assert callbacks is not None
+        self.callbacks = list(callbacks)
         self.params = {}
         self.model = None
 
