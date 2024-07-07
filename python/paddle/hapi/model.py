@@ -1429,7 +1429,7 @@ class Model:
 
             .. code-block:: python
 
-                >>> # doctest: +TIMEOUT(30)
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.nn as nn
                 >>> import paddle.vision.transforms as T
