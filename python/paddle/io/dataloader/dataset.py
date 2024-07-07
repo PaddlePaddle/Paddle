@@ -368,7 +368,7 @@ class ComposeDataset(Dataset[Tuple[Unpack[_Ts]]]):
             >>> from paddle.io import Dataset, ComposeDataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -380,7 +380,7 @@ class ComposeDataset(Dataset[Tuple[Unpack[_Ts]]]):
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])
+            >>> dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])  # type: ignore[var-annotated]
             >>> for i in range(len(dataset)):
             ...     image1, label1, image2, label2 = dataset[i]
             ...     # do something
@@ -509,8 +509,8 @@ class Subset(Dataset[_T]):
 def random_split(
     dataset: Dataset[_T],
     lengths: Sequence[int],
-    generator: Generator[Any, Any, Any] | None = None,
-):
+    generator: Any | None = None,
+) -> list[Subset[_T]]:
     """
     Randomly split a dataset into non-overlapping new datasets of given lengths.
     Optionally fix the generator for reproducible results, e.g.:
@@ -530,7 +530,7 @@ def random_split(
             >>> import paddle
 
             >>> paddle.seed(2023)
-            >>> a_list = paddle.io.random_split(range(10), [3, 7])
+            >>> a_list = paddle.io.random_split(range(10), [3, 7])  # type: ignore[arg-type]
             >>> print(len(a_list))
             2
 
@@ -646,7 +646,7 @@ class ConcatDataset(Dataset[_T]):
             >>> from paddle.io import Dataset, ConcatDataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -658,7 +658,7 @@ class ConcatDataset(Dataset[_T]):
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = ConcatDataset([RandomDataset(10), RandomDataset(10)])
+            >>> dataset = ConcatDataset([RandomDataset(10), RandomDataset(10)])  # type: ignore[var-annotated]
             >>> for i in range(len(dataset)):
             ...     image, label = dataset[i]
             ...     # do something
