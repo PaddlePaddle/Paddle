@@ -29,7 +29,7 @@ set(YAML_BuildTests
 
 if(WIN32)
   set(YAML_LIBRARIES
-      "${YAML_INSTALL_DIR}/lib/yaml-cpp.lib"
+      "${YAML_INSTALL_DIR}/lib/yaml-cpp${CMAKE_STATIC_LIBRARY_SUFFIX}"
       CACHE FILEPATH "yaml library." FORCE)
   set(YAML_CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
   set(YAML_CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
@@ -42,7 +42,7 @@ if(WIN32)
   endforeach()
 else()
   set(YAML_LIBRARIES
-      "${YAML_INSTALL_DIR}/lib/libyaml-cpp.a"
+      "${YAML_INSTALL_DIR}/lib/libyaml-cpp${CMAKE_STATIC_LIBRARY_SUFFIX}"
       CACHE FILEPATH "yaml library." FORCE)
   set(YAML_CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   set(YAML_CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
@@ -73,3 +73,4 @@ ExternalProject_Add(
 add_library(yaml STATIC IMPORTED GLOBAL)
 set_property(TARGET yaml PROPERTY IMPORTED_LOCATION ${YAML_LIBRARIES})
 add_dependencies(yaml extern_yaml)
+link_libraries(yaml)

@@ -135,7 +135,7 @@ Json GetAttrTypeJson(const YAML::Node &action) {
 }
 Json YamlPaser(const std::string &yaml_file) {
   std::ifstream fin;
-  std::cout << yaml_file << std::endl;
+  VLOG(8) << yaml_file;
   fin.open(yaml_file);
   if (!fin) {
     // PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
@@ -145,18 +145,15 @@ Json YamlPaser(const std::string &yaml_file) {
   YAML::Node root = YAML::Load(fin);
   Json json_patch;
   if (!root.IsDefined()) {
-    std::cout << "Not defined" << std::endl;
+    VLOG(8) << "Not defined";
   } else {
-    std::cout << root << std::endl;
+    VLOG(8) << root;
   }
   if (!root["op_patches"].IsSequence()) {
     std::cout << "Not a sequence" << std::endl;
   }
   json_patch["op_patches"] = Json::array();
   for (size_t i = 0; i < root["op_patches"].size(); i++) {
-    // if (!item.IsMap()){
-    //     std::cout<<"Not a map"<<std::endl;
-    // }
     // parse op_name
     YAML::Node node = root["op_patches"][i];
     auto op_name = node["op_name"].as<std::string>();
@@ -170,7 +167,7 @@ Json YamlPaser(const std::string &yaml_file) {
     for (size_t j = 0; j < actions.size(); j++) {
       YAML::Node action = actions[j];
       if (!action.IsMap()) {
-        std::cout << "Not a map" << std::endl;
+        VLOG(8) << "Not a map";
       }
       std::string default_type;
       std::string action_name = action["action"].as<std::string>();
@@ -189,11 +186,21 @@ Json YamlPaser(const std::string &yaml_file) {
         j_attr[NAME] = attr_name;
         j_attr[ATTR_TYPE] = BuildAttrJsonPatch(action);
         j_patch["patch"][OPRESULTS_ATTRS].push_back(j_attr);
+      } else if (action_name == "modify_attr_name" ||
+                 "modify_output_attr_name") {
+        std::string old_name = action["object"].as<std::string>();
+        std::string new_name = action["default"].as<std::string>();
+        Json j_attr;
+        j_attr[NAME] = old_name;
+        j_attr["NEW_NAME"] = new_name;
+        std::string col =
+            action_name == "modify_attr_name" ? ATTRS : OPRESULTS_ATTRS;
+        j_patch["patch"][col].push_back(j_attr);
       }
     }
     json_patch["op_patches"].push_back(j_patch);
   }
-  std::cout << json_patch << std::endl;
+  VLOG(8) << json_patch;
   return json_patch;
 }
 }  // namespace pir

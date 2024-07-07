@@ -8,7 +8,8 @@ paddle_test(ir_program_test SRCS ir_program_test.cc)
 paddle_test(ir_infershape_test SRCS ir_infershape_test.cc)
 paddle_test(scalar_attribute_test SRCS scalar_attribute_test.cc)
 paddle_test(paddle_fatal_test SRCS paddle_fatal_test.cc)
-paddle_test(save_load_version_compat_test SRCS save_load_version_compat_test.cc)
+paddle_test(save_load_version_compat_test SRCS save_load_version_compat_test.cc
+            DEPS pir_save_load)
 
 file(
   DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
