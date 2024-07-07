@@ -147,11 +147,11 @@ class Conv2dBiasBnOneDNNFusePattern
     // The prev op should be add op.
     paddle::dialect::AddOp add_op =
         pir::GetDefiningOpForInput(op, 0)->dyn_cast<paddle::dialect::AddOp>();
+    if (!add_op) return false;
     // The prev prev op should be conv2d op.
     paddle::dialect::Conv2dOp conv2d_op =
         pir::GetDefiningOpForInput(add_op, 0)
             ->dyn_cast<paddle::dialect::Conv2dOp>();
-    if (!add_op) return false;
     if (!conv2d_op) return false;
 
     auto conv2d_attributes = conv2d_op->attributes();
