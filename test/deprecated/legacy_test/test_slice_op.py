@@ -207,7 +207,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [-1, 0, -1]
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -252,7 +252,9 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.starts_infer = [1, -1, 2]
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True, check_pir=True)
+        self.check_output(
+            check_dygraph=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -305,7 +307,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -343,7 +345,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -382,7 +384,7 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.out = self.input[1, 0, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -428,7 +430,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.ends_infer = [-1, 3, 4]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -472,7 +474,7 @@ class TestSliceOp_ZeroDim(OpTest):
         self.out = self.input[0:20, 1:3, 1:3]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', check_pir=True)

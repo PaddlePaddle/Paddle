@@ -44,6 +44,7 @@ DimExpr DimExpr::operator*(const DimExpr& other) const {
 }
 
 DimExpr DimExpr::operator/(const DimExpr& other) const {
+  VLOG(3) << "start operator /";
   if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
     std::int64_t num = this->dyn_cast<std::int64_t>();
     std::int64_t dem = other.dyn_cast<std::int64_t>();
@@ -53,6 +54,7 @@ DimExpr DimExpr::operator/(const DimExpr& other) const {
   }
   const DimExpr& reciprocal = Reciprocal<DimExpr>(other);
   DimExpr div_expr = Mul<DimExpr>{List<DimExpr>{*this, reciprocal}};
+  VLOG(3) << "end operator /";
   return SimplifyDimExpr(div_expr);
 }
 
