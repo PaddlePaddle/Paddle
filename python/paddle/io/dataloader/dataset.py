@@ -530,19 +530,19 @@ def random_split(
             >>> import paddle
 
             >>> paddle.seed(2023)
-            >>> a_list = paddle.io.random_split(range(10), [3, 7])  # type: ignore[arg-type]
+            >>> a_list = paddle.io.random_split(range(10), [3, 7])  # type: ignore[arg-type, var-annotated]
             >>> print(len(a_list))
             2
 
             >>> # output of the first subset
-            >>> for idx, v in enumerate(a_list[0]):
+            >>> for idx, v in enumerate(a_list[0]):  # type: ignore[arg-type, var-annotated]
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 7
             1 6
             2 5
 
             >>> # output of the second subset
-            >>> for idx, v in enumerate(a_list[1]):
+            >>> for idx, v in enumerate(a_list[1]):  # type: ignore[arg-type, var-annotated]
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 1
             1 9
