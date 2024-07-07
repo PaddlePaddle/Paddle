@@ -25,6 +25,7 @@ USE_PIR_PASS(fused_weight_only_linear_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(fuse_allreduce_split_to_reducescatter_pass);
 USE_PIR_PASS(inplace_pass);
+USE_PIR_PASS(replace_inplace_use_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);

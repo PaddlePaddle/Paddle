@@ -21,6 +21,7 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
+#include "paddle/fluid/pir/transforms/general/replace_inplace_use_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
@@ -174,10 +175,20 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
                                             phi::Place place) {
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
 
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+  pm.AddPass(::pir::CreateReplaceInplaceUsePass());
+  pm.Run(ir_res.get());
+
+  if (FLAGS_print_ir) {
+    std::cout << "IR After replace_inplace_use -------------------"
+              << std::endl;
+    std::cout << *ir_res << std::endl;
+  }
+
   if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass());
-    pm.Run(ir_res.get());
+    ::pir::PassManager inplace_pm(::pir::IrContext::Instance(), 1);
+    inplace_pm.AddPass(::pir::CreateInplacePass());
+    inplace_pm.Run(ir_res.get());
 
     if (FLAGS_print_ir) {
       std::cout << "IR After inplace -------------------" << std::endl;
@@ -374,14 +385,24 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 1);
+  pm.AddPass(::pir::CreateReplaceInplaceUsePass());
+  pm.Run(res.get());
+
+  if (FLAGS_print_ir) {
+    std::cout << "IR After replace_inplace_use -------------------"
+              << std::endl;
+    std::cout << *res << std::endl;
+  }
+
   if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass());
+    ::pir::PassManager inplace_pm(::pir::IrContext::Instance(), 3);
+    inplace_pm.AddPass(::pir::CreateInplacePass());
     if (VLOG_IS_ON(6)) {
-      pm.EnableIRPrinting();
-      pm.EnablePrintStatistics();
+      inplace_pm.EnableIRPrinting();
+      inplace_pm.EnablePrintStatistics();
     }
-    pm.Run(res.get());
+    inplace_pm.Run(res.get());
     if (FLAGS_print_ir) {
       std::cout << "IR After inplace -------------------" << std::endl;
       std::cout << *res << std::endl;
