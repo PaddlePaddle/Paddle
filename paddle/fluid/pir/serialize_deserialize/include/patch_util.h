@@ -150,7 +150,7 @@ Json YamlPaser(const std::string &yaml_file) {
     VLOG(8) << root;
   }
   if (!root["op_patches"].IsSequence()) {
-    std::cout << "Not a sequence" << std::endl;
+    VLOG(8) << "Not a sequence";
   }
   json_patch["op_patches"] = Json::array();
   for (size_t i = 0; i < root["op_patches"].size(); i++) {

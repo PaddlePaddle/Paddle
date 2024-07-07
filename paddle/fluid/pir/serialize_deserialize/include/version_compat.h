@@ -32,7 +32,7 @@ class PatchBuilder {
 
   Json GetJsonOpPatch(const std::string& name);
   void BuildPatch(const std::string& path);
-  void ApplyPatches(const std::string& op_name, Json* json, Json patch);
+  void ApplyOpPatches(const std::string& op_name, Json* json, Json patch);
   bool HasOpPatch(const std::string& name) const {
     return op_patches_.count(name) != 0;
   }

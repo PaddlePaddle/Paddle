@@ -148,10 +148,10 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   // deal with patches
   auto op_name = op_json->at(ID).template get<std::string>();
   if (patch_builder->HasOpPatch(op_name)) {
-    std::cout << op_name << " brefore: " << *op_json << std::endl;
+    VLOG(8) << op_name << " brefore: " << *op_json;
     Json op_patch = patch_builder->GetJsonOpPatch(op_name);
-    patch_builder->ApplyPatches(op_name, op_json, op_patch);
-    std::cout << op_name << " has been patched: " << *op_json << std::endl;
+    patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
+    VLOG(8) << op_name << " has been patched: " << *op_json;
   }
   if (op_name == PARAMETEROP) {
     return ReadParameterOp(op_json);

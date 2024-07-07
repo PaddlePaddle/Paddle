@@ -29,9 +29,9 @@ Json PatchBuilder::GetJsonOpPatch(const std::string& name) {
   return op_patches_[name];
 }
 
-void PatchBuilder::ApplyPatches(const std::string& op_name,
-                                Json* json,
-                                Json patch) {
+void PatchBuilder::ApplyOpPatches(const std::string& op_name,
+                                  Json* json,
+                                  Json patch) {
   if (op_name == PARAMETEROP) {
     // attr_name ; type
     // is_distributed; array(bool)
@@ -67,6 +67,9 @@ void PatchBuilder::ApplyPatches(const std::string& op_name,
     }
     return;
   }
+  // for (auto item : patch[ATTRS]) {
+  //   std::string attr_name = item[NAME].get<std::string>();
+  // }
   json->merge_patch(patch);
 }
 
