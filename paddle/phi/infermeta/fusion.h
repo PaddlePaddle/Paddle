@@ -895,6 +895,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
 void FusedDotProductAttentionInferMeta(const MetaTensor& q,
                                        const MetaTensor& k,
                                        const MetaTensor& v,
+                                       const MetaTensor& bias,
                                        MetaTensor* out,
                                        MetaTensor* softmax_out,
                                        MetaTensor* rng_state);
@@ -902,9 +903,11 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
 void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
                                            const MetaTensor& k,
                                            const MetaTensor& v,
+                                           const MetaTensor& bias,
                                            MetaTensor* q_grad,
                                            MetaTensor* k_grad,
-                                           MetaTensor* v_grad);
+                                           MetaTensor* v_grad,
+                                           MetaTensor* bias_grad);
 
 void SkipLayerNormInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
@@ -1126,5 +1129,11 @@ void FusedSeqpoolCvmGradInferMeta(
     std::vector<MetaTensor*> x_grad,
     MetaTensor* cvm_grad,
     MetaConfig config = MetaConfig());
+
+void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                  const std::string& pooltype,
+                                  int axis,
+                                  MetaTensor* out,
+                                  MetaConfig config = MetaConfig());
 
 }  // namespace phi

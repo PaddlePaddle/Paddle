@@ -640,7 +640,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit fwd',
             )
 
             # now use larger threshold when testing cpu grads to bypass cpu grad test
@@ -653,7 +653,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit rev',
             )
 
     def test_jit_comp_with_cinn(self):
@@ -690,7 +690,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn fwd',
             )
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if self.special_threshold is not None:
@@ -701,7 +701,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn rev',
             )
 
 

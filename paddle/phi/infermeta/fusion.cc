@@ -683,14 +683,21 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                                 ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
+
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
-    out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 2]),
-                                    static_cast<int>(filter_dims[i + 2]),
-                                    dilations[i],
-                                    paddings_vec[i * 2],
-                                    paddings_vec[i * 2 + 1],
-                                    strides[i]));
+    // VLOG(3) << "conv_xpu: strides " << i;
+    if ((in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+      out_shape.push_back(-1);
+    } else {
+      out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 2]),
+                                      static_cast<int>(filter_dims[i + 2]),
+                                      dilations[i],
+                                      paddings_vec[i * 2],
+                                      paddings_vec[i * 2 + 1],
+                                      strides[i]));
+    }
   }
+
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_max->set_dims(common::make_ddim({6}));
@@ -1287,11 +1294,14 @@ void FusedBiasDropoutResidualLnGradInferMeta(
 void FusedDotProductAttentionInferMeta(const MetaTensor& q,
                                        const MetaTensor& k,
                                        const MetaTensor& v,
+                                       const MetaTensor& bias,
                                        MetaTensor* out,
                                        MetaTensor* softmax_out,
                                        MetaTensor* rng_state) {
   // q input shape: [batch_size, q_seq_len, num_heads, head_size]
   // k, v input shape: [batch_size, kv_seq_len, num_heads, head_size]
+  // cu_seqlen_q and cu_seqlen_kv input shape: [batch_size+1]
+  // bias shape: [b,1,s,s] or [b,h,s,s] or [1,1,s,s] or [1, h, s, s]
   auto q_dim = q.dims();
   auto k_dim = k.dims();
   auto v_dim = v.dims();
@@ -1331,15 +1341,19 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
 void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
                                            const MetaTensor& k,
                                            const MetaTensor& v,
+                                           const MetaTensor& bias,
                                            MetaTensor* q_grad,
                                            MetaTensor* k_grad,
-                                           MetaTensor* v_grad) {
-  auto q_dim = q.dims();
-  auto k_dim = k.dims();
-  auto v_dim = v.dims();
-  q_grad->set_dims(q_dim);
-  k_grad->set_dims(k_dim);
-  v_grad->set_dims(v_dim);
+                                           MetaTensor* v_grad,
+                                           MetaTensor* bias_grad) {
+  q_grad->share_meta(q);
+  k_grad->share_meta(k);
+  v_grad->share_meta(v);
+  if (bias) {
+    if (bias_grad) {
+      bias_grad->share_meta(bias);
+    }
+  }
 }
 
 void FusedFeedForwardInferMeta(const MetaTensor& x,
@@ -2478,7 +2492,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
+      (contain_unknown_dim(scale_dim) || contain_unknown_dim(bias_dim))) {
     check = false;
   }
 
@@ -5060,6 +5074,49 @@ void FusedSeqpoolCvmGradInferMeta(
     x_grad[i]->set_dims(x[i]->dims());
     x_grad[i]->set_dtype(x[i]->dtype());
   }
+}
+
+void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                  const std::string& pooltype,
+                                  int axis,
+                                  MetaTensor* out,
+                                  MetaConfig config) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Inputs(X) of FusionSeqPoolConcatOp should be greater "
+                        "than 1, but received value is %d.",
+                        x.size()));
+  PADDLE_ENFORCE_EQ(
+      axis,
+      1,
+      phi::errors::InvalidArgument("FusionSeqPoolConcatOp only supports concat "
+                                   "axis=1 yet, but received axis value is %d",
+                                   axis));
+  std::vector<DDim> ins_dims;
+  ins_dims.reserve(x.size());
+  std::transform(x.begin(),
+                 x.end(),
+                 std::back_inserter(ins_dims),
+                 [](const MetaTensor* var) { return var->dims(); });
+  const size_t n = ins_dims.size();
+  PADDLE_ENFORCE_GT(n,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "Input tensors count should be greater than 0, "
+                        "but received value is %d.",
+                        n));
+
+  // The output height should be confirmed in Compute,
+  // since input lod is not accessible here.
+  PADDLE_ENFORCE_EQ(ins_dims[0].size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims size of first input should be equal to 2, "
+                        "but received value is %d.",
+                        ins_dims[0].size()));
+  out->set_dims({-1, ins_dims[0][axis] * static_cast<int>(n)});
+  out->set_dtype(x[0]->dtype());
 }
 
 }  // namespace phi

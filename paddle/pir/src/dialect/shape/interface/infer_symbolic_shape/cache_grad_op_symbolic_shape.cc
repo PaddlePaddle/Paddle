@@ -22,9 +22,9 @@
 
 namespace pir {
 
-bool CacheGradOpSymbolicShapeInterface::CacheGradOpSymbolicShape(
+void CacheGradOpSymbolicShapeInterface::CacheGradOpSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  return impl_->cache_grad_op_symbolic_shape(operation(), infer_context);
+  impl_->cache_grad_op_symbolic_shape(operation(), infer_context);
 }
 
 }  // namespace pir

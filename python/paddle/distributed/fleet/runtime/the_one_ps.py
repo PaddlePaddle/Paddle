@@ -472,11 +472,11 @@ class Tensor:
     def to_string(self, indent):
         program_str = "{}tensor {{{}\n{}}}"
         attrs = ""
-        attrs += f"feed_var_name: \"{str(self.feed_var_name)}\" "
-        attrs += f"fetch_var_name: \"{str(self.fetch_var_name)}\" "
-        attrs += f"startup_program_id: {str(self.startup_program_id)} "
-        attrs += f"main_program_id: {str(self.main_program_id)} "
-        attrs += f"tensor_table_class: \"{str(self.tensor_table_class)}\" "
+        attrs += f"feed_var_name: \"{self.feed_var_name}\" "
+        attrs += f"fetch_var_name: \"{self.fetch_var_name}\" "
+        attrs += f"startup_program_id: {self.startup_program_id} "
+        attrs += f"main_program_id: {self.main_program_id} "
+        attrs += f"tensor_table_class: \"{self.tensor_table_class}\" "
         attrs += "\n"
         return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent)

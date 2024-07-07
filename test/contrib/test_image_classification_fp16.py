@@ -245,7 +245,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
             print("train resnet")
             net = resnet_cifar10(images, 32)
         else:
-            raise ValueError("%s network is not supported" % net_type)
+            raise ValueError(f"{net_type} network is not supported")
 
         optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
 

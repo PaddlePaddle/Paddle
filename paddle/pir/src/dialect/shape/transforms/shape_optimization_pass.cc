@@ -295,6 +295,8 @@ void InferSymExprForOp(Operation* op,
         }
       } else {
         // risk set
+        LOG(WARNING) << "Not found symbolic shape cache for " << op->name()
+                     << "[id:" << op->id() << "]";
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           infer_context->SetSymbolForValueByStaticShape(op->result(i));
         }
@@ -349,12 +351,8 @@ void CacheBackwardOpSymbolicShape(Operation* op,
       op->dyn_cast<pir::CacheGradOpSymbolicShapeInterface>();
   if (cache_grad_op_symbolic_shape_interface) {
     VLOG(3) << "CacheBackwardOpSymbolicShape for: " << op->name();
-    PADDLE_ENFORCE_EQ(
-        cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
-            infer_context),
-        true,
-        common::errors::Fatal("CacheBackwardOpSymbolicShape for %s failed.",
-                              op->name()));
+    cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
+        infer_context);
   }
 }
 

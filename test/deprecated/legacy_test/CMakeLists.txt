@@ -77,6 +77,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -181,7 +182,6 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -219,12 +219,6 @@ endif()
 if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
-endif()
-
-if(WITH_COVERAGE
-   OR WIN32
-   OR WITH_NV_JETSON)
-  list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
@@ -500,6 +494,8 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
                   test_fuse_dot_product_attention_pass)
   py_test_modules(test_fused_dot_product_attention_op MODULES
                   test_fused_dot_product_attention_op)
+  py_test_modules(test_fused_dot_product_attention_op_static MODULES
+                  test_fused_dot_product_attention_op_static)
 endif()
 
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
@@ -648,11 +644,10 @@ if(NOT WIN32)
 endif()
 set_tests_properties(test_add_reader_dependency_deprecated PROPERTIES TIMEOUT
                                                                       120)
-set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
+
 if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_part2_op_deprecated
                        PROPERTIES TIMEOUT 1200)
