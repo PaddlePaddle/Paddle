@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
     class _CallbackLogs(TypedDict):
         loss: float
-        metrics: list[float]
+        metrics: list[str]
         batch_size: int
 
 
@@ -64,7 +64,7 @@ def config_callbacks(
 ) -> CallbackList:
     _cbks = callbacks or []
     cbks: list[Callback] = list(
-        _cbks if isinstance(_cbks, Sequence) else [_cbks]
+        _cbks if isinstance(_cbks, (list, tuple)) else [_cbks]
     )
     if not any(isinstance(k, ProgBarLogger) for k in cbks) and verbose:
         cbks = [ProgBarLogger(log_freq, verbose=verbose)] + cbks
@@ -93,10 +93,10 @@ def config_callbacks(
 
 
 class CallbackList:
-    def __init__(self, callbacks: Sequence[Callback] | None = None):
+    def __init__(self, callbacks: Sequence[Callback] | None = None) -> None:
         # copy
         self.callbacks: list[Callback] = (
-            list(callbacks) if isinstance(callbacks, Sequence) else []
+            list(callbacks) if isinstance(callbacks, (list, tuple)) else []
         )
         self.params = {}
         self.model = None
@@ -142,12 +142,12 @@ class CallbackList:
         self._call(name, logs)
 
     def on_epoch_begin(
-        self, epoch=None, logs: _CallbackLogs | None = None
+        self, epoch: int | None = None, logs: _CallbackLogs | None = None
     ) -> None:
         self._call('on_epoch_begin', epoch, logs)
 
     def on_epoch_end(
-        self, epoch=None, logs: _CallbackLogs | None = None
+        self, epoch: int | None = None, logs: _CallbackLogs | None = None
     ) -> None:
         self._call('on_epoch_end', epoch, logs)
 
@@ -200,7 +200,7 @@ class Callback:
     model: Model | None
     params: _CallbackParams
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = None
         self.params = {}  # type: ignore
 
@@ -410,7 +410,7 @@ class ProgBarLogger(Callback):
     verbose: int
     log_freq: int
 
-    def __init__(self, log_freq: int = 1, verbose: int = 2):
+    def __init__(self, log_freq: int = 1, verbose: int = 2) -> None:
         self.epochs = None
         self.steps = None
         self.progbar = None
@@ -679,7 +679,7 @@ class ModelCheckpoint(Callback):
         self.save_dir = save_dir
 
     def on_epoch_begin(
-        self, epoch=None, logs: _CallbackLogs | None = None
+        self, epoch: int | None = None, logs: _CallbackLogs | None = None
     ) -> None:
         self.epoch = epoch
 
