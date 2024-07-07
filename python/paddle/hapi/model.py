@@ -20,7 +20,15 @@ import pickle
 import socket
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Literal,
+    Sequence,
+    Union,
+    overload,
+)
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -53,9 +61,10 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
 
     from .callbacks import Callback
+    from .model_summary import ModelSummary
 
     _InputBatch: TypeAlias = Union[
         Tensor,
@@ -1181,7 +1190,7 @@ class Model:
             ...
     """
 
-    mode: str
+    mode: Literal["train", "eval", "test"]
     network: paddle.nn.Layer
     stop_training: bool
 
@@ -1225,7 +1234,7 @@ class Model:
         inputs: _InputBatch,
         labels: _InputBatch | None = None,
         update: bool = True,
-    ) -> list[float] | tuple[list[npt.NDattay[Any]], list[float]]:
+    ) -> list[float] | tuple[list[npt.NDArray[Any]], list[float]]:
         """
 
         Run one training step on one batch of data. And using `update` indicates
@@ -1284,7 +1293,7 @@ class Model:
     @no_grad()
     def eval_batch(
         self, inputs: _InputBatch, labels: _InputBatch | None = None
-    ) -> list[float] | tuple[list[npt.NDarray[Any]], list[float]]:
+    ) -> list[float] | tuple[list[npt.NDArray[Any]], list[float]]:
         """
 
         Run one evaluating step on a batch of data.
@@ -1574,7 +1583,7 @@ class Model:
         else:
             return self._adapter.load(matched_param_state, optim_state)
 
-    def parameters(self, *args, **kwargs) -> list[Tensor]:
+    def parameters(self, *args: Any, **kwargs: Any) -> list[Tensor]:
         """
 
         Returns a list of parameters of the model.
@@ -1711,7 +1720,9 @@ class Model:
     def prepare(
         self,
         optimizer: paddle.optimizer.Optimizer | None = None,
-        loss: paddle.nn.Layer | Callback[...] | None = None,
+        loss: (
+            paddle.nn.Layer | Callable[[Tensor, Tensor], Tensor] | None
+        ) = None,
         metrics: Metric | list[Metric] | None = None,
         amp_configs: str | dict[str, Any] | None = None,
     ) -> None:
@@ -1794,8 +1805,8 @@ class Model:
 
     def fit(
         self,
-        train_data: Dataset | DataLoader = None,
-        eval_data: Dataset | DataLoader = None,
+        train_data: Dataset | DataLoader | None = None,
+        eval_data: Dataset | DataLoader | None = None,
         batch_size: int | list[int] = 1,
         epochs: int = 1,
         eval_freq: int = 1,
@@ -1806,7 +1817,7 @@ class Model:
         drop_last: bool = False,
         shuffle: bool = True,
         num_workers: int = 0,
-        callbacks: Callback | None = None,
+        callbacks: list[Callback] | None = None,
         accumulate_grad_batches: int = 1,
         num_iters: int | None = None,
     ) -> None:
@@ -1848,7 +1859,7 @@ class Model:
                 subprocess used and loading data in main process.
                 When train_data and eval_data are both the instance of
                 Dataloader, this parameter will be ignored. Default: 0.
-            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+            callbacks (list[Callback]|None, optional): A list of `Callback` instances to apply
                 during training. If None, :ref:`api_paddle_callbacks_ProgBarLogger` and
                 :ref:`api_paddle_callbacks_ModelCheckpoint` are automatically inserted. Default: None.
             accumulate_grad_batches (int, optional): The number of batches to accumulate gradient
@@ -2048,7 +2059,7 @@ class Model:
         log_freq: int = 10,
         verbose: int = 2,
         num_workers: int = 0,
-        callbacks: Callback | None = None,
+        callbacks: list[Callback] | None = None,
         num_iters: int | None = None,
     ) -> dict[str, float | npt.NDArray[Any]]:
         """
@@ -2069,7 +2080,7 @@ class Model:
                 0 for no subprocess used and loading data in main process. When
                 train_data and eval_data are both the instance of Dataloader,
                 this parameter will be ignored. Default: 0.
-            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+            callbacks (list[Callback]|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
             num_iters (int|None, optional): The number of iterations to evaluate the model.
@@ -2152,15 +2163,51 @@ class Model:
 
         return eval_result
 
+    @overload
     def predict(
         self,
         test_data: Dataset | DataLoader,
-        batch_size: int = 1,
-        num_workers: int = 0,
-        stack_outputs: bool = False,
-        verbose: int = 1,
-        callbacks: Callback | None = None,
-    ) -> list[npt.npt.NDArray[Any] | tuple[npt.NDArray[Any], ...]]:
+        batch_size: int = ...,
+        num_workers: int = ...,
+        stack_outputs: Literal[True] = ...,
+        verbose: int = ...,
+        callbacks: Callback | None = ...,
+    ) -> list[npt.NDArray[Any]]:
+        ...
+
+    @overload
+    def predict(
+        self,
+        test_data: Dataset | DataLoader,
+        batch_size: int = ...,
+        num_workers: int = ...,
+        stack_outputs: Literal[False] = ...,
+        verbose: int = ...,
+        callbacks: Callback | None = ...,
+    ) -> list[tuple[npt.NDArray[Any], ...]]:
+        ...
+
+    @overload
+    def predict(
+        self,
+        test_data: Dataset | DataLoader,
+        batch_size: int = ...,
+        num_workers: int = ...,
+        stack_outputs: bool = ...,
+        verbose: int = ...,
+        callbacks: Callback | None = ...,
+    ) -> list[npt.NDArray[Any] | tuple[npt.NDArray[Any], ...]]:
+        ...
+
+    def predict(
+        self,
+        test_data,
+        batch_size=1,
+        num_workers=0,
+        stack_outputs=False,
+        verbose=1,
+        callbacks=None,
+    ):
         """
         Compute the output predictions on testing data.
 
@@ -2422,8 +2469,8 @@ class Model:
         input_size: (
             tuple[int, ...] | Input | list[tuple[int, ...] | Input] | None
         ) = None,
-        dtype: DTypeLike | None = None,
-    ) -> dict[str, int]:
+        dtype: _DTypeLiteral | None = None,
+    ) -> ModelSummary:
         """Prints a string summary of the network.
 
         Args:
