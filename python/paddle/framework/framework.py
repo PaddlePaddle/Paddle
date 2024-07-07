@@ -16,6 +16,7 @@
 import numpy as np
 
 import paddle
+from paddle._typing.dtype_like import DTypeLike
 from paddle.base.data_feeder import convert_dtype
 
 # TODO: define framework api
@@ -24,7 +25,7 @@ from paddle.base.layer_helper_base import LayerHelperBase
 __all__ = []
 
 
-def set_default_dtype(d):
+def set_default_dtype(d: DTypeLike):
     """
     Set default dtype. The default dtype is initially float32.
 
@@ -73,7 +74,7 @@ def set_default_dtype(d):
     LayerHelperBase.set_default_dtype(d)
 
 
-def get_default_dtype():
+def get_default_dtype() -> str:
     """
     Get the current default dtype. The default dtype is initially float32.
 
