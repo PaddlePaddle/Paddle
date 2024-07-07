@@ -17,7 +17,7 @@ import numbers
 import os
 import time
 import warnings
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Iterator, Literal, Sequence, TypedDict
 
 import numpy as np
 
@@ -26,9 +26,27 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = []
 if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
     from .model import Model
+
+    _CallbackMode: TypeAlias = Literal["train", "eval", "predict"]
+
+    class _CallbackParams(TypedDict):
+        batch_size: int
+        epochs: int
+        steps: int
+        verbose: int
+        metrics: list[str]
+
+    class _CallbackLogs(TypedDict):
+        loss: float
+        metrics: list[float]
+        batch_size: int
+
+
+__all__ = []
 
 
 def config_callbacks(
@@ -83,54 +101,72 @@ class CallbackList:
         self.params = {}
         self.model = None
 
-    def append(self, callback: Callback):
+    def append(self, callback: Callback) -> None:
         self.callbacks.append(callback)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Callback]:
         return iter(self.callbacks)
 
-    def set_params(self, params):
+    def set_params(self, params: _CallbackParams) -> None:
         for c in self.callbacks:
             c.set_params(params)
 
-    def set_model(self, model):
+    def set_model(self, model: Model) -> None:
         for c in self.callbacks:
             c.set_model(model)
 
-    def _call(self, name, *args):
+    def _call(self, name: str, *args: Any) -> None:
         for c in self.callbacks:
             func = getattr(c, name)
             func(*args)
 
-    def _check_mode(self, mode):
+    def _check_mode(self, mode: _CallbackMode) -> None:
         assert mode in [
             'train',
             'eval',
             'predict',
         ], 'mode should be train, eval or predict'
 
-    def on_begin(self, mode, logs=None):
+    def on_begin(
+        self, mode: _CallbackMode, logs: _CallbackLogs | None = None
+    ) -> None:
         self._check_mode(mode)
         name = f'on_{mode}_begin'
         self._call(name, logs)
 
-    def on_end(self, mode, logs=None):
+    def on_end(
+        self, mode: _CallbackMode, logs: _CallbackLogs | None = None
+    ) -> None:
         self._check_mode(mode)
         name = f'on_{mode}_end'
         self._call(name, logs)
 
-    def on_epoch_begin(self, epoch=None, logs=None):
+    def on_epoch_begin(
+        self, epoch=None, logs: _CallbackLogs | None = None
+    ) -> None:
         self._call('on_epoch_begin', epoch, logs)
 
-    def on_epoch_end(self, epoch=None, logs=None):
+    def on_epoch_end(
+        self, epoch=None, logs: _CallbackLogs | None = None
+    ) -> None:
         self._call('on_epoch_end', epoch, logs)
 
-    def on_batch_begin(self, mode, step=None, logs=None):
+    def on_batch_begin(
+        self,
+        mode: _CallbackMode,
+        step: int | None = None,
+        logs: _CallbackLogs | None = None,
+    ) -> None:
         self._check_mode(mode)
         name = f'on_{mode}_batch_begin'
         self._call(name, step, logs)
 
-    def on_batch_end(self, mode, step=None, logs=None):
+    def on_batch_end(
+        self,
+        mode: _CallbackMode,
+        step: int | None = None,
+        logs: _CallbackLogs | None = None,
+    ) -> None:
         self._check_mode(mode)
         name = f'on_{mode}_batch_end'
         self._call(name, step, logs)
@@ -161,11 +197,14 @@ class Callback:
 
     """
 
+    model: Model | None
+    params: _CallbackParams
+
     def __init__(self):
         self.model = None
-        self.params = {}
+        self.params = {}  # type: ignore
 
-    def set_params(self, params):
+    def set_params(self, params: _CallbackParams) -> None:
         """
         Set parameters, which is dict. The keys contain:
 
@@ -177,18 +216,18 @@ class Callback:
         """
         self.params = params
 
-    def set_model(self, model):
+    def set_model(self, model: Model) -> None:
         """model is instance of paddle.Model."""
         self.model = model
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: _CallbackLogs | None = None) -> None:
         """Called at the start of training.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
-    def on_train_end(self, logs=None):
+    def on_train_end(self, logs: _CallbackLogs | None = None) -> None:
         """Called at the end of training.
 
         Args:
@@ -197,7 +236,7 @@ class Callback:
                 `batch_size`.
         """
 
-    def on_eval_begin(self, logs=None):
+    def on_eval_begin(self, logs: _CallbackLogs | None = None) -> None:
         """Called at the start of evaluation.
 
         Args:
@@ -208,7 +247,7 @@ class Callback:
                 of paddle.metric.Metric.
         """
 
-    def on_eval_end(self, logs=None):
+    def on_eval_end(self, logs: _CallbackLogs | None = None) -> None:
         """Called at the end of evaluation.
 
         Args:
@@ -217,21 +256,23 @@ class Callback:
                 of last batch of validation dataset.
         """
 
-    def on_predict_begin(self, logs=None):
+    def on_predict_begin(self, logs: _CallbackLogs | None = None) -> None:
         """Called at the beginning of predict.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
-    def on_predict_end(self, logs=None):
+    def on_predict_end(self, logs: _CallbackLogs | None = None) -> None:
         """Called at the end of predict.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
-    def on_epoch_begin(self, epoch, logs=None):
+    def on_epoch_begin(
+        self, epoch: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the beginning of each epoch.
 
         Args:
@@ -240,7 +281,9 @@ class Callback:
                 paddle.Model is None.
         """
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(
+        self, epoch: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the end of each epoch.
 
         Args:
@@ -250,7 +293,9 @@ class Callback:
                 of last batch.
         """
 
-    def on_train_batch_begin(self, step, logs=None):
+    def on_train_batch_begin(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the beginning of each batch in training.
 
         Args:
@@ -259,7 +304,9 @@ class Callback:
                 paddle.Model is empty.
         """
 
-    def on_train_batch_end(self, step, logs=None):
+    def on_train_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the end of each batch in training.
 
         Args:
@@ -269,7 +316,9 @@ class Callback:
                 of current batch.
         """
 
-    def on_eval_batch_begin(self, step, logs=None):
+    def on_eval_batch_begin(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the beginning of each batch in evaluation.
 
         Args:
@@ -278,7 +327,9 @@ class Callback:
                 paddle.Model is empty.
         """
 
-    def on_eval_batch_end(self, step, logs=None):
+    def on_eval_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the end of each batch in evaluation.
 
         Args:
@@ -288,7 +339,9 @@ class Callback:
                 of current batch.
         """
 
-    def on_predict_batch_begin(self, step, logs=None):
+    def on_predict_batch_begin(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the beginning of each batch in predict.
 
         Args:
@@ -296,7 +349,9 @@ class Callback:
             logs (dict): The logs is a dict or None.
         """
 
-    def on_predict_batch_end(self, step, logs=None):
+    def on_predict_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         """Called at the end of each batch in predict.
 
         Args:
@@ -349,6 +404,12 @@ class ProgBarLogger(Callback):
             >>> model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 
+    epochs: int | None
+    steps: int | None
+    progbar: ProgressBar | None
+    verbose: int
+    log_freq: int
+
     def __init__(self, log_freq: int = 1, verbose: int = 2):
         self.epochs = None
         self.steps = None
@@ -359,7 +420,7 @@ class ProgBarLogger(Callback):
     def _is_print(self):
         return self.verbose and paddle.distributed.ParallelEnv().local_rank == 0
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.epochs = self.params['epochs']
         assert self.epochs
         self.train_metrics = self.params['metrics']
@@ -376,7 +437,9 @@ class ProgBarLogger(Callback):
                 "The loss value printed in the log is the current step, and the metric is the average value of previous steps."
             )
 
-    def on_epoch_begin(self, epoch=None, logs=None):
+    def on_epoch_begin(
+        self, epoch: int | None = None, logs: _CallbackLogs | None = None
+    ) -> None:
         self.steps = self.params['steps']
         self.epoch = epoch
         self.train_step = 0
@@ -386,7 +449,7 @@ class ProgBarLogger(Callback):
 
         self._train_timer['batch_start_time'] = time.time()
 
-    def _updates(self, logs, mode):
+    def _updates(self, logs: _CallbackLogs | None, mode: _CallbackMode) -> None:
         values = []
         metrics = getattr(self, f'{mode}_metrics')
         progbar = getattr(self, f'{mode}_progbar')
@@ -420,14 +483,18 @@ class ProgBarLogger(Callback):
 
         progbar.update(steps, values)
 
-    def on_train_batch_begin(self, step, logs=None):
+    def on_train_batch_begin(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         self._train_timer['batch_data_end_time'] = time.time()
         self._train_timer['data_time'] += (
             self._train_timer['batch_data_end_time']
             - self._train_timer['batch_start_time']
         )
 
-    def on_train_batch_end(self, step, logs=None):
+    def on_train_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         logs = logs or {}
         self.train_step += 1
 
@@ -442,12 +509,14 @@ class ProgBarLogger(Callback):
                 self._updates(logs, 'train')
         self._train_timer['batch_start_time'] = time.time()
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(
+        self, epoch: int, logs: _CallbackLogs | None = None
+    ) -> None:
         logs = logs or {}
         if self._is_print() and (self.steps is not None):
             self._updates(logs, 'train')
 
-    def on_eval_begin(self, logs=None):
+    def on_eval_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.eval_steps = logs.get('steps', None)
         self.eval_metrics = logs.get('metrics', [])
         self.eval_step = 0
@@ -468,14 +537,18 @@ class ProgBarLogger(Callback):
 
         self._eval_timer['batch_start_time'] = time.time()
 
-    def on_eval_batch_begin(self, step, logs=None):
+    def on_eval_batch_begin(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         self._eval_timer['batch_data_end_time'] = time.time()
         self._eval_timer['data_time'] += (
             self._eval_timer['batch_data_end_time']
             - self._eval_timer['batch_start_time']
         )
 
-    def on_eval_batch_end(self, step, logs=None):
+    def on_eval_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         logs = logs or {}
         self.eval_step += 1
         samples = logs.get('batch_size', 1)
@@ -494,7 +567,7 @@ class ProgBarLogger(Callback):
 
         self._eval_timer['batch_start_time'] = time.time()
 
-    def on_predict_begin(self, logs=None):
+    def on_predict_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.test_steps = logs.get('steps', None)
         self.test_metrics = logs.get('metrics', [])
         self.test_step = 0
@@ -515,14 +588,18 @@ class ProgBarLogger(Callback):
 
         self._test_timer['batch_start_time'] = time.time()
 
-    def on_predict_batch_begin(self, step, logs=None):
+    def on_predict_batch_begin(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         self._test_timer['batch_data_end_time'] = time.time()
         self._test_timer['data_time'] += (
             self._test_timer['batch_data_end_time']
             - self._test_timer['batch_start_time']
         )
 
-    def on_predict_batch_end(self, step, logs=None):
+    def on_predict_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         logs = logs or {}
         self.test_step += 1
         samples = logs.get('batch_size', 1)
@@ -541,13 +618,13 @@ class ProgBarLogger(Callback):
 
         self._test_timer['batch_start_time'] = time.time()
 
-    def on_eval_end(self, logs=None):
+    def on_eval_end(self, logs: _CallbackLogs | None = None) -> None:
         logs = logs or {}
         if self._is_print() and (self.eval_steps is not None):
             self._updates(logs, 'eval')
             print('Eval samples: %d' % (self.evaled_samples))
 
-    def on_predict_end(self, logs=None):
+    def on_predict_end(self, logs: _CallbackLogs | None = None) -> None:
         logs = logs or {}
         if self._is_print():
             if self.test_step % self.log_freq != 0 or self.verbose == 1:
@@ -597,11 +674,13 @@ class ModelCheckpoint(Callback):
             >>> model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 
-    def __init__(self, save_freq: int = 1, save_dir: str | None = None):
+    def __init__(self, save_freq: int = 1, save_dir: str | None = None) -> None:
         self.save_freq = save_freq
         self.save_dir = save_dir
 
-    def on_epoch_begin(self, epoch=None, logs=None):
+    def on_epoch_begin(
+        self, epoch=None, logs: _CallbackLogs | None = None
+    ) -> None:
         self.epoch = epoch
 
     def _is_save(self):
@@ -611,13 +690,15 @@ class ModelCheckpoint(Callback):
             and paddle.distributed.ParallelEnv().local_rank == 0
         )
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(
+        self, epoch: int, logs: _CallbackLogs | None = None
+    ) -> None:
         if self._is_save() and self.epoch % self.save_freq == 0:
             path = f'{self.save_dir}/{epoch}'
             print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)
 
-    def on_train_end(self, logs=None):
+    def on_train_end(self, logs: _CallbackLogs | None = None) -> None:
         if self._is_save():
             path = f'{self.save_dir}/final'
             print(f'save checkpoint at {os.path.abspath(path)}')
@@ -690,7 +771,7 @@ class LRScheduler(Callback):
             >>> model.fit(train_dataset, batch_size=64, callbacks=callback)
     """
 
-    def __init__(self, by_step: bool = True, by_epoch: bool = False):
+    def __init__(self, by_step: bool = True, by_epoch: bool = False) -> None:
         if by_step and by_epoch:
             raise ValueError(
                 "by_step option is mutually exclusive with by_epoch"
@@ -699,7 +780,9 @@ class LRScheduler(Callback):
         self.by_step = by_step
         self.by_epoch = by_epoch
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(
+        self, epoch: int, logs: _CallbackLogs | None = None
+    ) -> None:
         if self.by_epoch:
             if (
                 self.model._optimizer
@@ -711,7 +794,9 @@ class LRScheduler(Callback):
             ):
                 self.model._optimizer._learning_rate.step()
 
-    def on_train_batch_end(self, step, logs=None):
+    def on_train_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         if self.by_step:
             if (
                 self.model._optimizer
@@ -807,7 +892,7 @@ class EarlyStopping(Callback):
         min_delta: float = 0,
         baseline: float | None = None,
         save_best_model: bool = True,
-    ):
+    ) -> None:
         super().__init__()
         self.monitor = monitor
         self.patience = patience
@@ -842,7 +927,7 @@ class EarlyStopping(Callback):
         else:
             self.min_delta *= -1
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.wait_epoch = 0
         if self.baseline is not None:
             self.best_value = self.baseline
@@ -850,7 +935,7 @@ class EarlyStopping(Callback):
             self.best_value = np.inf if self.monitor_op == np.less else -np.inf
             self.best_weights = None
 
-    def on_eval_end(self, logs=None):
+    def on_eval_end(self, logs: _CallbackLogs | None = None) -> None:
         if logs is None or self.monitor not in logs:
             warnings.warn(
                 'Monitor of EarlyStopping should be loss or metric name.'
@@ -925,16 +1010,16 @@ class VisualDL(Callback):
 
     """
 
-    def __init__(self, log_dir: str):
+    def __init__(self, log_dir: str) -> None:
         self.log_dir = log_dir
         self.epochs = None
         self.steps = None
         self.epoch = 0
 
-    def _is_write(self):
+    def _is_write(self) -> bool:
         return paddle.distributed.ParallelEnv().local_rank == 0
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.epochs = self.params['epochs']
         assert self.epochs
         self.train_metrics = self.params['metrics']
@@ -942,11 +1027,13 @@ class VisualDL(Callback):
         self._is_fit = True
         self.train_step = 0
 
-    def on_epoch_begin(self, epoch=None, logs=None):
+    def on_epoch_begin(
+        self, epoch: int | None = None, logs: _CallbackLogs | None = None
+    ) -> None:
         self.steps = self.params['steps']
         self.epoch = epoch
 
-    def _updates(self, logs, mode):
+    def _updates(self, logs: int, mode: _CallbackMode) -> None:
         if not self._is_write():
             return
         if not hasattr(self, 'writer'):
@@ -976,25 +1063,27 @@ class VisualDL(Callback):
                     tag=temp_tag, step=total_step, value=temp_value
                 )
 
-    def on_train_batch_end(self, step, logs=None):
+    def on_train_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         logs = logs or {}
         self.train_step += 1
 
         if self._is_write():
             self._updates(logs, 'train')
 
-    def on_eval_begin(self, logs=None):
+    def on_eval_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.eval_steps = logs.get('steps', None)
         self.eval_metrics = logs.get('metrics', [])
         self.eval_step = 0
         self.evaled_samples = 0
 
-    def on_train_end(self, logs=None):
+    def on_train_end(self, logs: _CallbackLogs | None = None) -> None:
         if hasattr(self, 'writer'):
             self.writer.close()
             delattr(self, 'writer')
 
-    def on_eval_end(self, logs=None):
+    def on_eval_end(self, logs: _CallbackLogs | None = None) -> None:
         if self._is_write():
             self._updates(logs, 'eval')
 
@@ -1062,8 +1151,8 @@ class WandbCallback(Callback):
         dir: str | None = None,
         mode: Literal["online", "offline", "disabled"] | None = None,
         job_type: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         self.wandb = try_import(
             "wandb",
             "You want to use `wandb` which is not installed yet install it with `pip install wandb`",
@@ -1102,7 +1191,7 @@ class WandbCallback(Callback):
 
         return self._run
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.epochs = self.params['epochs']
         assert self.epochs
         self.train_metrics = self.params['metrics']
@@ -1117,11 +1206,13 @@ class WandbCallback(Callback):
             self.run.define_metric("epoch")
             self.run.define_metric("eval/*", step_metric="epoch")
 
-    def on_epoch_begin(self, epoch, logs=None):
+    def on_epoch_begin(
+        self, epoch: int, logs: _CallbackLogs | None = None
+    ) -> None:
         self.steps = self.params['steps']
         self.epoch = epoch
 
-    def _updates(self, logs, mode):
+    def _updates(self, logs: _CallbackLogs | None, mode: _CallbackMode) -> None:
         if not self._is_write():
             return
 
@@ -1150,24 +1241,26 @@ class WandbCallback(Callback):
 
         self.run.log(_metrics)
 
-    def on_train_batch_end(self, step, logs=None):
+    def on_train_batch_end(
+        self, step: int, logs: _CallbackLogs | None = None
+    ) -> None:
         logs = logs or {}
         self.train_step += 1
 
         if self._is_write():
             self._updates(logs, 'train')
 
-    def on_eval_begin(self, logs=None):
+    def on_eval_begin(self, logs: _CallbackLogs | None = None) -> None:
         self.eval_steps = logs.get('steps', None)
         self.eval_metrics = logs.get('metrics', [])
         self.eval_step = 0
         self.evaled_samples = 0
 
-    def on_train_end(self, logs=None):
+    def on_train_end(self, logs: _CallbackLogs | None = None) -> None:
         if self._is_write():
             self.run.finish()
 
-    def on_eval_end(self, logs=None):
+    def on_eval_end(self, logs: _CallbackLogs | None = None) -> None:
         if self._is_write():
             self._updates(logs, 'eval')
 
@@ -1241,6 +1334,15 @@ class ReduceLROnPlateau(Callback):
 
     """
 
+    monitor: str
+    factor: float
+    patience: int
+    verbose: int
+    mode: Literal['auto', 'min', 'max']
+    min_delta: float
+    cooldown: int
+    min_lr: float
+
     def __init__(
         self,
         monitor: str = 'loss',
@@ -1251,7 +1353,7 @@ class ReduceLROnPlateau(Callback):
         min_delta: float = 1e-4,
         cooldown: int = 0,
         min_lr: float = 0,
-    ):
+    ) -> None:
         super().__init__()
 
         self.monitor = monitor
@@ -1274,7 +1376,7 @@ class ReduceLROnPlateau(Callback):
         self.epoch = 0
         self._reset()
 
-    def _reset(self):
+    def _reset(self) -> None:
         """Resets wait counter and cooldown counter."""
         if self.mode not in ['auto', 'min', 'max']:
             warnings.warn(
@@ -1293,10 +1395,10 @@ class ReduceLROnPlateau(Callback):
         self.cooldown_counter = 0
         self.wait = 0
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: _CallbackLogs | None = None) -> None:
         self._reset()
 
-    def on_eval_end(self, logs=None):
+    def on_eval_end(self, logs: _CallbackLogs | None = None) -> None:
         if logs is None or self.monitor not in logs:
             warnings.warn(
                 'Monitor of ReduceLROnPlateau should be loss or metric name.'
@@ -1351,5 +1453,5 @@ class ReduceLROnPlateau(Callback):
                     self.wait = 0
         self.epoch += 1
 
-    def in_cooldown(self):
+    def in_cooldown(self) -> bool:
         return self.cooldown_counter > 0
