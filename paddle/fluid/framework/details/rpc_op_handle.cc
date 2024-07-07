@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 RPCOpHandle::RPCOpHandle(ir::Node *node,
                          const framework::OpDesc &op_desc,
@@ -49,6 +47,4 @@ void RPCOpHandle::RunImpl() {
 }
 
 std::string RPCOpHandle::Name() const { return name_; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

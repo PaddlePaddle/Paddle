@@ -24,9 +24,7 @@
 #include "paddle/utils/string/pretty_log.h"
 #include "paddle/utils/string/printf.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 // cpplint complaints (wrong!) for not included <string> header in below line.
 using string::PrettyLogDetail;  // NOLINT
@@ -428,9 +426,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                     found_layer_norm_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 #undef CHECK_TRUE
 #undef EXPECT_TRUE

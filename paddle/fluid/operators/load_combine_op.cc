@@ -17,8 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class LoadCombineOp : public framework::OperatorWithKernel {
  public:
@@ -73,8 +72,7 @@ that were saved using the SaveCombine operator.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;  // NOLINT
 

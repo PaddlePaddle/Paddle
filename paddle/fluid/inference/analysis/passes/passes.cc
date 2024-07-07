@@ -23,9 +23,7 @@
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/analysis/passes/save_optimized_model_pass.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 PassRegistry::PassRegistry() {  // NOLINT
   // Register manually to avoid the trivial `USE_OP` like macro for easier use
@@ -46,6 +44,4 @@ PassRegistry::PassRegistry() {  // NOLINT
                   std::make_unique<IrGraphToProgramPass>());
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

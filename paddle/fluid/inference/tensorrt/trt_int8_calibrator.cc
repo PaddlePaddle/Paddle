@@ -17,9 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 // set the batch size before constructing the thread to execute engine
 int TRTInt8Calibrator::getBatchSize() const TRT_NOEXCEPT { return batch_size_; }
@@ -159,6 +157,4 @@ TRTInt8Calibrator::~TRTInt8Calibrator() {
   VLOG(4) << "Destroying calibrator for " << engine_name_;
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

@@ -27,8 +27,7 @@
 
 PHI_DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
 
-namespace phi {
-namespace jit {
+namespace phi::jit {
 
 // refer do not need CanBeUsed, it would be the last one.
 void GenBase::dumpCode(const unsigned char* code) const {
@@ -99,5 +98,4 @@ std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   return groups;
 }
 
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit

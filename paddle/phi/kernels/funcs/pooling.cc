@@ -17,8 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 /*
  * Tensors are in NCHW or NHWC format.
@@ -2196,5 +2195,4 @@ template class FractionalMaxPool3dGradFunctor<CPUContext, double, int>;
 template class FractionalMaxPool3dFunctor<CPUContext, dtype::float16, int>;
 template class FractionalMaxPool3dGradFunctor<CPUContext, dtype::float16, int>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

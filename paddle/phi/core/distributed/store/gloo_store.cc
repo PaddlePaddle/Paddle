@@ -14,8 +14,7 @@
 
 #include "paddle/phi/core/distributed/store/gloo_store.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 GlooStore::GlooStore(const std::shared_ptr<phi::distributed::Store>& store)
     : store_(store) {}
@@ -43,5 +42,4 @@ void GlooStore::wait(const std::vector<std::string>& keys,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -49,8 +49,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
   std::shared_ptr<ValueExecutionInfo> info =
       std::make_shared<ValueExecutionInfo>(scope);
@@ -1052,5 +1051,4 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
   return res;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

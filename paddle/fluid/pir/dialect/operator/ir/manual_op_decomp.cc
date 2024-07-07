@@ -25,8 +25,7 @@
 // TODO(chenzhuo)
 // this file will be generated in pd_op_decomp.cc
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 using IntArray = paddle::experimental::IntArray;
 
 std::vector<std::vector<pir::Value>> BatchNormOp::Decomp(pir::Operation* op) {
@@ -279,5 +278,4 @@ std::vector<std::vector<pir::Value>> OneHotOp::Decomp(pir::Operation* op) {
   return res;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

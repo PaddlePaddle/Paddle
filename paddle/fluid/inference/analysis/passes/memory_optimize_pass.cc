@@ -24,18 +24,12 @@
 #include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Graph;
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 using framework::ir::Graph;
 using framework::ir::Node;
@@ -284,6 +278,4 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   return;
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

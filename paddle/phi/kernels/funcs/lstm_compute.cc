@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/detail/lstm_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/lstm_kernel.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <class T>
 struct LstmUnitFunctor<CPUContext, T> {
@@ -101,5 +100,4 @@ template class LstmUnitFunctor<CPUContext, double>;
 template class LstmUnitGradFunctor<CPUContext, float>;
 template class LstmUnitGradFunctor<CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

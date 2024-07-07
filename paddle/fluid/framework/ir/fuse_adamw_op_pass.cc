@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 std::vector<std::string> GetNodeNames(const std::vector<Node *> &node_vector) {
   std::vector<std::string> out_vector;
@@ -312,8 +310,6 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
   return graph;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_adamw_op_pass, paddle::framework::ir::FuseAdamWPass);

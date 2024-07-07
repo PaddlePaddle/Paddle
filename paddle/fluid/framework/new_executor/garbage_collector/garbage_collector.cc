@@ -18,8 +18,7 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/no_event_garbage_collector.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector()
     : garbages_(std::make_unique<GarbageQueue>()) {
@@ -87,5 +86,4 @@ CreateInterpreterCoreGarbageCollector(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

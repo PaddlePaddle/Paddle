@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   static constexpr char kNotAllowInferShapeCache[] =  // NOLINT
@@ -48,9 +46,7 @@ void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(runtime_context_cache_pass,
               paddle::framework::ir::RuntimeContextCachePass);

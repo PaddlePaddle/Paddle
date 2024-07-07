@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -782,9 +780,7 @@ void GpuCpuFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(gpu_cpu_map_matmul_to_mul_pass,
               paddle::framework::ir::GpuCpuMapMatmul2MulPass);
