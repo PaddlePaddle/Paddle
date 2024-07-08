@@ -803,7 +803,7 @@ set_tests_properties(
 )
 set_tests_properties(test_layer_norm_op_deprecated_static_build
                      PROPERTIES TIMEOUT 1500)
-set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
