@@ -162,7 +162,6 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
           "Function get_reduce_dims_from_out() only use in static shape case, "
           "but the input [dout_dims] have the dynamic shape."));
 
-  has_dynamic_shape = false;
   for (int i = 0; i < in_dims.size(); i++) {
     if (in_dims[i] == -1) {
       has_dynamic_shape = true;
