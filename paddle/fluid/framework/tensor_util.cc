@@ -585,7 +585,7 @@ struct DeserializedDataFunctor {
 
   void** buf_;
   phi::DenseTensor* tensor_;
-  platform::Place place_;
+  phi::Place place_;
 };
 
 void TensorFromStream(std::istream& is,

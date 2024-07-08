@@ -32,7 +32,7 @@ template <typename T>
 class TestElementwiseAddGradGradWithoutDDX
     : public TestElementwiseOpGradGrad<T> {
  public:
-  TestElementwiseAddGradGradWithoutDDX(const platform::Place &place,
+  TestElementwiseAddGradGradWithoutDDX(const phi::Place &place,
                                        const framework::DDim &dims)
       : TestElementwiseOpGradGrad<T>("elementwise_add_grad_grad",
                                      place,

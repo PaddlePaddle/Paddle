@@ -39,7 +39,7 @@ TEST_API std::vector<phi::DenseTensor> SplitLoDTensor(
 TEST_API void MergeLoDTensor(
     phi::DenseTensor* target,
     const std::vector<const phi::DenseTensor*>& lod_tensors,
-    platform::Place dst_place);
+    phi::Place dst_place);
 
 /*
  * LoD is short for Level of Details.

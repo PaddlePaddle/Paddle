@@ -44,9 +44,9 @@ TEST(test_share_buffer_op, test_share_buffer_op) {
   auto op = OpRegistry::CreateOp(desc);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::Place place = phi::GPUPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 #else
-  platform::Place place = phi::CPUPlace();
+  phi::Place place = phi::CPUPlace();
 #endif
 
   Scope scope;

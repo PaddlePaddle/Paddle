@@ -325,7 +325,7 @@ class PipelineTrainer : public TrainerBase {
 
  protected:
   int num_microbatches_;
-  platform::Place place_;
+  phi::Place place_;
   std::vector<std::string> skip_vars_;
   TrainerDesc trainer_desc_;
 
@@ -364,7 +364,7 @@ class HeterPipelineTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
 
   int num_microbatches_;
-  platform::Place place_;
+  phi::Place place_;
   TrainerDesc trainer_desc_;
 
   int num_pipeline_stages_;

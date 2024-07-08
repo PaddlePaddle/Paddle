@@ -169,7 +169,7 @@ inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 }
 template <typename TCopyer>
 void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
-                                               const platform::Place &place,
+                                               const phi::Place &place,
                                                Scope *scope,
                                                TCopyer *copyer) {
   if (!cast_vars.empty()) {

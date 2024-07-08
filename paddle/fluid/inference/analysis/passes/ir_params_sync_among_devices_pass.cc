@@ -52,7 +52,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
                     true,
                     platform::errors::PreconditionNotMet(
                         "The gpu_device_id field should be valid"));
-  platform::Place place = phi::GPUPlace(argument->gpu_device_id());
+  phi::Place place = phi::GPUPlace(argument->gpu_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -140,8 +140,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
   LOG(INFO) << "Sync params from CPU to " << argument->custom_device_type()
             << ":" << argument->custom_device_id();
 
-  platform::Place place = phi::CustomPlace(argument->custom_device_type(),
-                                           argument->custom_device_id());
+  phi::Place place = phi::CustomPlace(argument->custom_device_type(),
+                                      argument->custom_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -179,7 +179,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
             << "xpu_device_id - " << argument->xpu_device_id();
 
   phi::CPUPlace cpu_place;
-  platform::Place xpu_place = phi::XPUPlace(argument->xpu_device_id());
+  phi::Place xpu_place = phi::XPUPlace(argument->xpu_device_id());
   auto *scope = argument->scope_ptr();
   framework::ir::Graph &main_graph = argument->main_graph();
 

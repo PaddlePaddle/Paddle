@@ -90,7 +90,7 @@ framework::OpDesc* CreateFusionGroupOp(
   return op;
 }
 
-void PrepareDeviceCode(platform::Place place,
+void PrepareDeviceCode(phi::Place place,
                        std::string func_name,
                        std::string cuda_kernel_str) {
   phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});

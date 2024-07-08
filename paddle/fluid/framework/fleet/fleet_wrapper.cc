@@ -620,7 +620,7 @@ void FleetWrapper::PullSparseToTensorSync(
     const uint64_t table_id,
     int fea_dim,
     uint64_t padding_id,
-    platform::Place place,
+    phi::Place place,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<phi::DenseTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
@@ -1108,7 +1108,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     bool scale_sparse,
     const std::string& accessor,
     const std::string& click_name,
-    platform::Place place,
+    phi::Place place,
     const std::vector<std::string>& input_names,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<const phi::DenseTensor*>* outputs) {

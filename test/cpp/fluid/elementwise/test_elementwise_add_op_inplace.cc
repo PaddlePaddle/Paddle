@@ -50,7 +50,7 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
 }
 
 template <typename T>
-bool TestMain(const platform::Place &place,
+bool TestMain(const phi::Place &place,
               const framework::DDim &dims,
               bool inplace) {
   framework::Scope scope;

@@ -25,7 +25,7 @@ RPCOpHandle::RPCOpHandle(ir::Node *node,
                          const framework::OpDesc &op_desc,
                          Scope *local_scope,
                          const std::string &name,
-                         const platform::Place &place)
+                         const phi::Place &place)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),

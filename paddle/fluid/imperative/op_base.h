@@ -231,7 +231,7 @@ class OpBase {
   framework::AttributeMap attrs_;
   const framework::AttributeMap* default_attrs_ = nullptr;
   std::unique_ptr<framework::OperatorBase> op_;
-  platform::Place place_;
+  phi::Place place_;
   size_t id_{-1UL};
   // In order to reduce the compatibility phase
   // performance overhead, temporarily cache KernelContext

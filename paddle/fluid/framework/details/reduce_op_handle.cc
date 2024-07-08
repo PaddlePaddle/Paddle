@@ -111,7 +111,7 @@ void ReduceOpHandle::RunImpl() {
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
-  platform::Place t_out_p;
+  phi::Place t_out_p;
   if (platform::is_gpu_place(in_p)) {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()),
                       true,

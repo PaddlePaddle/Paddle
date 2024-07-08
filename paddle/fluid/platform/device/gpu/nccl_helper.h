@@ -220,9 +220,9 @@ class NCCLContextMap {
 
   phi::GPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  phi::GPUContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
+  phi::GPUContext *DevCtx(phi::Place p) const { return DevCtx(p.device); }
 
-  const NCCLContext &at(platform::Place p) const { return this->at(p.device); }
+  const NCCLContext &at(phi::Place p) const { return this->at(p.device); }
 
   const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 

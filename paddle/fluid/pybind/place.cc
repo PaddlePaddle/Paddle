@@ -608,58 +608,52 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<platform::Place, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::Place, phi::CustomPlace>)
       .def("is_gpu_place",
-           [](platform::Place &self) { return platform::is_gpu_place(self); })
+           [](phi::Place &self) { return platform::is_gpu_place(self); })
       .def("is_cpu_place",
-           [](platform::Place &self) { return platform::is_cpu_place(self); })
+           [](phi::Place &self) { return platform::is_cpu_place(self); })
       .def("is_xpu_place",
-           [](platform::Place &self) { return platform::is_xpu_place(self); })
+           [](phi::Place &self) { return platform::is_xpu_place(self); })
       .def("is_ipu_place",
-           [](platform::Place &self) { return platform::is_ipu_place(self); })
-      .def("is_cuda_pinned_place",
-           [](platform::Place &self) {
-             return platform::is_cuda_pinned_place(self);
-           })
+           [](phi::Place &self) { return platform::is_ipu_place(self); })
       .def(
-          "is_custom_place",
-          [](platform::Place &self) { return platform::is_custom_place(self); })
-      .def("gpu_device_id", [](platform::Place &self) { return self.device; })
-      .def("xpu_device_id", [](platform::Place &self) { return self.device; })
-      .def("ipu_device_id", [](platform::Place &self) { return self.device; })
-      .def("custom_device_id",
-           [](platform::Place &self) { return self.device; })
+          "is_cuda_pinned_place",
+          [](phi::Place &self) { return platform::is_cuda_pinned_place(self); })
+      .def("is_custom_place",
+           [](phi::Place &self) { return platform::is_custom_place(self); })
+      .def("gpu_device_id", [](phi::Place &self) { return self.device; })
+      .def("xpu_device_id", [](phi::Place &self) { return self.device; })
+      .def("ipu_device_id", [](phi::Place &self) { return self.device; })
+      .def("custom_device_id", [](phi::Place &self) { return self.device; })
       .def("custom_device_type",
-           [](platform::Place &self) { return self.GetDeviceType(); })
+           [](phi::Place &self) { return self.GetDeviceType(); })
       .def("set_place",
-           [](platform::Place &self, const platform::Place &other) {
-             self = other;
-           })
+           [](phi::Place &self, const phi::Place &other) { self = other; })
       .def("set_place",
-           [](platform::Place &self, const phi::CPUPlace &cpu_place) {
+           [](phi::Place &self, const phi::CPUPlace &cpu_place) {
              self = cpu_place;
            })
       .def("set_place",
-           [](platform::Place &self, const phi::XPUPlace &xpu_place) {
+           [](phi::Place &self, const phi::XPUPlace &xpu_place) {
              self = xpu_place;
            })
       .def("set_place",
-           [](platform::Place &self, const phi::GPUPlace &gpu_place) {
+           [](phi::Place &self, const phi::GPUPlace &gpu_place) {
              self = gpu_place;
            })
       .def("set_place",
-           [](platform::Place &self,
-              const phi::GPUPinnedPlace &cuda_pinned_place) {
+           [](phi::Place &self, const phi::GPUPinnedPlace &cuda_pinned_place) {
              self = cuda_pinned_place;
            })
       .def("set_place",
-           [](platform::Place &self, const phi::IPUPlace &ipu_place) {
+           [](phi::Place &self, const phi::IPUPlace &ipu_place) {
              self = ipu_place;
            })
       .def("set_place",
-           [](platform::Place &self, const phi::CustomPlace &plug_place) {
+           [](phi::Place &self, const phi::CustomPlace &plug_place) {
              self = plug_place;
            })
-      .def("__repr__", string::to_string<const platform::Place &>)
-      .def("__str__", string::to_string<const platform::Place &>);
+      .def("__repr__", string::to_string<const phi::Place &>)
+      .def("__str__", string::to_string<const phi::Place &>);
 }
 
 }  // namespace paddle::pybind

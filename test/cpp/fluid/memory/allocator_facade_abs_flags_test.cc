@@ -33,7 +33,7 @@ namespace allocation {
 //! Run allocate test cases for different places
 void AllocateTestCases() {
   auto &instance = AllocatorFacade::Instance();
-  platform::Place place;
+  phi::Place place;
   size_t size = 1024;
 
   {

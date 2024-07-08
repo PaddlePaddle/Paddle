@@ -1467,7 +1467,7 @@ class DataFeed {
   std::vector<SlotConf> slot_conf_;
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
-  platform::Place place_;
+  phi::Place place_;
   std::string uid_slot_;
 
   // The input type of pipe reader, 0 for one sample, 1 for one batch

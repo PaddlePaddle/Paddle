@@ -39,7 +39,7 @@ template <typename T>
 class TestElementwiseOpGradGrad {
  public:
   TestElementwiseOpGradGrad(const std::string &op_type,
-                            const platform::Place &place,
+                            const phi::Place &place,
                             const framework::DDim &dims,
                             const std::vector<std::string> &inputs,
                             const std::vector<std::string> &outputs)
@@ -162,7 +162,7 @@ class TestElementwiseOpGradGrad {
 
  protected:
   std::string op_type_;
-  platform::Place place_;
+  phi::Place place_;
   framework::DDim dims_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;

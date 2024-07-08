@@ -27,7 +27,7 @@ namespace operators {
 USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 
 template <typename T>
-static void InitRandom(phi::DenseTensor *tensor, const platform::Place &place) {
+static void InitRandom(phi::DenseTensor *tensor, const phi::Place &place) {
   phi::DenseTensor cpu_tensor;
   auto *cpu_ptr = cpu_tensor.mutable_data<T>(tensor->dims(), phi::CPUPlace());
   int64_t numel = cpu_tensor.numel();
@@ -64,7 +64,7 @@ struct LeakyReluGradGradEachElementFunctor {
 
 template <typename T>
 static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
-                                      const platform::Place &place,
+                                      const phi::Place &place,
                                       float alpha) {
   LeakyReluGradGradFunctor<T> functor;
   functor.alpha = alpha;

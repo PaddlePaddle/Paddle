@@ -227,7 +227,7 @@ CostData CostModel::ProfileMeasure(
   // TODO(zhhsplendid): support different fetch data
 
   platform::ProfilerState profiler_state;
-  platform::Place place;
+  phi::Place place;
 
   std::string device_lower_case = ToLowerCopy(device);
   if (device_lower_case == "cpu") {

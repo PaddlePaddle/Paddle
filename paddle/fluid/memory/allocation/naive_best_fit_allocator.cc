@@ -64,7 +64,7 @@ struct Usage {
   size_t operator()(const phi::GPUPinnedPlace &cuda_pinned) const;
 };
 
-size_t memory_usage(const platform::Place &p);
+size_t memory_usage(const phi::Place &p);
 
 using BuddyAllocator = detail::BuddyAllocator;
 
@@ -471,7 +471,7 @@ class BuddyAllocatorList {
   std::unordered_map<size_t, std::unique_ptr<BuddyAllocator>> allocators_;
 };
 
-BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
+BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
   VLOG(10) << "GetBuddyAllocator place = " << place;
   if (platform::is_custom_place(place)) {
     return BuddyAllocatorList::Instance(
@@ -627,7 +627,7 @@ void NaiveBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   delete allocation;
 }
 
-uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
+uint64_t NaiveBestFitAllocator::ReleaseImpl(const phi::Place &place) {
   return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
 }
 

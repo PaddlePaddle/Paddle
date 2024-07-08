@@ -574,7 +574,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<Argument> argument_ = nullptr;
   Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
-  platform::Place place_;
+  phi::Place place_;
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;

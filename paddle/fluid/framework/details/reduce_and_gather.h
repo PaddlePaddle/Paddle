@@ -116,7 +116,7 @@ struct GatherLocalSelectedRowsFunctor {
       const std::vector<const phi::SelectedRows *> &src_selected_rows,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-      const platform::Place &out_place,
+      const phi::Place &out_place,
       phi::SelectedRows *dst_selected_rows)
       : dev_ctxes_(dev_ctxes),
         in_places_(in_places),
@@ -168,7 +168,7 @@ struct GatherLocalSelectedRowsFunctor {
   std::vector<platform::Place> in_places_;
   std::vector<phi::DenseTensor> in_tensors_;
 
-  platform::Place out_place_;
+  phi::Place out_place_;
   phi::SelectedRows *dst_selected_rows_;
 };
 

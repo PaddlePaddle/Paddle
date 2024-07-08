@@ -100,7 +100,7 @@ void PolishGraphToSupportDataHazards(ir::Graph *graph) {
 
 details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
                                                ir::Node *node,
-                                               const platform::Place &place,
+                                               const phi::Place &place,
                                                size_t place_offset) {
   auto &var_holders =
       graph->Get<details::GraphVars>(details::kGraphVars)[place_offset];
@@ -132,7 +132,7 @@ details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
 void CreateOpOutput(ir::Graph *graph,
                     details::OpHandleBase *op_handle,
                     ir::Node *new_node,
-                    const platform::Place &place,
+                    const phi::Place &place,
                     size_t place_offset) {
   auto &vars = graph->Get<details::GraphVars>(
       details::kGraphVars)[place_offset][new_node->Name()];
@@ -385,7 +385,7 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
 }
 
 void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
-    details::OpHandleBase *op_handle, const platform::Place &p) const {
+    details::OpHandleBase *op_handle, const phi::Place &p) const {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nccl_ctxs_ == nullptr) {
     op_handle->SetDeviceContext(p,

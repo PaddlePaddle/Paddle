@@ -30,7 +30,7 @@ class ThreadLocalAllocatorImpl;
 
 class ThreadLocalAllocation : public Allocation {
  public:
-  ThreadLocalAllocation(void* ptr, size_t size, platform::Place place)
+  ThreadLocalAllocation(void* ptr, size_t size, phi::Place place)
       : Allocation(ptr, size, place) {}
 
   void SetThreadLocalAllocatorImpl(
@@ -56,7 +56,7 @@ class ThreadLocalAllocatorImpl
 
  private:
   std::unique_ptr<memory::detail::BuddyAllocator> buddy_allocator_;
-  platform::Place place_;
+  phi::Place place_;
 };
 
 class ThreadLocalCUDAAllocatorPool {

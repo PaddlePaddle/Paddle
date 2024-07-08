@@ -45,7 +45,7 @@ class OpKernelType {
   constexpr static int kCustomizeBits = 4;
 
   OpKernelType(proto::VarType::Type data_type,
-               platform::Place place,
+               phi::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -84,7 +84,7 @@ class OpKernelType {
 
   proto::VarType::Type data_type_;
   DataLayout data_layout_;
-  platform::Place place_;
+  phi::Place place_;
   LibraryType library_type_;
   int customized_type_value_;
 };

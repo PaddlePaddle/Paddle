@@ -35,7 +35,7 @@ class ExceptionThrownOperator : public OperatorBase {
   }
 
  protected:
-  void RunImpl(const Scope &, const platform::Place &) const override {
+  void RunImpl(const Scope &, const phi::Place &) const override {
     if (exception_) {
       std::rethrow_exception(exception_);
     }

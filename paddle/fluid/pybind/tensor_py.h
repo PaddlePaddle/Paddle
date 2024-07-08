@@ -438,7 +438,7 @@ void SetTensorFromPyArrayT(
 #ifdef PADDLE_WITH_XPU
     // NOTE(wangxi): When copying data to the accelerator card,
     // we need set_device(dev_id) first.
-    platform::Place tmp_place = place;
+    phi::Place tmp_place = place;
     platform::XPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
     memory::Copy(tmp_place,
@@ -474,7 +474,7 @@ void SetTensorFromPyArrayT(
 #endif
   } else if (paddle::platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    platform::Place tmp_place = place;
+    phi::Place tmp_place = place;
     phi::DeviceGuard guard(tmp_place);
     auto dst = self->mutable_data<T>(place);
 

@@ -51,7 +51,7 @@ TEST(allocator, allocator) {
 
   auto &instance = AllocatorFacade::Instance();
   size_t size = 1024;
-  platform::Place place;
+  phi::Place place;
 
   {
     place = phi::CPUPlace();

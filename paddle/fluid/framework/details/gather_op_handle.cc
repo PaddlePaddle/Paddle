@@ -100,7 +100,7 @@ void GatherOpHandle::RunImpl() {
   }
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
-  platform::Place t_out_p = out_var_handle->place();
+  phi::Place t_out_p = out_var_handle->place();
   if (platform::is_gpu_place(pre_in_value.place())) {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p),
                       true,

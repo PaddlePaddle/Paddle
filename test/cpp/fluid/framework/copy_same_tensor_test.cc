@@ -40,8 +40,8 @@ static std::vector<platform::Place> CreatePlaceList() {
 
 template <typename T>
 static bool CopySameTensorTestMain(const DDim &dims,
-                                   const platform::Place &src_place,
-                                   const platform::Place &dst_place,
+                                   const phi::Place &src_place,
+                                   const phi::Place &dst_place,
                                    bool sync_copy) {
   FLAGS_use_system_allocator = true;  // force to use system allocator
 

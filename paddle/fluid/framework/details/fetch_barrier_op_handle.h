@@ -67,7 +67,7 @@ struct FetchBarrierOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   Scope *run_scope_;
-  platform::Place place_;
+  phi::Place place_;
 
   bool is_lock_and_record_event_free_{false};
 };

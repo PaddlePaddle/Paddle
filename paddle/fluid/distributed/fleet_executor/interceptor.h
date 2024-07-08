@@ -105,7 +105,7 @@ class Interceptor {
   void StopCarrier();
 
   // for runtime
-  platform::Place place_;
+  phi::Place place_;
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};

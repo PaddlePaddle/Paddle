@@ -137,7 +137,7 @@ struct ReduceOpHandle : public OpHandleBase {
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle,
-      const platform::Place &out_place,
+      const phi::Place &out_place,
       phi::SelectedRows *dst_selecte_rows);
 #endif
 

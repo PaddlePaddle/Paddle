@@ -689,21 +689,20 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return dst;
            })
-      .def("_copy",
-           [](const phi::DenseTensor &self, const platform::Place &place) {
-             // follow fetch_op's inplementation
-             phi::DenseTensor dst;
-             if (self.IsInitialized() && self.numel() > 0) {
-               TensorCopySync(self, place, &dst);
-             } else {
-               // Not copy, if the src tensor is empty.
-               dst.clear();
-               dst.Resize({0});
-             }
-             dst.set_lod(self.lod());
-             return dst;
+      .def("_copy", [](const phi::DenseTensor &self, const phi::Place &place) {
+        // follow fetch_op's inplementation
+        phi::DenseTensor dst;
+        if (self.IsInitialized() && self.numel() > 0) {
+          TensorCopySync(self, place, &dst);
+        } else {
+          // Not copy, if the src tensor is empty.
+          dst.clear();
+          dst.Resize({0});
+        }
+        dst.set_lod(self.lod());
+        return dst;
 #ifdef _WIN32
-           });
+      });
 #else
            })
 #ifdef PADDLE_WITH_CUDA

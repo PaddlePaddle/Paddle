@@ -60,7 +60,7 @@ struct RPCOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope* local_scope_;
   const std::string name_;
-  platform::Place place_;
+  phi::Place place_;
 };
 
 }  // namespace details

@@ -66,7 +66,7 @@ void RecordStream(std::shared_ptr<Allocation> allocation,
 template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
-  ThrustAllocator(platform::Place place, StreamType stream) {
+  ThrustAllocator(phi::Place place, StreamType stream) {
     VLOG(2) << "construct allocator";
     place_ = place;
     stream_ = stream;
@@ -93,7 +93,7 @@ struct ThrustAllocator {
   typedef std::unordered_map<char*, std::shared_ptr<phi::Allocation>>
       allocation_map_type;
   allocation_map_type busy_allocation_;
-  platform::Place place_;
+  phi::Place place_;
   StreamType stream_;
 };
 

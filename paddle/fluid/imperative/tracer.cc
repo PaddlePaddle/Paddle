@@ -544,7 +544,7 @@ void Tracer::TraceOp(const std::string& type,
   }
 }
 
-TEST_API void Tracer::SetExpectedPlace(platform::Place place) {
+TEST_API void Tracer::SetExpectedPlace(phi::Place place) {
   expected_place_ = place;
 }
 TEST_API bool Tracer::HasGrad() const { return has_grad_; }

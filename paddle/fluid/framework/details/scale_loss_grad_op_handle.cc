@@ -27,7 +27,7 @@ namespace paddle::framework::details {
 ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
                                              size_t num_dev,
                                              Scope *scope,
-                                             platform::Place place,
+                                             phi::Place place,
                                              platform::DeviceContext *dev_ctx,
                                              proto::VarType::Type dtype)
     : OpHandleBase(node),
@@ -43,13 +43,13 @@ ScaleLossGradOpHandle::~ScaleLossGradOpHandle() = default;
 struct ScaleLossGradFunctor {
   float coeff_;
   phi::DenseTensor *out_;
-  platform::Place place_;
+  phi::Place place_;
   proto::VarType::Type out_dtype_;
   platform::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff,
                        phi::DenseTensor *out,
-                       platform::Place place,
+                       phi::Place place,
                        proto::VarType::Type dtype,
                        platform::DeviceContext *ctx)
       : coeff_(coeff), out_(out), place_(place), out_dtype_(dtype), ctx_(ctx) {}

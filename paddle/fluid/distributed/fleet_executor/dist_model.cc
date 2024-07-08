@@ -44,7 +44,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  phi::DenseTensor *input_tensor,
-                                 const platform::Place &place) {
+                                 const phi::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = common::make_ddim(input_data.shape);
   void *input_tensor_ptr = nullptr;

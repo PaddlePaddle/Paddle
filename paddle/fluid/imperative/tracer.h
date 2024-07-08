@@ -137,9 +137,9 @@ class Tracer {
 
   BasicEngine* GetEngine() const { return basic_engine_.get(); }
 
-  platform::Place ExpectedPlace() const { return expected_place_; }
+  phi::Place ExpectedPlace() const { return expected_place_; }
 
-  TEST_API void SetExpectedPlace(platform::Place place);
+  TEST_API void SetExpectedPlace(phi::Place place);
 
   TEST_API bool HasGrad() const;
 
@@ -178,7 +178,7 @@ class Tracer {
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<UniqueNameGenerator> generator_;
-  platform::Place expected_place_;
+  phi::Place expected_place_;
   GarbageCollectorMap gcs_;
   static thread_local std::string python_stack_;
   static thread_local bool enable_program_desc_tracing_;

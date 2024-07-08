@@ -123,7 +123,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
   PyObject *py_func_;
 };
 
-static const platform::Place PyObjectToPlace(const py::object &place_obj) {
+static const phi::Place PyObjectToPlace(const py::object &place_obj) {
   if (py::isinstance<phi::CPUPlace>(place_obj)) {
     return place_obj.cast<phi::CPUPlace>();
   } else if (py::isinstance<phi::GPUPlace>(place_obj)) {
@@ -170,7 +170,7 @@ static void InitVarBaseOnly(imperative::VarBase *self,
 // initialize varbase and its tensor.
 static void InitVarBaseAndTensor(imperative::VarBase *self,
                                  const py::array &array,
-                                 const platform::Place &place,
+                                 const phi::Place &place,
                                  const std::string &name,
                                  bool persistable = false,
                                  bool zero_copy = false,
@@ -721,7 +721,7 @@ void BindImperative(py::module *m_ptr) {
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::Place>(obj)) {
-              auto p = obj.cast<platform::Place *>();
+              auto p = obj.cast<phi::Place *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -848,7 +848,7 @@ void BindImperative(py::module *m_ptr) {
              &output_targets,
          const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
          const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
-         const platform::Place &place,
+         const phi::Place &place,
          bool create_graph,
          bool retain_graph,
          bool allow_unused,

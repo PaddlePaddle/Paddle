@@ -71,7 +71,7 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
 }
 
 struct DLDeviceVisitor {
-  using argument_type = const platform::Place &;
+  using argument_type = const phi::Place &;
   using result_type = ::DLDevice;
   inline ::DLDevice operator()(const phi::CPUPlace &place) const {
     ::DLDevice device;

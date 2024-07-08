@@ -144,7 +144,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        const VariableMessage& req_var,
-                                       platform::Place place,
+                                       phi::Place place,
                                        gpuStream_t stream) {
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
@@ -190,7 +190,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 // const HeterRequest* request) {
 void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        const VariableMessage& req_var,
-                                       platform::Place place) {
+                                       phi::Place place) {
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
   auto* tensor = var->GetMutable<phi::DenseTensor>();

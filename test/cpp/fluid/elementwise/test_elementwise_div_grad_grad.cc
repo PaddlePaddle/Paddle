@@ -43,7 +43,7 @@ namespace operators {
 template <typename T>
 class TestElementwiseDivGradGradWithDout : public TestElementwiseOpGradGrad<T> {
  public:
-  TestElementwiseDivGradGradWithDout(const platform::Place &place,
+  TestElementwiseDivGradGradWithDout(const phi::Place &place,
                                      const framework::DDim &dims)
       : TestElementwiseOpGradGrad<T>(
             "elementwise_div_grad_grad",

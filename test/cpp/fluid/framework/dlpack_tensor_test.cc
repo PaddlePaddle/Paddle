@@ -46,7 +46,7 @@ constexpr uint8_t GetDLDataTypeCode() {
 }  // namespace
 
 template <typename T>
-void TestMain(const platform::Place &place, uint16_t lanes) {
+void TestMain(const phi::Place &place, uint16_t lanes) {
   DDim dims{4, 5, 6, 7};
   phi::DenseTensor tensor;
   tensor.Resize(dims);
@@ -84,7 +84,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 }
 
 template <typename T>
-void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
+void TestToDLManagedTensor(const phi::Place &place, uint16_t lanes) {
   DDim dims{6, 7};
   phi::DenseTensor tensor;
   tensor.Resize(dims);

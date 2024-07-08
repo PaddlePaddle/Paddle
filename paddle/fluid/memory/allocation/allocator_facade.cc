@@ -786,7 +786,7 @@ class AllocatorFacadePrivate {
  private:
   class ZeroSizeAllocator : public Allocator {
    public:
-    explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
+    explicit ZeroSizeAllocator(phi::Place place) : place_(place) {}
     bool IsAllocThreadSafe() const override { return true; }
 
    protected:
@@ -796,7 +796,7 @@ class AllocatorFacadePrivate {
     void FreeImpl(phi::Allocation* allocation) override { delete allocation; }
 
    private:
-    platform::Place place_;
+    phi::Place place_;
   };
 
   const AllocatorMap& GetAllocatorMap() { return allocators_; }

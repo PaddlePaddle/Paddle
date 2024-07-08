@@ -367,8 +367,7 @@ class TEST_API OperatorBase {
                                  const platform::Place& place UNUSED,
                                  const RuntimeContext& ctx UNUSED) const {}
 
-  virtual platform::Place GetExecutionPlace(
-      const platform::Place& place) const {
+  virtual phi::Place GetExecutionPlace(const platform::Place& place) const {
     return place;
   }
 
@@ -573,7 +572,7 @@ class ExecutionContext : public phi::KernelContext {
     return res;
   }
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  phi::Place GetPlace() const { return device_context_.GetPlace(); }
 
   template <typename DeviceContextType>
   const DeviceContextType& device_context() const {
@@ -816,7 +815,7 @@ class OperatorWithKernel : public OperatorBase {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const;
 
-  platform::Place GetExecutionPlace(
+  phi::Place GetExecutionPlace(
       const platform::Place& platform UNUSED) const override {
     return kernel_type_->place_;
   }

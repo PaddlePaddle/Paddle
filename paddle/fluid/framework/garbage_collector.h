@@ -31,7 +31,7 @@ class GarbageCollector {
  public:
   using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
 
-  GarbageCollector(const platform::Place &place, size_t max_memory_size);
+  GarbageCollector(const phi::Place &place, size_t max_memory_size);
 
   virtual ~GarbageCollector() PADDLE_MAY_THROW {}
 
@@ -221,7 +221,7 @@ void SetEagerDeletionMode(double threshold, double fraction, bool fast_mode);
 double GetEagerDeletionMemoryFraction();
 // create
 extern std::unique_ptr<GarbageCollector> CreateGarbageCollector(
-    const platform::Place &place, const size_t max_memory_size);
+    const phi::Place &place, const size_t max_memory_size);
 
 }  // namespace framework
 }  // namespace paddle

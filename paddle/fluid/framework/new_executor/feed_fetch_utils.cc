@@ -155,7 +155,7 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
 }
 
 void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
-                  const platform::Place dst_place,
+                  const phi::Place dst_place,
                   phi::DenseTensor* target) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),

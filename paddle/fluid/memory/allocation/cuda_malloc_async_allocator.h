@@ -38,7 +38,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
  public:
   CUDAMallocAsyncAllocation(void* ptr,
                             size_t size,
-                            platform::Place place,
+                            phi::Place place,
                             gpuStream_t stream)
       : Allocation(ptr, size, place),
         malloc_stream_(stream),

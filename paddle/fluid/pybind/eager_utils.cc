@@ -628,8 +628,8 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
   return result;
 }
 
-platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
-  platform::Place place;
+phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
+  phi::Place place;
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
     place = ::pybind11::handle(obj).cast<platform::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {

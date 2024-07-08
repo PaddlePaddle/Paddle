@@ -26,7 +26,7 @@ COMMON_DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle::framework {
 
-GarbageCollector::GarbageCollector(const platform::Place &place,
+GarbageCollector::GarbageCollector(const phi::Place &place,
                                    size_t max_memory_size)
     : garbages_(std::make_unique<GarbageQueue>()),
       mutex_(nullptr),
@@ -199,7 +199,7 @@ double GetEagerDeletionMemoryFraction() {
 }
 
 std::unique_ptr<GarbageCollector> CreateGarbageCollector(
-    const platform::Place &place, const size_t max_memory_size) {
+    const phi::Place &place, const size_t max_memory_size) {
   std::unique_ptr<GarbageCollector> gc = nullptr;
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
