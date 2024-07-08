@@ -146,8 +146,7 @@ def convert_dtype(dtype: DTypeLike) -> str:
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
-        "int32, int64, uint8, complex64, complex128, bfloat16], but received %s"
-        % dtype
+        f"int32, int64, uint8, complex64, complex128, bfloat16], but received {dtype}"
     )
 
 

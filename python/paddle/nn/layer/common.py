@@ -23,13 +23,14 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
-    from paddle import ParamAttr, Tensor
+    from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,
         DataLayout1DVariant,
         DataLayout2D,
         DataLayout3D,
         IntSequence,
+        ParamAttrLike,
         ShapeLike,
         Size2,
         Size4,
@@ -197,8 +198,8 @@ class Linear(Layer):
         self,
         in_features: int,
         out_features: int,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -744,8 +745,8 @@ class Bilinear(Layer):
         in1_features: int,
         in2_features: int,
         out_features: int,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1102,6 +1103,68 @@ class AlphaDropout(Layer):
 
     def forward(self, input: Tensor) -> Tensor:
         out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name
+        )
+        return out
+
+    def extra_repr(self) -> str:
+        name_str = f', name={self.name}' if self.name else ''
+        return f'p={self.p}{name_str}'
+
+
+class FeatureAlphaDropout(Layer):
+    """
+    A channel is a feature map, Feature Alpha Dropout randomly masks out entire channels.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
+            >>> m = paddle.nn.FeatureAlphaDropout(p=0.5)
+            >>> y_train = m(x)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.10721093,  1.66559887],
+             [-0.77919382,  1.66559887]])
+
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+             [-1.,  1.]])
+    """
+
+    p: float
+    name: str | None
+
+    def __init__(self, p: float = 0.5, name: str | None = None) -> None:
+        super().__init__()
+        self.p = p
+        self.name = name
+
+    def forward(self, input: Tensor) -> Tensor:
+        out = F.feature_alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
         return out
@@ -1703,7 +1766,7 @@ class Embedding(Layer):
         embedding_dim: int,
         padding_idx: float | None = None,
         sparse: bool = False,
-        weight_attr: ParamAttr | None = None,
+        weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()

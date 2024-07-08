@@ -22,8 +22,7 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-import types
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy
 
@@ -44,6 +43,9 @@ from .program_translator import (
     unwrap_decorators,
 )
 from .utils import is_builtin, is_paddle_func
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 __all__ = []
 
@@ -103,7 +105,7 @@ def builtin_modules():
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
-def add_ignore_module(modules: list[types.ModuleType]):
+def add_ignore_module(modules: list[ModuleType]):
     """
     Adds modules that ignore transcription
     """

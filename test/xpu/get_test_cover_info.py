@@ -21,50 +21,76 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.base.core import VarDesc
+from paddle.base.libpaddle import DataType
 
 type_dict_paddle_to_str = {
-    paddle.bool: 'bool',
-    paddle.uint8: 'uint8',
-    paddle.int8: 'int8',
-    paddle.int16: 'int16',
-    paddle.int32: 'int32',
-    paddle.int64: 'int64',
-    paddle.float16: 'float16',
-    paddle.bfloat16: 'bfloat16',
-    paddle.float32: 'float32',
-    paddle.float64: 'float64',
-    paddle.complex128: 'complex128',
-    paddle.complex64: 'complex64',
+    VarDesc.VarType.BOOL: 'bool',
+    VarDesc.VarType.UINT8: 'uint8',
+    VarDesc.VarType.INT8: 'int8',
+    VarDesc.VarType.INT16: 'int16',
+    VarDesc.VarType.INT32: 'int32',
+    VarDesc.VarType.INT64: 'int64',
+    VarDesc.VarType.FP16: 'float16',
+    VarDesc.VarType.BF16: 'bfloat16',
+    VarDesc.VarType.FP32: 'float32',
+    VarDesc.VarType.FP64: 'float64',
+    VarDesc.VarType.COMPLEX128: 'complex128',
+    VarDesc.VarType.COMPLEX64: 'complex64',
+    DataType.BOOL: 'bool',
+    DataType.UINT8: 'uint8',
+    DataType.INT8: 'int8',
+    DataType.INT16: 'int16',
+    DataType.INT32: 'int32',
+    DataType.INT64: 'int64',
+    DataType.FLOAT16: 'float16',
+    DataType.BFLOAT16: 'bfloat16',
+    DataType.FLOAT32: 'float32',
+    DataType.FLOAT64: 'float64',
+    DataType.COMPLEX128: 'complex128',
+    DataType.COMPLEX64: 'complex64',
 }
 
 type_dict_paddle_to_numpy = {
-    paddle.bool: np.bool_,
-    paddle.uint8: np.uint8,
-    paddle.int8: np.int8,
-    paddle.int16: np.int16,
-    paddle.int32: np.int32,
-    paddle.int64: np.int64,
-    paddle.bfloat16: np.uint16,
-    paddle.float16: np.float16,
-    paddle.float32: np.float32,
-    paddle.float64: np.float64,
-    paddle.complex128: np.complex128,
-    paddle.complex64: np.complex64,
+    VarDesc.VarType.BOOL: np.bool_,
+    VarDesc.VarType.UINT8: np.uint8,
+    VarDesc.VarType.INT8: np.int8,
+    VarDesc.VarType.INT16: np.int16,
+    VarDesc.VarType.INT32: np.int32,
+    VarDesc.VarType.INT64: np.int64,
+    VarDesc.VarType.FP16: np.float16,
+    VarDesc.VarType.BF16: np.uint16,
+    VarDesc.VarType.FP32: np.float32,
+    VarDesc.VarType.FP64: np.float64,
+    VarDesc.VarType.COMPLEX128: np.complex128,
+    VarDesc.VarType.COMPLEX64: np.complex64,
+    DataType.BOOL: np.bool_,
+    DataType.UINT8: np.uint8,
+    DataType.INT8: np.int8,
+    DataType.INT16: np.int16,
+    DataType.INT32: np.int32,
+    DataType.INT64: np.int64,
+    DataType.FLOAT16: np.float16,
+    DataType.BFLOAT16: np.uint16,
+    DataType.FLOAT32: np.float32,
+    DataType.FLOAT64: np.float64,
+    DataType.COMPLEX128: np.complex128,
+    DataType.COMPLEX64: np.complex64,
 }
 
 type_dict_str_to_paddle = {
-    'uint8': paddle.uint8,
-    'int8': paddle.int8,
-    'int16': paddle.int16,
-    'int32': paddle.int32,
-    'int64': paddle.int64,
-    'bfloat16': paddle.bfloat16,
-    'float16': paddle.float16,
-    'float32': paddle.float32,
-    'float64': paddle.float64,
-    'bool': paddle.bool,
-    'complex64': paddle.complex64,
-    'complex128': paddle.complex128,
+    'uint8': VarDesc.VarType.UINT8,
+    'int8': VarDesc.VarType.INT8,
+    'int16': VarDesc.VarType.INT16,
+    'int32': VarDesc.VarType.INT32,
+    'int64': VarDesc.VarType.INT64,
+    'bfloat16': VarDesc.VarType.BF16,
+    'float16': VarDesc.VarType.FP16,
+    'float32': VarDesc.VarType.FP32,
+    'float64': VarDesc.VarType.FP64,
+    'bool': VarDesc.VarType.BOOL,
+    'complex64': VarDesc.VarType.COMPLEX64,
+    'complex128': VarDesc.VarType.COMPLEX128,
 }
 
 type_dict_str_to_numpy = {
@@ -296,7 +322,7 @@ def create_test_class(
         if test_class[0] == '__class__':
             continue
         class_obj = test_class[1]
-        cls_name = f"{test_class[0]}_{str(test_type)}"
+        cls_name = f"{test_class[0]}_{test_type}"
         func_globals[cls_name] = type(
             cls_name,
             (class_obj,),
@@ -313,7 +339,7 @@ def create_test_class(
     ):
         base_class, dynamic_classes = test_class_obj.dynamic_create_class()
         for dy_class in dynamic_classes:
-            cls_name = f"{dy_class[0]}_{str(test_type)}"
+            cls_name = f"{dy_class[0]}_{test_type}"
             attr_dict = dy_class[1]
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             attr_dict['in_type_str'] = test_type

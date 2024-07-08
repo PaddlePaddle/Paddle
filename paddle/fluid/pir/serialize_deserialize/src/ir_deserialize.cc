@@ -108,6 +108,12 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   VLOG(6) << "Finish Read value " << value_id_ << ".";
 
   Json& attrs_json = op_json->at(ATTRS);
+  PADDLE_ENFORCE_EQ(
+      attrs_json.size(),
+      4,
+      common::errors::InvalidArgument(
+          "builtin ParameterOp has %d 's  attributes, which should be 4",
+          attrs_json.size()));
   pir::AttributeMap attributes;
   pir::IrContext* ctx = pir::IrContext::Instance();
   attributes.insert(
@@ -122,6 +128,12 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
+    PADDLE_ENFORCE_EQ(other_attrs_json.size(),
+                      3,
+                      common::errors::InvalidArgument(
+                          "builtin ParameterOp has %d 's  opresult attributes, "
+                          "which should be 3",
+                          other_attrs_json.size()));
     attributes.insert({"persistable",
                        GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(0))});
     attributes.insert({"stop_gradient",

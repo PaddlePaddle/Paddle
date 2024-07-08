@@ -23,20 +23,20 @@ from typing_extensions import NotRequired, Unpack
 
 import paddle
 from paddle import nn
-from paddle._typing import Size2
 from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import Size2
+
+    class _MobileNetV1Options(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
 
 __all__ = []
-
-
-class _MobileNetV1Options(TypedDict):
-    num_classes: NotRequired[int]
-    with_pool: NotRequired[bool]
 
 
 model_urls = {
@@ -109,6 +109,10 @@ class MobileNetV1(nn.Layer):
             >>> print(out.shape)
             [1, 1000]
     """
+
+    scale: float
+    num_classes: int
+    with_pool: bool
 
     def __init__(
         self,
