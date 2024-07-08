@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <filesystem>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -41,6 +42,8 @@ COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_bool(use_cinn);
 #endif
 
+namespace fs = std::filesystem;
+COMMON_DECLARE_bool(enable_pir_api);
 namespace paddle {
 struct MkldnnQuantizerConfig;
 
@@ -87,8 +90,32 @@ AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
 }
 AnalysisConfig::AnalysisConfig(const std::string &prog_file,
                                const std::string &params_file) {
-  prog_file_ = prog_file;
-  params_file_ = params_file;
+  if (fs::is_directory(prog_file)) {
+    if (FLAGS_enable_pir_api) {
+      prog_file_ = prog_file + "/" + params_file + ".json";
+    } else {
+      prog_file_ = prog_file + "/" + params_file + ".pdmodel";
+    }
+    params_file_ = prog_file + "/" + params_file + ".pdiparams";
+
+  } else if (fs::is_directory(params_file)) {
+    if (FLAGS_enable_pir_api) {
+      prog_file_ = params_file + "/" + prog_file + ".json";
+    } else {
+      prog_file_ = params_file + "/" + prog_file + ".pdmodel";
+    }
+    params_file_ = params_file + "/" + prog_file + ".pdiparams";
+  } else {
+    prog_file_ = prog_file;
+    params_file_ = params_file;
+  }
+  std::ifstream fin(prog_file_, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fin.is_open()),
+      true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file is normal.",
+          prog_file_));
 
   Update();
 }
