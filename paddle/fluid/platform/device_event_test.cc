@@ -32,7 +32,7 @@ TEST(DeviceEvent, CUDA) {
   using phi::GPUPlace;
 
   auto& pool = DeviceContextPool::Instance();
-  auto place = CUDAPlace(0);
+  auto place = GPUPlace(0);
   auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
@@ -81,7 +81,7 @@ TEST(DeviceEvent, CUDA) {
   using phi::GPUPlace;
 
   auto& pool = DeviceContextPool::Instance();
-  auto place = CUDAPlace(0);
+  auto place = GPUPlace(0);
   auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);

@@ -27,7 +27,7 @@ TEST(Device, DeviceContextWithCUDAGraph) {
   using phi::Place;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  Place place = CUDAPlace(0);
+  Place place = GPUPlace(0);
   auto* dev_ctx = pool.Get(place);
 
   paddle::platform::BeginCUDAGraphCapture(
