@@ -214,7 +214,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
   std::string GetBackendName() const override { return "GLOO"; }
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override {
-    return platform::DeviceContextPool::Instance().Get(place);
+    return phi::DeviceContextPool::Instance().Get(place);
   }
 
   phi::DeviceContext* GetDeviceContext(const Place& place,
@@ -222,7 +222,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
     PADDLE_ENFORCE_NE(
         use_calc_stream,
         true,
-        platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+        phi::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
     return GetDeviceContext(place);
   }
 

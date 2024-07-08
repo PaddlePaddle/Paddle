@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 import numbers
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
 import paddle
 from paddle.base import framework
 from paddle.distribution.transformed_distribution import TransformedDistribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distribution import Transform, Uniform
 
 
 class Gumbel(TransformedDistribution):
@@ -82,7 +89,12 @@ class Gumbel(TransformedDistribution):
             [1.57721567])
     """
 
-    def __init__(self, loc, scale):
+    loc: Tensor
+    scale: Tensor
+    base_dist: Uniform
+    transforms: tuple[Transform, ...]
+
+    def __init__(self, loc: float | Tensor, scale: float | Tensor) -> None:
         if not isinstance(
             loc, (numbers.Real, framework.Variable, paddle.pir.Value)
         ):
@@ -118,7 +130,7 @@ class Gumbel(TransformedDistribution):
         super().__init__(self.base_dist, self.transforms)
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         r"""Mean of distribution
 
         The mean is
@@ -140,7 +152,7 @@ class Gumbel(TransformedDistribution):
         return self.loc + self.scale * np.euler_gamma
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         r"""Variance of distribution.
 
         The variance is
@@ -166,7 +178,7 @@ class Gumbel(TransformedDistribution):
         return paddle.pow(self.scale, 2) * temp / 6
 
     @property
-    def stddev(self):
+    def stddev(self) -> Tensor:
         r"""Standard deviation of distribution
 
         The standard deviation is
@@ -183,7 +195,7 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.sqrt(self.variance)
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density/mass function
 
         Args:
@@ -199,7 +211,7 @@ class Gumbel(TransformedDistribution):
 
         return paddle.exp(y - paddle.exp(y)) / self.scale.astype(y.dtype)
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function.
 
         Args:
@@ -211,7 +223,7 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.log(self.prob(value))
 
-    def cdf(self, value):
+    def cdf(self, value: Tensor) -> Tensor:
         """Cumulative distribution function.
         Args:
             value (Tensor): value to be evaluated.
@@ -227,7 +239,7 @@ class Gumbel(TransformedDistribution):
             )
         )
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """Entropy of Gumbel distribution.
 
         Returns:
@@ -236,7 +248,7 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.log(self.scale) + 1 + np.euler_gamma
 
-    def sample(self, shape):
+    def sample(self, shape: Sequence[int]) -> Tensor:
         """Sample from ``Gumbel``.
 
         Args:
@@ -249,7 +261,7 @@ class Gumbel(TransformedDistribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape):
+    def rsample(self, shape: Sequence[int]) -> Tensor:
         """reparameterized sample
         Args:
             shape (Sequence[int]): 1D `int32`. Shape of the generated samples.

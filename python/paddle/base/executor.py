@@ -1119,6 +1119,9 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        _add_pir_fetch_ops(
+            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+        )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1139,10 +1142,6 @@ class _ExecutorCache:
         fetch_var_name = cached_data.fetch_var_name
         place = cached_data.place
         scope = cached_data.scope
-
-        _add_pir_fetch_ops(
-            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-        )
 
         default_job = core.Job("default")
         type_to_program = {"default": program}

@@ -2647,7 +2647,7 @@ Node *GraphTable::find_node(GraphTableType table_type, uint64_t id) {
                             : node_shards;
   for (auto &search_shard : search_shards) {
     PADDLE_ENFORCE_NOT_NULL(search_shard[index],
-                            ::paddle::platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "search_shard[%d] should not be null.", index));
     node = search_shard[index]->find_node(id);
     if (node != nullptr) {
@@ -2668,7 +2668,7 @@ Node *GraphTable::find_node(GraphTableType table_type, int idx, uint64_t id) {
       : table_type == GraphTableType::FEATURE_TABLE ? feature_shards[idx]
                                                     : node_shards[idx];
   PADDLE_ENFORCE_NOT_NULL(search_shards[index],
-                          ::paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "search_shard[%d] should not be null.", index));
   Node *node = search_shards[index]->find_node(id);
   return node;

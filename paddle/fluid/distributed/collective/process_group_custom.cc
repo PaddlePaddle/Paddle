@@ -96,7 +96,7 @@ bool ProcessGroupCustom::XCCLTask::Wait(std::chrono::milliseconds timeout) {
   }
 
   const auto* calc_ctx = reinterpret_cast<phi::CustomContext*>(
-      platform::DeviceContextPool::Instance().Get(task_place_));
+      phi::DeviceContextPool::Instance().Get(task_place_));
   calc_ctx->GetStream()->WaitEvent(comm_event_.get());
 
   if (IsBlockCPUInWait()) {
@@ -172,7 +172,7 @@ std::string ProcessGroupCustom::GetCommName(int rank) {
       phi::errors::InvalidArgument("The num_devices must greater than 0!"));
 
   auto place_id = rank % num_devices;
-  platform::CustomPlace place(device_type_, place_id);
+  phi::CustomPlace place(device_type_, place_id);
   const auto& key = GetKeyFromPlace(place);
   phi::DeviceGuard guard(place);
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
@@ -305,7 +305,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
                     0,
                     phi::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
-  platform::CustomPlace place(device_type_, opts.device_id);
+  phi::CustomPlace place(device_type_, opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
@@ -587,7 +587,7 @@ void ProcessGroupCustom::CreateXCCLEnvCache(const Place& place,
       store_, std::to_string(gid_), place, rank_, size_);
 
   auto* calc_ctx = static_cast<phi::CustomContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   auto comm_ctx = std::make_unique<phi::CustomContext>(place);
   comm_ctx->SetAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetAllocator()));
@@ -665,7 +665,7 @@ void SyncDefaultStream(const std::vector<Place>& places,
                        std::vector<phi::CustomContext*>& dev_ctx) {  // NOLINT
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<phi::CustomContext*>(
-        platform::DeviceContextPool::Instance().Get(places[i]));
+        phi::DeviceContextPool::Instance().Get(places[i]));
     xccl_event.Record(default_ctx->GetStream().get());
     dev_ctx[i]->GetStream()->WaitEvent(&xccl_event);
   }
@@ -738,7 +738,7 @@ void ProcessGroupCustom::CreateXCCLManagerCache(
   place_to_calc_ctx_.emplace(
       places_key,
       static_cast<phi::CustomContext*>(
-          platform::DeviceContextPool::Instance().Get(places[0])));
+          phi::DeviceContextPool::Instance().Get(places[0])));
   place_to_comm_ctx_.emplace(places_key, std::move(dev_ctx[0]));
 
   // These caches will be useful to process sync/wait/communicate
@@ -922,7 +922,7 @@ inline void CheckTensorsInDifferentDevices(
   std::set<Place> used_devices;
 
   for (const auto& t : tensors) {
-    PADDLE_ENFORCE_EQ(platform::is_custom_place(t.place()),
+    PADDLE_ENFORCE_EQ(phi::is_custom_place(t.place()),
                       true,
                       phi::errors::InvalidArgument(
                           "Tensors must be CustomDevice and dense tensor."));
