@@ -29,9 +29,9 @@ SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
                                   const DistMetaTensor& index,
                                   const DistMetaTensor& out);
 
-SpmdInfo GatherGradInferSpmd(const DistMetaTensor& x,
-                             const DistMetaTensor& index,
-                             const DistMetaTensor& out_grad);
+SpmdInfo GatherNdGradInferSpmd(const DistMetaTensor& x,
+                               const DistMetaTensor& index,
+                               const DistMetaTensor& out_grad);
 
 }  // namespace distributed
 }  // namespace phi
