@@ -108,7 +108,6 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
             exe.run(startup)
             build_strategy = paddle.static.BuildStrategy()
             build_strategy.allow_cuda_graph_capture = True
-            build_strategy.fix_op_run_order = True
             build_strategy.fuse_all_optimizer_ops = True
             compiled_program = paddle.static.CompiledProgram(
                 main, build_strategy=build_strategy
