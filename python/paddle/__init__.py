@@ -227,6 +227,7 @@ from .tensor.linalg import (  # noqa: F401
     dot,
     eigvalsh,
     histogram,
+    histogram_bin_edges,
     histogramdd,
     matmul,
     mv,

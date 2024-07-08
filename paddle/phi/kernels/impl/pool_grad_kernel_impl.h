@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_grad_kernel.h"
@@ -323,6 +324,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
@@ -379,6 +381,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,

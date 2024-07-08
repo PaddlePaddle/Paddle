@@ -22,10 +22,13 @@
   output : Tensor(out)
   infer_meta:
     func: AddNInferMeta
+    spmd_rule : AddNInferSpmd
     param: [inputs]
   kernel:
     func: add_n
     param: [inputs]
+  backward : add_n_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all_reduce
   args : (Tensor x, int ring_id = 0, int reduce_type = 0)
@@ -80,6 +83,14 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
+
+- op : beam_search_decode
+  args: (Tensor ids, Tensor scores, int beam_size, int end_id)
+  output: Tensor (sentence_ids), Tensor (sentence_scores)
+  infer_meta:
+    func: BeamSearchDecodeInferMeta
+  kernel:
+    func: beam_search_decode
 
 - op : c_allreduce_avg
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
@@ -181,14 +192,14 @@
   inplace: (input -> output)
 
 - op : dequantize_linear
-  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int qmin = -128, int qmax = 127, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
   infer_meta :
     func : QuantizeLinearInferMeta
     param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
   kernel :
     func : quantize_linear
-    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, qmin, qmax, round_type, is_test, only_observer]
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
@@ -658,14 +669,14 @@
 # so ,the out_scale is optional. Currently, we can't modify the op definition of dequantize_linear/quantize_linear and it can cause incompatibility problem
 # We need modify dequantize_linear/quantize_linear yaml and make it more reasonable when we abandon Fluid op.
 - op : quantize_linear
-  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int qmin = -128, int qmax = 127, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
   infer_meta :
     func : QuantizeLinearInferMeta
     param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
   kernel :
     func : quantize_linear
-    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, qmin, qmax, round_type, is_test, only_observer]
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
@@ -756,6 +767,27 @@
     func : send_v2
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
   traits : pir::SideEffectTrait
+
+- op : sequence_expand
+  args: (Tensor x, Tensor y, int ref_level = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceExpandInferMeta
+  kernel:
+    func: sequence_expand
+    data_type: x
+  backward: sequence_expand_grad
+  no_need_buffer: y
+
+- op : sequence_softmax
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceSoftmaxInferMeta
+  kernel:
+    func: sequence_softmax
+    param: [x]
+  backward: sequence_softmax_grad
 
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
