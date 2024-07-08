@@ -207,12 +207,12 @@ void QkvToContextPluginDynamic::configurePlugin(
       tensor_.Resize({batch, seq_len, seq_len, 1});
       int blocks = batch * 1 * seq_len;
       mask_half_ = reinterpret_cast<half *>(
-          tensor_.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+          tensor_.mutable_data<int16_t>(phi::GPUPlace(device_id)));
       reset_qk_bias<<<blocks, 1024, 0, stream>>>(
           mask_half_, real_seq_len, seq_len);
     } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
       fake_qk_bias_ = reinterpret_cast<float *>(
-          tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
+          tensor_.mutable_data<int32_t>(phi::GPUPlace(device_id)));
       int64_t size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(

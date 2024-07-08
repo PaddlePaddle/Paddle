@@ -50,7 +50,7 @@ struct ReduceLoDTensor {
                           "The size of first tensor to be reduced is 0."));
 
     dst_tensor_.Resize(t0.dims());
-    T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
+    T *dst = dst_tensor_.mutable_data<T>(phi::CPUPlace());
 
     for (size_t i = 0; i < src_tensors_.size(); ++i) {
       auto &t = *src_tensors_[i];

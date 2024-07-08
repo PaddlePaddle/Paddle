@@ -174,7 +174,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
     phi::backends::xpu::SetXPUDeviceId(place.device);
@@ -185,7 +185,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
-    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
@@ -195,10 +195,9 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+    SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -210,8 +209,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
-    SetTensorFromPyArray<platform::CustomPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -234,7 +232,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
   phi::Place place = impl_ptr->place();
   auto array = obj.cast<py::array>();
   if (platform::is_cpu_place(place)) {
-    SetStringTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place);
+    SetStringTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "StringTensor only support CPUPlace now, but receive %s",

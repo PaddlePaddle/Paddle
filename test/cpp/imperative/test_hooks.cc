@@ -56,7 +56,7 @@ std::shared_ptr<imperative::VariableWrapper> DoubleHook(
 
   // 3. double calc
   auto* data = tensor.data<float>();
-  auto* out_data = out_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* out_data = out_tensor->mutable_data<float>(phi::CPUPlace());
   for (int64_t i = 0; i < out_tensor->numel(); ++i) {
     out_data[i] = data[i] * 2.0;  // NOLINT
   }

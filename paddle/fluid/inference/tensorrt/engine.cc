@@ -699,7 +699,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
     auto *fp16_data =
         weight_map[name_with_suffix]->mutable_data<float16>(phi::CPUPlace());
-    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
+    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(bf16_data[i]);
     }
@@ -713,7 +713,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
     auto *fp16_data =
         weight_map[name_with_suffix]->mutable_data<float16>(phi::CPUPlace());
-    auto *fp32_data = fp32_tensor.mutable_data<float>(platform::CPUPlace());
+    auto *fp32_data = fp32_tensor.mutable_data<float>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(fp32_data[i]);
     }
@@ -727,7 +727,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
         weight_map[name_with_suffix]->mutable_data<int32_t>(phi::CPUPlace());
-    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
@@ -771,8 +771,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
         weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
-        weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
-    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
+        weight_map[name_with_suffix]->mutable_data<float>(phi::CPUPlace());
+    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
@@ -785,8 +785,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
         weight_tensor, phi::CPUPlace(), &fp16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
-        weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
-    auto *fp16_data = fp16_tensor.mutable_data<float16>(platform::CPUPlace());
+        weight_map[name_with_suffix]->mutable_data<float>(phi::CPUPlace());
+    auto *fp16_data = fp16_tensor.mutable_data<float16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(fp16_data[i]);
     }
@@ -800,7 +800,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
         weight_map[name_with_suffix]->mutable_data<int32_t>(phi::CPUPlace());
-    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
@@ -847,8 +847,8 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
         weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
-        weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
-    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
+        weight_map[name_with_suffix]->mutable_data<float>(phi::CPUPlace());
+    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
@@ -862,7 +862,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
         weight_map[name_with_suffix]->mutable_data<int32_t>(phi::CPUPlace());
-    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }

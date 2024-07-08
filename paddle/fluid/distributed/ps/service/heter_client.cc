@@ -44,7 +44,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
     char* temp_ptr = temp.data();
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  temp_ptr,
                  tensor->place(),
                  tensor->data(),

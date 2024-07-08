@@ -3032,7 +3032,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
       lod.resize(1);
       lod[0].resize(offset_cols_size);
       phi::MixVector<size_t> mixv_lod(&lod[0]);
-      memcpy(mixv_lod.MutableData(platform::CPUPlace()),
+      memcpy(mixv_lod.MutableData(phi::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }

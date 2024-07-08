@@ -1223,7 +1223,7 @@ PYBIND11_MODULE(libpaddle, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
-                  [](platform::CUDAPlace place, int mode) {
+                  [](phi::GPUPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
                         place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })

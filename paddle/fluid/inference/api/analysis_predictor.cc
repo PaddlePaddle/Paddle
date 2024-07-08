@@ -155,14 +155,14 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
           .GetAllocator(phi::GPUPinnedPlace())
           .get());
   gpu_context->SetHostAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(platform::CPUPlace())
+                                    .GetAllocator(phi::CPUPlace())
                                     .get());
   gpu_context->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetZeroAllocator(place_)
                                     .get());
   gpu_context->SetHostZeroAllocator(
       memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   gpu_context->SetGenerator(
       phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
@@ -714,12 +714,12 @@ void AnalysisPredictor::InitDeviceContexts() {
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
           xpu_context->SetHostAllocator(
-              instance.GetAllocator(platform::CPUPlace()).get());
+              instance.GetAllocator(phi::CPUPlace()).get());
           xpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
           xpu_context->SetZeroAllocator(
               instance.GetZeroAllocator(place_).get());
           xpu_context->SetHostZeroAllocator(
-              instance.GetZeroAllocator(platform::CPUPlace()).get());
+              instance.GetZeroAllocator(phi::CPUPlace()).get());
           xpu_context->SetStream(predictor_stream_);
           return std::unique_ptr<phi::DeviceContext>(xpu_context);
         }));
@@ -1622,13 +1622,13 @@ void AnalysisPredictor::MkldnnPostReset() {
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
-          (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
+          (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
-      auto shape_blob_size = static_cast<phi::OneDNNContext *>(
-                                 (&platform::DeviceContextPool::Instance())
-                                     ->Get(platform::CPUPlace()))
-                                 ->GetShapeBlobSize();
+      auto shape_blob_size =
+          static_cast<phi::OneDNNContext *>(
+              (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
+              ->GetShapeBlobSize();
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
@@ -1912,7 +1912,7 @@ void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
   // set data.
   int num_elems = inference::VecReduceToInt(shape);
   output->data.Resize(num_elems * sizeof(T));
-  paddle::memory::Copy(platform::CPUPlace(),
+  paddle::memory::Copy(phi::CPUPlace(),
                        output->data.data(),
                        fetch.place(),
                        fetch.data<T>(),
@@ -2873,13 +2873,13 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
       if (platform::is_cpu_place(tensor->place())) {
         auto &int32_tensor = *tensor;
         if (tensor->dtype() == phi::DataType::INT64) {
-          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+          auto *cpu_ctx = pool.Get(phi::CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
               *tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(platform::CPUPlace(),
+        paddle::memory::Copy(phi::CPUPlace(),
                              int32_host.data(),
                              phi::CPUPlace(),
                              int32_tensor.data<int>(),
@@ -2894,7 +2894,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
               *tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(platform::CPUPlace(),
+        paddle::memory::Copy(phi::CPUPlace(),
                              int32_host.data(),
                              int32_tensor.place(),
                              int32_tensor.data<int>(),

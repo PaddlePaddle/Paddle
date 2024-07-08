@@ -334,7 +334,7 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
                                         int high = 10) {
   phi::DenseTensor cpu_tensor;
   cpu_tensor.Resize(dims);
-  auto* ptr = cpu_tensor.mutable_data<T>(platform::CPUPlace());
+  auto* ptr = cpu_tensor.mutable_data<T>(phi::CPUPlace());
   std::uniform_int_distribution<int> dist(low, high);
   std::random_device rd;
   std::mt19937 engine(rd());
@@ -503,11 +503,9 @@ static void TestGradientAccumulatorTestUnchangeInput(
 
 TEST(test_gradient_accumulator, test_unchange_input) {
   for (auto sort_gradient : {false, true}) {
-    TestGradientAccumulatorTestUnchangeInput(platform::CPUPlace(),
-                                             sort_gradient);
+    TestGradientAccumulatorTestUnchangeInput(phi::CPUPlace(), sort_gradient);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    TestGradientAccumulatorTestUnchangeInput(platform::CUDAPlace(0),
-                                             sort_gradient);
+    TestGradientAccumulatorTestUnchangeInput(phi::GPUPlace(0), sort_gradient);
 #endif
   }
 }

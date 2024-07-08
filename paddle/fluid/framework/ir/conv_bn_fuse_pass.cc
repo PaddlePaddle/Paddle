@@ -107,7 +107,7 @@ void recompute_bias_and_weights(const Scope* scope,
   ConstEigenVectorArrayMap scale_array(
       scale_tensor->data<float>(), scale_tensor->numel(), 1);
   EigenVectorArrayMap variance_array(
-      variance_tensor->mutable_data<float>(platform::CPUPlace()),
+      variance_tensor->mutable_data<float>(phi::CPUPlace()),
       variance_tensor->numel(),
       1);
   ConstEigenVectorArrayMap mean_array(
@@ -129,7 +129,7 @@ void recompute_bias_and_weights(const Scope* scope,
                           bn_variance.Name()));
   }
   EigenVectorArrayMap eltwise_y_in_array(
-      eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+      eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
       eltwise_y_in_tensor->numel(),
       1);
 
@@ -149,7 +149,7 @@ void recompute_bias_and_weights(const Scope* scope,
   auto* weights =
       scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
-  auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
+  auto weights_data = weights->mutable_data<float>(phi::CPUPlace());
 
   // ConvTranspose weights are in IOHW format
   if (conv_type == "conv2d_transpose") {
@@ -390,10 +390,9 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
       // Initialize eltwise_y
       eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
-      std::fill_n(
-          eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-          eltwise_y_in_tensor->numel(),
-          0.0f);
+      std::fill_n(eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
+                  eltwise_y_in_tensor->numel(),
+                  0.0f);
 
       // update weights and biases
       recompute_bias_and_weights(scope,

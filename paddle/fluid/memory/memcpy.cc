@@ -29,12 +29,12 @@ namespace memory {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <>
-void Copy<platform::CPUPlace, phi::CustomPlace>(phi::CPUPlace dst_place,
-                                                void* dst,
-                                                phi::CustomPlace src_place,
-                                                const void* src,
-                                                size_t num,
-                                                void* stream) {
+void Copy<phi::CPUPlace, phi::CustomPlace>(phi::CPUPlace dst_place,
+                                           void* dst,
+                                           phi::CustomPlace src_place,
+                                           const void* src,
+                                           size_t num,
+                                           void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
@@ -51,12 +51,12 @@ void Copy<platform::CPUPlace, phi::CustomPlace>(phi::CPUPlace dst_place,
 }
 
 template <>
-void Copy<platform::CustomPlace, phi::CPUPlace>(phi::CustomPlace dst_place,
-                                                void* dst,
-                                                phi::CPUPlace src_place,
-                                                const void* src,
-                                                size_t num,
-                                                void* stream) {
+void Copy<phi::CustomPlace, phi::CPUPlace>(phi::CustomPlace dst_place,
+                                           void* dst,
+                                           phi::CPUPlace src_place,
+                                           const void* src,
+                                           size_t num,
+                                           void* stream) {
   if (UNLIKELY(num == 0)) return;
   auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
   auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
@@ -72,12 +72,12 @@ void Copy<platform::CustomPlace, phi::CPUPlace>(phi::CustomPlace dst_place,
 }
 
 template <>
-void Copy<platform::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
-                                                   void* dst,
-                                                   phi::CustomPlace src_place,
-                                                   const void* src,
-                                                   size_t num,
-                                                   void* stream) {
+void Copy<phi::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
+                                              void* dst,
+                                              phi::CustomPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
@@ -108,7 +108,7 @@ void Copy<platform::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
 #endif  // PADDLE_WITH_CUSTOM_DEVICE
 
 template <>
-TEST_API void Copy<platform::CPUPlace, phi::CPUPlace>(
+TEST_API void Copy<phi::CPUPlace, phi::CPUPlace>(
     phi::CPUPlace, void* dst, phi::CPUPlace, const void* src, size_t num) {
   if (UNLIKELY(num == 0)) return;
   VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
@@ -117,29 +117,29 @@ TEST_API void Copy<platform::CPUPlace, phi::CPUPlace>(
 
 #ifdef PADDLE_WITH_IPU
 template <>
-void Copy<platform::IPUPlace, phi::CPUPlace>(platform::IPUPlace dst_place,
-                                             void* dst,
-                                             phi::CPUPlace src_place,
-                                             const void* src,
-                                             size_t num) {
+void Copy<phi::IPUPlace, phi::CPUPlace>(phi::IPUPlace dst_place,
+                                        void* dst,
+                                        phi::CPUPlace src_place,
+                                        const void* src,
+                                        size_t num) {
   if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
 template <>
-void Copy<platform::CPUPlace, phi::IPUPlace>(platform::CPUPlace dst_place,
-                                             void* dst,
-                                             phi::IPUPlace src_place,
-                                             const void* src,
-                                             size_t num) {
+void Copy<phi::CPUPlace, phi::IPUPlace>(phi::CPUPlace dst_place,
+                                        void* dst,
+                                        phi::IPUPlace src_place,
+                                        const void* src,
+                                        size_t num) {
   if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
 template <>
-void Copy<platform::IPUPlace, phi::IPUPlace>(platform::IPUPlace dst_place,
-                                             void* dst,
-                                             phi::IPUPlace src_place,
-                                             const void* src,
-                                             size_t num) {
+void Copy<phi::IPUPlace, phi::IPUPlace>(phi::IPUPlace dst_place,
+                                        void* dst,
+                                        phi::IPUPlace src_place,
+                                        const void* src,
+                                        size_t num) {
   if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
@@ -179,11 +179,11 @@ void Copy<phi::Place, phi::IPUPlace>(phi::Place dst_place,
 
 #ifdef PADDLE_WITH_XPU
 template <>
-void Copy<platform::XPUPlace, phi::CPUPlace>(platform::XPUPlace dst_place,
-                                             void* dst,
-                                             phi::CPUPlace src_place,
-                                             const void* src,
-                                             size_t num) {
+void Copy<phi::XPUPlace, phi::CPUPlace>(phi::XPUPlace dst_place,
+                                        void* dst,
+                                        phi::CPUPlace src_place,
+                                        const void* src,
+                                        size_t num) {
   if (num <= 0) {
     VLOG(1) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
     return;
@@ -192,11 +192,11 @@ void Copy<platform::XPUPlace, phi::CPUPlace>(platform::XPUPlace dst_place,
 }
 
 template <>
-void Copy<platform::CPUPlace, phi::XPUPlace>(platform::CPUPlace dst_place,
-                                             void* dst,
-                                             phi::XPUPlace src_place,
-                                             const void* src,
-                                             size_t num) {
+void Copy<phi::CPUPlace, phi::XPUPlace>(phi::CPUPlace dst_place,
+                                        void* dst,
+                                        phi::XPUPlace src_place,
+                                        const void* src,
+                                        size_t num) {
   if (num <= 0) {
     VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
     return;
@@ -205,11 +205,11 @@ void Copy<platform::CPUPlace, phi::XPUPlace>(platform::CPUPlace dst_place,
 }
 
 template <>
-void Copy<platform::XPUPlace, phi::XPUPlace>(platform::XPUPlace dst_place,
-                                             void* dst,
-                                             phi::XPUPlace src_place,
-                                             const void* src,
-                                             size_t num) {
+void Copy<phi::XPUPlace, phi::XPUPlace>(phi::XPUPlace dst_place,
+                                        void* dst,
+                                        phi::XPUPlace src_place,
+                                        const void* src,
+                                        size_t num) {
   if (num <= 0) {
     VLOG(1) << "memcpy XPU_DEVICE_TO_DEVICE size <= 0 (" << num << ")";
     return;
@@ -287,12 +287,12 @@ inline void SyncCUDAStream() {
 // https://devblogs.nvidia.com/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
 
 template <>
-TEST_API void Copy<platform::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
-                                                      void* dst,
-                                                      phi::GPUPlace src_place,
-                                                      const void* src,
-                                                      size_t num,
-                                                      void* stream) {
+TEST_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
+                                                 void* dst,
+                                                 phi::GPUPlace src_place,
+                                                 const void* src,
+                                                 size_t num,
+                                                 void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(src_place.device);
@@ -330,12 +330,12 @@ TEST_API void Copy<platform::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
 }
 
 template <>
-TEST_API void Copy<platform::CUDAPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
-                                                       void* dst,
-                                                       phi::CPUPlace src_place,
-                                                       const void* src,
-                                                       size_t num,
-                                                       void* stream) {
+TEST_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
+                                                 void* dst,
+                                                 phi::CPUPlace src_place,
+                                                 const void* src,
+                                                 size_t num,
+                                                 void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(dst_place.device);
@@ -373,12 +373,12 @@ TEST_API void Copy<platform::CUDAPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
 }
 
 template <>
-void Copy<platform::CUDAPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
-                                              void* dst,
-                                              phi::GPUPlace src_place,
-                                              const void* src,
-                                              size_t num,
-                                              void* stream) {
+void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
+                                        void* dst,
+                                        phi::GPUPlace src_place,
+                                        const void* src,
+                                        size_t num,
+                                        void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -434,12 +434,11 @@ void Copy<platform::CUDAPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
 }
 
 template <>
-void Copy<platform::CPUPlace, phi::GPUPinnedPlace>(
-    phi::CPUPlace dst_place,
-    void* dst,
-    phi::GPUPinnedPlace src_place,
-    const void* src,
-    size_t num) {
+void Copy<phi::CPUPlace, phi::GPUPinnedPlace>(phi::CPUPlace dst_place,
+                                              void* dst,
+                                              phi::GPUPinnedPlace src_place,
+                                              const void* src,
+                                              size_t num) {
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place;
   if (UNLIKELY(num == 0)) return;
@@ -447,7 +446,7 @@ void Copy<platform::CPUPlace, phi::GPUPinnedPlace>(
 }
 
 template <>
-TEST_API void Copy<platform::CUDAPinnedPlace, phi::CPUPlace>(
+TEST_API void Copy<phi::GPUPinnedPlace, phi::CPUPlace>(
     phi::GPUPinnedPlace dst_place,
     void* dst,
     phi::CPUPlace src_place,
@@ -460,7 +459,7 @@ TEST_API void Copy<platform::CUDAPinnedPlace, phi::CPUPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPinnedPlace, phi::GPUPinnedPlace>(
+void Copy<phi::GPUPinnedPlace, phi::GPUPinnedPlace>(
     phi::GPUPinnedPlace dst_place,
     void* dst,
     phi::GPUPinnedPlace src_place,
@@ -473,13 +472,12 @@ void Copy<platform::CUDAPinnedPlace, phi::GPUPinnedPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPinnedPlace, phi::GPUPlace>(
-    phi::GPUPinnedPlace dst_place,
-    void* dst,
-    phi::GPUPlace src_place,
-    const void* src,
-    size_t num,
-    void* stream) {
+void Copy<phi::GPUPinnedPlace, phi::GPUPlace>(phi::GPUPinnedPlace dst_place,
+                                              void* dst,
+                                              phi::GPUPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
   if (UNLIKELY(num == 0)) return;
   platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -514,13 +512,12 @@ void Copy<platform::CUDAPinnedPlace, phi::GPUPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPlace, phi::GPUPinnedPlace>(
-    phi::GPUPlace dst_place,
-    void* dst,
-    phi::GPUPinnedPlace src_place,
-    const void* src,
-    size_t num,
-    void* stream) {
+void Copy<phi::GPUPlace, phi::GPUPinnedPlace>(phi::GPUPlace dst_place,
+                                              void* dst,
+                                              phi::GPUPinnedPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(dst_place.device);

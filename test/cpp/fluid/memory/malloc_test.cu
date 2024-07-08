@@ -269,7 +269,7 @@ TEST(Malloc, AllocZero) {
 
 TEST(Malloc, AllocWithStream) {
   size_t size = 1024;
-  AllocationPtr allocation = Alloc(platform::CUDAPlace(), size, phi::Stream(0));
+  AllocationPtr allocation = Alloc(phi::GPUPlace(), size, phi::Stream(0));
   EXPECT_EQ(allocation->size(), 1024);
 }
 

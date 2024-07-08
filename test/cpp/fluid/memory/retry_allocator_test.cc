@@ -83,7 +83,7 @@ TEST(RetryAllocator, RetryAllocator) {
                                     addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
-    allocator->Release(platform::CPUPlace());
+    allocator->Release(phi::CPUPlace());
   }
 }
 

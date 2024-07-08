@@ -86,7 +86,7 @@ TEST(test_var_helper, eager_var_helper) {
   egr_tensor->MutableVar()
       ->GetMutable<phi::SelectedRows>()
       ->mutable_value()
-      ->mutable_data<float>(platform::CPUPlace());
+      ->mutable_data<float>(phi::CPUPlace());
   egr_tensor2->MutableVar()->GetMutable<framework::LoDRankTable>();
   VLOG(6) << "egr_tensor create with ";
   ASSERT_TRUE(platform::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));

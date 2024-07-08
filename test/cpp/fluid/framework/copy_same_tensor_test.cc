@@ -31,9 +31,9 @@ namespace framework {
 
 static std::vector<platform::Place> CreatePlaceList() {
   std::vector<platform::Place> places;
-  places.emplace_back(platform::CPUPlace());
+  places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  places.emplace_back(platform::CUDAPlace(0));
+  places.emplace_back(phi::GPUPlace(0));
 #endif
   return places;
 }
@@ -49,7 +49,7 @@ static bool CopySameTensorTestMain(const DDim &dims,
   phi::DenseTensor src_cpu_tensor;
   {
     src_cpu_tensor.Resize(dims);
-    auto *src_ptr_cpu = src_cpu_tensor.mutable_data<T>(platform::CPUPlace());
+    auto *src_ptr_cpu = src_cpu_tensor.mutable_data<T>(phi::CPUPlace());
     int64_t num = src_cpu_tensor.numel();
     std::random_device rd;
     std::mt19937 gen(rd());

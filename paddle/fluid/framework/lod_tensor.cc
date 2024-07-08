@@ -243,7 +243,7 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx = nullptr;
-  dev_ctx = pool.Get(platform::CPUPlace());
+  dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
 

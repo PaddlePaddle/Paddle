@@ -212,7 +212,7 @@ class CUDAMallocAsyncTest : public ::testing::Test {
                       workspace_size_,
                       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
       std::shared_ptr<phi::Allocation> host_result_allocation =
-          AllocShared(platform::CPUPlace(), workspace_size_);
+          AllocShared(phi::CPUPlace(), workspace_size_);
 
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
           workspace_allocation->ptr(), 0, workspace_allocation->size()));
@@ -261,13 +261,13 @@ class CUDAMallocAsyncTest : public ::testing::Test {
 
   void CUDAGraphRun() {
     testing_cuda_graph_ = true;
-    platform::BeginCUDAGraphCapture(platform::CUDAPlace(),
+    platform::BeginCUDAGraphCapture(phi::GPUPlace(),
                                     cudaStreamCaptureModeGlobal);
 
     std::shared_ptr<Allocation> data_allocation =
-        AllocShared(platform::CUDAPlace(), workspace_size_);
+        AllocShared(phi::GPUPlace(), workspace_size_);
     std::shared_ptr<Allocation> result_allocation =
-        AllocShared(platform::CUDAPlace(), workspace_size_);
+        AllocShared(phi::GPUPlace(), workspace_size_);
 
     int *data = static_cast<int *>(data_allocation->ptr());
     int *result = static_cast<int *>(result_allocation->ptr());
@@ -289,7 +289,7 @@ class CUDAMallocAsyncTest : public ::testing::Test {
     }
 
     std::shared_ptr<Allocation> host_result_allocation =
-        AllocShared(platform::CPUPlace(), workspace_size_);
+        AllocShared(phi::CPUPlace(), workspace_size_);
     Copy(host_result_allocation->place(),
          host_result_allocation->ptr(),
          result_allocation->place(),

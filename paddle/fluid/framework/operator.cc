@@ -71,10 +71,10 @@ namespace paddle {
 namespace framework {
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
-    std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
-    std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
-    std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
-    std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
+    std::make_tuple(phi::GPUPlace(0), LibraryType::kCUDNN),
+    std::make_tuple(phi::GPUPlace(0), LibraryType::kPlain),
+    std::make_tuple(phi::CPUPlace(), LibraryType::kMKLDNN),
+    std::make_tuple(phi::CPUPlace(), LibraryType::kPlain),
 };
 
 static DDim GetDimsDebug(const Scope& scope,
@@ -1990,7 +1990,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
                                                         phi_cpu_kernel_key));
 
-        dev_ctx = pool.Get(platform::CPUPlace());
+        dev_ctx = pool.Get(phi::CPUPlace());
         if (phi_kernel_->IsValid()) {
           VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key

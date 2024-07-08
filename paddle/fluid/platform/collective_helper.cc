@@ -385,7 +385,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
   comm_map_mutex_.unlock();
   if (ring_id == 0) {
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
-        phi::DeviceContextPool::Instance().Get(platform::XPUPlace(dev_id)));
+        phi::DeviceContextPool::Instance().Get(phi::XPUPlace(dev_id)));
     dev_ctx->SetBkclContext(comm);
   }
   VLOG(3) << "add bkcl comm: " << comm_map_[ring_id][dev_id].get()

@@ -112,10 +112,10 @@ void TestMainLoop() {
   std::vector<platform::Place> places{
       phi::CPUPlace(), phi::GPUPlace(0), phi::GPUPinnedPlace()};
   if (platform::GetGPUDeviceCount() > 1) {
-    places.emplace_back(platform::CUDAPlace(1));
+    places.emplace_back(phi::GPUPlace(1));
   }
 #else
-  std::vector<platform::Place> places{platform::CPUPlace()};
+  std::vector<platform::Place> places{phi::CPUPlace()};
 #endif
   std::vector<uint16_t> lanes{1, 2};
   for (auto &p : places) {

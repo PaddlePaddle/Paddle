@@ -75,8 +75,7 @@ class GPUContextAllocation : public Allocation {
  */
 class GPUContextAllocator : public Allocator {
  public:
-  explicit GPUContextAllocator(platform::CUDAPlace place,
-                               gpuStream_t default_stream)
+  explicit GPUContextAllocator(phi::GPUPlace place, gpuStream_t default_stream)
       : place_(place), default_stream_(default_stream) {
     platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
@@ -144,7 +143,7 @@ class GPUContextAllocatorPool {
 
   AllocationPtr Alloc(const phi::GPUContext &dev_ctx, size_t size) {
     auto iter =
-        allocators_.find(platform::CUDAPlace(dev_ctx.GetPlace().GetDeviceId()));
+        allocators_.find(phi::GPUPlace(dev_ctx.GetPlace().GetDeviceId()));
     PADDLE_ENFORCE_NE(
         iter,
         allocators_.end(),
@@ -169,8 +168,7 @@ class GPUContextAllocatorPool {
     }
   }
 
-  std::map<platform::CUDAPlace, std::shared_ptr<GPUContextAllocator>>
-      allocators_;
+  std::map<phi::GPUPlace, std::shared_ptr<GPUContextAllocator>> allocators_;
 };
 
 }  // namespace allocation

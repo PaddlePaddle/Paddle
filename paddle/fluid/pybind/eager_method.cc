@@ -2892,7 +2892,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self,
   const std::string& ipc_name = shared_writer_holder->ipc_name();
   memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
   // 4. copy data & reset holder
-  memory::Copy(platform::CPUPlace(),
+  memory::Copy(phi::CPUPlace(),
                shared_writer_holder->ptr(),
                phi::CPUPlace(),
                data_ptr,

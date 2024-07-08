@@ -108,7 +108,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
       Variable *temp_var = xpu_temp_scope_->Var(t);
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
-      float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
+      float *temp_data = temp_tensor->mutable_data<float>(phi::CPUPlace());
       ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
@@ -131,7 +131,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     VLOG(3) << "Communicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
 
-    float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
+    float *temp_recv_data = tensor->mutable_data<float>(phi::CPUPlace());
     VLOG(3) << "Communicator::RpcRecvDense Var " << t << " table_id "
             << table_id << " Temp_data[0] " << temp_recv_data[0]
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
@@ -140,7 +140,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
       phi::DenseTensor *temp_tensor =
           xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();
       framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
-      float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
+      float *temp_data = temp_tensor->mutable_data<float>(phi::CPUPlace());
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
               << table_id << " Temp_data[0] " << temp_data[0]
               << " Temp_data[-1] " << temp_data[tensor->numel() - 1];
@@ -168,7 +168,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       Variable *temp_var = xpu_temp_scope_->Var(t);
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
-      float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
+      float *temp_data = temp_tensor->mutable_data<float>(phi::CPUPlace());
       framework::TensorCopy(*tensor, phi::CPUPlace(), temp_tensor);
       ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -879,7 +879,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<phi::DenseTensor>();
     tensor->Resize(common::make_ddim({1}));
-    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    auto *out_d = tensor->mutable_data<int64_t>(phi::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);
   }

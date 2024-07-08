@@ -93,18 +93,16 @@ void InitTensorWithNumpyValue(const py::object& array,
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->impl().get());
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+    SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
-    SetTensorFromPyArray<platform::CustomPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "

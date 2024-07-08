@@ -633,15 +633,15 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
     place = ::pybind11::handle(obj).cast<platform::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CUDAPlace>();
+    place = ::pybind11::handle(obj).cast<phi::GPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CPUPlace>();
+    place = ::pybind11::handle(obj).cast<phi::CPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_xpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::XPUPlace>();
+    place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
+    place = ::pybind11::handle(obj).cast<phi::GPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_customplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CustomPlace>();
+    place = ::pybind11::handle(obj).cast<phi::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "

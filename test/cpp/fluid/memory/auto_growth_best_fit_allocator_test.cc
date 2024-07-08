@@ -68,7 +68,7 @@ static void TestFreeIdleChunk(bool free_idle_chunk,
     } else {
       ASSERT_EQ(recorded_allocator->AllocatedSize(), memory_size + alignment);
     }
-    ag_allocator->Release(platform::CPUPlace());
+    ag_allocator->Release(phi::CPUPlace());
   }
 }
 

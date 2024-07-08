@@ -122,7 +122,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
                SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  data_ptr,
                  tensor->place(),
                  tensor->data(),
@@ -131,7 +131,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
                  nullptr);
 #endif
 #ifdef PADDLE_WITH_XPU
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  data_ptr,
                  tensor->place(),
                  tensor->data(),

@@ -227,7 +227,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
     CopyParamsToXpu(argument);
   }
 #endif
-  paddle::memory::Release(platform::CPUPlace());
+  paddle::memory::Release(phi::CPUPlace());
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {

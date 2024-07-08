@@ -577,9 +577,9 @@ static void TestVarOpDestructionMain(const platform::Place& place,
 }
 
 TEST(test_tracer, test_var_op_destruction) {
-  TestVarOpDestructionMain(platform::CPUPlace());
+  TestVarOpDestructionMain(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  TestVarOpDestructionMain(platform::CUDAPlace(0));
+  TestVarOpDestructionMain(phi::GPUPlace(0));
 #endif
 }
 
@@ -590,7 +590,7 @@ TEST(test_tracer, test_execution_context) {
   NameVarBaseMap ins = {{"X", {nullptr}}, {"Y", {nullptr}}};
   NameVarBaseMap outs = {{"Out", {nullptr}}};
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(platform::CPUPlace());
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
   auto dy_ctx = DygraphExecutionContext<VarBase>((*op.get()),
                                                  scope,
                                                  *dev_ctx,

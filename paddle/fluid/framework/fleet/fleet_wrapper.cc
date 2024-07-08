@@ -807,7 +807,7 @@ void FleetWrapper::PushDenseVarsAsync(
     phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
     float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
-    memory::Copy(platform::CUDAPinnedPlace(),
+    memory::Copy(phi::GPUPinnedPlace(),
                  pin_g,
                  place,
                  g_data,

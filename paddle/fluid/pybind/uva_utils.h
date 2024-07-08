@@ -32,7 +32,7 @@ static void tensor_uva(phi::DenseTensor *self_tensor, int device_id) {
   VLOG(4) << "Running in _uva interface.";
 #if defined(PADDLE_WITH_CUDA)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
+  auto *dev_ctx = pool.Get(phi::GPUPlace(device_id));
   VLOG(4) << "Init the DeviceContext, and the place is " << dev_ctx->GetPlace();
   // Register the cpu memory as the cuda host memory
   const auto &data_numel = self_tensor->numel();

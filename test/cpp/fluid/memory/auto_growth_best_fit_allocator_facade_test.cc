@@ -91,7 +91,7 @@ TEST(allocator, allocator) {
     place = phi::GPUPinnedPlace();
     size = (1 << 20);
     auto cuda_pinned_allocation =
-        instance.Alloc(platform::CUDAPinnedPlace(), 1 << 20);
+        instance.Alloc(phi::GPUPinnedPlace(), 1 << 20);
     ASSERT_NE(cuda_pinned_allocation, nullptr);
     ASSERT_NE(cuda_pinned_allocation->ptr(), nullptr);
     ASSERT_EQ(cuda_pinned_allocation->place(), place);
@@ -121,7 +121,7 @@ TEST(multithread_allocate, test_segfault) {
     for (int i = 0; i < 50; i++) {
       size_t size = dist(gen);
       for (int j = 0; j < 10; j++) {
-        instance.Alloc(platform::CUDAPlace(dev_id), size);
+        instance.Alloc(phi::GPUPlace(dev_id), size);
       }
     }
   };

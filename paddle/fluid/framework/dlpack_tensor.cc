@@ -82,17 +82,17 @@ struct DLDeviceVisitor {
 
   inline ::DLDevice operator()(const phi::IPUPlace &place) const {
     PADDLE_THROW(
-        platform::errors::Unimplemented("platform::IPUPlace is not supported"));
+        platform::errors::Unimplemented("phi::IPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::XPUPlace &place) const {
     PADDLE_THROW(
-        platform::errors::Unimplemented("platform::XPUPlace is not supported"));
+        platform::errors::Unimplemented("phi::XPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::CustomPlace &place) const {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "platform::CustomPlace is not supported"));
+    PADDLE_THROW(
+        platform::errors::Unimplemented("phi::CustomPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::GPUPlace &place) const {
@@ -103,7 +103,7 @@ struct DLDeviceVisitor {
     return device;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
-        "platform::CUDAPlace is not supported in CPU only version."));
+        "phi::GPUPlace is not supported in CPU only version."));
 #endif
   }
 
@@ -115,7 +115,7 @@ struct DLDeviceVisitor {
     return device;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
-        "platform::CUDAPinnedPlace is not supported in CPU only version."));
+        "phi::GPUPinnedPlace is not supported in CPU only version."));
 #endif
   }
 };

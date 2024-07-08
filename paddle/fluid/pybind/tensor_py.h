@@ -355,7 +355,7 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 #ifdef PADDLE_WITH_XPU
     const T *a = self.data<T>();
     auto p = self.place();
-    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T));
+    paddle::memory::Copy(phi::CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
   } else if (platform::is_gpu_place(self.place()) ||
              platform::is_cuda_pinned_place(self.place())) {

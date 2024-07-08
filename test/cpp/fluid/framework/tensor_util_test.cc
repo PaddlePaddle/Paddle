@@ -24,7 +24,7 @@ namespace framework {
 TEST(TensorCopy, Tensor) {
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
-  phi::CPUContext cpu_ctx((platform::CPUPlace()));
+  phi::CPUContext cpu_ctx((phi::CPUPlace()));
 
   int* src_ptr =
       src_tensor.mutable_data<int>(common::make_ddim({3, 3}), phi::CPUPlace());
@@ -467,7 +467,7 @@ TEST(Tensor, FromAndToStream) {
   phi::DenseTensor src_tensor;
   std::array<int, 6> array = {1, 2, 3, 4, 5, 6};
   src_tensor.Resize({2, 3});
-  int* src_ptr = src_tensor.mutable_data<int>(platform::CPUPlace());
+  int* src_ptr = src_tensor.mutable_data<int>(phi::CPUPlace());
   for (int i = 0; i < 6; ++i) {
     src_ptr[i] = array[i];
   }
@@ -480,7 +480,7 @@ TEST(Tensor, FromAndToStream) {
 
     std::istringstream iss(oss.str());
     TensorFromStream(iss, &dst_tensor, cpu_ctx);
-    int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
+    int* dst_ptr = dst_tensor.mutable_data<int>(phi::CPUPlace());
     for (int i = 0; i < 5; ++i) {
       EXPECT_EQ(dst_ptr[i], array[i]);
     }
@@ -509,9 +509,9 @@ TEST(Tensor, FromAndToStream) {
     TensorFromStream(
         iss,
         &dst_tensor,
-        *platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+        *platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
-    int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
+    int* dst_ptr = dst_tensor.mutable_data<int>(phi::CPUPlace());
     for (int i = 0; i < 6; ++i) {
       EXPECT_EQ(dst_ptr[i], array[i]);
     }
