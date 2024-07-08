@@ -56,9 +56,9 @@ void OpTester::Init(const OpTesterConfig &config) {
   }
 
   if (config_.device_id >= 0) {
-    place_ = ::paddle::platform::CUDAPlace(config_.device_id);
+    place_ = ::phi::GPUPlace(config_.device_id);
   } else {
-    place_ = ::paddle::platform::CPUPlace();
+    place_ = ::phi::CPUPlace();
   }
 
   framework::InitDevices();
@@ -285,8 +285,8 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
   T *cpu_ptr = nullptr;
 
   if (!platform::is_cpu_place(place_)) {
-    cpu_ptr = cpu_tensor.mutable_data<T>(common::make_ddim(shape),
-                                         platform::CPUPlace());
+    cpu_ptr =
+        cpu_tensor.mutable_data<T>(common::make_ddim(shape), phi::CPUPlace());
   } else {
     cpu_ptr = ptr;
   }

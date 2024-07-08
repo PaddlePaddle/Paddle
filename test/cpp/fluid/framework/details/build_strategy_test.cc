@@ -73,9 +73,9 @@ static std::vector<platform::Place> CreatePlaces(size_t num, bool use_cuda) {
   result.reserve(num);
   for (size_t i = 0; i < num; ++i) {
     if (use_cuda) {
-      result.emplace_back(platform::CUDAPlace(static_cast<int>(i)));
+      result.emplace_back(phi::GPUPlace(static_cast<int>(i)));
     } else {
-      result.emplace_back(platform::CPUPlace());
+      result.emplace_back(phi::CPUPlace());
     }
   }
   return result;
