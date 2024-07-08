@@ -2425,10 +2425,14 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   if (residual_out && !norm_weight && !norm_bias) {
     out->set_dtype(x.dtype());
   } else {
-    if (quant_scale <= 0.0f) {
-      out->set_dtype(x.dtype());
+    if (quant_scale > 0) {
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
-      out->set_dtype(phi::DataType::INT8);
+      out->set_dtype(x.dtype());
     }
   }
   out->set_layout(x.layout());
