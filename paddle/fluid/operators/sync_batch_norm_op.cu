@@ -125,25 +125,20 @@ void SyncBatchNormKernel(const Context& ctx,
     } else {
       auto comm_ctx =
           static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        phi::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
       if (comm_ctx) {
         comm = comm_ctx->GetNcclComm();
+        int dtype = phi::ToNCCLDataType(mean_out->dtype());
+        // In-place operation
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllReduce(stats,
+                                        stats,
+                                        2 * C + 1,
+                                        static_cast<ncclDataType_t>(dtype),
+                                        ncclSum,
+                                        comm,
+                                        stream));
+        VLOG(3) << "Sync result using all reduce";
       }
-      int dtype = phi::ToNCCLDataType(mean_out->dtype());
-      // In-place operation
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllReduce(stats,
-                                      stats,
-                                      2 * C + 1,
-                                      static_cast<ncclDataType_t>(dtype),
-                                      ncclSum,
-                                      comm,
-                                      stream));
-      VLOG(3) << "Sync result using all reduce";
     }
 #endif
 
