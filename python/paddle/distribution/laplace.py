@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -24,7 +24,6 @@ from paddle.distribution import distribution
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import Numberic, ShapeLike
 
 
 class Laplace(distribution.Distribution):
@@ -58,10 +57,10 @@ class Laplace(distribution.Distribution):
                 1.31554604)
 
     """
-    loc: Numberic
-    scale: Numberic
+    loc: Tensor
+    scale: Tensor
 
-    def __init__(self, loc: Numberic, scale: Numberic) -> None:
+    def __init__(self, loc: float | Tensor, scale: float | Tensor) -> None:
         if not isinstance(
             loc, (numbers.Real, framework.Variable, paddle.pir.Value)
         ):
@@ -137,8 +136,8 @@ class Laplace(distribution.Distribution):
         return self.stddev.pow(2)
 
     def _validate_value(
-        self, value: Numberic
-    ) -> tuple[Numberic, Numberic, Numberic]:
+        self, value: float | Tensor
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Argument dimension check for distribution methods such as `log_prob`,
         `cdf` and `icdf`.
 
@@ -165,7 +164,7 @@ class Laplace(distribution.Distribution):
 
         return loc, scale, value
 
-    def log_prob(self, value: Numberic) -> Tensor:
+    def log_prob(self, value: float | Tensor) -> Tensor:
         r"""Log probability density/mass function.
 
         The log_prob is
@@ -228,7 +227,7 @@ class Laplace(distribution.Distribution):
         """
         return 1 + paddle.log(2 * self.scale)
 
-    def cdf(self, value: Tensor) -> Tensor:
+    def cdf(self, value: float | Tensor) -> Tensor:
         r"""Cumulative distribution function.
 
         The cdf is
@@ -267,7 +266,7 @@ class Laplace(distribution.Distribution):
 
         return 0.5 - iterm
 
-    def icdf(self, value: Tensor) -> Tensor:
+    def icdf(self, value: float | Tensor) -> Tensor:
         r"""Inverse Cumulative distribution function.
 
         The icdf is
@@ -301,7 +300,7 @@ class Laplace(distribution.Distribution):
 
         return loc - scale * (term).sign() * paddle.log1p(-2 * term.abs())
 
-    def sample(self, shape: ShapeLike = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         r"""Generate samples of the specified shape.
 
         Args:
@@ -324,7 +323,7 @@ class Laplace(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape: ShapeLike) -> Tensor:
+    def rsample(self, shape: Sequence[int]) -> Tensor:
         r"""Reparameterized sample.
 
         Args:
