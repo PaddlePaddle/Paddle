@@ -65,7 +65,4 @@ PD_REGISTER_KERNEL(blha_get_max_len,
                    ALL_LAYOUT,
                    phi::fusion::BlhaGetMaxLenKernel,
                    int,
-                   int64_t) {
-  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->OutputAt(1).SetBackend(phi::Backend::CPU);
-}
+                   int64_t) {}
