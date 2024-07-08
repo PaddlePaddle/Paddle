@@ -983,7 +983,11 @@ def fill_constant(
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
-        _C_ops.full_(out, shape, value, dtype, place)
+
+        assert (
+            out.dtype == dtype
+        ), "Required out.dtype == dtype if specifying out."
+        out = _C_ops.full_(out, shape, value, dtype, place)
         out.stop_gradient = True
         return out
 
