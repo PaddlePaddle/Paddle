@@ -36,7 +36,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-DeviceType Place2DeviceType(const platform::Place& place) {
+DeviceType Place2DeviceType(const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     return platform::DeviceType::CPU;
   } else if (platform::is_gpu_place(place)) {
@@ -48,7 +48,7 @@ DeviceType Place2DeviceType(const platform::Place& place) {
   } else if (platform::is_custom_place(place)) {
     return platform::DeviceType::CUSTOM_DEVICE;
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported place %s to convert into platform::DeviceType.", place));
   }
 }
@@ -228,7 +228,7 @@ void EmplaceDeviceContexts(
           disable_setting_default_stream_for_allocator,
           /*unused*/ stream_priority);
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
@@ -241,8 +241,8 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(
-          platform::errors::Unimplemented("IPUPlace is not supported. Please "
-                                          "re-compile with WITH_IPU option."));
+          phi::errors::Unimplemented("IPUPlace is not supported. Please "
+                                     "re-compile with WITH_IPU option."));
 #endif
     }
   }
