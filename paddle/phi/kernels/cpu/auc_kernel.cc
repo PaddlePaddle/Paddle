@@ -173,6 +173,7 @@ void AucKernel(const Context &dev_ctx,
   }
   size_t required_bytes = ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) * sizeof(int64_t);
   if (stat_pos_in_tensor != stat_pos_out) {
+
     size_t max_bytes = compute_max_bytes(origin_stat_pos,reinterpret_cast<const long *>(pos_in_data),num_thresholds,slide_steps);
     VLOG(4)<<"required:"<<required_bytes;
     VLOG(4)<<"max:"<<max_bytes;
