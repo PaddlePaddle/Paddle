@@ -115,9 +115,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
 
       if (FLAGS_pir_apply_inplace_pass) {
-        pir::PassManager inplace_pm(pir::IrContext::Instance(), 3);
-        inplace_pm.AddPass(pir::CreateInplacePass());
-        inplace_pm.Run(shared_program.get());
+        pir::PassManager pm(pir::IrContext::Instance(), 3);
+        pm.AddPass(pir::CreateInplacePass());
+        pm.Run(shared_program.get());
       }
 
       interpretercores_.emplace_back(
