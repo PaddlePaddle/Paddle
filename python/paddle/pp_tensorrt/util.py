@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#%%
+import os
 import paddle
 import numpy as np
-import tensorrt as trt
+try:
+    import tensorrt as trt
+except Exception as e:
+    pass
 from paddle import base
 from paddle import pir
 
@@ -49,7 +54,7 @@ def run_pir_pass(program, partition_mode=False):
         {'fused_linear_param_grad_add_pass': {}},
         {'fuse_allreduce_split_to_reducescatter_pass': {}},
         {'inplace_pass': {}},
-        {'replace_fetch_with_shadow_output_pass': {}},
+        # {'replace_fetch_with_shadow_output_pass': {}},
         {'identity_op_clean_pass': {}},
         {'map_op_to_another_pass': {}},
         {'matmul_scale_fuse_pass': {}},
@@ -189,6 +194,7 @@ def get_dummy_program():
                     initializer=paddle.nn.initializer.Assign(bias_numpy)
                 ),
             )
+            # shape = paddle._C_ops.full_int_array(value=0)
             x = paddle.matmul(input, weight)
             x_1 = paddle.add(x, bias)
             y = paddle.nn.functional.relu(x_1)
@@ -232,7 +238,7 @@ def get_bert_program():
         startup_program = static.default_startup_program()
         with static.program_guard(main_program, startup_program):
             scope = paddle.static.global_scope()
-            input_ids = static.data(name='input_ids', shape=[1, 100], dtype='int64')
+            input_ids = static.data(name='input_ids', shape=[-1, -1], dtype='int64')
             # input_ids = paddle.randint(1, 100, (1, seq_length), dtype='int64')
 
             bert_model = BertModel(vocab_size, hidden_size, num_hidden_layers, num_attention_heads)
@@ -263,11 +269,32 @@ def get_bert_program():
         # print(fetches)
     return pir_program, scope, param_dict
 
+#%%
+# pir_program, scope, param_dict = get_bert_program()
+
+#%%
+# executor = paddle.static.Executor(paddle.CUDAPlace(0))
+# with paddle.pir_utils.IrGuard():
+#     with paddle.static.program_guard(
+#         pir_program
+#     ):
+#         x = np.ones([1, 768]).astype('int64')
+#         fetches = executor.run(
+#             pir_program,
+#             feed={"input_ids": x},
+#             fetch_list=pir_program.list_vars()[37],
+#         )
+# #%%
+# d = pir_program.list_vars()[37].get_defining_op()
+# from paddle.base.core import DataType
+# from paddle.base.core import CPUPlace
+
+#%%
 if __name__ == "__main__":
     pir_program, scope, param_dict = get_bert_program()
-    print(pir_program)
+    # print(pir_program)
     pir_program = run_pir_pass(pir_program)
-    print(pir_program)
+    # print(pir_program)
     x = np.ones([1, 768]).astype('int64')
     place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
     executor = paddle.static.Executor(place)

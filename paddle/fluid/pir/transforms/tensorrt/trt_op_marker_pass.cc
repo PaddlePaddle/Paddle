@@ -62,6 +62,7 @@ DEFINE_GENERAL_PATTERN(fused_gemm_epilogue, paddle::dialect::FusedGemmEpilogueOp
 DEFINE_GENERAL_PATTERN(layer_norm, paddle::dialect::LayerNormOp)
 DEFINE_GENERAL_PATTERN(add, paddle::dialect::AddOp)
 DEFINE_GENERAL_PATTERN(full, paddle::dialect::FullOp)
+DEFINE_GENERAL_PATTERN(scale, paddle::dialect::ScaleOp)
 #undef DEFINE_GENERAL_PATTERN
 
 class Pool2dOpPattern
@@ -623,8 +624,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(flatten)
     ADD_PATTERN(full)
     ADD_PATTERN(fused_gemm_epilogue)
-    ADD_PATTERN(layer_norm)
     ADD_PATTERN(add)
+    ADD_PATTERN(layer_norm)
+    
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));

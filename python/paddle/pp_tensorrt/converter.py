@@ -78,6 +78,7 @@ class PaddleToTensorRTConverter:
         return input_values, graph_output_values
 
     def convert_subgraph_to_trt(self, program, group_op):
+        _logger.info(f"start process {group_op}")
         operations = list(group_op.blocks())[0].ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
         builder = trt.Builder(trt.Logger(trt.Logger.VERBOSE))
@@ -129,8 +130,12 @@ class PaddleToTensorRTConverter:
             operands = [value_to_trt_tensor[operand.source().id] for operand in op.operands()]
             layer = self.convert(network, op, operands)
 
+            # _logger.info(f"start convert {op}")
             for idx, result in enumerate(op.results()):
-                value_to_trt_tensor[result.id] = layer.get_output(idx)
+                if idx < layer.num_outputs:
+                    value_to_trt_tensor[result.id] = layer.get_output(idx)
+                else:
+                    value_to_trt_tensor[result.id] = None
         out_shapes = []
         out_names = []
         out_types = []
@@ -149,7 +154,7 @@ class PaddleToTensorRTConverter:
         trt_params.min_input_shape = min_shape_map
         trt_params.max_input_shape = max_shape_map
         trt_params.optim_input_shape = opt_shape_map
-        CACHE_FILE = "./engine.trt"
+        CACHE_FILE = f"./engine{id(group_op)}.trt"
         with open(CACHE_FILE, "wb") as f:
             f.write(trt_engine.serialize())
         trt_params.engine_serialized_data = CACHE_FILE
@@ -184,7 +189,7 @@ class PaddleToTensorRTConverter:
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
             if op.name() == "cinn_op.group":
-                print(f"!!! start process {op.name()}")
+                _logger.info(f"start process {op.name()}")
                 new_out = self.convert_subgraph_to_trt(self.program, op)
                 orin_out_values = op.results()
                 for o_i in range(len(orin_out_values)):
