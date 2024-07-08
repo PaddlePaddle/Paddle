@@ -364,7 +364,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
       out_tensor.push_back(num_classes_per_device);
 
       phi::distributed::AllreduceOptions opts;
-      opts.reduce_op = paddle::distributed::ReduceOp::SUM;
+      opts.reduce_op = phi::distributed::ReduceOp::SUM;
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
