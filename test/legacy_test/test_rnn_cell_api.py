@@ -19,7 +19,7 @@ import numpy as np
 
 from paddle.base.layer_helper_base import LayerHelperBase
 
-sys.path.append("../../rnn")
+sys.path.append("../rnn")
 from rnn_numpy import (
     LSTMCell,
     rnn as numpy_rnn,
