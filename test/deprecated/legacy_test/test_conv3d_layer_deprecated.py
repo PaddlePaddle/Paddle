@@ -184,6 +184,7 @@ class Conv3DTestCase(unittest.TestCase):
         return y_np, t1
 
     def _test_equivalence(self, place):
+        paddle.enable_static()
         result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
