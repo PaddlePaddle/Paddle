@@ -97,12 +97,30 @@ void VisitFeedName(const pir::Program& program,
     if (op_name != "pd_op.feed") return std::nullopt;
     return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
   };
+  auto GetParameterOpName =
+      [](const pir::Operation& op) -> std::optional<std::string> {
+    if (!op.isa<pir::ParameterOp>()) return std::nullopt;
+    const auto& attributes = op.attributes();
+    const auto& parameter_name = op.attributes().at("parameter_name");
+    return parameter_name.dyn_cast<pir::StrAttribute>().AsString();
+  };
+  auto GetConstantOpName =
+      [](const pir::Operation& op) -> std::optional<std::string> {
+    if (!op.isa<pir::ConstantOp>()) return std::nullopt;
+    const auto& attributes = op.attributes();
+    const auto& tensor_name = op.attributes().at("value");
+    return tensor_name.dyn_cast<pir::TensorNameAttribute>().data();
+  };
   for (const auto& op : block) {
     if (const auto& name = GetDataOpName(op)) {
       DoEachFeadName(name.value());
     } else if (const auto& name = GetFeedOpName(op)) {
       DoEachFeadName(name.value());
     } else if (const auto& name = GetPhiFeedOpName(op)) {
+      DoEachFeadName(name.value());
+    } else if (const auto& name = GetParameterOpName(op)) {
+      DoEachFeadName(name.value());
+    } else if (const auto& name = GetConstantOpName(op)) {
       DoEachFeadName(name.value());
     } else {
       // Do nothing.
