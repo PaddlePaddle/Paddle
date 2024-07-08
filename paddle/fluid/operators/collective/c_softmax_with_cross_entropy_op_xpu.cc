@@ -54,6 +54,80 @@ class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
 };
 
 template <typename T>
+void FixLossAccordingToIgnoreIndex(const framework::ExecutionContext& ctx,
+                                   const phi::DenseTensor* labels,
+                                   const phi::DenseTensor* predicted_logits,
+                                   phi::DenseTensor* loss,
+                                   const int64_t N,
+                                   const int64_t ignore_index) {
+  auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  // 先准备一个全0的tensor
+  phi::DenseTensor zeros_constant =
+      ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+  int ret = xpu::constant<XPUType>(
+      dev_ctx.x_context(),
+      reinterpret_cast<XPUType*>(zeros_constant.data<T>()),
+      N,
+      0.0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+
+  // 准备一个bool类型的tensor，用来标记每一个loss要不要刷0
+  phi::DenseTensor bool_tensor_for_mask_label =
+      ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
+  // 准备一个和label同类型的tensor，每个元素都刷成ignore_index
+  phi::DenseTensor ignore_label_as_tensor;
+
+  const auto& label_type = framework::TransToProtoVarType(labels->dtype());
+  if (label_type == framework::proto::VarType::INT32) {
+    ignore_label_as_tensor =
+        ctx.AllocateTmpTensor<int, phi::XPUContext>({N, 1}, dev_ctx);
+    ret = xpu::constant<int>(dev_ctx.x_context(),
+                             ignore_label_as_tensor.data<int>(),
+                             N,
+                             ignore_index);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+    // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
+    // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
+    ret = xpu::equal<int>(dev_ctx.x_context(),
+                          ignore_label_as_tensor.data<int>(),
+                          labels->data<int>(),
+                          bool_tensor_for_mask_label.data<bool>(),
+                          N);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
+  } else if (label_type == framework::proto::VarType::INT64) {
+    ignore_label_as_tensor =
+        ctx.AllocateTmpTensor<int64_t, phi::XPUContext>({N, 1}, dev_ctx);
+    ret = xpu::constant<int64_t>(dev_ctx.x_context(),
+                                 ignore_label_as_tensor.data<int64_t>(),
+                                 N,
+                                 ignore_index);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+    // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
+    // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
+    ret = xpu::equal<int64_t>(dev_ctx.x_context(),
+                              ignore_label_as_tensor.data<int64_t>(),
+                              labels->data<int64_t>(),
+                              bool_tensor_for_mask_label.data<bool>(),
+                              N);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
+  }
+  // bool值为1的说明命中了，要刷0，bool为0的要保留
+  // int select(Context* ctx, const bool* condition, const T* x, const T* y,
+  // T* z, const std::vector<int64_t>& condition_shape, const
+  // std::vector<int64_t>& xshape);
+  ret = xpu::select(
+      dev_ctx.x_context(),
+      reinterpret_cast<const bool*>(bool_tensor_for_mask_label.data<bool>()),
+      reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
+      reinterpret_cast<const XPUType*>(loss->data<T>()),
+      reinterpret_cast<XPUType*>(loss->data<T>()),
+      common::vectorize(predicted_logits->dims()),
+      common::vectorize(predicted_logits->dims()));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
+}
+
+template <typename T>
 struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
     using XPUType = typename XPUTypeTrait<T>::Type;
@@ -248,67 +322,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
 
     // 将label和ignore_index相同的那些loss，置为0
-    // 先准备一个全0的tensor
-    phi::DenseTensor zeros_constant =
-        ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    ret = xpu::constant<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<XPUType*>(zeros_constant.data<T>()),
-        N,
-        0.0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-
-    // 准备一个bool类型的tensor，用来标记每一个loss要不要刷0
-    phi::DenseTensor bool_tensor_for_mask_label =
-        ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
-    // 准备一个和label同类型的tensor，每个元素都刷成ignore_index
-    phi::DenseTensor ignore_label_as_tensor;
-    if (label_type == framework::proto::VarType::INT32) {
-      ignore_label_as_tensor =
-          ctx.AllocateTmpTensor<int, phi::XPUContext>({N, 1}, dev_ctx);
-      ret = xpu::constant<int>(dev_ctx.x_context(),
-                               ignore_label_as_tensor.data<int>(),
-                               N,
-                               ignore_index);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-      // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
-      // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
-      ret = xpu::equal<int>(dev_ctx.x_context(),
-                            ignore_label_as_tensor.data<int>(),
-                            labels->data<int>(),
-                            bool_tensor_for_mask_label.data<bool>(),
-                            N);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
-    } else if (label_type == framework::proto::VarType::INT64) {
-      ignore_label_as_tensor =
-          ctx.AllocateTmpTensor<int64_t, phi::XPUContext>({N, 1}, dev_ctx);
-      ret = xpu::constant<int64_t>(dev_ctx.x_context(),
-                                   ignore_label_as_tensor.data<int64_t>(),
-                                   N,
-                                   ignore_index);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-      // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
-      // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
-      ret = xpu::equal<int64_t>(dev_ctx.x_context(),
-                                ignore_label_as_tensor.data<int64_t>(),
-                                labels->data<int64_t>(),
-                                bool_tensor_for_mask_label.data<bool>(),
-                                N);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
-    }
-    // bool值为1的说明命中了，要刷0，bool为0的要保留
-    // int select(Context* ctx, const bool* condition, const T* x, const T* y,
-    // T* z, const std::vector<int64_t>& condition_shape, const
-    // std::vector<int64_t>& xshape);
-    ret = xpu::select(
-        dev_ctx.x_context(),
-        reinterpret_cast<const bool*>(bool_tensor_for_mask_label.data<bool>()),
-        reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
-        reinterpret_cast<const XPUType*>(loss->data<T>()),
-        reinterpret_cast<XPUType*>(loss->data<T>()),
-        common::vectorize(predicted_logits.dims()),
-        common::vectorize(predicted_logits.dims()));
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
+    FixLossAccordingToIgnoreIndex<T>(
+        ctx, labels, &predicted_logits, loss, N, ignore_index);
 
     phi::memory_utils::Copy(ctx.GetPlace(),
                             softmax->data(),
@@ -579,67 +594,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
 
     // 将label和ignore_index相同的那些loss，置为0
-    // 先准备一个全0的tensor
-    phi::DenseTensor zeros_constant =
-        ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    ret = xpu::constant<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<XPUType*>(zeros_constant.data<T>()),
-        N,
-        0.0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-
-    // 准备一个bool类型的tensor，用来标记每一个loss要不要刷0
-    phi::DenseTensor bool_tensor_for_mask_label =
-        ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
-    // 准备一个和label同类型的tensor，每个元素都刷成ignore_index
-    phi::DenseTensor ignore_label_as_tensor;
-    if (label_type == framework::proto::VarType::INT32) {
-      ignore_label_as_tensor =
-          ctx.AllocateTmpTensor<int, phi::XPUContext>({N, 1}, dev_ctx);
-      ret = xpu::constant<int>(dev_ctx.x_context(),
-                               ignore_label_as_tensor.data<int>(),
-                               N,
-                               ignore_index);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-      // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
-      // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
-      ret = xpu::equal<int>(dev_ctx.x_context(),
-                            ignore_label_as_tensor.data<int>(),
-                            labels->data<int>(),
-                            bool_tensor_for_mask_label.data<bool>(),
-                            N);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
-    } else if (label_type == framework::proto::VarType::INT64) {
-      ignore_label_as_tensor =
-          ctx.AllocateTmpTensor<int64_t, phi::XPUContext>({N, 1}, dev_ctx);
-      ret = xpu::constant<int64_t>(dev_ctx.x_context(),
-                                   ignore_label_as_tensor.data<int64_t>(),
-                                   N,
-                                   ignore_index);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-      // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
-      // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
-      ret = xpu::equal<int64_t>(dev_ctx.x_context(),
-                                ignore_label_as_tensor.data<int64_t>(),
-                                labels->data<int64_t>(),
-                                bool_tensor_for_mask_label.data<bool>(),
-                                N);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
-    }
-    // bool值为1的说明命中了，要刷0，bool为0的要保留
-    // int select(Context* ctx, const bool* condition, const T* x, const T* y,
-    // T* z, const std::vector<int64_t>& condition_shape, const
-    // std::vector<int64_t>& xshape);
-    ret = xpu::select(
-        dev_ctx.x_context(),
-        reinterpret_cast<const bool*>(bool_tensor_for_mask_label.data<bool>()),
-        reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
-        reinterpret_cast<const XPUType*>(loss->data<T>()),
-        reinterpret_cast<XPUType*>(loss->data<T>()),
-        common::vectorize(predicted_logits.dims()),
-        common::vectorize(predicted_logits.dims()));
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
+    FixLossAccordingToIgnoreIndex<T>(
+        ctx, labels, &predicted_logits, loss, N, ignore_index);
 
     phi::memory_utils::Copy(ctx.GetPlace(),
                             softmax->data(),
