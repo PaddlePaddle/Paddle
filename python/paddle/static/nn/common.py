@@ -941,6 +941,22 @@ def conv2d(
         )
     assert param_attr is not False, "param_attr should not be False here."
 
+    if in_pir_mode():
+        groups = 1 if groups is None else groups
+        conv_layer = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+        )
+        return conv_layer(input)
+
     if groups is None:
         num_filter_channels = num_channels
     elif groups <= 0:
@@ -2768,6 +2784,25 @@ def batch_norm(
             channel_num = input_shape[-1]
         else:
             raise ValueError("unsupported data layout:" + data_layout)
+
+    if in_pir_mode():
+        bn_layer = paddle.nn.BatchNorm(
+            num_channels=channel_num,
+            act=act,
+            is_test=is_test,
+            momentum=momentum,
+            epsilon=epsilon,
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            dtype=dtype,
+            data_layout=data_layout,
+            in_place=in_place,
+            moving_mean_name=moving_variance_name,
+            moving_variance_name=moving_variance_name,
+            do_model_average_for_mean_and_var=do_model_average_for_mean_and_var,
+            use_global_stats=use_global_stats,
+        )
+        return bn_layer(input)
 
     param_shape = [channel_num]
 

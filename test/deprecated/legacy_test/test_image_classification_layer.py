@@ -19,8 +19,6 @@ sys.path.append("../../legacy_test")
 import nets
 
 import paddle
-from paddle import base
-from paddle.base.framework import Program
 
 
 def conv_block(input, num_filter, groups, dropouts):
@@ -39,9 +37,9 @@ def conv_block(input, num_filter, groups, dropouts):
 
 class TestLayer(unittest.TestCase):
     def test_dropout_layer(self):
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -50,10 +48,10 @@ class TestLayer(unittest.TestCase):
         print(str(main_program))
 
     def test_img_conv_group(self):
-        main_program = Program()
-        startup_program = Program()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
 
-        with base.program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -63,9 +61,9 @@ class TestLayer(unittest.TestCase):
         print(str(main_program))
 
     def test_elementwise_add_with_act(self):
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             image1 = paddle.static.data(
                 name='pixel1', shape=[-1, 3, 48, 48], dtype='float32'
             )

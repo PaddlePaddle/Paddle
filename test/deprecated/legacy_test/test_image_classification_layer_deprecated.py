@@ -41,9 +41,9 @@ def conv_block(input, num_filter, groups, dropouts):
 
 class TestLayer(unittest.TestCase):
     def test_batch_norm_layer(self):
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
