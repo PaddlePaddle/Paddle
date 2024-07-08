@@ -48,6 +48,7 @@ import gen as vjp_gen
 # for some unittests these need to export symbol op compiled with dynamic lib.
 need_export_symbol_op_list = [
     'Add_Op',
+    'AddNOp',
     'AbsOp',
     'FullOp',
     'UniformOp',
@@ -335,7 +336,6 @@ scalar_type_maps = {
 }
 
 PD_MANUAL_OP_LIST = {
-    'add_n',
     'add_n_',
     'split_grad',
     'expand',
@@ -1257,6 +1257,8 @@ def AutoCodeGen(
     op_to_multi_kernels_list = []
     sp_op_to_multi_kernels_list = []
     for key, op_info in op_info_items.items():
+        if key == "add_n_grad":
+            continue
         # get op inputs info
         op_input_name_list = op_info.input_name_list
         op_input_optional_list = op_info.input_optional_list
@@ -1305,6 +1307,7 @@ def AutoCodeGen(
             dialect_name == "pd_op"
             and op_info.backward_name
             and not op_info.is_sparse_op
+            and all_op_info_items[op_info.backward_name].kernel_map is not None
         ):
             op_interfaces += [
                 "paddle::dialect::CacheGradOpSymbolicShapeInterface"
