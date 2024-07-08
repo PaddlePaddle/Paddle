@@ -197,11 +197,10 @@ class TestFusedAttentionOpFP16(OpTest):
             q_tensor,
             k_tensor,
             v_tensor,
-            self.scaling_factor,
             attn_mask,
             self.dropout_prob,
             self.is_causal_masking,
-            True,
+            training=True,
         )
 
         paddle.autograd.backward(

@@ -747,21 +747,21 @@ def scaled_dot_product_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
-        attn_mask(Tensor,optional): A float mask of the same type as query,
+                        The dtype can be float16 or bfloat16.
+        attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-        dropout_p(float): The dropout ratio.
-        is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase.
-        name(str, optional): The default value is None. Normally there is no need for user
+        dropout_p(float, optional): The dropout ratio.
+        is_causal(bool, optional): Whether enable causal mode.
+        training(bool, optional): Whether it is in the training phase.
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 

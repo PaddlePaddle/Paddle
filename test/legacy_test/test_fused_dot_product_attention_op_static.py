@@ -71,7 +71,20 @@ class TestFusedDotProductAttentionStatic(unittest.TestCase):
         mask = paddle.to_tensor(
             mask_data, place=self.place, dtype=self.dtype, stop_gradient=True
         )
-        out = fused_dot_product_attention(q, k, v, 1.0, mask)
+        out0 = fused_dot_product_attention(q, k, v, mask)
+        out1 = cudnn_flash_attention(
+            q,
+            k,
+            v,
+            mask,
+            None,
+            None,
+            1.0,
+            0.0,
+            True,
+            None,
+            "post_scale_bias",
+        )
         paddle.enable_static()
         paddle.seed(312)
 
@@ -90,7 +103,7 @@ class TestFusedDotProductAttentionStatic(unittest.TestCase):
                 name="mask", shape=self.mask_shape, dtype=self.dtype
             )
 
-            outs = fused_dot_product_attention(q, k, v, 1.0, mask)
+            outs = fused_dot_product_attention(q, k, v, mask)
 
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
@@ -102,7 +115,7 @@ class TestFusedDotProductAttentionStatic(unittest.TestCase):
                 },
                 fetch_list=[outs],
             )
-            np.testing.assert_allclose(out_s[0], out)
+            np.testing.assert_allclose(out_s[0], out0)
 
         # call cudnn_flash_attention in static mode
         with paddle.static.program_guard(paddle.static.Program()):
@@ -143,6 +156,7 @@ class TestFusedDotProductAttentionStatic(unittest.TestCase):
                 },
                 fetch_list=[outs],
             )
+            np.testing.assert_allclose(out_s[0], out1)
 
 
 if __name__ == "__main__":
