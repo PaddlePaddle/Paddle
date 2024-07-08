@@ -678,7 +678,6 @@ set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
-set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
                                                                        120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
@@ -717,7 +716,6 @@ set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
 
 set(TEST_CINN_OPS
     test_softmax_op
-    test_reduce_op
     test_slice_op
     test_slice_op_deprecated
     test_gather_nd_op
@@ -725,7 +723,6 @@ set(TEST_CINN_OPS
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
-    test_scatter_nd_op
     test_instance_norm_op
     test_instance_norm_op_deprecated
     test_cumsum_op
@@ -760,7 +757,6 @@ set(STATIC_BUILD_TESTS
     test_momentum_op
     test_momentum_op_deprecated
     test_nce_deprecated
-    test_reduce_op
     test_sparse_conv_op
     test_sparse_norm_op
     test_tensor_array_to_tensor
@@ -814,6 +810,5 @@ py_test_modules(test_stride MODULES test_stride ENVS
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
-set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
