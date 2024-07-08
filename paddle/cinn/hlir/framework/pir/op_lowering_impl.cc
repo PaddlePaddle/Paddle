@@ -257,7 +257,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto value : group->GetGroupOutputValues()) {
+    for (auto value : group->output_values()) {
       output_tensor_names.insert(ValueName(value));
     }
 
@@ -429,7 +429,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto value : group->GetGroupOutputValues()) {
+    for (auto value : group->output_values()) {
       output_tensor_names.insert(ValueName(value));
     }
 
@@ -988,7 +988,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
   std::shared_ptr<GroupInfo> group_info = GetGroupInfo(group, tensor_map);
 
   std::unordered_set<std::string> output_tensor_names;
-  for (auto value : group->GetGroupOutputValues()) {
+  for (auto value : group->output_values()) {
     output_tensor_names.insert(ValueName(value));
   }
   std::unique_ptr<ir::GroupScheduler> group_scheduler =
