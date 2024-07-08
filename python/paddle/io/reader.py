@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import numbers
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -26,75 +25,19 @@ from typing import (
     overload,
 )
 
-import numpy as np
-import numpy.typing as npt
-
 import paddle
 
 if TYPE_CHECKING:
+    import numbers
+
+    import numpy.typing as npt
+
     from paddle import Tensor
     from paddle._typing import PlaceLike
     from paddle.io.dataloader.dataset import Dataset
 
     _K = TypeVar('_K')
     _V = TypeVar('_V')
-
-
-@overload
-def default_collate_fn(
-    batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number],
-) -> npt.NDArray[Any]:
-    ...
-
-
-@overload
-def default_collate_fn(batch: Sequence[Tensor]) -> Tensor:
-    ...
-
-
-@overload
-def default_collate_fn(batch: Sequence[AnyStr]) -> AnyStr:
-    ...
-
-
-@overload
-def default_collate_fn(batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
-    ...
-
-
-@overload
-def default_collate_fn(batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
-    ...
-
-
-def default_collate_fn(batch):
-    sample = batch[0]
-    if isinstance(sample, np.ndarray):
-        batch = np.stack(batch, axis=0)
-        return batch
-    elif isinstance(sample, paddle.Tensor):
-        return paddle.stack(batch, axis=0)
-    elif isinstance(sample, numbers.Number):
-        batch = np.array(batch)
-        return batch
-    elif isinstance(sample, (str, bytes)):
-        return batch
-    elif isinstance(sample, Mapping):
-        return {
-            key: default_collate_fn([d[key] for d in batch]) for key in sample
-        }
-    elif isinstance(sample, Sequence):
-        sample_fields_num = len(sample)
-        if not all(len(sample) == sample_fields_num for sample in iter(batch)):
-            raise RuntimeError(
-                "fields number not same among samples in a batch"
-            )
-        return [default_collate_fn(fields) for fields in zip(*batch)]
-
-    raise TypeError(
-        "batch data con only contains: tensor, numpy.ndarray, "
-        f"dict, list, number, but got {type(sample)}"
-    )
 
 
 class _CollateFn(Protocol):
@@ -119,9 +62,6 @@ class _CollateFn(Protocol):
     @overload
     def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
         ...
-
-
-fn: _CollateFn = default_collate_fn
 
 
 import copy
@@ -494,7 +434,7 @@ class DataLoader:
     """
 
     return_list: bool
-    collate_fn: Callable[[_CollateFn], None]
+    collate_fn: _CollateFn | None
     use_buffer_reader: bool
     prefetch_factor: int
     worker_init_fn: Callable[[int], None]
@@ -515,7 +455,7 @@ class DataLoader:
         batch_size: int = 1,
         shuffle: bool = False,
         drop_last: bool = False,
-        collate_fn: Callable[[_CollateFn], None] = None,
+        collate_fn: _CollateFn | None = None,
         num_workers: int = 0,
         use_buffer_reader: bool = True,
         prefetch_factor: int = 2,
