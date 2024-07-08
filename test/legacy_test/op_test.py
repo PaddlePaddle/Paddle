@@ -1625,14 +1625,6 @@ class OpTest(unittest.TestCase):
                 for op in block.ops:
                     if op.name() == "pd_op.fetch":
                         for var in op.results():
-                            print(
-                                "is dense_tensor ?: ",
-                                var.is_dense_tensor_type(),
-                            )
-                            print(
-                                "is selected_row_type ?: ",
-                                var.is_selected_row_type(),
-                            )
                             if (
                                 var.is_dense_tensor_type()
                                 or var.is_selected_row_type()
@@ -1712,10 +1704,6 @@ class OpTest(unittest.TestCase):
                         raise ValueError(
                             "output of python api should be Value or list of Value or tuple of Value"
                         )
-                # run the program with pass
-                # pm = pir.PassManager()
-                # paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
-                # pm.run(program)
 
                 # executor run
                 executor = Executor(place)
