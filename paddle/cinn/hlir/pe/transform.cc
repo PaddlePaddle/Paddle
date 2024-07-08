@@ -24,7 +24,6 @@
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
