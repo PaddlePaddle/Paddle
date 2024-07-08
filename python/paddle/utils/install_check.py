@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 
 import numpy as np
@@ -210,7 +212,7 @@ def _run_parallel(device_list):
     paddle.distributed.spawn(train_for_run_parallel, nprocs=len(device_list))
 
 
-def run_check():
+def run_check() -> None:
     """
     Check whether PaddlePaddle is installed correctly and running successfully
     on your system.
