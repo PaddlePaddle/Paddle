@@ -38,13 +38,13 @@ using namespace egr_utils_api;  // NOLINT
 
 TEST(Benchmark, EagerScaleCPU) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
     paddle::Tensor tensor =
         eager_test::CreateTensorWithValue(ddim,
-                                          paddle::platform::CPUPlace(),
+                                          phi::CPUPlace(),
                                           phi::DataType::FLOAT32,
                                           phi::DataLayout::NCHW,
                                           5.0,
@@ -78,27 +78,25 @@ TEST(Benchmark, EagerScaleCPU) {
 
 TEST(Benchmark, EagerMatmulCPU) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = common::make_ddim({2, 2});
-    paddle::Tensor X =
-        eager_test::CreateTensorWithValue(ddimX,
-                                          paddle::platform::CPUPlace(),
-                                          phi::DataType::FLOAT32,
-                                          phi::DataLayout::NCHW,
-                                          1.0,
-                                          true);
+    paddle::Tensor X = eager_test::CreateTensorWithValue(ddimX,
+                                                         phi::CPUPlace(),
+                                                         phi::DataType::FLOAT32,
+                                                         phi::DataLayout::NCHW,
+                                                         1.0,
+                                                         true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = common::make_ddim({2, 2});
-    paddle::Tensor Y =
-        eager_test::CreateTensorWithValue(ddimY,
-                                          paddle::platform::CPUPlace(),
-                                          phi::DataType::FLOAT32,
-                                          phi::DataLayout::NCHW,
-                                          2.0,
-                                          true);
+    paddle::Tensor Y = eager_test::CreateTensorWithValue(ddimY,
+                                                         phi::CPUPlace(),
+                                                         phi::DataType::FLOAT32,
+                                                         phi::DataLayout::NCHW,
+                                                         2.0,
+                                                         true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -127,30 +125,28 @@ TEST(Benchmark, EagerMatmulCPU) {
 
 TEST(Benchmark, EagerIntermediateMatmulCPU) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = common::make_ddim({2, 2});
-    paddle::Tensor X =
-        eager_test::CreateTensorWithValue(ddimX,
-                                          paddle::platform::CPUPlace(),
-                                          phi::DataType::FLOAT32,
-                                          phi::DataLayout::NCHW,
-                                          1.0,
-                                          true);
+    paddle::Tensor X = eager_test::CreateTensorWithValue(ddimX,
+                                                         phi::CPUPlace(),
+                                                         phi::DataType::FLOAT32,
+                                                         phi::DataLayout::NCHW,
+                                                         1.0,
+                                                         true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = common::make_ddim({2, 2});
-    paddle::Tensor Y =
-        eager_test::CreateTensorWithValue(ddimY,
-                                          paddle::platform::CPUPlace(),
-                                          phi::DataType::FLOAT32,
-                                          phi::DataLayout::NCHW,
-                                          2.0,
-                                          true);
+    paddle::Tensor Y = eager_test::CreateTensorWithValue(ddimY,
+                                                         phi::CPUPlace(),
+                                                         phi::DataType::FLOAT32,
+                                                         phi::DataLayout::NCHW,
+                                                         2.0,
+                                                         true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -179,20 +175,19 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
 
 TEST(Benchmark, EagerIntermediateMLPCPU) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = common::make_ddim({MLP_M, MLP_N});
-    paddle::Tensor X =
-        eager_test::CreateTensorWithValue(ddimX,
-                                          paddle::platform::CPUPlace(),
-                                          phi::DataType::FLOAT32,
-                                          phi::DataLayout::NCHW,
-                                          MLP_X_VAL,
-                                          true);
+    paddle::Tensor X = eager_test::CreateTensorWithValue(ddimX,
+                                                         phi::CPUPlace(),
+                                                         phi::DataType::FLOAT32,
+                                                         phi::DataLayout::NCHW,
+                                                         MLP_X_VAL,
+                                                         true);
     RetainGradForTensor(X);
 
     std::vector<paddle::Tensor> Ws;
@@ -201,7 +196,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
       paddle::framework::DDim ddimW = common::make_ddim({MLP_N, MLP_K});
       paddle::Tensor W =
           eager_test::CreateTensorWithValue(ddimW,
-                                            paddle::platform::CPUPlace(),
+                                            phi::CPUPlace(),
                                             phi::DataType::FLOAT32,
                                             phi::DataLayout::NCHW,
                                             MLP_W_VAL,
@@ -211,7 +206,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
       paddle::framework::DDim ddimB = common::make_ddim({MLP_K});
       paddle::Tensor B =
           eager_test::CreateTensorWithValue(ddimB,
-                                            paddle::platform::CPUPlace(),
+                                            phi::CPUPlace(),
                                             phi::DataType::FLOAT32,
                                             phi::DataLayout::NCHW,
                                             MLP_B_VAL,
