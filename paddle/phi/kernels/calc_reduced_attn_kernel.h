@@ -23,8 +23,6 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& softmax_lse,
-                                 const bool return_softmax,
-                                 DenseTensor* reduced_scores,
-                                 DenseTensor* softmax);
+                                 DenseTensor* reduced_scores);
 
 }  // namespace phi

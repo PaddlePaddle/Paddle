@@ -517,30 +517,44 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
 
 void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
                                     const MetaTensor& k,
-                                    MetaTensor* reduced_scores,
-                                    MetaTensor* softmax) {
+                                    const MetaTensor& softmax_lse,
+                                    MetaTensor* reduced_scores) {
   PADDLE_ENFORCE(q.dims().size() == 4,
                  phi::errors::InvalidArgument(
-                     "calc_reduced_attn_scores receive input with dim "
+                     "calc_reduced_attn_scores must receive input q with dim "
                      "[batch_size, seq_len, num_heads, head_dim]"));
 
   PADDLE_ENFORCE(k.dims().size() == 4,
                  phi::errors::InvalidArgument(
-                     "calc_reduced_attn_scores receive input with dim "
+                     "calc_reduced_attn_scores must receive input k with dim "
                      "[batch_size, seq_len, num_heads, head_dim]"));
+
+  PADDLE_ENFORCE(
+      softmax_lse.dims().size() == 3,
+      phi::errors::InvalidArgument(
+          "calc_reduced_attn_scores must receive input softmax_lse with dim "
+          "[batch_size, num_heads, seq_len_q]"));
+
+  PADDLE_ENFORCE(
+      q.dims()[0] == k.dims()[0] && q.dims()[0] == softmax_lse.dims()[0] &&
+          q.dims()[2] == k.dims()[2] && q.dims()[3] == k.dims()[3] &&
+          q.dims()[0] == softmax_lse.dims()[0] &&
+          q.dims()[2] == softmax_lse.dims()[1],
+      phi::errors::InvalidArgument(
+          "calc_reduced_attn_scores must receive input q, k and softmax_lse "
+          "with consistent batch_size, num_heads and head_dim"));
+
+  PADDLE_ENFORCE(q.dims()[1] == softmax_lse.dims()[2],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with consistent seq_len"));
 
   int batch_size = q.dims()[0];
   int num_heads = q.dims()[2];
-  int seqlen_q = q.dims()[1];
   int seqlen_k = k.dims()[1];
-  if (reduced_scores) {
-    reduced_scores->set_dtype(phi::DataType::FLOAT32);
-    reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
-  }
-  if (softmax) {
-    softmax->set_dtype(phi::DataType::FLOAT32);
-    softmax->set_dims({batch_size, num_heads, seqlen_q, seqlen_k});
-  }
+
+  reduced_scores->set_dtype(phi::DataType::FLOAT32);
+  reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
 }
 
 void ArangeTensorInferMeta(const MetaTensor& start,

@@ -1305,17 +1305,17 @@ def calc_reduced_attention_scores(
             >>> k = paddle.to_tensor(
             >>>     key, place=place, dtype=dtype, stop_gradient=True
             >>> )
-            >>> (_,_,softmax_lse,_) = _C_ops.flash_attn(
+            >>> _, _, softmax_lse, _ = _C_ops.flash_attn(
             >>>     q,
             >>>     k,
             >>>     k,
-            >>>     (None,),#fixed_seed_offset
-            >>>     None,#attn_mask
-            >>>     0.0,#dropout
-            >>>     False,#causal
-            >>>     False,#return_softmax
-            >>>     False,#is_test
-            >>>     ""#rng_name
+            >>>     (None,), #fixed_seed_offset
+            >>>     None, #attn_mask
+            >>>     0.0, #dropout
+            >>>     False, #causal
+            >>>     False, #return_softmax
+            >>>     False, #is_test
+            >>>     "" #rng_name
             >>> )
             >>> reduced_attn_scores = calc_reduced_attention_scores(
             >>>     q,
@@ -1329,8 +1329,8 @@ def calc_reduced_attention_scores(
     ), 'calc_reduced_attention_scores() is for inference only.'
 
     if in_dynamic_mode():
-        (reduced_scores, _) = _C_ops.calc_reduced_attn_scores(
-            query, key, softmax_lse, False
+        reduced_scores = _C_ops.calc_reduced_attn_scores(
+            query, key, softmax_lse
         )
         return reduced_scores
 
@@ -1344,14 +1344,10 @@ def calc_reduced_attention_scores(
     }
     outputs = {
         'reduced_scores': reduced_scores,
-        'softmax': softmax,
     }
     helper.append_op(
         type='calc_reduced_attn_scores',
         inputs=inputs,
         outputs=outputs,
-        attrs={
-            'return_softmax': False,
-        },
     )
     return reduced_scores

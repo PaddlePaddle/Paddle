@@ -756,11 +756,11 @@
   inplace : (x -> out)
 
 - op : calc_reduced_attn_scores
-  args : (Tensor q, Tensor k, Tensor softmax_lse, bool return_softmax = false)
-  output : Tensor(reduced_scores), Tensor(softmax)
+  args : (Tensor q, Tensor k, Tensor softmax_lse)
+  output : Tensor(reduced_scores)
   infer_meta :
     func : CalcReducedAttnScoresInferMeta
-    param : [q, k]
+    param : [q, k, softmax_lse]
   kernel :
     func : calc_reduced_attn_scores
     data_type : q
