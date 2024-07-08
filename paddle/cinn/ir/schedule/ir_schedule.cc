@@ -61,12 +61,7 @@ std::unique_ptr<ScheduleBase> ScheduleBase::Make(
 
 std::unique_ptr<ScheduleBase> ScheduleBase::Make(ModuleExpr&& module_expr,
                                                  bool is_dynamic) {
-  if (is_dynamic) {
-    return std::make_unique<DyScheduleImpl>(std::move(module_expr));
-  } else {
-    return std::make_unique<StScheduleImpl>(std::move(module_expr));
-  }
-  return nullptr;
+  return std::make_unique<DyScheduleImpl>(std::move(module_expr));
 }
 
 /** \brief A macro that guards the beginning of each implementation of schedule
