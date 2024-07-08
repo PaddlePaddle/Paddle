@@ -761,7 +761,7 @@ void FleetWrapper::PushDenseParamSync(
     const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -805,8 +805,8 @@ void FleetWrapper::PushDenseVarsAsync(
 
     Variable* pin_var = scope.FindVar(t + "pin");
     phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
-    float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
-                                                   platform::CUDAPinnedPlace());
+    float* pin_g =
+        pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
     memory::Copy(platform::CUDAPinnedPlace(),
                  pin_g,
                  place,
@@ -868,9 +868,8 @@ void FleetWrapper::PushDenseVarsAsync(
     Variable* pin_var = scope.FindVar(t + "pin");
     phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
     float* pin_g =
-        pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
-    memory::Copy(
-        platform::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
+        pin_tensor->mutable_data<float>(tensor->dims(), phi::CPUPlace());
+    memory::Copy(phi::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {
@@ -1269,7 +1268,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
   const ProgramDesc old_program = read_proto_func(model_proto_file);
   Scope* old_scope = new Scope();
   auto& old_block = old_program.Block(0);
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<std::string> old_param_list;
 
   for (auto& t : var_list) {

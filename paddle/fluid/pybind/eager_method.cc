@@ -225,11 +225,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   phi::DenseTensor cpu_tensor;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -356,7 +356,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #endif
 #if defined(PADDLE_WITH_XPU)
   } else if (self->tensor.is_xpu()) {
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -2894,7 +2894,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self,
   // 4. copy data & reset holder
   memory::Copy(platform::CPUPlace(),
                shared_writer_holder->ptr(),
-               platform::CPUPlace(),
+               phi::CPUPlace(),
                data_ptr,
                data_size);
   t->ResetHolder(shared_writer_holder);

@@ -30,7 +30,7 @@ class RecordedAllocator : public Allocator {
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());  // NOLINT
+    return new Allocation(malloc(size), size, phi::CPUPlace());  // NOLINT
   }
 
   void FreeImpl(phi::Allocation *allocation) override {
@@ -85,7 +85,7 @@ class LimitedResourceAllocator : public Allocator {
     }
 
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());  // NOLINT
+    return new Allocation(malloc(size), size, phi::CPUPlace());  // NOLINT
   }
 
   void FreeImpl(phi::Allocation *allocation) override {

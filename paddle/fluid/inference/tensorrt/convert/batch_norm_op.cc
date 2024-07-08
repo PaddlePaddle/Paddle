@@ -72,7 +72,7 @@ class BatchNormOpConverter : public OpConverter {
     scale_tensor.Resize(Scale_t->dims());
     variance_tensor.Resize(Variance_t->dims());
 
-    platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     // copy data from gpu to cpu
     paddle::framework::TensorCopySync((*Bias_t), cpu_place, &bias_tensor);
     paddle::framework::TensorCopySync((*Mean_t), cpu_place, &mean_tensor);

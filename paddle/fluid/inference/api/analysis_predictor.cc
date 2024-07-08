@@ -321,7 +321,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
                  static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  pt.data.data(),
                  pt.data.length(),
                  dev_ctx->stream());
@@ -334,7 +334,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     auto dst_xpu_place = place;
     memory::Copy(dst_xpu_place,
                  static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  pt.data.data(),
                  pt.data.length());
 #else
@@ -350,7 +350,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
         pool.Get(custom_place));
     memory::Copy(custom_place,
                  static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  pt.data.data(),
                  pt.data.length(),
                  dev_ctx->stream());
@@ -2881,7 +2881,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
         }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
-                             platform::CPUPlace(),
+                             phi::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (platform::is_gpu_place(tensor->place())) {
@@ -3308,7 +3308,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   op->SetAttr("file_path", dir + "/params");
   op->CheckAttrs();
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(save_program, scope(), 0, true, true);
 }

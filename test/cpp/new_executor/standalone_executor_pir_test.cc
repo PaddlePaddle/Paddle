@@ -73,7 +73,7 @@ TEST(StandaloneExecutor, run) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
 
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
@@ -142,7 +142,7 @@ TEST(StandaloneExecutor, run_feed_tensor) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
@@ -192,7 +192,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
@@ -255,7 +255,7 @@ TEST(StandaloneExecutor, if_op) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
@@ -325,7 +325,7 @@ TEST(StandaloneExecutor, while_op) {
 
   auto kernel_program = PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 

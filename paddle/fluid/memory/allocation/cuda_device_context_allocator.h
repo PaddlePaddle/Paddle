@@ -123,7 +123,7 @@ class GPUContextAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override { delete allocation; }
 
  private:
-  platform::CUDAPlace place_;
+  phi::GPUPlace place_;
   gpuEvent_t event_{nullptr};
   gpuStream_t default_stream_{nullptr};
 };
@@ -160,7 +160,7 @@ class GPUContextAllocatorPool {
   GPUContextAllocatorPool() {
     std::vector<int> devices = platform::GetSelectedDevices();
     for (int i : devices) {
-      auto place = platform::CUDAPlace(i);
+      auto place = phi::GPUPlace(i);
       auto compute_stream =
           platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
       auto allocator = std::shared_ptr<GPUContextAllocator>(

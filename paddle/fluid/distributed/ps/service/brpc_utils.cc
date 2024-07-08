@@ -117,7 +117,7 @@ void SerializeLodTensor(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -164,7 +164,7 @@ void SerializeSelectedRows(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -260,7 +260,7 @@ void DeserializeLodTensor(framework::Variable* var,
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  (void*)temp_ptr,  // NOLINT
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
@@ -304,7 +304,7 @@ void DeserializeSelectedRows(
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  temp_ptr,
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);

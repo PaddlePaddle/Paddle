@@ -54,7 +54,7 @@ TEST(allocator, allocator) {
   platform::Place place;
 
   {
-    place = platform::CPUPlace();
+    place = phi::CPUPlace();
     size = 1024;
     auto cpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(cpu_allocation, nullptr);
@@ -65,7 +65,7 @@ TEST(allocator, allocator) {
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
   {
-    place = platform::CUDAPlace(0);
+    place = phi::GPUPlace(0);
     size = 1024;
     auto gpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
@@ -77,7 +77,7 @@ TEST(allocator, allocator) {
 
   {
     // Allocate 2GB gpu memory
-    place = platform::CUDAPlace(0);
+    place = phi::GPUPlace(0);
     size = 2 * static_cast<size_t>(1 << 30);
     auto gpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
@@ -88,7 +88,7 @@ TEST(allocator, allocator) {
   }
 
   {
-    place = platform::CUDAPinnedPlace();
+    place = phi::GPUPinnedPlace();
     size = (1 << 20);
     auto cuda_pinned_allocation =
         instance.Alloc(platform::CUDAPinnedPlace(), 1 << 20);

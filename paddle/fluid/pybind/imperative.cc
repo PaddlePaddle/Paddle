@@ -531,7 +531,7 @@ void BindImperative(py::module *m_ptr) {
           // 2. construct LoDTensor
           phi::DenseTensor t;
           SetTensorFromPyArray<platform::CPUPlace>(
-              &t, array, platform::CPUPlace(), true);
+              &t, array, phi::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
           size_t data_size = t.numel() * phi::SizeOf(t.dtype());
@@ -543,7 +543,7 @@ void BindImperative(py::module *m_ptr) {
           // 5. copy data & reset holder
           memory::Copy(platform::CPUPlace(),
                        shared_writer_holder->ptr(),
-                       platform::CPUPlace(),
+                       phi::CPUPlace(),
                        data_ptr,
                        data_size);
           t.ResetHolder(shared_writer_holder);
@@ -571,7 +571,7 @@ void BindImperative(py::module *m_ptr) {
         // 2. construct LoDTensor
         phi::DenseTensor t;
         SetTensorFromPyArray<platform::CPUPlace>(
-            &t, array, platform::CPUPlace(), true);
+            &t, array, phi::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
         size_t data_size = t.numel() * phi::SizeOf(t.dtype());
@@ -583,7 +583,7 @@ void BindImperative(py::module *m_ptr) {
         // 5. copy data & reset holder
         memory::Copy(platform::CPUPlace(),
                      shared_writer_holder->ptr(),
-                     platform::CPUPlace(),
+                     phi::CPUPlace(),
                      data_ptr,
                      data_size);
         t.ResetHolder(shared_writer_holder);
@@ -920,7 +920,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::NCCLParallelContext>>(
       m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CUDAPlace &>())
+                    const phi::GPUPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::NCCLParallelContext::InitWithRingID,
@@ -933,7 +933,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::XCCLParallelContext>>(
       m, "XCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CustomPlace &>())
+                    const phi::CustomPlace &>())
       .def("init", [](imperative::XCCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::XCCLParallelContext::InitWithRingID,
@@ -946,7 +946,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::BKCLParallelContext>>(
       m, "BKCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::XPUPlace &>())
+                    const phi::XPUPlace &>())
       .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::BKCLParallelContext::InitWithRingID,
@@ -960,7 +960,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::GLOOParallelContext>>(
       m, "GLOOParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CPUPlace &>())
+                    const phi::CPUPlace &>())
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,

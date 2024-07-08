@@ -41,7 +41,7 @@ TEST(BestFitAllocator, concurrent_cuda) {
   auto cuda_allocation = allocator.Allocate(256U * 1024 * 1024);
   BestFitAllocator concurrent_allocator(cuda_allocation.get());
 
-  platform::CUDAPlace gpu(0);
+  phi::GPUPlace gpu(0);
   phi::GPUContext dev_ctx(gpu);
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu, dev_ctx.stream())

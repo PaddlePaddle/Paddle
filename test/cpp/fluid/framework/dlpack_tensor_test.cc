@@ -109,9 +109,8 @@ void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
 template <typename T>
 void TestMainLoop() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  std::vector<platform::Place> places{platform::CPUPlace(),
-                                      platform::CUDAPlace(0),
-                                      platform::CUDAPinnedPlace()};
+  std::vector<platform::Place> places{
+      platform::CPUPlace(), phi::GPUPlace(0), phi::GPUPinnedPlace()};
   if (platform::GetGPUDeviceCount() > 1) {
     places.emplace_back(platform::CUDAPlace(1));
   }

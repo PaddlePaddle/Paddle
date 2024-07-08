@@ -174,9 +174,9 @@ inline void RegisterKernelClass(const char* op_type,
     data_layout = "MKLDNNLAYOUT";
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (std::is_same<PlaceType, platform::CustomPlace>::value) {
+  if (std::is_same<PlaceType, phi::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
-                     platform::CustomPlace(library_type),
+                     phi::CustomPlace(library_type),
                      common::StringToDataLayout(data_layout),
                      LibraryType::kPlain,
                      customized_type_value);

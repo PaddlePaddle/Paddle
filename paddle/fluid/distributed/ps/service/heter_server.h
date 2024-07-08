@@ -220,7 +220,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
         new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
     auto message_name = request->message_name();

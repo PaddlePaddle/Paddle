@@ -55,7 +55,7 @@ struct TestFusedDropoutActBias {
   std::vector<T> correct_out, correct_dsrc, correct_dbias;
   std::vector<uint8_t> correct_mask;
 
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext *ctx;
 
   TestFusedDropoutActBias() {

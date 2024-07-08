@@ -160,7 +160,7 @@ template <typename TStream>
 inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 #if defined(PADDLE_WITH_CUDA)
   const size_t mem_len = tensor->memory_size();
-  auto place = platform::CUDAPinnedPlace();
+  auto place = phi::GPUPinnedPlace();
   auto holder = memory::AllocShared(place, mem_len);
   memory::Copy(
       place, holder->ptr(), tensor->place(), tensor->data(), mem_len, stream);
@@ -231,7 +231,7 @@ void HogwildWorker::OffLoadVarInfo::BackUpInputs(Scope *root_scope,
     if (root_var == nullptr) {
       root_var = root_scope->Var(name);
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
-      auto place = platform::CUDAPinnedPlace();
+      auto place = phi::GPUPinnedPlace();
       copyer->Copy(src_tensor, place, root_tensor);
     } else {
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();

@@ -65,7 +65,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   return block;
 }
 
-void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
+void CreateVarsOnScope(framework::Scope* scope, phi::CPUPlace* place) {
   auto w_var = scope->Var("w");
   w_var->GetMutable<phi::SelectedRows>();
 
@@ -86,7 +86,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
@@ -112,7 +112,7 @@ void InitTensorsOnClient(framework::Scope* scope,
 }
 
 void InitTensorsOnClient2(framework::Scope* scope,
-                          platform::CPUPlace* place,
+                          phi::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
@@ -138,7 +138,7 @@ void InitTensorsOnClient2(framework::Scope* scope,
 }
 
 void InitTensorsOnServer(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -160,7 +160,7 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 void StartSendAndRecvServer(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
@@ -253,7 +253,7 @@ TEST(SENDANDRECV, CPU) {
           .get();
 
   framework::Scope* scope = (*micro_scope)[0];
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
 
   // create var on local scope

@@ -45,8 +45,7 @@ void SetupRandomCPUTensor(phi::DenseTensor* tensor,
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  T* ptr =
-      tensor->mutable_data<T>(common::make_ddim(shape), platform::CPUPlace());
+  T* ptr = tensor->mutable_data<T>(common::make_ddim(shape), phi::CPUPlace());
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
@@ -113,10 +112,10 @@ void CheckOutputs(framework::Scope* scope,
     auto* var = scope->Var(output_names[j]);
     const auto& dev_tensor = var->Get<phi::DenseTensor>();
     paddle::framework::TensorCopySync(
-        dev_tensor, platform::CPUPlace(), &(cpu_outputs[j]));
+        dev_tensor, phi::CPUPlace(), &(cpu_outputs[j]));
 
     cpu_tensors->at(num_inputs + j)
-        .mutable_data<float>(dev_tensor.dims(), platform::CPUPlace());
+        .mutable_data<float>(dev_tensor.dims(), phi::CPUPlace());
   }
 
   size_t n = cpu_tensors->at(0).numel();
@@ -146,7 +145,7 @@ void TestMain(const std::vector<std::string>& input_names,
               CPUKernelFunc cpu_kernel_func) {
   // Compile the device code
   paddle::framework::InitDevices({0});
-  platform::CUDAPlace place = platform::CUDAPlace(0);
+  phi::GPUPlace place = phi::GPUPlace(0);
   PrepareDeviceCode(place, func_name, cuda_kernel_str);
 
   // Create a ProgramDesc that has a fusion_group_op.

@@ -125,13 +125,13 @@ void RunMultiVarMsg(platform::Place place) {
 }
 
 TEST(MultiVarMsgCPU, Run) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   RunMultiVarMsg(place);
 }
 
 // #ifdef PADDLE_WITH_CUDA
 // TEST(MultiVarMsgGPU, Run) {
-//   platform::CUDAPlace place;
+//   phi::GPUPlace place;
 //   RunMultiVarMsg(place);
 // }
 // #endif

@@ -73,29 +73,29 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
 struct DLDeviceVisitor {
   using argument_type = const platform::Place &;
   using result_type = ::DLDevice;
-  inline ::DLDevice operator()(const platform::CPUPlace &place) const {
+  inline ::DLDevice operator()(const phi::CPUPlace &place) const {
     ::DLDevice device;
     device.device_type = kDLCPU;
     device.device_id = 0;
     return device;
   }
 
-  inline ::DLDevice operator()(const platform::IPUPlace &place) const {
+  inline ::DLDevice operator()(const phi::IPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::IPUPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const platform::XPUPlace &place) const {
+  inline ::DLDevice operator()(const phi::XPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const platform::CustomPlace &place) const {
+  inline ::DLDevice operator()(const phi::CustomPlace &place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "platform::CustomPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
+  inline ::DLDevice operator()(const phi::GPUPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
     device.device_type = kDLGPU;
@@ -107,7 +107,7 @@ struct DLDeviceVisitor {
 #endif
   }
 
-  inline ::DLDevice operator()(const platform::CUDAPinnedPlace &place) const {
+  inline ::DLDevice operator()(const phi::GPUPinnedPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
     device.device_type = kDLCPUPinned;

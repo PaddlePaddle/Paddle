@@ -29,8 +29,7 @@ USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 template <typename T>
 static void InitRandom(phi::DenseTensor *tensor, const platform::Place &place) {
   phi::DenseTensor cpu_tensor;
-  auto *cpu_ptr =
-      cpu_tensor.mutable_data<T>(tensor->dims(), platform::CPUPlace());
+  auto *cpu_ptr = cpu_tensor.mutable_data<T>(tensor->dims(), phi::CPUPlace());
   int64_t numel = cpu_tensor.numel();
   std::mt19937 engine;
   std::uniform_real_distribution<T> dist(static_cast<T>(-2.0),
@@ -114,9 +113,8 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
   dev_ctx.Wait();
 
   phi::DenseTensor ddout_cpu, ddout_actual_cpu;
-  framework::TensorCopySync(ddout, platform::CPUPlace(), &ddout_cpu);
-  framework::TensorCopySync(
-      ddout_actual, platform::CPUPlace(), &ddout_actual_cpu);
+  framework::TensorCopySync(ddout, phi::CPUPlace(), &ddout_cpu);
+  framework::TensorCopySync(ddout_actual, phi::CPUPlace(), &ddout_actual_cpu);
 
   bool is_equal = std::equal(ddout_cpu.data<T>(),
                              ddout_cpu.data<T>() + limit,

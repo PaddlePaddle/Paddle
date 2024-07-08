@@ -55,9 +55,7 @@ static void tensor_uva(phi::DenseTensor *self_tensor, int device_id) {
   // Reset the memory with device pointer
   std::shared_ptr<memory::allocation::Allocation> holder =
       std::make_shared<memory::allocation::Allocation>(
-          cuda_device_pointer,
-          need_allocate_size,
-          platform::CUDAPlace(device_id));
+          cuda_device_pointer, need_allocate_size, phi::GPUPlace(device_id));
   self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
 #endif
 }

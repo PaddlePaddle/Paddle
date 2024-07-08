@@ -698,8 +698,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
           scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
 
       // Initialize eltwise_y
-      TensorCopy(
-          *eltwise_y_in_tensor, platform::CPUPlace(), eltwise_y_in_tensor_ex);
+      TensorCopy(*eltwise_y_in_tensor, phi::CPUPlace(), eltwise_y_in_tensor_ex);
 
       recompute_bias_and_weights(scope,
                                  conv_weight,

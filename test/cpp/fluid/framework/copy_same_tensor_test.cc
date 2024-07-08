@@ -75,7 +75,7 @@ static bool CopySameTensorTestMain(const DDim &dims,
     }
 
     // Get the result cpu tensor
-    TensorCopySync(src_tensor, platform::CPUPlace(), &dst_cpu_tensor);
+    TensorCopySync(src_tensor, phi::CPUPlace(), &dst_cpu_tensor);
   }
 
   const void *ground_truth_ptr = src_cpu_tensor.data();

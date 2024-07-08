@@ -26,14 +26,14 @@ TEST(TensorCopy, Tensor) {
   phi::DenseTensor dst_tensor;
   phi::CPUContext cpu_ctx((platform::CPUPlace()));
 
-  int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
-                                              platform::CPUPlace());
+  int* src_ptr =
+      src_tensor.mutable_data<int>(common::make_ddim({3, 3}), phi::CPUPlace());
 
   std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr.data(), 9 * sizeof(int));
   src_tensor.set_layout(DataLayout::kAnyLayout);
 
-  auto cpu_place = new platform::CPUPlace();
+  auto cpu_place = new phi::CPUPlace();
   TensorCopy(src_tensor, *cpu_place, &dst_tensor);
 
   const int* dst_ptr = dst_tensor.data<int>();
@@ -66,13 +66,13 @@ TEST(TensorCopy, Tensor) {
     phi::DenseTensor dst_tensor;
 
     int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
-                                                platform::CPUPlace());
+                                                phi::CPUPlace());
 
     std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     memcpy(src_ptr, arr.data(), 9 * sizeof(int));
 
     // CPU phi::DenseTensor to GPU phi::DenseTensor
-    auto gpu_place = new platform::CUDAPlace(0);
+    auto gpu_place = new phi::GPUPlace(0);
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
@@ -81,7 +81,7 @@ TEST(TensorCopy, Tensor) {
     TensorCopy(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
     // GPU phi::DenseTensor to CPU phi::DenseTensor
-    auto cpu_place = new platform::CPUPlace();
+    auto cpu_place = new phi::CPUPlace();
     TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Tensors
@@ -473,7 +473,7 @@ TEST(Tensor, FromAndToStream) {
   }
   {
     phi::DenseTensor dst_tensor;
-    auto place = new platform::CPUPlace();
+    auto place = new phi::CPUPlace();
     phi::CPUContext cpu_ctx(*place);
     std::ostringstream oss;
     TensorToStream(oss, src_tensor, cpu_ctx);
@@ -493,7 +493,7 @@ TEST(Tensor, FromAndToStream) {
     gpu_tensor.Resize({2, 3});
     phi::DenseTensor dst_tensor;
 
-    auto gpu_place = new platform::CUDAPlace();
+    auto gpu_place = new phi::GPUPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())

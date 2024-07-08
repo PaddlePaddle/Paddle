@@ -2123,35 +2123,35 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CPUPlace &place) {
+              const phi::CPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::XPUPlace &place) {
+              const phi::XPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CUDAPlace &place) {
+              const phi::GPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CUDAPinnedPlace &place) {
+              const phi::GPUPinnedPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CustomPlace &place) {
+              const phi::CustomPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2383,7 +2383,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
+  m.def("_cuda_synchronize", [](const phi::GPUPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
   m.def("_set_warmup", [](bool warmup) {
@@ -2654,7 +2654,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
-          platform::CUDAPlace(dev_id));
+          phi::GPUPlace(dev_id));
       dev_ctx->cudnn_workspace_handle().ResetWorkspace();
     }
     platform::EmptyCache();

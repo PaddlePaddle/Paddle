@@ -426,7 +426,7 @@ void FleetWrapper::PushDenseParamSync(
     const Scope& scope,
     const uint64_t table_id,
     const std::vector<std::string>& var_names) {
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -457,7 +457,7 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size) {
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);

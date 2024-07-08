@@ -119,7 +119,7 @@ void ReduceOpHandle::RunImpl() {
                           "Places of input and output must be all on GPU."));
     t_out_p = out_var_handle->place();
   } else {
-    t_out_p = platform::CPUPlace();
+    t_out_p = phi::CPUPlace();
   }
 
   if (pre_in_var->IsType<phi::SelectedRows>()) {
@@ -175,7 +175,7 @@ void ReduceOpHandle::RunImpl() {
 
           auto trg = out_var->GetMutable<phi::DenseTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
-            TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+            TensorCopy(reduce_sum_trg, phi::CPUPlace(), trg);
           }
         }
       });

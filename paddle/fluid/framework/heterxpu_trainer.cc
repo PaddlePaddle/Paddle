@@ -50,7 +50,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
 #ifdef PADDLE_WITH_CUDA
-    platform::CUDAPlace place = platform::CUDAPlace(num);
+    phi::GPUPlace place = phi::GPUPlace(num);
     platform::CUDADeviceGuard guard(place.device);
     cudaStream_t stream;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
@@ -62,7 +62,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
     events_.push_back(event);
 #endif
 #ifdef PADDLE_WITH_XPU
-    platform::XPUPlace place = platform::XPUPlace(num);
+    phi::XPUPlace place = phi::XPUPlace(num);
     places_.push_back(place);
 #endif
   }
@@ -103,7 +103,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
   RegisterServiceHandler();
   // for (int i = 0; i < trainer_desc.worker_places_size(); ++i) {
   //   int num = trainer_desc.worker_places(i);
-  //   platform::CUDAPlace place = platform::CUDAPlace(num);
+  //   phi::GPUPlace place = phi::GPUPlace(num);
   //   platform::CUDADeviceGuard guard(place.device);
   //   cudaStream_t stream;
   //   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
@@ -177,7 +177,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
   if (platform::is_cpu_place(root_tensor->place())) {
     memory::Copy(thread_place,
                  thread_ptr,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  root_ptr,
                  sizeof(T) * root_tensor->numel(),
                  stream);
@@ -203,7 +203,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
   if (platform::is_cpu_place(root_tensor->place())) {
     memory::Copy(thread_place,
                  thread_ptr,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  root_ptr,
                  sizeof(T) * root_tensor->numel());
   } else {
@@ -425,10 +425,10 @@ template <typename T>
 void HeterXpuTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                        phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopy(*root_tensor, phi::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopy(*tensor, phi::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];

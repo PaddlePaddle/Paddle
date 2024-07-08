@@ -4479,7 +4479,7 @@ void GraphDataGenerator::AllocResource(
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   conf_.gpuid = gpu_graph_ptr->device_id_mapping[thread_id];
   conf_.thread_id = thread_id;
-  place_ = platform::CUDAPlace(conf_.gpuid);
+  place_ = phi::GPUPlace(conf_.gpuid);
   debug_gpu_memory_info(conf_.gpuid, "AllocResource start");
 
   platform::CUDADeviceGuard guard(conf_.gpuid);

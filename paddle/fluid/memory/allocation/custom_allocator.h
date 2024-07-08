@@ -24,8 +24,7 @@ namespace allocation {
 
 class CustomAllocator : public Allocator {
  public:
-  explicit CustomAllocator(const platform::CustomPlace& place)
-      : place_(place) {}
+  explicit CustomAllocator(const phi::CustomPlace& place) : place_(place) {}
 
   bool IsAllocThreadSafe() const override;
 

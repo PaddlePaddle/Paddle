@@ -56,7 +56,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   VirtualMemoryAutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator,
       size_t alignment,
-      const platform::CUDAPlace &place);
+      const phi::GPUPlace &place);
 
   bool IsAllocThreadSafe() const override { return true; }
 

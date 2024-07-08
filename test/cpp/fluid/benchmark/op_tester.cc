@@ -285,8 +285,8 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
   T *cpu_ptr = nullptr;
 
   if (!platform::is_cpu_place(place_)) {
-    cpu_ptr = cpu_tensor.mutable_data<T>(common::make_ddim(shape),
-                                         platform::CPUPlace());
+    cpu_ptr =
+        cpu_tensor.mutable_data<T>(common::make_ddim(shape), phi::CPUPlace());
   } else {
     cpu_ptr = ptr;
   }

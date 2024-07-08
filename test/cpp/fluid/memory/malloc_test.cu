@@ -100,7 +100,7 @@ void MultiStreamCompute(const AllocationPtr &first_data,
 }
 
 TEST(Malloc, GPUContextMultiStream) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   platform::SetDeviceId(0);
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
@@ -176,7 +176,7 @@ TEST(Malloc, GPUContextMultiStream) {
 }
 
 TEST(Malloc, GPUContextMultiThreadMultiStream) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   platform::SetDeviceId(0);
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
@@ -262,7 +262,7 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
 }
 
 TEST(Malloc, AllocZero) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   AllocationPtr allocation_ptr = Alloc(place, 0);
   EXPECT_GE(allocation_ptr->size(), 0);
 }

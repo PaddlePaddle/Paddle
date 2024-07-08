@@ -60,7 +60,7 @@ TEST(LoD, ExpandLoD) {
 
   LoD target;
   target.emplace_back(std::vector<size_t>{0, 3, 5});
-  auto new_tensor = LodExpand<float>(tensor, target, 0UL, platform::CPUPlace());
+  auto new_tensor = LodExpand<float>(tensor, target, 0UL, phi::CPUPlace());
   std::vector<int> result{{0, 0, 0, 1, 1}};
   for (size_t i = 0; i < 5; i++) {
     ASSERT_EQ(new_tensor.data<float>()[i], result[i]);
@@ -131,7 +131,7 @@ TEST(LoD, SplitLoDTensor) {
   lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::DenseTensor lod_tensor;
   lod_tensor.Resize({20, 1});
   float* dst_ptr = lod_tensor.mutable_data<float>(place);
@@ -140,8 +140,7 @@ TEST(LoD, SplitLoDTensor) {
   }
   lod_tensor.set_lod(lod);
 
-  std::vector<platform::Place> places{platform::CPUPlace(),
-                                      platform::CPUPlace()};
+  std::vector<platform::Place> places{platform::CPUPlace(), phi::CPUPlace()};
   LoD lod0;
   lod0.push_back(std::vector<size_t>({0, 2, 4}));
   lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
@@ -158,14 +157,13 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   LoD lod;
   lod.push_back(std::vector<size_t>({0}));
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::DenseTensor lod_tensor;
   lod_tensor.Resize({0, 5});
   lod_tensor.mutable_data<float>(place);
   lod_tensor.set_lod(lod);
 
-  std::vector<platform::Place> places{platform::CPUPlace(),
-                                      platform::CPUPlace()};
+  std::vector<platform::Place> places{platform::CPUPlace(), phi::CPUPlace()};
   LoD lod_res;
   lod_res.push_back(std::vector<size_t>({0}));
 
@@ -179,7 +177,7 @@ TEST(LoD, MergeLoDTensor) {
   lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
 
   phi::DenseTensor lod_tensor0;
   LoD lod0;

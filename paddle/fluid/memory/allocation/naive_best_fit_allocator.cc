@@ -59,9 +59,9 @@ template <typename Place>
 size_t Used(const Place &place);
 
 struct Usage {
-  size_t operator()(const platform::CPUPlace &cpu) const;
-  size_t operator()(const platform::CUDAPlace &gpu) const;
-  size_t operator()(const platform::CUDAPinnedPlace &cuda_pinned) const;
+  size_t operator()(const phi::CPUPlace &cpu) const;
+  size_t operator()(const phi::GPUPlace &gpu) const;
+  size_t operator()(const phi::GPUPinnedPlace &cuda_pinned) const;
 };
 
 size_t memory_usage(const platform::Place &p);
@@ -85,7 +85,7 @@ BuddyAllocator *GetCPUBuddyAllocator() {
 }
 
 template <>
-void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
+void *Alloc<platform::CPUPlace>(const phi::CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
@@ -96,7 +96,7 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::CPUPlace>(const platform::CPUPlace &place,
+void Free<platform::CPUPlace>(const phi::CPUPlace &place,
                               void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
@@ -104,18 +104,18 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place,
 }
 
 template <>
-uint64_t Release<platform::CPUPlace>(const platform::CPUPlace &place) {
+uint64_t Release<platform::CPUPlace>(const phi::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Release();
 }
 
 template <>
-size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
+size_t Used<platform::CPUPlace>(const phi::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
 // For Graphcore IPU
 template <>
-void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
+void *Alloc<platform::IPUPlace>(const phi::IPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "IPUPlace, Allocate on cpu.";
 
@@ -127,24 +127,24 @@ void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
   return p;
 }
 template <>
-void Free<platform::IPUPlace>(const platform::IPUPlace &place,
+void Free<platform::IPUPlace>(const phi::IPUPlace &place,
                               void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 template <>
-uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
+uint64_t Release<platform::IPUPlace>(const phi::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Release();
 }
 template <>
-size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
+size_t Used<platform::IPUPlace>(const phi::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
 // For kunlun XPU
 template <>
-void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
+void *Alloc<platform::XPUPlace>(const phi::XPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
@@ -175,7 +175,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::XPUPlace>(const platform::XPUPlace &place,
+void Free<platform::XPUPlace>(const phi::XPUPlace &place,
                               void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_XPU
@@ -191,7 +191,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
 }
 
 template <>
-uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
+uint64_t Release<platform::XPUPlace>(const phi::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
   LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
 #else
@@ -202,7 +202,7 @@ uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
 }
 
 template <>
-size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
+size_t Used<platform::XPUPlace>(const phi::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
   printf("Used func return 0 for XPUPlace\n");
   return 0;
@@ -283,7 +283,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
 #endif
 
 template <>
-size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
+size_t Used<platform::CUDAPlace>(const phi::GPUPlace &place) {
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Used();
 #else
@@ -293,8 +293,7 @@ size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 }
 
 template <>
-void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
-                                 size_t size) {
+void *Alloc<platform::CUDAPlace>(const phi::GPUPlace &place, size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
@@ -329,7 +328,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 }
 
 template <>
-void Free<platform::CUDAPlace>(const platform::CUDAPlace &place,
+void Free<platform::CUDAPlace>(const phi::GPUPlace &place,
                                void *p,
                                size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -341,7 +340,7 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place,
 }
 
 template <>
-uint64_t Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
+uint64_t Release<platform::CUDAPlace>(const phi::GPUPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Release();
 #else
@@ -367,7 +366,7 @@ BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
 #endif
 
 template <>
-size_t Used<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place) {
+size_t Used<platform::CUDAPinnedPlace>(const phi::GPUPinnedPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetCUDAPinnedBuddyAllocator()->Used();
 #else
@@ -377,7 +376,7 @@ size_t Used<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place) {
 }
 
 template <>
-void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
+void *Alloc<platform::CUDAPinnedPlace>(const phi::GPUPinnedPlace &place,
                                        size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
@@ -398,7 +397,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 }
 
 template <>
-void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
+void Free<platform::CUDAPinnedPlace>(const phi::GPUPinnedPlace &place,
                                      void *p,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -411,8 +410,7 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 }
 
 template <>
-uint64_t Release<platform::CUDAPinnedPlace>(
-    const platform::CUDAPinnedPlace &place) {
+uint64_t Release<platform::CUDAPinnedPlace>(const phi::GPUPinnedPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(10) << "Release on " << platform::Place(place);
   return GetCUDAPinnedBuddyAllocator()->Release();
@@ -458,7 +456,7 @@ class BuddyAllocatorList {
 
     std::call_once(*init_flags_[dev_id], [this, dev_id] {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
-      platform::CustomPlace place(device_type_, dev_id);
+      phi::CustomPlace place(device_type_, dev_id);
 
       VLOG(10) << "Init BuddyAllocator on " << place
                << " with GetExtraPaddingSize "
@@ -495,8 +493,7 @@ BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
 #endif
 
 template <>
-void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
-                                   size_t size) {
+void *Alloc<platform::CustomPlace>(const phi::CustomPlace &place, size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   auto *buddy_allocator = GetBuddyAllocator(place);
@@ -529,7 +526,7 @@ void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
 }
 
 template <>
-void Free<platform::CustomPlace>(const platform::CustomPlace &place,
+void Free<platform::CustomPlace>(const phi::CustomPlace &place,
                                  void *p,
                                  size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -544,7 +541,7 @@ void Free<platform::CustomPlace>(const platform::CustomPlace &place,
 }
 
 template <>
-uint64_t Release<platform::CustomPlace>(const platform::CustomPlace &place) {
+uint64_t Release<platform::CustomPlace>(const phi::CustomPlace &place) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Release();
 #else
@@ -554,7 +551,7 @@ uint64_t Release<platform::CustomPlace>(const platform::CustomPlace &place) {
 }
 
 template <>
-size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
+size_t Used<platform::CustomPlace>(const phi::CustomPlace &place) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Used();
 #else
@@ -602,11 +599,9 @@ struct ReleaseVisitor {
   }
 };
 
-size_t Usage::operator()(const platform::CPUPlace &cpu) const {
-  return Used(cpu);
-}
+size_t Usage::operator()(const phi::CPUPlace &cpu) const { return Used(cpu); }
 
-size_t Usage::operator()(const platform::CUDAPlace &gpu) const {
+size_t Usage::operator()(const phi::GPUPlace &gpu) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(gpu);
 #else
@@ -615,7 +610,7 @@ size_t Usage::operator()(const platform::CUDAPlace &gpu) const {
 #endif
 }
 
-size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
+size_t Usage::operator()(const phi::GPUPinnedPlace &cuda_pinned) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(cuda_pinned);
 #else

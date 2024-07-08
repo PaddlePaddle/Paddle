@@ -368,8 +368,8 @@ void TensorCopySync(const phi::DenseTensor& src,
       return;
     }
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-    platform::XPUPlace xpu_dst_place = dst_place;
-    platform::XPUPlace xpu_src_place = src_place;
+    phi::XPUPlace xpu_dst_place = dst_place;
+    phi::XPUPlace xpu_src_place = src_place;
     if (xpu_dst_place.device == xpu_src_place.device) {
       auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();
@@ -496,7 +496,7 @@ void TensorToStream(std::ostream& os,
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
-      platform::CPUPlace cpu;
+      phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
@@ -521,7 +521,7 @@ void TensorToStream(std::ostream& os,
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& xpu_dev_ctx =
           static_cast<const platform::XPUDeviceContext&>(dev_ctx);
-      platform::CPUPlace cpu;
+      phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
@@ -545,7 +545,7 @@ void TensorToStream(std::ostream& os,
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
       auto& custom_device_context =
           static_cast<const platform::CustomDeviceContext&>(dev_ctx);
-      platform::CPUPlace cpu;
+      phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
@@ -803,8 +803,8 @@ void* GetDstPtrByDLDataType(DLDataType type,
 }
 
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
-  platform::CPUPlace dst_place = platform::CPUPlace();
-  platform::CPUPlace src_place = platform::CPUPlace();
+  phi::CPUPlace dst_place = phi::CPUPlace();
+  phi::CPUPlace src_place = phi::CPUPlace();
 
   std::vector<int64_t> vec;
   std::copy(dl_tensor.shape,
@@ -825,10 +825,8 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (dl_tensor.device.device_type == kDLGPU) {
-    platform::CUDAPlace dst_place =
-        platform::CUDAPlace(dl_tensor.device.device_id);
-    platform::CUDAPlace src_place =
-        platform::CUDAPlace(dl_tensor.device.device_id);
+    phi::GPUPlace dst_place = phi::GPUPlace(dl_tensor.device.device_id);
+    phi::GPUPlace src_place = phi::GPUPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
     memory::Copy(dst_place,
@@ -858,17 +856,15 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
   auto size = common::product(vddim) * type.bits / 8;
 
   if (src->dl_tensor.device.device_type == kDLCPU) {
-    platform::CPUPlace dst_place = platform::CPUPlace();
-    platform::CPUPlace src_place = platform::CPUPlace();
+    phi::CPUPlace dst_place = phi::CPUPlace();
+    phi::CPUPlace src_place = phi::CPUPlace();
     void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (src->dl_tensor.device.device_type == kDLGPU) {
-    platform::CUDAPlace dst_place =
-        platform::CUDAPlace(src->dl_tensor.device.device_id);
-    platform::CUDAPlace src_place =
-        platform::CUDAPlace(src->dl_tensor.device.device_id);
+    phi::GPUPlace dst_place = phi::GPUPlace(src->dl_tensor.device.device_id);
+    phi::GPUPlace src_place = phi::GPUPlace(src->dl_tensor.device.device_id);
     void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
     // Fix copy by share allocation.

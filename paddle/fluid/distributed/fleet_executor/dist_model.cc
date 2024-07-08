@@ -82,7 +82,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto gpu_place = place;
     memory::Copy(gpu_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length(),
                  dev_ctx->stream());
@@ -96,7 +96,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto xpu_place = place;
     memory::Copy(xpu_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length());
 #else
@@ -111,7 +111,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto custom_place = place;
     memory::Copy(custom_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length(),
                  dev_ctx->stream());

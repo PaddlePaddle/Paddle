@@ -737,7 +737,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  std::make_shared<memory::allocation::Allocation>(
                      cuda_ipc_allocation->ptr(),
                      cuda_ipc_allocation->base_ptr(), size,
-                     platform::CUDAPlace(device_id));
+                     phi::GPUPlace(device_id));
 
              self.ResetHolderWithType(shared_reader_holder, dtype);
              self.Resize(dims);
@@ -911,11 +911,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                if (platform::is_cuda_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
                  memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
-                              platform::CUDAPinnedPlace(), data_ptr, data_size);
+                              phi::GPUPinnedPlace(), data_ptr, data_size);
 #endif
                } else {
                  memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
-                              platform::CPUPlace(), data_ptr, data_size);
+                              phi::CPUPlace(), data_ptr, data_size);
                }
                self.ResetHolder(shared_holder);
                mmap_allocation = shared_holder.get();

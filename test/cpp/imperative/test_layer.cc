@@ -191,7 +191,7 @@ std::string LayerDebugString(const std::string& op_type,
                              const NameVarBaseMap& outs);
 
 TEST(test_layer, test_debug_string) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
   var_pair in_pair = var_pair("X", vb_vector(1, vin));
@@ -286,7 +286,7 @@ TEST(test_layer, test_clear_backward_info) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair y_pair = var_pair("Y", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -313,7 +313,7 @@ TEST(test_layer, test_clear_backward_info) {
 }
 
 TEST(test_layer, test_varbase_basic) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
   vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
@@ -342,7 +342,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair y_pair = var_pair("Y", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -379,7 +379,7 @@ TEST(test_layer, test_dygraph_infershape_context) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair y_pair = var_pair("Y", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));

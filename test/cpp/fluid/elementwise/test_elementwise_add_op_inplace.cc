@@ -119,7 +119,7 @@ bool TestMain(const platform::Place &place,
   }
 
   if (is_gpu_place) {
-    framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
+    framework::TensorCopySync(out_tensor, phi::CPUPlace(), &cpu_out);
   } else {
     cpu_out = out_tensor;
   }
@@ -131,26 +131,26 @@ bool TestMain(const platform::Place &place,
 
 TEST(test_elementwise_add_inplace, cpu_place) {
   framework::DDim dims({32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, dims, true));
 }
 
 TEST(test_elementwise_add_not_inplace, cpu_place) {
   framework::DDim dims({32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_inplace, gpu_place) {
   framework::DDim dims({32, 64});
-  platform::CUDAPlace p(0);
+  phi::GPUPlace p(0);
   ASSERT_TRUE(TestMain<float>(p, dims, true));
 }
 
 TEST(test_elementwise_add_not_inplace, gpu_place) {
   framework::DDim dims({32, 64});
-  platform::CUDAPlace p(0);
+  phi::GPUPlace p(0);
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }
 #endif

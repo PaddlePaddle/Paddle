@@ -77,7 +77,7 @@ class ThreadLocalCUDAAllocatorPool {
 
 class ThreadLocalCUDAAllocator : public Allocator {
  public:
-  explicit ThreadLocalCUDAAllocator(const platform::CUDAPlace& p)
+  explicit ThreadLocalCUDAAllocator(const phi::GPUPlace& p)
       : gpu_id_(p.device) {}
 
   bool IsAllocThreadSafe() const override { return true; }

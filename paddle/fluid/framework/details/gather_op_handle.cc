@@ -107,7 +107,7 @@ void GatherOpHandle::RunImpl() {
                       platform::errors::PreconditionNotMet(
                           "Places of input and output must be all on GPU."));
   } else {
-    t_out_p = platform::CPUPlace();
+    t_out_p = phi::CPUPlace();
   }
 
   auto out_var = var_scopes.at(out_var_handle->scope_idx())

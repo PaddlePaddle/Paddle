@@ -64,7 +64,7 @@ TEST(test_create_node, eager_node) {
                    outs,
                    framework::AttributeMap{},
                    framework::AttributeMap{},
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    {});
 }
 TEST(test_var_helper, eager_var_helper) {

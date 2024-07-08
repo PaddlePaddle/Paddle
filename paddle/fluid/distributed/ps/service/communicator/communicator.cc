@@ -157,7 +157,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
   platform::RecordEvent record_event("Communicator->RpcSendDenseParam",
                                      platform::TracerEventType::Communication,
                                      1);
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto &t : varnames) {
     Variable *var = scope.FindVar(t);
@@ -169,7 +169,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
-      framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
+      framework::TensorCopy(*tensor, phi::CPUPlace(), temp_tensor);
       ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
@@ -425,7 +425,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
   auto *out_t = out_var->GetMutable<phi::DenseTensor>();
-  auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
+  auto *data = out_t->mutable_data<int64_t>({1}, phi::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
   DownpourBrpcClosure *closure =

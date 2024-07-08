@@ -63,7 +63,7 @@ class Tracer {
   Tracer()
       : basic_engine_(new BasicEngine()),
         generator_(new UniqueNameGenerator()) {
-    expected_place_ = platform::CPUPlace();
+    expected_place_ = phi::CPUPlace();
   }
 
   ~Tracer() = default;

@@ -133,7 +133,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
       .def(
           "__init__",
           [](phi::stream::Stream &self,
-             const platform::CustomPlace &place,
+             const phi::CustomPlace &place,
              int priority,
              bool blocking) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -391,7 +391,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
       .def(
           "__init__",
           [](phi::event::Event &self,
-             const platform::CustomPlace &place,
+             const phi::CustomPlace &place,
              bool enable_timing,
              bool blocking,
              bool interprocess) {

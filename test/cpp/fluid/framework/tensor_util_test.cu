@@ -209,7 +209,7 @@ TEST(TensorContainsInf, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorContainsInf(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
@@ -226,7 +226,7 @@ TEST(TensorContainsInf, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorContainsInf(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
@@ -248,7 +248,7 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorContainsNAN(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
@@ -265,7 +265,7 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorContainsNAN(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
@@ -287,7 +287,7 @@ TEST(TensorIsfinite, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorIsfinite(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
@@ -303,7 +303,7 @@ TEST(TensorIsfinite, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorIsfinite(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
@@ -320,7 +320,7 @@ TEST(TensorIsfinite, GPUWithoutWait) {
 #endif
     cuda_ctx->Wait();
     TensorIsfinite(tensor, &out);
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();

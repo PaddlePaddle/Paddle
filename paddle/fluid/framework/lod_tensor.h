@@ -144,7 +144,7 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
       TensorCopy(source.Slice(ins, ins + 1),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  phi::CPUContext(),
                  &slice);
     }

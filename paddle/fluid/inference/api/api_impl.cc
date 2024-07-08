@@ -259,7 +259,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place,
                    static_cast<void *>(input_ptr),
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    inputs[i].data.data(),
                    inputs[i].data.length(),
                    dev_ctx->stream());
@@ -272,7 +272,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       auto dst_xpu_place = place_;
       memory::Copy(dst_xpu_place,
                    static_cast<void *>(input_ptr),
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    inputs[i].data.data(),
                    inputs[i].data.length());
 #else

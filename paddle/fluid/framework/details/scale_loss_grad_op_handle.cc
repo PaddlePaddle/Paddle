@@ -64,7 +64,7 @@ struct ScaleLossGradFunctor {
       OutT cast_coeff = static_cast<OutT>(coeff_);
       memory::Copy(place_,
                    out_data,
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    &cast_coeff,
                    SizeOfType(out_dtype_));
       VLOG(10) << place_ << "RUN Scale loss grad op";
@@ -79,7 +79,7 @@ struct ScaleLossGradFunctor {
       auto stream = static_cast<phi::GPUContext *>(ctx_)->stream();
       memory::Copy(place_,
                    out_data,
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    &cast_coeff,
                    SizeOfType(out_dtype_),
                    stream);

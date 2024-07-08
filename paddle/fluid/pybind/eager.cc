@@ -146,7 +146,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
   auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
-  auto actual_place = platform::CPUPlace();
+  auto actual_place = phi::CPUPlace();
   // Allocate memory
   paddle::experimental::DefaultAllocator string_allocator(actual_place);
   std::shared_ptr<phi::StringTensor> string_tensor =
