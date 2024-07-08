@@ -84,11 +84,17 @@ class TestConfig(unittest.TestCase):
             config.switch_ir_optim(True)
             config.set_optim_cache_dir(os.path.join(self.temp_dir, 'alexnet'))
             config.enable_save_optim_model(True)
+            if os.name == 'nt':
+                config.enable_new_ir(True)
+                config.enable_new_executor(True)
         else:
             config = Config(
                 os.path.join(self.temp_dir, 'alexnet'),
                 os.path.join('_optimized'),
             )
+            if os.name == 'nt':
+                config.enable_new_ir(True)
+                config.enable_new_executor(True)
             config.enable_use_gpu(256, 0, PrecisionType.Half)
             config.enable_memory_optim()
             config.switch_ir_optim(False)
