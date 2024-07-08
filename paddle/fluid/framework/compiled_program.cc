@@ -507,7 +507,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
     for (int i = 0; i < count; i++) {
       if (!platform::is_gpu_place(places[i])) return;
 
-      platform::CUDAPlace device = places[i];
+      phi::GPUPlace device = places[i];
       devices.push_back(device.GetDeviceId());
     }
 
@@ -719,7 +719,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
           platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
-      platform::CPUPlace cpu;
+      phi::CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
