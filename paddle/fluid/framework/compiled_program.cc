@@ -75,15 +75,6 @@ class CompiledProgramPrivate {
 
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
-  inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
-
-  void ApplyFixOpRunOrderPass(ir::Graph *graph) {
-    if (build_strategy_.fix_op_run_order_) {
-      auto pass = ir::PassRegistry::Instance().Get("fix_op_run_order_pass");
-      pass->Apply(graph);
-    }
-  }
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
@@ -593,7 +584,6 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
-  // PrepareForCUDAGraphCapture(graph);
   graph = member_->ApplyMemoryOptimizePass(graph);
 }
 
