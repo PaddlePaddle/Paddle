@@ -33,6 +33,7 @@ class TestCompiledProgram(unittest.TestCase):
         self.label = np.random.randint(
             low=0, high=10, size=[16, 1], dtype=np.int64
         )
+        paddle.enable_static()
         with new_program_scope():
             paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
@@ -54,6 +55,7 @@ class TestCompiledProgram(unittest.TestCase):
             self.loss = float(loss_data)
 
     def test_compiled_program_base(self):
+        paddle.enable_static()
         with new_program_scope():
             paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
@@ -77,5 +79,4 @@ class TestCompiledProgram(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
