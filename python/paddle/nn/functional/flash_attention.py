@@ -1328,7 +1328,7 @@ def calc_reduced_attention_scores(
         query.stop_gradient and key.stop_gradient
     ), 'calc_reduced_attention_scores() is for inference only.'
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         reduced_scores = _C_ops.calc_reduced_attn_scores(
             query, key, softmax_lse
         )
