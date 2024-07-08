@@ -109,7 +109,7 @@ void Copy<platform::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
 
 template <>
 TEST_API void Copy<platform::CPUPlace, phi::CPUPlace>(
-    platform::CPUPlace, void* dst, phi::CPUPlace, const void* src, size_t num) {
+    phi::CPUPlace, void* dst, phi::CPUPlace, const void* src, size_t num) {
   if (UNLIKELY(num == 0)) return;
   VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
   std::memcpy(dst, src, num);
