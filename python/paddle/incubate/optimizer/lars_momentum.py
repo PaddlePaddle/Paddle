@@ -210,7 +210,7 @@ class LarsMomentumOptimizer(Optimizer):
                 self._rescale_grad,
             )
         elif in_pir_mode():
-            _C_ops.lars_momentum(
+            _, _, _ = _C_ops.lars_momentum_(
                 [param_and_grad[0]],
                 [param_and_grad[1]],
                 [velocity_acc],
@@ -223,6 +223,7 @@ class LarsMomentumOptimizer(Optimizer):
                 find_master,
                 self._rescale_grad,
             )
+            return None
         else:
             # create the momentum optimize op
             momentum_op = block.append_op(
