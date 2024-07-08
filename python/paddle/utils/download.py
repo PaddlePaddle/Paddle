@@ -70,7 +70,7 @@ def is_url(path: str) -> bool:
     return path.startswith('http://') or path.startswith('https://')
 
 
-def get_weights_path_from_url(url: str, md5sum: str = None) -> str:
+def get_weights_path_from_url(url: str, md5sum: str | None = None) -> str:
     """Get weights path from WEIGHT_HOME, if not exists,
     download it from url.
 
