@@ -801,7 +801,7 @@ class PSLib(Fleet):
             hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
             # download model_path if it's hdfs/afs
             if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
-                dest = "./model_for_load_table_%s" % table_id
+                dest = f"./model_for_load_table_{table_id}"
                 cmd = (
                     hadoop_bin
                     + " fs -D fs.default.name="
@@ -821,7 +821,7 @@ class PSLib(Fleet):
             if model_proto_file.startswith(
                 "hdfs:"
             ) or model_proto_file.startswith("afs:"):
-                dest = "./model_proto_file_for_load_table_%s" % table_id
+                dest = f"./model_proto_file_for_load_table_{table_id}"
                 cmd = (
                     hadoop_bin
                     + " fs -D fs.default.name="
@@ -1285,7 +1285,7 @@ class DownpourOptimizer(DistributedOptimizer):
         super().__init__(optimizer, strategy)
 
         self._optimizer = optimizer
-        self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
+        self._optimizer_name = f"Distributed{optimizer.type.capitalize()}"
         if optimizer.type != "adam":
             print(
                 "Currently, distributed optimizer only support Adam"

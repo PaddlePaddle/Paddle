@@ -26,7 +26,6 @@ import numpy as np
 from typing_extensions import TypeGuard
 
 import paddle
-from paddle._typing import NestedStructure, ShapeLike
 from paddle.pir.core import convert_np_dtype_to_dtype_
 
 from ..base.data_feeder import check_dtype, convert_dtype
@@ -36,6 +35,9 @@ from ..base.framework import (
     in_dygraph_mode,
 )
 from ..pir import Value
+
+if typing.TYPE_CHECKING:
+    from paddle._typing import NestedStructure, ShapeLike
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")

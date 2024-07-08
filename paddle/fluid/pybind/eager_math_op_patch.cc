@@ -54,8 +54,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 static bool PyCheckInteger(PyObject* obj) {
 #if PY_VERSION_HEX < 0x03000000
@@ -295,7 +294,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -400,7 +399,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -503,7 +502,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -610,7 +609,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -714,7 +713,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -821,7 +820,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -932,7 +931,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1033,7 +1032,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1135,7 +1134,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1233,7 +1232,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1362,7 +1361,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1463,7 +1462,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1565,7 +1564,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1670,7 +1669,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1771,7 +1770,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1872,7 +1871,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1972,7 +1971,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -2093,5 +2092,4 @@ PyMethodDef math_op_patch_methods[] = {  // NOLINT
      nullptr},
     {nullptr, nullptr, 0, nullptr}};
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

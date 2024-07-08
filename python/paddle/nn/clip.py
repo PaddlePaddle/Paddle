@@ -532,7 +532,7 @@ class ClipGradByNorm(ClipGradBase):
         self.clip_norm = float(clip_norm)
 
     def __str__(self):
-        return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
+        return f"Gradient Clip By Norm, clip_norm={self.clip_norm:f}"
 
     def _clip_gradients(self, params_grads):
         params_and_grads = []
@@ -676,7 +676,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         self._async_add_n = None
 
     def __str__(self):
-        return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
+        return f"Gradient Clip By GlobalNorm, global_norm={self.clip_norm:f}"
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):

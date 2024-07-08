@@ -96,20 +96,15 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
 ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
     const CandidateType& candidate) {
   auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
-  IterSpaceType iter_space_type = [&] {
-    std::vector<std::pair<std::string, std::string>> res;
-    for (const auto& dim : bucket_info_.space) {
-      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
-    }
-    return res;
-  }();
   VLOG(3) << "Bucket_info_.space.size is " << bucket_info_.space.size();
-  ScheduleConfig::TileConfig config{
-      candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
-  tile_config_database->AddConfig(
-      cinn::common::DefaultTarget(), bucket_info_, config);
-  auto& schedule_config_manager = ScheduleConfigManager::Instance();
-  schedule_config_manager.AddConfigDatabase("search", tile_config_database);
+  if (candidate.size() != 0) {
+    ScheduleConfig::TileConfig config{
+        candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
+    tile_config_database->AddConfig(
+        cinn::common::DefaultTarget(), bucket_info_, config);
+    auto& schedule_config_manager = ScheduleConfigManager::Instance();
+    schedule_config_manager.AddConfigDatabase("search", tile_config_database);
+  }
   measurer_.Compile();
 
   for (auto& input_name_and_shapes : inputs_sampling_) {

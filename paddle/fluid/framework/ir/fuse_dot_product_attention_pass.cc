@@ -113,26 +113,6 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionFwd(
     GET_IR_NODE_FROM_SUBGRAPH(
         attn_mask, attn_mask, dot_product_attention_fwd_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        attn_mask_cast1, attn_mask_cast1, dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(attn_mask_cast1_out,
-                              attn_mask_cast1_out,
-                              dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        attn_mask_cast2, attn_mask_cast2, dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(attn_mask_cast2_out,
-                              attn_mask_cast2_out,
-                              dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        attn_mask_scale1, attn_mask_scale1, dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(attn_mask_scale1_out,
-                              attn_mask_scale1_out,
-                              dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        attn_mask_scale2, attn_mask_scale2, dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(attn_mask_scale2_out,
-                              attn_mask_scale2_out,
-                              dot_product_attention_fwd_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
         attn_mask_eleadd, attn_mask_eleadd, dot_product_attention_fwd_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(attn_mask_eleadd_out,
                               attn_mask_eleadd_out,
@@ -168,12 +148,10 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionFwd(
     BlockDesc *block = attn_qk_matmul->Op()->Block();
     Attribute op_role = attn_qk_matmul->Op()->GetAttr("op_role");
 
-    // `attn_mask_scale2_out` can be easily detected in both fwd/bwd pass
-    // so we use `attn_mask_scale2_out` instead of `attn_mask` as the key to
-    // cache the mask_meta_data.
+    // use `attn_mask` as the key to cache the mask_meta_data.
     // In bwd pass, it's name is `attn_mask_eleadd_grad_mask`
     MaskMetaData mask_meta_data;
-    auto mask_meta_key = attn_mask_scale2_out->Var()->Name();
+    auto mask_meta_key = attn_mask->Var()->Name();
     if (!mask_cache->Exist(mask_meta_key)) {
       mask_meta_data.mask_node = attn_mask;
       mask_cache->Insert(mask_meta_key, mask_meta_data);
@@ -181,13 +159,18 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionFwd(
       mask_meta_data = mask_cache->Get(mask_meta_key);
     }
 
+    // softmax_aux_shape = [batch_size, num_heads, seq_len, 1]
+    auto softmax_aux_shape = attn_softmax_out->Var()->GetShape();
+    softmax_aux_shape[softmax_aux_shape.size() - 1] = 1;
+
     // create fused_dot_product_attention op
     VarDesc softmax_out_desc(patterns::PDNodeName(scope_name, "softmax_out"));
-    softmax_out_desc.SetDataType(proto::VarType::FP16);
-    softmax_out_desc.SetLoDLevel(attn_softmax_out->Var()->GetLoDLevel());
+    softmax_out_desc.SetDataType(proto::VarType::FP32);
+    softmax_out_desc.SetShape(softmax_aux_shape);
     auto *softmax_out_node = g->CreateVarNode(&softmax_out_desc);
     VarDesc rng_state_desc(patterns::PDNodeName(scope_name, "rng_state"));
     rng_state_desc.SetDataType(proto::VarType::INT64);
+    rng_state_desc.SetShape({2});
     auto *rng_state_node = g->CreateVarNode(&rng_state_desc);
     OpDesc dot_product_attention_fwd_op_desc(block);
     dot_product_attention_fwd_op_desc.SetType("fused_dot_product_attention");
@@ -198,17 +181,22 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionFwd(
     dot_product_attention_fwd_op_desc.SetInput("v",
                                                {qkv_meta_data.v_node->Name()});
     dot_product_attention_fwd_op_desc.SetInput(
-        "mask", {mask_meta_data.mask_node->Name()});
+        "bias", {mask_meta_data.mask_node->Name()});
+    dot_product_attention_fwd_op_desc.SetInput("cu_seqlen_q", {});
+    dot_product_attention_fwd_op_desc.SetInput("cu_seqlen_kv", {});
     dot_product_attention_fwd_op_desc.SetOutput("out",
                                                 {attn_transpose_out->Name()});
     dot_product_attention_fwd_op_desc.SetOutput("softmax_out",
                                                 {softmax_out_node->Name()});
     dot_product_attention_fwd_op_desc.SetOutput("rng_state",
-                                                {rng_state_desc.Name()});
+                                                {rng_state_node->Name()});
     dot_product_attention_fwd_op_desc.SetAttr(
         "scaling_factor",
         PADDLE_GET_CONST(float, attn_q_scale->Op()->GetAttr("scale")));
-    dot_product_attention_fwd_op_desc.SetAttr("is_causal_masking", false);
+    dot_product_attention_fwd_op_desc.SetAttr("mask_type_str",
+                                              std::string("none"));
+    dot_product_attention_fwd_op_desc.SetAttr("bias_type_str",
+                                              std::string("post_scale_bias"));
     dot_product_attention_fwd_op_desc.SetAttr("is_training", true);
     dot_product_attention_fwd_op_desc.SetAttr("op_role", op_role);
 
@@ -254,11 +242,7 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionFwd(
                              attn_q_transpose_xshape, attn_k_transpose_xshape,
                              attn_v_transpose_xshape, attn_q_scale,
                              attn_q_scale_out,        attn_qk_matmul,
-                             attn_qk_matmul_out,      attn_mask_cast1,
-                             attn_mask_cast1_out,     attn_mask_scale1,
-                             attn_mask_scale1_out,    attn_mask_scale2,
-                             attn_mask_scale2_out,    attn_mask_cast2,
-                             attn_mask_cast2_out,     attn_mask_eleadd,
+                             attn_qk_matmul_out,      attn_mask_eleadd,
                              attn_mask_eleadd_out,    attn_softmax,
                              attn_softmax_out,        attn_context_matmul,
                              attn_context_matmul_out, attn_transpose,
@@ -397,13 +381,15 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionBwd(
     dot_product_attention_bwd_op_desc.SetInput("v",
                                                {qkv_meta_data.v_node->Name()});
     dot_product_attention_bwd_op_desc.SetInput(
+        "bias", {mask_meta_data.mask_node->Name()});
+    dot_product_attention_bwd_op_desc.SetInput("cu_seqlen_q", {});
+    dot_product_attention_bwd_op_desc.SetInput("cu_seqlen_kv", {});
+    dot_product_attention_bwd_op_desc.SetInput(
         "out", {output_meta_data.output_node->Name()});
     dot_product_attention_bwd_op_desc.SetInput(
         "softmax_out", {output_meta_data.softmax_output_node->Name()});
     dot_product_attention_bwd_op_desc.SetInput(
         "rng_state", {output_meta_data.rng_state_node->Name()});
-    dot_product_attention_bwd_op_desc.SetInput(
-        "mask", {mask_meta_data.mask_node->Name()});
     dot_product_attention_bwd_op_desc.SetInput(GradVarName("out"),
                                                {attn_dout->Name()});
     dot_product_attention_bwd_op_desc.SetOutput(GradVarName("q"),
@@ -415,8 +401,10 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionBwd(
     dot_product_attention_bwd_op_desc.SetAttr(
         "scaling_factor",
         PADDLE_GET_CONST(float, attn_scale_grad->Op()->GetAttr("scale")));
-    dot_product_attention_bwd_op_desc.SetAttr("is_training", true);
-    dot_product_attention_bwd_op_desc.SetAttr("is_causal_masking", false);
+    dot_product_attention_bwd_op_desc.SetAttr("mask_type_str",
+                                              std::string("none"));
+    dot_product_attention_bwd_op_desc.SetAttr("bias_type_str",
+                                              std::string("post_scale_bias"));
     dot_product_attention_bwd_op_desc.SetAttr("op_role", op_role);
     if (with_dropout) {
       GET_IR_NODE_FROM_SUBGRAPH(attn_dropout_grad,
@@ -453,18 +441,27 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionBwd(
     IR_NODE_LINK_TO(dot_product_attention_bwd_op_node, attn_dk);
     IR_NODE_LINK_TO(dot_product_attention_bwd_op_node, attn_dv);
 
-    nodes_to_remove->insert(
-        {attn_transpose_grad,         attn_transpose_grad_out,
-         attn_context_matmul_grad,    attn_context_matmul_grad_x,
-         attn_context_matmul_grad_y,  attn_context_matmul_grad_dx,
-         attn_context_matmul_grad_dy, attn_softmax_grad,
-         attn_softmax_grad_out,       attn_mask_eleadd_grad,
-         attn_mask_eleadd_grad_mask,  attn_mask_eleadd_grad_dx,
-         attn_qk_matmul_grad,         attn_qk_matmul_grad_x,
-         attn_qk_matmul_grad_y,       attn_qk_matmul_grad_dx,
-         attn_qk_matmul_grad_dy,      attn_scale_grad,
-         attn_scale_grad_out,         attn_q_transpose_grad,
-         attn_k_transpose_grad,       attn_v_transpose_grad});
+    nodes_to_remove->insert({attn_transpose_grad,
+                             attn_transpose_grad_out,
+                             attn_context_matmul_grad,
+                             attn_context_matmul_grad_x,
+                             attn_context_matmul_grad_y,
+                             attn_context_matmul_grad_dx,
+                             attn_context_matmul_grad_dy,
+                             attn_softmax_grad,
+                             attn_softmax_grad_out,
+                             attn_mask_eleadd_grad,
+                             attn_mask_eleadd_grad_dx,
+                             attn_qk_matmul_grad,
+                             attn_qk_matmul_grad_x,
+                             attn_qk_matmul_grad_y,
+                             attn_qk_matmul_grad_dx,
+                             attn_qk_matmul_grad_dy,
+                             attn_scale_grad,
+                             attn_scale_grad_out,
+                             attn_q_transpose_grad,
+                             attn_k_transpose_grad,
+                             attn_v_transpose_grad});
 
     qkv_cache->Erase(mha_meta_key);
     output_cache->Erase(mha_meta_key);

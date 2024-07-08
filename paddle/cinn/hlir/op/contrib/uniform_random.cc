@@ -62,8 +62,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForUniformRandom(
         ir::Tensor shape_tensor;
         std::string tensor_name = "uniform_random_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();

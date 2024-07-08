@@ -21,8 +21,6 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from typing_extensions import TypeAlias
 
-import paddle
-
 from ...base.framework import (
     EagerParamBase,
     default_main_program,
@@ -31,6 +29,8 @@ from ...base.framework import (
 from .lazy_init import lazy_init_helper
 
 if TYPE_CHECKING:
+    import paddle
+
     _NonLinearity: TypeAlias = Literal[  # noqa: PYI047
         "sigmoid",
         "linear",
