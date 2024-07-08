@@ -28,6 +28,13 @@ namespace cinn {
 namespace optim {
 namespace {
 
+int gcd(int a, int b) {
+  if (b == 0) {
+    return a == 0 ? 1 : a;
+  }
+  return gcd(b, a % b);
+}
+
 class GatherLocalIndexVisitor : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -149,6 +156,10 @@ int ExtractMulNumberFromExpr(const ir::Expr& expr) {
   } else if (expr.As<ir::Div>()) {
     auto div = expr.As<ir::Div>();
     return ExtractMulNumberFromExpr(div->a());
+  } else if (expr.As<ir::Add>()) {
+    auto add = expr.As<ir::Add>();
+    return gcd(ExtractMulNumberFromExpr(add->a()),
+               ExtractMulNumberFromExpr(add->b()));
   } else {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
@@ -188,13 +199,6 @@ ir::Expr ExtractSimbolicFromExpr(const ir::Expr& expr) {
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
 
-int gcd(int a, int b) {
-  if (b == 0) {
-    return a == 0 ? 1 : a;
-  }
-  return gcd(b, a % b);
-}
-
 class Gcd {};
 class Offset {};
 class Simbolic {};
@@ -216,10 +220,19 @@ struct CommonFactorTrait<Gcd> {
     if (factor != unit) {
       if (expr.As<ir::Mod>()) {
         auto mod = expr.As<ir::Mod>();
-        return ir::Mod::Make(cinn::common::AutoSimplify(ir::Div::Make(mod->a(), factor)), mod->b());
+        return ir::Mod::Make(
+            cinn::common::AutoSimplify(ir::Div::Make(mod->a(), factor)),
+            mod->b());
       } else if (expr.As<ir::Div>()) {
         auto div = expr.As<ir::Div>();
-        return ir::Div::Make(cinn::common::AutoSimplify(ir::Div::Make(div->a(), factor)), div->b());
+        return ir::Div::Make(
+            cinn::common::AutoSimplify(ir::Div::Make(div->a(), factor)),
+            div->b());
+      } else if (expr.As<ir::Add>()) {
+        auto add = expr.As<ir::Add>();
+        return ir::Add::Make(
+            cinn::common::AutoSimplify(ir::Div::Make(add->a(), factor)),
+            ir::Div::Make(add->b(), factor));
       }
       return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
     }
@@ -253,13 +266,15 @@ struct CommonFactorTrait<Simbolic> {
   static const ir::Expr unit;
 
   static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
-    auto IsSimbolicEqual = [&](const ir::Expr& expr1, const ir::Expr& expr2) -> bool {
-      return cinn::common::AutoSimplify(ir::Sub::Make(ExtractSimbolicFromExpr(expr1),
-                                                      ExtractSimbolicFromExpr(expr2))) != ir::Expr(0);
+    auto IsSimbolicEqual = [&](const ir::Expr& expr1,
+                               const ir::Expr& expr2) -> bool {
+      return cinn::common::AutoSimplify(
+                 ir::Sub::Make(ExtractSimbolicFromExpr(expr1),
+                               ExtractSimbolicFromExpr(expr2))) != ir::Expr(0);
     };
     if (!IsSimbolicEqual(expr1, expr2)) {
-      return cinn::common::AutoSimplify(ir::Add::Make(ExtractSimbolicFromExpr(expr1),
-                                                      ExtractSimbolicFromExpr(expr2)));
+      return cinn::common::AutoSimplify(ir::Add::Make(
+          ExtractSimbolicFromExpr(expr1), ExtractSimbolicFromExpr(expr2)));
     }
   }
 
