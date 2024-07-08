@@ -103,8 +103,6 @@ class TestMasterWeight(AmpTestBase):
                     optimizers=optimizer,
                     level=level,
                     dtype=dtype,
-                    master_weight=False,
-                    master_grad=False,
                 )
                 with paddle.amp.auto_cast(
                     enable=True,

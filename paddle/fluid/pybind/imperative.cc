@@ -64,8 +64,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 std::atomic<int> VarBaseUniqueNameID{0};
 
@@ -1426,5 +1425,4 @@ void BindImperative(py::module *m_ptr) {
 #endif
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

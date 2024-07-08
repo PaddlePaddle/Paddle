@@ -15,7 +15,6 @@
 #include "paddle/fluid/distributed/collective/process_group_mpi.h"
 #include <chrono>
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/phi/api/lib/data_transform.h"
 
 constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
@@ -229,9 +228,8 @@ void ProcessGroupMPI::workLoop() {
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Enqueue(
     std::unique_ptr<TaskEntry> entry,
     const std::vector<phi::DenseTensor>& inputs) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(inputs);
-  auto task = std::make_shared<MPITask>(entry->dst_, tensor_tmp);
+  CheckTensorContiguous(inputs);
+  auto task = std::make_shared<MPITask>(entry->dst_, inputs);
   std::unique_lock<std::mutex> lock(pg_mutex);
   queue_.push_back(std::make_tuple(std::move(entry), task));
   lock.unlock();
@@ -243,10 +241,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensors);
-  mpi::CheckValidInputs(tensor_tmp);
-  const auto places = GetPlaceList(tensor_tmp);
+  CheckTensorContiguous(in_tensors);
+  CheckTensorContiguous(out_tensors);
+
+  mpi::CheckValidInputs(in_tensors);
+  const auto places = GetPlaceList(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
@@ -260,17 +259,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
                             pg_comm));
       };
   auto entry = std::make_unique<TaskEntry>(
-      &tensor_tmp, &out_tensors, std::move(runFunc));
-  return Enqueue(std::move(entry), tensor_tmp);
+      &in_tensors, &out_tensors, std::move(runFunc));
+  return Enqueue(std::move(entry), in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const AllreduceOptions& opts) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensors);
-  mpi::CheckValidInputs(tensor_tmp);
+  CheckTensorContiguous(in_tensors);
+
+  mpi::CheckValidInputs(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
@@ -284,8 +283,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
                                 pg_comm));
       };
   auto entry = std::make_unique<TaskEntry>(
-      &tensor_tmp, &out_tensors, std::move(runFunc));
-  return Enqueue(std::move(entry), tensor_tmp);
+      &in_tensors, &out_tensors, std::move(runFunc));
+  return Enqueue(std::move(entry), in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Barrier(
@@ -303,11 +302,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Barrier(
 // NOTE: MPI_send tag set gid_
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensors);
-  mpi::CheckValidInputs(tensor_tmp);
+  CheckTensorContiguous(tensors);
 
-  auto& tensor = tensor_tmp[0];
+  mpi::CheckValidInputs(tensors);
+
+  auto& tensor = tensors[0];
   MPI_Request request = MPI_REQUEST_NULL;
 
   {
@@ -321,11 +320,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
                         &request));
   }
 
-  return std::make_shared<ProcessGroupMPI::MPIAsyncTask>(request, tensor_tmp);
+  return std::make_shared<ProcessGroupMPI::MPIAsyncTask>(request, tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
     std::vector<phi::DenseTensor>& tensors, int src_rank) {
+  CheckTensorContiguous(tensors);
   mpi::CheckValidInputs(tensors);
 
   auto& tensor = tensors[0];
@@ -348,9 +348,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensors);
-  mpi::CheckValidInputs(tensor_tmp);
+  CheckTensorContiguous(in_tensors);
+  CheckTensorContiguous(out_tensors);
+
+  mpi::CheckValidInputs(in_tensors);
 
   PADDLE_ENFORCE_EQ(out_tensors.size() == 1,
                     true,
@@ -373,21 +374,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
       };
 
   auto entry = std::make_unique<TaskEntry>(
-      &tensor_tmp, &out_tensors, std::move(runFunc));
+      &in_tensors, &out_tensors, std::move(runFunc));
 
-  return Enqueue(std::move(entry), tensor_tmp);
+  return Enqueue(std::move(entry), in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensors);
-  mpi::CheckValidInputs(tensor_tmp);
+  CheckTensorContiguous(in_tensors);
+  CheckTensorContiguous(out_tensors);
+
+  mpi::CheckValidInputs(in_tensors);
   mpi::CheckValidInputs(out_tensors);
 
-  PADDLE_ENFORCE_EQ(tensor_tmp[0].numel() == out_tensors[0].numel() &&
-                        tensor_tmp[0].dtype() == out_tensors[0].dtype(),
+  PADDLE_ENFORCE_EQ(in_tensors[0].numel() == out_tensors[0].numel() &&
+                        in_tensors[0].dtype() == out_tensors[0].dtype(),
                     true,
                     platform::errors::InvalidArgument(
                         "MPI AlltoAll: input and output are not equal in "
@@ -407,18 +409,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
                                pg_comm));
       };
   auto entry = std::make_unique<TaskEntry>(
-      &tensor_tmp, &out_tensors, std::move(runFunc));
+      &in_tensors, &out_tensors, std::move(runFunc));
 
-  return Enqueue(std::move(entry), tensor_tmp);
+  return Enqueue(std::move(entry), in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
     std::vector<phi::DenseTensor>& tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ReduceOptions& opts) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensors);
-  mpi::CheckValidInputs(tensor_tmp);
+  CheckTensorContiguous(tensors);
+  CheckTensorContiguous(out_tensors);
+
+  mpi::CheckValidInputs(tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
@@ -437,17 +440,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
                              pg_comm));
       };
   auto entry =
-      std::make_unique<TaskEntry>(&tensor_tmp, &tensor_tmp, std::move(runFunc));
-  return Enqueue(std::move(entry), tensor_tmp);
+      std::make_unique<TaskEntry>(&tensors, &tensors, std::move(runFunc));
+  return Enqueue(std::move(entry), tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
-  auto tensor_tmp =
-      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensors);
-  mpi::CheckValidInputs(tensor_tmp);
+  CheckTensorContiguous(in_tensors);
+  CheckTensorContiguous(out_tensors);
+
+  mpi::CheckValidInputs(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
@@ -472,12 +476,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
 
   if (rank_ == opts.root_rank) {
     auto entry = std::make_unique<TaskEntry>(
-        &tensor_tmp, &out_tensors, std::move(runFunc));
-    return Enqueue(std::move(entry), tensor_tmp);
+        &in_tensors, &out_tensors, std::move(runFunc));
+    return Enqueue(std::move(entry), in_tensors);
   } else {
     auto entry =
         std::make_unique<TaskEntry>(nullptr, &out_tensors, std::move(runFunc));
-    return Enqueue(std::move(entry), tensor_tmp);
+    return Enqueue(std::move(entry), in_tensors);
   }
 }
 

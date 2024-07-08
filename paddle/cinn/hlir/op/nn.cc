@@ -58,8 +58,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -90,8 +89,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -119,8 +117,7 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -170,8 +167,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -259,73 +255,77 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         if (data_format == "NCHW") {
           // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
-          target.arch.Visit(adt::match{
-              [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-              [&](common::X86Arch) {
-                if (groups == 1 && !use_onednn) {
-                  out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                           B.as_tensor_ref(),
-                                           padding[0],
-                                           padding[1],
-                                           stride[0],
-                                           stride[1],
-                                           dilation[0],
-                                           dilation[1],
-                                           key,
-                                           tensor_name,
-                                           target);
-                } else {
+          target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                            [&](common::X86Arch) {
+                              if (groups == 1 && !use_onednn) {
+                                out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                         B.as_tensor_ref(),
+                                                         padding[0],
+                                                         padding[1],
+                                                         stride[0],
+                                                         stride[1],
+                                                         dilation[0],
+                                                         dilation[1],
+                                                         key,
+                                                         tensor_name,
+                                                         target);
+                              } else {
 #ifdef CINN_WITH_DNNL
-                  out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
-                                               B.as_tensor_ref(),
-                                               padding[0],
-                                               padding[1],
-                                               stride[0],
-                                               stride[1],
-                                               dilation[0],
-                                               dilation[1],
-                                               tensor_name);
+                                out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
+                                                             B.as_tensor_ref(),
+                                                             padding[0],
+                                                             padding[1],
+                                                             stride[0],
+                                                             stride[1],
+                                                             dilation[0],
+                                                             dilation[1],
+                                                             tensor_name);
 #else
-                  out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                           B.as_tensor_ref(),
-                                           padding[0],
-                                           padding[1],
-                                           stride[0],
-                                           stride[1],
-                                           dilation[0],
-                                           dilation[1],
-                                           key,
-                                           tensor_name);
+                                out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                         B.as_tensor_ref(),
+                                                         padding[0],
+                                                         padding[1],
+                                                         stride[0],
+                                                         stride[1],
+                                                         dilation[0],
+                                                         dilation[1],
+                                                         key,
+                                                         tensor_name);
 #endif
-                }
-              },
-              [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-              [&](common::NVGPUArch) {
-                if (conv_type == "forward") {
-                  out = pe::Conv2d_NCHW(A.as_tensor_ref(),
-                                        B.as_tensor_ref(),
-                                        padding[0],
-                                        padding[1],
-                                        stride[0],
-                                        stride[1],
-                                        dilation[0],
-                                        dilation[1],
-                                        tensor_name);
-                  out.push_back(B.as_tensor_ref());
-                } else {
+                              }
+                            },
+                            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                            [&](common::NVGPUArch) {
+                              if (conv_type == "forward") {
+                                out = pe::Conv2d_NCHW(A.as_tensor_ref(),
+                                                      B.as_tensor_ref(),
+                                                      padding[0],
+                                                      padding[1],
+                                                      stride[0],
+                                                      stride[1],
+                                                      dilation[0],
+                                                      dilation[1],
+                                                      tensor_name);
+                                out.push_back(B.as_tensor_ref());
+                              } else {
 #ifdef CINN_WITH_CUDNN
-                  // as backward_data and backward_filter is not support now, we
-                  // built a fake op to instead. as the runtime use cudnn to
-                  // compute the conv2d, so this fake op is not been called.
-                  // When cinn support backward_filter/backward_data code gen,
-                  // this code is to be removed.
-                  out = pe::Identity(A.as_tensor_ref());
-                  out.push_back(A.as_tensor_ref());
-                  out.push_back(B.as_tensor_ref());
+                                // as backward_data and backward_filter is not
+                                // support now, we built a fake op to instead.
+                                // as the runtime use cudnn to compute the
+                                // conv2d, so this fake op is not been called.
+                                // When cinn support
+                                // backward_filter/backward_data code gen, this
+                                // code is to be removed.
+                                out = pe::Identity(A.as_tensor_ref());
+                                out.push_back(A.as_tensor_ref());
+                                out.push_back(B.as_tensor_ref());
 #endif
-                }
-              },
-          });
+                              }
+                            },
+                            [&](common::HygonDCUArchHIP) {
+                              PADDLE_THROW(phi::errors::Unimplemented(
+                                  "CINN old obsolete code!"));
+                            });
         } else if (data_format == "NHWC") {
           // A is input: [N, H, W, C], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
@@ -342,10 +342,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           PADDLE_THROW(phi::errors::InvalidArgument(
               "Only support NCHW and NHWC data layout\n"));
         }
-        auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
 
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK(out.size() == 3U || out.size() == 2U || out.size() == 5U ||
@@ -353,7 +351,6 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             << "The output tensor sizes of conv2d op in conv2d op should be 2 "
                "or 3 or 5\n";
 
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -373,7 +370,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
+    target.arch.Match(
         [&](common::UnknownArch) {
           PADDLE_THROW(phi::errors::InvalidArgument(
               "This target [%s] is not supported yet.", target));
@@ -414,7 +411,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             CINN_NOT_IMPLEMENTED
           }
         },
-    });
+        [&](common::HygonDCUArchHIP) {
+          PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+        });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -612,159 +611,6 @@ std::vector<std::vector<std::string>> InferLayoutForConv2d(
       input_layouts};
 }
 
-std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  std::vector<int> padding({0, 0});
-  std::vector<int> stride({1, 1});
-  std::vector<int> dilation({1, 1});
-  std::string data_format = "NCHWc";
-  int groups = 1;
-  if (attrs.attr_store.find("padding") != attrs.attr_store.end()) {
-    padding = absl::get<std::vector<int>>(attrs.attr_store.at("padding"));
-  }
-  if (attrs.attr_store.find("stride") != attrs.attr_store.end()) {
-    stride = absl::get<std::vector<int>>(attrs.attr_store.at("stride"));
-  }
-  if (attrs.attr_store.find("dilation") != attrs.attr_store.end()) {
-    dilation = absl::get<std::vector<int>>(attrs.attr_store.at("dilation"));
-  }
-  if (attrs.attr_store.find("data_format") != attrs.attr_store.end()) {
-    data_format = absl::get<std::string>(attrs.attr_store.at("data_format"));
-  }
-  if (attrs.attr_store.find("groups") != attrs.attr_store.end()) {
-    groups = absl::get<int>(attrs.attr_store.at("groups"));
-  }
-  CHECK(data_format == "NCHWc")
-      << "conv2d_NCHWc op's data_format should be NCHWc";
-  framework::CINNCompute conv2d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of conv2d_NCHWc compute is "
-                                "empty! Please check.\n";
-        CINNValuePack a = args[0];
-        CHECK_GE(a.size(), 2U)
-            << "at least 2 input tensors for conv2d_NCHWc compute\n";
-        Expr A = a[0];
-        Expr B = a[1];
-        CHECK(A.as_tensor());
-        CHECK(B.as_tensor());
-        auto tensor_a = A.as_tensor_ref();
-        auto tensor_b = B.as_tensor_ref();
-        CHECK_EQ(tensor_a->shape.size(), 5) << "input's shape should be 5";
-        CHECK_EQ(tensor_b->shape.size(), 6) << "weight's shape should be 6";
-        CHECK_EQ(padding.size(), 2)
-            << "The size of padding in conv2d_NCHWc op is not 2! Please check.";
-        CHECK_EQ(stride.size(), 2)
-            << "The size of stride in conv2d_NCHWc op is not 2! Please check.";
-        CHECK_EQ(dilation.size(), 2)
-            << "The size of stride in conv2d_NCHWc op is not 2! Please check.";
-        std::vector<ir::Tensor> out;
-        CHECK(std::holds_alternative<common::X86Arch>(target.arch))
-            << "conv2d_NCHWc op is only used in x86";
-        // A is input: [N, C_in_outer, H, W, C_in_inner], B is filter: [C_out,
-        // C_in_group_outer, filter_h, filter_w, C_in_group_inner]
-        std::string key;
-        VLOG(3) << "input[" << utils::Join(tensor_a->shape, ", ")
-                << "], weight shape[" << utils::Join(tensor_b->shape, ", ")
-                << "]";
-        out = pe::Conv2d_NCHWc(tensor_a,
-                               tensor_b,
-                               padding[0],
-                               padding[1],
-                               stride[0],
-                               stride[1],
-                               dilation[0],
-                               dilation[1],
-                               UniqName("T_conv2d_NCHWc_out"),
-                               target);
-
-        auto stages = CreateStages({tensor_a, tensor_b});
-
-        std::vector<CINNValue> res;
-        CHECK(out.size() == 2U)
-            << "The output tensor sizes of conv2d_NCHWc op should be 2\n";
-        for (auto &t : out) {
-          stages->InsertLazily(t);
-          res.push_back(CINNValue(t));
-        }
-        res.push_back(CINNValue(stages));
-        *ret = CINNValuePack{res};
-      });
-
-  framework::CINNSchedule conv2d_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of conv2d_NCHWc schedule "
-                                "is empty! Please check.\n";
-        CINNValuePack arg_pack = args[0];
-        CHECK_EQ(arg_pack.size(), 3UL);
-        poly::StageMap stages = arg_pack.back();
-        Expr packed_out = arg_pack[0];
-        Expr input_pad = arg_pack[1];
-        CHECK(packed_out.as_tensor());
-        CHECK(input_pad.as_tensor());
-        std::vector<Expr> kernel_shape = inputs[1]->shape;
-        // kernel_h == 1 && kernel_w == 1
-        CHECK_EQ(kernel_shape.size(), 6U)
-            << "kernel_dilation shape size should be 6";
-        bool is_1x1 =
-            (is_zero(kernel_shape[2] - 1)) && (is_zero(kernel_shape[3] - 1));
-        ir::Tensor res;
-        ir::Tensor data;
-        ir::Tensor weights;
-        ir::Tensor packed_out_tensor = packed_out.as_tensor_ref();
-        std::string key;
-        bool do_padding = (padding[0] == 0 && padding[1] == 0) ? false : true;
-        if (attrs.attr_store.find("key") != attrs.attr_store.end()) {
-          key = absl::get<std::string>(attrs.attr_store.at("key"));
-        }
-        if (is_1x1) {
-          pe::Conv2d_NCHWc_1X1_Schedule_CPU(stages,
-                                            res,
-                                            packed_out_tensor,
-                                            input_pad.as_tensor_ref(),
-                                            weights,
-                                            data,
-                                            target,
-                                            key,
-                                            do_padding);
-        } else {
-          pe::Conv2d_NCHWc_Schedule_CPU(stages,
-                                        res,
-                                        packed_out_tensor,
-                                        input_pad.as_tensor_ref(),
-                                        weights,
-                                        data,
-                                        target,
-                                        key,
-                                        do_padding);
-        }
-        if (do_padding) {
-          *ret = CINNValuePack{{CINNValue(packed_out_tensor),
-                                arg_pack[0],
-                                arg_pack[1],
-                                CINNValue(stages)}};
-        } else {
-          *ret = CINNValuePack{
-              {CINNValue(packed_out_tensor), arg_pack[0], CINNValue(stages)}};
-        }
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size())
-      << "Out_type of conv2d_NCHWc op is empty! Please check.";
-  if (out_type[0] == Float(32)) {
-    strategy->AddImpl(
-        conv2d_compute, conv2d_schedule, "strategy.conv2d_NCHWc.x86", 1);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "conv2d_NCHWc op with dtype != float32 is not implemented yet!"));
-  }
-  return strategy;
-}
-
 std::vector<shape_t> InferShapeForConv2dNCHWc(
     const std::vector<shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -793,9 +639,8 @@ std::vector<shape_t> InferShapeForConv2dNCHWc(
   CHECK_EQ(inputs_shape[0].size(), 5)
       << "The first input tensor's shape size of conv2d_NCHWc op should be 5! "
          "Please check.";
-  CHECK_EQ(inputs_shape[1].size(), 6)
-      << "The second input tensor's shape size of conv2d_NCHWc op should be 6! "
-         "Please check.";
+  CHECK_EQ(inputs_shape[1].size(), 6) << "The second input tensor's shape size "
+                                         "of conv2d_NCHWc op should be 6! ";
 
   std::vector<shape_t> res;
   CHECK(data_format == "NCHWc") << "NCHWc op's data_format should be NCHWc";
@@ -899,10 +744,10 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     Expr B = pack_args[1];
     CHECK(A.as_tensor());
     CHECK(B.as_tensor());
-    CHECK_EQ(padding.size(), 2)
-        << "The size of padding in depthwise_conv op is not 2! Please check.\n";
-    CHECK_EQ(stride.size(), 2)
-        << "The size of stride in depthwise_conv op is not 2! Please check.\n";
+    CHECK_EQ(padding.size(), 2) << "The size of padding in depthwise_conv "
+                                   "op is not 2! Please check.\n";
+    CHECK_EQ(stride.size(), 2) << "The size of stride in depthwise_conv op "
+                                  "is not 2! Please check.\n";
     CHECK(data_format == "NCHW" || data_format == "NHWC")
         << "only support NCHW/NHWC data_format.\n";
     std::vector<ir::Tensor> out;
@@ -910,7 +755,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
-      target.arch.Visit(adt::match{
+      target.arch.Match(
           [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::X86Arch) {
             out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
@@ -935,7 +780,9 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                             stride[1],
                                             tensor_name);
           },
-      });
+          [&](common::HygonDCUArchHIP) {
+            PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+          });
     } else if (data_format == "NHWC") {
       out = pe::Depthwise_Conv2d_NHWC(A.as_tensor_ref(),
                                       B.as_tensor_ref(),
@@ -949,51 +796,52 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
           "Only support NCHW and NHWC data layout\n"));
     }
 
-    auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
     std::vector<CINNValue> res;
     for (auto &t : out) {
-      stages->InsertLazily(t);
       res.push_back(CINNValue(t));
     }
     CHECK(out.size() == 2U || out.size() == 1U || out.size() == 5U)
-        << "The output tensor sizes of depthwise_conv op in depthwise_conv op "
+        << "The output tensor sizes of depthwise_conv op in depthwise_conv "
+           "op "
            "should be 1 or 2 or 5\n";
-    res.push_back(CINNValue(stages));
+
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule depthwise_conv2d_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                                "empty! Please check.\n";
-        cinn::common::CINNValuePack arg_pack = args[0];
-        std::vector<Expr> vec_ast;
-        std::vector<Expr> vec_tensor;
-        for (int i = 0; i < arg_pack.size(); i++) {
-          if (arg_pack[i].is_expr()) {
-            Expr temp = arg_pack[i];
-            vec_ast.emplace_back(temp);
-          } else if (arg_pack[i].is_tensor()) {
-            Expr temp = arg_pack[i];
-            vec_tensor.emplace_back(temp);
-          }
-        }
-        CHECK(!vec_ast.empty());
-        ir::ModuleExpr mod_expr(vec_ast);
-        ir::IRSchedule ir_sch(mod_expr);
-        ir_sch.MergeExprs();
-        target.arch.Visit(adt::match{
-            [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-            [&](common::NVGPUArch) {
-              pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-            },
+  framework::CINNSchedule depthwise_conv2d_schedule([=](lang::Args args,
+                                                        lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
+                            "empty! Please check.\n";
+    cinn::common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
+      }
+    }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    target.arch.Match(
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
+        },
+        [&](common::HygonDCUArchHIP) {
+          PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
         });
-        std::vector<cinn::common::CINNValue> res{
-            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = cinn::common::CINNValuePack{res};
-      });
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   CHECK(out_type.size())
@@ -1004,8 +852,8 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                       "strategy.depthwise_conv.x86",
                       1);
   } else {
-    VLOG(3)
-        << "depthwise_conv op with dtype != float32 is not implemented yet!";
+    VLOG(3) << "depthwise_conv op with dtype != float32 is not implemented "
+               "yet!";
   }
   return strategy;
 }
@@ -1032,10 +880,10 @@ std::vector<shape_t> InferShapeForDepthwiseConv2d(
     data_format = absl::get<std::string>(attrs.at("data_format"));
   }
   std::vector<shape_t> res;
-  CHECK_EQ(padding.size(), 2U)
-      << "The size of padding in depthwise_conv2d op is not 2! Please check.";
-  CHECK_EQ(stride.size(), 2U)
-      << "The size of stride in depthwise_conv2d op is not 2! Please check.";
+  CHECK_EQ(padding.size(), 2U) << "The size of padding in depthwise_conv2d "
+                                  "op is not 2! Please check.";
+  CHECK_EQ(stride.size(), 2U) << "The size of stride in depthwise_conv2d "
+                                 "op is not 2! Please check.";
   if (data_format == "NCHW") {
     // A is input: [N, C, H, W], and B is filter: [C_in, channel_multiplier,
     // f_h, f_w]
@@ -1092,55 +940,54 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
     input_layouts = absl::get<std::vector<std::string>>(
         attrs.attr_store.at("input_layouts"));
   }
-  framework::CINNCompute batchnorm_compute([=](lang::Args args,
-                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of batchnorm compute is empty! Please check.\n";
-    CINNValuePack arg_pack = args[0];
-    CHECK_GE(arg_pack.size(), 5U)
-        << "at least 5 input tensors for batchnorm compute\n";
-    Expr A = arg_pack[0];
-    Expr Scale = arg_pack[1];
-    Expr Bias = arg_pack[2];
-    Expr Mean = arg_pack[3];
-    Expr Variance = arg_pack[4];
-    CHECK_EQ(arg_pack.size(), 6U);
-    CHECK(arg_pack[5].is_string());
-    std::string out_name = arg_pack[5];
-    CHECK(A.as_tensor());
-    CHECK(Scale.as_tensor());
-    CHECK(Bias.as_tensor());
-    CHECK(Mean.as_tensor());
-    CHECK(Variance.as_tensor());
-    ir::Tensor out;
-    auto tensor_input = A.as_tensor_ref();
-    if (tensor_input->shape.size() != 4 &&
-        std::holds_alternative<common::X86Arch>(target.arch)) {
-      CHECK_EQ(input_layouts.size(), 5U)
-          << "batch_norm_NCHWc's input layout should be 5";
-      std::string input_layout = input_layouts[0];
-      CHECK_GE(input_layout.size(), 5U);
-      CHECK_EQ(input_layout.substr(0, 4), "NCHW");
-      CHECK_EQ(tensor_input->shape.size(), 5U);
-      out = pe::BatchNorm_NCHWc(tensor_input,
-                                Scale.as_tensor_ref(),
-                                Bias.as_tensor_ref(),
-                                Mean.as_tensor_ref(),
-                                Variance.as_tensor_ref(),
-                                epsilon,
-                                out_name);
-    } else {
-      out = pe::BatchNorm_NCHW(tensor_input,
-                               Scale.as_tensor_ref(),
-                               Bias.as_tensor_ref(),
-                               Mean.as_tensor_ref(),
-                               Variance.as_tensor_ref(),
-                               epsilon,
-                               out_name);
-    }
-    auto stages = CreateStages({out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
-  });
+  framework::CINNCompute batchnorm_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of batchnorm compute "
+                                "is empty! Please check.\n";
+        CINNValuePack arg_pack = args[0];
+        CHECK_GE(arg_pack.size(), 5U)
+            << "at least 5 input tensors for batchnorm compute\n";
+        Expr A = arg_pack[0];
+        Expr Scale = arg_pack[1];
+        Expr Bias = arg_pack[2];
+        Expr Mean = arg_pack[3];
+        Expr Variance = arg_pack[4];
+        CHECK_EQ(arg_pack.size(), 6U);
+        CHECK(arg_pack[5].is_string());
+        std::string out_name = arg_pack[5];
+        CHECK(A.as_tensor());
+        CHECK(Scale.as_tensor());
+        CHECK(Bias.as_tensor());
+        CHECK(Mean.as_tensor());
+        CHECK(Variance.as_tensor());
+        ir::Tensor out;
+        auto tensor_input = A.as_tensor_ref();
+        if (tensor_input->shape.size() != 4 &&
+            std::holds_alternative<common::X86Arch>(target.arch)) {
+          CHECK_EQ(input_layouts.size(), 5U)
+              << "batch_norm_NCHWc's input layout should be 5";
+          std::string input_layout = input_layouts[0];
+          CHECK_GE(input_layout.size(), 5U);
+          CHECK_EQ(input_layout.substr(0, 4), "NCHW");
+          CHECK_EQ(tensor_input->shape.size(), 5U);
+          out = pe::BatchNorm_NCHWc(tensor_input,
+                                    Scale.as_tensor_ref(),
+                                    Bias.as_tensor_ref(),
+                                    Mean.as_tensor_ref(),
+                                    Variance.as_tensor_ref(),
+                                    epsilon,
+                                    out_name);
+        } else {
+          out = pe::BatchNorm_NCHW(tensor_input,
+                                   Scale.as_tensor_ref(),
+                                   Bias.as_tensor_ref(),
+                                   Mean.as_tensor_ref(),
+                                   Variance.as_tensor_ref(),
+                                   epsilon,
+                                   out_name);
+        }
+        *ret = CINNValuePack{{CINNValue(out)}};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   CHECK(out_type.size()) << "Out_type of batchnorm op is empty! Please check.";
@@ -1172,9 +1019,11 @@ std::vector<Type> InferDtypeForBatchNorm(const std::vector<Type> &inputs_type,
   CHECK_EQ(inputs_type[1], inputs_type[2])
       << "The BatchNorm Infer scale type should the same as bias type";
   CHECK_EQ(inputs_type[1], inputs_type[3])
-      << "The BatchNorm Infer scale type should the same as moving_mean type";
+      << "The BatchNorm Infer scale type should the same as moving_mean "
+         "type";
   CHECK_EQ(inputs_type[1], inputs_type[4])
-      << "The BatchNorm Infer scale type should the same as moving_variance "
+      << "The BatchNorm Infer scale type should the same as "
+         "moving_variance "
          "type";
   std::vector<Type> res{inputs_type[0]};
   return res;
@@ -1258,7 +1107,6 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                               data_format,
                               tensor_name);
 
-        auto stages = CreateStages(out);
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool1d's output should be 1 or 2.";
         CHECK(!out_type.empty())
@@ -1267,14 +1115,13 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
         for (auto &t : out) {
           res.push_back(CINNValue(Expr(t.get())));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
   framework::CINNSchedule pool1d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of pool1d schedule is empty! Please check.\n";
+    CHECK(!args.empty()) << "The input argument of pool1d schedule is "
+                            "empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1298,25 +1145,25 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
-          // Do nothing.
-        },
-        [&](common::ARMArch) {
-          // Do nothing.
-        },
-        [&](common::NVGPUArch) {
-          CHECK(!vec_tensor.empty());
-          Expr Out = vec_tensor[0];
-          CHECK(Out.as_tensor());
-          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Split(loops[1], {-1, 2});
-          loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
-        },
-    });
+    auto schedule_nv_hygon = [&] {
+      CHECK(!vec_tensor.empty());
+      Expr Out = vec_tensor[0];
+      CHECK(Out.as_tensor());
+      auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+      ir_sch.Split(loops[1], {-1, 2});
+      loops = ir_sch.GetLoops(Out.as_tensor()->name);
+      ir_sch.Bind(loops[0], "blockIdx.x");
+      ir_sch.Bind(loops[1], "threadIdx.x");
+    };
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
+                        // Do nothing.
+                      },
+                      [&](common::ARMArch) {
+                        // Do nothing.
+                      },
+                      [&](common::NVGPUArch) { schedule_nv_hygon(); },
+                      [&](common::HygonDCUArchHIP) { schedule_nv_hygon(); });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1401,8 +1248,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   auto attr_store = attrs.attr_store;
   std::vector<int> kernel_size;   // [kernel_h, kernel_w]
   std::vector<int> stride_size;   // [stride_h, stride_w]
-  std::vector<int> padding_size;  // [padding_top, padding_left, padding_bottom,
-                                  // padding_right]
+  std::vector<int> padding_size;  // [padding_top, padding_left,
+                                  // padding_bottom, padding_right]
   std::string pool_type = "max";
   bool ceil_mode = false;
   bool exclusive = true;
@@ -1503,17 +1350,15 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         auto out = pe::GlobalPool2d(A_tensor, pool_type, tensor_name);
         CHECK(out.size() == 2U)
             << "The size of pe::GlobalPool2d's output should be 2.";
-        auto stages = CreateStages({A_tensor, out[0], out[1]});
-        *ret = CINNValuePack{
-            {CINNValue(out[0]), CINNValue(out[1]), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out[0]), CINNValue(out[1])}};
       });
 
   framework::CINNSchedule global_pool2d_schedule([=](lang::Args args,
                                                      lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of pool2d schedule is empty! Please check.\n";
-    CHECK(!args.empty())
-        << "The input argument of pool1d schedule is empty! Please check.\n";
+    CHECK(!args.empty()) << "The input argument of pool2d schedule is "
+                            "empty! Please check.\n";
+    CHECK(!args.empty()) << "The input argument of pool1d schedule is "
+                            "empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1530,12 +1375,14 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
+    target.arch.Match(
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
         [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) { pe::IRGlobalPoolScheduleGPU(ir_sch, target); },
-    });
+        [&](common::HygonDCUArchHIP) {
+          pe::IRGlobalPoolScheduleGPU(ir_sch, target);
+        });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1564,24 +1411,21 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                               adaptive,
                               tensor_name);
 
-        auto stages = CreateStages({A_tensor});
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool2d's output should be 1 or 2.";
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK(!out_type.empty())
             << "Output type of Pool2d is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
   framework::CINNSchedule pool2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of pool2d schedule is empty! Please check.\n";
+    CHECK(!args.empty()) << "The input argument of pool2d schedule is "
+                            "empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1610,14 +1454,15 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       auto block_input_pad = ir_sch.GetBlock(input_pad_name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {},
-        [&](common::ARMArch) {},
-        [&](common::NVGPUArch) {
-          pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {},
+                      [&](common::ARMArch) {},
+                      [&](common::NVGPUArch) {
+                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1625,23 +1470,25 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   auto strategy = std::make_shared<framework::OpStrategy>();
 
   bool use_warp_reduce = false;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { use_warp_reduce = false; },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) {
-        if (global_pooling && data_format == "NCHW") {
-          // TODO(hp03): 32 may not be the exact number, try also 16 or 8 or
-          // other number
-          //      we choose 32 to make sure all the threads in a warp has work
-          //      to do,
-          if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >=
-              32) {
-            use_warp_reduce = true;
-          }
-        }
-      },
-  });
+  target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::X86Arch) { use_warp_reduce = false; },
+                    [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::NVGPUArch) {
+                      if (global_pooling && data_format == "NCHW") {
+                        // TODO(hp03): 32 may not be the exact number, try
+                        // also 16 or 8 or other number
+                        //      we choose 32 to make sure all the threads in
+                        //      a warp has work to do,
+                        if ((A_tensor->shape[2].as_int32() *
+                             A_tensor->shape[3].as_int32()) >= 32) {
+                          use_warp_reduce = true;
+                        }
+                      }
+                    },
+                    [&](common::HygonDCUArchHIP) {
+                      PADDLE_THROW(phi::errors::Unimplemented(
+                          "CINN todo: new hardware HygonDCUArchHIP"));
+                    });
   strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
   if (use_warp_reduce) {
     strategy->AddImpl(global_pool2d_compute,
@@ -1812,7 +1659,6 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
                               data_format,
                               tensor_name);
 
-        auto stages = CreateStages(out);
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool3d's output should be 1 or 2.";
         CHECK(!out_type.empty())
@@ -1822,14 +1668,13 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         for (auto &t : out) {
           res.push_back(CINNValue(Expr(t.get())));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
   framework::CINNSchedule pool3d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of pool3d schedule is empty! Please check.\n";
+    CHECK(!args.empty()) << "The input argument of pool3d schedule is "
+                            "empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1853,21 +1698,29 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { /*nothing*/ },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) {
-          CHECK(!vec_tensor.empty());
-          Expr Out = vec_tensor[0];
-          CHECK(Out.as_tensor());
-          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Split(loops[1], {-1, 2});
-          loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) { /*nothing*/ },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) {
+                        CHECK(!vec_tensor.empty());
+                        Expr Out = vec_tensor[0];
+                        CHECK(Out.as_tensor());
+                        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Split(loops[1], {-1, 2});
+                        loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Bind(loops[0], "blockIdx.x");
+                        ir_sch.Bind(loops[1], "threadIdx.x");
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        CHECK(!vec_tensor.empty());
+                        Expr Out = vec_tensor[0];
+                        CHECK(Out.as_tensor());
+                        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Split(loops[1], {-1, 2});
+                        loops = ir_sch.GetLoops(Out.as_tensor()->name);
+                        ir_sch.Bind(loops[0], "blockIdx.x");
+                        ir_sch.Bind(loops[1], "threadIdx.x");
+                      });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -2009,7 +1862,6 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         Expr A_expr = pack_args[0];
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
-        auto stages = CreateStages({A});
         int new_axis = axis;
         if (axis == -1) {
           new_axis = A->shape.size() - 1;
@@ -2032,21 +1884,20 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
 #endif
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK_EQ(out.size(), 2U)
             << "The size of pe::Softmax's output should be 2.";
         CHECK(!out_type.empty())
             << "Output type of Softmax is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
+
         *ret = CINNValuePack{res};
       });
 
   framework::CINNSchedule softmax_schedule([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input arguments of softmax schedule is empty! Please check.";
+    CHECK(!args.empty()) << "The input arguments of softmax schedule "
+                            "is empty! Please check.";
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -2059,42 +1910,42 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
-          pe::IRSoftmaxScheduleCPU(ir_sch, axis);
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) {
-          if (output_shapes[0].size() > 1) {
-            auto all_blocks = ir_sch.GetAllBlocks();
-            CHECK_EQ(all_blocks.size(), 3);
-            auto loops = ir_sch.GetLoops(all_blocks[2]);
-            ir_sch.ComputeAt(all_blocks[1], loops.back());
+    auto schedule_nv_hygon = [&] {
+      if (output_shapes[0].size() > 1) {
+        auto all_blocks = ir_sch.GetAllBlocks();
+        CHECK_EQ(all_blocks.size(), 3);
+        auto loops = ir_sch.GetLoops(all_blocks[2]);
+        ir_sch.ComputeAt(all_blocks[1], loops.back());
 
-            if (output_shapes[0][0] != 1) {
-              ir_sch.SimpleComputeAt(all_blocks[0], loops[0]);
-            }
+        if (output_shapes[0][0] != 1) {
+          ir_sch.SimpleComputeAt(all_blocks[0], loops[0]);
+        }
 
-            loops = ir_sch.GetLoops(all_blocks[2]);
-            int loop_index = 1;
-            if (output_shapes[0][0] == 1) loop_index--;
-            CHECK_GE(loops.size(), loop_index + 1);
-            auto splited_loops = ir_sch.Split(loops[loop_index], {-1, 5});
+        loops = ir_sch.GetLoops(all_blocks[2]);
+        int loop_index = 1;
+        if (output_shapes[0][0] == 1) loop_index--;
+        CHECK_GE(loops.size(), loop_index + 1);
+        auto splited_loops = ir_sch.Split(loops[loop_index], {-1, 5});
 
-            all_blocks = ir_sch.GetAllBlocks();
-            loops = ir_sch.GetLoops(all_blocks[2]);
-            ir_sch.Bind(loops[0], "blockIdx.x");
-            ir_sch.Bind(loops[1], "threadIdx.x");
-          }
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-    });
+        all_blocks = ir_sch.GetAllBlocks();
+        loops = ir_sch.GetLoops(all_blocks[2]);
+        ir_sch.Bind(loops[0], "blockIdx.x");
+        ir_sch.Bind(loops[1], "threadIdx.x");
+      }
+      std::vector<CINNValue> res{
+          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      *ret = CINNValuePack{res};
+    };
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
+                        pe::IRSoftmaxScheduleCPU(ir_sch, axis);
+                        std::vector<CINNValue> res{
+                            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                        *ret = CINNValuePack{res};
+                      },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) { schedule_nv_hygon(); },
+                      [&](common::HygonDCUArchHIP) { schedule_nv_hygon(); });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2156,8 +2007,8 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
     CHECK(!args.empty()) << "The input arguments of dropout_infer compute is "
                             "empty! Please check.";
     CINNValuePack pack_args = args[0];
-    CHECK(!pack_args.empty())
-        << "The input tensors of dropout_infer compute is empty! Please check.";
+    CHECK(!pack_args.empty()) << "The input tensors of dropout_infer "
+                                 "compute is empty! Please check.";
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
@@ -2168,8 +2019,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 
     auto out =
         pe::DropoutInfer(A, dropout_prob, dropout_implementation, tensor_name);
-    auto stages = CreateStages({A, out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2237,11 +2087,8 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
                               true_value.as_tensor_ref(),
                               false_value.as_tensor_ref(),
                               tensor_name);
-        auto stages = CreateStages({condition.as_tensor_ref(),
-                                    true_value.as_tensor_ref(),
-                                    false_value.as_tensor_ref(),
-                                    out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2261,11 +2108,11 @@ std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
     const Target &target) {
   framework::CINNCompute select_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        !args.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The input argument of select compute is empty! Please check."));
+    PADDLE_ENFORCE_EQ(!args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of select compute is empty! "
+                          "Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       3U,
@@ -2300,11 +2147,7 @@ std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
                           true_value.as_tensor_ref(),
                           false_value.as_tensor_ref(),
                           tensor_name);
-    auto stages = CreateStages({condition.as_tensor_ref(),
-                                true_value.as_tensor_ref(),
-                                false_value.as_tensor_ref(),
-                                out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2414,7 +2257,8 @@ std::vector<Type> InferDtypeForBatchNormTrain(
   CHECK_EQ(inputs_type[1], inputs_type[2])
       << "The BatchNormTrain scale type should the same as bias type";
   CHECK_EQ(inputs_type[1], inputs_type[3])
-      << "The BatchNormTrain scale type should the same as moving_mean type";
+      << "The BatchNormTrain scale type should the same as moving_mean "
+         "type";
   CHECK_EQ(inputs_type[1], inputs_type[4])
       << "The BatchNormTrain scale type should the same as moving_variance "
          "type";
@@ -2485,15 +2329,16 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
 
 std::vector<Type> InferDtypeForBatchNormGrad(
     const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 5U)
-      << "The BatchNormGrad input's type size should be 5! Please check again.";
+  CHECK_EQ(inputs_type.size(), 5U) << "The BatchNormGrad input's type size "
+                                      "should be 5! Please check again.";
 
   CHECK_EQ(inputs_type[0], inputs_type[1])
       << "The BatchNormGrad y_grad type should the same as x type";
   CHECK_EQ(inputs_type[2], inputs_type[3])
       << "The BatchNormGrad scale type should the same as save_mean type";
   CHECK_EQ(inputs_type[2], inputs_type[4])
-      << "The BatchNormGrad scale type should the same as save_variance type";
+      << "The BatchNormGrad scale type should the same as save_variance "
+         "type";
   return {inputs_type[0], inputs_type[2], inputs_type[2]};
 }
 
@@ -2501,15 +2346,15 @@ std::vector<Type> InferDtypeForBatchNormGrad(
 std::vector<framework::shape_t> InferShapeForPool2dGrad(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 3U)
-      << "The operator pool2d_grad should has 3 inputs! Please check again.";
+  CHECK_EQ(inputs_shape.size(), 3U) << "The operator pool2d_grad should "
+                                       "has 3 inputs! Please check again.";
   return {inputs_shape[0]};
 }
 
 std::vector<Type> InferDtypeForPool2dGrad(const std::vector<Type> &inputs_type,
                                           const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 3U)
-      << "The operator pool2d_grad should has 3 inputs! Please check again.";
+  CHECK_EQ(inputs_type.size(), 3U) << "The operator pool2d_grad should has "
+                                      "3 inputs! Please check again.";
   return {inputs_type[0]};
 }
 
@@ -2532,7 +2377,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
       .set_attr("generate_equations",
                 MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2552,7 +2397,7 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForRelu6Symbolic)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2570,32 +2415,12 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2d))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2d))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2d))
 #endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(conv2d_NCHWc)
-      .describe(
-          "Do a 2-D convolution with an NCHWc layout. Input is 5D tensor and "
-          "weight is 6D tensor.")
-      .set_num_inputs(2)  // here we consider filter as another input
-      .set_num_outputs(3)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForConv2dNCHWc)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForConv2dNCHWc))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForConv2dNCHWc))
-#ifndef CINN_WITH_CUDA
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForConv2dNCHWc))
-#endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kOutFusible)
       .set_support_level(4);
 
   CINN_REGISTER_OP(depthwise_conv2d)
@@ -2608,7 +2433,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2d))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2d))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2d))
 #endif
@@ -2634,7 +2459,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForBatchNorm))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBatchNorm))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBatchNorm))
 #endif
@@ -2651,7 +2476,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool1d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2669,7 +2494,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool2d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2688,7 +2513,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool3d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2706,7 +2531,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSoftmax))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSoftmax))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForSoftmax))
 #endif
@@ -2724,7 +2549,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForDropoutInfer))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForDropoutInfer))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2744,7 +2569,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSelect))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSelect))
-#ifndef CINN_WITH_CUDA
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif

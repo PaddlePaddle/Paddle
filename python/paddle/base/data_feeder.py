@@ -17,6 +17,7 @@ import struct
 import numpy as np
 
 from paddle import pir
+from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
@@ -34,6 +35,8 @@ __all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
+    core.VarDesc.VarType.FP8_E4M3FN: 'float8_e4m3fn',
+    core.VarDesc.VarType.FP8_E5M2: 'float8_e5m2',
     core.VarDesc.VarType.FP16: 'float16',
     core.VarDesc.VarType.BF16: 'uint16',
     core.VarDesc.VarType.FP32: 'float32',
@@ -89,7 +92,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype):
+def convert_dtype(dtype: DTypeLike) -> str:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
@@ -128,6 +131,8 @@ def convert_dtype(dtype):
             'uint8',
             'complex64',
             'complex128',
+            'float8_e4m3fn',
+            'float8_e5m2',
         ]:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need
@@ -141,8 +146,7 @@ def convert_dtype(dtype):
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
-        "int32, int64, uint8, complex64, complex128, bfloat16], but received %s"
-        % dtype
+        f"int32, int64, uint8, complex64, complex128, bfloat16], but received {dtype}"
     )
 
 
@@ -154,7 +158,7 @@ def check_variable_and_dtype(
             input, input_name, (Value, ParameterMeta), op_name, extra_message
         )
     else:
-        check_type(input, input_name, Variable, op_name, extra_message)
+        check_type(input, input_name, (Variable, Value), op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -421,7 +425,7 @@ class DataFeeder:
             for each_var in feed_list:
                 if isinstance(each_var, str):
                     each_var = program.block(0).var(each_var)
-                if not isinstance(each_var, Variable):
+                if not isinstance(each_var, (Variable, Value)):
                     raise TypeError(
                         "Feed list should contain a list of variable"
                     )

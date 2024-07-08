@@ -16,8 +16,7 @@ from __future__ import annotations
 
 import gc
 import traceback
-import types
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
@@ -34,6 +33,9 @@ from ...utils import (
 from ..custom_code import CustomCode
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
+
+if TYPE_CHECKING:
+    import types
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]

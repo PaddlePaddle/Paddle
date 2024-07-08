@@ -72,7 +72,6 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -156,10 +155,6 @@ limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/pybind/fleet_py.h"
-#endif
-
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
 #include "paddle/common/flags.h"

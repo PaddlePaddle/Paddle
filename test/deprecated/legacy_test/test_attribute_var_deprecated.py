@@ -20,7 +20,8 @@ import numpy as np
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.base.framework import Program, program_guard
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -41,9 +42,16 @@ class UnittestBase(unittest.TestCase):
         return type(self).__name__
 
     def infer_prog(self):
-        config = paddle_infer.Config(
-            self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-        )
+        if in_pir_mode():
+            config = paddle_infer.Config(
+                self.save_path + '.json', self.save_path + '.pdiparams'
+            )
+            config.enable_new_ir()
+            config.enable_new_executor()
+        else:
+            config = paddle_infer.Config(
+                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+            )
         config.disable_mkldnn()
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()
@@ -71,10 +79,11 @@ class TestDropout(UnittestBase):
         self.shapes = [[10, 10]]
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
 
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(10, 10)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -84,8 +93,6 @@ class TestDropout(UnittestBase):
             out = paddle.nn.functional.dropout(feat, p=p)
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            # test _to_string
-            self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
@@ -97,10 +104,12 @@ class TestDropout(UnittestBase):
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (10, 10))
 
-            self.assertEqual(
-                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
-                p.name,
-            )
+            if not in_pir_mode():
+                self.assertTrue("Var[" in str(main_prog))
+                self.assertEqual(
+                    main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+                    p.name,
+                )
 
 
 if __name__ == '__main__':

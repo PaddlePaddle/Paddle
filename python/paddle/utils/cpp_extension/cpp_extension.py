@@ -468,7 +468,7 @@ class BuildExtension(build_ext):
                 # Note(qili93): HIP require some additional flags for CMAKE_C_FLAGS
                 if core.is_compiled_with_rocm():
                     cflags.append('-D__HIP_PLATFORM_HCC__')
-                    cflags.append('-D__HIP_NO_HALF_CONVERSIONS__=1')
+                    # cflags.append('-D__HIP_NO_HALF_CONVERSIONS__=1')
                     cflags.append(
                         '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP'
                     )
@@ -751,7 +751,7 @@ class EasyInstallCommand(easy_install):
             if will_rename:
                 new_so_path = filename + "_pd_" + ext
                 if not os.path.exists(new_so_path):
-                    os.rename(r'%s' % egg_file, r'%s' % new_so_path)
+                    os.rename(rf'{egg_file}', rf'{new_so_path}')
                 assert os.path.exists(new_so_path)
 
 
