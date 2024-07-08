@@ -128,13 +128,6 @@ class TestElementwiseOpGradGrad {
       }
       auto *out_ptr = cpu_out.data<T>();
       size_t numel = static_cast<size_t>(common::product(dims_));
-#ifdef PADDLE_WITH_HIP
-      auto is_equal = std::equal(
-          out_ptr,
-          out_ptr + numel,
-          expected_outs_[out_name].data(),
-          [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
-#else
       bool is_equal;
       if (op_type_ == "elementwise_div_grad_grad") {
         is_equal = std::equal(out_ptr,
@@ -144,10 +137,17 @@ class TestElementwiseOpGradGrad {
                                 return fabs(l - r) < 0.0005;
                               });
       } else {
+#ifdef PADDLE_WITH_HIP
+        is_equal = std::equal(
+            out_ptr,
+            out_ptr + numel,
+            expected_outs_[out_name].data(),
+            [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
+#else
         is_equal = std::equal(
             out_ptr, out_ptr + numel, expected_outs_[out_name].data());
-      }
 #endif
+      }
       if (!is_equal) {
         all_equal = false;
         break;
