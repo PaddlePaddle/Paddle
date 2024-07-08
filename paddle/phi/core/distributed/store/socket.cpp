@@ -24,8 +24,7 @@
 #include <cerrno>
 #include <cstdio>
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 #ifdef _WIN32
 static int _get_sockname_of_win(int sock, char* out, int out_len) {
@@ -76,5 +75,4 @@ std::string GetSockName(int fd) {
   return std::string(out.data());
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

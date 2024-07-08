@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+namespace paddle::platform::dynload {
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
@@ -30,6 +28,4 @@ CUDA_ROUTINE_EACH(DEFINE_WRAP);
 
 bool HasCUDADriver() { return phi::dynload::HasCUDADriver(); }
 
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::dynload

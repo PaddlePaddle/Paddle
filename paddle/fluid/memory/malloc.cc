@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/stream.h"
 
-namespace paddle {
-namespace memory {
+namespace paddle::memory {
 
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size) {
@@ -85,5 +84,4 @@ void RecordStream(std::shared_ptr<Allocation> allocation,
                                                               stream);
 }
 #endif
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory

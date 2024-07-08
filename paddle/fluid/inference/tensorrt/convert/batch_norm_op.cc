@@ -18,9 +18,7 @@ namespace nvinfer1 {
 class IScaleLayer;  // NOLINT
 }  // namespace nvinfer1
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class BatchNormOpConverter : public OpConverter {
  public:
@@ -179,8 +177,6 @@ class BatchNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(batch_norm, BatchNormOpConverter);

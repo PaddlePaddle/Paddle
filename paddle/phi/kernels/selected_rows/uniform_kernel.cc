@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/uniform_kernel.h"
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 template <typename T, typename Context>
 void UniformRawKernel(const Context& dev_ctx,
@@ -58,8 +57,7 @@ void UniformKernel(const Context& dev_ctx,
       dev_ctx, shape, dtype, min, max, seed, out->mutable_value());
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL(uniform_raw_sr,
                    CPU,

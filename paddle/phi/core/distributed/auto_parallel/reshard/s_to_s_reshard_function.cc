@@ -25,8 +25,7 @@
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool SToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
@@ -191,5 +190,4 @@ void SToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

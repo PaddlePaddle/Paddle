@@ -23,9 +23,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -635,9 +633,7 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   QuantizeBf16Conv(graph);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(cpu_quantize_squash_pass,
               paddle::framework::ir::CPUQuantizeSquashPass);

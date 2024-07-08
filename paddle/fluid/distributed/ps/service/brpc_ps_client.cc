@@ -24,15 +24,12 @@
 
 static const int max_port = 65535;
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 PD_DEFINE_int32(pserver_push_dense_merge_limit,
                 12,
@@ -2066,5 +2063,4 @@ void BrpcPsClient::PushDenseRawGradient(std::shared_ptr<DenseAsyncTask> &task,
   }
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -28,8 +28,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
@@ -705,5 +704,4 @@ bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
   return true;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

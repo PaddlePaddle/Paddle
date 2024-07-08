@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -301,9 +299,7 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
   block->Flush();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(buffer_shared_inplace_pass,
               paddle::framework::ir::BufferSharedInplaceOpPass)
