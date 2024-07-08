@@ -39,7 +39,7 @@ debug_cudagraphedlayer_fallback_to_default = bool(
 def debug_print(x):
     if not enable_debug_print:
         return
-    logging.info(x, file=sys.stderr)
+    print(x, file=sys.stderr)
 
 
 def print_tensor(
@@ -352,6 +352,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         detached_grad_inputs = recursive_flatten_args_kwargs(args, kwargs)
         inputs = (grad_inputs, detached_grad_inputs)
 
+        printer(detached_grad_inputs, "Forward input")
         if (
             context.is_warmup_step()
             or debug_cudagraphedlayer_fallback_to_default
