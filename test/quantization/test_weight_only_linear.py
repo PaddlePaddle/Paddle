@@ -688,7 +688,6 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
                 / math.sqrt(4096)
             )
             quant_weight, quant_scale = Q.weight_quantize(x=weight, algo=algo)
-            quant_weight = quant_weight.reshape([12288, 2048])
             dequant_weight = Q.weight_dequantize(
                 quant_weight, quant_scale, algo=algo
             )
