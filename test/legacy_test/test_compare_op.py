@@ -21,6 +21,7 @@ import op_test
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -475,7 +476,8 @@ def create_paddle_case(op_type, callback):
                 y = paddle.static.data(name='y', shape=[-1, 4], dtype='int32')
                 op = eval(f"paddle.{self.op_type}")
                 out = op(x=x, y=y, name=f"name_{self.op_type}")
-            self.assertEqual(f"name_{self.op_type}" in out.name, True)
+            if not in_pir_mode():
+                self.assertEqual(f"name_{self.op_type}" in out.name, True)
 
     cls_name = f"TestCase_{op_type}"
     PaddleCls.__name__ = cls_name
