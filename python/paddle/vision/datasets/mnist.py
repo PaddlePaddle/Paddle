@@ -121,6 +121,8 @@ class MNIST(Dataset):
     transform: _Transform[Any, Any] | None
     backend: _ImageBackend | None
     dtype: _DTypeLiteral
+    labels: list
+    images: list
 
     def __init__(
         self,
@@ -253,7 +255,7 @@ class MNIST(Dataset):
 
         return image.astype(self.dtype), label.astype('int64')
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.labels)
 
 
