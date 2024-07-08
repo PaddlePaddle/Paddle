@@ -636,7 +636,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
   PADDLE_ENFORCE_NE(
       use_calc_stream,
       true,
-      platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+      phi::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
   std::shared_ptr<GatherGlooTask> task;
   auto tag = next_tag();
   auto comm_context = this->GetCommContext();
@@ -667,7 +667,7 @@ ProcessGroupGloo::createDefaultDevice() {
   PADDLE_ENFORCE_EQ(
       ret,
       0,
-      platform::errors::Fatal("Get hostname error for createDefaultDevice."));
+      phi::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = phi::distributed::tcputils::get_addr_info(
       hostname.data(), "", 0, AF_UNSPEC);
