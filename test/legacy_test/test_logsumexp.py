@@ -79,12 +79,8 @@ class TestLogsumexp(OpTest):
         }
         self.user_defined_grads = None
         self.user_defined_grad_outputs = None
-        self.set_attrs_addition()
 
     def set_attrs(self):
-        pass
-
-    def set_attrs_addition(self):
         pass
 
     def test_check_output(self):
@@ -98,12 +94,6 @@ class TestLogsumexp(OpTest):
             user_defined_grad_outputs=self.user_defined_grad_outputs,
             check_pir=True,
         )
-
-    def calc_grad(self):
-        dy = np.ones(1, dtype=self.dtype)
-        x = self.inputs['X']
-        y = self.outputs['Out']
-        return dy * np.exp(x - y)
 
 
 class TestLogsumexp_ZeroDim(TestLogsumexp):
@@ -126,11 +116,6 @@ class TestLogsumexp_axis_all(TestLogsumexp):
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
-    def set_attrs_addition(self):
-        if paddle.base.core.is_compiled_with_rocm():
-            self.user_defined_grads = [self.calc_grad()]
-            self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
-
 
 class TestLogsumexp_keepdim(TestLogsumexp):
     def set_attrs(self):
@@ -140,11 +125,6 @@ class TestLogsumexp_keepdim(TestLogsumexp):
 class TestLogsumexp_reduce_all(TestLogsumexp):
     def set_attrs(self):
         self.reduce_all = True
-
-    def set_attrs_addition(self):
-        if paddle.base.core.is_compiled_with_rocm():
-            self.user_defined_grads = [self.calc_grad()]
-            self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
 
 class TestLogsumexp_FP32(TestLogsumexp):
@@ -210,7 +190,6 @@ class TestLogsumexpBF16Op(TestLogsumexp):
             'keepdim': self.keepdim,
             'reduce_all': self.reduce_all,
         }
-        self.set_attrs_addition()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -221,9 +200,6 @@ class TestLogsumexpBF16Op(TestLogsumexp):
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
     def set_attrs(self):
-        pass
-
-    def set_attrs_addition(self):
         pass
 
 
