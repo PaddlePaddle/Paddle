@@ -44,10 +44,10 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include <gloo/allreduce.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
+namespace distributed = phi::distributed;
 
 namespace paddle {
 namespace operators {
-using phi::distributed;
 
 enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd, kRedAvg };
 
