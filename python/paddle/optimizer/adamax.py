@@ -330,9 +330,7 @@ class Adamax(Optimizer):
                         )
                         beta1_pow_acc.copy_(tmp, False)
                 elif framework.in_pir_mode():
-                    with param.block.program._optimized_guard(
-                        [param, grad]
-                    ), name_scope('adamax'):
+                    with param.block.program._optimized_guard([param, grad]):
                         beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )
