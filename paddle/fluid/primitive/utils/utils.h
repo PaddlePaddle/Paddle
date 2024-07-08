@@ -149,24 +149,30 @@ static std::vector<int64_t> process_dims(const Tensor& origin,
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
   bool has_dynamic_shape = false;
-  int bat = dout_dims.size() - in_dims.size();
-  for (int i = 0; i < dout_dims.size(); ++i) {
-    if (dout_dims[i] == -1) {
-      has_dynamic_shape = true;
-      break;
-    }
-    if (i >= bat && in_dims[i - bat] == -1) {
-      has_dynamic_shape = true;
-      break;
-    }
+  for (int i = 0; i < dout_dims.size(); i++) {
+    if (dout_dims[i] == -1) has_dynamic_shape = true;
+    break;
   }
   PADDLE_ENFORCE_EQ(
       has_dynamic_shape,
       false,
       platform::errors::InvalidArgument(
           "Function get_reduce_dims_from_out() only use in static shape case, "
-          "but the inputs have the dynamic shape."));
+          "but the input [dout_dims] have the dynamic shape."));
 
+  has_dynamic_shape = false;
+  for (int i = 0; i < in_dims.size(); i++) {
+    if (in_dims[i] == -1) has_dynamic_shape = true;
+    break;
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      platform::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [in_dims] have the dynamic shape."));
+
+  int bat = dout_dims.size() - in_dims.size();
   std::vector<int64_t> result;
   for (int i = 0; i < bat; ++i) {
     result.push_back(i);
