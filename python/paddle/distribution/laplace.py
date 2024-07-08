@@ -23,9 +23,8 @@ from paddle.base import framework
 from paddle.distribution import distribution
 
 if TYPE_CHECKING:
-    from _typing import Numberic, ShapeLike
-
     from paddle import Tensor
+    from paddle._typing import Numberic, ShapeLike
 
 
 class Laplace(distribution.Distribution):
