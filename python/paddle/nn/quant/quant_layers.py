@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
@@ -31,7 +31,7 @@ from paddle.utils import unique_name
 from ..layer.layers import Layer
 
 if TYPE_CHECKING:
-    from typing_extensions import Never
+    from typing_extensions import Never, TypeAlias
 
     from paddle import Tensor
     from paddle._typing import DTypeLike, Size2
