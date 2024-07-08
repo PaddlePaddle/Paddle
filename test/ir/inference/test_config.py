@@ -78,10 +78,7 @@ class TestConfig(unittest.TestCase):
 
     def init_predictor(self, save_optimized_model: bool):
         if save_optimized_model is True:
-            config = Config(
-                os.path.join(self.temp_dir, 'alexnet'),
-                os.path.join('inference'),
-            )
+            config = Config(os.path.join(self.temp_dir, 'alexnet'), 'inference')
             config.enable_use_gpu(256, 0, PrecisionType.Half)
             config.enable_memory_optim()
             config.switch_ir_optim(True)
