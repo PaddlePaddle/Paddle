@@ -1042,7 +1042,9 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      sub_scope_->Var(data_name);
+      if (load_pir_model_ && for_save) {
+        sub_scope_->Var(data_name);
+      }
       idx2feeds_[feed_idx] = data_name;
       feed_names_[data_name] = feed_idx;
       feed_idx++;
