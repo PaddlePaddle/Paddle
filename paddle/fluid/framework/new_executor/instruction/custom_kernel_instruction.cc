@@ -410,6 +410,11 @@ CustomKernelInstruction::CustomKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, &value_exec_info_, this);
+  }
+
   InitInputsOutputsIds(op, value_exec_info_);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -420,11 +425,6 @@ CustomKernelInstruction::CustomKernelInstruction(
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
-
-  if (op->attributes().count("is_inplace") != 0 &&
-      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
-    HandleForInplaceOp(op, &value_exec_info_, this);
-  }
 }
 
 void CustomKernelInstruction::UpdateOutputMeta(

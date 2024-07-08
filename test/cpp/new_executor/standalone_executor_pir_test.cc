@@ -212,7 +212,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
 
   EXPECT_EQ(scope.kids().size(), 1u);
-  EXPECT_EQ(scope.kids().front()->Size(), 1u);
+  EXPECT_EQ(scope.kids().front()->Size(), 2u);
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);

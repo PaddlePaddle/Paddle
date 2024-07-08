@@ -127,7 +127,6 @@
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
-#include "paddle/fluid/pir/transforms/general/replace_inplace_use_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -141,7 +140,6 @@
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 COMMON_DECLARE_bool(enable_pir_api);
-COMMON_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace {
@@ -993,16 +991,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
   pir_program_ =
       paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
-
-  ::pir::PassManager pm(::pir::IrContext::Instance(), 1);
-  pm.AddPass(::pir::CreateReplaceInplaceUsePass());
-  pm.Run(pir_program_.get());
-
-  if (FLAGS_print_ir) {
-    std::cout << "IR After replace_inplace_use -------------------"
-              << std::endl;
-    std::cout << *pir_program_ << std::endl;
-  }
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
   auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();

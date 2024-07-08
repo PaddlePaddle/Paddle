@@ -160,7 +160,10 @@ PhiKernelInstruction::PhiKernelInstruction(
 
   kernel_context_.SetDeviceContext(dev_ctx);
   VLOG(6) << "finish process kernel context";
-
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, value_exec_info_, this);
+  }
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -171,11 +174,6 @@ PhiKernelInstruction::PhiKernelInstruction(
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
-
-  if (op->attributes().count("is_inplace") != 0 &&
-      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
-    HandleForInplaceOp(op, value_exec_info_, this);
-  }
 }
 
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }

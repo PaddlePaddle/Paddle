@@ -334,6 +334,19 @@ void InstructionBase::InitInputsOutputsIds(
       outputs.emplace(value, outputs_id);
     }
   }
+
+  const auto value_2_var_name_map = value_exec_info.GetValue2VarName();
+  for (auto inplace_var_pair : this->InplaceInfo()) {
+    // if(value_exec_info->GetVarByValue(value) == inplace_var_pair.second){
+    for (auto item : value_2_var_name_map) {
+      if (item.second == value_exec_info.GetVarName(inplace_var_pair.first)) {
+        std::vector<int> outputs_id = GetValueIds(item.first, value_exec_info);
+        outputs.emplace(item.first, outputs_id);
+        break;
+      }
+    }
+    // }
+  }
   SetOutputs(outputs);
   VLOG(8) << "finish process outputs_index";
 }
