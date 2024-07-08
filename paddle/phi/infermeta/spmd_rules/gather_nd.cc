@@ -110,7 +110,7 @@ SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr_dst, index_dist_attr_dst}, {out_dist_attr_src}};
 }
 
-SpmdInfo GatherGradNdInferSpmd(const DistMetaTensor& x,
+SpmdInfo GatherNdGradInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& index,
                                const DistMetaTensor& out_grad) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);

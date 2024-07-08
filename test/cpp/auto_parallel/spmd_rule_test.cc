@@ -1848,7 +1848,7 @@ TEST(GatherNdGradInferSpmd, Ctor) {
                                            index_dist_attr);
   out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
                                               out_grad_dist_attr);
-  spmdinfo = GatherNdGradInferSpmd(x, index, out_grad, axis);
+  spmdinfo = GatherNdGradInferSpmd(x, index, out_grad);
   EXPECT_EQ(spmdinfo.first.size(), 3UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
