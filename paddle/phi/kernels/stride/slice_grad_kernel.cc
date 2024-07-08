@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/slice_grad_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -30,6 +33,11 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             const std::vector<int64_t>& infer_flags,
                             const std::vector<int64_t>& decrease_axis,
                             DenseTensor* input_grad) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {

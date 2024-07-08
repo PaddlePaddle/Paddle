@@ -52,8 +52,8 @@ class NormalInitializer(Initializer):
         if isinstance(self._mean, complex):
             if self._mean.real != self._mean.imag:
                 raise ValueError(
-                    "if mean is a complex number, its real part should equal imag part, ",
-                    f"but got real part: {self._mean.real} != imag part: {self._mean.imag}",
+                    "if mean is a complex number, its real part should equal imag part, "
+                    f"but got real part: {self._mean.real} != imag part: {self._mean.imag}"
                 )
             self._mean = self._mean.real
 

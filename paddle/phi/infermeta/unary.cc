@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/flatten2_utils.h"
+#include "paddle/phi/kernels/funcs/hash_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -2054,25 +2055,21 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
   UnchangedInferMetaCheckAxis(x, axis, out);
 }
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
-  PADDLE_ENFORCE_GE(bins,
-                    1,
+void HashInferMeta(const MetaTensor& x,
+                   int num_hash,
+                   int64_t mod_by,
+                   MetaTensor* out) {
+  const auto& dims = x.dims();
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    2UL,
                     phi::errors::InvalidArgument(
-                        "The bins should be greater than or equal to 1."
-                        "But received nbins is %d",
-                        bins));
-  PADDLE_ENFORCE_GE(
-      max,
-      min,
-      phi::errors::InvalidArgument("max must be larger or equal to min."
-                                   "But received max is %d, min is %d",
-                                   max,
-                                   min));
+                        "The input of hash_op's dimensions must be 2"));
+  std::vector<int64_t> out_dims;
+  phi::funcs::HashOutputSize(dims, out_dims, num_hash);
 
-  out->set_dims({bins});
-  out->share_lod(input);
-  out->set_dtype(DataType::INT64);
+  out->set_dims(common::make_ddim(out_dims));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void IdentityLossInferMeta(const MetaTensor& x,
@@ -2524,6 +2521,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config) {
@@ -2582,7 +2580,8 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
             funcs::MaxPoolOutputSize(static_cast<int>(x_dims[i + 2]),
                                      kernel_size_[i],
                                      paddings_[i],
-                                     strides[i]));
+                                     strides[i],
+                                     ceil_mode));
       }
     }
   }
@@ -4005,6 +4004,11 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT32);
 }
 
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void ShardIndexInferMeta(const MetaTensor& in,
                          int index_num,
                          int nshards,
@@ -4236,6 +4240,11 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   y->set_dims(x_dims);
   y->set_dtype(out_dtype);
+}
+
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
 }
 
 void SplitInferMeta(const MetaTensor& x,
@@ -5798,12 +5807,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
        (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+#endif
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(

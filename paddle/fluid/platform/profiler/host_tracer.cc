@@ -20,8 +20,7 @@
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 namespace {
 
@@ -177,5 +176,4 @@ void HostTracer::CollectTraceData(TraceEventCollector* collector) {
   ProcessOperatorSupplementEvents(op_supplement_events, collector);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

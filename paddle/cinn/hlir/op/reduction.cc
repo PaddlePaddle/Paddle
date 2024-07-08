@@ -170,9 +170,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     const auto &NaiveCompute = [&]() {
       VLOG(3) << "Do Reduce Compute!";
       auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
-      auto stages = CreateStages({out});
 
-      std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+      std::vector<CINNValue> cinn_values{CINNValue(out)};
       *ret = CINNValuePack{cinn_values};
     };
     auto reductionComputeNvHygon = [&] {
@@ -181,25 +180,21 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           VLOG(3) << "Do Two Step Block Reduce Compute!";
           auto res = gpu_reduce_with_last_axis_func(
               x, reduce_axes, keepdim, tensor_name);
-          auto stages = CreateStages(res);
 
           std::vector<CINNValue> cinn_values;
           for (auto &t : res) {
             cinn_values.emplace_back(t);
           }
-          cinn_values.emplace_back(stages);
           *ret = CINNValuePack{cinn_values};
         } else {
           VLOG(3) << "Do Block Shuffle Reduce Compute!";
           auto res = gpu_reduce_without_last_axis_func(
               x, reduce_axes, keepdim, tensor_name);
-          auto stages = CreateStages(res);
 
           std::vector<CINNValue> cinn_values;
           for (auto &t : res) {
             cinn_values.emplace_back(t);
           }
-          cinn_values.emplace_back(stages);
           *ret = CINNValuePack{cinn_values};
         }
       } else {
@@ -459,9 +454,8 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
 
         VLOG(3) << "Do Reduce Compute!";
         auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
-        auto stages = CreateStages({out});
 
-        std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> cinn_values{CINNValue(out)};
         *ret = CINNValuePack{cinn_values};
       });
 

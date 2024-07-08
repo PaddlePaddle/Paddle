@@ -2936,7 +2936,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {str(a.shape)}, dtype: {self.dtype}) max gradient diff over limit"
+                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {a.shape}, dtype: {self.dtype}) max gradient diff over limit"
                     ),
                 )
             else:
@@ -3150,7 +3150,7 @@ class OpTest(unittest.TestCase):
             analytic_grads,
             inputs_to_check,
             max_relative_error,
-            f"Gradient Check On {str(place)}",
+            f"Gradient Check On {place}",
             atol=atol,
         )
 
@@ -3425,7 +3425,7 @@ class OpTest(unittest.TestCase):
                     dygraph_dygraph_grad,
                     inputs_to_check,
                     max_relative_error,
-                    f"Gradient Check On {str(place)}",
+                    f"Gradient Check On {place}",
                     atol=atol,
                 )
 
@@ -3465,7 +3465,7 @@ class OpTest(unittest.TestCase):
                     pir_grad,
                     inputs_to_check,
                     max_relative_error,
-                    f"Gradient Check On {str(place)}",
+                    f"Gradient Check On {place}",
                     atol=atol,
                 )
 

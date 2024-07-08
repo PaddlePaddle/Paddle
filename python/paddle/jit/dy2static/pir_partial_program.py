@@ -784,9 +784,9 @@ class PartialProgramLayer:
                         forward_shape_analysis
                     )
                     forward_name_value_map = {
-                        item.name: item
+                        name: item
                         for item in forward_program.list_vars()
-                        if item.has_name
+                        for name in item._names
                     }
 
                     def share_symbol_shape_from_forward_to_backward(

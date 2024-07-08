@@ -133,7 +133,10 @@ def build_groups(vars, group_size):
     dtype = vars[0].dtype
 
     for var in vars:
-        bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
+        var_dtype = var.dtype
+        if isinstance(var_dtype, core.DataType):
+            var_dtype = paddle.pir.core.datatype_to_vartype(var_dtype)
+        bytes = np.prod(var.shape) * core.size_of_dtype(var_dtype)
         if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes
         else:
@@ -157,7 +160,7 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be core.eager.Tensor" % param.name
+                f"The data type of '{param.name}' must be core.eager.Tensor"
             )
 
         if is_model_parallel:
@@ -331,7 +334,7 @@ class DataParallel(layers.Layer):
             ...     model = paddle.DataParallel(model)
             ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     for step in range(10):
-            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32) # type: ignore[var-annotated]
             ...         x = paddle.to_tensor(x_data)
             ...         x.stop_gradient = False
             ...         # step 1 : skip gradient synchronization by 'no_sync'
@@ -913,7 +916,7 @@ def _check_var_exists(var_name):
     if var is None:
         raise ValueError(
             "paddle.distributed initialize error, "
-            "environment variable %s is needed, but not set." % var_name
+            f"environment variable {var_name} is needed, but not set."
         )
 
 

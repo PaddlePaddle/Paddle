@@ -58,8 +58,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -90,8 +89,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -119,8 +117,7 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -170,8 +167,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -346,10 +342,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           PADDLE_THROW(phi::errors::InvalidArgument(
               "Only support NCHW and NHWC data layout\n"));
         }
-        auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
 
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK(out.size() == 3U || out.size() == 2U || out.size() == 5U ||
@@ -357,7 +351,6 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             << "The output tensor sizes of conv2d op in conv2d op should be 2 "
                "or 3 or 5\n";
 
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -618,159 +611,6 @@ std::vector<std::vector<std::string>> InferLayoutForConv2d(
       input_layouts};
 }
 
-std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  std::vector<int> padding({0, 0});
-  std::vector<int> stride({1, 1});
-  std::vector<int> dilation({1, 1});
-  std::string data_format = "NCHWc";
-  int groups = 1;
-  if (attrs.attr_store.find("padding") != attrs.attr_store.end()) {
-    padding = absl::get<std::vector<int>>(attrs.attr_store.at("padding"));
-  }
-  if (attrs.attr_store.find("stride") != attrs.attr_store.end()) {
-    stride = absl::get<std::vector<int>>(attrs.attr_store.at("stride"));
-  }
-  if (attrs.attr_store.find("dilation") != attrs.attr_store.end()) {
-    dilation = absl::get<std::vector<int>>(attrs.attr_store.at("dilation"));
-  }
-  if (attrs.attr_store.find("data_format") != attrs.attr_store.end()) {
-    data_format = absl::get<std::string>(attrs.attr_store.at("data_format"));
-  }
-  if (attrs.attr_store.find("groups") != attrs.attr_store.end()) {
-    groups = absl::get<int>(attrs.attr_store.at("groups"));
-  }
-  CHECK(data_format == "NCHWc")
-      << "conv2d_NCHWc op's data_format should be NCHWc";
-  framework::CINNCompute conv2d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of conv2d_NCHWc compute is "
-                                "empty! Please check.\n";
-        CINNValuePack a = args[0];
-        CHECK_GE(a.size(), 2U)
-            << "at least 2 input tensors for conv2d_NCHWc compute\n";
-        Expr A = a[0];
-        Expr B = a[1];
-        CHECK(A.as_tensor());
-        CHECK(B.as_tensor());
-        auto tensor_a = A.as_tensor_ref();
-        auto tensor_b = B.as_tensor_ref();
-        CHECK_EQ(tensor_a->shape.size(), 5) << "input's shape should be 5";
-        CHECK_EQ(tensor_b->shape.size(), 6) << "weight's shape should be 6";
-        CHECK_EQ(padding.size(), 2)
-            << "The size of padding in conv2d_NCHWc op is not 2! Please check.";
-        CHECK_EQ(stride.size(), 2)
-            << "The size of stride in conv2d_NCHWc op is not 2! Please check.";
-        CHECK_EQ(dilation.size(), 2)
-            << "The size of stride in conv2d_NCHWc op is not 2! Please check.";
-        std::vector<ir::Tensor> out;
-        CHECK(std::holds_alternative<common::X86Arch>(target.arch))
-            << "conv2d_NCHWc op is only used in x86";
-        // A is input: [N, C_in_outer, H, W, C_in_inner], B is filter: [C_out,
-        // C_in_group_outer, filter_h, filter_w, C_in_group_inner]
-        std::string key;
-        VLOG(3) << "input[" << utils::Join(tensor_a->shape, ", ")
-                << "], weight shape[" << utils::Join(tensor_b->shape, ", ")
-                << "]";
-        out = pe::Conv2d_NCHWc(tensor_a,
-                               tensor_b,
-                               padding[0],
-                               padding[1],
-                               stride[0],
-                               stride[1],
-                               dilation[0],
-                               dilation[1],
-                               UniqName("T_conv2d_NCHWc_out"),
-                               target);
-
-        auto stages = CreateStages({tensor_a, tensor_b});
-
-        std::vector<CINNValue> res;
-        CHECK(out.size() == 2U)
-            << "The output tensor sizes of conv2d_NCHWc op should be 2\n";
-        for (auto &t : out) {
-          stages->InsertLazily(t);
-          res.push_back(CINNValue(t));
-        }
-        res.push_back(CINNValue(stages));
-        *ret = CINNValuePack{res};
-      });
-
-  framework::CINNSchedule conv2d_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of conv2d_NCHWc schedule "
-                                "is empty! Please check.\n";
-        CINNValuePack arg_pack = args[0];
-        CHECK_EQ(arg_pack.size(), 3UL);
-        poly::StageMap stages = arg_pack.back();
-        Expr packed_out = arg_pack[0];
-        Expr input_pad = arg_pack[1];
-        CHECK(packed_out.as_tensor());
-        CHECK(input_pad.as_tensor());
-        std::vector<Expr> kernel_shape = inputs[1]->shape;
-        // kernel_h == 1 && kernel_w == 1
-        CHECK_EQ(kernel_shape.size(), 6U)
-            << "kernel_dilation shape size should be 6";
-        bool is_1x1 =
-            (is_zero(kernel_shape[2] - 1)) && (is_zero(kernel_shape[3] - 1));
-        ir::Tensor res;
-        ir::Tensor data;
-        ir::Tensor weights;
-        ir::Tensor packed_out_tensor = packed_out.as_tensor_ref();
-        std::string key;
-        bool do_padding = (padding[0] == 0 && padding[1] == 0) ? false : true;
-        if (attrs.attr_store.find("key") != attrs.attr_store.end()) {
-          key = absl::get<std::string>(attrs.attr_store.at("key"));
-        }
-        if (is_1x1) {
-          pe::Conv2d_NCHWc_1X1_Schedule_CPU(stages,
-                                            res,
-                                            packed_out_tensor,
-                                            input_pad.as_tensor_ref(),
-                                            weights,
-                                            data,
-                                            target,
-                                            key,
-                                            do_padding);
-        } else {
-          pe::Conv2d_NCHWc_Schedule_CPU(stages,
-                                        res,
-                                        packed_out_tensor,
-                                        input_pad.as_tensor_ref(),
-                                        weights,
-                                        data,
-                                        target,
-                                        key,
-                                        do_padding);
-        }
-        if (do_padding) {
-          *ret = CINNValuePack{{CINNValue(packed_out_tensor),
-                                arg_pack[0],
-                                arg_pack[1],
-                                CINNValue(stages)}};
-        } else {
-          *ret = CINNValuePack{
-              {CINNValue(packed_out_tensor), arg_pack[0], CINNValue(stages)}};
-        }
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size())
-      << "Out_type of conv2d_NCHWc op is empty! Please check.";
-  if (out_type[0] == Float(32)) {
-    strategy->AddImpl(
-        conv2d_compute, conv2d_schedule, "strategy.conv2d_NCHWc.x86", 1);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "conv2d_NCHWc op with dtype != float32 is not implemented yet!"));
-  }
-  return strategy;
-}
-
 std::vector<shape_t> InferShapeForConv2dNCHWc(
     const std::vector<shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -956,17 +796,15 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
           "Only support NCHW and NHWC data layout\n"));
     }
 
-    auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
     std::vector<CINNValue> res;
     for (auto &t : out) {
-      stages->InsertLazily(t);
       res.push_back(CINNValue(t));
     }
     CHECK(out.size() == 2U || out.size() == 1U || out.size() == 5U)
         << "The output tensor sizes of depthwise_conv op in depthwise_conv "
            "op "
            "should be 1 or 2 or 5\n";
-    res.push_back(CINNValue(stages));
+
     *ret = CINNValuePack{res};
   });
 
@@ -1148,8 +986,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                                    epsilon,
                                    out_name);
         }
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1270,7 +1107,6 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                               data_format,
                               tensor_name);
 
-        auto stages = CreateStages(out);
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool1d's output should be 1 or 2.";
         CHECK(!out_type.empty())
@@ -1279,7 +1115,6 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
         for (auto &t : out) {
           res.push_back(CINNValue(Expr(t.get())));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1515,9 +1350,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         auto out = pe::GlobalPool2d(A_tensor, pool_type, tensor_name);
         CHECK(out.size() == 2U)
             << "The size of pe::GlobalPool2d's output should be 2.";
-        auto stages = CreateStages({A_tensor, out[0], out[1]});
-        *ret = CINNValuePack{
-            {CINNValue(out[0]), CINNValue(out[1]), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(out[0]), CINNValue(out[1])}};
       });
 
   framework::CINNSchedule global_pool2d_schedule([=](lang::Args args,
@@ -1578,17 +1411,14 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                               adaptive,
                               tensor_name);
 
-        auto stages = CreateStages({A_tensor});
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool2d's output should be 1 or 2.";
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK(!out_type.empty())
             << "Output type of Pool2d is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -1829,7 +1659,6 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
                               data_format,
                               tensor_name);
 
-        auto stages = CreateStages(out);
         CHECK(out.size() == 1U || out.size() == 2U)
             << "The size of pe::Pool3d's output should be 1 or 2.";
         CHECK(!out_type.empty())
@@ -1839,7 +1668,6 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         for (auto &t : out) {
           res.push_back(CINNValue(Expr(t.get())));
         }
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -2034,7 +1862,6 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         Expr A_expr = pack_args[0];
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
-        auto stages = CreateStages({A});
         int new_axis = axis;
         if (axis == -1) {
           new_axis = A->shape.size() - 1;
@@ -2057,14 +1884,13 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
 #endif
         std::vector<CINNValue> res;
         for (auto &t : out) {
-          stages->InsertLazily(t);
           res.push_back(CINNValue(t));
         }
         CHECK_EQ(out.size(), 2U)
             << "The size of pe::Softmax's output should be 2.";
         CHECK(!out_type.empty())
             << "Output type of Softmax is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
+
         *ret = CINNValuePack{res};
       });
 
@@ -2193,8 +2019,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 
     auto out =
         pe::DropoutInfer(A, dropout_prob, dropout_implementation, tensor_name);
-    auto stages = CreateStages({A, out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2262,11 +2087,8 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
                               true_value.as_tensor_ref(),
                               false_value.as_tensor_ref(),
                               tensor_name);
-        auto stages = CreateStages({condition.as_tensor_ref(),
-                                    true_value.as_tensor_ref(),
-                                    false_value.as_tensor_ref(),
-                                    out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+
+        *ret = CINNValuePack{{CINNValue(out)}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2325,11 +2147,7 @@ std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
                           true_value.as_tensor_ref(),
                           false_value.as_tensor_ref(),
                           tensor_name);
-    auto stages = CreateStages({condition.as_tensor_ref(),
-                                true_value.as_tensor_ref(),
-                                false_value.as_tensor_ref(),
-                                out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+    *ret = CINNValuePack{{CINNValue(out)}};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2559,7 +2377,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
       .set_attr("generate_equations",
                 MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2579,7 +2397,7 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForRelu6Symbolic)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2597,32 +2415,12 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2d))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2d))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2d))
 #endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(conv2d_NCHWc)
-      .describe(
-          "Do a 2-D convolution with an NCHWc layout. Input is 5D tensor and "
-          "weight is 6D tensor.")
-      .set_num_inputs(2)  // here we consider filter as another input
-      .set_num_outputs(3)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForConv2dNCHWc)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForConv2dNCHWc))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForConv2dNCHWc))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForConv2dNCHWc))
-#endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kOutFusible)
       .set_support_level(4);
 
   CINN_REGISTER_OP(depthwise_conv2d)
@@ -2635,7 +2433,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2d))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2d))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2d))
 #endif
@@ -2661,7 +2459,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForBatchNorm))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBatchNorm))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBatchNorm))
 #endif
@@ -2678,7 +2476,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool1d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2696,7 +2494,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool2d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2715,7 +2513,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool3d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2733,7 +2531,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSoftmax))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSoftmax))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForSoftmax))
 #endif
@@ -2751,7 +2549,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForDropoutInfer))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForDropoutInfer))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2771,7 +2569,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSelect))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSelect))
-#ifndef CINN_WITH_CUDA && !defined(CINN_WITH_HIP)
+#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif

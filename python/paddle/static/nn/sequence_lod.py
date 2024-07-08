@@ -223,7 +223,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
+            ...     dtype='float32', lod_level=1)
             >>> x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)
 
             >>> y = paddle.static.data(name='y', shape=[7],

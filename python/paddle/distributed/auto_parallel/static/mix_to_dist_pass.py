@@ -19,15 +19,17 @@ from .reshard_funcs.base_reshard_func import is_replicated
 
 def verify_dist_block(block):
     for op in block.ops:
+        if op.name() == "builtin.combine" or op.name() == "builtin.split":
+            continue
         if op.name() == "dist_op.shard_tensor":
             raise RuntimeError("Block still contain shard_tensor_op.")
-        if op.name() == "builtin.combine":
-            continue
         if op.dist_attr is None:
             raise RuntimeError(
                 f"The op {op} does not hase OperatorDistAttr after Mix2Dist Pass."
             )
         for result in op.results():
+            if not result.initialized():
+                continue
             if not (result.is_dist() or result.is_combine()):
                 raise RuntimeError(f"The {op}'s output is not dist tensor type")
 

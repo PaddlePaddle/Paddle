@@ -215,10 +215,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
     ir::Tensor out = Resize(tensor_A, target, out_shape, mode, tensor_name);
 
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({tensor_A});
-    stages->InsertLazily(out);
     res.push_back(cinn::common::CINNValue(out));
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = cinn::common::CINNValuePack{res};
   });
 

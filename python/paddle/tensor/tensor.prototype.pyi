@@ -36,10 +36,27 @@ from paddle import (
 from paddle.base.dygraph.tensor_patch_methods import (
     TensorHookRemoveHelper,  # noqa: F401
 )
+from paddle.tensor.linalg import _POrder  # noqa: F401
+from paddle.tensor.stat import _Interpolation  # noqa: F401
 
-class Tensor:
-    # annotation: ${tensor_docstring}
+# annotation: ${eager_param_base_begin}
+class AbstractEagerParamBase:
+    # annotation: ${eager_param_base_docstring}
 
+    # annotation: ${eager_param_base_attributes}
+
+    # annotation: ${eager_param_base_methods}
+    @property
+    def trainable(self) -> bool: ...
+    @trainable.setter
+    def trainable(self, trainable: bool) -> None: ...
+
+    # annotation: ${eager_param_base_alias}
+
+# annotation: ${eager_param_base_end}
+
+# annotation: ${tensor_begin}
+class AbstractTensor:
     # annotation: ${tensor_attributes}
 
     # If method defined below, we should make the method's signature complete,
@@ -255,7 +272,7 @@ class Tensor:
     def process_mesh(self) -> paddle.distributed.ProcessMesh | None: ...
     def rows(self) -> list[int]: ...
     def set_string_list(self, value: str) -> None: ...
-    def set_vocab(self, value: dict) -> None: ...
+    def set_vocab(self, value: dict[str, int]) -> None: ...
     @property
     def shape(self) -> list[int]: ...
     @property
@@ -272,5 +289,14 @@ class Tensor:
     # virtual methods
     def __iter__(self) -> Iterator[Tensor]: ...  # For iterating over the tensor
 
+    # private methods
+    def _grad_ivar(self) -> Tensor | None: ...
+
     # annotation: ${tensor_alias}
+
+class Tensor(AbstractTensor, AbstractEagerParamBase):
+    # annotation: ${tensor_docstring}
+
     __qualname__: Literal["Tensor"]
+
+# annotation: ${tensor_end}

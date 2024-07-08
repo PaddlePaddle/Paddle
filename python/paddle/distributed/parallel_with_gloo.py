@@ -58,7 +58,7 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
             >>> from contextlib import closing
             >>> import socket
 
-            >>> port_set = set()
+            >>> port_set = set() # type: ignore
 
             >>> def find_free_port():
             ...     def _free_port():
@@ -153,7 +153,7 @@ def gloo_barrier():
             >>> from contextlib import closing
             >>> import socket
 
-            >>> port_set = set()
+            >>> port_set = set() # type: ignore
 
             >>> def find_free_port():
             ...     def _free_port():
@@ -211,7 +211,7 @@ def gloo_release():
             >>> from contextlib import closing
             >>> import socket
 
-            >>> port_set = set()
+            >>> port_set = set() # type: ignore
 
             >>> def find_free_port():
             ...     def _free_port():

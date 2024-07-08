@@ -56,7 +56,7 @@ PD_DEFINE_string(cinn_kernel_execution_label,
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
                  StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./config/"),
+                               "./tile_file/"),
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
@@ -69,8 +69,8 @@ PD_DEFINE_int32(cinn_parallel_compile_thread,
                              (std::thread::hardware_concurrency() >> 1)),
                 "How much thread the parallel compile used.");
 
-PD_DEFINE_bool(cinn_enable_config_search,
-               BoolFromEnv("FLAGS_cinn_enable_config_search", false),
+PD_DEFINE_bool(cinn_measure_kernel_time,
+               BoolFromEnv("FLAGS_cinn_measure_kernel_time", false),
                "Whether to enable schedule config search mode.");
 
 PD_DEFINE_bool(cinn_use_op_fusion,
@@ -82,15 +82,15 @@ PD_DEFINE_bool(general_fusion_merge_pass,
                "Whether to use general fusion_merge pass.");
 
 PD_DEFINE_bool(cinn_new_group_scheduler,
-               BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
+               BoolFromEnv("FLAGS_cinn_new_group_scheduler", true),
                "Whether to use new group scheduler.");
 
 PD_DEFINE_bool(cinn_bucket_compile,
-               BoolFromEnv("FLAGS_cinn_bucket_compile", false),
+               BoolFromEnv("FLAGS_cinn_bucket_compile", true),
                "Whether to enable bucket compile for dynamic shape.");
 
 PD_DEFINE_bool(group_schedule_tiling_first,
-               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", true),
                "Whether to enable new group scheduler tiling first strategy.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
