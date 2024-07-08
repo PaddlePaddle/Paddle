@@ -24,7 +24,7 @@ inline static double trapezoidArea(double X1, double X2, double Y1, double Y2) {
 }
 
 inline static size_t compute_max_bytes(int64_t *dest,
-                                       int64_t *src,
+                                       const long *src,
                                        const int num_thresholds,
                                        const int slide_steps) {
   return reinterpret_cast<const char *>(src + (num_thresholds + 1) *
@@ -180,8 +180,11 @@ void AucKernel(const Context &dev_ctx,
       ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
       sizeof(int64_t);
   if (stat_pos_in_tensor != stat_pos_out) {
-    size_t max_bytes = compute_max_bytes(
-        origin_stat_pos, pos_in_data, num_thresholds, slide_steps);
+    size_t max_bytes =
+        compute_max_bytes(origin_stat_pos,
+                          reinterpret_cast<const long *>(pos_in_data),
+                          num_thresholds,
+                          slide_steps);
     PADDLE_ENFORCE_LE(required_bytes,
                       max_bytes,
                       phi::errors::PreconditionNotMet(
@@ -196,8 +199,11 @@ void AucKernel(const Context &dev_ctx,
             sizeof(int64_t));
   }
   if (stat_neg_in_tensor != stat_neg_out) {
-    size_t max_bytes = compute_max_bytes(
-        origin_stat_neg, neg_in_data, num_thresholds, slide_steps);
+    size_t max_bytes =
+        compute_max_bytes(origin_stat_neg,
+                          reinterpret_cast<const long *>(neg_in_data),
+                          num_thresholds,
+                          slide_steps);
     PADDLE_ENFORCE_LE(required_bytes,
                       max_bytes,
                       phi::errors::PreconditionNotMet(
