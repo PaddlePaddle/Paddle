@@ -59,6 +59,8 @@ class Laplace(distribution.Distribution):
                 1.31554604)
 
     """
+    loc: Numberic
+    scale: Numberic
 
     def __init__(self, loc: Numberic, scale: Numberic) -> None:
         if not isinstance(
