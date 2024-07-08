@@ -605,12 +605,8 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
-            return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, Value):
-            return str(var)
         elif isinstance(var, Value):
             return str(var)
         else:
