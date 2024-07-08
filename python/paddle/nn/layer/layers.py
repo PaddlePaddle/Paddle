@@ -41,7 +41,7 @@ from paddle.base.executor import Executor, global_scope
 from paddle.base.framework import (
     Parameter,
     Program,
-    _current_expected_place as _get_device,
+    _current_expected_place_ as _get_device,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
@@ -2176,12 +2176,22 @@ class Layer:
 
             try:
                 executor = Executor(_get_device())._default_executor
+                print("device", _get_device())
                 # restore parameter states
-                core._create_loaded_parameter(
-                    [param for param, state in matched_param_state],
-                    global_scope(),
-                    executor,
-                )
+                paras = [param for param, state in matched_param_state]
+
+                if in_pir_mode():
+                    core.pir.create_loaded_parameter(
+                        [param for param, state in matched_param_state],
+                        global_scope(),
+                        executor,
+                    )
+                else:
+                    core._create_loaded_parameter(
+                        [param for param, state in matched_param_state],
+                        global_scope(),
+                        executor,
+                    )
                 for param, state in matched_param_state:
                     _set_var(param, state)
             except ValueError as e:

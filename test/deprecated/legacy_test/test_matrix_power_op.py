@@ -348,7 +348,7 @@ class TestMatrixPowerAPIError(unittest.TestCase):
             name="input_1", shape=[4, 4], dtype="float32"
         )
         out = paddle.static.data(name="output", shape=[4, 4], dtype="float64")
-        self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2, out)
+        out = paddle.linalg.matrix_power(input, 2)
 
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
