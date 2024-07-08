@@ -48,17 +48,8 @@ bool ProcessGroupBKCL::BKCLTask::IsCompleted() {
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
 bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
-  // Warning here when use calc stream but also invoke waiting explicitly.
-  if (UseCalcStream()) {
-    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
-               "useless.";
-    return true;
-  }
-
   const auto* calc_ctx = static_cast<XPUContext*>(
       platform::DeviceContextPool::Instance().Get(place_));
-  comm_event_->Block(*calc_ctx);
-
   if (barrier_) {
     // If we use the work to do barrier, we should block cpu
 
@@ -70,6 +61,15 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
     xpu_wait();
     calc_ctx->Wait();
   }
+  // Warning here when use calc stream but also invoke waiting explicitly.
+  if (UseCalcStream()) {
+    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
+               "useless.";
+    return true;
+  }
+
+  comm_event_->Block(*calc_ctx);
+
   return true;
 }
 
@@ -318,7 +318,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   auto bkcl_comm_ctx = this->GetCommContext();
-
   fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
 
   if (!use_calc_stream) {
