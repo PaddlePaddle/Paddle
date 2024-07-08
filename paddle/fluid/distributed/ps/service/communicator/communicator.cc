@@ -546,7 +546,7 @@ void AsyncCommunicator::SendByCommunicator() {
         PADDLE_ENFORCE_EQ(
             varnames.size(),
             1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "sparse variables can only be merged by one variables"));
         RpcSendSparse(varnames[0], table_id, *send_scope_);
       } else {
@@ -595,7 +595,7 @@ void AsyncCommunicator::PullSparseToTensorSync(
     const uint64_t table_id,
     int fea_dim,
     uint64_t padding_id,
-    platform::Place place,
+    phi::Place place,
     bool is_training,
     std::vector<const phi::DenseTensor *> *inputs,
     std::vector<phi::DenseTensor *> *outputs) {
@@ -650,7 +650,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     const uint64_t table_id,
     int fea_dim,
     uint64_t padding_id,
-    platform::Place place,
+    phi::Place place,
     std::vector<const phi::DenseTensor *> *inputs,
     const phi::DenseTensor *shows,
     const phi::DenseTensor *clks,
@@ -770,7 +770,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   PADDLE_ENFORCE_EQ(
       this->Check(table_id),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
   auto status = _worker_ptr->PushSparse(table_id,
                                         push_keys.data(),
@@ -868,7 +868,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
   PADDLE_ENFORCE_EQ(
       var_tables.size(),
       1,
-      platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
+      phi::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
   auto table_name = var_tables[0];
   if (send_varname_to_ctx_.find(table_name) == send_varname_to_ctx_.end()) {
@@ -986,7 +986,7 @@ void HalfAsyncCommunicator::SendByCommunicator() {
         PADDLE_ENFORCE_EQ(
             varnames.size(),
             1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "sparse variables can only be merged by one variables"));
         RpcSendSparse(varnames[0], table_id, *send_scope_);
       } else {
@@ -1043,7 +1043,7 @@ void GeoCommunicator::Send(
 
   PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Only need to send Sparse Grad in Geo mode."));
   auto &rows = var->Get<phi::SelectedRows>().rows();
 
@@ -1193,11 +1193,11 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
 
     PADDLE_ENFORCE_EQ(var_latest->IsInitialized(),
                       true,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
     PADDLE_ENFORCE_EQ(var_timestamp->IsInitialized(),
                       true,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
 
     auto &t_latest = var_latest->Get<phi::DenseTensor>();
@@ -1344,11 +1344,11 @@ void GeoCommunicator::SendSparse(const std::string &varname,
 
   PADDLE_ENFORCE_EQ(var_latest->IsInitialized(),
                     true,
-                    platform::errors::Unavailable(
+                    phi::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
   PADDLE_ENFORCE_EQ(var_old->IsInitialized(),
                     true,
-                    platform::errors::Unavailable(
+                    phi::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
 
   auto &t_latest = var_latest->Get<phi::DenseTensor>();
@@ -1481,7 +1481,7 @@ void GeoCommunicator::MainThread() {
         PADDLE_ENFORCE_EQ(
             varnames.size(),
             1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "sparse variables can only be merged by one variables"));
         int pserver_num = static_cast<int>(ctx.epmap.size());
         for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {

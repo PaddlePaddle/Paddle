@@ -150,7 +150,7 @@ class PSServer {
 
  protected:
   std::shared_ptr<framework::Scope> scope_;
-  platform::Place place_ = phi::CPUPlace();
+  phi::Place place_ = phi::CPUPlace();
 };
 
 REGISTER_PSCORE_REGISTERER(PSServer);
