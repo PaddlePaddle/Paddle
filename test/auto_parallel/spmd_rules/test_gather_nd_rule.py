@@ -59,6 +59,31 @@ class TestGatherNdSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
 
+    def test_forward_mesh_dim_diff_shape(self):
+        # dims_mapping: [-1], [0, -1] --> [0, -1]
+        x_shape = [10]
+        index_shape = [8, 3]
+        x_dist_attr = TensorDistAttr()
+        x_dist_attr.dims_mapping = [-1]
+        x_dist_attr.process_mesh = self.process_mesh
+        x_spec = DistTensorSpec(x_shape, x_dist_attr)
+
+        index_dist_attr = TensorDistAttr()
+        index_dist_attr.dims_mapping = [0, -1]
+        index_dist_attr.process_mesh = self.process_mesh
+        index_spec = DistTensorSpec(index_shape, index_dist_attr)
+
+        self.index_spec.set_dims_mapping([0, -1])
+
+        result_dist_attrs = self.rule.infer_forward(x_spec, index_spec)
+
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+
     def test_reverse_mesh_dim(self):
         self.x_spec.set_process_mesh(self.process_mesh)
         self.index_spec.set_process_mesh(self.process_mesh)
@@ -82,6 +107,41 @@ class TestGatherNdSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
+
+    def test_reverse_mesh_dim_diff_shape(self):
+        x_shape = [10, 10]
+        index_shape = [8, 3]
+        x_dist_attr = TensorDistAttr()
+        x_dist_attr.dims_mapping = [-1, -1]
+        x_dist_attr.process_mesh = self.process_mesh
+        x_spec = DistTensorSpec(x_shape, x_dist_attr)
+
+        index_dist_attr = TensorDistAttr()
+        index_dist_attr.dims_mapping = [0, -1]
+        index_dist_attr.process_mesh = self.process_mesh
+        index_spec = DistTensorSpec(index_shape, index_dist_attr)
+        x_spec.set_process_mesh(self.process_mesh)
+        index_spec.set_process_mesh(self.process_mesh)
+
+        out_shape = [4, 20]
+        out_dist_attr = TensorDistAttr()
+        out_dist_attr.dims_mapping = [0, -1]
+        out_dist_attr.process_mesh = self.process_mesh
+
+        out_spec = DistTensorSpec(out_shape, out_dist_attr)
+
+        # [0, -1] --> [-1, -1], [0, -1]
+        result_dist_attrs = self.rule.infer_backward(
+            x_spec,
+            index_spec,
+            out_spec,
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
 
 
 if __name__ == "__main__":

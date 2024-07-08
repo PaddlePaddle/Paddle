@@ -93,7 +93,7 @@ SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
   for (int axis = 0; axis < index_axis; axis++) {
     x_dims_mapping[axis] = -1;
   }
-  for (int axis = x_ndim - 1; axis >= index_axis; axis--) {
+  for (int axis = x_ndim - 1; axis > index_axis; axis--) {
     x_dims_mapping[axis] = out_dims_mapping[out_ndim + (axis - x_ndim)];
   }
 
