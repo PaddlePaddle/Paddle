@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import math
 import operator
 from collections.abc import Sequence
 from functools import reduce
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
@@ -23,6 +25,10 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.distribution.beta import Beta
 from paddle.framework import in_dynamic_mode
+
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike, ShapeLike
+
 
 __all__ = ["LKJCholesky"]
 
@@ -139,7 +145,17 @@ class LKJCholesky(distribution.Distribution):
             [3, 3]
     """
 
-    def __init__(self, dim=2, concentration=1.0, sample_method="onion"):
+    concentration: paddle.Tensor
+    dtype: DTypeLike
+    dim: int
+    sample_method: Literal["onion", "cvine"]
+
+    def __init__(
+        self,
+        dim: int = 2,
+        concentration: float = 1.0,
+        sample_method: Literal["onion", "cvine"] = "onion",
+    ) -> None:
         if not in_dynamic_mode():
             check_type(
                 dim,
@@ -209,7 +225,7 @@ class LKJCholesky(distribution.Distribution):
             raise ValueError("`method` should be one of 'cvine' or 'onion'.")
         super().__init__(batch_shape, event_shape)
 
-    def _onion(self, sample_shape):
+    def _onion(self, sample_shape) -> paddle.Tensor:
         """Generate a sample using the "onion" method.
 
         Args:
@@ -249,7 +265,7 @@ class LKJCholesky(distribution.Distribution):
         w += paddle.diag_embed(diag_elems)
         return w
 
-    def _cvine(self, sample_shape):
+    def _cvine(self, sample_shape: ShapeLike) -> paddle.Tensor:
         """Generate a sample using the "cvine" method.
 
         Args:
@@ -308,7 +324,7 @@ class LKJCholesky(distribution.Distribution):
             r = r.reshape((flatten_shape // last_dim, self.dim, self.dim))
         return r
 
-    def sample(self, sample_shape=()):
+    def sample(self, sample_shape: ShapeLike = ()) -> paddle.Tensor:
         """Generate a sample using the specified sampling method."""
         if not isinstance(sample_shape, Sequence):
             raise TypeError('sample shape must be Sequence object.')
@@ -334,7 +350,7 @@ class LKJCholesky(distribution.Distribution):
 
         return res.reshape(output_shape)
 
-    def log_prob(self, value):
+    def log_prob(self, value: paddle.Tensor) -> paddle.Tensor:
         r"""Compute the log probability density of the given Cholesky factor under the LKJ distribution.
 
         Args:
