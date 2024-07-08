@@ -439,7 +439,7 @@ void SetTensorFromPyArrayT(
     // NOTE(wangxi): When copying data to the accelerator card,
     // we need set_device(dev_id) first.
     platform::Place tmp_place = place;
-    platform::XPUDeviceGuard guard(tmp_place.device);
+    phi::backends::xpu::XPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
     memory::Copy(tmp_place,
                  static_cast<void *>(dst),

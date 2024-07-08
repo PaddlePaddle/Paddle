@@ -462,7 +462,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_storage(
 #elif defined(PADDLE_WITH_XPU_KP)
   auto &nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
-    platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
+    phi::backends::xpu::XPUDeviceGuard guard(
+        resource_->dev_id(nodes[i].dev_num));
     auto place = DevPlace(resource_->dev_id(nodes[i].dev_num));
     if (keylen > 0) {
       auto node_keys_mem = MemoryAlloc(place, keylen);
@@ -494,7 +495,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_tmp_storage(
       resource_->remote_stream(end_index, start_index)));
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  platform::XPUDeviceGuard guard(resource_->dev_id(end_index));
+  phi::backends::xpu::XPUDeviceGuard guard(resource_->dev_id(end_index));
   auto place = DevPlace(resource_->dev_id(end_index));
   auto node_vals_mem = MemoryAlloc(place, vallen);
   dest = reinterpret_cast<void *>(node_vals_mem->ptr());
