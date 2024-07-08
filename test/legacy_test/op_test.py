@@ -1414,13 +1414,11 @@ class OpTest(unittest.TestCase):
                             "output of python api should be Value or list of Value or tuple of Value"
                         )
 
-                var_list1 = ir_program.list_vars()
                 # executor run
                 executor = Executor(place)
                 outs = executor.run(
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
-                var_list2 = ir_program.list_vars()
                 outputs_sig = [
                     sig_name
                     for sig_name in outputs_sig

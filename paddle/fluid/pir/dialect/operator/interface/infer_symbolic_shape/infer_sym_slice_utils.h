@@ -101,7 +101,6 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
-    VLOG(3) << "ends: " << ends.at(i) << " starts: " << starts.at(i);
     slice_dims.at(axis) = ends.at(i) - starts.at(i);
   }
 
@@ -153,18 +152,13 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   }();
 
   const auto &GetShapeDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
-    VLOG(3) << "start GetShapeDimExprs";
     const ExprVec &in_dims = in_shapeordata.shape();
     std::vector<int64_t> axes = FormatSliceAxes(axes_raw, in_dims.size());
-    VLOG(3) << "before CheckAndUpdateSliceAttrs";
     CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &infer_flags);
-    VLOG(3) << "before GetSliceDims";
     ExprVec slice_dims =
         GetSliceDims(in_dims, axes, starts, ends, &infer_flags);
-    VLOG(3) << "before GetDecreasedDims";
     ExprVec out_dims = GetDecreasedDims(slice_dims, decrease_axis);
 
-    VLOG(3) << "return GetShapeDimExprs";
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   };
@@ -172,7 +166,6 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
   // op, the result should be written into data.
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
-    VLOG(3) << "start GetDataDimExprs";
     std::vector<symbol::DimExpr> out_data;
 
     // Currently, we DO NOT support the case that any element in `axes` `starts`
@@ -207,12 +200,10 @@ inline ShapeOrData SliceRawInferSymbolicShape(
 
     const ExprVec shape = GetDecreasedDims(
         ExprVec{static_cast<int64_t>(out_data.size())}, decrease_axis);
-    VLOG(3) << "return GetDataDimExprs";
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
   };
 
-  VLOG(3) << "before GetDataDimExprs GetShapeDimExprs";
   return in_shapeordata.data().has_value() ? GetDataDimExprs()
                                            : GetShapeDimExprs();
 }

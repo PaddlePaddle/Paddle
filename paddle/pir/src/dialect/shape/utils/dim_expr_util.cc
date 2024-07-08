@@ -1054,7 +1054,6 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldRedundantSymbolicBroadcast>(&keep_rewrite, &ret);
     DoPass<SimplifyBroadcast>(&keep_rewrite, &ret);
   }
-  VLOG(3) << "Simplify: " << expr << " -> " << ret;
   return ret;
 }
 

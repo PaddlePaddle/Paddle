@@ -301,15 +301,6 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   return true;
 }
 
-// bool EinsumOpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   PADDLE_THROW(phi::errors::Unimplemented(
-//       op->name() + " 's InferSymbolicShape interface is NOT implemented
-//       now."));
-//   return true;
-// }
-
 bool FlattenOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &attributes = op->attributes();
@@ -646,7 +637,6 @@ bool RepeatInterleaveOpInferSymbolicShape(
 
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  VLOG(3) << ("start reshape infer symbolic.");
   const symbol::ShapeOrDataDimExprs &x_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &shape_dim_expr =
@@ -684,16 +674,11 @@ bool ReshapeOpInferSymbolicShape(
   };
 
   const std::vector<symbol::DimExpr> out_dims = [&] {
-    VLOG(3) << "start out_dims";
     const auto &original_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
     ExprVec target_shape;
     if (shape_dim_expr.data().has_value()) {
       target_shape = shape_dim_expr.data().value();
-    }
-    VLOG(3) << " target_shape size:" << target_shape.size();
-    for (auto dim : target_shape) {
-      VLOG(3) << "target_shape: " << dim;
     }
 
     // replace '0' with original shape
@@ -706,23 +691,16 @@ bool ReshapeOpInferSymbolicShape(
     // replace '-1' with infered shape
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
-    VLOG(3) << "numel: " << numel;
     const auto &product_exclude_minus_one =
         GetProduct(target_shape, IsPositiveInteger);
-    VLOG(3) << "product_exclude_minus_one: " << product_exclude_minus_one;
     const auto &input_dims = target_shape;
 
-    VLOG(3) << "target shape size: " << target_shape.size()
-            << " original shape size: " << original_shape.size();
     std::vector<symbol::DimExpr> out_dims;
     out_dims.reserve(input_dims.size());
     for (size_t i = 0; i < input_dims.size(); ++i) {
-      VLOG(3) << "i:" << i;
-      VLOG(3) << "input_dims.at(i):" << input_dims.at(i);
       auto out_dim_expr = IsNotMinusOne(input_dims.at(i))
                               ? input_dims.at(i)
                               : (numel / product_exclude_minus_one);
-      VLOG(3) << "out_dim_expr: " << out_dim_expr << " i: " << i;
       out_dims.emplace_back(out_dim_expr);
     }
     return out_dims;
@@ -741,7 +719,6 @@ bool ReshapeOpInferSymbolicShape(
       op->result(1),
       CreateShapeOrDataForXShape(
           infer_context->GetShapeOrDataForValue(op->operand_source(0))));
-  VLOG(3) << ("end reshape infer symbolic.");
   return true;
 }
 
@@ -798,7 +775,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
                                               infer_flags,
                                               decrease_axis);
   infer_context->SetShapeOrDataForValue(res, res_shape_or_data);
-  VLOG(3) << "end SliceOpInferSymbolicShape";
   return true;
 }
 
@@ -905,8 +881,6 @@ bool SplitWithNumOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &axis_shape_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  VLOG(3) << "axis_shape_data.shape():" << axis_shape_data.shape().at(0);
-  VLOG(3) << "axis_shape_data.data():" << axis_shape_data.data().value().at(0);
   PADDLE_ENFORCE_EQ(
       axis_shape_data.data().has_value(),
       true,
@@ -946,8 +920,6 @@ bool SplitWithNumOpInferSymbolicShape(
     // data:{3}} eg: axis generator op is full_op and assign_op
     int64_t axis = axis_data[0].dyn_cast<int64_t>();
     axis = axis < 0 ? axis + rank : axis;
-    VLOG(3) << "case 1: DimExpr of axis is int. axis = " << axis
-            << ". num = " << num;
     symbol::TensorListShapeOrDataDimExprs res_list_s_d(num, out_s_d(axis, num));
     infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::ShapeOrDataDimExprs{res_list_s_d});
@@ -969,8 +941,6 @@ bool SplitWithNumOpInferSymbolicShape(
     }
     if (count == 1) {
       // caculate the axis of split_with_num_op
-      VLOG(3) << "case 2: DimExpr of axis is a symbol. candidate_axis = "
-              << candidate_axis << ". num = " << num;
       symbol::TensorListShapeOrDataDimExprs res_list_s_d(
           num, out_s_d(candidate_axis, num));
       infer_context->SetShapeOrDataForValue(
@@ -992,8 +962,6 @@ bool SplitWithNumOpInferSymbolicShape(
           op->result(0), symbol::ShapeOrDataDimExprs{res_list_s_d});
     }
   } else {
-    VLOG(3) << "axis type:" << axis_data.at(0).index()
-            << ", axis value:" << axis_data.at(0);
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The type of axis must be int64_t or string."));
   }

@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/nullary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
-#include "paddle/pir/src/core/value_impl.h"
 
 namespace paddle::dialect {
 
@@ -97,26 +96,17 @@ bool AssignValue_OpInferSymbolicShape(
 
 bool DataOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  VLOG(3) << "Start DataOpInferSymbolicShape.";
   const auto &attributes = op->attributes();
   pir::Attribute attr = attributes.at("shape");
-  const std::vector<int64_t> &shape_dims =
-      attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
-  for (auto shape_dim : shape_dims) {
-    VLOG(3) << "data op attr_shape dim:" << shape_dim;
-  }
 
   const std::vector<symbol::DimExpr> sym_dims = [&] {
     std::vector<symbol::DimExpr> sym_dims;
     const std::vector<int64_t> &dims =
         attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
     for (auto dim : dims) {
-      VLOG(3) << "data op attr_shape dim:" << dim;
       symbol::DimExpr dim_expr;
       if (dim == pir::ShapedTypeInterface::kDynamic) {
         symbol::DimExpr symbolic_dim_expr(infer_context->GetNextSymName());
-        VLOG(3) << "create symbolic dim expr from dynamic dim"
-                << symbolic_dim_expr;
         dim_expr = symbolic_dim_expr;
       } else {
         symbol::DimExpr numeric_dim_expr(dim);
@@ -154,8 +144,6 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
 
   const auto &shape_or_data = [&]() {
     if (IsNumelLEKMaxRank(op->result(0)) && IsIntType(op->result(0))) {
-      VLOG(3) << "IsNumelLEKMaxRank:" << IsNumelLEKMaxRank(op->result(0));
-      VLOG(3) << "IsIntType:" << IsIntType(op->result(0));
       return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
           sym_dims, CreateSymForEachNumel(op->result(0)))};
     } else {
@@ -163,14 +151,8 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(sym_dims)};
     }
   }();
-  VLOG(3) << "DataOpInferSymbolicShape: shape_or_data.shape size: "
-          << shape_or_data.shape().size()
-          << "reslut id :" << op->result(0).impl()->id();
-  for (auto dim : shape_or_data.shape()) {
-    VLOG(3) << "result dim:" << dim.dyn_cast<int64_t>();
-  }
+
   infer_context->SetShapeOrDataForValue(op->result(0), shape_or_data);
-  VLOG(3) << "End DataOpInferSymbolicShape.";
   return true;
 }
 
@@ -243,7 +225,6 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> shape(shape_vec.begin(), shape_vec.end());
     return shape;
   }();
-  VLOG(3) << "FullOpInferSymbolicShape shape: " << shape.at(0);
 
   const auto shape_data = [&]() -> symbol::TensorShapeOrDataDimExprs {
     // NOTE(Aurelius84): to<int64_t> is a risky operation when Scalar's dtype is

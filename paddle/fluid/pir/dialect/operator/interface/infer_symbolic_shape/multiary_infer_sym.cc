@@ -724,12 +724,11 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
-  // [4,dimexpr{5,6,7}]
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  int rank = shape_data_list.at(0).shape().size();
+  size_t rank = shape_data_list.at(0).shape().size();
   if (axis < 0) axis += rank + 1;
   const symbol::ShapeOrDataDimExprs shape_data = [&] {
     std::vector<symbol::DimExpr> result_shape = {};

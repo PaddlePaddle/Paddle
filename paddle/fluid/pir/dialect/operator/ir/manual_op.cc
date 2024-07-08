@@ -3018,35 +3018,17 @@ void ExpandOp::Build(pir::Builder &builder,
 
 bool ExpandOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  VLOG(3) << "Start InferSymbolicShape for: ExpandOp.";
   const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(x());
 
-  pir::Value shape_ = shape();
-  VLOG(3) << "shape_ id :" << shape_.impl()->id();
   const auto &expand_shape_shape_or_data =
       infer_context->GetShapeOrDataForValue(shape());
-  for (auto dim : expand_shape_shape_or_data.shape()) {
-    VLOG(3) << "expand shape:" << dim;
-  }
-  if (expand_shape_shape_or_data.data().has_value()) {
-    for (auto dim : expand_shape_shape_or_data.data().value()) {
-      VLOG(3) << "expand data:" << dim;
-    }
-  }
 
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
-  VLOG(3) << "x_shape.size :" << x_dims.size();
-  VLOG(3) << "x_shape.data :" << x_shape_or_data.data().has_value();
-  for (auto dim : x_dims) {
-    VLOG(3) << "x_shape:" << dim.dyn_cast<int64_t>();
-  }
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
 
-    // 会跑进这个分支吗？
     if (expand_shape_shape_or_data
             .isa<symbol::TensorListShapeOrDataDimExprs>()) {
-      VLOG(3) << "expand_shape_shape_or_data is TensorListShapeOrDataDimExprs";
       const auto &dims_list =
           expand_shape_shape_or_data
               .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
@@ -3062,9 +3044,9 @@ bool ExpandOp::InferSymbolicShape(
                  : expand_shape_shape_or_data.shape();
     }
     // get new symbol
-    // if (dims.empty()) {
-    //   dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
-    // }
+    if (dims.empty()) {
+      dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
+    }
     return dims;
   }();
 
@@ -3083,17 +3065,12 @@ bool ExpandOp::InferSymbolicShape(
 
       out_shape[i] = x_dims[index];
     }
-    //
-  }
-  for (auto dim : out_shape) {
-    VLOG(3) << "out_shape:" << dim;
   }
 
   infer_context->SetShapeOrDataForValue(
       out(),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
-  VLOG(3) << "End InferSymbolicShape for: ExpandOp.";
   return true;
 }
 

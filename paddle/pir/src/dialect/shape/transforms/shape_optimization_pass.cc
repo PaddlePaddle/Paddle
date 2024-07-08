@@ -374,8 +374,6 @@ void InferSymExprForBlock(const Block& block,
 }
 
 void InferSymExprForAllValues(ModuleOp module_op) {
-  VLOG(vlog_level)
-      << "===================== InferSymExprForAllValues start... ";
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
   auto* infer_context = shape_analysis.MutInferSymbolicShapeContext();
@@ -440,7 +438,6 @@ void AddShapeOptimizationPass(
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   if (FLAGS_pir_apply_shape_optimization_pass) {
-    VLOG(3) << "FLAGS_pir_apply_shape_optimization_pass";
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
