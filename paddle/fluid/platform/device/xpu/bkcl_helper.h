@@ -30,10 +30,10 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "xpu/bkcl.h"
 #include "xpu/runtime.h"
 

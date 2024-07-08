@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
 namespace paddle {
