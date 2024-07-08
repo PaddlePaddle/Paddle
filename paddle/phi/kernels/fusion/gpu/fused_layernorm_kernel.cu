@@ -537,7 +537,7 @@ inline GPU(Error_t)
   // Note(Zhengzekang): We choose a fixed blocksize to avoid layernorm diff, by
   // RichardWooSJTU.
 
-  constexpr int block_size_conf_1 = 128;
+  constexpr int block_size_conf_1 = 512;
 
   int dev = 0;
   {

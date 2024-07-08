@@ -24,20 +24,14 @@ bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
   bool flatten = GetBoolAttr(op, "flatten");
   bool keepdims = GetBoolAttr(op, "keepdims");
 
-  const auto &input_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &input_sym_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  int rank = input_sym_shape.size();
 
   const auto &axis_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   int axis =
       static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
-
-  const std::vector<symbol::DimExpr> &input_sym_shape =
-      input_shape_or_data.data().has_value()
-          ? input_shape_or_data.data().value()
-          : input_shape_or_data.shape();
-
-  int rank = input_sym_shape.size();
   if (axis < 0) axis += rank;
 
   const auto &out_sym_shape = [&] {
@@ -577,7 +571,7 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  bool keepdim = GetBoolAttr(op, "keep_dim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
   bool reduce_all = GetBoolAttr(op, "reduce_all");
 
   auto axis_gen_op = op->operand_source(1).defining_op();
