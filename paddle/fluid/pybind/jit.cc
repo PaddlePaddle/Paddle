@@ -49,15 +49,13 @@ void BindJit(pybind11::module *m) {
       .def("input_names", &jit::FunctionInfo::InputArgNames)
       .def("output_names", &jit::FunctionInfo::OutputArgNames);
 
-  m->def("Load",
-         [](const std::string &path, const platform::CPUPlace &cpu_place) {
-           return paddle::jit::Load(path, cpu_place);
-         });
+  m->def("Load", [](const std::string &path, const phi::CPUPlace &cpu_place) {
+    return paddle::jit::Load(path, cpu_place);
+  });
 
-  m->def("Load",
-         [](const std::string &path, const platform::CUDAPlace &cuda_place) {
-           return paddle::jit::Load(path, cuda_place);
-         });
+  m->def("Load", [](const std::string &path, const phi::GPUPlace &cuda_place) {
+    return paddle::jit::Load(path, cuda_place);
+  });
 }
 
 void BindEvalFrame(pybind11::module *m) {
