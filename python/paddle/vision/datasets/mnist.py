@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Tuple
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -38,7 +38,7 @@ from paddle.io import Dataset
 __all__ = []
 
 
-class MNIST(Dataset):
+class MNIST(Dataset[Tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
     """
     Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset.
 
@@ -99,7 +99,7 @@ class MNIST(Dataset):
 
             >>> for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label) # type: ignore
+            ...     print(type(img), img.shape, label)  # type: ignore
             ...     # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
 
@@ -115,11 +115,10 @@ class MNIST(Dataset):
     TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
     mode: _DatasetMode
-    backend: _ImageBackend
     image_path: str | None
     label_path: str | None
     transform: _Transform[Any, Any] | None
-    backend: _ImageBackend | None
+    backend: _ImageBackend
     dtype: _DTypeLiteral
     labels: list
     images: list
@@ -320,7 +319,7 @@ class FashionMNIST(MNIST):
 
             >>> for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label) # type: ignore
+            ...     print(type(img), img.shape, label)  # type: ignore
             ...     # <class 'paddle.Tensor'> [1, 28, 28] [9]
     """
 
