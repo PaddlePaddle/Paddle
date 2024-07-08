@@ -55,14 +55,8 @@ std::unique_ptr<ScheduleBase> ScheduleBase::Make(
     bool debug_flag,
     utils::ErrorMessageLevel err_msg_level,
     bool is_dynamic) {
-  if (is_dynamic) {
-    return std::make_unique<DyScheduleImpl>(
-        module_expr, debug_flag, err_msg_level);
-  } else {
-    return std::make_unique<StScheduleImpl>(
-        module_expr, debug_flag, err_msg_level);
-  }
-  return nullptr;
+  return std::make_unique<DyScheduleImpl>(
+      module_expr, debug_flag, err_msg_level);
 }
 
 std::unique_ptr<ScheduleBase> ScheduleBase::Make(ModuleExpr&& module_expr,
