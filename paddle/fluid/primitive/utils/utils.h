@@ -150,8 +150,10 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
   bool has_dynamic_shape = false;
   for (int i = 0; i < dout_dims.size(); i++) {
-    if (dout_dims[i] == -1) has_dynamic_shape = true;
-    break;
+    if (dout_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
   }
   PADDLE_ENFORCE_EQ(
       has_dynamic_shape,
@@ -162,8 +164,10 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
 
   has_dynamic_shape = false;
   for (int i = 0; i < in_dims.size(); i++) {
-    if (in_dims[i] == -1) has_dynamic_shape = true;
-    break;
+    if (in_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
   }
   PADDLE_ENFORCE_EQ(
       has_dynamic_shape,
