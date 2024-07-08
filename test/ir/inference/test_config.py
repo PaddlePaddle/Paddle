@@ -92,8 +92,6 @@ class TestConfig(unittest.TestCase):
             config.enable_use_gpu(256, 0, PrecisionType.Half)
             config.enable_memory_optim()
             config.switch_ir_optim(False)
-        config.enable_new_executor()
-        config.enable_new_ir()
         predictor = create_predictor(config)
         return predictor
 
