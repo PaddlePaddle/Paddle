@@ -143,6 +143,12 @@ int ExtractMulNumberFromExpr(const ir::Expr& expr) {
     auto mul = expr.As<ir::Mul>();
     return ExtractMulNumberFromExpr(mul->a()) *
            ExtractMulNumberFromExpr(mul->b());
+  } else if (expr.As<ir::Mod>()) {
+    auto mod = expr.As<ir::Mod>();
+    return ExtractMulNumberFromExpr(mod->a());
+  } else if (expr.As<ir::Div>()) {
+    auto div = expr.As<ir::Div>();
+    return ExtractMulNumberFromExpr(div->a());
   } else {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
@@ -165,6 +171,23 @@ int ExtractAddNumberFromExpr(const ir::Expr& expr) {
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
 
+ir::Expr ExtractSimbolicFromExpr(const ir::Expr& expr) {
+  ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
+  if (simplied_expr.is_constant()) {
+    return ir::Expr(0);
+  } else if (expr.As<ir::_Var_>()) {
+    auto var = expr.As<ir::_Var_>();
+    if ((utils::StartsWith(var->name, "S"))) {
+      return ir::ir_utils::IRCopy(expr);
+    }
+    return ir::Expr(0);
+  } else {
+    VLOG(6) << "Not supported for calculating simbolic, expr = " << expr;
+    return ir::Expr(0);
+  }
+  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+}
+
 int gcd(int a, int b) {
   if (b == 0) {
     return a == 0 ? 1 : a;
@@ -174,6 +197,7 @@ int gcd(int a, int b) {
 
 class Gcd {};
 class Offset {};
+class Simbolic {};
 
 template <typename Op>
 struct CommonFactorTrait;
@@ -190,6 +214,13 @@ struct CommonFactorTrait<Gcd> {
 
   static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
     if (factor != unit) {
+      if (expr.As<ir::Mod>()) {
+        auto mod = expr.As<ir::Mod>();
+        return ir::Mod::Make(cinn::common::AutoSimplify(ir::Div::Make(mod->a(), factor)), mod->b());
+      } else if (expr.As<ir::Div>()) {
+        auto div = expr.As<ir::Div>();
+        return ir::Div::Make(cinn::common::AutoSimplify(ir::Div::Make(div->a(), factor)), div->b());
+      }
       return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
     }
     return expr;
@@ -216,6 +247,31 @@ struct CommonFactorTrait<Offset> {
 };
 
 const ir::Expr CommonFactorTrait<Offset>::unit = ir::Expr(0);
+
+template <>
+struct CommonFactorTrait<Simbolic> {
+  static const ir::Expr unit;
+
+  static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
+    auto IsSimbolicEqual = [&](const ir::Expr& expr1, const ir::Expr& expr2) -> bool {
+      return cinn::common::AutoSimplify(ir::Sub::Make(ExtractSimbolicFromExpr(expr1),
+                                                      ExtractSimbolicFromExpr(expr2))) != ir::Expr(0);
+    };
+    if (!IsSimbolicEqual(expr1, expr2)) {
+      return cinn::common::AutoSimplify(ir::Add::Make(ExtractSimbolicFromExpr(expr1),
+                                                      ExtractSimbolicFromExpr(expr2)));
+    }
+  }
+
+  static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
+    if (factor != unit) {
+      return cinn::common::AutoSimplify(ir::Sub::Make(expr, factor));
+    }
+    return expr;
+  }
+};
+
+const ir::Expr CommonFactorTrait<Simbolic>::unit = ir::Expr(0);
 
 template <typename DoEachT>
 void VisitEachRowExpr(const std::vector<std::vector<ir::Expr>>& indexes,
@@ -360,6 +416,7 @@ void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
   VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
   EliminateCommonFactorHelper<Gcd>(expr);
   EliminateCommonFactorHelper<Offset>(expr);
+  EliminateCommonFactorHelper<Simbolic>(expr);
   VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
