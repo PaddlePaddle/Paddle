@@ -1458,34 +1458,39 @@ class TestCalcReducedAttentionScores(unittest.TestCase):
             atol=0,
         )
 
-        paddle.enable_static()
+        if self.dtype == 'float16':
+            paddle.enable_static()
 
-        with paddle.static.program_guard(paddle.static.Program()):
-            qs = paddle.static.data(name="q", shape=q_shape, dtype=self.dtype)
-            ks = paddle.static.data(name="k", shape=k_shape, dtype=self.dtype)
-            softmax_lse_s = paddle.static.data(
-                name="softmax_lse", shape=softmax_lse.shape, dtype='float32'
-            )
+            with paddle.static.program_guard(paddle.static.Program()):
+                qs = paddle.static.data(
+                    name="q", shape=q_shape, dtype=self.dtype
+                )
+                ks = paddle.static.data(
+                    name="k", shape=k_shape, dtype=self.dtype
+                )
+                softmax_lse_s = paddle.static.data(
+                    name="softmax_lse", shape=softmax_lse.shape, dtype='float32'
+                )
 
-            reduced_scores = calc_reduced_attention_scores(
-                qs, ks, softmax_lse_s
-            )
-            exe = base.Executor(self.place)
-            fetches_result = exe.run(
-                feed={
-                    "q": query.numpy().astype(self.dtype),
-                    "k": key.numpy().astype(self.dtype),
-                    "softmax_lse": softmax_lse.numpy(),
-                },
-                fetch_list=[reduced_scores],
-            )
-            np.testing.assert_allclose(
-                fetches_result[0],
-                reduced_scores_ref.numpy(),
-                rtol=1e-05,
-                atol=0,
-            )
-        paddle.disable_static()
+                reduced_scores = calc_reduced_attention_scores(
+                    qs, ks, softmax_lse_s
+                )
+                exe = base.Executor(self.place)
+                fetches_result = exe.run(
+                    feed={
+                        "q": query.numpy().astype(self.dtype),
+                        "k": key.numpy().astype(self.dtype),
+                        "softmax_lse": softmax_lse.numpy(),
+                    },
+                    fetch_list=[reduced_scores],
+                )
+                np.testing.assert_allclose(
+                    fetches_result[0],
+                    reduced_scores_ref.numpy(),
+                    rtol=1e-05,
+                    atol=0,
+                )
+            paddle.disable_static()
 
 
 @unittest.skipIf(
@@ -1503,6 +1508,23 @@ class TestCalcReducedAttentionScoresGQA(TestCalcReducedAttentionScores):
         self.head_dim = 128
         self.num_group = 2
         self.dtype = 'float16'
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
+class TestCalcReducedAttentionScoresBF16(TestCalcReducedAttentionScores):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.batch_size = 1
+        self.num_head = 8
+        self.seqlen_q = 1024
+        self.seqlen_k = 10240
+        self.head_dim = 128
+        self.num_group = 1
+        self.dtype = 'bfloat16'
 
 
 if __name__ == '__main__':
