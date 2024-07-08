@@ -47,7 +47,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace operators {
-using distributed = phi::distributed;
+using phi::distributed;
 
 enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd, kRedAvg };
 
