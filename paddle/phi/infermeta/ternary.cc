@@ -536,10 +536,10 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
           "[batch_size, num_heads, seq_len_q]"));
 
   PADDLE_ENFORCE(
-      q.dims()[0] == k.dims()[0] && q.dims()[0] == softmax_lse.dims()[0] &&
-          q.dims()[2] == k.dims()[2] && q.dims()[3] == k.dims()[3] &&
+      q.dims()[0] == k.dims()[0] && q.dims()[3] == k.dims()[3] &&
           q.dims()[0] == softmax_lse.dims()[0] &&
-          q.dims()[2] == softmax_lse.dims()[1],
+          q.dims()[2] == softmax_lse.dims()[1] &&
+          q.dims()[1] == softmax_lse.dims()[2],
       phi::errors::InvalidArgument(
           "calc_reduced_attn_scores must receive input q, k and softmax_lse "
           "with consistent batch_size, num_heads and head_dim"));
