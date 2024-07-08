@@ -326,6 +326,16 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : histogram
+  version :
+    - checkpoint : Upgrade histogram, add a new Input [Weight] and a new attribute [density]
+      action :
+        - add_input : Weight
+          comment : The weight of each value in the input tensor.
+        - add_attr : density
+          comment : If true, the histogram is normalized to form a probability density.
+          default : "false"
+
 - op : instance_norm
   version :
     - checkpoint : Change dispensable of attribute from False to True in instance_norm.
