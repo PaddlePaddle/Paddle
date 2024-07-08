@@ -793,7 +793,7 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size,
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     gpuStream_t stream,
     gpuEvent_t event) {
   std::vector<paddle::ps::Region> regions;
@@ -856,7 +856,7 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size,
-    const paddle::platform::Place& place) {
+    const phi::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {

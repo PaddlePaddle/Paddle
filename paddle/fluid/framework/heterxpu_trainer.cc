@@ -169,7 +169,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 template <typename T>
 void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
                                   phi::DenseTensor* root_tensor,
-                                  const paddle::platform::Place& thread_place,
+                                  const phi::Place& thread_place,
                                   cudaStream_t stream) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
@@ -196,7 +196,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
 template <typename T>
 void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
                                   phi::DenseTensor* root_tensor,
-                                  const paddle::platform::Place& thread_place) {
+                                  const phi::Place& thread_place) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();

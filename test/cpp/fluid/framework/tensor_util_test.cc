@@ -130,7 +130,7 @@ TEST(TensorFromVector, Tensor) {
 
     // Copy to CPU phi::DenseTensor
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    auto cpu_place = new paddle::platform::CPUPlace();
+    auto cpu_place = new phi::CPUPlace();
     paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
 
     // Compare Tensors
@@ -163,13 +163,13 @@ TEST(TensorFromVector, Tensor) {
 
     // Copy to CPU phi::DenseTensor
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    auto cpu_place = new paddle::platform::CPUPlace();
+    auto cpu_place = new phi::CPUPlace();
     phi::CPUContext cpu_ctx(*cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
     gpu_tensor.Resize(common::make_ddim({3, 3}));
-    auto gpu_place = new paddle::platform::CUDAPlace();
+    auto gpu_place = new phi::GPUPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
@@ -220,12 +220,12 @@ TEST(TensorFromVector, Tensor) {
 TEST(TensorToVector, Tensor) {
   {
     phi::DenseTensor src;
-    int* src_ptr = src.mutable_data<int>({3, 3}, paddle::platform::CPUPlace());
+    int* src_ptr = src.mutable_data<int>({3, 3}, phi::CPUPlace());
     for (int i = 0; i < 3 * 3; ++i) {
       src_ptr[i] = i;
     }
 
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     std::vector<int> dst;
     paddle::framework::TensorToVector<int>(src, &dst);
 
@@ -237,7 +237,7 @@ TEST(TensorToVector, Tensor) {
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     phi::DenseTensor gpu_tensor;
-    paddle::platform::CUDAPlace place;
+    phi::GPUPlace place;
     phi::GPUContext gpu_ctx(place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place, gpu_ctx.stream())
@@ -257,12 +257,12 @@ TEST(TensorToVector, Tensor) {
 
 TEST(TensorToVector, Tensor_bool) {
   phi::DenseTensor src;
-  bool* src_ptr = src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
+  bool* src_ptr = src.mutable_data<bool>({3, 3}, phi::CPUPlace());
   for (int i = 0; i < 3 * 3; ++i) {
     src_ptr[i] = static_cast<bool>(i % 2);
   }
 
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
   std::vector<bool> dst;
   paddle::framework::TensorToVector<bool>(src, &dst);
 
@@ -284,7 +284,7 @@ TEST(TensorToVector, Tensor_bool) {
         false,
     };
     phi::DenseTensor gpu_tensor;
-    paddle::platform::CUDAPlace place;
+    phi::GPUPlace place;
     phi::GPUContext gpu_ctx(place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place, gpu_ctx.stream())
@@ -308,7 +308,7 @@ TEST(TensorFromDLPack, Tensor) {
     phi::DenseTensor cpu_tensor;
 
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    paddle::platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
     paddle::framework::DLPackTensor dlpack_tensor(cpu_tensor, 1);
@@ -334,13 +334,13 @@ TEST(TensorFromDLPack, Tensor) {
 
     // Copy to CPU phi::DenseTensor
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    paddle::platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
     gpu_tensor.Resize(common::make_ddim({3, 3}));
-    paddle::platform::CUDAPlace gpu_place;
+    phi::GPUPlace gpu_place;
     auto& gpu_ctx =
         *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
@@ -371,7 +371,7 @@ TEST(TensorFromDLPack, Tensor) {
 TEST(TensorContainsNAN, CPU) {
   {
     phi::DenseTensor src;
-    float* buf = src.mutable_data<float>({3}, paddle::platform::CPUPlace());
+    float* buf = src.mutable_data<float>({3}, phi::CPUPlace());
     buf[0] = 0.0;
     buf[1] = NAN;
     buf[2] = 0.0;
@@ -383,8 +383,7 @@ TEST(TensorContainsNAN, CPU) {
   {
     phi::DenseTensor src;
     paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>(
-            {3}, paddle::platform::CPUPlace());
+        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
     buf[0] = 0.0;
     buf[1].x = 0x7fff;
     buf[2] = 0.0;
@@ -397,7 +396,7 @@ TEST(TensorContainsNAN, CPU) {
 TEST(TensorContainsInf, CPU) {
   {
     phi::DenseTensor src;
-    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    double* buf = src.mutable_data<double>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1] = INFINITY;
     buf[2] = 0.0;
@@ -409,8 +408,7 @@ TEST(TensorContainsInf, CPU) {
   {
     phi::DenseTensor src;
     paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>(
-            {3}, paddle::platform::CPUPlace());
+        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
@@ -423,7 +421,7 @@ TEST(TensorContainsInf, CPU) {
 TEST(TensorIsfinite, CPU) {
   {
     phi::DenseTensor src, out;
-    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    double* buf = src.mutable_data<double>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1] = INFINITY;
     buf[2] = 0.0;
@@ -436,7 +434,7 @@ TEST(TensorIsfinite, CPU) {
 
   {
     phi::DenseTensor src, out;
-    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    double* buf = src.mutable_data<double>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1] = NAN;
     buf[2] = 0.0;
@@ -450,8 +448,7 @@ TEST(TensorIsfinite, CPU) {
   {
     phi::DenseTensor src, out;
     paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>(
-            {3}, paddle::platform::CPUPlace());
+        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;

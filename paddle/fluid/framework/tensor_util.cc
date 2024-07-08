@@ -997,7 +997,7 @@ TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   if (paddle::platform::is_cpu_place(t.place())) {
     tensor.ShareDataWith(t);
   } else {
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     paddle::framework::TensorCopy(t, place, &tensor);
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();

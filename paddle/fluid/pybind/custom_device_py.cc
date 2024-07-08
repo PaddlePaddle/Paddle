@@ -30,13 +30,13 @@ void BindCustomDevicePy(py::module *m_ptr) {
   auto &m = *m_ptr;
   // Bind Methods
   m.def("_get_device_min_chunk_size", [](const std::string &device_type) {
-    auto place = paddle::platform::CustomPlace(device_type);
+    auto place = phi::CustomPlace(device_type);
     return phi::DeviceManager::GetMinChunkSize(place);
   });
   m.def(
       "_get_device_total_memory",
       [](const std::string &device_type, int device_id) {
-        auto place = paddle::platform::CustomPlace(
+        auto place = phi::CustomPlace(
             device_type,
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
@@ -50,7 +50,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
       "_get_current_custom_device_stream",
       [](const std::string &device_type, int device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        auto place = paddle::platform::CustomPlace(
+        auto place = phi::CustomPlace(
             device_type,
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
@@ -73,7 +73,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
          int device_id,
          std::shared_ptr<phi::stream::Stream> stream) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        auto place = paddle::platform::CustomPlace(
+        auto place = phi::CustomPlace(
             device_type,
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
@@ -93,7 +93,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
   m.def("_synchronize_custom_device",
         [](const std::string &device_type, int device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-          auto place = paddle::platform::CustomPlace(
+          auto place = phi::CustomPlace(
               device_type,
               device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                               : device_id);

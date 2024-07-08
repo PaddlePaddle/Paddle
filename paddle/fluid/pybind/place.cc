@@ -186,12 +186,12 @@ PyTypeObject *g_ipuplace_pytype = nullptr;
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {  // NOLINT
-  return static_cast<int>(paddle::platform::Place(p).GetType());
+  return static_cast<int>(phi::Place(p).GetType());
 }
 
 template <typename PlaceType1, typename PlaceType2>
 static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
-  return paddle::platform::Place(p1) == paddle::platform::Place(p2);
+  return phi::Place(p1) == phi::Place(p2);
 }
 
 void BindPlace(pybind11::module &m) {  // NOLINT
@@ -484,7 +484,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   });
 #endif
 
-  py::class_<paddle::platform::CPUPlace> cpuplace(m, "CPUPlace", R"DOC(
+  py::class_<phi::CPUPlace> cpuplace(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
 
@@ -518,8 +518,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       return false;
 #endif
   });
-  py::class_<paddle::platform::CUDAPinnedPlace> cudapinnedplace(
-      m, "CUDAPinnedPlace", R"DOC(
+  py::class_<phi::GPUPinnedPlace> cudapinnedplace(m, "CUDAPinnedPlace", R"DOC(
     CUDAPinnedPlace is a descriptor of a device.
     It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
     The host operating system will not paging and exchanging the memory.

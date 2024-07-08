@@ -112,7 +112,7 @@ class Tracer {
                const NameTensorMap& ins,
                const NameTensorMap& outs,
                paddle::framework::AttributeMap& attrs,  // NOLINT
-               const paddle::platform::Place& place,
+               const phi::Place& place,
                paddle::framework::AttributeMap* default_attrs,
                bool use_default_attr_map,
                const std::map<std::string, std::string>& inplace_map = {});

@@ -259,7 +259,7 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
   explicit NumpyAllocation(const py::array &arr)
       : Allocation(const_cast<void *>(arr.data()),
                    sizeof(T) * (arr.size()),
-                   paddle::platform::CPUPlace()),
+                   phi::CPUPlace()),
         arr_(arr.ptr()) {
     PADDLE_ENFORCE_NOT_NULL(
         arr_,
@@ -688,8 +688,7 @@ void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
   self.get()->set_impl(tmp_t);

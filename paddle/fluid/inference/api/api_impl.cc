@@ -79,11 +79,11 @@ bool NativePaddlePredictor::Init(
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-    place_ = paddle::platform::CUDAPlace(config_.device);
+    place_ = phi::GPUPlace(config_.device);
   } else if (config_.use_xpu) {
-    place_ = paddle::platform::XPUPlace(config_.device);
+    place_ = phi::XPUPlace(config_.device);
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   }
   if (parent_scope) {
     scope_ = parent_scope;

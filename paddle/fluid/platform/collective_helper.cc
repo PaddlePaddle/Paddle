@@ -216,7 +216,7 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -224,11 +224,11 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .GetAllocator(phi::GPUPinnedPlace())
           .get());
   dev_ctx->PartialInitWithAllocator();
 
@@ -360,7 +360,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -368,7 +368,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);
@@ -576,7 +576,7 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -584,11 +584,11 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   // dev_ctx->PartialInitWithAllocator();
 

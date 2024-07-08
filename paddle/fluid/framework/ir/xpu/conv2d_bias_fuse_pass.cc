@@ -281,10 +281,8 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
       CastToFp32(ele_mul_y_t, nullptr);
       CastToFp32(ele_add_y_t, nullptr);
     }
-    float* ele_mul_y_ptr =
-        ele_mul_y_t->mutable_data<float>(paddle::platform::CPUPlace());
-    float* ele_add_y_ptr =
-        ele_add_y_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* ele_mul_y_ptr = ele_mul_y_t->mutable_data<float>(phi::CPUPlace());
+    float* ele_add_y_ptr = ele_add_y_t->mutable_data<float>(phi::CPUPlace());
     scale_val_ = ele_mul_y_ptr[0];
     bias_val_ = ele_add_y_ptr[0];
     // replace ele_mul+ele_add with scale

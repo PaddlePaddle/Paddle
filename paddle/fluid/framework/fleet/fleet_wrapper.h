@@ -183,7 +183,7 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm,
       int batch_size,
-      const paddle::platform::Place& place,
+      const phi::Place& place,
       gpuStream_t stream,
       gpuEvent_t event);
 #endif
@@ -195,7 +195,7 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm,
       int batch_size,
-      const paddle::platform::Place& place);
+      const phi::Place& place);
 #endif
   void PushDenseVarsAsync(
       const Scope& scope,

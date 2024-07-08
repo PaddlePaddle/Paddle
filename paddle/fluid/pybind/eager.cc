@@ -76,7 +76,7 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 // TODO(jiabin): Overload this once we need more constructor in Python
 void EmptyTensorInitializer(TensorObject* self,
                             const std::string& name,
-                            const paddle::platform::Place& place,
+                            const phi::Place& place,
                             bool persistable = false,
                             int stop_gradient = -1,
                             framework::proto::VarType::Type dtype =
@@ -141,7 +141,7 @@ void EmptyTensorInitializer(TensorObject* self,
 
 void EmptyStringTensorInitializer(TensorObject* self,
                                   const std::string& name,
-                                  const paddle::platform::Place& place,
+                                  const phi::Place& place,
                                   const std::vector<int>& dims = {}) {
   auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
@@ -160,7 +160,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
 
 void InitTensorWithNumpyValue(TensorObject* self,
                               const py::object& array,
-                              const paddle::platform::Place& place,
+                              const phi::Place& place,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
@@ -231,7 +231,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
           "eager tensor before init it with NumPy."));
   phi::StringTensor* impl_ptr =
       static_cast<phi::StringTensor*>(self->tensor.impl().get());
-  paddle::platform::Place place = impl_ptr->place();
+  phi::Place place = impl_ptr->place();
   auto array = obj.cast<py::array>();
   if (platform::is_cpu_place(place)) {
     SetStringTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place);
@@ -244,7 +244,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
 
 void InitDistTensorWithTensor(TensorObject* self,
                               const paddle::Tensor& src,
-                              const paddle::platform::Place& place,
+                              const phi::Place& place,
                               const std::string& name,
                               const ProcessMesh& process_mesh,
                               const Placements& placements) {
@@ -296,7 +296,7 @@ void InitDistTensorWithTensor(TensorObject* self,
 void InitDistTensorWithTensor(TensorObject* self,
                               const paddle::Tensor& local_tensor,
                               const std::vector<int>& global_dims,
-                              const paddle::platform::Place& place,
+                              const phi::Place& place,
                               const std::string& name,
                               const ProcessMesh& process_mesh,
                               const Placements& placements) {
@@ -339,7 +339,7 @@ void InitDistTensorWithTensor(TensorObject* self,
 
 void InitTensorWithTensor(TensorObject* self,
                           const paddle::Tensor& src,
-                          const paddle::platform::Place& place,
+                          const phi::Place& place,
                           const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
@@ -360,7 +360,7 @@ void InitTensorWithTensor(TensorObject* self,
 
 void InitTensorWithFrameworkTensor(TensorObject* self,
                                    const phi::DenseTensor& src,
-                                   const paddle::platform::Place& place,
+                                   const phi::Place& place,
                                    const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
@@ -376,7 +376,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
 
 void InitStringTensorWithStringTensor(TensorObject* self,
                                       const paddle::Tensor& src,
-                                      const paddle::platform::Place& place,
+                                      const phi::Place& place,
                                       const std::string& name) {
   self->tensor.set_name(name);
   auto impl = std::static_pointer_cast<phi::StringTensor>(src.impl());
@@ -413,14 +413,12 @@ py::object ParsePyArray(
   return numpy_value;
 }
 
-paddle::platform::Place ParsePlace(
-    std::unordered_map<std::string, PyObject*> kws_map,
-    std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-    PyObject* args,
-    bool flag_kwargs,
-    Py_ssize_t args_num) {
-  paddle::platform::Place place =
-      egr::Controller::Instance().GetExpectedPlace();
+phi::Place ParsePlace(std::unordered_map<std::string, PyObject*> kws_map,
+                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                      PyObject* args,
+                      bool flag_kwargs,
+                      Py_ssize_t args_num) {
+  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
 
   if (kw_order_map["place"] <= args_num) {
     place = CastPyArg2Place(PyTuple_GET_ITEM(args, kw_order_map["place"] - 1),
@@ -565,8 +563,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
       {"stop_gradient", 6}};
 
   py::object numpy_value = py::object();
-  paddle::platform::Place place =
-      egr::Controller::Instance().GetExpectedPlace();
+  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
   bool persistable = false;
   bool zero_copy = false;
   std::string act_name = "";
@@ -614,8 +611,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                                                            {"process_mesh", 5},
                                                            {"placements", 6}};
 
-  paddle::platform::Place place =
-      egr::Controller::Instance().GetExpectedPlace();
+  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
@@ -707,8 +703,7 @@ void AutoInitStringTensorByPyArray(
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"value", 1},
                                                            {"name", 2}};
   py::object numpy_value = py::object();
-  paddle::platform::Place place =
-      egr::Controller::Instance().GetExpectedPlace();
+  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
   numpy_value =
@@ -738,8 +733,7 @@ void AutoInitStringTensorByStringTensor(
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"value", 1},
                                                            {"name", 2}};
 
-  paddle::platform::Place place =
-      egr::Controller::Instance().GetExpectedPlace();
+  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
   act_name = ParseName(kws_map,
@@ -801,7 +795,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * parameter equals to case 1)
  * def __init__ (
  * ** value: ndarray,
- * ** place: paddle::platform::Place,
+ * ** place: phi::Place,
  * ** persistable: bool,
  * ** zero_copy: bool,
  * ** name: std::string,
@@ -817,7 +811,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * parameter equals to case 1.)
  * def __init__ (
  * ** global_tensor: Tensor,
- * ** place: paddle::platform::Place,
+ * ** place: phi::Place,
  * ** name: std::string,
  * ** process_mesh: phi::distributed::ProcessMesh,
  * ** placements: std::vector<Placement>)
@@ -834,7 +828,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * to case 5, zero parameter equals to case 1.)
  * def __init__ (
  * ** tensor: FrameworkTensor,
- * ** place: paddle::platform::Place,
+ * ** place: phi::Place,
  * ** name: std::string)
  *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {

@@ -353,7 +353,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   concat_att_map["axis"] = 1;
 
   auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();

@@ -29,7 +29,7 @@ using paddle::platform::DeviceEvent;
 
 TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
-  using paddle::platform::CUDAPlace;
+  using phi::GPUPlace;
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
@@ -78,7 +78,7 @@ TEST(DeviceEvent, CUDA) {
 
 TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
-  using paddle::platform::CUDAPlace;
+  using phi::GPUPlace;
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
@@ -125,7 +125,7 @@ TEST(DeviceEvent, CUDA) {
 #endif
 
 TEST(DeviceEvent, CPU) {
-  using paddle::platform::CPUPlace;
+  using phi::CPUPlace;
   auto place = CPUPlace();
   DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   auto& pool = DeviceContextPool::Instance();

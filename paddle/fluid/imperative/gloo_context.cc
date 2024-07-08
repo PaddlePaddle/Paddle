@@ -52,7 +52,7 @@ void GLOOParallelContext::Init() {
                             .get());
   device_->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   device_->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()

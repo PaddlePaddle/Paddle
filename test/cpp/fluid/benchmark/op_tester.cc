@@ -56,9 +56,9 @@ void OpTester::Init(const OpTesterConfig &config) {
   }
 
   if (config_.device_id >= 0) {
-    place_ = ::paddle::platform::CUDAPlace(config_.device_id);
+    place_ = ::phi::GPUPlace(config_.device_id);
   } else {
-    place_ = ::paddle::platform::CPUPlace();
+    place_ = ::phi::CPUPlace();
   }
 
   framework::InitDevices();

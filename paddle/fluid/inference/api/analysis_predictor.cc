@@ -152,7 +152,7 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
                                 .get());
   gpu_context->SetPinnedAllocator(
       memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .GetAllocator(phi::GPUPinnedPlace())
           .get());
   gpu_context->SetHostAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(platform::CPUPlace())
@@ -553,7 +553,7 @@ void AnalysisPredictor::InitPlace() {
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-    place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
+    place_ = phi::GPUPlace(config_.gpu_device_id());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (config_.thread_local_stream_enabled()) {
       LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
@@ -563,7 +563,7 @@ void AnalysisPredictor::InitPlace() {
   } else if (config_.use_xpu()) {
 #ifdef PADDLE_WITH_XPU
     phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
-    place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
+    place_ = phi::XPUPlace(config_.xpu_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use XPU forward propagation (inference without lite "
@@ -572,7 +572,7 @@ void AnalysisPredictor::InitPlace() {
 #endif  // PADDLE_WITH_XPU
   } else if (config_.use_ipu()) {
 #ifdef PADDLE_WITH_IPU
-    place_ = paddle::platform::IPUPlace();
+    place_ = phi::IPUPlace();
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use IPU forward propagation, but Paddle was not compiled "
@@ -580,8 +580,8 @@ void AnalysisPredictor::InitPlace() {
 #endif
   } else if (config_.use_custom_device()) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    place_ = paddle::platform::CustomPlace(config_.custom_device_type(),
-                                           config_.custom_device_id());
+    place_ = phi::CustomPlace(config_.custom_device_type(),
+                              config_.custom_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use CustomDevice forward propagation, but Paddle was not "
@@ -589,7 +589,7 @@ void AnalysisPredictor::InitPlace() {
         "with WITH_CUSTOM_DEVICE."));
 #endif
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   }
 }
 

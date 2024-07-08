@@ -130,7 +130,7 @@ TEST(Malloc, GPUContextMultiStream) {
                           .get());
     ctx->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -138,7 +138,7 @@ TEST(Malloc, GPUContextMultiStream) {
             .get());
     ctx->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(ctx);
@@ -207,7 +207,7 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
                           .get());
     ctx->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -215,11 +215,11 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
             .get());
     ctx->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .GetZeroAllocator(phi::CPUPlace())
             .get());
     ctx->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(ctx);
