@@ -308,6 +308,88 @@ bool EinsumOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool FFTC2COpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  // Set the output shape to be the same as the input shape
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  return true;
+}
+
+bool FFTC2ROpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  auto axes = paddle::dialect::details::GetVectorAttr<int64_t>(op, "axes");
+  int64_t last_dim_size =
+      op->attribute<pir::Int64Attribute>("last_dim_size").data();
+  int last_fft_axis = static_cast<int>(axes.back());
+
+  std::vector<symbol::DimExpr> out_dims = x_dims;
+
+  if (last_dim_size > 0) {
+    out_dims[last_fft_axis] = symbol::DimExpr(last_dim_size);
+  } else {
+    symbol::DimExprBuilder builder;
+    out_dims[last_fft_axis] =
+        builder.Mul(x_dims[last_fft_axis], 2) - symbol::DimExpr{1};
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
+bool FFTR2COpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  auto axes = paddle::dialect::details::GetVectorAttr<int64_t>(op, "axes");
+  bool onesided = op->attribute<pir::BoolAttribute>("onesided").data();
+
+  std::vector<symbol::DimExpr> out_dims = x_dims;
+
+  if (onesided) {
+    int last_fft_axis = static_cast<int>(axes.back());
+    symbol::DimExprBuilder builder;
+    out_dims[last_fft_axis] =
+        builder.Add(builder.Div(x_dims[last_fft_axis], 2), 1);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
+bool FillDiagonalOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get the shape of the input tensor
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  // Set the output shape to be the same as the input shape
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  return true;
+}
+
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
