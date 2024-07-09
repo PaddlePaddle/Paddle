@@ -39,11 +39,11 @@ namespace imperative {
 HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
                                            const int &device_id)
 #ifdef PADDLE_WITH_NCCL
-    : ParallelContext(strategy, platform::CUDAPlace(device_id))
+    : ParallelContext(strategy, phi::GPUPlace(device_id))
 #elif PADDLE_WITH_XPU_BKCL
-    : ParallelContext(strategy, platform::XPUPlace(device_id))
+    : ParallelContext(strategy, phi::XPUPlace(device_id))
 #else
-    : ParallelContext(strategy, platform::CPUPlace())
+    : ParallelContext(strategy, phi::CPUPlace())
 #endif
 {
   // construct node_strategy_ from global strategy by selecting the
@@ -92,8 +92,8 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     inter_strategy_.current_endpoint_ = strategy_.current_endpoint_;
     inter_strategy_.trainer_endpoints_ = inter_endpoints;
 #ifdef PADDLE_WITH_GLOO
-    inter_parallel_ctx_ = std::make_shared<GLOOParallelContext>(
-        inter_strategy_, platform::CPUPlace());
+    inter_parallel_ctx_ =
+        std::make_shared<GLOOParallelContext>(inter_strategy_, phi::CPUPlace());
 #endif
   }
 
@@ -101,12 +101,12 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
           << inter_rank;
 
 #ifdef PADDLE_WITH_NCCL
-  node_place_ = platform::CUDAPlace(device_id);
+  node_place_ = phi::GPUPlace(device_id);
   node_parallel_ctx_ =
       std::make_shared<NCCLParallelContext>(node_strategy_, node_place_);
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
-  node_place_ = platform::XPUPlace(device_id);
+  node_place_ = phi::XPUPlace(device_id);
   node_parallel_ctx_ =
       std::make_shared<BKCLParallelContext>(node_strategy_, node_place_);
 #endif
@@ -149,7 +149,7 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
     auto src_tensor = dst->Get<phi::DenseTensor>();
     framework::Variable src_cpu;
     auto src_cpu_tensor = src_cpu.GetMutable<phi::DenseTensor>();
-    framework::TensorCopySync(src_tensor, platform::CPUPlace(), src_cpu_tensor);
+    framework::TensorCopySync(src_tensor, phi::CPUPlace(), src_cpu_tensor);
 
     // allreduce src/cpu to dst/cpu
     framework::Variable dst_cpu;

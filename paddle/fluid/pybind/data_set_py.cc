@@ -102,7 +102,7 @@ class IterableDatasetWrapper {
                           "Device number does not match reader number"));
     for (size_t i = 0; i < places_.size(); ++i) {
       data_feeds_[i]->AssignFeedVar(*scopes_[i]);
-      data_feeds_[i]->SetPlace(platform::CPUPlace());
+      data_feeds_[i]->SetPlace(phi::CPUPlace());
       PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(),
                         true,
                         platform::errors::Unavailable(

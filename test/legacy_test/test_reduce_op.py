@@ -21,7 +21,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -1579,8 +1579,8 @@ class TestReduceWithDtype(OpTest):
         self.attrs = {'reduce_all': True}
         self.attrs.update(
             {
-                'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
-                'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
+                'in_dtype': paddle.float32,
+                'out_dtype': paddle.float64,
             }
         )
         self.if_enable_cinn()
@@ -1606,8 +1606,8 @@ class TestReduceWithDtype1(TestReduceWithDtype):
         self.attrs = {'dim': [1]}
         self.attrs.update(
             {
-                'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
-                'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
+                'in_dtype': paddle.float32,
+                'out_dtype': paddle.float64,
             }
         )
         # cinn op_mapper not support in_dtype/out_dtype attr
@@ -1631,8 +1631,8 @@ class TestReduceWithDtype2(TestReduceWithDtype):
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.attrs.update(
             {
-                'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
-                'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
+                'in_dtype': paddle.float32,
+                'out_dtype': paddle.float64,
             }
         )
         # cinn op_mapper not support in_dtype/out_dtype attr
