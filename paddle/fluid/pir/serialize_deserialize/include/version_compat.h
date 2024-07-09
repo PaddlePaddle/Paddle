@@ -16,6 +16,7 @@
 
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 
 namespace pir {

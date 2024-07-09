@@ -19,7 +19,7 @@
 namespace pir {
 
 void PatchBuilder::BuildPatch(const std::string& path) {
-  patch_json = YamlPaser(path);
+  patch_json = YamlParser(path);
   for (auto patch_info : patch_json["op_patches"]) {
     op_patches_[patch_info["op_name"]] = patch_info["patch"];
   }

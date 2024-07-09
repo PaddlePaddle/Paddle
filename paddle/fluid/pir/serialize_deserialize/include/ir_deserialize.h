@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
 #include "paddle/pir/include/core/operation.h"
