@@ -174,7 +174,7 @@ PD_REGISTER_STRUCT_KERNEL(partial_send,
                           ops::PartialSendCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || defined(PADDLE_WITH_HIP)
                           phi::dtype::bfloat16,
 #endif
                           int,

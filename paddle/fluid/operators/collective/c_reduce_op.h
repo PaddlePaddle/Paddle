@@ -302,7 +302,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
         nccl_red_type = ncclProd;
         break;
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || defined(PADDLE_WITH_HIP)
       case kRedAvg:
         nccl_red_type = ncclAvg;
         break;

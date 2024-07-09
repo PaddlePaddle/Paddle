@@ -113,7 +113,7 @@ void CEmbeddingKernel(const Context& ctx,
 }
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(c_embedding,
                    GPU,
                    ALL_LAYOUT,

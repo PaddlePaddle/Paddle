@@ -174,7 +174,7 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           double,
                           int,
                           int64_t,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || defined(PADDLE_WITH_HIP)
                           phi::dtype::bfloat16,
 #endif
                           phi::dtype::float16) {
