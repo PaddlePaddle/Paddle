@@ -1143,7 +1143,7 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
-    if env_dict.get("WITH_GPU") == 'ON':
+    if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
         if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
@@ -1954,7 +1954,15 @@ def main():
         )
 
     # generate stub file `tensor.pyi`
-    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+    if os.getenv("SKIP_STUB_GEN", '').lower() not in [
+        'y',
+        'yes',
+        't',
+        'true',
+        'on',
+        '1',
+    ]:
+        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,

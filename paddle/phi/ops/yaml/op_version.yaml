@@ -326,6 +326,16 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : histogram
+  version :
+    - checkpoint : Upgrade histogram, add a new Input [Weight] and a new attribute [density]
+      action :
+        - add_input : Weight
+          comment : The weight of each value in the input tensor.
+        - add_attr : density
+          comment : If true, the histogram is normalized to form a probability density.
+          default : "false"
+
 - op : instance_norm
   version :
     - checkpoint : Change dispensable of attribute from False to True in instance_norm.
@@ -493,6 +503,14 @@
       action :
         - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
+
+- op : round
+  version :
+    - checkpoint : Add a new attribute [deciamls] to round
+      action :
+        - add_attr : decimals
+          comment : The number of decimal places rounded
+          default : 0.0
 
 - op : softmax_with_cross_entropy
   version :

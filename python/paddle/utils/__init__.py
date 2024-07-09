@@ -22,6 +22,7 @@ from . import (  # noqa: F401
     unique_name,
 )
 from .deprecated import deprecated
+from .environments import strtobool as strtobool
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,
