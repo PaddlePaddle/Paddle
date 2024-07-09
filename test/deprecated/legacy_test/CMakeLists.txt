@@ -660,7 +660,6 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
@@ -713,7 +712,6 @@ set(TEST_CINN_OPS
     test_reduce_op
     test_slice_op
     test_slice_op_deprecated
-    test_gather_nd_op
     test_scale_op
     test_layer_norm_op_deprecated
     test_where_op

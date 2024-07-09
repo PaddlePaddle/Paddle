@@ -763,6 +763,7 @@ set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
