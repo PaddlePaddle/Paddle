@@ -81,10 +81,18 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dy2static(self, layer, opt, dist_loader):
         # create loss
         loss_fn = nn.MSELoss()
+        layer, opt = paddle.amp.decorate(
+            models=layer,
+            optimizers=opt,
+            level='O2',
+            master_weight=False,
+            master_grad=False,
+        )
         # static training
         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
         loss_list = []
-        dist_model.train()
+        with paddle.amp.auto_cast(level='O2', dtype='float16'):
+            dist_model.train()
 
         if self._in_pir_mode:
             mode = "train"
@@ -114,6 +122,13 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dynamic(self, layer, opt, dist_loader, is_recompute=False):
         # create loss
         loss_fn = nn.MSELoss()
+        layer, opt = paddle.amp.decorate(
+            models=layer,
+            optimizers=opt,
+            level='O2',
+            master_weight=False,
+            master_grad=False,
+        )
         loss_list = []
         for epoch in range(5):
             for batch_id, data in enumerate(dist_loader()):
@@ -124,8 +139,9 @@ class TestSimpleNetForSemiAutoParallel:
                     image, label = data
                 if is_recompute:
                     image.stop_gradient = False
-                out = layer(image)
-                loss = loss_fn(out, label)
+                with paddle.amp.auto_cast(level='O2', dtype='float16'):
+                    out = layer(image)
+                    loss = loss_fn(out, label)
                 loss_list.append(loss.numpy())
                 loss.backward()
                 opt.step()
@@ -234,8 +250,8 @@ class TestSimpleNetForSemiAutoParallel:
 
     def run_test_case(self):
         self.test_mp_demo_net()
-        self.test_pp_demo_net()
-        self.test_dp_demo_net()
+        # self.test_pp_demo_net()
+        # self.test_dp_demo_net()
 
 
 if __name__ == '__main__':

@@ -88,6 +88,7 @@ class DemoNet(nn.Layer):
         out = self.relu_1(out)
         out = self.linear_1(out)
         out = self.relu_2(out)  # triggle forward partial allreduce
+        out = paddle.cast(out, 'float32')
         return out
 
 

@@ -658,14 +658,47 @@ class Engine:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
                 with static.program_guard(dist_program, startup_program):
-                    params_grads = paddle.autograd.ir_backward.append_backward(
-                        loss
+                    level = 'O2'
+                    dtype = 'float16'
+                    master_grad = False
+                    init_loss_scaling = 1024
+                    self._optimizer = (
+                        paddle.static.amp.decorator.OptimizerWithMixedPrecision(
+                            optimizer=self._optimizer,
+                            amp_lists=None,
+                            level=level,
+                            dtype=dtype,
+                            init_loss_scaling=1.0,
+                            incr_every_n_steps=None,
+                            decr_every_n_nan_or_inf=None,
+                            incr_ratio=None,
+                            decr_ratio=None,
+                            use_dynamic_loss_scaling=False,
+                            use_amp_guard=None,
+                            use_master_grad=master_grad,
+                            use_promote=None,
+                        )
                     )
-                    self._optimizer._apply_optimize(
-                        loss, startup_program, params_grads=params_grads
+                    scaler = paddle.amp.GradScaler(
+                        init_loss_scaling=init_loss_scaling
                     )
                     # re-run apply_mix2dist_pass to dist accumulator.
                     apply_mix2dist_pass(dist_program)
+
+                    scaled = scaler.scale(loss)
+                    scaler.minimize(self._optimizer, scaled)
+
+                    print(startup_program)
+                    print(dist_program)
+
+                    # params_grads = paddle.autograd.ir_backward.append_backward(
+                    #     loss
+                    # )
+                    # self._optimizer._apply_optimize(
+                    #     loss, startup_program, params_grads=params_grads
+                    # )
+
+                    # self._optimizer.minimize(loss, startup_program=startup_program)
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
@@ -1081,7 +1114,9 @@ class Engine:
             # 4. lazy init adaption
             # 5. amp init adaption
             # 6. vpp init adaption
-
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
             # self._init_lr(self._pir_dense_main_progs[mode])
             self.program_helper.init_pir(
                 self._pir_dist_main_progs[mode], self._place
