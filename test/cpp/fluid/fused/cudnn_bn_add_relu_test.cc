@@ -380,7 +380,7 @@ class CudnnBNAddReluTester {
               << "] act_type=" << act_type_ << ", fuse_add=" << fuse_add_
               << ", has_shortcut=" << has_shortcut_;
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+        phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     auto select = [&](phi::DenseTensor *in) {
       return has_shortcut_ ? in : nullptr;
@@ -465,7 +465,7 @@ class CudnnBNAddReluTester {
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+        phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     phi::DenseTensor cpu_dx_base;
     phi::DenseTensor cpu_dz_base;

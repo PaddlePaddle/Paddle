@@ -55,8 +55,7 @@ TEST(Benchmark, FluidScaleCUDA) {
     x_tensor->Resize(common::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
     paddle::memory::Copy(place,
@@ -109,8 +108,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
     std::vector<float> y_src_data(4, 2.0);
     std::vector<int64_t> dims = {2, 2};
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -168,8 +166,7 @@ TEST(Benchmark, FluidMLPCUDA) {
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 

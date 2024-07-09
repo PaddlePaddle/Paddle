@@ -93,7 +93,7 @@ bool TestMain(const platform::Place &place,
                                             {{"Out", {out_name}}},
                                             {});
   op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  phi::DeviceContextPool::Instance().Get(place)->Wait();
 
   phi::DenseTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<phi::DenseTensor>();

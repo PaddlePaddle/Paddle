@@ -111,7 +111,7 @@ void OpTester::Run() {
 
 void OpTester::RunImpl() {
   op_->Run(*scope_, place_);
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  phi::DeviceContextPool::Instance().Get(place_)->Wait();
   scope_->DropKids();
 }
 

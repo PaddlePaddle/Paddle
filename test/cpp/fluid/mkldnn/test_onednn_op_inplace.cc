@@ -79,7 +79,7 @@ bool TestMain(const platform::Place &place,
     y_ptr[i] = static_cast<T>(0);
   }
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Out of place (reference) computation
   auto op_ref =
@@ -111,7 +111,7 @@ bool TestMain(const platform::Place &place,
                                                   {{"use_mkldnn", {true}}});
 
   op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  phi::DeviceContextPool::Instance().Get(place)->Wait();
 
   // Get in-place result
   auto &out_tensor = scope.FindVar("x")->Get<phi::DenseTensor>();

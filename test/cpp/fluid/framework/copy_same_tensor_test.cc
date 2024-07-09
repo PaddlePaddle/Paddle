@@ -70,8 +70,8 @@ static bool CopySameTensorTestMain(const DDim &dims,
       TensorCopySync(src_tensor, dst_place, &src_tensor);
     } else {
       paddle::framework::TensorCopy(src_tensor, dst_place, &src_tensor);
-      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(src_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
     }
 
     // Get the result cpu tensor

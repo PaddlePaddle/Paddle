@@ -108,7 +108,7 @@ class TestElementwiseOpGradGrad {
     Setup();
     auto op = CreateTestOp();
     op->Run(scope_, place_);
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
     phi::DenseTensor cpu_out;
     PADDLE_ENFORCE_EQ(scope_.kids().empty(),
                       true,

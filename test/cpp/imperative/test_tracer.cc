@@ -589,7 +589,7 @@ TEST(test_tracer, test_execution_context) {
   auto ctx = framework::RuntimeContext({}, {});
   NameVarBaseMap ins = {{"X", {nullptr}}, {"Y", {nullptr}}};
   NameVarBaseMap outs = {{"Out", {nullptr}}};
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(platform::CPUPlace());
   auto dy_ctx = DygraphExecutionContext<VarBase>((*op.get()),
                                                  scope,

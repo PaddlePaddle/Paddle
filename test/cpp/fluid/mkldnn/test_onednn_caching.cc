@@ -38,7 +38,7 @@ class CacheTester {
  public:
   CacheTester() {
     // Clear oneDNN cache
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = phi::DeviceContextPool::Instance();
     phi::CPUPlace place;
     onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
     onednn_dev_ctx_->ResetBlobMap(nullptr);
@@ -107,7 +107,7 @@ void RunOperator(const platform::Place &place,
     y_ptr[i] = static_cast<T>(0);
   }
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   auto op = num_inputs[op_type] > 1
                 ? framework::OpRegistry::CreateOp(

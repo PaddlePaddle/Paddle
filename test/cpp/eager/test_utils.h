@@ -61,8 +61,7 @@ bool CompareGradTensorWithValue(const paddle::Tensor& target, T value) {
   std::vector<T> host_data(grad_dense->numel());
   if (paddle::platform::is_gpu_place(grad_dense->place())) {
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx =
         dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
@@ -99,8 +98,7 @@ bool CompareTensorWithValue(const paddle::Tensor& target, T value) {
   std::vector<T> host_data(dense_t->numel());
   if (paddle::platform::is_gpu_place(dense_t->place())) {
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx =
         dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();

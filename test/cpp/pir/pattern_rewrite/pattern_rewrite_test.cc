@@ -445,8 +445,7 @@ void BuildConstantFoldingProgram(pir::Program *program,
   phi::DenseTensorMeta meta(
       phi::DataType::FLOAT32, dims, data_layout, lod, offset);
   paddle::platform::DeviceContext *dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(
-          paddle::platform::CPUPlace());
+      phi::DeviceContextPool::Instance().Get(paddle::platform::CPUPlace());
 
   auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
   auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);

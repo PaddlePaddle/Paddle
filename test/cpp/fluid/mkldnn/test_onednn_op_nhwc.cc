@@ -55,7 +55,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   scope.Var("y")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d followed by transpose
 
@@ -117,7 +117,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   scope.Var("u")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d(oneDNN) followed by relu(CPU paddle) followed by
   // relu(oneDNN). Second relu should make a shape rotation to NCHW
@@ -179,7 +179,7 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   scope.Var("y")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d followed by shape. shape for NHWC should return
   // as output tensor not-rotated shape of Pool (
@@ -247,7 +247,7 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   scope.Var("y")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d followed by crop. crop may have Y input as
   // non buffered so the path to be executed is handling oneDNN kernel

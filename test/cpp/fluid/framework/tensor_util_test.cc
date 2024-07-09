@@ -341,8 +341,7 @@ TEST(TensorFromDLPack, Tensor) {
     // Copy to GPUTensor
     gpu_tensor.Resize(common::make_ddim({3, 3}));
     paddle::platform::CUDAPlace gpu_place;
-    auto& gpu_ctx =
-        *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);
+    auto& gpu_ctx = *phi::DeviceContextPool::Instance().GetByPlace(gpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     gpu_ctx.Wait();
 
@@ -512,7 +511,7 @@ TEST(Tensor, FromAndToStream) {
     TensorFromStream(
         iss,
         &dst_tensor,
-        *platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+        *phi::DeviceContextPool::Instance().Get(platform::CPUPlace()));
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 6; ++i) {

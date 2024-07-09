@@ -238,7 +238,7 @@ class CudnnNormConvolutionTester {
 
   void CheckForward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+        phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     phi::DenseTensor cpu_output_base;
     phi::DenseTensor cpu_sum_base;
@@ -260,7 +260,7 @@ class CudnnNormConvolutionTester {
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+        phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     phi::DenseTensor cpu_input_grad_base;
     phi::DenseTensor cpu_filter_nchw_grad_base;
@@ -435,7 +435,7 @@ TEST(CudnnNormConvFp16, K1S1) {
                                                              kernel_size,
                                                              stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+      phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
@@ -465,7 +465,7 @@ TEST(CudnnNormConvFp16, K3S1) {
                                                              kernel_size,
                                                              stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+      phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
@@ -495,7 +495,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
                                                              kernel_size,
                                                              stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+      phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
@@ -525,7 +525,7 @@ TEST(CudnnNormConvFp16, K1S2O4) {
                                                              kernel_size,
                                                              stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+      phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() <= 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),

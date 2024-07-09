@@ -156,8 +156,7 @@ TEST(Operator, CPUtoGPU) {
   VLOG(3) << "after gpu_op run";
 
   // auto* output2_ptr = output2->Get<phi::DenseTensor>().data<float>();
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(cuda_place);
 
   phi::DenseTensor output_tensor;

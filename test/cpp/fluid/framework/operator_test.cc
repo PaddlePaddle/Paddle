@@ -462,8 +462,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   auto* var = scope.Var("OUT1");
   var->GetMutable<paddle::framework::LoDTensorArray>();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
 
   paddle::framework::RuntimeContext ctx({}, {});

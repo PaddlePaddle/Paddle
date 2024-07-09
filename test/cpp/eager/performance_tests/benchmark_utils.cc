@@ -166,8 +166,7 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place == paddle::platform::CUDAPlace()) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -198,8 +197,7 @@ static void FluidCheckGradTensorValue(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place == paddle::platform::CUDAPlace()) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 

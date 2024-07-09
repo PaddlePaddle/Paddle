@@ -69,7 +69,7 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
                                       float alpha) {
   LeakyReluGradGradFunctor<T> functor;
   functor.alpha = alpha;
-  auto &dev_ctx = *platform::DeviceContextPool::Instance().Get(place);
+  auto &dev_ctx = *phi::DeviceContextPool::Instance().Get(place);
   phi::DenseTensor *out = nullptr;
   phi::DenseTensor *dout = nullptr;
   phi::DenseTensor *dx = nullptr;
