@@ -237,11 +237,9 @@ def img_conv_group(
     conv_with_batchnorm = __extend_list__(conv_with_batchnorm)
     conv_batchnorm_drop_rate = __extend_list__(conv_batchnorm_drop_rate)
 
-    num_channels = tmp.shape[1]
-
     for i in range(len(conv_num_filter)):
         conv_layer = paddle.nn.Conv2D(
-            in_channels=num_channels,
+            in_channels=tmp.shape[1],
             out_channels=conv_num_filter[i],
             kernel_size=conv_filter_size[i],
             padding=conv_padding[i],
