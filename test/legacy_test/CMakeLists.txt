@@ -493,6 +493,7 @@ set(TEST_OPS_WITH_GC
     test_elementwise_add_op
     test_elementwise_sub_op
     test_gather_op
+    test_gather_nd_op
     test_mean_op
     test_lod_reset_op)
 

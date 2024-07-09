@@ -443,8 +443,7 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op)
-set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op_deprecated)
+set(TEST_OPS_WITH_GC test_slice_op test_slice_op_deprecated)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
