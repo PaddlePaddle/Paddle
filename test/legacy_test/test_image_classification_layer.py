@@ -15,7 +15,6 @@
 import sys
 import unittest
 
-sys.path.append("../../legacy_test")
 import nets
 
 import paddle
