@@ -25,25 +25,25 @@ namespace paddle::inference::tensorrt {
 class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .GetZeroAllocator(phi::CPUPlace())
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 

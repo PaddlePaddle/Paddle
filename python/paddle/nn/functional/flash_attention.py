@@ -1016,15 +1016,15 @@ def scaled_dot_product_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
         dropout_p(float, optional): The dropout ratio.

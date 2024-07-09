@@ -197,6 +197,8 @@ def sync_params_buffers(
             )
     else:
         for var in model_vars:
+            # NOTE(shenliang03): Now, we dont support contiguous tensor in dp
+            var = var.contiguous()
             paddle.distributed.broadcast(
                 var, src=src_rank, group=comm_group, sync_op=True
             )
@@ -397,6 +399,13 @@ class DataParallel(layers.Layer):
                     self.group, paddle.distributed.collective.Group
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
+                [
+                    warnings.warn(
+                        f"param [{name}] is not contiguous, please check it and make it contiguous."
+                    )
+                    for name, param in self._layers.named_parameters()
+                    if not param.is_contiguous()
+                ]
             # sync buffer and params
             sync_params_buffers(self._layers, fuse_params=False)
 

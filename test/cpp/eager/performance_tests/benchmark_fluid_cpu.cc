@@ -40,7 +40,7 @@ namespace imperative {
 
 TEST(Benchmark, FluidScaleCPU) {
   // Prepare Device Contexts
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
@@ -86,7 +86,7 @@ TEST(Benchmark, FluidScaleCPU) {
 
 TEST(Benchmark, FluidMatmulCPU) {
   // Prepare Device Contexts
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
@@ -145,7 +145,7 @@ TEST(Benchmark, FluidMatmulCPU) {
 
 TEST(Benchmark, FluidMLPCPU) {
   // Prepare Device Contexts
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {

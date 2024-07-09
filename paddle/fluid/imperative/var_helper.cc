@@ -64,7 +64,7 @@ void InitializeVariable(paddle::framework::Variable *var,
   } else if (var_type == paddle::framework::proto::VarType::VOCAB) {
     var->GetMutable<paddle::framework::Vocab>();
   } else if (var_type == paddle::framework::proto::VarType::PLACE_LIST) {
-    var->GetMutable<paddle::platform::PlaceList>();
+    var->GetMutable<phi::PlaceList>();
   } else if (var_type == paddle::framework::proto::VarType::READER) {
     var->GetMutable<paddle::framework::ReaderHolder>();
   } else if (var_type == paddle::framework::proto::VarType::RAW) {
@@ -80,7 +80,7 @@ void InitializeVariable(paddle::framework::Variable *var,
 
 /* GetPlace */
 template <typename VarType>
-const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {
+const phi::Place &GetPlace(const std::shared_ptr<VarType> &var) {
   paddle::framework::Variable variable = var->Var();
   if (variable.IsType<phi::DenseTensor>()) {
     return variable.Get<phi::DenseTensor>().place();
@@ -92,11 +92,11 @@ const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {
         paddle::framework::ToTypeName(var->Var().Type())));
   }
 }
-template const paddle::platform::Place &GetPlace<VarBase>(
+template const phi::Place &GetPlace<VarBase>(
     const std::shared_ptr<VarBase> &var);
-template const paddle::platform::Place &GetPlace<VariableWrapper>(
+template const phi::Place &GetPlace<VariableWrapper>(
     const std::shared_ptr<VariableWrapper> &var);
-template const paddle::platform::Place &GetPlace<egr::EagerVariable>(
+template const phi::Place &GetPlace<egr::EagerVariable>(
     const std::shared_ptr<egr::EagerVariable> &var);
 
 /* GetNameFromVar */
