@@ -1857,16 +1857,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-      if (!this->DnnFallback() &&
-          !paddle::platform::in_mkldnn_white_list(type_) &&
-          this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
-        kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
-        kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
-      } else if (platform::is_cpu_place(kernel_type_->place_) &&
-                 kernel_type_->data_type_ ==
-                     proto::VarType::Type::VarType_Type_BF16 &&
-                 !this->SupportsCPUBF16() &&
-                 this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
+      if ((!this->DnnFallback() &&
+           !paddle::platform::in_mkldnn_white_list(type_) &&
+           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) ||
+          (platform::is_cpu_place(kernel_type_->place_) &&
+           kernel_type_->data_type_ ==
+               proto::VarType::Type::VarType_Type_BF16 &&
+           !this->SupportsCPUBF16() &&
+           this->SupportsMKLDNN(phi::DataType::BFLOAT16))) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2191,15 +2189,13 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
-      this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
-  } else if (platform::is_cpu_place(expected_kernel_key.place_) &&
-             expected_kernel_key.data_type_ ==
-                 proto::VarType::Type::VarType_Type_BF16 &&
-             !this->SupportsCPUBF16() &&
-             this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
+  if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) ||
+      (platform::is_cpu_place(expected_kernel_key.place_) &&
+       expected_kernel_key.data_type_ ==
+           proto::VarType::Type::VarType_Type_BF16 &&
+       !this->SupportsCPUBF16() &&
+       this->SupportsMKLDNN(phi::DataType::BFLOAT16))) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }

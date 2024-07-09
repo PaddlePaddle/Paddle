@@ -882,7 +882,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
                            int shard_num,
                            int part_num,
                            int split_num) {
-      if (compress && (save_param == 0 || save_param == 3)) {
+      if (compress && (save_param == 0 || save_param == 3)) {  // NOLINT
         // return
         // ::paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d.gz",
         //     table_path, node_num, shard_num, part_num, split_num);
@@ -1191,7 +1191,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
                            int part_num,
                            int split_num,
                            const char* prefix = "") {
-      if (compress && (save_param == 0 || save_param == 3)) {
+      if (compress && (save_param == 0 || save_param == 3)) {  // NOLINT
         return ::paddle::string::format_string("%s/%s/part-%05d-%03d.gz",
                                                table_path,
                                                prefix,
@@ -1624,7 +1624,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                            int shard_num,
                            int part_num,
                            int split_num) {
-      if (compress && (save_param == 0 || save_param == 3)) {
+      if (compress && (save_param == 0 || save_param == 3)) {  // NOLINT
         return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d.gz",
                                              table_path,
                                              node_num,
@@ -1945,7 +1945,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
                            int part_num,
                            int split_num,
                            const char* prefix = "") {
-      if (compress && (save_param == 0 || save_param == 3)) {
+      if (compress && (save_param == 0 || save_param == 3)) {  // NOLINT
         return paddle::string::format_string(
             "%s/%s/part-%03d-%05d-%03d-%03d.gz",
             table_path,

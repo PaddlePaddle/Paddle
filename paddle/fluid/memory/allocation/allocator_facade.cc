@@ -441,10 +441,11 @@ class AllocatorFacadePrivate {
 
   const std::shared_ptr<Allocator> GetDefaultStreamSafeCUDAAllocator(
       const platform::CUDAPlace& place) const {
-    if (auto iter = default_stream_safe_cuda_allocators_.find(place);
+    if (auto iter = default_stream_safe_cuda_allocators_.find(place);  // NOLINT
         iter != default_stream_safe_cuda_allocators_.end())
       return iter->second;
-    if (auto iter = default_cuda_malloc_async_allocators_.find(place);
+    if (auto iter =
+            default_cuda_malloc_async_allocators_.find(place);  // NOLINT
         iter != default_cuda_malloc_async_allocators_.end())
       return iter->second;
     PADDLE_THROW(platform::errors::NotFound(

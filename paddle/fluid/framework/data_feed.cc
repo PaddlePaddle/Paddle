@@ -2132,7 +2132,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   size_t pos = pipe_command_.find(".so");
   if (pos != std::string::npos) {  // NOLINT
     pos = pipe_command_.rfind('|');
-    if (pos == std::string::npos) {
+    if (pos == std::string::npos) {  // NOLINT
       so_parser_name_ = pipe_command_;
       pipe_command_.clear();
     } else {

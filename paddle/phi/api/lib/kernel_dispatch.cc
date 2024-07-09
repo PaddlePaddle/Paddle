@@ -66,16 +66,17 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
     VLOG(10) << "update BackendSet by tensor: add [" << backend_key << "]";
-    if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
-        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
-      backend_set = backend_set | BackendSet(Backend::GPUDNN);
-    } else if (backend_key == Backend::GPU &&
-               phi::distributed::DistTensor::classof(&t) &&
-               static_cast<const phi::distributed::DistTensor&>(t)
-                   .value()
-                   .meta()
-                   .use_gpudnn) {
-      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    if (backend_key == Backend::GPU) {
+      if (phi::DenseTensor::classof(&t) &&
+          static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
+        backend_set = backend_set | BackendSet(Backend::GPUDNN);
+      } else if (phi::distributed::DistTensor::classof(&t) &&
+                 static_cast<const phi::distributed::DistTensor&>(t)
+                     .value()
+                     .meta()
+                     .use_gpudnn) {
+        backend_set = backend_set | BackendSet(Backend::GPUDNN);
+      }
     }
     return backend_set;
   }

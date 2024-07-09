@@ -220,7 +220,7 @@ class ReshapeTransposeFusedMatmulFusePattern
     });
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      if (as_x_) {
+      if (as_x_) {  // NOLINT
         if (!(match_ctx.Attr<std::vector<int>>("fused_reshape_x").empty()))
           return false;
       } else {

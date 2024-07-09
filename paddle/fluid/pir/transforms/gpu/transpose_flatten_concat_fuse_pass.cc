@@ -112,7 +112,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           int start_axis = match_ctx.Attr<int>("start_axis_0");
           int stop_axis = match_ctx.Attr<int>("stop_axis_0");
-          if (start_axis == stop_axis) {
+          if (start_axis == stop_axis) {  // NOLINT
             return start_axis;
           } else if (start_axis == 0) {
             return stop_axis + 1;

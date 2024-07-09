@@ -80,22 +80,17 @@ class PReluOpConverter : public OpConverter {
           hw_tensor = Add1DConstantLayer(
               std::vector<int32_t>(input_dims.nbDims - 2, 1));
         }
-        if (data_format == "NCHW") {
-          if (hw_tensor != nullptr) {
+        if (hw_tensor != nullptr) {
+          if (data_format == "NCHW") {
             shape_tensor = Concat(
                 std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
           } else {
-            shape_tensor =
-                Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
-          }
-        } else {
-          if (hw_tensor != nullptr) {
             shape_tensor = Concat(
                 std::vector<nvinfer1::ITensor*>{n_tensor, hw_tensor, c_tensor});
-          } else {
-            shape_tensor =
-                Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
           }
+        } else {
+          shape_tensor =
+              Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
         }
         reshape_layer->setInput(1, *shape_tensor);
       } else {

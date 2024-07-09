@@ -507,7 +507,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       auto ir_val = res_match_ctx.GetIrValue(input->name());
       if (ir_val) {
         pir::Operation* ir_input_op = ir_val.defining_op();
-        if (op_2_temp_program_index.count(ir_input_op) == 0) {
+        if (op_2_temp_program_index.count(ir_input_op) == 0) {  // NOLINT
           // do nothing
         } else if (max_res_idx < op_2_temp_program_index.at(ir_input_op)) {
           max_res_idx = op_2_temp_program_index.at(ir_input_op);
