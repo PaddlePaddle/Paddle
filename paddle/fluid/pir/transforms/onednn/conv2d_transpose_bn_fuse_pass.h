@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/tensor.h"
+#pragma once
 
-#include <gtest/gtest.h>
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-namespace cinn {
-namespace hlir {
-namespace framework {
+namespace pir {
 
-TEST(Tensor, basic) {
-  _Tensor_ tensor;
-  tensor.Resize(Shape{{3, 2}});
+class Pass;
 
-  auto* data = tensor.mutable_data<float>(cinn::common::DefaultHostTarget());
+IR_API std::unique_ptr<Pass> CreateConv2dTransposeBnOneDNNFusePass();
+IR_API std::unique_ptr<Pass> CreateConv2dTransposeEltwiseaddBnOneDNNFusePass();
 
-  for (int i = 0; i < tensor.shape().numel(); i++) {
-    data[i] = i;
-  }
-}
-
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace pir

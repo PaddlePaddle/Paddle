@@ -85,14 +85,14 @@ class AllocatorFacade {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
-  uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
+  uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
   void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
-  void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
+  void SetDefaultStream(const phi::GPUPlace& place, gpuStream_t stream);
 #elif defined(PADDLE_WITH_XPU)
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, XPUStream stream);
@@ -104,15 +104,14 @@ class AllocatorFacade {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  uint64_t Release(const platform::CustomPlace& place,
-                   phi::stream::stream_t stream);
+  uint64_t Release(const phi::CustomPlace& place, phi::stream::stream_t stream);
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     phi::stream::stream_t stream);
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, phi::stream::stream_t stream);
   phi::stream::stream_t GetStream(
       const std::shared_ptr<Allocation>& allocation) const;
-  void SetDefaultStream(const platform::CustomPlace& place,
+  void SetDefaultStream(const phi::CustomPlace& place,
                         phi::stream::stream_t stream);
 #endif
   // TODO(yy): Allocate a Copy-On-Write allocation?
