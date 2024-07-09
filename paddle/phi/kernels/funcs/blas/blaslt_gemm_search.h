@@ -546,7 +546,7 @@ class CublasLtAlgoCache {
       VLOG(3) << "No CublasLtAlgoCache file found";
       return;
     }
-    size_t cublaslt_version, real_cublaslt_version;
+    size_t cublaslt_version = 0, real_cublaslt_version = 0;
     int64_t seed = 0;
     std::array<uint64_t, 8> algo_data;
     infile >> cublaslt_version;
