@@ -37,21 +37,19 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
   std::shared_ptr<phi::SelectedRows> sr0 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr0->mutable_value()->Resize(common::make_ddim({1, 1}));
-  sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
+  sr0->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] =
-      static_cast<float>(20.0f);
+  dt1->mutable_data<float>(phi::CPUPlace())[0] = static_cast<float>(20.0f);
   paddle::Tensor et1 = paddle::Tensor(dt1);
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
-              paddle::platform::CPUPlace())
+              phi::CPUPlace())
               .get(),
           meta);
   paddle::Tensor input_et = paddle::Tensor(input_dt);
@@ -60,8 +58,8 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
   std::shared_ptr<phi::SelectedRows> grad_dt =
       std::make_shared<phi::SelectedRows>(rows, 1);
   grad_dt->mutable_value()->Resize(common::make_ddim({1, 1}));
-  grad_dt->mutable_value()->mutable_data<float>(
-      paddle::platform::CPUPlace())[0] = static_cast<float>(0.0f);
+  grad_dt->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
+      static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
   // AccumulationNode
   auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
@@ -102,19 +100,19 @@ TEST(AccumulationNode, SelectedRowsMerge) {
   std::shared_ptr<phi::SelectedRows> sr0 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr0->mutable_value()->Resize(common::make_ddim({1, 1}));
-  sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
+  sr0->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::SelectedRows> sr1 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr1->mutable_value()->Resize(common::make_ddim({1, 1}));
-  sr1->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
+  sr1->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(20.0f);
   paddle::Tensor et1 = paddle::Tensor(sr1);
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
-              paddle::platform::CPUPlace())
+              phi::CPUPlace())
               .get(),
           meta);
   paddle::Tensor input_et = paddle::Tensor(input_dt);
@@ -123,8 +121,8 @@ TEST(AccumulationNode, SelectedRowsMerge) {
   std::shared_ptr<phi::SelectedRows> grad_dt =
       std::make_shared<phi::SelectedRows>(rows, 1);
   grad_dt->mutable_value()->Resize(common::make_ddim({1, 1}));
-  grad_dt->mutable_value()->mutable_data<float>(
-      paddle::platform::CPUPlace())[0] = static_cast<float>(0.0f);
+  grad_dt->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
+      static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
   // AccumulationNode
   auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
@@ -167,19 +165,19 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
   std::shared_ptr<phi::SelectedRows> sr0 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr0->mutable_value()->Resize(common::make_ddim({1, 1}));
-  sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
+  sr0->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::SelectedRows> sr1 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr1->mutable_value()->Resize(common::make_ddim({1, 1}));
-  sr1->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
+  sr1->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(20.0f);
   paddle::Tensor et1 = paddle::Tensor(sr1);
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
-              paddle::platform::CPUPlace())
+              phi::CPUPlace())
               .get(),
           meta);
   paddle::Tensor input_et = paddle::Tensor(input_dt);
@@ -188,11 +186,10 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
   std::shared_ptr<phi::DenseTensor> grad_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
-              paddle::platform::CPUPlace())
+              phi::CPUPlace())
               .get(),
           meta);
-  grad_dt->mutable_data<float>(paddle::platform::CPUPlace())[0] =
-      static_cast<float>(0.0f);
+  grad_dt->mutable_data<float>(phi::CPUPlace())[0] = static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
   // AccumulationNode
   auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
@@ -231,28 +228,26 @@ TEST(AccumulationNode, Tensor) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<paddle::platform::float16>(
-      paddle::platform::CPUPlace())[0] = paddle::platform::float16(10.0f);
+  dt0->mutable_data<paddle::platform::float16>(phi::CPUPlace())[0] =
+      paddle::platform::float16(10.0f);
   paddle::Tensor et0 = paddle::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
 
-  dt1->mutable_data<paddle::platform::float16>(
-      paddle::platform::CPUPlace())[0] = paddle::platform::float16(20.0f);
+  dt1->mutable_data<paddle::platform::float16>(phi::CPUPlace())[0] =
+      paddle::platform::float16(20.0f);
   paddle::Tensor et1 = paddle::Tensor(dt1);
 
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
-              paddle::platform::CPUPlace())
+              phi::CPUPlace())
               .get(),
           meta);
   paddle::Tensor input_et = paddle::Tensor(input_dt);
@@ -262,11 +257,11 @@ TEST(AccumulationNode, Tensor) {
   std::shared_ptr<phi::DenseTensor> grad_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
-              paddle::platform::CPUPlace())
+              phi::CPUPlace())
               .get(),
           meta);
-  grad_dt->mutable_data<paddle::platform::float16>(
-      paddle::platform::CPUPlace())[0] = paddle::platform::float16(0.0f);
+  grad_dt->mutable_data<paddle::platform::float16>(phi::CPUPlace())[0] =
+      paddle::platform::float16(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
 
   // AccumulationNode
@@ -310,8 +305,7 @@ TEST(AccumulationNode, Tensor) {
   auto reduce_hook_1 = [&]() -> void {
     auto* input_et_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
-            ->mutable_data<paddle::platform::float16>(
-                paddle::platform::CPUPlace());
+            ->mutable_data<paddle::platform::float16>(phi::CPUPlace());
     input_et_ptr[0] = 36.0;
     VLOG(6) << "Running Reduce Hook";
   };
@@ -335,9 +329,9 @@ TEST(AccumulationNode, Tensor) {
   // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
   VLOG(6) << "Test Reduce Hook";
   auto reduce_hook_2 = [&]() -> void {
-    auto* ret_et0_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-                            ->mutable_data<paddle::platform::float16>(
-                                paddle::platform::CPUPlace());
+    auto* ret_et0_ptr =
+        std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+            ->mutable_data<paddle::platform::float16>(phi::CPUPlace());
     ret_et0_ptr[0] = 100.0;  // set to 100.0
     VLOG(6) << "Running Reduce Hook";
   };
