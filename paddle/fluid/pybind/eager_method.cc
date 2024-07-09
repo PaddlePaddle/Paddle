@@ -154,8 +154,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   EAGER_TRY
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -174,8 +174,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto tensor_dims = self->tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
-  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+  Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+  Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (self->tensor.is_dense_tensor()) {
@@ -468,8 +468,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
     VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
                "numpy array.";
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -1614,8 +1614,8 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   if (tensor.dtype() == proto_type) {                                        \
     auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];    /* NOLINT */  \
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank]; /* NOLINT */  \
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];    /* NOLINT */                \
+    Py_intptr_t py_strides[phi::DDim::kMaxRank]; /* NOLINT */                \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \

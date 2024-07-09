@@ -771,7 +771,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
   auto &stop = *pstop;
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
-  const framework::DDim &srcDDim = self.dims();
+  const phi::DDim &srcDDim = self.dims();
   PADDLE_ENFORCE(
       0 <= dim && dim < srcDDim.size(),
       platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
@@ -813,7 +813,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
 }
 
 inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
-                                    const framework::DDim &ddim) {
+                                    const phi::DDim &ddim) {
   phi::DenseTensor *output = new phi::DenseTensor();
   output->Resize(ddim);
   auto place = self.place();
@@ -884,7 +884,7 @@ inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {
-  framework::DDim dstDDim = self.dims();
+  phi::DDim dstDDim = self.dims();
   dstDDim[dim] = static_cast<int64_t>(slicelength);
   std::vector<int> axes({dim});
   std::vector<int> starts({static_cast<int>(start)});
@@ -909,7 +909,7 @@ inline phi::DenseTensor *_sliceAndConcat(const phi::DenseTensor &self,
     }
 
     // do the concat operation
-    framework::DDim dstDDim = self.dims();
+    phi::DDim dstDDim = self.dims();
     dstDDim[dim] = static_cast<int64_t>(slicelength);
     phi::DenseTensor *output1 = _getTensor(self, dstDDim);
     _concatCompute<T>(ins, output1, ctx, dim);
