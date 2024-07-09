@@ -379,6 +379,13 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
                               transform_flag) &&
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
+      if (NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor.meta().is_contiguous()) &&
+          dense_tensor.initialized()) {
+        phi::DenseTensor out = dense_tensor;
+        out = Trans2Contiguous(out);
+        return std::make_shared<phi::DenseTensor>(std::move(out));
+      }
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
@@ -423,8 +430,17 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
          !(dense_tensor &&
            NeedTransform2Contiguous(is_stride_kernel,
                                     dense_tensor->meta().is_contiguous())))) {
-      pt_tensors->emplace_back(
-          *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
+      if (NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor->meta().is_contiguous()) &&
+          tensor_in->initialized()) {
+        phi::DenseTensor out =
+            *(static_cast<phi::DenseTensor*>(tensor_in.get()));
+        out = Trans2Contiguous(out);
+        pt_tensors->emplace_back(out);
+      } else {
+        pt_tensors->emplace_back(
+            *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
+      }
     } else {
       pt_tensors->emplace_back(
           TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
@@ -463,6 +479,15 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
                               transform_flag))) &&
         !NeedTransform2Contiguous(
             false, selected_rows.value().meta().is_contiguous())) {
+      if (NeedTransform2Contiguous(
+              false, selected_rows.value().meta().is_contiguous()) &&
+          selected_rows.initialized()) {
+        auto out_new = std::make_shared<phi::SelectedRows>(
+            selected_rows.rows(), selected_rows.height());
+        auto dense_out = Trans2Contiguous(selected_rows.value());
+        *out_new->mutable_value() = dense_out;
+        return out_new;
+      }
       return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
     }
 
@@ -949,6 +974,15 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
                               transform_flag) &&
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
+      if (NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor.meta().is_contiguous()) &&
+          dense_tensor.initialized()) {
+        auto dist_out = std::make_shared<phi::distributed::DistTensor>(
+            dist_tensor->dims(), dist_tensor->dist_attr());
+        auto* out = dist_out->unsafe_mutable_value();
+        *out = Trans2Contiguous(dense_tensor);
+        return dist_out;
+      }
       return input;
     }
     // TODO(chenweihang): The global meta in DistTensor is not changed,
@@ -988,8 +1022,17 @@ PrepareDataForDistTensor(
                                 transform_flag) &&
            !NeedTransform2Contiguous(is_stride_kernel,
                                      dense_tensor.meta().is_contiguous()))) {
-        out.push_back(
-            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
+        if (NeedTransform2Contiguous(is_stride_kernel,
+                                     dense_tensor.meta().is_contiguous()) &&
+            dense_tensor.initialized()) {
+          phi::DenseTensor trans_in_tensor = Trans2Contiguous(dense_tensor);
+          out.push_back(std::make_shared<phi::distributed::DistTensor>(
+              std::make_shared<phi::DenseTensor>(trans_in_tensor),
+              dist_tensor->dist_attr()));
+        } else {
+          out.push_back(std::static_pointer_cast<phi::distributed::DistTensor>(
+              tensor_in));
+        }
       } else {
         phi::DenseTensor trans_in_tensor = TransformData(
             dense_tensor, target_args_def, transform_flag, is_stride_kernel);

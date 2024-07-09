@@ -2104,6 +2104,17 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : legacy_bilinear_interp (bilinear_interp)
+  backward : legacy_bilinear_interp_grad (bilinear_interp_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
+  attrs:
+    data_format: data_layout
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : legacy_expand (expand)
   backward : legacy_expand_grad (expand_grad)
   inputs :
@@ -2120,6 +2131,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   manual_signature : [legacy_expand, legacy_expand_grad]
+
+- op : legacy_nearest_interp (nearest_interp)
+  backward : legacy_nearest_interp_grad (nearest_interp_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
+  attrs:
+    data_format: data_layout
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : lerp
   backward : lerp_grad
@@ -4290,7 +4312,7 @@
   outputs :
     out : Out
 
-- op: lars_momentum
+- op: lars_momentum_ (lars_momentum)
   inputs:
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
