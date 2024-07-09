@@ -15,6 +15,7 @@
 import os
 
 os.environ['FLAGS_enable_pir_api'] = '1'
+import tempfile
 import unittest
 
 import numpy as np
@@ -26,9 +27,9 @@ from paddle.static import InputSpec
 from paddle.vision.models import alexnet
 
 
-class TestConfig(unittest.TestCase):
+class TestSaveOptimizedModelPass:
     def setUp(self):
-        self.temp_dir = "./"
+        self.temp_dir = tempfile.TemporaryDirectory()
         net = alexnet(True)
         with paddle.pir_utils.DygraphPirGuard():
             model = to_static(
@@ -37,12 +38,11 @@ class TestConfig(unittest.TestCase):
                 full_graph=True,
             )
             paddle.jit.save(
-                model, os.path.join(self.temp_dir, 'alexnet/inference')
+                model, os.path.join(self.temp_dir.name, 'alexnet/inference')
             )
 
     def tearDown(self):
-        # self.temp_dir.cleanup()
-        pass
+        self.temp_dir.cleanup()
 
     def get_baseline(self):
         predictor = self.init_predictor(save_optimized_model=True)
@@ -76,21 +76,27 @@ class TestConfig(unittest.TestCase):
                 test_output.numpy().flatten(),
             )
 
+
+class TestConfig(TestSaveOptimizedModelPass, unittest.TestCase):
     def init_predictor(self, save_optimized_model: bool):
         if save_optimized_model is True:
-            config = Config(os.path.join(self.temp_dir, 'alexnet'), 'inference')
+            config = Config(
+                os.path.join(self.temp_dir.name, 'alexnet'), 'inference'
+            )
             config.enable_use_gpu(256, 0, PrecisionType.Half)
             config.enable_memory_optim()
             config.switch_ir_optim(True)
-            config.set_optim_cache_dir(os.path.join(self.temp_dir, 'alexnet'))
+            config.set_optim_cache_dir(
+                os.path.join(self.temp_dir.name, 'alexnet')
+            )
             config.enable_save_optim_model(True)
             if os.name == 'nt':
                 config.enable_new_ir(True)
                 config.enable_new_executor(True)
         else:
             config = Config(
-                os.path.join(self.temp_dir, 'alexnet'),
-                os.path.join('_optimized'),
+                os.path.join(self.temp_dir.name, 'alexnet'),
+                '_optimized',
             )
             if os.name == 'nt':
                 config.enable_new_ir(True)
