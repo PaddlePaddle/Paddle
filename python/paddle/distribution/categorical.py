@@ -63,19 +63,20 @@ class Categorical(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Random output.')
             >>> import paddle
             >>> from paddle.distribution import Categorical
 
             >>> paddle.seed(100) # on CPU device
             >>> x = paddle.rand([6])
             >>> print(x)
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
             >>> paddle.seed(200) # on CPU device
             >>> y = paddle.rand([6])
             >>> print(y)
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.77663314, 0.90824795, 0.15685187, 0.04279523, 0.34468332, 0.79557180])
 
@@ -84,24 +85,29 @@ class Categorical(distribution.Distribution):
 
             >>> paddle.seed(1000) # on CPU device
             >>> print(cat.sample([2,3]))
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 5],
             [3, 4, 5]])
 
             >>> print(cat.entropy())
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.77528250)
 
             >>> print(cat.kl_divergence(cat2))
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.07195196])
 
             >>> value = paddle.to_tensor([2,1,3])
             >>> print(cat.probs(value))
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.00608027, 0.10829761, 0.26965630])
 
             >>> print(cat.log_prob(value))
+            >>> # doctest: +SKIP('Random output.')
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-5.10270691, -2.22287226, -1.31060708])
     """
@@ -162,6 +168,7 @@ class Categorical(distribution.Distribution):
                 >>> paddle.seed(100) # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
@@ -169,6 +176,7 @@ class Categorical(distribution.Distribution):
                 >>> cat = Categorical(x)
                 >>> paddle.seed(1000) # on CPU device
                 >>> print(cat.sample([2,3]))
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[0, 1, 5],
                 [3, 4, 5]])
@@ -219,12 +227,14 @@ class Categorical(distribution.Distribution):
                 >>> paddle.seed(100) # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
                 >>> paddle.seed(200) # on CPU device
                 >>> y = paddle.rand([6])
                 >>> print(y)
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.77663314, 0.90824795, 0.15685187, 0.04279523, 0.34468332, 0.79557180])
 
@@ -232,6 +242,7 @@ class Categorical(distribution.Distribution):
                 >>> cat2 = Categorical(y)
 
                 >>> print(cat.kl_divergence(cat2))
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.07195196])
         """
@@ -273,12 +284,14 @@ class Categorical(distribution.Distribution):
                 >>> paddle.seed(100) # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
                 >>> cat = Categorical(x)
 
                 >>> print(cat.entropy())
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 1.77528250)
         """
@@ -317,6 +330,7 @@ class Categorical(distribution.Distribution):
                 >>> paddle.seed(100) # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
@@ -324,6 +338,7 @@ class Categorical(distribution.Distribution):
 
                 >>> value = paddle.to_tensor([2,1,3])
                 >>> print(cat.probs(value))
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.00608027, 0.10829761, 0.26965630])
         """
@@ -364,6 +379,7 @@ class Categorical(distribution.Distribution):
                 >>> paddle.seed(100) # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
@@ -371,6 +387,7 @@ class Categorical(distribution.Distribution):
 
                 >>> value = paddle.to_tensor([2,1,3])
                 >>> print(cat.log_prob(value))
+                >>> # doctest: +SKIP('Random output.')
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [-5.10270691, -2.22287226, -1.31060708])
         """
