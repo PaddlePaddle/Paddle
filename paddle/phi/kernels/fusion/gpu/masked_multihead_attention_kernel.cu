@@ -155,10 +155,8 @@ __global__ void masked_multihead_attention_kernel(
   int start_seq = 0;
   int end_seq = act_time_step;
   bool is_last_block = false;
-
+  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
   if constexpr (SPLIT) {
-    int real_split_each_batch =
-        (act_time_step - 1) / params.steps_per_block + 1;
     if (split_index >= real_split_each_batch) return;
 
     start_seq = split_index * params.steps_per_block;
@@ -634,9 +632,17 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-  // With SPLIT, postProcessKernel is not necessary for shortSeq
-  if (!SPLIT || params.split_seq == 1) {
-    if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
+  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
+    if (SPLIT && real_split_each_batch > 1) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+      *(reinterpret_cast<V_vec_acum *>(
+          &params.split_out[(bhsi + split_index) * Dh + vi])) = out;
+#else
+      *(reinterpret_cast<V_vec_acum_fp32_<V_vec>::Type *>(
+          &params.split_out[(bhsi + split_index) * Dh + vi])) =
+          cast_to_float(out);
+#endif
+    } else {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
       V_vec tmp_out;
       convert_from_float(tmp_out, out);
@@ -645,18 +651,6 @@ __global__ void masked_multihead_attention_kernel(
       store_func.template store<V_vec>(out, bhi * Dh + vi);
 #endif
     }
-    return;
-  }
-
-  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-    *(reinterpret_cast<V_vec_acum *>(
-        &params.split_out[(bhsi + split_index) * Dh + vi])) = out;
-#else
-    *(reinterpret_cast<V_vec_acum_fp32_<V_vec>::Type *>(
-        &params.split_out[(bhsi + split_index) * Dh + vi])) =
-        cast_to_float(out);
-#endif
   }
 
 #else
@@ -669,16 +663,19 @@ template <typename T, int Dh, int Dh_MAX, typename StoreFunc>
 __global__ void post_process_kernel(Masked_multihead_attention_params<T> params,
                                     StoreFunc store_func) {
   const int bi = blockIdx.y;
+  int act_time_step = params.sequence_lengths == nullptr
+                          ? params.timestep
+                          : params.sequence_lengths[bi];
+  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
+  if (real_split_each_batch <= 1) {
+    return;
+  }
+
   const int tid = threadIdx.x;
   const int hi = blockIdx.x;
   const int bhi = (bi * params.num_head + hi);
   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
   extern __shared__ float2 qk_sum_max_smem[];
-
-  int act_time_step = params.sequence_lengths == nullptr
-                          ? params.timestep
-                          : params.sequence_lengths[bi];
-  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
 
   for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
     qk_sum_max_smem[i] = *reinterpret_cast<float2 *>(
@@ -722,7 +719,7 @@ inline size_t smem_size_in_bytes(
     int threads_per_block) {
   // for qk_smem and logits_smem(both float)
   size_t qk_sz = div_up(params.timestep, 4) * 16;
-  if (SPLIT && params.split_seq > 1) {
+  if (SPLIT) {
     qk_sz = div_up(params.steps_per_block, 4) * 16;
   }
   // for reduce (logits dot V) result
@@ -832,17 +829,18 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   }
 }
 
-#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)            \
-  case dim_head_:                                                       \
-    fmha_launch_kernel<T,                                               \
-                       dim_head_,                                       \
-                       dim_head_max_,                                   \
-                       decltype(load_func),                             \
-                       decltype(store_func),                            \
-                       SPLIT>(params, stream, load_func, store_func);   \
-    if (!SPLIT || params.split_seq == 1) return;                        \
-    post_process_kernel<T, dim_head_, dim_head_max_>                    \
-        <<<grid, dim_head_max_, smem_sz, stream>>>(params, store_func); \
+#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)              \
+  case dim_head_:                                                         \
+    fmha_launch_kernel<T,                                                 \
+                       dim_head_,                                         \
+                       dim_head_max_,                                     \
+                       decltype(load_func),                               \
+                       decltype(store_func),                              \
+                       SPLIT>(params, stream, load_func, store_func);     \
+    if (SPLIT) {                                                          \
+      post_process_kernel<T, dim_head_, dim_head_max_>                    \
+          <<<grid, dim_head_max_, smem_sz, stream>>>(params, store_func); \
+    }                                                                     \
     break;
 
 template <typename T, typename LoadFunc, typename StoreFunc, bool SPLIT>
@@ -1101,7 +1099,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   }
   if (SPLIT) {
     // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
-    int steps_per_block = timestep < 256 ? 256 : 128;
+    int steps_per_block = 128;
     params.steps_per_block = steps_per_block;
     params.split_seq = (timestep - 1) / steps_per_block + 1;
     int split_seq = params.split_seq;
