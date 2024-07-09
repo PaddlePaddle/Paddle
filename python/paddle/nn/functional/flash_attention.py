@@ -1261,7 +1261,7 @@ def calc_reduced_attention_scores(
 
     .. math::
 
-        result=reduce_sum(softmax(\frac{ Q * K^T }{\sqrt{d}}), dim=-2)
+        result=reduce\_sum(softmax(\frac{ Q * K^T }{\sqrt{d}}), dim=-2)
 
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
@@ -1277,12 +1277,11 @@ def calc_reduced_attention_scores(
                         The dtype can be float16 or bfloat16.
         softmax_lse(Tensor): The logsumexp of each row returned by _C_ops.flash_attn().
                         3-D tensor with shape:
-                        [batch_size, num_heads, seqlen_q].
+                        [batch_size, num_heads, seqlen_q_rounded], where seqlen_q_rounded = ceil(seqlen_q/128).
                         The dtype is float32.
     Returns:
         reduced_attention_scores(Tensor), The reduce sum of attention scores across seqlen_q.
-                    4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k].
-                    The dtype is float32.
+        4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k]. The dtype is float32.
     Examples:
         .. code-block:: python
 
