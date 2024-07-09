@@ -30,7 +30,7 @@ from paddle.tensor import random
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
 
-    from paddle import Tensor
+    from paddle import Tensor, dtype
     from paddle._typing import NestedSequence
 
     _NormalLoc: TypeAlias = Union[
@@ -128,6 +128,10 @@ class Normal(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.34939718])
     """
+    loc: Tensor
+    scale: Tensor
+    name: str
+    dtype: dtype
 
     def __init__(
         self, loc: _NormalLoc, scale: _NormalScale, name: str | None = None
