@@ -4283,7 +4283,7 @@
   outputs :
     out : Out
 
-- op: lars_momentum
+- op: lars_momentum_ (lars_momentum)
   inputs:
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
