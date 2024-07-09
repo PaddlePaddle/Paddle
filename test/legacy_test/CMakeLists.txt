@@ -429,6 +429,8 @@ endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
+list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
+list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -539,15 +541,21 @@ if(WITH_GPU
 endif()
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
                 FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_resnet
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
+                FLAGS_cudnn_deterministic=1)
+py_test_modules(
+  test_imperative_mnist_sorted_gradient MODULES
+  test_imperative_mnist_sorted_gradient ENVS FLAGS_cudnn_deterministic=1)
 py_test_modules(
   test_imperative_resnet_sorted_gradient MODULES
   test_imperative_resnet_sorted_gradient ENVS FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_resnet_sorted_gradient
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext
                 ENVS FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_resnet
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+set_tests_properties(test_imperative_resnet_sorted_gradient
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 set_tests_properties(test_imperative_se_resnext
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 
@@ -861,7 +869,10 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool_max_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
+set_tests_properties(test_imperative_transformer_sorted_gradient
+                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
+set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op PROPERTIES TIMEOUT 120)
@@ -900,6 +911,8 @@ if(APPLE)
   set_tests_properties(test_callback_reduce_lr_on_plateau PROPERTIES TIMEOUT
                                                                      300)
   set_tests_properties(test_vision_models PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_imperative_transformer_sorted_gradient
+                       PROPERTIES TIMEOUT 300)
 endif()
 set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
 

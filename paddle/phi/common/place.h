@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/utils/test_macros.h"
 
@@ -189,6 +190,26 @@ class CustomPlace : public Place {
 TEST_API std::ostream& operator<<(std::ostream&, const Place&);
 
 Place GetPinnedPlace(const Place& place);
+
+using PlaceList = std::vector<Place>;
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class PlaceHelper {
+ public:
+  static std::string GetDeviceType(const Place& place);
+  static size_t GetDeviceId(const Place& place);
+  static Place CreatePlace(const std::string& dev_type, size_t dev_id = 0);
+};
+#endif
+
+TEST_API bool is_gpu_place(const Place&);
+bool is_xpu_place(const Place&);
+bool is_ipu_place(const Place&);
+TEST_API bool is_cpu_place(const Place&);
+bool is_cuda_pinned_place(const Place&);
+bool is_custom_place(const Place& p);
+bool places_are_same_class(const Place&, const Place&);
+bool is_same_place(const Place&, const Place&);
 
 }  // namespace phi
 

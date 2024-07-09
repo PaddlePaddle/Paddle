@@ -145,10 +145,38 @@ static std::vector<int64_t> process_dims(const Tensor& origin,
 }
 
 // These method don't need to be specified
+// These method only handle the static shape case
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
-  std::vector<int64_t> result;
+  bool has_dynamic_shape = false;
+  for (int i = 0; i < dout_dims.size(); i++) {
+    if (dout_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      platform::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [dout_dims] have the dynamic shape."));
+
+  for (int i = 0; i < in_dims.size(); i++) {
+    if (in_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      platform::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [in_dims] have the dynamic shape."));
+
   int bat = dout_dims.size() - in_dims.size();
+  std::vector<int64_t> result;
   for (int i = 0; i < bat; ++i) {
     result.push_back(i);
   }

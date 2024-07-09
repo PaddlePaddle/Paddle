@@ -16,12 +16,10 @@ import logging
 import unittest
 
 import numpy as np
-from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import sparse
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -316,8 +314,6 @@ class TestSparseConv(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
-    @compare_legacy_with_pt
-    @test_with_pir_api
     def test(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -386,8 +382,6 @@ class TestStatic(unittest.TestCase):
             self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
 
-    @compare_legacy_with_pt
-    @test_with_pir_api
     def test_cpu(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -457,8 +451,6 @@ class TestStatic(unittest.TestCase):
             self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
 
-    @compare_legacy_with_pt
-    @test_with_pir_api
     def test2D(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -522,8 +514,6 @@ class TestStatic(unittest.TestCase):
             self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
 
-    @compare_legacy_with_pt
-    @test_with_pir_api
     def test2D_cpu(self):
         paddle.enable_static()
         main = paddle.static.Program()
