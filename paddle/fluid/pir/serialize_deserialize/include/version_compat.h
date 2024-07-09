@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
+#include "paddle/pir/include/core/dll_decl.h"
 
 namespace pir {
 class PatchBuilder {
@@ -32,7 +33,7 @@ class PatchBuilder {
   PatchBuilder& operator=(PatchBuilder&&);
 
   Json GetJsonOpPatch(const std::string& name);
-  void BuildPatch(const std::string& path);
+  void IR_API BuildPatch(const std::string& path);
   void ApplyOpPatches(const std::string& op_name, Json* json, Json patch);
   bool HasOpPatch(const std::string& name) const {
     return op_patches_.count(name) != 0;
