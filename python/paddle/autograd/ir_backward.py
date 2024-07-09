@@ -1211,7 +1211,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             parameter_list,
             'parameter_list',
             (list, tuple, set),
-            'paddle.autograd.ir_backwardappend_backward',
+            'paddle.autograd.ir_backward.append_backward',
         )
         for i, param in enumerate(parameter_list):
             check_type(

@@ -74,7 +74,7 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
 }
 
 void ConvertToMixedPrecisionPass::LoadModel() {
-  framework::Executor exe{platform::CPUPlace{}};
+  framework::Executor exe{phi::CPUPlace{}};
   // If we did not find the provided weight path,
   // we assume that the model to be converted only has a model file and no
   // params file, we believe this situation is reasonable. In this case, weight
@@ -177,7 +177,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
     op->SetAttr("file_path", save_params_path);
     op->CheckAttrs();
 
-    framework::Executor exe(platform::CPUPlace{});
+    framework::Executor exe(phi::CPUPlace{});
     exe.Run(save_program, &scope_, 0, true, true);
   };
 

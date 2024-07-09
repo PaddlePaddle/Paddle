@@ -14,12 +14,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Callable, List, Literal, Sequence, Tuple
 
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    from paddle._typing import _DTypeLiteral
+    from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.vision.transforms.transforms import _Transform
 
     from ..image import _ImageDataType
@@ -87,7 +87,7 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
     return images
 
 
-class DatasetFolder(Dataset):
+class DatasetFolder(Dataset[Tuple["_ImageDataType", int]]):
     """A generic data loader where the samples are arranged in this way:
 
     .. code-block:: text
@@ -133,7 +133,6 @@ class DatasetFolder(Dataset):
             >>> import paddle.vision.transforms as T
             >>> from pathlib import Path
             >>> from paddle.vision.datasets import DatasetFolder
-
 
             >>> def make_fake_file(img_path: str):
             ...     if img_path.endswith((".jpg", ".png", ".jpeg")):
@@ -233,7 +232,7 @@ class DatasetFolder(Dataset):
     transform: _Transform[Any, Any] | None
     classes: list[str]
     class_to_idx: dict[str, int]
-    samples: list[tuple[str, str]]
+    samples: list[tuple[str, int]]
     targets: list[str]
     dtype: _DTypeLiteral
 
@@ -340,7 +339,7 @@ def default_loader(path):
         return pil_loader(path)
 
 
-class ImageFolder(Dataset):
+class ImageFolder(Dataset[List["_ImageDataType"]]):
     """A generic data loader where the samples are arranged in this way:
 
     .. code-block:: text
@@ -379,7 +378,6 @@ class ImageFolder(Dataset):
             >>> import paddle.vision.transforms as T
             >>> from pathlib import Path
             >>> from paddle.vision.datasets import ImageFolder
-
 
             >>> def make_fake_file(img_path: str):
             ...     if img_path.endswith((".jpg", ".png", ".jpeg")):
@@ -522,5 +520,5 @@ class ImageFolder(Dataset):
             sample = self.transform(sample)
         return [sample]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.samples)

@@ -75,7 +75,7 @@ class TensorTable : public Table {
 
   int32_t SetProgramEnv(
       framework::Scope *scope,
-      platform::Place place,
+      phi::Place place,
       const std::vector<framework::ProgramDesc> *sub_program) override {
     scope_ = scope;
     place_ = place;
@@ -87,7 +87,7 @@ class TensorTable : public Table {
  protected:
   framework::Executor *executor_;
   framework::Scope *scope_;
-  platform::Place place_ = platform::CPUPlace();
+  phi::Place place_ = platform::CPUPlace();
   const std::vector<framework::ProgramDesc> *sub_program_;
   paddle::distributed::TensorAccessorParameter program_config_;
   std::shared_ptr<framework::ExecutorPrepareContext> exec_context_ = nullptr;
