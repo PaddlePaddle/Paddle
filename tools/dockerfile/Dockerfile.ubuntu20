@@ -152,9 +152,9 @@ RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
 
-RUN pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /home/requirements.txt && \
+RUN pip3.8 --no-cache-dir install -r  /root/requirements.txt && \
+    pip3.9 --no-cache-dir install -r  /root/requirements.txt && \
+    pip3.9 --no-cache-dir install -r  /home/requirements.txt && \
     pip3.10 --no-cache-dir install -r /root/requirements.txt && \
     pip3.10 --no-cache-dir install -r /home/requirements.txt && \
     pip3.11 --no-cache-dir install -r /root/requirements.txt && \
