@@ -225,10 +225,11 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_output(self):
-            if self.variable_paddings:
-                self.check_output(check_pir=True, check_symbol_infer=False)
-            else:
-                self.check_output(atol=1e-3, check_pir=True)
+            self.check_output(
+                atol=1e-3,
+                check_pir=True,
+                check_symbol_infer=(not self.variable_paddings),
+            )
 
         def test_check_grad_normal(self):
             self.check_grad(
@@ -267,7 +268,12 @@ def create_test_bf16(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2, check_pir=True)
+            self.check_output_with_place(
+                place,
+                atol=1e-2,
+                check_pir=True,
+                check_symbol_infer=(not self.variable_paddings),
+            )
 
         def test_check_grad_normal(self):
             place = core.CUDAPlace(0)
@@ -302,10 +308,11 @@ def create_test_complex64(parent):
             return np.complex64
 
         def test_check_output(self):
-            if self.variable_paddings:
-                self.check_output(check_pir=True, check_symbol_infer=False)
-            else:
-                self.check_output(atol=1e-3, check_pir=True)
+            self.check_output(
+                atol=1e-3,
+                check_pir=True,
+                check_symbol_infer=(not self.variable_paddings),
+            )
 
         def test_check_grad_normal(self):
             self.check_grad(
@@ -341,10 +348,11 @@ def create_test_complex128(parent):
             return np.complex128
 
         def test_check_output(self):
-            if self.variable_paddings:
-                self.check_output(check_pir=True, check_symbol_infer=False)
-            else:
-                self.check_output(atol=1e-3, check_pir=True)
+            self.check_output(
+                atol=1e-3,
+                check_pir=True,
+                check_symbol_infer=(not self.variable_paddings),
+            )
 
         def test_check_grad_normal(self):
             self.check_grad(
