@@ -22,6 +22,7 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.incubate.nn.functional import fused_dot_product_attention
 
 g_enable_math = None
 g_enable_flash = None
@@ -995,6 +996,7 @@ def scaled_dot_product_attention(
     attn_mask: Tensor | None = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
+    scaling_factor: float = None,
     training: bool = True,
     name: str | None = None,
 ) -> Tensor:
@@ -1029,6 +1031,9 @@ def scaled_dot_product_attention(
                         key, value that is added to the attention score.
         dropout_p(float, optional): The dropout ratio.
         is_causal(bool, optional): Whether enable causal mode.
+        scaling_factor (float): The scaling factor for the attention scores.
+                        Currently only fused_dot_product_attention supports
+                        custom scaling_factor.
         training(bool, optional): Whether it is in the training phase.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
@@ -1049,6 +1054,31 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+
+    def is_device_hopper() -> bool:
+        # NOTE: Add more devices name here.
+        hopper_device_names = ["HZZ1", "H100"]
+        if paddle.device.is_compiled_with_cuda():
+            device_name = paddle.device.cuda.get_device_name()
+            for name in hopper_device_names:
+                if name in device_name:
+                    return True
+        return False
+
+    # NOTE: fused_dot_product_attention runs faster on Hopper devices
+    # but slower on Ampere devices.
+    if is_device_hopper():
+        return fused_dot_product_attention(
+            query=query,
+            key=key,
+            value=value,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            is_causal=is_causal,
+            scaling_factor=scaling_factor,
+            training=training,
+            name=name,
+        )
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
