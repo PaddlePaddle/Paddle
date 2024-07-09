@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence, Union
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
@@ -20,6 +24,19 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import NestedSequence
+
+    _CategoricalBoundary: TypeAlias = Union[
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[Union[np.float32, np.float64]],
+        Tensor,
+    ]
 
 
 class Categorical(distribution.Distribution):
@@ -41,7 +58,7 @@ class Categorical(distribution.Distribution):
 
     Args:
         logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
-        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -87,8 +104,13 @@ class Categorical(distribution.Distribution):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-5.10270691, -2.22287226, -1.31060708])
     """
+    logits: Tensor
 
-    def __init__(self, logits, name=None):
+    def __init__(
+        self,
+        logits: _CategoricalBoundary,
+        name: str | None = None,
+    ) -> None:
         """
         Args:
             logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
@@ -120,7 +142,7 @@ class Categorical(distribution.Distribution):
         dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         self._prob = self.logits / dist_sum
 
-    def sample(self, shape):
+    def sample(self, shape: list[int]) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -177,7 +199,7 @@ class Categorical(distribution.Distribution):
 
         return paddle.reshape(sample_index, sample_shape, name=name)
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: _CategoricalBoundary) -> Tensor:
         """The KL-divergence between two Categorical distributions.
 
         Args:
@@ -234,7 +256,7 @@ class Categorical(distribution.Distribution):
 
         return kl
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """Shannon entropy in nats.
 
         Returns:
@@ -268,7 +290,7 @@ class Categorical(distribution.Distribution):
         entropy = paddle.scale(neg_entropy, scale=-1.0, name=name)
         return entropy
 
-    def probs(self, value):
+    def probs(self, value: Tensor) -> Tensor:
         """Probabilities of the given category (``value``).
 
         If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as
@@ -322,7 +344,7 @@ class Categorical(distribution.Distribution):
             else:
                 return paddle.take_along_axis(self._prob, value, axis=-1)
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probabilities of the given category. Refer to ``probs`` method.
 
         Args:
