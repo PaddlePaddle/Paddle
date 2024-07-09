@@ -56,7 +56,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
                             : device_id);
 
         return static_cast<const phi::CustomContext *>(
-                   paddle::platform::DeviceContextPool::Instance().Get(place))
+                   phi::DeviceContextPool::Instance().Get(place))
             ->GetStream();
 #else
         PADDLE_THROW(platform::errors::Unavailable(
@@ -78,7 +78,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
         static_cast<phi::CustomContext *>(
-            paddle::platform::DeviceContextPool::Instance().Get(place))
+            phi::DeviceContextPool::Instance().Get(place))
             ->SetStream(stream);
         return stream;
 #else
@@ -460,11 +460,11 @@ void BindCustomDevicePy(py::module *m_ptr) {
           [](phi::event::Event &self, phi::stream::Stream *stream) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
             if (stream == nullptr) {
-              stream = static_cast<const phi::CustomContext *>(
-                           paddle::platform::DeviceContextPool::Instance().Get(
-                               self.GetPlace()))
-                           ->GetStream()
-                           .get();
+              stream =
+                  static_cast<const phi::CustomContext *>(
+                      phi::DeviceContextPool::Instance().Get(self.GetPlace()))
+                      ->GetStream()
+                      .get();
             }
             self.Record(stream);
 #else

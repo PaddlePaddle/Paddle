@@ -482,7 +482,7 @@ void SetTensorFromPyArrayT(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
         array.nbytes());
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
     ctx.Wait();
 #else
@@ -1120,8 +1120,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &ctx = *pool.Get(tensor.place());
       auto p = dense_tensor->place();
       phi::DenseTensor cpu_tensor;
@@ -1152,7 +1151,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       return py_arr;
     }
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     auto p = tensor.place();
     phi::DenseTensor cpu_tensor;
