@@ -449,7 +449,7 @@ class DataLoader:
         self,
         dataset: Dataset,
         feed_list: Sequence[Tensor] | None = None,
-        places: Sequence[PlaceLike] | list[str] | None = None,
+        places: Sequence[PlaceLike] | None = None,
         return_list: bool = True,
         batch_sampler: BatchSampler | None = None,
         batch_size: int = 1,
