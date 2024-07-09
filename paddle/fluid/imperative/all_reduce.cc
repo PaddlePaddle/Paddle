@@ -96,7 +96,7 @@ static void AllReduce(const phi::SelectedRows &src,
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
   auto *dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
 
   bool use_calc_stream = (dev_ctx->stream() == stream);
   VLOG(4) << "Is use calculate stream: " << use_calc_stream;
@@ -221,7 +221,7 @@ void AllReduce(const framework::Variable &src,
                bool use_calc_stream) {
   const auto &place = GetVarPlace(src);
   auto *dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());

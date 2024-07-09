@@ -250,8 +250,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  head_size_);  // k
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
     phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
@@ -315,8 +314,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                cudaMemcpyDeviceToDevice);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(platform::CUDAPlace(device_id)));
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;

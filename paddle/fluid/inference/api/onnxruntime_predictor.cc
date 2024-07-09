@@ -378,8 +378,7 @@ ONNXRuntimePredictor::~ONNXRuntimePredictor() {
 
 const void *ONNXRuntimePredictor::GetDeviceContexts() const {
   // TODO(inference): Support private device contexts.
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   const auto &dev_ctxs = pool.device_contexts();
   return &const_cast<
       std::map<phi::Place,

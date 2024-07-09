@@ -322,7 +322,7 @@ static void FillConstantLike(const VariableWrapper &ref_var,
                              float value) {
   auto &ref_tensor = ref_var.Var().Get<phi::DenseTensor>();
   auto *dst_tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
   // TODO(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
   // grad mission

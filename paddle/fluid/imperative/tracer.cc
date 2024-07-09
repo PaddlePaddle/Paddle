@@ -470,7 +470,7 @@ void Tracer::TraceOp(const std::string& type,
                                     default_attrs,
                                     use_default_attr_map);
 
-    auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     for (auto& iter : need_backup_inputs2outputs) {
       iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.first->set_strides(need_backup_inputs2strides[iter.first]);
@@ -613,7 +613,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
     framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(phi::CPUPlace());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();

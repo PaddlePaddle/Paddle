@@ -157,7 +157,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
   auto place = place_;
 
   auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);
   XPUStream stream =
@@ -223,7 +223,7 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
                                    ring_id,
                                    strategy_.nrings_));
   auto compute_stream = static_cast<platform::XPUDeviceContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream = platform::BKCLCommContext::Instance()
                          .Get(ring_id, place_)
@@ -253,7 +253,7 @@ void BKCLParallelContext::WaitComm(int ring_id) {
                          ->dev_context()
                          ->stream();
   auto compute_stream = static_cast<platform::XPUDeviceContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto event = compute_events_[ring_id].get();
 
@@ -264,7 +264,7 @@ void BKCLParallelContext::WaitComm(int ring_id) {
 
 void BKCLParallelContext::SynchronizeCompute() {
   auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
+      phi::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }
 

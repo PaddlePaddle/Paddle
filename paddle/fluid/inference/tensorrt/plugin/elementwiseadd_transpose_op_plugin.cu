@@ -132,8 +132,7 @@ void ElementwiseAddTransposePluginDynamic::configurePlugin(
     return;
   }
   ele_out_tensor_.Resize(common::make_ddim(x_shape));
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
@@ -177,8 +176,7 @@ int ElementwiseAddTransposePluginDynamic::enqueue(
     void *const *outputs,
     void *workspace,
     cudaStream_t stream) TRT_NOEXCEPT {
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
