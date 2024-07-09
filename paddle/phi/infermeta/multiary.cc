@@ -3461,6 +3461,44 @@ void InterpolateInferMeta(
   }
 }
 
+void LegacyInterpolateInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& out_size,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
+    const MetaTensor& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    MetaTensor* output,
+    MetaConfig config) {
+  const auto& dim_x = x.dims();
+  std::vector<float> scale_vec;
+  if (scale > 0) {
+    for (int i = 0; i < dim_x.size() - 2; i++) {
+      scale_vec.push_back(scale);
+    }
+  }
+  InterpolateInferMeta(x,
+                       out_size,
+                       size_tensor,
+                       scale_tensor,
+                       data_layout,
+                       out_d,
+                       out_h,
+                       out_w,
+                       scale_vec,
+                       interp_method,
+                       align_corners,
+                       align_mode,
+                       output,
+                       config);
+}
+
 void IndexPutInferMeta(const MetaTensor& x,
                        const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,
