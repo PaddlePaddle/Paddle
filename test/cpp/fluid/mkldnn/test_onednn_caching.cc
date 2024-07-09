@@ -56,7 +56,7 @@ class CacheTester {
 template <typename T>
 void RunOperator(const platform::Place &place,
                  const std::string &op_type,
-                 const framework::DDim &dims,
+                 const phi::DDim &dims,
                  const std::string &first_input) {
   framework::Scope scope;
 
@@ -127,7 +127,7 @@ void RunOperator(const platform::Place &place,
 }
 
 TEST(test_conv2d_reuse_cache, cpu_place) {
-  framework::DDim dims({1, 16, 32, 64});
+  phi::DDim dims({1, 16, 32, 64});
   phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
@@ -139,7 +139,7 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
 }
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
-  framework::DDim dims({1, 16, 32, 64});
+  phi::DDim dims({1, 16, 32, 64});
   phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");

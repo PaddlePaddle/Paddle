@@ -65,7 +65,7 @@ TEST(FwdBwdJoint, SingleNode) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -109,7 +109,7 @@ TEST(FwdBwdJoint, LinearNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -163,7 +163,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -236,7 +236,7 @@ TEST(FwdBwdJoint, GradientHook) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -309,7 +309,7 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -364,7 +364,7 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CUDAPlace(),
@@ -405,7 +405,7 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CUDAPlace(),

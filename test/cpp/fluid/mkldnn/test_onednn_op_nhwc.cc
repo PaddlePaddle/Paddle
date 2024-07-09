@@ -35,8 +35,8 @@ struct InputVars {
 };
 
 void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
-  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
+  phi::DDim dims({1, 4, 8, 512});           // NHWC shape
+  phi::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
   phi::CPUPlace p;
   framework::Scope scope;
 
@@ -96,8 +96,8 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
 }
 
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
-  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
+  phi::DDim dims({1, 4, 8, 512});           // NHWC shape
+  phi::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
   phi::CPUPlace p;
   framework::Scope scope;
 
@@ -159,7 +159,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
 }
 
 TEST(test_pool2d_shape_nhwc, cpu_place) {
-  framework::DDim dims({1, 4, 8, 512});              // NHWC shape
+  phi::DDim dims({1, 4, 8, 512});                    // NHWC shape
   std::vector<int32_t> expected_dims{1, 3, 7, 512};  // NHWC expected shape
   phi::CPUPlace p;
   framework::Scope scope;
@@ -214,8 +214,8 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
 }
 
 TEST(test_pool2d_crop_nhwc, cpu_place) {
-  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 3, 7, 512});  // NCHW expected shape
+  phi::DDim dims({1, 4, 8, 512});           // NHWC shape
+  phi::DDim expected_dims({1, 3, 7, 512});  // NCHW expected shape
   phi::CPUPlace p;
   framework::Scope scope;
 

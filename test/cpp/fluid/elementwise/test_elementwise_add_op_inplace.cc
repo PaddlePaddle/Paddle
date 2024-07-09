@@ -51,7 +51,7 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
 
 template <typename T>
 bool TestMain(const platform::Place &place,
-              const framework::DDim &dims,
+              const phi::DDim &dims,
               bool inplace) {
   framework::Scope scope;
   auto *x = scope.Var("x")->GetMutable<phi::DenseTensor>();
@@ -130,26 +130,26 @@ bool TestMain(const platform::Place &place,
 }
 
 TEST(test_elementwise_add_inplace, cpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   platform::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, dims, true));
 }
 
 TEST(test_elementwise_add_not_inplace, cpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   platform::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_inplace, gpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   platform::CUDAPlace p(0);
   ASSERT_TRUE(TestMain<float>(p, dims, true));
 }
 
 TEST(test_elementwise_add_not_inplace, gpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   platform::CUDAPlace p(0);
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }

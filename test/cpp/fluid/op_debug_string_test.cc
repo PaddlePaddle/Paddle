@@ -24,7 +24,7 @@ namespace operators {
 
 TEST(op_debug_str, test_unknown_dtype) {
   platform::Place place = platform::CPUPlace();
-  framework::DDim dim{3, 4, 5, 6};
+  phi::DDim dim{3, 4, 5, 6};
   const std::string unknown_dtype = "unknown_dtype";
 
   framework::OpDesc desc;

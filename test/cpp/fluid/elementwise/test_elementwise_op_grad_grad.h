@@ -40,7 +40,7 @@ class TestElementwiseOpGradGrad {
  public:
   TestElementwiseOpGradGrad(const std::string &op_type,
                             const platform::Place &place,
-                            const framework::DDim &dims,
+                            const phi::DDim &dims,
                             const std::vector<std::string> &inputs,
                             const std::vector<std::string> &outputs)
       : op_type_(op_type),
@@ -163,7 +163,7 @@ class TestElementwiseOpGradGrad {
  protected:
   std::string op_type_;
   platform::Place place_;
-  framework::DDim dims_;
+  phi::DDim dims_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   std::map<std::string, phi::DenseTensor *> in_out_tensors_;

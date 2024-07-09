@@ -39,7 +39,7 @@ struct InputVars {
 template <typename T>
 bool TestMain(const platform::Place &place,
               const std::string &op_type,
-              const framework::DDim &dims,
+              const phi::DDim &dims,
               const int num_inputs) {
   framework::Scope scope;
 
@@ -129,13 +129,13 @@ bool TestMain(const platform::Place &place,
 }
 
 TEST(test_softmax_inplace, cpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "softmax", dims, 1));
 }
 
 TEST(test_relu_inplace, cpu_place) {
-  framework::DDim dims({1, 12, 20, 20});
+  phi::DDim dims({1, 12, 20, 20});
   phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "relu", dims, 1));
 }

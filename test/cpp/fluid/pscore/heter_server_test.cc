@@ -91,23 +91,22 @@ void InitTensorsOnClient(framework::Scope* scope,
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
   int64_t* ids_ptr =
-      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+      ids_var->mutable_data<int64_t>(phi::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
-      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+      micro_id_var->mutable_data<float>(phi::DDim({1}), *place);
   micro_id_ptr[0] = 0;
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
-      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+      res_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
@@ -117,23 +116,22 @@ void InitTensorsOnClient2(framework::Scope* scope,
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
   int64_t* ids_ptr =
-      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+      ids_var->mutable_data<int64_t>(phi::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
-      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+      micro_id_var->mutable_data<float>(phi::DDim({1}), *place);
   micro_id_ptr[0] = 1;
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
-      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+      res_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 

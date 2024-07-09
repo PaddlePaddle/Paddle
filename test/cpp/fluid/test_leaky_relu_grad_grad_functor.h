@@ -64,7 +64,7 @@ struct LeakyReluGradGradEachElementFunctor {
 };
 
 template <typename T>
-static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
+static bool TestLeakyReluGradGradMain(const phi::DDim &dim,
                                       const platform::Place &place,
                                       float alpha) {
   LeakyReluGradGradFunctor<T> functor;

@@ -65,7 +65,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make Dim";
-  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
+  phi::DDim ddim = common::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::Tensor";
   paddle::Tensor tensor =
@@ -132,7 +132,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
+  phi::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -142,7 +142,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
                                         true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = common::make_ddim({4, 16});
+  phi::DDim ddimY = common::make_ddim({4, 16});
   paddle::Tensor Y =
       eager_test::CreateTensorWithValue(ddimY,
                                         paddle::platform::CPUPlace(),
@@ -196,7 +196,7 @@ void test_matmul(bool is_remove_gradient_hook) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
+  phi::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -206,7 +206,7 @@ void test_matmul(bool is_remove_gradient_hook) {
                                         true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
+  phi::DDim ddimY = common::make_ddim({16, 20});
   paddle::Tensor Y =
       eager_test::CreateTensorWithValue(ddimY,
                                         paddle::platform::CPUPlace(),
@@ -259,7 +259,7 @@ void test_backward_final_hooks() {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make paddle::Tensor";
-  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
+  phi::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -267,7 +267,7 @@ void test_backward_final_hooks() {
                                         phi::DataLayout::NCHW,
                                         3.0,
                                         true);
-  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
+  phi::DDim ddimY = common::make_ddim({16, 20});
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::Tensor Y =
