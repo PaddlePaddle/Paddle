@@ -251,11 +251,10 @@ def img_conv_group(
 
         if conv_with_batchnorm[i]:
             bn_layer = paddle.nn.BatchNorm(
-                num_channels=conv_num_filter[i],
-                act=conv_act
+                num_channels=conv_num_filter[i], act=conv_act
             )
             tmp = bn_layer(tmp)
-            
+
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
                 tmp = paddle.nn.functional.dropout(x=tmp, p=drop_rate)
