@@ -32,7 +32,7 @@ namespace paddle::memory::allocation {
 AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
     const std::shared_ptr<Allocator> &underlying_allocator,
     size_t alignment,
-    platform::CUDAPlace place,
+    phi::GPUPlace place,
     size_t chunk_size,
     bool allow_free_idle_chunk,
     int extra_padding_size)
