@@ -74,7 +74,7 @@ class ParallelContext {
 
  protected:
   ParallelStrategy strategy_;
-  platform::Place place_;
+  phi::Place place_;
 };
 
 }  //  namespace imperative

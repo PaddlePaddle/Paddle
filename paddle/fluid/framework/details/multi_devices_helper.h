@@ -113,25 +113,6 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   return PADDLE_GET_CONST(std::vector<std::string>, iter->second);
 }
 
-bool IsDataParallelInferenceGraph(const ir::Graph &graph);
-
-std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
-    ir::Graph *graph);
-
-bool HasDropLastReadOp(const ir::Graph &graph);
-
-bool HasKeepLastReadOp(const ir::Graph &graph);
-
-template <typename T>
-void CopyGraphAttrIfExists(const ir::Graph &src,
-                           ir::Graph *dst,
-                           const std::string &name) {
-  if (src.Has(name)) {
-    auto &attr = src.Get<T>(name);
-    dst->Set(name, new T(attr));
-  }
-}
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

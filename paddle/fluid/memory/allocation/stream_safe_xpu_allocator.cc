@@ -87,7 +87,7 @@ void StreamSafeXPUAllocation::RecordStreamPrivate(XPUStream stream) {
 
 StreamSafeXPUAllocator::StreamSafeXPUAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    platform::XPUPlace place,
+    phi::XPUPlace place,
     XPUStream default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),
