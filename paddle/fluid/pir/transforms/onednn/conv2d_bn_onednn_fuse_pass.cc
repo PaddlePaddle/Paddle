@@ -240,13 +240,14 @@ class Conv2dBiasBnOneDNNFusePattern
         conv2d_filter, reshape_scale_op.out());
 
     // --- deal with bias ---
+    // (add_op.y() - bn_mean)*scale + bn_bias
+    paddle::dialect::SubtractOp sub_op_1 =
+        rewriter.Build<paddle::dialect::SubtractOp>(add_op.y(), bn_mean);
     paddle::dialect::MultiplyOp mul_bias_op =
-        rewriter.Build<paddle::dialect::MultiplyOp>(bn_mean, div_op.out());
-    // new bias --> sub_op.out() + add_op.y()
-    paddle::dialect::SubtractOp sub_op =
-        rewriter.Build<paddle::dialect::SubtractOp>(bn_bias, mul_bias_op.out());
+        rewriter.Build<paddle::dialect::MultiplyOp>(sub_op_1.out(),
+                                                    div_op.out());
     paddle::dialect::AddOp add_op_2 =
-        rewriter.Build<paddle::dialect::AddOp>(sub_op.out(), add_op.y());
+        rewriter.Build<paddle::dialect::AddOp>(bn_bias, mul_bias_op.out());
     // fuse new bias to fused_conv2d
     new_conv2d_op = rewriter.Build<paddle::onednn::dialect::FusedConv2dOp>(
         conv2d_op.input(),
