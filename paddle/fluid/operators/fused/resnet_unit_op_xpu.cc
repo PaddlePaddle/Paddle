@@ -36,6 +36,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor *filter_x = ctx.Input<phi::DenseTensor>("FilterX");
     const phi::DenseTensor *scale_x = ctx.Input<phi::DenseTensor>("ScaleX");
     const phi::DenseTensor *bias_x = ctx.Input<phi::DenseTensor>("BiasX");
+    const phi::DenseTensor *maxptr_x = ctx.Input<phi::DenseTensor>("MaxPtrX");
 
     // output x
     phi::DenseTensor *conv_out_x = ctx.Output<phi::DenseTensor>("ConvX");
@@ -70,7 +71,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     std::vector<const XPUType *> w_list = {
         reinterpret_cast<const XPUType *>(filter_x->data<T>())};
     std::vector<XPUType *> conv_y_list = {
-        reinterpret_cast<XPUType *>(conv_out_x->mutable_data<T>(place))};
+        reinterpret_cast<XPUType *>(conv_out_x->data<T>())};
 
     std::vector<std::vector<int>> x_shape_list = {
         common::vectorize<int>(input_x->dims())};
@@ -88,16 +89,18 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     std::vector<int> dilations = {dilation, dilation};
     std::vector<const float *> scale_list = {scale_x->data<float>()};
     std::vector<const float *> bias_list = {bias_x->data<float>()};
-    std::vector<float *> batch_mean_list = {
-        saved_mean_x->mutable_data<float>(place)};
-    std::vector<float *> batch_invstd_list = {
-        saved_invstd_x->mutable_data<float>(place)};
-    std::vector<float *> global_mean_list = {
-        running_mean_x->mutable_data<float>(place)};
-    std::vector<float *> global_var_list = {
-        running_var_x->mutable_data<float>(place)};
+    std::vector<float *> batch_mean_list = {saved_mean_x->data<float>()};
+    std::vector<float *> batch_invstd_list = {saved_invstd_x->data<float>()};
+    std::vector<float *> global_mean_list = {running_mean_x->data<float>()};
+    std::vector<float *> global_var_list = {running_var_x->data<float>()};
 
-    std::vector<const float *> x_maxlist = {nullptr};
+    std::vector<const float *> x_maxlist;
+    if (maxptr_x) {
+      const float *tmp = reinterpret_cast<const float *>(maxptr_x->data<int>());
+      x_maxlist.push_back(tmp);
+    } else {
+      x_maxlist.push_back(nullptr);
+    }
     std::vector<const float *> w_maxlist = {nullptr};
     if (has_shortcut) {
       // input z
@@ -105,6 +108,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       const phi::DenseTensor *filter_z = ctx.Input<phi::DenseTensor>("FilterZ");
       const phi::DenseTensor *scale_z = ctx.Input<phi::DenseTensor>("ScaleZ");
       const phi::DenseTensor *bias_z = ctx.Input<phi::DenseTensor>("BiasZ");
+      const phi::DenseTensor *maxptr_z = ctx.Input<phi::DenseTensor>("MaxPtrZ");
 
       phi::DenseTensor *conv_out_z = ctx.Output<phi::DenseTensor>("ConvZ");
       phi::DenseTensor *saved_mean_z =
@@ -118,8 +122,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
 
       x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
       w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
-      conv_y_list.push_back(
-          reinterpret_cast<XPUType *>(conv_out_z->mutable_data<T>(place)));
+      conv_y_list.push_back(reinterpret_cast<XPUType *>(conv_out_z->data<T>()));
 
       x_shape_list.push_back(common::vectorize<int>(input_z->dims()));
 
@@ -133,49 +136,142 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       stride_list.push_back({stride_z, stride_z});
       scale_list.push_back(scale_z->data<float>());
       bias_list.push_back(bias_z->data<float>());
-      batch_mean_list.push_back(saved_mean_z->mutable_data<float>(place));
-      batch_invstd_list.push_back(saved_invstd_z->mutable_data<float>(place));
-      global_mean_list.push_back(running_mean_z->mutable_data<float>(place));
-      global_var_list.push_back(running_var_z->mutable_data<float>(place));
-      x_maxlist.push_back(nullptr);
+      batch_mean_list.push_back(saved_mean_z->data<float>());
+      batch_invstd_list.push_back(saved_invstd_z->data<float>());
+      global_mean_list.push_back(running_mean_z->data<float>());
+      global_var_list.push_back(running_var_z->data<float>());
+      {
+        const float *tmp =
+            reinterpret_cast<const float *>(maxptr_z->data<int>());
+        x_maxlist.push_back(tmp);
+      }
       w_maxlist.push_back(nullptr);
     } else {
       if (fuse_add) {
         const phi::DenseTensor *input_z = ctx.Input<phi::DenseTensor>("Z");
+        const phi::DenseTensor *maxptr_z =
+            ctx.Input<phi::DenseTensor>("MaxPtrZ");
         auto input_z_shape = common::vectorize<int>(input_z->dims());
         x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
         x_shape_list.push_back(input_z_shape);
-        x_maxlist.push_back(nullptr);
+        if (maxptr_z) {
+          const float *tmp =
+              reinterpret_cast<const float *>(maxptr_z->data<int>());
+          x_maxlist.push_back(tmp);
+        } else {
+          x_maxlist.push_back(nullptr);
+        }
       }
     }
-    int r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
-        dev_ctx.x_context(),
-        x_list,
-        w_list,
-        conv_y_list,
-        reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
-        x_shape_list,
-        filter_x_shape[0],
-        ksize_list,
-        stride_list,
-        paddings,
-        dilations,
-        group,
-        eps,
-        momentum,
-        x_maxlist,
-        w_maxlist,
-        scale_list,
-        bias_list,
-        batch_mean_list,
-        batch_invstd_list,
-        global_mean_list,
-        global_var_list,
-        xpu::Activation_t::RELU,
-        is_nchw,
-        has_shortcut,
-        fuse_add,
-        is_train);
+
+    phi::DenseTensor *bitmask = ctx.Output<phi::DenseTensor>("BitMask");
+    size_t bitmask_size = 0;
+    if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
+      bitmask_size = xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
+                                                                    XPUType,
+                                                                    XPUType,
+                                                                    float>(
+          dev_ctx.x_context(),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add);
+    } else {
+      bitmask_size = xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
+                                                                    XPUType,
+                                                                    XPUType,
+                                                                    int16_t>(
+          dev_ctx.x_context(),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add);
+    }
+
+    int64_t aligned_bitmask_size = (bitmask_size + 3) / 4;
+    bitmask->Resize(
+        phi::make_ddim({static_cast<int64_t>(aligned_bitmask_size)}));
+    auto *bitmask_ptr = bitmask->data<int>();
+    int r = 0;
+    if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
+      r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, float>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          conv_y_list,
+          reinterpret_cast<XPUType *>(output->data<T>()),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          eps,
+          momentum,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          bias_list,
+          batch_mean_list,
+          batch_invstd_list,
+          global_mean_list,
+          global_var_list,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          is_train,
+          bitmask_ptr);
+    } else {
+      r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          conv_y_list,
+          reinterpret_cast<XPUType *>(output->data<T>()),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          eps,
+          momentum,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          bias_list,
+          batch_mean_list,
+          batch_invstd_list,
+          global_mean_list,
+          global_var_list,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          is_train,
+          bitmask_ptr);
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_fusion");
   }
 };
@@ -203,9 +299,13 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         ctx.Input<phi::DenseTensor>("SavedInvstdX");
     const phi::DenseTensor *conv_out_x = ctx.Input<phi::DenseTensor>("ConvX");
     const phi::DenseTensor *output = ctx.Input<phi::DenseTensor>("Y");
+    const phi::DenseTensor *maxptr_x = ctx.Input<phi::DenseTensor>("MaxPtrX");
 
-    phi::DenseTensor *x_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    phi::DenseTensor *x_grad = nullptr;
+    int has_dx = ctx.Attr<bool>("has_dx");
+    if (has_dx) {
+      x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    }
     phi::DenseTensor *filter_x_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("FilterX"));
     phi::DenseTensor *scale_x_grad =
@@ -231,10 +331,12 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const XPUType *>(filter_x->data<T>())};
     std::vector<const XPUType *> conv_y_list = {
         reinterpret_cast<const XPUType *>(conv_out_x->data<T>())};
-    std::vector<XPUType *> dx_list = {
-        reinterpret_cast<XPUType *>(x_grad->mutable_data<T>(place))};
+    std::vector<XPUType *> dx_list = {nullptr};
+    if (has_dx) {
+      dx_list[0] = reinterpret_cast<XPUType *>(x_grad->data<T>());
+    }
     std::vector<XPUType *> dw_list = {
-        reinterpret_cast<XPUType *>(filter_x_grad->mutable_data<T>(place))};
+        reinterpret_cast<XPUType *>(filter_x_grad->data<T>())};
 
     std::vector<std::vector<int>> x_shape_list = {
         common::vectorize<int>(x->dims())};
@@ -250,16 +352,21 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = {padding, padding};
     std::vector<int> dilations = {dilation, dilation};
 
-    std::vector<const float *> x_maxlist = {nullptr};
+    std::vector<const float *> x_maxlist;
+    if (maxptr_x) {
+      const float *tmp = reinterpret_cast<const float *>(maxptr_x->data<int>());
+      x_maxlist.push_back(tmp);
+    } else {
+      x_maxlist.push_back(nullptr);
+    }
     std::vector<const float *> w_maxlist = {nullptr};
 
     std::vector<const float *> scale_list = {scale_x->data<float>()};
     std::vector<const float *> batch_mean_list = {saved_mean_x->data<float>()};
     std::vector<const float *> batch_invstd_list = {
         saved_invstd_x->data<float>()};
-    std::vector<float *> dscale_list = {
-        scale_x_grad->mutable_data<float>(place)};
-    std::vector<float *> dbias_list = {bias_x_grad->mutable_data<float>(place)};
+    std::vector<float *> dscale_list = {scale_x_grad->data<float>()};
+    std::vector<float *> dbias_list = {bias_x_grad->data<float>()};
 
     if (has_shortcut) {
       //       X                   Z
@@ -279,6 +386,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       const phi::DenseTensor *saved_invstd_z =
           ctx.Input<phi::DenseTensor>("SavedInvstdZ");
       const phi::DenseTensor *conv_out_z = ctx.Input<phi::DenseTensor>("ConvZ");
+      const phi::DenseTensor *maxptr_z = ctx.Input<phi::DenseTensor>("MaxPtrZ");
 
       phi::DenseTensor *z_grad =
           ctx.Output<phi::DenseTensor>(framework::GradVarName("Z"));
@@ -292,10 +400,8 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
       conv_y_list.push_back(
           reinterpret_cast<const XPUType *>(conv_out_z->data<T>()));
-      dx_list.push_back(
-          reinterpret_cast<XPUType *>(z_grad->mutable_data<T>(place)));
-      dw_list.push_back(
-          reinterpret_cast<XPUType *>(filter_z_grad->mutable_data<T>(place)));
+      dx_list.push_back(reinterpret_cast<XPUType *>(z_grad->data<T>()));
+      dw_list.push_back(reinterpret_cast<XPUType *>(filter_z_grad->data<T>()));
       x_shape_list.push_back(common::vectorize<int>(z->dims()));
 
       auto filter_z_shape = common::vectorize<int>(filter_z->dims());
@@ -306,50 +412,85 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       }
       ksize_list.push_back(ksize_z);
       stride_list.push_back({stride_z, stride_z});
-      x_maxlist.push_back(nullptr);
+      const float *tmp = reinterpret_cast<const float *>(maxptr_z->data<int>());
+      x_maxlist.push_back(tmp);
       w_maxlist.push_back(nullptr);
 
       scale_list.push_back(scale_z->data<float>());
       batch_mean_list.push_back(saved_mean_z->data<float>());
       batch_invstd_list.push_back(saved_invstd_z->data<float>());
-      dscale_list.push_back(scale_z_grad->mutable_data<float>(place));
-      dbias_list.push_back(bias_z_grad->mutable_data<float>(place));
+      dscale_list.push_back(scale_z_grad->data<float>());
+      dbias_list.push_back(bias_z_grad->data<float>());
     } else {
       if (fuse_add) {
         auto z_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("Z"));
-        dx_list.push_back(
-            reinterpret_cast<XPUType *>(z_grad->mutable_data<T>(place)));
+        dx_list.push_back(reinterpret_cast<XPUType *>(z_grad->data<T>()));
       }
     }
 
-    int r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
-        dev_ctx.x_context(),
-        x_list,
-        w_list,
-        reinterpret_cast<const XPUType *>(y_grad->data<T>()),
-        reinterpret_cast<const XPUType *>(output->data<T>()),
-        conv_y_list,
-        dx_list,
-        dw_list,
-        x_shape_list,
-        filter_x_shape[0],
-        ksize_list,
-        stride_list,
-        paddings,
-        dilations,
-        group,
-        x_maxlist,
-        w_maxlist,
-        scale_list,
-        batch_mean_list,
-        batch_invstd_list,
-        dscale_list,
-        dbias_list,
-        xpu::Activation_t::RELU,
-        eps,
-        is_nchw,
-        has_shortcut,
-        fuse_add);
+    const phi::DenseTensor *bitmask = ctx.Input<phi::DenseTensor>("BitMask");
+    int r = 0;
+    if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
+      r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, float>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+          reinterpret_cast<const XPUType *>(output->data<T>()),
+          conv_y_list,
+          dx_list,
+          dw_list,
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          batch_mean_list,
+          batch_invstd_list,
+          dscale_list,
+          dbias_list,
+          xpu::Activation_t::RELU,
+          eps,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          reinterpret_cast<void *>(const_cast<int *>(bitmask->data<int>())));
+    } else {
+      r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+          reinterpret_cast<const XPUType *>(output->data<T>()),
+          conv_y_list,
+          dx_list,
+          dw_list,
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          batch_mean_list,
+          batch_invstd_list,
+          dscale_list,
+          dbias_list,
+          xpu::Activation_t::RELU,
+          eps,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          reinterpret_cast<void *>(const_cast<int *>(bitmask->data<int>())));
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
   }
 };
