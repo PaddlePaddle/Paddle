@@ -1390,7 +1390,7 @@ class TestCalcReducedAttentionScores(unittest.TestCase):
         self.seqlen_k = 10240
         self.head_dim = 128
         self.num_group = 1
-        self.dtype = 'float16'
+        self.dtype = 'bfloat16'
 
     def native_reduce(self, q, k):
         q_ref = paddle.cast(paddle.transpose(q, [0, 2, 1, 3]), 'float32')
@@ -1507,6 +1507,23 @@ class TestCalcReducedAttentionScoresGQA(TestCalcReducedAttentionScores):
         self.seqlen_k = 10240
         self.head_dim = 128
         self.num_group = 2
+        self.dtype = 'bfloat16'
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
+class TestCalcReducedAttentionScoresFP16(TestCalcReducedAttentionScores):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.batch_size = 1
+        self.num_head = 8
+        self.seqlen_q = 1024
+        self.seqlen_k = 10240
+        self.head_dim = 128
+        self.num_group = 1
         self.dtype = 'float16'
 
 
@@ -1515,13 +1532,13 @@ class TestCalcReducedAttentionScoresGQA(TestCalcReducedAttentionScores):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
-class TestCalcReducedAttentionScoresBF16(TestCalcReducedAttentionScores):
+class TestCalcReducedAttentionScoresNotEvenMN(TestCalcReducedAttentionScores):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 1
         self.num_head = 8
-        self.seqlen_q = 1024
-        self.seqlen_k = 10240
+        self.seqlen_q = 1023
+        self.seqlen_k = 10241
         self.head_dim = 128
         self.num_group = 1
         self.dtype = 'bfloat16'
