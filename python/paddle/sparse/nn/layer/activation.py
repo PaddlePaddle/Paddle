@@ -102,7 +102,7 @@ class Softmax(Layer):
             >>> paddle.seed(2022)
 
             >>> mask = paddle.rand((3, 4)) < 0.7
-            >>> x = paddle.to_tensor(paddle.rand((3, 4)).numpy() * mask.numpy())
+            >>> x = paddle.rand((3, 4)) * mask.astype('float32')
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.88156885, 0.14463395, 0.17831714, 0.43818203],
