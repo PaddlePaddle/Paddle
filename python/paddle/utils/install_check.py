@@ -134,7 +134,7 @@ def _run_static_single(use_cuda, use_xpu, use_custom, custom_device_name):
         with paddle.static.program_guard(train_prog, startup_prog):
             input, out, weight = _simple_network()
             param_grads = paddle.static.append_backward(
-                out, parameter_list=[weight.name]
+                out, parameter_list=[weight]
             )[0]
 
         if use_cuda:
@@ -151,7 +151,7 @@ def _run_static_single(use_cuda, use_xpu, use_custom, custom_device_name):
         exe.run(
             train_prog,
             feed={input.name: _prepare_data()},
-            fetch_list=[out.name, param_grads[1].name],
+            fetch_list=[out, param_grads[1]],
         )
     paddle.disable_static()
 
