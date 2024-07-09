@@ -25,6 +25,7 @@
   kernel :
     func : accuracy
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : accuracy_check
@@ -145,6 +146,7 @@
     data_type : x
   inplace: (input -> out)
   backward : addmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : affine_channel
   args: (Tensor x, Tensor scale, Tensor bias, str data_layout = "AnyLayout")
@@ -424,6 +426,7 @@
     func : auc
     data_type : x
   optional : ins_tag_weight
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : average_accumulates_
   args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window = 0, int64_t max_average_window = INT64_MAX, int64_t min_average_window = 10000L)
@@ -455,6 +458,7 @@
     data_type : input
   inplace : (input -> out)
   backward : bce_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search
   args: (Tensor pre_ids, Tensor pre_scores, Tensor ids, Tensor scores, int level,
@@ -500,6 +504,7 @@
     func : bilinear
   optional : bias
   backward : bilinear_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
