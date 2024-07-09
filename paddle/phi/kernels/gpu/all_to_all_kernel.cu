@@ -84,7 +84,8 @@ void AllToAllKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || defined(PADDLE_WITH_HIP)
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(all_to_all,
                    GPU,
                    ALL_LAYOUT,
