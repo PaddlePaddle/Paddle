@@ -166,6 +166,8 @@ class IrContextImpl {
   BoolType bool_type;
   Complex64Type complex64_type;
   Complex128Type complex128_type;
+  Float8E4M3FNType float8e4m3fn_type;
+  Float8E5M2Type float8e5m2_type;
 
   // Cached AbstractAttribute instances.
   std::unordered_map<TypeId, AbstractAttribute *> registed_abstract_attributes_;
@@ -209,6 +211,8 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   impl_->bool_type = TypeManager::get<BoolType>(this);
   impl_->complex64_type = TypeManager::get<Complex64Type>(this);
   impl_->complex128_type = TypeManager::get<Complex128Type>(this);
+  impl_->float8e4m3fn_type = TypeManager::get<Float8E4M3FNType>(this);
+  impl_->float8e5m2_type = TypeManager::get<Float8E5M2Type>(this);
 }
 
 StorageManager &IrContext::type_storage_manager() {
@@ -367,6 +371,14 @@ Complex64Type Complex64Type::get(IrContext *ctx) {
 
 Complex128Type Complex128Type::get(IrContext *ctx) {
   return ctx->impl().complex128_type;
+}
+
+Float8E4M3FNType Float8E4M3FNType::get(IrContext *ctx) {
+  return ctx->impl().float8e4m3fn_type;
+}
+
+Float8E5M2Type Float8E5M2Type::get(IrContext *ctx) {
+  return ctx->impl().float8e5m2_type;
 }
 
 }  // namespace pir
