@@ -4,9 +4,6 @@ core_gather_headers()
 gather_srcs(
   cinnapi_src
   SRCS
-  tensor.cc
-  scope.cc
-  variable.cc
   buffer.cc
   memory.cc
   graph_compiler_util.cc

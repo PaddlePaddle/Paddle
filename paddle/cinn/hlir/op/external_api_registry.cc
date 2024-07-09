@@ -78,10 +78,6 @@ CINN_REGISTER_HELPER(op_external_api) {
       .set_api_name("cinn_call_cholesky_host");
   CINN_OP_REGISTER_EXTERNAL_API(triangular_solve, default_nvgpu)
       .set_api_name("cinn_call_triangular_solve_nvgpu");
-  CINN_OP_REGISTER_EXTERNAL_API(assert_true, default_nvgpu)
-      .set_api_name("cinn_assert_true_nvgpu");
-  CINN_OP_REGISTER_EXTERNAL_API(assert_true, default_host)
-      .set_api_name("cinn_assert_true_host");
 #ifdef CINN_WITH_CUDNN
   CINN_OP_REGISTER_EXTERNAL_API(conv2d, default_nvgpu)
       .set_trans_func([](const ::cinn::hlir::framework::Node* node) {
