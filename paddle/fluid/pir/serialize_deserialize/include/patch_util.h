@@ -17,8 +17,6 @@
 
 namespace pir {
 
-void GetPatchCompressOpName(std::string *op_name);
-
 Json GetAttrTypeJson(const YAML::Node &action);
 
 Json BuildAttrJsonPatch(const YAML::Node &action);

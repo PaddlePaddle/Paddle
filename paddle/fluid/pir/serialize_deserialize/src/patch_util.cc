@@ -26,19 +26,6 @@
 
 namespace pir {
 
-void GetPatchCompressOpName(std::string *op_name) {
-  if (*op_name == "builtin.parameter") {
-    *op_name = 'p';
-    return;
-  }
-  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
-  *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
-             "." + name.second;
-  return;
-}
-
-// Json BuildAttrJsonPatch(const YAML::Node &action);
-
 Json BuildAttrJsonPatch(const YAML::Node &action) {
   Json j_attr_type;
   if (!action["type"].IsDefined() || !action["default"].IsDefined()) {
