@@ -54,12 +54,23 @@ inline bool IsInterpretercoreFastGCEnabled() {
   // `EventQuery` method in event GC cannot be used in
   // cuda graph.
   PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
+                                .IsStreamSafeCUDAAllocatorUsed() == true &&
+                        memory::allocation::AllocatorFacade::Instance()
+                                .IsCUDAMallocAsyncAllocatorUsed() == true,
+                    false,
+                    platform::errors::InvalidArgument(
+                        "StreamSafeAllocator and AsyncAllocator shouldn't be "
+                        "True together."));
+  PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
                                 .IsStreamSafeCUDAAllocatorUsed() == false &&
+                        memory::allocation::AllocatorFacade::Instance()
+                                .IsCUDAMallocAsyncAllocatorUsed() == false &&
                         FLAGS_new_executor_use_cuda_graph,
                     false,
                     platform::errors::InvalidArgument(
                         "When FLAGS_new_executor_use_cuda_graph is true, "
-                        "IsStreamSafeCUDAAllocatorUsed must be true, but "
+                        "Either IsStreamSafeCUDAAllocatorUsed or "
+                        "IsCUDAMallocAsyncAllocatorUsed must be true, but "
                         "got false."));
   return (memory::allocation::AllocatorFacade::Instance()
               .IsStreamSafeCUDAAllocatorUsed() &&

@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/seqpool_cvm_concat_fuse_pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -275,8 +273,6 @@ TEST(SeqPoolCVMConcatFusePass, more_inputs) {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(seqpool_cvm_concat_fuse_pass);

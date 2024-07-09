@@ -139,6 +139,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace paddle {
 namespace {
@@ -390,6 +391,10 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
+  if (FLAGS_enable_pir_api) {
+    config_.EnableNewExecutor(true);
+    config_.EnableNewIR(true);
+  }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
     if (config_.new_ir_enabled()) {
@@ -441,11 +446,12 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
+
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
     std::string optimized_model;
-    if (load_pir_model_) {
+    if (config_.new_ir_enabled()) {
       optimized_model = optimized_model_path + "/" + "_optimized.json";
     } else {
       optimized_model = optimized_model_path + "/" + "_optimized.pdmodel";
@@ -454,6 +460,9 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
+      if (config_.new_ir_enabled()) {
+        load_pir_model_ = true;
+      }
       LOG(INFO) << "Load Optimized model from " << optimized_model
                 << " and Load Optimized optimized_params from "
                 << optimized_params;
@@ -470,7 +479,6 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
-
   InitPlace();
 
   if (!CreateExecutor()) {
@@ -652,6 +660,7 @@ void AnalysisPredictor::ClearExtraParams() {
       }
     }
   }
+
   scope_->EraseVars(extra_params);
   VLOG(1) << "Clear " << extra_params.size() << " extra params.";
 }
@@ -1022,25 +1031,20 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      if (load_pir_model_ && for_save) {
+        sub_scope_->Var(data_name);
+      }
       idx2feeds_[feed_idx] = data_name;
       feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
     }
 
-    for (auto var : op->results()) {
-      std::string var_name;
-      auto is_persistable =
-          var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
-      if (is_persistable && is_persistable.data()) {
-        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
-          var_name = param_op.param_name();
-          param_name_var_pairs.emplace_back(var_name, var);
-        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
-          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-          param_name_var_pairs.emplace_back(var_name, var);
-        }
-      }
+    if (op->isa<::pir::ParameterOp>()) {
+      std::string var_name =
+          op->attribute<pir::StrAttribute>("parameter_name").AsString();
+      auto var = op->result(0);
+      param_name_var_pairs.emplace_back(var_name, var);
     }
   }
 
@@ -1063,6 +1067,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
   for (size_t i = 0; i < len; ++i) {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
+
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
@@ -1108,7 +1113,6 @@ bool AnalysisPredictor::PreparePirProgram() {
       platform::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
   pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
   if (!SaveOrLoadPirParameters(false)) {
     return false;
@@ -1238,7 +1242,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
   }
 
-  if (load_pir_model_) {
+  if (config_.new_ir_enabled()) {
     executor_->Prepare(sub_scope_);
   } else {
     DisablePrepareDataOpt(inference_program_, 0, false);
@@ -1259,7 +1263,6 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    VLOG(1) << "predictor program " << *pir_program_;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -1653,9 +1656,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (config_.new_ir_enabled()) {
-    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
-  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1665,6 +1665,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -1730,9 +1733,6 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (config_.new_ir_enabled()) {
-    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
-  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1742,6 +1742,9 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
@@ -2061,21 +2064,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtOpsRunFloat(config_.trt_ops_run_float_);
   }
 
-  if (config_.dlnne_enabled()) {
-    LOG(INFO) << "Dlnne subgraph is enabled";
-    argument_->SetUseDlnne(true);
-    argument_->SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
-    argument_->SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
-    argument_->SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
-    argument_->SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
-    argument_->SetDlnneDisableNodesByOutputs(
-        config_.dlnne_disable_nodes_by_outputs_);
-    argument_->SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
-    argument_->SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
-    argument_->SetDlnnePrecisionMode(static_cast<int>(
-        paddle::ConvertPrecision(config_.dlnne_precision_mode_)));
-  }
-
   argument_->SetUseXpu(config_.use_xpu_);
 
 #ifdef PADDLE_WITH_IPU
@@ -2291,13 +2279,12 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #endif
         delete prog;
       });
-  // The config and argument take a lot of storage,
-  // when the predictor settings are complete, we release these stores.
-  config_.PartiallyRelease();
+
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
-
+  // The argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
@@ -2718,6 +2705,12 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
 
+  if (config_.new_ir_enabled()) {
+    auto *scope = sub_scope_ ? sub_scope_ : scope_.get();
+    if (scope != nullptr) {
+      ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+    }
+  }
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }

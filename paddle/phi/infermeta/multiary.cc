@@ -912,9 +912,10 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
 
   bool check = true;
+
   if (!scale || !bias ||
-      ((!config.is_runtime) && (common::product(scale.dims()) <= 0 ||
-                                common::product(bias.dims()) <= 0))) {
+      ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
+                                contain_unknown_dim(bias.dims()) || C == -1))) {
     check = false;
   }
 
@@ -2424,10 +2425,14 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   if (residual_out && !norm_weight && !norm_bias) {
     out->set_dtype(x.dtype());
   } else {
-    if (quant_scale <= 0.0f) {
-      out->set_dtype(x.dtype());
+    if (quant_scale > 0) {
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
-      out->set_dtype(phi::DataType::INT8);
+      out->set_dtype(x.dtype());
     }
   }
   out->set_layout(x.layout());
@@ -4947,7 +4952,7 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(x_dims) <= 0 || common::product(labels_dims) <= 0)) {
+      (contain_unknown_dim(x_dims) || contain_unknown_dim(labels_dims))) {
     check = false;
   }
 

@@ -305,8 +305,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 def cpuonly_check(args):
     if args.ips and len(args.ips.split(',')) > 1:
         raise RuntimeError(
-            "CPUONLY launch only support single trainer, that is len(ips)=1, but got %s."
-            % args.ips
+            f"CPUONLY launch only support single trainer, that is len(ips)=1, but got {args.ips}."
         )
     if args.run_mode:
         assert (

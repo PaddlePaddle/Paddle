@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Literal, Sequence, overload
 import numpy as np
 
 import paddle
-from paddle._typing import DTypeLike
 from paddle.base.data_feeder import convert_dtype
 
 from ... import tensor
@@ -34,6 +33,7 @@ from .norm import LayerNorm
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike, ParamAttrLike
 
 __all__ = []
 
@@ -47,7 +47,7 @@ def _convert_param_attr_to_list(
 
 @overload
 def _convert_param_attr_to_list(
-    param_attr: Sequence[ParamAttr] | ParamAttr | Sequence[bool] | bool | None,
+    param_attr: Sequence[ParamAttrLike] | ParamAttrLike | None,
     n: int,
 ) -> list[ParamAttr]:
     ...
@@ -192,8 +192,8 @@ class MultiHeadAttention(Layer):
         kdim: int | None = None,
         vdim: int | None = None,
         need_weights: bool = False,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
     ) -> None:
         super().__init__()
 
@@ -648,8 +648,8 @@ class TransformerEncoderLayer(Layer):
         attn_dropout: float | None = None,
         act_dropout: float | None = None,
         normalize_before: bool = False,
-        weight_attr: Sequence[ParamAttr] | ParamAttr | None = None,
-        bias_attr: ParamAttr | Sequence[ParamAttr] | bool | None = None,
+        weight_attr: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        bias_attr: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
         layer_norm_eps: float = 1e-5,
     ) -> None:
         self._config = locals()
@@ -1023,8 +1023,8 @@ class TransformerDecoderLayer(Layer):
         attn_dropout: float | None = None,
         act_dropout: float | None = None,
         normalize_before: bool = False,
-        weight_attr: ParamAttr | Sequence[ParamAttr] | None = None,
-        bias_attr: ParamAttr | Sequence[ParamAttr] | bool | None = None,
+        weight_attr: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        bias_attr: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
         layer_norm_eps: float = 1e-5,
     ) -> None:
         self._config = locals()
@@ -1563,8 +1563,8 @@ class Transformer(Layer):
         attn_dropout: float | None = None,
         act_dropout: float | None = None,
         normalize_before: bool = False,
-        weight_attr: ParamAttr | Sequence[ParamAttr] | None = None,
-        bias_attr: ParamAttr | Sequence[ParamAttr] | bool | None = None,
+        weight_attr: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        bias_attr: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
         custom_encoder: Layer | None = None,
         custom_decoder: Layer | None = None,
     ) -> None:

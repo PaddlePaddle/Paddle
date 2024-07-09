@@ -160,7 +160,7 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be core.eager.Tensor" % param.name
+                f"The data type of '{param.name}' must be core.eager.Tensor"
             )
 
         if is_model_parallel:
@@ -197,6 +197,8 @@ def sync_params_buffers(
             )
     else:
         for var in model_vars:
+            # NOTE(shenliang03): Now, we dont support contiguous tensor in dp
+            var = var.contiguous()
             paddle.distributed.broadcast(
                 var, src=src_rank, group=comm_group, sync_op=True
             )
@@ -334,7 +336,7 @@ class DataParallel(layers.Layer):
             ...     model = paddle.DataParallel(model)
             ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     for step in range(10):
-            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32) # type: ignore[var-annotated]
             ...         x = paddle.to_tensor(x_data)
             ...         x.stop_gradient = False
             ...         # step 1 : skip gradient synchronization by 'no_sync'
@@ -397,6 +399,13 @@ class DataParallel(layers.Layer):
                     self.group, paddle.distributed.collective.Group
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
+                [
+                    warnings.warn(
+                        f"param [{name}] is not contiguous, please check it and make it contiguous."
+                    )
+                    for name, param in self._layers.named_parameters()
+                    if not param.is_contiguous()
+                ]
             # sync buffer and params
             sync_params_buffers(self._layers, fuse_params=False)
 
@@ -916,7 +925,7 @@ def _check_var_exists(var_name):
     if var is None:
         raise ValueError(
             "paddle.distributed initialize error, "
-            "environment variable %s is needed, but not set." % var_name
+            f"environment variable {var_name} is needed, but not set."
         )
 
 

@@ -24,12 +24,6 @@ from typing_extensions import Self
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle._typing import (
-    DTypeLike,
-    NestedStructure,
-    ShapeLike,
-    TensorOrTensors,
-)
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
@@ -51,7 +45,14 @@ from .layers import Layer
 if TYPE_CHECKING:
     from typing import Literal
 
-    from paddle import ParamAttr, Tensor
+    from paddle import Tensor
+    from paddle._typing import (
+        DTypeLike,
+        NestedStructure,
+        ParamAttrLike,
+        ShapeLike,
+        TensorOrTensors,
+    )
 
     _DirectionType = Literal["forward", "bidirect", "bidirectional"]
     _RNNType = Literal["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]
@@ -808,10 +809,10 @@ class SimpleRNNCell(RNNCellBase):
         input_size: int,
         hidden_size: int,
         activation: _ActivationType | str = "tanh",
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1012,10 +1013,10 @@ class LSTMCell(RNNCellBase):
         self,
         input_size: int,
         hidden_size: int,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
         name: str | None = None,
     ) -> None:
@@ -1222,10 +1223,10 @@ class GRUCell(RNNCellBase):
         self,
         input_size: int,
         hidden_size: int,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1525,10 +1526,10 @@ class RNNBase(LayerList):
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
     ) -> None:
         super().__init__()
@@ -1649,10 +1650,20 @@ class RNNBase(LayerList):
             ]
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
-            self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8,
-                name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
-            )
+            if in_pir_mode():
+                self._dropout_state = paddle.pir.core.create_parameter(
+                    dtype="uint8",
+                    shape=[0],
+                    name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
+                    initializer=paddle.nn.initializer.Constant(value=0),
+                    trainable=False,
+                )
+                self._dropout_state.stop_gradient = True
+            else:
+                self._dropout_state = self.create_variable(
+                    dtype=core.VarDesc.VarType.UINT8,
+                    name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
+                )
             if in_dynamic_mode():
                 with paddle.no_grad():
                     dtype = params[0].dtype
@@ -1939,10 +1950,10 @@ class SimpleRNN(RNNBase):
         time_major: bool = False,
         dropout: float = 0.0,
         activation: _ActivationType | str = "tanh",
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         if activation == "tanh":
@@ -2082,10 +2093,10 @@ class LSTM(RNNBase):
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         proj_size: int = 0,
         name: str | None = None,
     ) -> None:
@@ -2203,10 +2214,10 @@ class GRU(RNNBase):
         direction: _DirectionType | str = "forward",
         time_major: bool = False,
         dropout: float = 0.0,
-        weight_ih_attr: ParamAttr | None = None,
-        weight_hh_attr: ParamAttr | None = None,
-        bias_ih_attr: ParamAttr | None = None,
-        bias_hh_attr: ParamAttr | None = None,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__(

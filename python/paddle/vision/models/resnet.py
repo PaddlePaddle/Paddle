@@ -13,11 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle import nn
-from paddle._typing import Size2
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
     from typing_extensions import NotRequired, Unpack
 
     from paddle import Tensor
+    from paddle._typing import Size2
 
     _ResNetArch = Literal[
         'resnet18',
@@ -121,7 +121,7 @@ class BasicBlock(nn.Layer):
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: type[nn.Layer] | None = None,
+        norm_layer: Callable[..., nn.Layer] | None = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -173,11 +173,11 @@ class BottleneckBlock(nn.Layer):
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: type[nn.Layer] | None = None,
+        norm_layer: Callable[..., nn.Layer] | None = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:
-            norm_layer: type[nn.BatchNorm2D] = nn.BatchNorm2D
+            norm_layer = nn.BatchNorm2D
         width = int(planes * (base_width / 64.0)) * groups
 
         self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False)

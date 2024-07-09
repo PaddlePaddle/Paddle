@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import inspect
 import random
-import types
 import unittest
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from test_case_base import (
@@ -30,14 +30,17 @@ from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
 
+if TYPE_CHECKING:
+    from types import FrameType
+
 
 def fake_frames() -> (
     tuple[
-        types.FrameType,
-        types.FrameType,
-        types.FrameType,
-        types.FrameType,
-        types.FrameType,
+        FrameType,
+        FrameType,
+        FrameType,
+        FrameType,
+        FrameType,
     ]
 ):
     def fake_inner_fn_1():
@@ -83,7 +86,7 @@ def fake_frames() -> (
 ) = fake_frames()
 
 
-def mock_start_translate(frame: types.FrameType, **kwargs):
+def mock_start_translate(frame: FrameType, **kwargs):
     translate_map = {
         FRAME_1: (CustomCode(FRAME_2.f_code, False), lambda frame: True),
         FRAME_3: (
