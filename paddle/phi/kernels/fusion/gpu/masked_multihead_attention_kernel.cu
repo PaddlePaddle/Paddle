@@ -30,14 +30,12 @@ template <typename T>
 struct Masked_multihead_attention_params {
   float *qk_sum_max_split_seq;
   float *split_out;
-
   // output buffer, [B, 1(seq_len), num_head * dim_head]
   T *out;
   // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
   const T *qkv;
   // bias, [3, num_head, dim_head]
   T *qkv_bias;
-
   // [2, B, num_head, max_seq_len(valid cache_seq_len), dim_head]
   // k [B, num_head, dim_head/x, max_seq_len, x], that is `seq_len` first
   // v [B, num_head, max_seq_len, dim_head]
@@ -56,14 +54,6 @@ struct Masked_multihead_attention_params {
   const T *attn_mask;
 
   int rotary_emb_dims;
-  // int rotary_seq_len = 1;
-
-  // [bsz, seq_len]
-  // const int *cum_offsets;
-
-  // 如果attn_mask!=nullptr, mask_length == timestep+1
-  // int mask_length;
-
   int batch_size;  // batch * beam
   int beam_width;
   int cache_batch_size;
@@ -72,7 +62,6 @@ struct Masked_multihead_attention_params {
   // kv_num_head = k_num_head && kv_num_head == v_num_head
   int kv_num_head;
   int timestep;  // cache_seq_length
-  // int seq_len;
   int max_seq_length;
 
   // 1.f / sqrt(Dh)
@@ -149,10 +138,6 @@ __global__ void masked_multihead_attention_kernel(
   const int kv_bhi = bi * kv_num_head + hi / num_head_per_group;
 
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
-  // const int ti =
-  //     params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
-  // const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
-  const int thi = -1;
   const int tid = threadIdx.x;
 
   const int bi_seq_len_offset = bi * params.max_seq_length;
@@ -655,17 +640,14 @@ __global__ void masked_multihead_attention_kernel(
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
       V_vec tmp_out;
       convert_from_float(tmp_out, out);
-      store_func.template store<V_vec>(
-          tmp_out, thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
+      store_func.template store<V_vec>(tmp_out, bhi * Dh + vi);
 #else
-      store_func.template store<V_vec>(
-          out, thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
+      store_func.template store<V_vec>(out, bhi * Dh + vi);
 #endif
     }
     return;
   }
 
-  /// TODO: cum_offsets should be considered here
   if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     *(reinterpret_cast<V_vec_acum *>(
@@ -682,10 +664,10 @@ __global__ void masked_multihead_attention_kernel(
 #endif
 }
 
-// v2 only works with seq of 102400 length or less
+// post_process_kernel only works with seq of 102400 length or less
 template <typename T, int Dh, int Dh_MAX, typename StoreFunc>
-__global__ void post_process_kernel_v2(
-    Masked_multihead_attention_params<T> params, StoreFunc store_func) {
+__global__ void post_process_kernel(Masked_multihead_attention_params<T> params,
+                                    StoreFunc store_func) {
   const int bi = blockIdx.y;
   const int tid = threadIdx.x;
   const int hi = blockIdx.x;
@@ -722,7 +704,6 @@ __global__ void post_process_kernel_v2(
 
       float real_this_sum = sum_max.x * __expf(sum_max.y - max);
       v += real_this_sum * this_v;
-      // v += this_v * __expf(this_max - max);
       sum += real_this_sum;
     }
 
@@ -730,97 +711,6 @@ __global__ void post_process_kernel_v2(
     T tmp_v = (T)v;
     store_func.template store<T>(tmp_v, bhi * Dh + tid);
     // params.out[bhi * Dh + tid] = (T)(v);
-  }
-}
-
-// v3 launch more threads to handle long loop delays caused by very long seq
-// (e.g.) 10240Seq / 128StepsPerBlock = 80 loops. With 4x threads that's 20
-// loops
-template <typename T,
-          int Dh,
-          int Dh_MAX,
-          int SPLTS_PER_BLOCK,
-          typename StoreFunc>
-__global__ void post_process_kernel_v3(
-    Masked_multihead_attention_params<T> params, StoreFunc store_func) {
-  const int bi = blockIdx.y;
-  const int tid = threadIdx.x;
-  const int hi = blockIdx.x;
-  const int bhi = (bi * params.num_head + hi);
-  const int bhsi = (bi * params.num_head + hi) * params.split_seq;
-
-  int act_time_step = params.sequence_lengths == nullptr
-                          ? params.timestep
-                          : params.sequence_lengths[bi];
-  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
-
-  extern __shared__ float2 qk_sum_max_smem[];
-  float max = -FLT_MAX;
-  const int WARP_SIZE = 32;
-  int WARPS_PER_BLOCK = blockDim.x / WARP_SIZE;
-
-  for (int i = tid; i < real_split_each_batch; i += blockDim.x) {
-    float2 sum_max = *reinterpret_cast<float2 *>(
-        &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
-    max = fmaxf(sum_max.y, max);
-    qk_sum_max_smem[i] = sum_max;
-  }
-#pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
-  }
-
-  __shared__ float max_smem[32];
-  const int warp = tid / WARP_SIZE;
-  const int lane = tid % WARP_SIZE;
-  if (lane == 0) {
-    max_smem[warp] = max;
-  }
-  __syncthreads();
-
-  max = lane < WARPS_PER_BLOCK ? max_smem[lane] : -FLT_MAX;
-#pragma unroll
-  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
-  }
-
-  max = __shfl_sync(uint32_t(-1), max, 0);
-
-  __shared__ float redu_smem[SPLTS_PER_BLOCK / 2][2][Dh_MAX];
-  float sum = 0;
-  float v = 0;
-  int split_group_idx = tid / Dh_MAX;
-  if ((tid % Dh_MAX) < Dh) {
-#pragma unroll
-    for (int i = split_group_idx; i < real_split_each_batch;
-         i += SPLTS_PER_BLOCK) {
-      float2 sum_max = qk_sum_max_smem[i];
-      float this_v = params.split_out[(bhsi + i) * Dh + (tid % Dh_MAX)];
-
-      float real_this_sum = sum_max.x * __expf(sum_max.y - max);
-      v += real_this_sum * this_v;
-      sum += real_this_sum;
-    }
-    //  Multi split_seq merge into one
-    for (int active_groups = SPLTS_PER_BLOCK; active_groups >= 2;
-         active_groups /= 2) {
-      int midpoint = active_groups / 2;
-      if (split_group_idx >= midpoint && split_group_idx < active_groups) {
-        redu_smem[split_group_idx - midpoint][0][tid % Dh_MAX] = v;
-        redu_smem[split_group_idx - midpoint][1][tid % Dh_MAX] = sum;
-      }
-      __syncthreads();
-      if (split_group_idx < midpoint) {
-        v += redu_smem[split_group_idx][0][tid % Dh_MAX];
-        sum += redu_smem[split_group_idx][1][tid % Dh_MAX];
-      }
-      __syncthreads();
-    }
-    if (split_group_idx == 0) {
-      v /= sum;
-      T tmp_v = (T)v;
-      store_func.template store<T>(tmp_v, bhi * Dh + tid);
-    }
   }
 }
 
@@ -942,18 +832,17 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   }
 }
 
-#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)              \
-  case dim_head_:                                                         \
-    fmha_launch_kernel<T,                                                 \
-                       dim_head_,                                         \
-                       dim_head_max_,                                     \
-                       decltype(load_func),                               \
-                       decltype(store_func),                              \
-                       SPLIT>(params, stream, load_func, store_func);     \
-    if (!SPLIT || params.split_seq == 1) return;                          \
-    post_process_kernel_v3<T, dim_head_, dim_head_max_, SPLTS_PER_BLOCK_> \
-        <<<grid, SPLTS_PER_BLOCK_ * dim_head_max_, smem_sz, stream>>>(    \
-            params, store_func);                                          \
+#define FMHA_LAUNCH_KERNEL(dim_head_, dim_head_max_, stream)            \
+  case dim_head_:                                                       \
+    fmha_launch_kernel<T,                                               \
+                       dim_head_,                                       \
+                       dim_head_max_,                                   \
+                       decltype(load_func),                             \
+                       decltype(store_func),                            \
+                       SPLIT>(params, stream, load_func, store_func);   \
+    if (!SPLIT || params.split_seq == 1) return;                        \
+    post_process_kernel<T, dim_head_, dim_head_max_>                    \
+        <<<grid, dim_head_max_, smem_sz, stream>>>(params, store_func); \
     break;
 
 template <typename T, typename LoadFunc, typename StoreFunc, bool SPLIT>
@@ -964,7 +853,6 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                StoreFunc store_func) {
   dim3 grid(params.num_head, params.batch_size);
   int smem_sz = params.split_seq * sizeof(float2);
-  constexpr int SPLTS_PER_BLOCK_ = 4;
   auto stream = dev_ctx.stream();
   switch (dim_head) {
     FMHA_LAUNCH_KERNEL(16, 32, stream)
@@ -1163,7 +1051,6 @@ void DispatchWithDtype(const Context &dev_ctx,
           src_mask->dims()[1]));
     }
     params.attn_mask = src_mask->data<T>();
-    // params.mask_length = src_mask->dims()[3];
     timestep = src_mask->dims()[3] - 1;
   }
 
@@ -1181,10 +1068,6 @@ void DispatchWithDtype(const Context &dev_ctx,
     PADDLE_THROW(phi::errors::PermissionDenied(
         "Current mmha kernel does not support cum_offsets param."));
   }
-  //   params.cum_offsets = cum_offsets->data<int>();
-  // } else {
-  //   params.cum_offsets = nullptr;
-  // }
 
   if (rotary_emb_dims > 0) {
     params.rotary_emb = rotary_tensor->data<float>();
@@ -1205,7 +1088,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.num_head = num_head;
   params.kv_num_head = k_num_head;
   params.timestep = timestep;
-  // params.seq_len = seq_len;
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
@@ -1217,7 +1099,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   if (bsz <= 4 && timestep >= 1024) {
     SPLIT = true;
   }
-
   if (SPLIT) {
     // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
     int steps_per_block = timestep < 256 ? 256 : 128;
@@ -1232,7 +1113,6 @@ void DispatchWithDtype(const Context &dev_ctx,
                                   qk_sum_max_split_seq.numel() * sizeof(float));
     params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
 
-    // In fact, split_out is not necessarily needed（split_seq==1）
     phi::DenseTensor split_out;
     split_out.Resize({{bsz, num_head, split_seq, dim_head}});
     dev_ctx.template Alloc<float>(&split_out,
