@@ -45,8 +45,6 @@ enum class ScopeKind {
   kGlobal = 2,
 };
 
-class StageMap;
-
 struct StageForloopInfo {
   StageForloopInfo() = default;
   StageForloopInfo(ir::ForType for_type, ir::DeviceAPI device, uint8_t offset)
@@ -262,18 +260,6 @@ class Stage : public Object {
   void SimpleComputeAt(Stage* other, int level);
 
   /**
-   * Create a cache Tensor and load the \p source into this buffer, replace all
-   * the reading in the readers with the cache.
-   * @param tensor the source memory to cache.
-   * @param memory_type the memory type, "share" for CUDA share memory, "local"
-   * for CUDA local memory.
-   * @param readers the readers of the \p tensor
-   */
-  ir::Tensor CacheRead(const std::string& memory_type,
-                       std::vector<ir::Tensor>& readers,  // NOLINT
-                       poly::StageMap stages);
-
-  /**
    * \brief Mark the stage compute at the level of some other stage. Usually
    * used when there is no access relation between two tensors.
    *
@@ -305,47 +291,6 @@ class Stage : public Object {
 
   void AddForLoopInTransform(
       std::vector<std::vector<Expr>>& indices);  // NOLINT
-  /**
-   * Create a cache for write to the original tensor.
-   * @param tensor the tensor to create the cache for.
-   * @param memory_type "share" for CUDA share memory, "local" for CUDA local
-   * memory.
-   */
-  ir::Tensor CacheWrite(const std::string& memory_type,
-                        poly::StageMap stages,
-                        ir::Tensor& key_tensor);  // NOLINT
-
-  /**
-   * Generate the `syncthreads()` code to sync all threads on CUDA backends.
-   * For other backends like Opencl, generate corresponding code to sync multi
-   * threads.
-   * @param tensor the exact tensor computed just before syncthreads.
-   * @param stages the stagemap of all tensor.
-   */
-  void SyncThreads(StageMap stages);
-
-  /**
-   * Generate the `syncthreads()` code to sync all threads on CUDA backends.
-   * For other backends like Opencl, generate corresponding code to sync multi
-   * threads.
-   * @param level the ComputeAt level of syncthreads in this tensor's
-   * computation.
-   * @param before_tensors the tensors computed before syncthreads.
-   * @param stages the stagemap of all tensor.
-   * Example Code :
-   * for (i = 0:9)
-   *   for (j = 0:9)
-   *     A[i,j]
-   *
-   * After stages[A]->SyncThreads(0, {}, stages), The Code is :
-   * for (i = 0:9)
-   *   syncthreads()
-   *   for (j = 0:9)
-   *     A[i,j]
-   */
-  void SyncThreads(int level,
-                   const std::vector<ir::Tensor>& before_tensors,
-                   StageMap stages);
 
   /**
    * Set thread scope.
@@ -569,26 +514,6 @@ class _StageMap_ : public Object {
 
  private:
   absl::flat_hash_map<std::string, Shared<Stage>> data_;
-
-  friend class StageMap;
 };
-
-class StageMap : public Shared<_StageMap_> {
- public:
-  StageMap() : Shared(new _StageMap_) {}
-
-  Stage* operator[](const ir::Tensor& tensor) { return (*self())[tensor]; }
-  const Stage* operator[](const ir::Tensor& tensor) const {
-    return (*self())[tensor];
-  }
-  Stage* operator[](const ir::_Tensor_* tensor) { return (*self())[tensor]; }
-  const Stage* operator[](const ir::_Tensor_* tensor) const {
-    return (*self())[tensor];
-  }
-
-  auto begin() const { return self()->data_.begin(); }
-  auto end() const { return self()->data_.end(); }
-};
-
 }  // namespace poly
 }  // namespace cinn

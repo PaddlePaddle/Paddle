@@ -441,4 +441,11 @@ phi::KernelKey GetBincountExpectedKernelType(
   return phi::KernelKey(data_type, ctx.device_context().GetPlace());
 }
 
+phi::KernelKey GetMulticlassNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        phi::CPUPlace());
+}
+
 }  // namespace paddle::operators

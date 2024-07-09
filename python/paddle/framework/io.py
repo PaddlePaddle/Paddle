@@ -1226,6 +1226,32 @@ def load(path, **configs):
                             program = Program.parse_from_string(
                                 program_desc_str
                             )
+                            if paddle.framework.in_pir_executor_mode():
+                                with paddle.pir_utils.IrGuard():
+                                    program = paddle.pir.translate_to_pir(
+                                        program.desc
+                                    )
+                                    block = program.global_block()
+                                    remove_op_list = []
+                                    for op in block.ops:
+                                        if op.name() == "pd_op.feed":
+                                            var_name = op.attrs()["name"]
+                                            org_value = op.result(0)
+                                            with block:
+                                                value = paddle.static.data(
+                                                    name=var_name,
+                                                    shape=org_value.shape,
+                                                    dtype=org_value.dtype,
+                                                )
+                                                org_value.replace_all_uses_with(
+                                                    value
+                                                )
+                                                value.get_defining_op().move_before(
+                                                    op
+                                                )
+                                            remove_op_list.append(op)
+                                    for op in remove_op_list:
+                                        block.remove_op(op)
                             return program
                     except:
                         raise ValueError(

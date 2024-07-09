@@ -389,7 +389,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
         NULL, temp_storage_bytes, pruned_token_lengths_, output3, B + 1);
     // Allocate temporary storage
 
-    platform::CUDAPlace place(platform::GetCurrentDeviceId());
+    phi::GPUPlace place(platform::GetCurrentDeviceId());
     auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
     // Run exclusive prefix sum
