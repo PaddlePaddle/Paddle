@@ -26,7 +26,6 @@ from paddle.nn.layer.norm import _BatchNormBase
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import (
-        DataLayout1D,
         DataLayoutND,
         ParamAttrLike,
     )
@@ -80,7 +79,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
+        data_format(str, optional): Specify the input data format, may be "NDHWC" or "NHWC". Default "NDHWC".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -114,7 +113,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         epsilon: float = 1e-05,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
-        data_format: DataLayout1D = 'NCL',
+        data_format: Literal["NDHWC", "NHWC"] = "NDHWC",
         use_global_stats: bool | None = None,
         name: str | None = None,
     ) -> None:

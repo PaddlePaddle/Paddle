@@ -701,7 +701,7 @@ class _BatchNormBase(Layer):
         epsilon: float = 1e-05,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
-        data_format: DataLayout2D | str = 'NCHW',
+        data_format: DataLayoutND = 'NCHW',
         use_global_stats: bool | None = None,
         name: str | None = None,
     ) -> None:
