@@ -70,6 +70,8 @@ class Multinomial(distribution.Distribution):
               [0., 6., 4.],
               [3., 3., 4.]]])
     """
+    total_count: int
+    probs: Tensor
 
     def __init__(self, total_count: int, probs: Tensor) -> None:
         if not isinstance(total_count, int) or total_count < 1:
@@ -147,7 +149,7 @@ class Multinomial(distribution.Distribution):
             + (value * logits).sum(-1)
         )
 
-    def sample(self, shape: tuple[int]) -> Tensor:
+    def sample(self, shape: Iterable[int]) -> Tensor:
         """draw sample data from multinomial distribution
 
         Args:
