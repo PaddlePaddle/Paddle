@@ -535,19 +535,31 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
           "calc_reduced_attn_scores must receive input softmax_lse with dim "
           "[batch_size, num_heads, seq_len_q]"));
 
-  PADDLE_ENFORCE(
-      q.dims()[0] == k.dims()[0] && q.dims()[3] == k.dims()[3] &&
-          q.dims()[0] == softmax_lse.dims()[0] &&
-          q.dims()[2] == softmax_lse.dims()[1] &&
-          q.dims()[1] == softmax_lse.dims()[2],
-      phi::errors::InvalidArgument(
-          "calc_reduced_attn_scores must receive input q, k and softmax_lse "
-          "with consistent batch_size, num_heads and head_dim"));
+  PADDLE_ENFORCE(q.dims()[0] == k.dims()[0],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and k "
+                     "with consistent batch_size!"));
 
-  PADDLE_ENFORCE(q.dims()[1] == softmax_lse.dims()[2],
+  PADDLE_ENFORCE(q.dims()[0] == softmax_lse.dims()[0],
                  phi::errors::InvalidArgument(
                      "calc_reduced_attn_scores must receive input q and "
-                     "softmax_lse with consistent seq_len"));
+                     "softmax_lse with consistent batch_size!"));
+
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  PADDLE_ENFORCE(round_multiple(q.dims()[1], 128) == softmax_lse.dims()[2],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with corresponding seq_len!"));
+
+  PADDLE_ENFORCE(q.dims()[2] == softmax_lse.dims()[1],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with consistent num_heads!"));
+
+  PADDLE_ENFORCE(q.dims()[3] == k.dims()[3],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and k "
+                     "with consistent head_dim!"));
 
   int batch_size = q.dims()[0];
   int num_heads = q.dims()[2];
