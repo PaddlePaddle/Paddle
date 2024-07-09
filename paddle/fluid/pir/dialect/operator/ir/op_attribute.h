@@ -25,7 +25,7 @@ namespace paddle {
 namespace dialect {
 // __force_backend__ in ["gpu","gpudnn","cpu",""]
 inline const char kForceBackendAttr[] = "__force_backend__";
-inline const char kCanRunTrtAttr[] = "__can_run_tensorrt__";
+inline const char kCanRunTrtAttr[] = "__l_trt__";
 
 class IntArrayAttribute : public pir::Attribute {
  public:

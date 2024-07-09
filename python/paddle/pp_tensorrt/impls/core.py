@@ -14,13 +14,13 @@
 # limitations under the License.
 
 import os
+import numpy as np
+import logging
 import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
-
-import numpy as np
 
 import tensorrt as trt
 from register import converter_registry
@@ -99,7 +99,6 @@ def get_axes_for_reduce_op(
 @converter_registry.register("pd_op.elementwise_add")
 def add_converter(network, paddle_op, inputs):
     input_a, input_b = inputs
-    # import pdb;pdb.set_trace()
     input_b_shape = paddle_op.operands()[1].source().shape
     if type(input_b) == trt.Weights:
         input_b = network.add_constant(input_b_shape, input_b).get_output(0)
@@ -131,8 +130,6 @@ def matmul_converter(network, paddle_op, inputs):
     if type(inputs[1]) == trt.Weights:
         weight_tensor = network.add_constant(weight_shape, inputs[1]).get_output(0)
     lhs_val, rhs_val = broadcast(network, inputs[0], weight_tensor, inputs[0].name, weight_tensor.name)
-    # _logger.info(f"!! left_shape: {lhs_val.shape}, right_shape: {rhs_val.shape}")
-    # import pdb;pdb.set_trace()
     out = network.add_matrix_multiply(lhs_val, self_matrix_op, rhs_val, other_matrix_op)
     return out
 
@@ -152,8 +149,6 @@ def reshape_converter(network, paddle_op, inputs):
         layer.reshape_dims = tuple(reshape_dims)
     except Exception:
         shuffle_layer.set_input(1, shape_tensor)
-    # import pdb;pdb.set_trace()
-    # shuffle_layer.set_input(1, shape_tensor)
 
     return shuffle_layer
 
@@ -206,7 +201,6 @@ def layernorm_converter(network, paddle_op, inputs):
     dims = list(range(len(input_a.shape)))[begin_norm_axis:]
     axes = get_axes_for_reduce_op(dims)
 
-    # import pdb;pdb.set_trace()
     scale_tensor = append_ones(network, scale_tensor, f"{scale_tensor.name}_broadcast", len(input_a.shape) - len(scale_tensor.shape))
 
     bias_tensor = append_ones(network, bias_tensor, f"{bias_tensor.name}_broadcast", len(input_a.shape) - len(bias_tensor.shape))

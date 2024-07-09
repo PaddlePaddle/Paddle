@@ -14,6 +14,7 @@
 
 import logging
 import numpy as np
+import hashlib
 import paddle
 from paddle import base
 from paddle import pir
@@ -104,6 +105,7 @@ class PaddleToTensorRTConverter:
             else:
                 shape = value.shape
                 dtype = map_dtype(value.dtype.name)
+                # import pdb;pdb.set_trace()
                 min_shape = get_value_shape_range_info(
                     value, False, paddle.base.core.ShapeMode.kMIN
                 )
@@ -113,7 +115,7 @@ class PaddleToTensorRTConverter:
                 max_shape = get_value_shape_range_info(
                     value, False, paddle.base.core.ShapeMode.kMAX
                 )
-                
+
                 input_name = f"input_{value.id}"
                 input_tensor = network.add_input(name=input_name, dtype=dtype, shape=shape)
                 _logger.info(f"set min_shape of {value} as {min_shape}")
@@ -154,9 +156,14 @@ class PaddleToTensorRTConverter:
         trt_params.min_input_shape = min_shape_map
         trt_params.max_input_shape = max_shape_map
         trt_params.optim_input_shape = opt_shape_map
-        CACHE_FILE = f"./engine{id(group_op)}.trt"
+        group_str = str(group_op)
+        engine_name = int(hashlib.sha256(group_str.encode('utf-8')).hexdigest(), 16) % 10**8
+        CACHE_FILE = f"./engine_{engine_name}.trt"
         with open(CACHE_FILE, "wb") as f:
             f.write(trt_engine.serialize())
+        PIR_DUMP_FILE = f"./engine_{engine_name}.pir"
+        with open(PIR_DUMP_FILE, "w") as f:
+            f.write(group_str)
         trt_params.engine_serialized_data = CACHE_FILE
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             program
