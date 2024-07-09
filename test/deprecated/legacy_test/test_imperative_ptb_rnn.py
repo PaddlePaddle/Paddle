@@ -20,8 +20,33 @@ from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 from paddle import base
-from paddle.base import core, framework
+from paddle.autograd.backward_utils import ValueDict
+from paddle.base import core
 from paddle.nn import Embedding
+
+
+def create_parameter_mapping(startup_program, main_program):
+    startup_params = {}
+    main_params = {}
+    parameter_mapping = ValueDict()
+    for op in startup_program.global_block().ops:
+        if op.name() == "builtin.set_parameter":
+            name = op.attrs()["parameter_name"]
+            param = op.operand(0).source()
+            startup_params[name] = param
+
+    for op in main_program.global_block().ops:
+        if op.name() == "builtin.parameter":
+            name = op.attrs()["parameter_name"]
+            param = op.result(0)
+            main_params[name] = param
+
+    assert len(startup_params) == len(main_params)
+    for name, startup_param in startup_params.items():
+        assert name in main_params
+        main_param = main_params[name]
+        parameter_mapping[main_param] = startup_param
+    return parameter_mapping
 
 
 class SimpleLSTMRNN(paddle.nn.Layer):
@@ -251,7 +276,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
         with base.dygraph.guard():
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
+
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -309,7 +342,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
+
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
@@ -328,17 +369,19 @@ class TestDygraphPtbRnn(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            x.desc.set_need_check_feed(False)
             y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
-            y.desc.set_need_check_feed(False)
             init_hidden = paddle.static.data(
                 name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_hidden.desc.set_need_check_feed(False)
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
-            init_cell.desc.set_need_check_feed(False)
+
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
+                y.desc.set_need_check_feed(False)
+                init_hidden.desc.set_need_check_feed(False)
+                init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -347,15 +390,31 @@ class TestDygraphPtbRnn(unittest.TestCase):
             static_param_updated = {}
             static_param_init = {}
             static_param_name_list = []
+            static_params = []
             for param in ptb_model.parameters():
                 static_param_name_list.append(param.name)
+                static_params.append(param)
+
+            if paddle.framework.use_pir_api():
+                parameter_mapping = create_parameter_mapping(
+                    paddle.static.default_startup_program(),
+                    paddle.static.default_main_program(),
+                )
+                startup_params = [
+                    parameter_mapping[param] for param in static_params
+                ]
+            else:
+                startup_params = static_params
 
             out = exe.run(
-                framework.default_startup_program(),
-                fetch_list=static_param_name_list,
+                paddle.static.default_startup_program(),
+                fetch_list=startup_params,
             )
-            for i in range(len(static_param_name_list)):
-                static_param_init[static_param_name_list[i]] = out[i]
+
+            for i in range(len(static_params)):
+                param_name = static_param_name_list[i]
+                static_param_init[param_name] = out[i]
+
             static_loss_value = None
             static_last_cell_value = None
             static_last_hidden_value = None
@@ -371,7 +430,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
-                fetch_list.extend(static_param_name_list)
+                fetch_list.extend(static_params)
                 out = exe.run(
                     base.default_main_program(),
                     feed={
