@@ -1777,7 +1777,7 @@ TEST(GatherGradInferSpmd, Ctor) {
   axis = 1;
   index_shape = {};
   out_grad_shape = {64, 48};
-  ({0, -1, 1});
+  x_dist_attr.set_dims_mapping({0, -1, 1});
   index_dist_attr.set_dims_mapping({-1});
   out_grad_dist_attr.set_dims_mapping({0, 1});
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
