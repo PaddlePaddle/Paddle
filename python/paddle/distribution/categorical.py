@@ -63,6 +63,7 @@ class Categorical(distribution.Distribution):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Random output.')
             >>> import paddle
             >>> from paddle.distribution import Categorical
 
