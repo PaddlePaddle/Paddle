@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 class ConverterOpRegistry:
     def __init__(self):
         self._registry = {}
@@ -20,9 +21,11 @@ class ConverterOpRegistry:
         def decorator(func):
             self._registry[op_name] = func
             return func
+
         return decorator
 
     def get(self, op_name):
         return self._registry.get(op_name)
+
 
 converter_registry = ConverterOpRegistry()

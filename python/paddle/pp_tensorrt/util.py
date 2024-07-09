@@ -15,6 +15,7 @@
 import os
 import paddle
 import numpy as np
+
 try:
     import tensorrt as trt
 except Exception as e:
@@ -26,6 +27,7 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.nn as nn
 from paddle.nn import TransformerEncoderLayer, TransformerEncoder
+
 
 def map_dtype(pd_dtype):
     if pd_dtype == "FLOAT32":
@@ -39,6 +41,8 @@ def map_dtype(pd_dtype):
     # Add other dtype mappings as needed
     else:
         raise TypeError(f"Unsupported dtype: {pd_dtype}")
+
+
 def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
@@ -81,10 +85,8 @@ def run_pir_pass(program, partition_mode=False):
         passes = [{'trt_sub_graph_extract_pass': {}}]
 
     pm = pir.PassManager(opt_level=4)
-    paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
-        pm, program
-    )
-    
+    paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
+
     pm.enable_print_statistics()
     pm.enable_ir_printing()
     for pass_item in passes:
@@ -93,26 +95,28 @@ def run_pir_pass(program, partition_mode=False):
     pm.run(program)
     return program
 
+
 def forbid_op_lower_trt(program, op_name):
     for op in program.global_block().ops:
         if op.name() == op_name:
             op.set_bool_attr("__l_trt__", False)
+
 
 def enforce_op_lower_trt(program, op_name):
     for op in program.global_block().ops:
         if op.name() == op_name:
             op.set_bool_attr("__l_trt__", True)
 
+
 def predict_program(program, feed_data, fetch_var_list):
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
             output = executor.run(
-                    program,
-                    feed=feed_data,
-                    fetch_list=fetch_var_list
-                )
+                program, feed=feed_data, fetch_list=fetch_var_list
+            )
             return output
+
 
 def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
     with paddle.pir_utils.IrGuard():
@@ -122,23 +126,21 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
             # Run the program with input_data
             for _ in range(1):
                 output_original = executor.run(
-                    program,
-                    feed=min_shape_feed,
-                    fetch_list=[output_var]
+                    program, feed=min_shape_feed, fetch_list=[output_var]
                 )
 
             # Run the program with input_data_max_shape (fake max_shape input)
             for _ in range(1):
                 executor.run(
-                    program,
-                    feed=max_shape_feed,
-                    fetch_list=[output_var]
+                    program, feed=max_shape_feed, fetch_list=[output_var]
                 )
+
 
 def get_r50_program():
     paddle.enable_static()
     # static_resnet50 = StaticResNet50()
     from paddle.vision.models import wide_resnet50_2
+
     with paddle.pir_utils.IrGuard():
         infer_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -163,6 +165,7 @@ def get_r50_program():
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
 
     return infer_program, scope, param_dict
+
 
 def get_dummy_program():
     paddle.enable_static()
@@ -201,7 +204,7 @@ def get_dummy_program():
         main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
-        
+
         params = main_program.global_block().all_parameters()
         param_dict = {}
         # save parameters
@@ -210,17 +213,27 @@ def get_dummy_program():
             param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return main_program, scope, param_dict
 
+
 class BertModel(nn.Layer):
-    def __init__(self, vocab_size, hidden_size=768, num_hidden_layers=12, num_attention_heads=12):
+    def __init__(
+        self,
+        vocab_size,
+        hidden_size=768,
+        num_hidden_layers=12,
+        num_attention_heads=12,
+    ):
         super(BertModel, self).__init__()
         self.embeddings = nn.Embedding(vocab_size, hidden_size)
-        encoder_layer = TransformerEncoderLayer(hidden_size, num_attention_heads, hidden_size*4)
+        encoder_layer = TransformerEncoderLayer(
+            hidden_size, num_attention_heads, hidden_size * 4
+        )
         self.encoder = TransformerEncoder(encoder_layer, num_hidden_layers)
 
     def forward(self, input_ids):
         embeddings = self.embeddings(input_ids)
         encoded_output = self.encoder(embeddings)
         return encoded_output
+
 
 def get_bert_program():
     paddle.enable_static()
@@ -236,19 +249,25 @@ def get_bert_program():
         startup_program = static.default_startup_program()
         with static.program_guard(main_program, startup_program):
             scope = paddle.static.global_scope()
-            input_ids = static.data(name='input_ids', shape=[-1, -1], dtype='int64')
-            
-            bert_model = BertModel(vocab_size, hidden_size, num_hidden_layers, num_attention_heads)
+            input_ids = static.data(
+                name='input_ids', shape=[-1, -1], dtype='int64'
+            )
+
+            bert_model = BertModel(
+                vocab_size, hidden_size, num_hidden_layers, num_attention_heads
+            )
             bert_model.eval()
             logits = bert_model(input_ids)
 
-    place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+    place = (
+        paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda()
+        else paddle.CPUPlace()
+    )
     pir_program = main_program
-    
+
     with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(
-            pir_program, startup_program
-        ):
+        with paddle.static.program_guard(pir_program, startup_program):
             x = np.ones([1, seq_length]).astype('int64')
             executor = paddle.static.Executor(place)
             executor.run(startup_program)
@@ -270,12 +289,14 @@ if __name__ == "__main__":
     pir_program, scope, param_dict = get_bert_program()
     pir_program = run_pir_pass(pir_program)
     x = np.ones([1, 768]).astype('int64')
-    place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+    place = (
+        paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda()
+        else paddle.CPUPlace()
+    )
     executor = paddle.static.Executor(place)
     with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(
-            pir_program
-        ):
+        with paddle.static.program_guard(pir_program):
             fetches = executor.run(
                 pir_program,
                 feed={"input_ids": x},

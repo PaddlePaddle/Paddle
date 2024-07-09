@@ -1,4 +1,3 @@
-
 # Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,7 @@ import os
 import numpy as np
 import logging
 import sys
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 if parent_dir not in sys.path:
@@ -30,7 +30,10 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-def get_trt_tensor(network, input_val, name, dtype=None) -> trt.tensorrt.ITensor:
+
+def get_trt_tensor(
+    network, input_val, name, dtype=None
+) -> trt.tensorrt.ITensor:
     if isinstance(input_val, (torch.Tensor, int, float)):
         return create_constant(network, input_val, name, dtype)
     elif not isinstance(input_val, trt.tensorrt.ITensor):
@@ -41,8 +44,10 @@ def get_trt_tensor(network, input_val, name, dtype=None) -> trt.tensorrt.ITensor
     else:
         return input_val
 
+
 def has_dynamic_shape(shape):
     return any(s == -1 for s in shape)
+
 
 def append_ones(network, input, name, num_prepend_ones):
     layer = network.add_shuffle(input)
@@ -66,6 +71,7 @@ def append_ones(network, input, name, num_prepend_ones):
     layer.name = name
     return layer.get_output(0)
 
+
 def broadcast(network, a, b, a_name, b_name, preset_diff=0):
     a_shape = tuple(a.shape)
     b_shape = tuple(b.shape)
@@ -78,6 +84,7 @@ def broadcast(network, a, b, a_name, b_name, preset_diff=0):
 
     return a, b
 
+
 def get_axes_for_reduce_op(
     dim,
     has_implicit_batch_dimension=False,
@@ -86,7 +93,9 @@ def get_axes_for_reduce_op(
         dim = (dim,)
 
     if has_implicit_batch_dimension:
-        assert 0 not in dim, "Can't reduce over batch dimension when it's implicit."
+        assert (
+            0 not in dim
+        ), "Can't reduce over batch dimension when it's implicit."
 
     axes = 0
     for d in dim:
@@ -105,33 +114,54 @@ def add_converter(network, paddle_op, inputs):
 
     # check if input_b should reshape
     if len(input_b_shape) < len(input_a.shape):
-        reshape_dims = [1] * (len(input_a.shape) - len(input_b_shape)) + list(input_b_shape)
+        reshape_dims = [1] * (len(input_a.shape) - len(input_b_shape)) + list(
+            input_b_shape
+        )
         reshape_layer = network.add_shuffle(input_b)
         reshape_layer.reshape_dims = reshape_dims
         input_b = reshape_layer.get_output(0)
 
-    output = network.add_elementwise(input_a, input_b, trt.ElementWiseOperation.SUM)
+    output = network.add_elementwise(
+        input_a, input_b, trt.ElementWiseOperation.SUM
+    )
     return output
+
 
 @converter_registry.register("pd_op.relu")
 def relu_converter(network, paddle_op, inputs):
     out = network.add_activation(inputs[0], trt.ActivationType.RELU)
     return out
 
+
 @converter_registry.register("pd_op.matmul")
 def matmul_converter(network, paddle_op, inputs):
     weight_shape = paddle_op.operands()[1].source().shape
     transpose_x = paddle_op.attrs()["transpose_x"]
     transpose_y = paddle_op.attrs()["transpose_y"]
-    self_matrix_op = trt.MatrixOperation.TRANSPOSE if transpose_x else trt.MatrixOperation.NONE
-    other_matrix_op = trt.MatrixOperation.TRANSPOSE if transpose_y else trt.MatrixOperation.NONE
+    self_matrix_op = (
+        trt.MatrixOperation.TRANSPOSE
+        if transpose_x
+        else trt.MatrixOperation.NONE
+    )
+    other_matrix_op = (
+        trt.MatrixOperation.TRANSPOSE
+        if transpose_y
+        else trt.MatrixOperation.NONE
+    )
 
     weight_tensor = inputs[1]
     if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(weight_shape, inputs[1]).get_output(0)
-    lhs_val, rhs_val = broadcast(network, inputs[0], weight_tensor, inputs[0].name, weight_tensor.name)
-    out = network.add_matrix_multiply(lhs_val, self_matrix_op, rhs_val, other_matrix_op)
+        weight_tensor = network.add_constant(
+            weight_shape, inputs[1]
+        ).get_output(0)
+    lhs_val, rhs_val = broadcast(
+        network, inputs[0], weight_tensor, inputs[0].name, weight_tensor.name
+    )
+    out = network.add_matrix_multiply(
+        lhs_val, self_matrix_op, rhs_val, other_matrix_op
+    )
     return out
+
 
 @converter_registry.register("pd_op.full_int_array")
 def full_int_array_converter(network, paddle_op, inputs):
@@ -140,17 +170,21 @@ def full_int_array_converter(network, paddle_op, inputs):
     full_int_array_tensor = network.add_constant([len(shape)], shape_weight)
     return full_int_array_tensor
 
+
 @converter_registry.register("pd_op.reshape")
 def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
     shuffle_layer = network.add_shuffle(input_tensor)
     try:
-        reshape_dims = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+        reshape_dims = (
+            paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+        )
         layer.reshape_dims = tuple(reshape_dims)
     except Exception:
         shuffle_layer.set_input(1, shape_tensor)
 
     return shuffle_layer
+
 
 @converter_registry.register("pd_op.transpose")
 def transpose_converter(network, paddle_op, inputs):
@@ -159,31 +193,43 @@ def transpose_converter(network, paddle_op, inputs):
     transposed_tensor.second_transpose = perm
     return transposed_tensor
 
+
 @converter_registry.register("pd_op.full")
 def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
     value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0
-    full_tensor = network.add_constant(shape, np.full(shape, value, dtype=np.float32))
+    full_tensor = network.add_constant(
+        shape, np.full(shape, value, dtype=np.float32)
+    )
     return full_tensor
+
 
 @converter_registry.register("pd_op.scale")
 def scale_converter(network, paddle_op, inputs):
     scale = paddle_op.attrs()["scale"]
     bias = paddle_op.attrs().get("bias", 0.0)
     power = paddle_op.attrs().get("power", 1.0)
-    
-    scale_layer = network.add_scale(inputs[0], mode=trt.ScaleMode.UNIFORM, shift=bias, scale=scale, power=power)
+
+    scale_layer = network.add_scale(
+        inputs[0],
+        mode=trt.ScaleMode.UNIFORM,
+        shift=bias,
+        scale=scale,
+        power=power,
+    )
     return scale_layer
+
 
 @converter_registry.register("pd_op.softmax")
 def softmax_converter(network, paddle_op, inputs):
     axis = paddle_op.attrs().get("axis", 0)
     if axis < 0:
         axis = len(inputs[0].shape) + axis
-    
+
     softmax_layer = network.add_softmax(inputs[0])
     softmax_layer.axes = 1 << axis
     return softmax_layer
+
 
 @converter_registry.register("pd_op.layer_norm")
 def layernorm_converter(network, paddle_op, inputs):
@@ -192,7 +238,7 @@ def layernorm_converter(network, paddle_op, inputs):
     epsilon = paddle_op.attrs().get("epsilon", 0.0)
     assert len(paddle_op.operands()) == 3
     scale_shape = paddle_op.operands()[1].source().shape
-    
+
     scale_tensor = network.add_constant(scale_shape, scale).get_output(0)
     bias_shape = paddle_op.operands()[2].source().shape
     bias_tensor = network.add_constant(bias_shape, bias).get_output(0)
@@ -201,12 +247,26 @@ def layernorm_converter(network, paddle_op, inputs):
     dims = list(range(len(input_a.shape)))[begin_norm_axis:]
     axes = get_axes_for_reduce_op(dims)
 
-    scale_tensor = append_ones(network, scale_tensor, f"{scale_tensor.name}_broadcast", len(input_a.shape) - len(scale_tensor.shape))
+    scale_tensor = append_ones(
+        network,
+        scale_tensor,
+        f"{scale_tensor.name}_broadcast",
+        len(input_a.shape) - len(scale_tensor.shape),
+    )
 
-    bias_tensor = append_ones(network, bias_tensor, f"{bias_tensor.name}_broadcast", len(input_a.shape) - len(bias_tensor.shape))
-    _logger.info(f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}")
+    bias_tensor = append_ones(
+        network,
+        bias_tensor,
+        f"{bias_tensor.name}_broadcast",
+        len(input_a.shape) - len(bias_tensor.shape),
+    )
+    _logger.info(
+        f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}"
+    )
 
-    layer_norm = network.add_normalization(input_a, scale_tensor, bias_tensor, axes)
+    layer_norm = network.add_normalization(
+        input_a, scale_tensor, bias_tensor, axes
+    )
     layer_norm.epsilon = epsilon
     layer_norm.compute_precision = trt.float32
 
@@ -217,22 +277,25 @@ def layernorm_converter(network, paddle_op, inputs):
 def conv2d_converter(network, paddle_op, inputs):
     input_tensor, weight = inputs
     weight_shape = paddle_op.operands()[1].source().shape
-    
+
     padding = paddle_op.attrs().get("paddings", [0, 0])
     stride = paddle_op.attrs().get("strides", [1, 1])
     dilation = paddle_op.attrs().get("dilations", [1, 1])
     groups = paddle_op.attrs().get("groups", 1)
-    
+
     # weight_tensor = network.add_constant(weight_shape, weight).get_output(0)
     kernel_shape = trt.Dims((weight_shape[2], weight_shape[3]))
-    
-    conv_layer = network.add_convolution_nd(input_tensor, weight_shape[0], kernel_shape, weight)
+
+    conv_layer = network.add_convolution_nd(
+        input_tensor, weight_shape[0], kernel_shape, weight
+    )
     conv_layer.stride_nd = stride
     conv_layer.padding_nd = padding
     conv_layer.dilation_nd = dilation
     conv_layer.num_groups = groups
-    
+
     return conv_layer
+
 
 @converter_registry.register("pd_op.pool2d")
 def pool2d_converter(network, paddle_op, inputs):
@@ -240,7 +303,7 @@ def pool2d_converter(network, paddle_op, inputs):
     pooling_type = paddle_op.attrs().get("pooling_type", "max")
     padding = paddle_op.attrs().get("paddings", [0, 0])
     stride = paddle_op.attrs().get("strides", [1, 1])
-    
+
     # TODO attention for these codes
     if not paddle_op.attrs().get("kernel_size") and len(inputs) == 2:
         # the size of pool2d inputs is 2, means kernel size is the second input.
@@ -249,33 +312,40 @@ def pool2d_converter(network, paddle_op, inputs):
         if full_int_op.name() == "pd_op.full_int_array":
             kernel_size = full_int_op.attrs().get("value")
         else:
-            raise Exception("the defining op of kernel size must be pd_op.full_int_array")
+            raise Exception(
+                "the defining op of kernel size must be pd_op.full_int_array"
+            )
     else:
         kernel_size = paddle_op.attrs().get("kernel_size")
-        
+
     if pooling_type == "max":
         pooling_type = trt.PoolingType.MAX
     elif pooling_type == "avg":
         pooling_type = trt.PoolingType.AVERAGE
     else:
         raise ValueError(f"Unsupported pooling type: {pooling_type}")
-    
-    pool_layer = network.add_pooling_nd(input_tensor, pooling_type, window_size=kernel_size)
+
+    pool_layer = network.add_pooling_nd(
+        input_tensor, pooling_type, window_size=kernel_size
+    )
     pool_layer.stride_nd = stride
     pool_layer.padding_nd = padding
-    
+
     return pool_layer
+
 
 @converter_registry.register("pd_op.batch_norm")
 @converter_registry.register("pd_op.batch_norm_")
 def batch_norm_converter(network, paddle_op, inputs):
-    input_tensor, mean, variance, scale, bias  = inputs
-    
+    input_tensor, mean, variance, scale, bias = inputs
+
     scale_shape = paddle_op.operands()[3].source().shape
     power = np.ones(scale_shape, dtype='float32')
     power = trt.Weights(power)
-    
+
     # (self: tensorrt.tensorrt.INetworkDefinition, input: tensorrt.tensorrt.ITensor, mode: tensorrt.tensorrt.ScaleMode, shift: tensorrt.tensorrt.Weights = None, scale: tensorrt.tensorrt.Weights = None, power: tensorrt.tensorrt.Weights = None) -> tensorrt.tensorrt.IScaleLayer
-    batch_norm_layer = network.add_scale(input_tensor, trt.ScaleMode.CHANNEL, bias, scale, power)
-    
+    batch_norm_layer = network.add_scale(
+        input_tensor, trt.ScaleMode.CHANNEL, bias, scale, power
+    )
+
     return batch_norm_layer

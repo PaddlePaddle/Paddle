@@ -19,6 +19,7 @@ import paddle.nn.functional as F
 
 # Only Work in TRT 10.x
 
+
 class PaddlePhiPlugin(trt.IPluginV2):
     def __init__(self, op_name):
         super(PaddlePhiPlugin, self).__init__()
@@ -55,7 +56,10 @@ class PaddlePhiPlugin(trt.IPluginV2):
         return inputs[0]
 
     def supports_format_combination(self, pos, in_out, num_inputs, num_outputs):
-        return in_out[pos].format == trt.TensorFormat.LINEAR and in_out[pos].dtype == trt.float32
+        return (
+            in_out[pos].format == trt.TensorFormat.LINEAR
+            and in_out[pos].dtype == trt.float32
+        )
 
     def configure_plugin(self, in_tensors, out_tensors, in_desc, out_desc):
         pass
@@ -69,7 +73,9 @@ class PaddlePhiPlugin(trt.IPluginV2):
         elif self.op_name == "sigmoid":
             result = paddle.sigmoid(input_tensor)
         else:
-            raise NotImplementedError(f"Operation {self.op_name} is not implemented.")
+            raise NotImplementedError(
+                f"Operation {self.op_name} is not implemented."
+            )
 
         output_tensor.copy_(result)
         return 0
@@ -79,6 +85,7 @@ class PaddlePhiPlugin(trt.IPluginV2):
 
     def set_plugin_namespace(self, namespace):
         pass
+
 
 class PaddlePhiPluginCreator(trt.IPluginCreator):
     def __init__(self):
@@ -105,24 +112,32 @@ class PaddlePhiPluginCreator(trt.IPluginCreator):
     def set_plugin_namespace(self, namespace):
         pass
 
+
 # trt.init_libnvinfer_plugins(None, "")
 # plugin_creator = PaddlePhiPluginCreator()
 # trt.get_plugin_registry().register_creator(plugin_creator, )
 
+
 def build_engine(op_name):
     logger = trt.Logger(trt.Logger.WARNING)
     builder = trt.Builder(logger)
-    network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+    network = builder.create_network(
+        1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+    )
     config = builder.create_builder_config()
-    
-    input_tensor = network.add_input(name="input", dtype=trt.float32, shape=(-1,))
-    plugin_layer = network.add_plugin_v2([input_tensor], PaddlePhiPlugin(op_name))
+
+    input_tensor = network.add_input(
+        name="input", dtype=trt.float32, shape=(-1,)
+    )
+    plugin_layer = network.add_plugin_v2(
+        [input_tensor], PaddlePhiPlugin(op_name)
+    )
     network.mark_output(plugin_layer.get_output(0))
 
     return builder.build_engine(network, config)
 
-GENERAL_PLUGIN_OPS_LIST = [
-]
+
+GENERAL_PLUGIN_OPS_LIST = []
 
 if __name__ == "__main__":
     op_name = "relu"
