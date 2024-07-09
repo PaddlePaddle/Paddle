@@ -19,7 +19,6 @@ import warnings
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
-    ALLOW_NO_GRAD_OPS,
     State,
     ValueDict,
     ValueSet,
@@ -871,9 +870,14 @@ def append_backward_ops(
                         else:
                             state.op_to_opgrad[op] = []
                 else:
+                    all_results_stop_gradient = True
+                    for value in op.results():
+                        if not value.stop_gradient:
+                            all_results_stop_gradient = False
                     if (
                         not is_builtin_op(op)
-                        and op.name() not in ALLOW_NO_GRAD_OPS
+                        and not paddle.core.is_forward_only(op)
+                        and not all_results_stop_gradient
                     ):
                         raise ValueError(
                             f"op '{op.name()}' has no grad op, consider enable prim to decompose it."
@@ -1207,12 +1211,12 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             parameter_list,
             'parameter_list',
             (list, tuple, set),
-            'paddle.autograd.ir_backwardappend_backward',
+            'paddle.autograd.ir_backward.append_backward',
         )
         for i, param in enumerate(parameter_list):
             check_type(
                 param,
-                'parameter_list[%s]' % i,
+                f'parameter_list[{i}]',
                 paddle.pir.Value,
                 'base.backward.append_backward',
             )

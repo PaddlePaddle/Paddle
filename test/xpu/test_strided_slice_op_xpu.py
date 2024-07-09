@@ -214,7 +214,7 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
     @check_run_big_shape_test()
     class XPUTestStrideSliceOpLargeShape1(XPUTestStrideSliceOp):
         def initTestCase(self):
-            self.shape = (1, 8192, 5, 128)
+            self.inshape = (1, 8192, 5, 128)
             self.axes = [0, 1, 2, 3]
             self.starts = [0, 0, 0, 0]
             self.ends = [1, 8192, 5, 128]
@@ -224,7 +224,7 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
     @check_run_big_shape_test()
     class XPUTestStrideSliceOpLargeShape2(XPUTestStrideSliceOp):
         def initTestCase(self):
-            self.shape = (8192, 3456)
+            self.inshape = (8192, 3456)
             self.axes = [0, 1]
             self.starts = [0, 0]
             self.ends = [8192, 3456]

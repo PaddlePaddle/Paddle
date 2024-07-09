@@ -155,6 +155,30 @@
     param : [x, out_grad]
   inplace : (out_grad -> x_grad)
 
+- backward_op : legacy_expand_grad
+  forward : legacy_expand (Tensor x, IntArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : legacy_expand_grad
+    data_type : out_grad
+  no_need_buffer : x
+
+- backward_op : lrn_grad
+  forward: lrn (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout") -> Tensor (out), Tensor (mid_out)
+  args: (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format
+    = "AnyLayout")
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: lrn_grad
+    data_type: out_grad
+
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, bool transpose_x=false, bool transpose_y=false)
@@ -310,6 +334,29 @@
   kernel :
     func : rnn_grad
     data_type: out_grad
+
+- backward_op : sequence_expand_grad
+  forward: sequence_expand (Tensor x, Tensor y, int ref_level = -1) -> Tensor (out)
+  args: (Tensor x, Tensor y, Tensor out_grad, int ref_level = -1)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: sequence_expand_grad
+    data_type: out_grad
+  no_need_buffer: x, y
+
+- backward_op : sequence_softmax_grad
+  forward : sequence_softmax (Tensor x) -> Tensor(out)
+  args: (Tensor x, Tensor out, Tensor out_grad)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: sequence_softmax_grad
+  no_need_buffer: x
 
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis=-1) -> Tensor(out)

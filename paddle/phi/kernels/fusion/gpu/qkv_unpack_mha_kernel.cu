@@ -168,7 +168,8 @@ __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       if (ti < act_time_step) {
         k[ii] = *reinterpret_cast<const K_vec *>(
-            &params.k[ti * params.num_head * Dh + ki +
+            &params.k[bi * params.timestep * params.num_head * Dh +
+                      ti * params.num_head * Dh + ki +
                       ii * THREADS_PER_KEY * K_VEC_SIZE + hi * Dh]);
       }
     }
@@ -246,7 +247,8 @@ __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
 
       // update here
       v = *reinterpret_cast<const V_vec *>(
-          &params.v[ti * params.num_head * Dh + vi + hi * Dh]);
+          &params.v[bi * params.timestep * params.num_head * Dh +
+                    ti * params.num_head * Dh + vi + hi * Dh]);
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
       float logit = logits_smem[ti];
@@ -291,7 +293,8 @@ __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
-    store_func.template store<V_vec>(tmp_out, vi + hi * Dh);
+    store_func.template store<V_vec>(
+        tmp_out, bi * (params.num_head) * Dh + vi + hi * Dh);
 #else
 
     store_func.template store<V_vec>(out, vi + hi * Dh);

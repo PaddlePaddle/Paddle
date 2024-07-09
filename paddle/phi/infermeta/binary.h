@@ -63,6 +63,14 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void BeamSearchDecodeInferMeta(const MetaTensor& ids,
+                               const MetaTensor& scores,
+                               int beam_size,
+                               int end_id,
+                               MetaTensor* sentence_ids,
+                               MetaTensor* sentence_scores,
+                               MetaConfig config = MetaConfig());
+
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
                        const Scalar& minlength,
@@ -407,6 +415,14 @@ void HingeLossInferMeta(const MetaTensor& logits,
                         const MetaTensor& labels,
                         MetaTensor* loss);
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t bins,
+                        int min,
+                        int max,
+                        bool density,
+                        MetaTensor* out);
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,
@@ -418,6 +434,15 @@ void IdentityLossGradInferMeta(const MetaTensor& x,
                                const MetaTensor& out_grad,
                                const int reduction,
                                MetaTensor* x_grad);
+
+void Im2sequenceInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const std::vector<int>& kernels,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& out_stride,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
 
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
@@ -527,6 +552,18 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                             bool hermitian,
                             MetaTensor* out);
 
+void MulticlassNmsv1InferMeta(const MetaTensor& b_boxes,
+                              const MetaTensor& scores,
+                              float score_threshold,
+                              int nms_top_k,
+                              int keep_top_k,
+                              float nms_threshold,
+                              float nms_eta,
+                              bool normalized,
+                              int background_label,
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,
@@ -601,6 +638,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool out_int32,
                            bool right,
                            MetaTensor* out);
+
+void SequenceExpandInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             int ref_level,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,

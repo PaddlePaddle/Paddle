@@ -30,16 +30,6 @@ PD_DECLARE_bool(use_cinn);
 
 namespace paddle::framework::details {
 
-static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
-  // Should fix the allreduce op order if scheduling
-  // them in multiple threads or processes to avoid hang.
-  // NOTE: ParallelGraph would execute this pass on each graph, so
-  // don't need to append it here.
-  return (!strategy.enable_sequential_execution_ &&
-          strategy.num_trainers_ > 1) &&
-         !strategy.enable_parallel_graph_;
-}
-
 static inline void ConvertDefaultValue(paddle::optional<bool> *default_value) {
   if (*default_value == paddle::none) {
     *default_value = true;
@@ -62,8 +52,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 #endif
 
-    AppendPassWithCheck(strategy_.enable_sequential_execution_,
-                        "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
@@ -71,8 +59,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     AppendAddReaderDependencyPass();
     AppendMultiDevPass();
-    AppendMultiGraphOptPasses();
-
     AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
@@ -81,8 +67,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "runtime_context_cache_pass");
     AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
                         "modify_op_lock_and_record_event_pass");
-    // Note: This pass is used to check whether the multi_device_graph is right.
-    AppendPass("multi_devices_check_pass");
 
     SetCollectiveContext();
   }
@@ -97,16 +81,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "fuse_all_reduce_ops doesn't work under "
              "parallel_graph.";
-      strategy_.fuse_all_reduce_ops_ = false;
-    }
-    if (strategy_.is_distribution_) {
-      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
-          << "Currently, fuse_all_optimizer_ops only works under "
-             "Non-distributed mode.";
-      strategy_.fuse_all_optimizer_ops_ = false;
-      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
-          << "Currently, fuse_all_reduce_ops_ only works under "
-             "Non-distributed mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
@@ -142,29 +116,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              "async mode.";
       strategy_.fuse_all_reduce_ops_ = !strategy_.async_mode_;
     }
-  }
-
-  void AppendMultiGraphOptPasses() {
-    // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
-    // first, if the number is zero, fuse_all_reduce_ops will do nothing.
-    AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
-                        "fuse_all_reduce_op_pass");
-    AppendPrintGraphPass("multi_devices_print_pass", "_multi_devices_graph");
-
-    // experimental shows that the program will be faster if append
-    // all_reduce_deps_pass here.
-    bool append_all_reduce_deps_pass =
-        !strategy_.enable_parallel_graph_ &&
-        (SeqOnlyAllReduceOps(strategy_) ||
-         strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce);
-    AppendPassWithCheck(append_all_reduce_deps_pass, "all_reduce_deps_pass");
-
-    bool append_backward_optimizer_op_deps_pass =
-        strategy_.num_trainers_ > 1 && !strategy_.async_mode_ &&
-        !strategy_.is_distribution_ &&
-        strategy_.enable_backward_optimizer_op_deps_;
-    AppendPassWithCheck(append_backward_optimizer_op_deps_pass,
-                        "backward_optimizer_op_deps_pass");
   }
 
   void AppendOpFusePasses() {
@@ -254,32 +205,21 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
-    if (strategy_.async_mode_) {
-      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
-    } else if (strategy_.is_distribution_) {
-      multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
-    } else {
-      switch (strategy_.reduce_) {
-        case BuildStrategy::ReduceStrategy::kAllReduce:
-          multi_devices_pass =
-              AppendPass("all_reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kReduce:
-          multi_devices_pass =
-              AppendPass("reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kNoReduce:
-          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
-          break;
-        default:
-          PADDLE_THROW(
-              platform::errors::Unimplemented("Unknown reduce strategy."));
-      }
+    switch (strategy_.reduce_) {
+      case BuildStrategy::ReduceStrategy::kAllReduce:
+        multi_devices_pass =
+            AppendPass("all_reduce_mode_multi_devices_pass").get();
+        break;
+      case BuildStrategy::ReduceStrategy::kReduce:
+        multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
+        break;
+      default:
+        PADDLE_THROW(
+            platform::errors::Unimplemented("Unknown reduce strategy."));
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
   }
-
   void AppendPrintGraphPass(const std::string &pass_name,
                             const std::string &debug_file_suffix) {
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -392,65 +332,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, bkcl_ctx);
 #endif
-    } else if (pass->Type() == "fuse_all_reduce_op_pass") {
-      pass->Erase(kNRanks);
-      pass->Set<size_t>(kNRanks, new size_t(nranks));
-      pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
-      pass->Erase(kLocalScopes);
-      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
-                                                    &local_scopes);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      platform::NCCLCommunicator *nctx =
-          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
-      pass->Erase(kNCCLCtxs);
-      pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
-      pass->Erase(kUseHierarchicalAllReduce);
-      pass->Set<bool>(kUseHierarchicalAllReduce,
-                      new bool(use_hierarchical_allreduce_));
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-      platform::BKCLCommunicator *nctx =
-          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
-      pass->Erase(kBKCLCtxs);
-      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
-      pass->Erase(kUseHierarchicalAllReduce);
-      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
-                        false,
-                        platform::errors::Unimplemented(
-                            "xpu doesn't support hierarchical_allreduce"));
-      pass->Set<bool>(kUseHierarchicalAllReduce,
-                      new bool(use_hierarchical_allreduce_));
-#endif
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
-    } else if (pass->Type() == "sequential_execution_pass") {
-      LOG(INFO) << "set enable_sequential_execution:"
-                << enable_sequential_execution_;
-    } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      platform::NCCLCommunicator *nctx =
-          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
-      pass->Erase(kNCCLCtxs);
-      pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
-      pass->Erase(kUseHierarchicalAllReduce);
-      pass->Set<bool>(kUseHierarchicalAllReduce,
-                      new bool(use_hierarchical_allreduce_));
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-      platform::BKCLCommunicator *nctx =
-          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
-      pass->Erase(kBKCLCtxs);
-      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
-      pass->Erase(kUseHierarchicalAllReduce);
-      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
-                        false,
-                        platform::errors::Unimplemented(
-                            "xpu doesn't support hierarchical_allreduce"));
-      pass->Set<bool>(kUseHierarchicalAllReduce,
-                      new bool(use_hierarchical_allreduce_));
-#endif
-      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-              << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (use_device != p::kCUDA) {
         VLOG(1) << "fuse_relu_depthwise_conv_pass is only supported on "
@@ -478,12 +362,6 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "onednn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
-    } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
-      if (use_device != p::kCUDA) {
-        VLOG(1) << "backward_optimizer_op_deps_pass is only supported on "
-                   "GPU, skipped.";
-        continue;
-      }
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
     if (FLAGS_convert_all_blocks) {
@@ -509,15 +387,8 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
-USE_PASS(no_reduce_multi_devices_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
-USE_PASS(dist_multi_devices_pass);
-USE_PASS(multi_devices_check_pass);
-USE_PASS(multi_devices_print_pass);
-USE_PASS(sequential_execution_pass);
-USE_PASS(all_reduce_deps_pass);
-USE_PASS(backward_optimizer_op_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(coalesce_grad_tensor_pass);
@@ -525,7 +396,6 @@ USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
-USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);

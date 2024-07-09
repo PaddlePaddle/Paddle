@@ -464,6 +464,8 @@ void ProgramTranslator::TranslateIfOperation(
     }
     false_region.front().push_back(
         pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
+    if_op->set_attribute("fake_false_branch",
+                         pir::BoolAttribute::get(ctx_, true));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 

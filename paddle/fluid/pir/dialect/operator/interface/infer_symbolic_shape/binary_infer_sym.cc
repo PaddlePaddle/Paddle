@@ -160,29 +160,10 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
 
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto weight_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
-
-  const std::vector<symbol::DimExpr> &weight_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (weight_shape_or_data.data().has_value()) {
-      dims = weight_shape_or_data.data().value();
-    } else {
-      dims = weight_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &weight_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_dims = x_dims;
@@ -513,6 +494,14 @@ bool AccuracyCheckOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
+bool ReduceAsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &target_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), target_shape);
   return true;
 }
 

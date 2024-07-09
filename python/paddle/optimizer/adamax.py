@@ -117,15 +117,16 @@ class Adamax(Optimizer):
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            >>> adam = paddle.optimizer.Adamax(learning_rate=0.1,
-            ...         parameters=linear.parameters(),
-            ...         beta1=beta1,
-            ...         beta2=beta2,
-            ...         weight_decay=0.01
+            >>> adamax = paddle.optimizer.Adamax(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     weight_decay=0.01
             ... )
             >>> out.backward()
-            >>> adam.step()
-            >>> adam.clear_grad()
+            >>> adamax.step()
+            >>> adamax.clear_grad()
 
 
             >>> # Note that the learning_rate of linear_2 is 0.01.
@@ -135,7 +136,7 @@ class Adamax(Optimizer):
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adamax(
+            >>> adamax = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
             ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
@@ -149,9 +150,10 @@ class Adamax(Optimizer):
             ...     beta1=0.9
             ... )
             >>> out.backward()
-            >>> adam.step()
-            >>> adam.clear_grad()
+            >>> adamax.step()
+            >>> adamax.clear_grad()
     """
+
     type: str
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
@@ -163,9 +165,9 @@ class Adamax(Optimizer):
         beta1: float | Tensor = 0.9,
         beta2: float | Tensor = 0.999,
         epsilon: float | Tensor = 1e-8,
-        parameters: Sequence[Tensor]
-        | Sequence[_AdamaxParameterConfig]
-        | None = None,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdamaxParameterConfig] | None
+        ) = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
@@ -262,7 +264,7 @@ class Adamax(Optimizer):
         beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_or_pir_mode():
             _C_ops.adamax_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -327,6 +329,12 @@ class Adamax(Optimizer):
                             beta1_pow_acc, self._beta1, 0.0, True
                         )
                         beta1_pow_acc.copy_(tmp, False)
+                elif framework.in_pir_mode():
+                    with param.block.program._optimized_guard([param, grad]):
+                        beta1_pow_acc = self._get_accumulator_master(
+                            self._beta1_pow_acc_str, param
+                        )
+                        _C_ops.scale_(beta1_pow_acc, self._beta1, 0.0, True)
                 else:
                     with param.block.program._optimized_guard(
                         [param, grad]

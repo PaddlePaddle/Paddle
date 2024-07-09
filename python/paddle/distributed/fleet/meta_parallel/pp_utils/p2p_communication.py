@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils.util
 import os
 
 import numpy as np
 
 import paddle
 from paddle.distributed.communication.batch_isend_irecv import (
-    _with_batch_p2p_guard,
+    _coalescing_manager,
 )
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number
@@ -291,7 +291,8 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
         return
     group = _get_global_group() if group is None else group
     backend = group.backend
-    with _with_batch_p2p_guard(backend):
+    tasks = []
+    with _coalescing_manager(group, tasks):
         for p2p_op in p2p_op_list:
             op = p2p_op.op
             tensor = p2p_op.tensor
@@ -429,9 +430,7 @@ def _batched_p2p_ops(
 
     if len(ops) > 0:
         batch_send_recv_on_calc_stream(ops)
-        if distutils.util.strtobool(
-            os.getenv('FLAGS_p2p_device_synchronize', '0')
-        ):
+        if strtobool(os.getenv('FLAGS_p2p_device_synchronize', '0')):
             paddle.device.cuda.synchronize()
 
     tensors_for_all_gather = []

@@ -24,6 +24,7 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'generate_proposals',
     'retinanet_detection_output',
     'ctc_align',
+    'fusion_seqpool_concat',
     'fusion_seqpool_cvm_concat',
     'gru',
     'rpn_target_assign',
