@@ -276,7 +276,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
         with base.dygraph.guard():
             paddle.seed(seed)
-
             if paddle.framework.use_pir_api():
                 with paddle.pir_utils.OldIrGuard():
                     # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
@@ -342,7 +341,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(seed)
-
             if paddle.framework.use_pir_api():
                 with paddle.pir_utils.OldIrGuard():
                     # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
@@ -376,7 +374,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
-
             if not paddle.framework.use_pir_api():
                 x.desc.set_need_check_feed(False)
                 y.desc.set_need_check_feed(False)
