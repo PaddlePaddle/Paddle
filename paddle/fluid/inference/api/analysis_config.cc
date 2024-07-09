@@ -99,18 +99,21 @@ bool is_directory(const std::string &path) {
   return false;
 }
 
-AnalysisConfig::AnalysisConfig(const std::string &prog_file,
-                               const std::string &params_file) {
-  if (is_directory(prog_file)) {
+AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
+                               const std::string &params_file_or_model_prefix) {
+  if (is_directory(prog_file_or_model_dir)) {
     if (FLAGS_enable_pir_api) {
-      prog_file_ = prog_file + "/" + params_file + ".json";
+      prog_file_ =
+          prog_file_or_model_dir + "/" + params_file_or_model_prefix + ".json";
     } else {
-      prog_file_ = prog_file + "/" + params_file + ".pdmodel";
+      prog_file_ = prog_file_or_model_dir + "/" + params_file_or_model_prefix +
+                   ".pdmodel";
     }
-    params_file_ = prog_file + "/" + params_file + ".pdiparams";
+    params_file_ = prog_file_or_model_dir + "/" + params_file_or_model_prefix +
+                   ".pdiparams";
   } else {
-    prog_file_ = prog_file;
-    params_file_ = params_file;
+    prog_file_ = prog_file_or_model_dir;
+    params_file_ = params_file_or_model_prefix;
   }
 
   std::ifstream fin(prog_file_, std::ios::in | std::ios::binary);
@@ -124,18 +127,22 @@ AnalysisConfig::AnalysisConfig(const std::string &prog_file,
   Update();
 }
 
-void AnalysisConfig::SetModel(const std::string &prog_file_path,
-                              const std::string &params_file_path) {
-  if (is_directory(prog_file_path)) {
+void AnalysisConfig::SetModel(
+    const std::string &prog_file_path_or_model_dir_path,
+    const std::string &params_file_path_or_model_prefix) {
+  if (is_directory(prog_file_path_or_model_dir_path)) {
     if (FLAGS_enable_pir_api) {
-      prog_file_ = prog_file_path + "/" + params_file_path + ".json";
+      prog_file_ = prog_file_path_or_model_dir_path + "/" +
+                   params_file_path_or_model_prefix + ".json";
     } else {
-      prog_file_ = prog_file_path + "/" + params_file_path + ".pdmodel";
+      prog_file_ = prog_file_path_or_model_dir_path + "/" +
+                   params_file_path_or_model_prefix + ".pdmodel";
     }
-    params_file_ = prog_file_path + "/" + params_file_path + ".pdiparams";
+    params_file_ = prog_file_path_or_model_dir_path + "/" +
+                   params_file_path_or_model_prefix + ".pdiparams";
   } else {
-    prog_file_ = prog_file_path;
-    params_file_ = params_file_path;
+    prog_file_ = prog_file_path_or_model_dir_path;
+    params_file_ = params_file_path_or_model_prefix;
   }
   std::ifstream fin(prog_file_, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
