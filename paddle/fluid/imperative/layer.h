@@ -228,7 +228,7 @@ class VarBase {
     return var_->ForwardDataType();
   }
 
-  const platform::Place Place() const { return var_->Place(); }
+  const phi::Place Place() const { return var_->Place(); }
 
   void ClearGradient(bool set_to_zero = true);
 
