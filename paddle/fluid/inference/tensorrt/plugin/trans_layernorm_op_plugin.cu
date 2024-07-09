@@ -366,7 +366,7 @@ int TransLayerNormPluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
 
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  phi::GPUPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
 

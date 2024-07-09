@@ -90,9 +90,9 @@ bool ONNXRuntimePredictor::InitBinding() {
   // Now ONNXRuntime only support CPU
   const char *device_name = config_.use_gpu() ? "Cuda" : "Cpu";
   if (config_.use_gpu()) {
-    place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
+    place_ = phi::GPUPlace(config_.gpu_device_id());
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   }
   scope_.reset(new paddle::framework::Scope());
 

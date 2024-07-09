@@ -352,7 +352,7 @@ PreparedOp PrepareImpl(
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
                 << " | kernel key: " << phi_cpu_kernel_key
                 << " | kernel: " << phi_cpu_kernel;
-        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
+        auto* cpu_ctx = pool.Get(phi::CPUPlace());
         return PreparedOp(op,
                           empty_ctx,
                           phi_cpu_kernel_key,
@@ -381,7 +381,7 @@ PreparedOp PrepareImpl(
     VLOG(3) << "fluid missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
+    fluid_kernel_type.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
@@ -405,7 +405,7 @@ PreparedOp PrepareImpl(
       VLOG(3) << "fluid missing XPU kernel: " << op.Type()
               << ", expected_kernel_key:" << fluid_kernel_type
               << ", fallbacking to CPU one!";
-      fluid_kernel_type.place_ = platform::CPUPlace();
+      fluid_kernel_type.place_ = phi::CPUPlace();
       kernel_iter = kernels.find(fluid_kernel_type);
     }
   }
@@ -416,7 +416,7 @@ PreparedOp PrepareImpl(
     VLOG(3) << "missing IPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
+    fluid_kernel_type.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
@@ -426,7 +426,7 @@ PreparedOp PrepareImpl(
     VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
+    fluid_kernel_type.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif

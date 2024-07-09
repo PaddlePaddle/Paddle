@@ -37,7 +37,7 @@
 namespace paddle {
 namespace imperative {
 
-static const platform::Place &GetVarPlace(const framework::Variable &src) {
+static const phi::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<phi::DenseTensor>()) {
     return src.Get<phi::DenseTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
