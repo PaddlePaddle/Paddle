@@ -221,7 +221,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(values2.grad.numpy(), values3.grad.numpy())
 
-    def test_add_bias_cast(self):
+    def test_add_bias_fp16_cast(self):
         device = paddle.device.get_device().split(":")[0]
         if device == "gpu":
             indices_data = [[0, 1], [0, 3]]
@@ -245,6 +245,35 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 
             sp_c = sparse.add(sp_a, values2)
             ref_c = values1 + values3
+            np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+
+    def test_add_fp16_cast(self):
+        device = paddle.device.get_device().split(":")[0]
+        if device == "gpu":
+            indices_data = [[0, 1], [0, 3]]
+            values1_data = [[1.0], [2.0]]
+            values2_data = [[1.0], [2.0]]
+            shape = [2, 4, 2]
+
+            sp_a = sparse.sparse_coo_tensor(
+                indices_data,
+                values1_data,
+                shape,
+                dtype='float16',
+                stop_gradient=False,
+            )
+            sp_a.retain_grads()
+
+            sp_b = sparse.sparse_coo_tensor(
+                indices_data, values2_data, shape, stop_gradient=False
+            )
+            sp_b.retain_grads()
+
+            values1 = paddle.to_tensor(values1_data, stop_gradient=False)
+            values2 = paddle.to_tensor(values2_data, stop_gradient=False)
+
+            sp_c = sparse.add(sp_a, sp_b)
+            ref_c = values1 + values2
             np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
 
 
