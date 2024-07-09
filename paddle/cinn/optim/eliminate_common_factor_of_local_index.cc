@@ -269,7 +269,7 @@ struct CommonFactorTrait<Symbolic> {
 
   static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
     auto IsSymbolicNotEqual = [&](const ir::Expr& expr1,
-                               const ir::Expr& expr2) -> bool {
+                                  const ir::Expr& expr2) -> bool {
       return cinn::common::AutoSimplify(
                  ir::Sub::Make(ExtractSymbolicFromExpr(expr1),
                                ExtractSymbolicFromExpr(expr2))) != ir::Expr(0);
