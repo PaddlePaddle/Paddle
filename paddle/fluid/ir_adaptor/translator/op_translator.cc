@@ -1709,8 +1709,11 @@ struct MulOpTranscriber : public OpTranscriber {
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
     if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-      return static_cast<OpTranscriber>(*this).operator()(
-          ctx, param_map, op_desc, block);
+      return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
+          ctx,
+          param_map,
+          op_desc,
+          block);
     }
 #endif
     return OpTranscriber::operator()(ctx, param_map, op_desc, block);
@@ -1883,8 +1886,11 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
     if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-      return static_cast<OpTranscriber>(*this).operator()(
-          ctx, param_map, op_desc, block);
+      return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
+          ctx,
+          param_map,
+          op_desc,
+          block);
     }
 #endif
     return OpTranscriber::operator()(ctx, param_map, op_desc, block);
@@ -3202,32 +3208,20 @@ struct FusedElemwiseAddActivationGradOpTranscriber
   }
 };
 
-struct FakeQuantizeMovingAverageAbsMaxOpTranscriber : public OpTranscriber {
+// a more general version for fake quantize ops
+// if one has a more special property, then don't use this
+struct FakeQuantizeOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
     if (info.name == "round_type") {
       (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
-    }
-  }
-};
-
-struct FakeChannelWiseDequantizeMaxAbsOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "quant_axis") {
+    } else if (info.name == "x_num_col_dims") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "round_type") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "quant_axis") {
       (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
-    }
-  }
-};
-
-struct FakeQuantizeRangeAbsMaxOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "round_type") {
-      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
     }
   }
 };
@@ -3573,6 +3567,12 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
     if (info.name == "moving_rate") {
       (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.9);
     }
+    if (info.name == "qmin") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -128);
+    }
+    if (info.name == "qmax") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 127);
+    }
   }
 };
 
@@ -3603,11 +3603,12 @@ OpTranslator::OpTranslator() {
   special_handlers["fused_elemwise_add_activation_grad"] =
       FusedElemwiseAddActivationGradOpTranscriber();
   special_handlers["fake_quantize_moving_average_abs_max"] =
-      FakeQuantizeMovingAverageAbsMaxOpTranscriber();
+      FakeQuantizeOpTranscriber();
   special_handlers["fake_channel_wise_dequantize_max_abs"] =
-      FakeChannelWiseDequantizeMaxAbsOpTranscriber();
-  special_handlers["fake_quantize_range_abs_max"] =
-      FakeQuantizeRangeAbsMaxOpTranscriber();
+      FakeQuantizeOpTranscriber();
+  special_handlers["fake_quantize_range_abs_max"] = FakeQuantizeOpTranscriber();
+  special_handlers["fake_quantize_dequantize_moving_average_abs_max"] =
+      FakeQuantizeOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();

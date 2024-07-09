@@ -126,9 +126,7 @@ def corpus_reader(data_path, words_name, props_name):
                                     lbl_seq.append('B-' + cur_tag)
                                     is_in_bracket = True
                                 else:
-                                    raise RuntimeError(
-                                        'Unexpected label: %s' % l
-                                    )
+                                    raise RuntimeError(f'Unexpected label: {l}')
 
                             yield sentences, verb_list[i], lbl_seq
 

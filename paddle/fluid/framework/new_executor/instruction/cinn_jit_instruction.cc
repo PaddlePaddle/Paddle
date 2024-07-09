@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
@@ -25,7 +24,8 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
 PD_DECLARE_bool(cinn_bucket_compile);
-PD_DECLARE_bool(cinn_enable_config_search);
+PD_DECLARE_bool(cinn_measure_kernel_time);
+PD_DECLARE_string(tile_config_policy);
 PD_DECLARE_string(cinn_kernel_execution_label);
 
 namespace paddle {
@@ -68,7 +68,8 @@ class CinnJitInstruction::FnPtrImpl {
     }
 
     // 3. Launch host kernel
-    if (FLAGS_cinn_enable_config_search) {
+    if (FLAGS_cinn_measure_kernel_time ||
+        FLAGS_tile_config_policy == "search") {
       VLOG(3) << "enter searching config branch";
       ::common::PerformanceStatistician& ps =
           ::common::PerformanceStatistician::Instance();

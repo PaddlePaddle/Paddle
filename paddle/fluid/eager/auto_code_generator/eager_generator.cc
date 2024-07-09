@@ -1956,12 +1956,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
-              "  paddle::Tensor& %s = *%s;\n";
+              "  paddle::Tensor& %s = *%s;\n"
+              "  (void)%s; // To avoid error: unused variable\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                    output_name,
                                                    output_var_args_name,
                                                    output_varname,
-                                                   output_var_args_name);
+                                                   output_var_args_name,
+                                                   output_varname);
         }
       } else {
         if (!forward_inplace_map.empty() &&

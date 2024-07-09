@@ -73,7 +73,6 @@
 #endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -337,33 +336,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
 
                         >>> build_strategy = static.BuildStrategy()
                         >>> build_strategy.debug_graphviz_path = "./graph"
-          )DOC")
-      .def_property(
-          "enable_sequential_execution",
-          [](const BuildStrategy &self) {
-            return self.enable_sequential_execution_;
-          },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.enable_sequential_execution_ = b;
-          },
-          R"DOC((bool, optional): If set True, the execution order of ops would
-                be the same as what is in the program. Default is False.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.enable_sequential_execution = True
           )DOC")
       .def_property(
           "remove_unnecessary_lock",
@@ -905,19 +877,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
 
           )DOC")
       .def_property(
-          "is_distribution",
-          [](const BuildStrategy &self) { return self.is_distribution_; },
-          [](BuildStrategy &self, bool b) {
-#ifdef WIN32
-            if (b) {
-              PADDLE_THROW(platform::errors::Unavailable(
-                  "Distribution mode is not supported on Windows platform."));
-            }
-#else
-            self.is_distribution_ = b;
-#endif
-          })
-      .def_property(
           "async_mode",
           [](const BuildStrategy &self) { return self.async_mode_; },
           [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
@@ -956,12 +915,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self,
              const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
             self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
-          })
-      .def_property(
-          "fix_op_run_order",
-          [](const BuildStrategy &self) { return self.fix_op_run_order_; },
-          [](BuildStrategy &self, bool fix_op_run_order) {
-            self.fix_op_run_order_ = fix_op_run_order;
           })
       .def_property(
           "allow_cuda_graph_capture",

@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
-#include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -48,6 +48,10 @@ namespace framework {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::once_flag p2p_init_flag;
 #endif
+
+static std::unordered_set<std::string> ReaderOpSet() {
+  return {"create_py_reader"};
+}
 
 class CompiledProgramPrivate {
  public:
@@ -70,15 +74,6 @@ class CompiledProgramPrivate {
   bool IsUseCUDA(DeviceType use_device);
 
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
-
-  inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
-
-  void ApplyFixOpRunOrderPass(ir::Graph *graph) {
-    if (build_strategy_.fix_op_run_order_) {
-      auto pass = ir::PassRegistry::Instance().Get("fix_op_run_order_pass");
-      pass->Apply(graph);
-    }
-  }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
@@ -559,7 +554,7 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
                     platform::errors::Unavailable(
                         "NPU is not supported in CompiledProgram."));
   InitP2P(places);
-  ir::InitReaderQueueDeviceCount(
+  InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
   // Initialize necessary info of member_ with strategy.
   InitProgramPrivateMemberInfo(build_strategy, places.size());
@@ -589,7 +584,6 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
-  // PrepareForCUDAGraphCapture(graph);
   graph = member_->ApplyMemoryOptimizePass(graph);
 }
 
@@ -807,6 +801,28 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
                                       "please use CPU/CUDA/XPU backend."));
   }
 }
+
+void CompiledProgram::InitReaderQueueDeviceCount(ir::Graph *graph,
+                                                 const Scope &scope,
+                                                 size_t dev_cnt) {
+  using QueueHolder =
+      operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder;
+
+  auto reader_ops = ReaderOpSet();
+  for (auto &node : graph->Nodes()) {
+    if (node->IsOp() && node->Op() &&
+        reader_ops.count(node->Op()->Type()) != 0) {
+      auto queue_name = node->Op()->Input("blocking_queue")[0];
+      auto var = scope.FindVar(queue_name);
+      if (var && var->IsType<QueueHolder>()) {
+        VLOG(10) << "Set device count of " << queue_name << " to be "
+                 << dev_cnt;
+        var->GetMutable<QueueHolder>()->GetQueue()->SetDeviceCount(dev_cnt);
+      }
+    }
+  }
+}
+
 void CompiledProgram::CreateLocalScopes(
     Scope *global_scope,
     const std::vector<Scope *> &local_scopes,

@@ -58,8 +58,7 @@ PHI_DEFINE_EXPORTED_int32(graph_edges_debug_node_num,
                           2,
                           "graph debug node num");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::Load_to_ssd(const std::string &path,
@@ -2648,7 +2647,7 @@ Node *GraphTable::find_node(GraphTableType table_type, uint64_t id) {
                             : node_shards;
   for (auto &search_shard : search_shards) {
     PADDLE_ENFORCE_NOT_NULL(search_shard[index],
-                            ::paddle::platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "search_shard[%d] should not be null.", index));
     node = search_shard[index]->find_node(id);
     if (node != nullptr) {
@@ -2669,7 +2668,7 @@ Node *GraphTable::find_node(GraphTableType table_type, int idx, uint64_t id) {
       : table_type == GraphTableType::FEATURE_TABLE ? feature_shards[idx]
                                                     : node_shards[idx];
   PADDLE_ENFORCE_NOT_NULL(search_shards[index],
-                          ::paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "search_shard[%d] should not be null.", index));
   Node *node = search_shards[index]->find_node(id);
   return node;
@@ -3727,5 +3726,4 @@ void GraphTable::build_node_iter_type_keys() {
   VLOG(0) << "finish build_node_iter_type_keys";
 }
 
-}  // namespace distributed
-};  // namespace paddle
+}  // namespace paddle::distributed

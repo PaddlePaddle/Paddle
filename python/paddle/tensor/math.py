@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import DTypeLike
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
@@ -97,6 +96,7 @@ from .ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 __all__ = []
 
@@ -585,7 +585,7 @@ def pow_(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
     if isinstance(y, (int, float)):
         return _C_ops.pow_(x, y)
     else:
-        raise TypeError('y must be scalar type, but received: %s ' % (type(y)))
+        raise TypeError(f'y must be scalar type, but received: {type(y)} ')
 
 
 OP_NAMEMAPPING = {
@@ -1153,10 +1153,12 @@ def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undefined"):
     assert (
         in_dynamic_or_pir_mode()
     ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
-    assert op_type in ["add", "subtract", "multiply", "divide"], (
-        "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
-        % op_type
-    )
+    assert op_type in [
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+    ], f"op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name={op_type}, Expect op_name=[add|subtract|multiply|divide]\n"
     op = getattr(_C_ops, op_type)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
@@ -2982,7 +2984,16 @@ def max(
             check_variable_and_dtype(
                 x,
                 'x',
-                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'float8_e4m3fn',
+                    'float8_e5m2',
+                ],
                 'max',
             )
             if not isinstance(axis, Variable) and paddle.utils._contain_var(
@@ -3892,7 +3903,7 @@ def trace(
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
             "The x must be at least 2-dimensional, "
-            "But received Input x's dimensional: %s.\n" % len(input_shape)
+            f"But received Input x's dimensional: {len(input_shape)}.\n"
         )
 
         axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
@@ -4024,7 +4035,7 @@ def diagonal(
             input_shape = list(x.shape)
             assert len(input_shape) >= 2, (
                 "The x must be at least 2-dimensional, "
-                "But received Input x's dimensional: %s.\n" % len(input_shape)
+                f"But received Input x's dimensional: {len(input_shape)}.\n"
             )
 
             axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
@@ -5550,8 +5561,7 @@ def multigammaln(x: Tensor, p: int, name: str | None = None) -> Tensor:
                     26.09257698 , 170.68318176])
     """
     assert p >= 1, (
-        "The p must be greater than or equal to 1, "
-        "But received p is %s.\n" % p
+        "The p must be greater than or equal to 1, " f"But received p is {p}.\n"
     )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
@@ -5565,8 +5575,7 @@ def multigammaln_(x: Tensor, p: int, name: str | None = None) -> Tensor:
     Please refer to :ref:`api_paddle_multigammaln`.
     """
     assert p >= 1, (
-        "The p must be greater than or equal to 1, "
-        "But received p is %s.\n" % p
+        "The p must be greater than or equal to 1, " f"But received p is {p}.\n"
     )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     c = paddle.to_tensor(c, dtype=x.dtype)
@@ -7400,12 +7409,11 @@ def polygamma(x: Tensor, n: int, name: str | None = None) -> Tensor:
     """
     if not isinstance(n, int):
         raise TypeError(
-            "The input of n must be int type, but received: %s " % (type(n))
+            f"The input of n must be int type, but received: {type(n)} "
         )
     if n < 0:
         raise ValueError(
-            "The input of n must be greater than or equal to 0. But received n = %s"
-            % (n)
+            f"The input of n must be greater than or equal to 0. But received n = {n}"
         )
     if n == 0:
         return digamma(x)
@@ -7436,12 +7444,11 @@ def polygamma_(x: Tensor, n: int, name: str | None = None) -> Tensor:
     """
     if not isinstance(n, int):
         raise TypeError(
-            "The input of n must be int type, but received: %s " % (type(n))
+            f"The input of n must be int type, but received: {type(n)} "
         )
     if n < 0:
         raise ValueError(
-            "The input of n must be greater than or equal to 0. But received n = %s"
-            % (n)
+            f"The input of n must be greater than or equal to 0. But received n = {n}"
         )
     if n == 0:
         return digamma_(x)

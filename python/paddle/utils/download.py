@@ -189,9 +189,7 @@ def _get_download(url, fullname):
             return fullname
 
     except Exception as e:  # requests.exceptions.ConnectionError
-        logger.info(
-            f"Downloading {fname} from {url} failed with exception {str(e)}"
-        )
+        logger.info(f"Downloading {fname} from {url} failed with exception {e}")
         return False
 
 

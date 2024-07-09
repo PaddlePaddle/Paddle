@@ -85,7 +85,6 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -134,6 +133,7 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/utils/none.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -209,6 +209,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
+#include "paddle/fluid/pir/dialect/operator/trait/forward_only.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
@@ -242,7 +243,6 @@ DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
 DECLARE_FILE_SYMBOLS(op_compatible_info);
-DECLARE_FILE_SYMBOLS(gather_op_handle);
 
 namespace paddle {
 namespace pybind {
@@ -969,6 +969,20 @@ void BindVjp(pybind11::module *m) {
            Returns:
                out (bool): True means that the op has custom vjp rules, False means it does not.
            )DOC");
+  m->def(
+      "is_forward_only",
+      [](pir::Operation &op) -> py::bool_ {
+        return op.info().HasTrait<paddle::dialect::ForwardOnlyTrait>();
+      },
+      R"DOC(
+           Return whether an op is forward only op.
+
+           Args:
+               op (pir::Operation): op to be checked
+
+           Returns:
+               out (bool): True means that the op is forward only op, False means it does not.
+           )DOC");
 }
 
 void BindDecomp(pybind11::module *m) {
@@ -1293,7 +1307,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return common::vectorize(operators::details::BroadcastTwoDims(
+        return common::vectorize(phi::funcs::BroadcastTwoDims(
             common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
       });
 
@@ -3191,6 +3205,8 @@ All parameter, weight, gradient are variables in Paddle.
       .value("COMPLEX128", phi::DataType::COMPLEX128)
       .value("FLOAT16", phi::DataType::FLOAT16)
       .value("BFLOAT16", phi::DataType::BFLOAT16)
+      .value("FLOAT8_E4M3FN", phi::DataType::FLOAT8_E4M3FN)
+      .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .export_values();
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

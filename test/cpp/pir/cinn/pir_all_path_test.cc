@@ -95,7 +95,6 @@ static void RunAndCheckResult(::pir::Program* program,
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
   if (check_result) {
-    std::cerr << "res  " << out_tensor.data<float>()[0] << std::endl;
     bool res0 = simple_cmp(out_tensor.data<float>()[0], gt_val);
     EXPECT_EQ(res0, true);
   }
