@@ -98,7 +98,7 @@ def softmax(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
             >>> paddle.seed(100)
 
             >>> mask = paddle.rand((3, 4)) < 0.5
-            >>> x = paddle.rand((3, 4)) * mask
+            >>> x = paddle.to_tensor(paddle.rand((3, 4)).numpy() * mask.numpy())
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.95717543, 0.43864486, 0.        ],
