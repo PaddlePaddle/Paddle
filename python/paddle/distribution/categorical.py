@@ -199,7 +199,7 @@ class Categorical(distribution.Distribution):
 
         return paddle.reshape(sample_index, sample_shape, name=name)
 
-    def kl_divergence(self, other: _CategoricalBoundary) -> Tensor:
+    def kl_divergence(self, other: Categorical) -> Tensor:
         """The KL-divergence between two Categorical distributions.
 
         Args:
