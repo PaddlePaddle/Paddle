@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 
 import numpy as np
@@ -210,7 +212,7 @@ def _run_parallel(device_list):
     paddle.distributed.spawn(train_for_run_parallel, nprocs=len(device_list))
 
 
-def run_check():
+def run_check() -> None:
     """
     Check whether PaddlePaddle is installed correctly and running successfully
     on your system.
@@ -220,8 +222,8 @@ def run_check():
 
             >>> import paddle
 
-            >>> paddle.utils.run_check()
             >>> # doctest: +SKIP('the output will change in different run')
+            >>> paddle.utils.run_check()
             Running verify PaddlePaddle program ...
             I0818 15:35:08.335391 30540 program_interpreter.cc:173] New Executor is Running.
             I0818 15:35:08.398319 30540 interpreter_util.cc:529] Standalone Executor is Used.

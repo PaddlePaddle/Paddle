@@ -100,7 +100,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_context_manager',
     'test_conv1d_layer',
     'test_conv1d_transpose_layer',
-    'test_conv2d_layer',
+    'test_conv2d_layer_deprecated',
     'test_conv2d_op',
     'test_conv2d_transpose_layer',
     'test_conv3d_layer',

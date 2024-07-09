@@ -873,6 +873,7 @@ set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
+set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op PROPERTIES TIMEOUT 120)
@@ -973,6 +974,8 @@ endif()
 
 set(TEST_CINN_OPS
     test_assign_op
+    test_reduce_op
+    test_scatter_nd_op
     test_layer_norm_op
     test_atan2_op
     test_cast_op
@@ -1043,6 +1046,7 @@ set_tests_properties(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_adagrad_op
+    test_reduce_op
     test_adamw_op
     test_bincount_op
     test_batch_norm_op
@@ -1204,6 +1208,9 @@ set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
+set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
