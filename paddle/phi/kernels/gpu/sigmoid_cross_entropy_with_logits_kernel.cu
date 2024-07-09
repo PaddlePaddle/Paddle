@@ -72,14 +72,14 @@ struct SigmoidFwdPosWeightFunctor {
       out_data = static_cast<T>(0.);
       counts = 0;
     } else {
-      T term1 = (x > 0) ? x : 0;
+      T term1 = ((x < 0) ? -x : 0) * pos_weight;
       T term2 = x * label;
       T term3 =
           phi::funcs::real_log(static_cast<T>(1) +
                                phi::funcs::real_exp(static_cast<T>(-abs(x)))) *
           pos_weight;
 
-      out_data = term1 - term2 + term3;
+      out_data = x + term1 - term2 + term3;
       counts = 1;
     }
     phi::Array<T, 2> outs;
