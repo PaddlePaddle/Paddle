@@ -123,10 +123,27 @@ AnalysisConfig::AnalysisConfig(const std::string &prog_file,
 
   Update();
 }
+
 void AnalysisConfig::SetModel(const std::string &prog_file_path,
                               const std::string &params_file_path) {
-  prog_file_ = prog_file_path;
-  params_file_ = params_file_path;
+  if (is_directory(prog_file_path)) {
+    if (FLAGS_enable_pir_api) {
+      prog_file_ = prog_file_path + "/" + params_file_path + ".json";
+    } else {
+      prog_file_ = prog_file_path + "/" + params_file_path + ".pdmodel";
+    }
+    params_file_ = prog_file_path + "/" + params_file_path + ".pdiparams";
+  } else {
+    prog_file_ = prog_file_path;
+    params_file_ = params_file_path;
+  }
+  std::ifstream fin(prog_file_, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fin.is_open()),
+      true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file is normal.",
+          prog_file_));
 
   Update();
 }
