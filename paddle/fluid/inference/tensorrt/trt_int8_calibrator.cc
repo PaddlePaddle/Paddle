@@ -28,7 +28,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers,
     int batch_size,
     std::string engine_name,
-    const platform::Place place)
+    const phi::Place place)
     : batch_size_(batch_size),
       data_buffers_(),
       data_tensors_(),

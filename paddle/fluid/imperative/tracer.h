@@ -63,7 +63,7 @@ class Tracer {
   Tracer()
       : basic_engine_(new BasicEngine()),
         generator_(new UniqueNameGenerator()) {
-    expected_place_ = platform::CPUPlace();
+    expected_place_ = phi::CPUPlace();
   }
 
   ~Tracer() = default;
@@ -112,7 +112,7 @@ class Tracer {
                const NameTensorMap& ins,
                const NameTensorMap& outs,
                paddle::framework::AttributeMap& attrs,  // NOLINT
-               const paddle::platform::Place& place,
+               const phi::Place& place,
                paddle::framework::AttributeMap* default_attrs,
                bool use_default_attr_map,
                const std::map<std::string, std::string>& inplace_map = {});
@@ -137,9 +137,9 @@ class Tracer {
 
   BasicEngine* GetEngine() const { return basic_engine_.get(); }
 
-  platform::Place ExpectedPlace() const { return expected_place_; }
+  phi::Place ExpectedPlace() const { return expected_place_; }
 
-  TEST_API void SetExpectedPlace(platform::Place place);
+  TEST_API void SetExpectedPlace(phi::Place place);
 
   TEST_API bool HasGrad() const;
 
@@ -178,7 +178,7 @@ class Tracer {
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<UniqueNameGenerator> generator_;
-  platform::Place expected_place_;
+  phi::Place expected_place_;
   GarbageCollectorMap gcs_;
   static thread_local std::string python_stack_;
   static thread_local bool enable_program_desc_tracing_;

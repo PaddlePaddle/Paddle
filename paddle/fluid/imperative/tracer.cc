@@ -426,7 +426,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap& attrs,
-                     const paddle::platform::Place& place,
+                     const phi::Place& place,
                      paddle::framework::AttributeMap* default_attrs,
                      bool use_default_attr_map,
                      const std::map<std::string, std::string>& inplace_map) {
@@ -544,7 +544,7 @@ void Tracer::TraceOp(const std::string& type,
   }
 }
 
-TEST_API void Tracer::SetExpectedPlace(platform::Place place) {
+TEST_API void Tracer::SetExpectedPlace(phi::Place place) {
   expected_place_ = place;
 }
 TEST_API bool Tracer::HasGrad() const { return has_grad_; }
