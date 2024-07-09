@@ -162,7 +162,7 @@ class AutoScanTest(unittest.TestCase):
         for key, arr in tensor.items():
             self.assertTrue(
                 baseline[key].shape == arr.shape,
-                f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {str(arr.shape)}",
+                f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {arr.shape}",
             )
             diff = abs(baseline[key] - arr)
             np.testing.assert_allclose(
@@ -699,7 +699,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             self.assertEqual(
                 baseline[key].shape,
                 arr.shape,
-                f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {str(arr.shape)}",
+                f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {arr.shape}",
             )
             np.testing.assert_allclose(arr, baseline[key], rtol=rtol, atol=atol)
 
@@ -953,7 +953,7 @@ class CutlassAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
+                        + f'\033[1;31m \nERROR INFO: {e}\033[0m'
                     )
                     if not ignore_flag:
                         status = False

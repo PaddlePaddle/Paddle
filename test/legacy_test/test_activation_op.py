@@ -2593,17 +2593,22 @@ class TestRound(TestActivation):
         self.python_api = paddle.round
         self.init_dtype()
         self.init_shape()
+        self.init_decimals()
 
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = np.round(x)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype) * 100
+        out = np.round(x, decimals=self.decimals)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
         self.convert_input_output()
 
     def init_shape(self):
         self.shape = [10, 12]
+
+    def init_decimals(self):
+        self.decimals = 0
 
     def test_check_output(self):
         self.check_output(
@@ -2617,6 +2622,33 @@ class TestRound(TestActivation):
 class TestRound_ZeroDim(TestRound):
     def init_shape(self):
         self.shape = []
+
+
+class TestRound_decimals1(TestRound):
+    def init_decimals(self):
+        self.decimals = 2
+
+    def test_round_api(self):
+        with dynamic_guard():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    x_np = (
+                        np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+                        * 100
+                    )
+                    out_expect = np.round(x_np, decimals=self.decimals)
+                    x_paddle = paddle.to_tensor(
+                        x_np, dtype=self.dtype, place=device
+                    )
+                    y = paddle.round(x_paddle, decimals=self.decimals)
+                    np.testing.assert_allclose(y.numpy(), out_expect, rtol=1e-3)
+
+
+class TestRound_decimals2(TestRound_decimals1):
+    def init_decimals(self):
+        self.decimals = -1
 
 
 class TestRelu(TestActivation):

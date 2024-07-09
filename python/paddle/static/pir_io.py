@@ -163,8 +163,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
     """
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `paddle.static.Program`, but received `{type(program)}`"
         )
 
     total_ops = program.global_block().ops
@@ -266,8 +265,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
     if not isinstance(program, paddle.static.Program):
         raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `paddle.static.Program`, but received `{type(program)}`"
         )
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
@@ -482,8 +480,7 @@ def load_vars_pir(
 
         if not isinstance(main_program, paddle.static.Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is paddle.static.Program, but received {type(main_program)}"
             )
         param, opt = get_pir_parameters(main_program)
         vars = param + opt
@@ -503,8 +500,7 @@ def load_vars_pir(
 
         if not isinstance(main_program, paddle.static.Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
-                % type(main_program)
+                f"The type of input main_program is invalid, expected type is paddle.static.Program, but received {type(main_program)}"
             )
 
         # TODO(chenzhiyang):save origin param shape, check vars
@@ -831,7 +827,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
             >>> [inference_program, feed_target_names, fetch_targets] = (
             ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32) # type: ignore[var-annotated]
             >>> results = exe.run(inference_program,
             ...               feed={feed_target_names[0]: tensor_img},
             ...               fetch_list=fetch_targets)

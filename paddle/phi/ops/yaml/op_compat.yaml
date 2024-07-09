@@ -396,6 +396,12 @@
   outputs :
     out : Out
 
+- op : beam_search_decode
+  inputs:
+    {ids : Ids, scores : Scores}
+  outputs:
+    {sentence_ids : SentenceIds, sentence_scores : SentenceScores}
+
 - op : bernoulli
   inputs :
     x : X
@@ -1719,6 +1725,12 @@
     out : Out
     fc_out : FCOut
 
+- op : fusion_seqpool_concat
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : fusion_transpose_flatten_concat
   inputs :
     x : X
@@ -1910,7 +1922,7 @@
 
 - op : histogram
   inputs :
-    input : X
+    {input: X, weight : Weight}
   outputs :
     out : Out
 
@@ -2089,6 +2101,45 @@
     out : Out
   attrs:
     negative_slope : alpha
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : legacy_bilinear_interp (bilinear_interp)
+  backward : legacy_bilinear_interp_grad (bilinear_interp_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
+  attrs:
+    data_format: data_layout
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : legacy_expand (expand)
+  backward : legacy_expand_grad (expand_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : expand_times
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : ExpandTimes
+      tensors_name : expand_times_tensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [legacy_expand, legacy_expand_grad]
+
+- op : legacy_nearest_interp (nearest_interp)
+  backward : legacy_nearest_interp_grad (nearest_interp_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2509,6 +2560,15 @@
     hidden : Hidden
   attrs :
     {scale_data : Scale_data,  shift_data : Shift_data}
+  manual_signature : [multi_gru]
+
+- op : multiclass_nms
+  inputs:
+    {bboxes : BBoxes, scores : Scores}
+  outputs:
+    out : Out
+  get_expected_kernel_type :
+    multiclass_nms : GetMulticlassNmsExpectedKernelType
 
 - op : multiclass_nms3
   inputs :
@@ -3205,6 +3265,13 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_expand
+  backward: sequence_expand_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+
 - op : sequence_mask
   inputs:
     x : X
@@ -3219,8 +3286,12 @@
 
 - op : sequence_softmax
   backward : sequence_softmax_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
   extra :
-    attrs : [str data_format = "AnyLayout"]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = false]
 
 - op : sgd_ (sgd)
   inputs :
@@ -3254,6 +3325,12 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : share_data
+  inputs:
+    x : X
+  outputs:
+    out : Out
 
 - op : shuffle_batch
   backward: shuffle_batch_grad
@@ -4228,7 +4305,7 @@
   outputs :
     out : Out
 
-- op: lars_momentum
+- op: lars_momentum_ (lars_momentum)
   inputs:
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :

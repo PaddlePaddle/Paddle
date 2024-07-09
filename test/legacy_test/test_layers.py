@@ -49,9 +49,14 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def static_graph(self):
-        with new_program_scope():
-            paddle.seed(self.seed)
+        paddle.seed(self.seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
+        else:
+            paddle.framework.random._manual_program_seed(self.seed)
+        with new_program_scope():
             yield
 
     def get_static_graph_result(
@@ -68,11 +73,16 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
+        paddle.seed(self.seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
+        else:
+            paddle.framework.random._manual_program_seed(self.seed)
         with base.dygraph.guard(
             self._get_place(force_to_use_cpu=force_to_use_cpu)
         ):
-            paddle.seed(self.seed)
-            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
 

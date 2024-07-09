@@ -14,20 +14,13 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
 
 import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import (
-    DTypeLike,
-    NestedList,
-    NestedSequence,
-    Numberic,
-    ShapeLike,
-    TensorOrTensors,
-)
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -51,6 +44,14 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import (
+        DTypeLike,
+        NestedList,
+        NestedSequence,
+        Numberic,
+        ShapeLike,
+        TensorOrTensors,
+    )
 
 __all__ = []
 
@@ -863,30 +864,25 @@ def crop(
     def _attr_shape_check(shape_val):
         if not isinstance(shape_val, int):
             raise TypeError(
-                "Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: %s."
-                % type(shape_val)
+                f"Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: {type(shape_val)}."
             )
         if shape_val == 0:
             raise ValueError(
-                "Attr(shape) of Op(crop_tensor) should not be zero, but received: %s."
-                % str(shape_val)
+                f"Attr(shape) of Op(crop_tensor) should not be zero, but received: {shape_val}."
             )
         if shape_val < -1:
             raise ValueError(
-                "When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: %s."
-                % str(shape_val)
+                f"When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: {shape_val}."
             )
 
     def _attr_offsets_check(offset_val):
         if not isinstance(offset_val, int):
             raise TypeError(
-                "Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: %s."
-                % type(offset_val)
+                f"Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: {type(offset_val)}."
             )
         if offset_val < 0:
             raise ValueError(
-                "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
-                % str(offset_val)
+                f"Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: {offset_val}."
             )
 
     if in_pir_mode():
@@ -1020,8 +1016,7 @@ def fill_(x: Tensor, value: float) -> Tensor:
     """
     if not isinstance(value, (float, int)):
         raise TypeError(
-            "The type of 'value'  must be int or float, but received %s."
-            % (type(value))
+            f"The type of 'value'  must be int or float, but received {type(value)}."
         )
     return _C_ops.fill_(x, value)
 
@@ -1431,8 +1426,7 @@ def concat(
 
             assert len(input) == 1, (
                 "If the elements of 'input' in concat are Variable(LoDTensorArray), "
-                "number of the elements must be 1, but received %s."
-                % len(input)
+                f"number of the elements must be 1, but received {len(input)}."
             )
             out_index = helper.create_variable_for_type_inference(dtype="int32")
             helper.append_op(
@@ -2048,6 +2042,8 @@ def stack(
     tensor is [N, A, B]; if ``axis == 1``, the shape of stacked
     tensor is [A, N, B], etc.
 
+    It also supports the operation with zero-size tensors which contain 0 in their shape.
+    See the examples below.
 
     .. code-block:: text
 
@@ -2091,6 +2087,39 @@ def stack(
                           [3.0, 4.0]
                           [5.0, 6.0] ] ]
 
+
+        Case 3:
+
+            Input:
+                x[0].shape = [0, 1, 2]
+                x[0].data = []
+                x[1].shape = [0, 1, 2]
+                x[1].data = []
+
+            Attrs:
+                axis = 0
+
+            Output:
+                Out.shape = [2, 0, 1, 2]
+                Out.data = []
+
+
+        Case 4:
+
+            Input:
+                x[0].shape = [0, 1, 2]
+                x[0].data = []
+                x[1].shape = [0, 1, 2]
+                x[1].data = []
+
+            Attrs:
+                axis = 1
+
+            Output:
+                Out.shape = [0, 2, 1, 2]
+                Out.data = []
+
+
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
                                      must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
@@ -2128,6 +2157,25 @@ def stack(
             [[[1., 2.],
               [3., 4.],
               [5., 6.]]])
+
+            >>> # zero-size tensors
+            >>> x1 = paddle.ones([0, 1, 2])
+            >>> x2 = paddle.ones([0, 1, 2])
+
+            >>> out = paddle.stack([x1, x2], axis=0)
+            >>> print(out.shape)
+            [2, 0, 1, 2]
+            >>> print(out)
+            Tensor(shape=[2, 0, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[],
+             []])
+
+            >>> out = paddle.stack([x1, x2], axis=1)
+            >>> print(out.shape)
+            [0, 2, 1, 2]
+            >>> print(out)
+            Tensor(shape=[0, 2, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [])
     """
     axis = 0 if axis is None else axis
 
@@ -2158,7 +2206,7 @@ def stack(
         if x[0].is_dense_tensor_array_type():
             assert len(x) == 1, (
                 "If the elements of 'x' in stack are Variable(LoDTensorArray), "
-                "number of the elements must be 1, but received %s." % len(x)
+                f"number of the elements must be 1, but received {len(x)}."
             )
             out, _ = _C_ops.array_to_tensor(x, axis, True)
             return out
@@ -2171,7 +2219,7 @@ def stack(
     if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, (
             "If the elements of 'x' in stack are Variable(LoDTensorArray), "
-            "number of the elements must be 1, but received %s." % len(x)
+            f"number of the elements must be 1, but received {len(x)}."
         )
         out_index = helper.create_variable_for_type_inference(dtype="int32")
 
@@ -2584,7 +2632,7 @@ def split(
         elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                "received %s." % (type(num_or_sections))
+                f"received {type(num_or_sections)}."
             )
 
         if isinstance(num_or_sections, int):
@@ -2603,7 +2651,7 @@ def split(
         if not isinstance(num_or_sections, (int, list, tuple)):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                "received %s." % (type(num_or_sections))
+                f"received {type(num_or_sections)}."
             )
         if isinstance(num_or_sections, int):
             assert num_or_sections > 0, 'num_or_sections must be than 0.'
@@ -3141,7 +3189,7 @@ def squeeze(
 
 @inplace_apis_in_dygraph_only
 def squeeze_(
-    x: Tensor, axis: int | Sequence[int] = None, name: str | None = None
+    x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
 ) -> Tensor:
     """
     Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
@@ -3875,7 +3923,7 @@ def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
     """
     if not isinstance(axis, (int)):
         raise TypeError(
-            "The type of 'axis'  must be int, but received %s." % (type(axis))
+            f"The type of 'axis'  must be int, but received {type(axis)}."
         )
 
     if axis not in range(-input.ndim, input.ndim):
@@ -4113,12 +4161,12 @@ def scatter_nd_add(
             >>> print(output.shape)
             [3, 5, 9, 10]
     """
+    if x.dtype != updates.dtype:
+        raise ValueError("x and updates must have same data type.")
+
     if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
-        if x.dtype != updates.dtype:
-            raise ValueError("x and updates must have same data type.")
-
         helper = LayerHelper('scatter_nd_add', **locals())
         dtype = helper.input_dtype(input_param_name='x')
         output = helper.create_variable_for_type_inference(dtype)
@@ -4674,12 +4722,13 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     )
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
-                    assert dim_idx < len(x.shape), (
-                        "The index of 0 in `shape` must be less than "
-                        "the input tensor X's dimensions. "
-                        "But received shape[%d] = 0, X's dimensions = %d."
-                        % (dim_idx, len(x.shape))
-                    )
+                    if math.prod(x.shape):
+                        assert dim_idx < len(x.shape), (
+                            "The index of 0 in `shape` must be less than "
+                            "the input tensor X's dimensions. "
+                            "But received shape[%d] = 0, X's dimensions = %d."
+                            % (dim_idx, len(x.shape))
+                        )
                 else:
                     assert dim_size > 0, (
                         "Each dimension value of 'shape' in reshape must not "
@@ -6337,7 +6386,7 @@ def put_along_axis(
     if in_dynamic_or_pir_mode():
         if convert_dtype(indices.dtype) not in ['int32', 'int64']:
             raise TypeError(
-                f"The data type of indices should be one of ['int32', 'int64'], but got {str(convert_dtype(indices.dtype))}"
+                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
             )
         return _C_ops.put_along_axis(
             arr, indices, values, axis, reduce, include_self

@@ -62,8 +62,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRandInt(
         ir::Tensor shape_tensor;
         std::string tensor_name = "randint_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -72,22 +71,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForRandInt(
                     "strategy.randint.x86",
                     1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForRandInt(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("shape"));
-  auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  CHECK(!shape.empty()) << "shape attr is empty!";
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForRandInt(const std::vector<Type> &inputs_type,
-                                       const framework::AttrMapType &attrs) {
-  std::string dtype = "int32";
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  return res;
 }
 
 }  // namespace op
@@ -101,10 +84,6 @@ CINN_REGISTER_HELPER(randint_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRandInt)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForRandInt))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForRandInt))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

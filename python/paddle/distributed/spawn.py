@@ -89,15 +89,13 @@ def _options_valid_check(options):
         if key not in supported_options:
             if key in deprecated_options:
                 warnings.warn(
-                    "The config option (%s) of `paddle.distributed.spawn` is deprecated. "
-                    "Please use the latest config options stated in the `spawn` API documentation."
-                    % key,
+                    f"The config option ({key}) of `paddle.distributed.spawn` is deprecated. "
+                    "Please use the latest config options stated in the `spawn` API documentation.",
                     DeprecationWarning,
                 )
             else:
                 raise ValueError(
-                    "The config option (%s) of `paddle.distributed.spawn` is not supported."
-                    % key
+                    f"The config option ({key}) of `paddle.distributed.spawn` is not supported."
                 )
 
 

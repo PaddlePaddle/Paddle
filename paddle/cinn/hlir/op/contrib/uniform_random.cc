@@ -62,8 +62,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForUniformRandom(
         ir::Tensor shape_tensor;
         std::string tensor_name = "uniform_random_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -72,28 +71,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForUniformRandom(
                     "strategy.uniform_random.x86",
                     1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForUniformRandom(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("shape"));
-  auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  CHECK(!shape.empty()) << "shape attr is empty!";
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForUniformRandom(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  std::string dtype = "float32";
-  if (attrs.find("dtype") != attrs.end()) {
-    dtype = absl::get<std::string>(attrs.at("dtype"));
-  }
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  CHECK(res[0].is_float(32) || res[0].is_float(64))
-      << "uniform_random only support float32 and float64, but here " << res[0]
-      << "! Please check.";
-  return res;
 }
 
 }  // namespace op
@@ -107,10 +84,6 @@ CINN_REGISTER_HELPER(uniform_random_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForUniformRandom)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForUniformRandom))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForUniformRandom))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

@@ -24,7 +24,6 @@ import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops, profiler
-from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
@@ -44,6 +43,7 @@ from .math_op_patch import monkey_patch_math_tensor
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 
 
 _grad_scalar = None
