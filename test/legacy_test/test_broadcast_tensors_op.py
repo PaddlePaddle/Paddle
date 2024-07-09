@@ -354,6 +354,8 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
             ]
             paddle.broadcast_tensors(inputs)
 
+        self.assertRaises(TypeError, test_type)
+        self.assertRaises(TypeError, test_dtype)
         if paddle.base.framework.in_pir_mode():
             self.assertRaises(ValueError, test_bcast_semantics)
             self.assertRaises(ValueError, test_bcast_semantics_complex64)
