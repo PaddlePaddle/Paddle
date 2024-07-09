@@ -128,7 +128,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
       auto* dst =
           &(PADDLE_GET(phi::TensorArray, fetch_list->at(micro_batch_id)[col]));
       dst->resize(src.size());
-      for (int i = 0; i < src.size(); ++i) {
+      for (size_t i = 0; i < src.size(); ++i) {
         TensorCopy(src[i], platform::CPUPlace(), &dst->at(i));
         dst->at(i).set_lod(src[i].lod());
       }
