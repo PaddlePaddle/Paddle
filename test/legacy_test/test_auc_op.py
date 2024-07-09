@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle import base
 
 
 class TestAucOp(OpTest):
@@ -139,7 +138,9 @@ class TestAucAPI(unittest.TestCase):
 
 class TestAucOpError(unittest.TestCase):
     def test_errors(self):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_type1():
                 data1 = paddle.static.data(
