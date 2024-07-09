@@ -54,9 +54,24 @@ class PerformanceStatistician {
       record_[label][thread_id].push_back(TimePointInfo{is_start, time_point});
     }
   }
+  // Insert time duration(ms) directly
+  void InsertTimePoint(const std::string& label, float event_duration) {
+    std::thread::id thread_id = std::this_thread::get_id();
+    std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    TimePoint start_time_point = std::chrono::steady_clock::now();
+    TimePoint end_time_point =
+        start_time_point + std::chrono::nanoseconds(
+                               static_cast<int64_t>(event_duration * 1000000));
+    record_[label][thread_id].push_back(TimePointInfo{true, start_time_point});
+    record_[label][thread_id].push_back(TimePointInfo{false, end_time_point});
+  }
 
   void Start(const std::string& label) {
     InsertTimePoint(label, /* is_start = */ true);
+  }
+
+  void Insert(const std::string& label, float event_duration) {
+    InsertTimePoint(label, event_duration);
   }
 
   void End(const std::string& label) {
