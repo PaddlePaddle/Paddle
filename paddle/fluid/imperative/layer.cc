@@ -365,7 +365,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     InnerSetOverriddenStopGradient(src.OverriddenStopGradient());
   }
 
-  platform::Place place = src.Place();
+  phi::Place place = src.Place();
   if (src.Var().IsType<phi::DenseTensor>()) {
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
     auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();

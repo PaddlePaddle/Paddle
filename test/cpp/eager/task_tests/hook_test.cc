@@ -57,7 +57,7 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
 }
 
 TEST(RetainGrad, HookBeforeRetainGrad) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
@@ -66,7 +66,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   // Create Target Tensor
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,
@@ -133,7 +133,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 }
 
 TEST(RetainGrad, HookAfterRetainGrad) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
@@ -142,7 +142,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   // Create Target Tensor
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,

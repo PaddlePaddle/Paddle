@@ -32,7 +32,6 @@
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
-#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -427,19 +426,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
-  if (apply_group_schedule) {
-    std::unordered_set<std::string> output_tensor_names;
-    for (auto value : group->GetGroupOutputValues()) {
-      output_tensor_names.insert(ValueName(value));
-    }
-
-    std::shared_ptr<hlir::framework::pir::GroupInfo> group_info;
-    ir::StaticShapeGroupScheduler group_scheduler(
-        &ir_sch, output_tensor_names, target_, group_info);
-    group_scheduler.MapExprSchedule();
-    VLOG(3) << "After group schedule, ir is: \n"
-            << ir_sch.GetModule().GetExprs().at(0);
-  }
 
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
