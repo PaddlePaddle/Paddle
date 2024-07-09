@@ -431,10 +431,16 @@ def has_fetch_operations(
     from paddle.autograd.backward_utils import ValueSet
 
     fetch_info = [[], []]
+    remove_ops = []
     for op in block.ops:
         if op.name() == fetch_op:
+            if op.operand_source(0) not in ValueSet(fetch_targets):
+                remove_ops.append(op)
+                continue
             fetch_info[0].append(op.operand_source(0))
             fetch_info[1].append(op.attrs()["name"])
+    for op in remove_ops:
+        block.remove_op(op)
 
     need_fetch_info = []
     for i, fetch_var in enumerate(fetch_targets):
