@@ -244,6 +244,10 @@ template PADDLE_API phi::dtype::complex<float>
     *Tensor::mutable_data<phi::dtype::complex<float>>();
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::mutable_data<phi::dtype::complex<double>>();
+template PADDLE_API phi::dtype::float8_e4m3fn *
+Tensor::mutable_data<phi::dtype::float8_e4m3fn>();
+template PADDLE_API phi::dtype::float8_e5m2 *
+Tensor::mutable_data<phi::dtype::float8_e5m2>();
 
 template <typename T>
 T *Tensor::mutable_data(const Place &place) {
@@ -307,6 +311,10 @@ template PADDLE_API const phi::dtype::complex<float>
     *Tensor::data<phi::dtype::complex<float>>() const;
 template PADDLE_API const phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>() const;
+template PADDLE_API const phi::dtype::float8_e4m3fn *
+Tensor::data<phi::dtype::float8_e4m3fn>() const;
+template PADDLE_API const phi::dtype::float8_e5m2 *
+Tensor::data<phi::dtype::float8_e5m2>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -337,6 +345,10 @@ template PADDLE_API phi::dtype::complex<float>
     *Tensor::data<phi::dtype::complex<float>>();
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>();
+template PADDLE_API phi::dtype::float8_e4m3fn *
+Tensor::data<phi::dtype::float8_e4m3fn>();
+template PADDLE_API phi::dtype::float8_e5m2 *
+Tensor::data<phi::dtype::float8_e5m2>();
 
 const void *Tensor::data() const {
   if (is_dense_tensor()) {

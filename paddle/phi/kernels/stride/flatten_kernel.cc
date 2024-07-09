@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/flatten_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -25,6 +28,11 @@ void FlattenInferStridedKernel(const Context& dev_ctx,
                                int stop_axis UNUSED,
                                DenseTensor* out,
                                DenseTensor* xshape) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   ReshapeStridedKernel<Context>(
       dev_ctx,
       x,
@@ -40,6 +48,11 @@ void FlattenStridedKernel(const Context& dev_ctx,
                           int stop_axis,
                           DenseTensor* out,
                           DenseTensor* xshape) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   FlattenInferStridedKernel<Context>(
       dev_ctx, x, start_axis, stop_axis, out, xshape);
 }

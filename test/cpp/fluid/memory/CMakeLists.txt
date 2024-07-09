@@ -116,8 +116,9 @@ if(WITH_TESTING AND TEST cuda_managed_memory_test)
     cuda_managed_memory_test
     PROPERTIES
       ENVIRONMENT
-      "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth"
-      TIMEOUT 50)
+      "FLAGS_use_cuda_managed_memory=true;FLAGS_use_cuda_malloc_async_allocator=false;FLAGS_allocator_strategy=auto_growth"
+      TIMEOUT
+      50)
 endif()
 
 if(WITH_GPU AND WITH_TESTING)

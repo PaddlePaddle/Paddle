@@ -33,6 +33,14 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#define RETURN_IF_NOT_ENABLED                            \
+  {                                                      \
+    if (!memory::allocation::AllocatorFacade::Instance() \
+             .IsStreamSafeCUDAAllocatorUsed()) {         \
+      return;                                            \
+    }                                                    \
+  }
+
 namespace paddle {
 namespace memory {
 
@@ -54,6 +62,8 @@ void CheckMemLeak(const platform::CUDAPlace &place) {
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
+  RETURN_IF_NOT_ENABLED;
+
   platform::CUDAPlace place = platform::CUDAPlace();
   size_t alloc_size = 256;
 
@@ -81,6 +91,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
+  RETURN_IF_NOT_ENABLED;
+
   platform::CUDAPlace place = platform::CUDAPlace();
   size_t alloc_size = 256;
 
@@ -104,6 +116,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorWithDefaultStreamTest) {
+  RETURN_IF_NOT_ENABLED;
+
   auto &instance = allocation::AllocatorFacade::Instance();
   platform::CUDAPlace place = platform::CUDAPlace();
   const std::shared_ptr<Allocator> allocator_implicit_stream =
@@ -118,6 +132,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorWithDefaultStreamTest) {
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
+  RETURN_IF_NOT_ENABLED;
+
   platform::CUDAPlace place = platform::CUDAPlace();
   std::shared_ptr<Allocation> zero_size_allocation = AllocShared(place, 0);
   EXPECT_EQ(zero_size_allocation->ptr(), nullptr);
@@ -139,6 +155,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
+  RETURN_IF_NOT_ENABLED;
+
   platform::CUDAPlace place = platform::CUDAPlace();
   size_t alloc_size = 256;
 
@@ -176,6 +194,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
 }
 
 TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
+  RETURN_IF_NOT_ENABLED;
+
   platform::CUDAPlace place = platform::CUDAPlace();
   gpuStream_t stream1, stream2;
 #ifdef PADDLE_WITH_CUDA
@@ -403,17 +423,23 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 };
 
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
+  RETURN_IF_NOT_ENABLED;
+
   MultiStreamRun();
   CheckResult();
 }
 
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStreamTest) {
+  RETURN_IF_NOT_ENABLED;
+
   MultiThreadMultiStreamRun();
   CheckResult();
 }
 
 #if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000))
 TEST_F(StreamSafeCUDAAllocTest, CUDAGraphTest) {
+  RETURN_IF_NOT_ENABLED;
+
   MultiStreamRun();
   CUDAGraphRun();
   CheckResult();
