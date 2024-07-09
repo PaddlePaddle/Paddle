@@ -2072,27 +2072,6 @@ void HashInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
-  PADDLE_ENFORCE_GE(bins,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "The bins should be greater than or equal to 1."
-                        "But received nbins is %d",
-                        bins));
-  PADDLE_ENFORCE_GE(
-      max,
-      min,
-      phi::errors::InvalidArgument("max must be larger or equal to min."
-                                   "But received max is %d, min is %d",
-                                   max,
-                                   min));
-
-  out->set_dims({bins});
-  out->share_lod(input);
-  out->set_dtype(DataType::INT64);
-}
-
 void IdentityLossInferMeta(const MetaTensor& x,
                            int reduction,
                            MetaTensor* out) {
@@ -4261,6 +4240,11 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   y->set_dims(x_dims);
   y->set_dtype(out_dtype);
+}
+
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
 }
 
 void SplitInferMeta(const MetaTensor& x,

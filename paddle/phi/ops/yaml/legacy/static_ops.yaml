@@ -713,6 +713,27 @@
   optional : sequence_length, dropout_state_out
   intermediate : reserve
 
+- op : sequence_expand
+  args: (Tensor x, Tensor y, int ref_level = -1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceExpandInferMeta
+  kernel:
+    func: sequence_expand
+    data_type: x
+  backward: sequence_expand_grad
+  no_need_buffer: y
+
+- op : sequence_softmax
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceSoftmaxInferMeta
+  kernel:
+    func: sequence_softmax
+    param: [x]
+  backward: sequence_softmax_grad
+
 - op : shadow_output
   args : (Tensor x, str name)
   output : Tensor(out)
@@ -878,3 +899,14 @@
     data_type: x
     param : [x, indices, ksize, strides, paddings,output_size, data_format]
   backward: unpool_grad
+
+- op: multiclass_nms
+  args: (Tensor bboxes, Tensor scores, float score_threshold,
+    int nms_top_k, int keep_top_k, float nms_threshold = 0.3, float nms_eta = 1.0,
+    bool normalized = true, int background_label = 0)
+  output: Tensor (out)
+  infer_meta:
+    func: MulticlassNmsv1InferMeta
+  kernel:
+    func: multiclass_nms
+    data_type: scores

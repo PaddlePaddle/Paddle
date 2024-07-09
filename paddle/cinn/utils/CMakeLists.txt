@@ -29,4 +29,4 @@ cinn_cc_test(
   DEPS
   absl
   Threads::Threads)
-cinn_cc_test(test_profiler SRCS profiler_test.cc DEPS cinncore)
+cinn_cc_test(test_profiler_cinn SRCS profiler_test.cc DEPS cinncore)

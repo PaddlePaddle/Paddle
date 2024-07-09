@@ -69,13 +69,13 @@ class XPUEventManager {
     if (!is_created_) {
       CreateEvent(device_index);
     }
-    PADDLE_ENFORCE_EQ(device_index,
-                      device_index_,
-                      platform::errors::PreconditionNotMet(
-                          "XPUContext's device %d does not match"
-                          "Event's device %d",
-                          device_index,
-                          device_index_));
+    PADDLE_ENFORCE_EQ(
+        device_index,
+        device_index_,
+        phi::errors::PreconditionNotMet("XPUContext's device %d does not match"
+                                        "Event's device %d",
+                                        device_index,
+                                        device_index_));
 
     platform::XPUDeviceGuard guard(device_index_);
     // TODO(zhangxiaoci) temporary solution: xpu::event seems buggy
