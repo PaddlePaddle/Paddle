@@ -118,7 +118,7 @@ bool TestMain(const platform::Place &place,
   PADDLE_ENFORCE_EQ(
       &out_tensor,
       input_names[0].tensor,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input and output vars should share tensor for In-place test"));
 
   // compare results

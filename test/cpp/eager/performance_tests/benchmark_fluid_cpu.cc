@@ -79,7 +79,7 @@ TEST(Benchmark, FluidScaleCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -138,7 +138,7 @@ TEST(Benchmark, FluidMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -222,7 +222,7 @@ TEST(Benchmark, FluidMLPCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

@@ -493,7 +493,7 @@ class GetLoDLevelTest : public OperatorWithKernel {
     auto lod_level = ctx->GetLoDLevel("X");
     PADDLE_ENFORCE_GT(lod_level,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The LoD level Input(X) should be larger than 0."));
   }
 };

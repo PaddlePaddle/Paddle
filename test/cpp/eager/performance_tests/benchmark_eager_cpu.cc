@@ -71,7 +71,7 @@ TEST(Benchmark, EagerScaleCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -120,7 +120,7 @@ TEST(Benchmark, EagerMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -172,7 +172,7 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -241,7 +241,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

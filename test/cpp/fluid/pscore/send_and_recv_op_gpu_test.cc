@@ -314,14 +314,14 @@ TEST(SENDANDRECV, GPU) {
   PADDLE_ENFORCE_EQ(
       task.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
       task2.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   b_rpc_service2->Stop();

@@ -93,7 +93,7 @@ class DummyAllocator : public Allocator {
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
-    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+    PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 

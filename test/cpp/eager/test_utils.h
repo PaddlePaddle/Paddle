@@ -79,7 +79,7 @@ bool CompareGradTensorWithValue(const paddle::Tensor& target, T value) {
   VLOG(6) << "CompareGradTensorWithValue";
   for (int i = 0; i < grad_dense->numel(); i++) {
     PADDLE_ENFORCE(value == ptr[i],
-                   paddle::platform::errors::PreconditionNotMet(
+                   phi::errors::PreconditionNotMet(
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
@@ -118,7 +118,7 @@ bool CompareTensorWithValue(const paddle::Tensor& target, T value) {
   VLOG(6) << "CompareTensorWithValue";
   for (int i = 0; i < dense_t->numel(); i++) {
     PADDLE_ENFORCE(value == ptr[i],
-                   paddle::platform::errors::PreconditionNotMet(
+                   phi::errors::PreconditionNotMet(
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",

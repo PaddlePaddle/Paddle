@@ -109,10 +109,9 @@ class NCCLTester : public ::testing::Test {
 
     lk.unlock();
 
-    PADDLE_ENFORCE_EQ(
-        send_tensor->numel(),
-        common::product(kDims),
-        paddle::platform::errors::InvalidArgument("Tensor numel not match!"));
+    PADDLE_ENFORCE_EQ(send_tensor->numel(),
+                      common::product(kDims),
+                      phi::errors::InvalidArgument("Tensor numel not match!"));
 
     auto op = f::OpRegistry::CreateOp(*op1);
 

@@ -276,7 +276,7 @@ TEST(SENDANDRECV, CPU) {
   PADDLE_ENFORCE_EQ(
       task.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
@@ -290,7 +290,7 @@ TEST(SENDANDRECV, CPU) {
   PADDLE_ENFORCE_EQ(
       task2.first,
       "y",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   heter_server_ptr_->Stop();

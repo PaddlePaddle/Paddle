@@ -41,8 +41,8 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Check your paddle version, current "
-                                          "version is not compiled with cuda"));
+        phi::errors::InvalidArgument("Check your paddle version, current "
+                                     "version is not compiled with cuda"));
 #endif
   } else {
     std::memcpy(dst, src, n);
@@ -97,23 +97,23 @@ bool TestMain(const platform::Place &place,
 
   phi::DenseTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<phi::DenseTensor>();
-  PADDLE_ENFORCE_EQ(scope.kids().empty(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The scope can not have the child scopes,"
-                        "please check your code."));
+  PADDLE_ENFORCE_EQ(
+      scope.kids().empty(),
+      true,
+      phi::errors::InvalidArgument("The scope can not have the child scopes,"
+                                   "please check your code."));
   if (inplace) {
     PADDLE_ENFORCE_EQ(
         &out_tensor,
         x,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output tensor should be same as input x in inplace mode,"
             " but now is not same."));
   } else {
     PADDLE_ENFORCE_EQ(
         &out_tensor,
         z,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output tensor should be same as output z in normal mode,"
             " but now is not same."));
   }

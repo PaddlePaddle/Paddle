@@ -220,10 +220,10 @@ TEST(SENDANDRECV, CPU) {
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
           .get();
 
-  PADDLE_ENFORCE_NE(rpc_client,
-                    nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
+  PADDLE_ENFORCE_NE(
+      rpc_client,
+      nullptr,
+      phi::errors::InvalidArgument("Client Start Fail, Check Your Code & Env"));
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
@@ -291,14 +291,14 @@ TEST(SENDANDRECV, CPU) {
   PADDLE_ENFORCE_EQ(
       task.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
       task2.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   b_rpc_service->Stop();
