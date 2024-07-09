@@ -63,10 +63,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
-    AppendPassWithCheck(strategy_.cache_runtime_context_,
-                        "runtime_context_cache_pass");
-    AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
-                        "modify_op_lock_and_record_event_pass");
+    // AppendPassWithCheck(strategy_.cache_runtime_context_,
+    //                     "runtime_context_cache_pass");
+    // AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
+    //                     "modify_op_lock_and_record_event_pass");
 
     SetCollectiveContext();
   }
@@ -210,9 +210,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
         break;
-      case BuildStrategy::ReduceStrategy::kReduce:
-        multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
-        break;
+      // case BuildStrategy::ReduceStrategy::kReduce:
+      //   multi_devices_pass =
+      //   AppendPass("reduce_mode_multi_devices_pass").get(); break;
       default:
         PADDLE_THROW(
             platform::errors::Unimplemented("Unknown reduce strategy."));
@@ -387,7 +387,7 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
-USE_PASS(reduce_mode_multi_devices_pass);
+// USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);

@@ -218,7 +218,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
     CreateIsolatedVarNode(&result, var_node);
   }
 
-  bool is_forwarding = true;
+  // bool is_forwarding = true;
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -232,61 +232,61 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
         // is true only for the op that scale the final scalar loss.
         // It also assumes backward op will always follow the forward op in
         // the block.
-        is_forwarding = false;
+        // is_forwarding = false;
       } else {
         CreateComputationalOps(&result, node, places_.size());
       }
 
-      // Insert collective ops if nranks > 1
-      if (!is_forwarding && Get<size_t>(details::kNRanks) > 1) {
-        auto &op_desc = *(node->Op());
-        bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
-        // optimize op is already processed in DealWithSpecialOp,
-        // here we only consider backward op
-        if (!is_bk_op) continue;
+      // // Insert collective ops if nranks > 1
+      // if (!is_forwarding && Get<size_t>(details::kNRanks) > 1) {
+      //   auto &op_desc = *(node->Op());
+      //   bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
+      //   // optimize op is already processed in DealWithSpecialOp,
+      //   // here we only consider backward op
+      //   if (!is_bk_op) continue;
 
-        /*
-         * the op that will generate the gradient of on parameter will have
-         one attr op_role_var
-         * to record the parameter and gradient, like:
-          attrs {
-            name: "op_role_var"
-            type: STRINGS
-            strings: "fc_1.b_0"
-            strings: "fc_1.b_0@GRAD"
-          }
-         */
+      //   /*
+      //    * the op that will generate the gradient of on parameter will have
+      //    one attr op_role_var
+      //    * to record the parameter and gradient, like:
+      //     attrs {
+      //       name: "op_role_var"
+      //       type: STRINGS
+      //       strings: "fc_1.b_0"
+      //       strings: "fc_1.b_0@GRAD"
+      //     }
+      //    */
 
-        // Currently, we assume that once gradient is generated, it can be
-        // broadcast, and each gradient is only broadcast once.
-        auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
-        for (size_t i = 0; i < backward_vars.size(); i += 2) {
-          auto &p_name = backward_vars[i];
-          auto &g_name = backward_vars[i + 1];
-          VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
-                   << " op_type " << node->Op()->Type();
-          if (NeedCollectiveForGrad(g_name, sorted_ops)) {
-            InsertCollectiveOp(&result, node, p_name, g_name);
-          }
-        }
-      }
+      //   // Currently, we assume that once gradient is generated, it can be
+      //   // broadcast, and each gradient is only broadcast once.
+      //   auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
+      //   for (size_t i = 0; i < backward_vars.size(); i += 2) {
+      //     auto &p_name = backward_vars[i];
+      //     auto &g_name = backward_vars[i + 1];
+      //     VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
+      //              << " op_type " << node->Op()->Type();
+      //     if (NeedCollectiveForGrad(g_name, sorted_ops)) {
+      //       // InsertCollectiveOp(&result, node, p_name, g_name);
+      //     }
+      //   }
+      // }
     }
   }
 
-  InsertPostprocessOps(&result);
+  // InsertPostprocessOps(&result);
 
   /*
   Dependency graph has been constructed. However, there are still data
   hazards need to be handled.
   */
-  PolishGraphToSupportDataHazards(&result);
+  // PolishGraphToSupportDataHazards(&result);
 
   /*
    * Only variables should be the leaves of graph.
    */
-  AddOutputToLeafOps(&result);
+  // AddOutputToLeafOps(&result);
 
-  result.Erase(kGraphOps);
+  // result.Erase(kGraphOps);
 }
 
 void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
@@ -718,250 +718,6 @@ void MultiDevSSAGraphBuilderBase::CreateIsolatedVarNode(
   }
 }
 
-void AllReduceSSAGraphBuilder::InsertCollectiveOp(
-    ir::Graph *result,
-    ir::Node *node,
-    const std::string &p_name,
-    const std::string &g_name) const {
-  if (IsSparseGradient(g_name)) {
-    CreateReduceOp(result, g_name, 0);
-    CreateBroadcastOp(result, g_name, 0);
-  } else {
-#if defined(PADDLE_WITH_DGC)
-    CreateAllReduceOp(result, node, g_name, IsEncoded(p_name));
-#else
-    CreateAllReduceOp(result, node, g_name);
-#endif
-  }
-}
-
-int BalanceVarSSAGraphBuilder::GetVarDeviceID(
-    const std::string &varname) const {
-  auto got = sharded_var_device_.find(varname);
-  if (got == sharded_var_device_.end()) {
-    auto pos = varname.find(framework::kNewGradSuffix);
-    if (pos != std::string::npos) {
-      got = sharded_var_device_.find(varname.substr(0, pos));
-    }
-  }
-  return got == sharded_var_device_.end() ? -1 : got->second;
-}
-
-int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
-  if (strategy_.reduce_ != details::BuildStrategy::ReduceStrategy::kReduce) {
-    return -1;
-  }
-  if (!OpHaveRole(*node, framework::OpRole::kOptimize)) {
-    return -1;
-  }
-  auto param_grad = PADDLE_GET_CONST(
-      std::vector<std::string>,
-      node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-
-  PADDLE_ENFORCE_EQ(
-      param_grad.size(),
-      2U,
-      platform::errors::InvalidArgument(
-          "In Node %s, the size of attribute %s must be 2, include Parameter "
-          "and Parameter@Grad.",
-          node->Name(),
-          OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-  int dev_id = GetVarDeviceID(param_grad[1]);
-  PADDLE_ENFORCE_NE(
-      dev_id,
-      -1,
-      platform::errors::NotFound("Can not find Device ID, for NodeName:%s, "
-                                 "NodeType:%s, Param:%s, Param@Grad:%s"
-                                 "For this fault, you can consult the "
-                                 "Paddle technical personnel for answer ",
-                                 node->Name(),
-                                 node->Op()->Type(),
-                                 param_grad[0],
-                                 param_grad[1]));
-  return dev_id;
-}
-
-size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
-    const std::vector<std::string> &var_names) const {
-  int64_t numel_sum = 0;
-  for (auto const &var_name : var_names) {
-    if (all_vars_.find(var_name) == all_vars_.end()) continue;
-    auto var_desc = all_vars_.at(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var_desc,
-                            platform::errors::NotFound(
-                                "Can not find Var(%s) in Var Desc.", var_name));
-    auto dim = common::make_ddim(var_desc->GetShape());
-    int64_t numel = common::product(dim);
-    PADDLE_ENFORCE_GT(numel,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The numel of Var(%s) must greater than 0"
-                          "Please check your code, about Var(%s) Shape.",
-                          var_name,
-                          var_name));
-    numel_sum += numel;
-  }
-
-  auto smallest =
-      std::min_element(std::begin(balance_vars_), std::end(balance_vars_));
-  size_t dev_id =
-      static_cast<size_t>(std::distance(std::begin(balance_vars_), smallest));
-  balance_vars_[dev_id] += numel_sum;
-  return dev_id;
-}
-
-void BalanceVarSSAGraphBuilder::ResetState() const {
-  balance_vars_.clear();
-  sharded_var_device_.clear();
-
-  balance_vars_.resize(places_.size(), 0);
-}
-
-void ReduceSSAGraphBuilder::Init() const {
-  MultiDevSSAGraphBuilderBase::Init();
-  ResetState();
-}
-
-void ReduceSSAGraphBuilder::ResetState() const {
-  BalanceVarSSAGraphBuilder::ResetState();
-  bcast_var_name_set_.clear();
-  bcast_var_name_set_.resize(places_.size());
-}
-
-void ReduceSSAGraphBuilder::InsertCollectiveOp(
-    ir::Graph *result,
-    ir::Node *node,
-    const std::string &p_name,
-    const std::string &g_name) const {
-  size_t cur_device_id = GetAppropriateDeviceID({g_name});
-  CreateReduceOp(result, g_name, cur_device_id);
-  sharded_var_device_.emplace(g_name, cur_device_id);
-  bcast_var_name_set_[cur_device_id].emplace(p_name);
-}
-
-bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
-                                              ir::Node *node) const {
-  int op_dev_id = BalanceVarSSAGraphBuilder::GetOpDeviceID(node);
-  if (op_dev_id != -1) {
-    // This op only runs on one specific device.
-    CreateComputationalOp(result, node, op_dev_id);
-    for (ir::Node *n : node->outputs) {
-      sharded_var_device_.emplace(n->Name(), op_dev_id);
-    }
-    return true;
-  }
-  return false;
-}
-
-void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
-  if (UseGPU()) {
-    if (strategy_.fuse_broadcast_ops_ == true) {  // NOLINT
-      CreateFusedBroadcastOp(result, bcast_var_name_set_);
-    } else {
-      for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
-        auto &to_bcast_set = bcast_var_name_set_[dev_id];
-        for (auto &bcast_name : to_bcast_set) {
-          CreateBroadcastOp(result, bcast_name, dev_id);
-        }
-      }
-    }
-  }
-}
-
-int ReduceSSAGraphBuilder::GetOpDeviceID(
-    ir::Node *node,
-    std::unordered_map<std::string, std::vector<ir::Node *>> *delay_ops) const {
-  if (!OpHaveRole(*node, framework::OpRole::kOptimize)) {
-    return -1;
-  }
-
-  auto param_grad = PADDLE_GET_CONST(
-      std::vector<std::string>,
-      node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-
-  PADDLE_ENFORCE_EQ(
-      param_grad.size(),
-      2U,
-      platform::errors::InvalidArgument(
-          "In Node %s, The size of attribute %s must be 2, include Parameter "
-          "and Parameter@Grad.",
-          node->Name(),
-          OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-  int dev_id = GetVarDeviceID(param_grad[1]);
-
-  if (dev_id == -1) {
-    (*delay_ops)[param_grad[1]].push_back(node);
-    return -2;
-  }
-  return dev_id;
-}
-
-std::vector<ir::Node *> ReduceSSAGraphBuilder::SortOperations(
-    const ir::Graph &graph) const {
-  std::vector<ir::Node *> sorted_ops = ir::TopologySortOperations(graph);
-  return SortForReduceMode(sorted_ops);
-}
-
-std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
-    const std::vector<ir::Node *> &topo_ops) const {
-  std::vector<ir::Node *> sorted_ops;
-  std::unordered_map<std::string, std::vector<ir::Node *>> delayed_op;
-  sorted_ops.reserve(topo_ops.size());
-  ResetState();
-
-  auto insert_delayed_op = [&](const std::string &var_name, int dev_id) {
-    sharded_var_device_.emplace(var_name, dev_id);
-    if (delayed_op.count(var_name)) {
-      auto &ops = delayed_op.at(var_name);
-      sorted_ops.insert(sorted_ops.end(), ops.begin(), ops.end());
-      delayed_op.at(var_name).clear();
-    }
-  };
-
-  for (ir::Node *node : topo_ops) {
-    int op_dev_id = GetOpDeviceID(node, &delayed_op);
-    if (op_dev_id > -1) {
-      // This op only runs on one specific device.
-      sorted_ops.emplace_back(node);
-      for (ir::Node *n : node->outputs) {
-        insert_delayed_op(n->Name(), op_dev_id);
-      }
-    } else if (op_dev_id == -1) {
-      // This op runs on all devices, and its output may have parameter's
-      // gradients.
-      sorted_ops.emplace_back(node);
-      bool is_bk_op = static_cast<bool>(
-          PADDLE_GET_CONST(
-              int,
-              node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) &
-          static_cast<int>(OpRole::kBackward));
-      if (!is_bk_op) continue;
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once.
-      auto backward_vars = details::GetOpRoleVarsOrEmpty(*(node->Op()));
-      for (size_t i = 0; i < backward_vars.size(); i += 2) {
-        auto &g_name = backward_vars[i + 1];
-        size_t cur_device_id = GetAppropriateDeviceID({g_name});
-        insert_delayed_op(g_name, static_cast<int>(cur_device_id));
-      }
-    } else if (op_dev_id == -2) {
-      // The Op on which the Op depends has not yet been generated.
-    }
-  }
-
-  PADDLE_ENFORCE_EQ(sorted_ops.size(),
-                    topo_ops.size(),
-                    platform::errors::InvalidArgument(
-                        "Sorted ops calc error!"
-                        "The result for sorted ops size(%d) must be "
-                        "equal to topo ops size(%d).",
-                        sorted_ops.size(),
-                        topo_ops.size()));
-
-  ResetState();
-  return sorted_ops;
-}
-
 void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
   for (ir::Node *input : node->inputs) {
@@ -977,23 +733,6 @@ void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
     }
   }
 }
-
-#if defined(PADDLE_WITH_DGC)
-bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
-  auto k_name = p_name + details::g_dgc_k;
-  auto it = all_vars_.find(k_name);
-  if (it == all_vars_.end()) {
-    VLOG(10) << "can't find k_name, so it's not encoded:" << k_name;
-    return false;
-  }
-
-  return true;
-}
-#else
-bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
-  return false;
-}
-#endif
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder() {
   static std::unordered_set<std::string> regs;
@@ -1020,7 +759,5 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
       .RequirePassAttr(paddle::framework::ir::kStrategy)                  \
       .RequirePassAttr(paddle::framework::details::kNRanks)
 
-REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
-                            paddle::framework::ir::ReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(all_reduce_mode_multi_devices_pass,
-                            paddle::framework::ir::AllReduceSSAGraphBuilder);
+                            paddle::framework::ir::MultiDevSSAGraphBuilderBase);

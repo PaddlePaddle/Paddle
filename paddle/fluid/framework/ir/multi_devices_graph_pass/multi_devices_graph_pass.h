@@ -66,14 +66,14 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
-  virtual void InsertCollectiveOp(ir::Graph *result,
-                                  ir::Node *node,
-                                  const std::string &p_name,
-                                  const std::string &g_name) const = 0;
+  // virtual void InsertCollectiveOp(ir::Graph *result,
+  //                                 ir::Node *node,
+  //                                 const std::string &p_name,
+  //                                 const std::string &g_name) const = 0;
 
   virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
-  virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
+  // virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
   bool UseGPU() const;
 
@@ -140,60 +140,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   mutable details::BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
-};
-
-class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
- protected:
-  virtual void InsertCollectiveOp(ir::Graph *result,
-                                  ir::Node *node,
-                                  const std::string &p_name,
-                                  const std::string &g_name) const;
-
-  virtual void InsertPostprocessOps(ir::Graph *result) const {}
-
-  bool IsEncoded(const std::string &p_name) const;
-};
-
-class BalanceVarSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
- protected:
-  int GetVarDeviceID(const std::string &varname) const;
-
-  int GetOpDeviceID(ir::Node *node) const;
-
-  size_t GetAppropriateDeviceID(
-      const std::vector<std::string> &var_names) const;
-
-  virtual void ResetState() const;
-
-  mutable std::unordered_map<std::string, int> sharded_var_device_;
-  mutable std::vector<int64_t> balance_vars_;
-};
-
-class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
- protected:
-  virtual void Init() const;
-
-  virtual void InsertCollectiveOp(ir::Graph *result,
-                                  ir::Node *node,
-                                  const std::string &p_name,
-                                  const std::string &g_name) const;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
-
-  virtual void InsertPostprocessOps(ir::Graph *result) const;
-
-  virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
-
-  virtual void ResetState() const;
-
-  int GetOpDeviceID(ir::Node *node,
-                    std::unordered_map<std::string, std::vector<ir::Node *>>
-                        *delay_ops) const;
-
-  std::vector<ir::Node *> SortForReduceMode(
-      const std::vector<ir::Node *> &topo_ops) const;
-
-  mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
