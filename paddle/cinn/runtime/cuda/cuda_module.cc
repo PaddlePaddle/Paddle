@@ -169,8 +169,14 @@ CUDAModule::~CUDAModule() {
   for (int i = 0; i < module_per_card_.size(); i++) {
     auto* module = module_per_card_[i];
     if (module) {
-      CUDA_CALL(cudaSetDevice(i));
-      CUDA_DRIVER_CALL(cuModuleUnload(module));
+      // CUDA_CALL(cudaSetDevice(i));
+      auto res = cudaSetDevice(i);
+
+      if (res != cudaSuccess) {
+        std::cerr << "CUDA Error : " << cudaGetErrorString(res) << std::endl;
+      }
+
+      // CUDA_DRIVER_CALL(cuModuleUnload(module));
     }
   }
 }
