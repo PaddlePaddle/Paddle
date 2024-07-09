@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#%%
 import os
 import paddle
 import numpy as np
@@ -99,6 +98,43 @@ def forbid_op_lower_trt(program, op_name):
         if op.name() == op_name:
             op.set_bool_attr("__l_trt__", False)
 
+def enforce_op_lower_trt(program, op_name):
+    for op in program.global_block().ops:
+        if op.name() == op_name:
+            op.set_bool_attr("__l_trt__", True)
+
+def predict_program(program, feed_data, fetch_var_list):
+    with paddle.pir_utils.IrGuard():
+        with paddle.static.program_guard(program):
+            executor = paddle.static.Executor()
+            output = executor.run(
+                    program,
+                    feed=feed_data,
+                    fetch_list=fetch_var_list
+                )
+            return output
+
+def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
+    with paddle.pir_utils.IrGuard():
+        with paddle.static.program_guard(program):
+            executor = paddle.static.Executor()
+            output_var = program.list_vars()[-1]
+            # Run the program with input_data
+            for _ in range(1):
+                output_original = executor.run(
+                    program,
+                    feed=min_shape_feed,
+                    fetch_list=[output_var]
+                )
+
+            # Run the program with input_data_max_shape (fake max_shape input)
+            for _ in range(1):
+                executor.run(
+                    program,
+                    feed=max_shape_feed,
+                    fetch_list=[output_var]
+                )
+
 def get_r50_program():
     paddle.enable_static()
     # static_resnet50 = StaticResNet50()
@@ -109,7 +145,7 @@ def get_r50_program():
         with static.program_guard(infer_program, startup_program):
             scope = paddle.static.global_scope()
             input_data = paddle.static.data(
-                shape=[-1, 3, -1, -1], dtype='float32', name='input'
+                shape=[1, 3, 224, 224], dtype='float32', name='input'
             )
             model = wide_resnet50_2()
             model.eval()
@@ -232,9 +268,7 @@ def get_bert_program():
 
 if __name__ == "__main__":
     pir_program, scope, param_dict = get_bert_program()
-    # print(pir_program)
     pir_program = run_pir_pass(pir_program)
-    # print(pir_program)
     x = np.ones([1, 768]).astype('int64')
     place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
     executor = paddle.static.Executor(place)

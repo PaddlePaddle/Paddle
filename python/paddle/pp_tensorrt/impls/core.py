@@ -211,3 +211,71 @@ def layernorm_converter(network, paddle_op, inputs):
     layer_norm.compute_precision = trt.float32
 
     return layer_norm
+
+
+@converter_registry.register("pd_op.conv2d")
+def conv2d_converter(network, paddle_op, inputs):
+    input_tensor, weight = inputs
+    weight_shape = paddle_op.operands()[1].source().shape
+    
+    padding = paddle_op.attrs().get("paddings", [0, 0])
+    stride = paddle_op.attrs().get("strides", [1, 1])
+    dilation = paddle_op.attrs().get("dilations", [1, 1])
+    groups = paddle_op.attrs().get("groups", 1)
+    
+    # weight_tensor = network.add_constant(weight_shape, weight).get_output(0)
+    kernel_shape = trt.Dims((weight_shape[2], weight_shape[3]))
+    
+    conv_layer = network.add_convolution_nd(input_tensor, weight_shape[0], kernel_shape, weight)
+    conv_layer.stride_nd = stride
+    conv_layer.padding_nd = padding
+    conv_layer.dilation_nd = dilation
+    conv_layer.num_groups = groups
+    
+    return conv_layer
+
+@converter_registry.register("pd_op.pool2d")
+def pool2d_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    pooling_type = paddle_op.attrs().get("pooling_type", "max")
+    padding = paddle_op.attrs().get("paddings", [0, 0])
+    stride = paddle_op.attrs().get("strides", [1, 1])
+    
+    # TODO attention for these codes
+    if not paddle_op.attrs().get("kernel_size") and len(inputs) == 2:
+        # the size of pool2d inputs is 2, means kernel size is the second input.
+        # kernel_size_tensor = inputs[1]
+        full_int_op = paddle_op.operands()[1].source().get_defining_op()
+        if full_int_op.name() == "pd_op.full_int_array":
+            kernel_size = full_int_op.attrs().get("value")
+        else:
+            raise Exception("the defining op of kernel size must be pd_op.full_int_array")
+    else:
+        kernel_size = paddle_op.attrs().get("kernel_size")
+        
+    if pooling_type == "max":
+        pooling_type = trt.PoolingType.MAX
+    elif pooling_type == "avg":
+        pooling_type = trt.PoolingType.AVERAGE
+    else:
+        raise ValueError(f"Unsupported pooling type: {pooling_type}")
+    
+    pool_layer = network.add_pooling_nd(input_tensor, pooling_type, window_size=kernel_size)
+    pool_layer.stride_nd = stride
+    pool_layer.padding_nd = padding
+    
+    return pool_layer
+
+@converter_registry.register("pd_op.batch_norm")
+@converter_registry.register("pd_op.batch_norm_")
+def batch_norm_converter(network, paddle_op, inputs):
+    input_tensor, mean, variance, scale, bias  = inputs
+    
+    scale_shape = paddle_op.operands()[3].source().shape
+    power = np.ones(scale_shape, dtype='float32')
+    power = trt.Weights(power)
+    
+    # (self: tensorrt.tensorrt.INetworkDefinition, input: tensorrt.tensorrt.ITensor, mode: tensorrt.tensorrt.ScaleMode, shift: tensorrt.tensorrt.Weights = None, scale: tensorrt.tensorrt.Weights = None, power: tensorrt.tensorrt.Weights = None) -> tensorrt.tensorrt.IScaleLayer
+    batch_norm_layer = network.add_scale(input_tensor, trt.ScaleMode.CHANNEL, bias, scale, power)
+    
+    return batch_norm_layer
