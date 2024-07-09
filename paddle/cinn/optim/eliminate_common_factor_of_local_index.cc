@@ -28,13 +28,6 @@ namespace cinn {
 namespace optim {
 namespace {
 
-int gcd(int a, int b) {
-  if (b == 0) {
-    return a == 0 ? 1 : a;
-  }
-  return gcd(b, a % b);
-}
-
 class GatherLocalIndexVisitor : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -182,7 +175,14 @@ int ExtractAddNumberFromExpr(const ir::Expr& expr) {
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
 
-ir::Expr ExtractSimbolicFromExpr(const ir::Expr& expr) {
+int gcd(int a, int b) {
+  if (b == 0) {
+    return a == 0 ? 1 : a;
+  }
+  return gcd(b, a % b);
+}
+
+ir::Expr ExtractSymbolicFromExpr(const ir::Expr& expr) {
   ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
   if (simplied_expr.is_constant()) {
     return ir::Expr(0);
@@ -193,7 +193,7 @@ ir::Expr ExtractSimbolicFromExpr(const ir::Expr& expr) {
     }
     return ir::Expr(0);
   } else {
-    VLOG(6) << "Not supported for calculating simbolic, expr = " << expr;
+    VLOG(6) << "Not supported for calculating symbolic, expr = " << expr;
     return ir::Expr(0);
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
@@ -201,7 +201,7 @@ ir::Expr ExtractSimbolicFromExpr(const ir::Expr& expr) {
 
 class Gcd {};
 class Offset {};
-class Simbolic {};
+class Symbolic {};
 
 template <typename Op>
 struct CommonFactorTrait;
@@ -220,18 +220,25 @@ struct CommonFactorTrait<Gcd> {
     if (factor != unit) {
       if (expr.As<ir::Mod>()) {
         auto mod = expr.As<ir::Mod>();
-        return ir::Mod::Make(Simplify(mod->a(), factor), mod->b());
+        return cinn::common::AutoSimplify(
+            ir::Mod::Make(Simplify(mod->a(), factor), mod->b()));
       } else if (expr.As<ir::Div>()) {
         auto div = expr.As<ir::Div>();
-        return ir::Div::Make(Simplify(div->a(), factor), div->b());
+        return cinn::common::AutoSimplify(
+            ir::Div::Make(Simplify(div->a(), factor), div->b()));
       } else if (expr.As<ir::Add>()) {
         auto add = expr.As<ir::Add>();
-        return ir::Add::Make(Simplify(add->a(), ir::Expr(ExtractMulNumberFromExpr(add->a()))),
-                             Simplify(add->b(), ir::Expr(ExtractMulNumberFromExpr(add->b()))));
+        ir::Expr lhs_expr = add->a();
+        ir::Expr rhs_expr = add->b();
+        int lhs_common_factor = ExtractMulNumberFromExpr(lhs_expr);
+        int rhs_common_factor = ExtractMulNumberFromExpr(rhs_expr);
+        return cinn::common::AutoSimplify(
+            ir::Add::Make(Simplify(lhs_expr, ir::Expr(lhs_common_factor)),
+                          Simplify(rhs_expr, ir::Expr(rhs_common_factor))));
       }
       return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
     }
-    return expr;
+    return ir::ir_utils::IRCopy(expr);
   }
 };
 
@@ -257,20 +264,21 @@ struct CommonFactorTrait<Offset> {
 const ir::Expr CommonFactorTrait<Offset>::unit = ir::Expr(0);
 
 template <>
-struct CommonFactorTrait<Simbolic> {
+struct CommonFactorTrait<Symbolic> {
   static const ir::Expr unit;
 
   static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
-    auto IsSimbolicEqual = [&](const ir::Expr& expr1,
+    auto IsSymbolicNotEqual = [&](const ir::Expr& expr1,
                                const ir::Expr& expr2) -> bool {
       return cinn::common::AutoSimplify(
-                 ir::Sub::Make(ExtractSimbolicFromExpr(expr1),
-                               ExtractSimbolicFromExpr(expr2))) != ir::Expr(0);
+                 ir::Sub::Make(ExtractSymbolicFromExpr(expr1),
+                               ExtractSymbolicFromExpr(expr2))) != ir::Expr(0);
     };
-    if (!IsSimbolicEqual(expr1, expr2)) {
+    if (IsSymbolicNotEqual(expr1, expr2)) {
       return cinn::common::AutoSimplify(ir::Add::Make(
-          ExtractSimbolicFromExpr(expr1), ExtractSimbolicFromExpr(expr2)));
+          ExtractSymbolicFromExpr(expr1), ExtractSymbolicFromExpr(expr2)));
     }
+    return ExtractSymbolicFromExpr(expr1);
   }
 
   static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
@@ -281,7 +289,7 @@ struct CommonFactorTrait<Simbolic> {
   }
 };
 
-const ir::Expr CommonFactorTrait<Simbolic>::unit = ir::Expr(0);
+const ir::Expr CommonFactorTrait<Symbolic>::unit = ir::Expr(0);
 
 template <typename DoEachT>
 void VisitEachRowExpr(const std::vector<std::vector<ir::Expr>>& indexes,
@@ -426,7 +434,7 @@ void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
   VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
   EliminateCommonFactorHelper<Gcd>(expr);
   EliminateCommonFactorHelper<Offset>(expr);
-  EliminateCommonFactorHelper<Simbolic>(expr);
+  EliminateCommonFactorHelper<Symbolic>(expr);
   VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
