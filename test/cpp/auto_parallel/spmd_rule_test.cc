@@ -1774,10 +1774,10 @@ TEST(GatherGradInferSpmd, Ctor) {
   // [0, -1, 1], [-1], [0, 1] -->
   // inputs: [0, -1, 1], [-1], [0, 1]
   // x_grad: [0, -1, 1]
-  x_shape = {64, 32};
-  index_shape = {16, 16, 16};
-  out_grad_shape = {64, 32};
-  x_dist_attr.set_dims_mapping({0, -1, 1});
+  axis = 1;
+  index_shape = {};
+  out_grad_shape = {64, 48};
+  ({0, -1, 1});
   index_dist_attr.set_dims_mapping({-1});
   out_grad_dist_attr.set_dims_mapping({0, 1});
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
@@ -1832,8 +1832,7 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({0, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({0, -1}));
-  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
-            std::vector<int64_t>({0, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]), std::vector<int64_t>({-1}));
 
   // inputs: [-1, -1], [0, -1, -1] --> [0, -1, -1]
   // x_grad: [0, -1, -1]
@@ -1859,7 +1858,7 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
             std::vector<int64_t>({0, -1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
-            std::vector<int64_t>({0, -1, -1}));
+            std::vector<int64_t>({-1, -1}));
 }
 
 TEST(CumSumGradInferSpmd, Ctor) {
