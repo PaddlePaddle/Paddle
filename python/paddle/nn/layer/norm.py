@@ -29,11 +29,7 @@ from __future__ import annotations
 
 import numbers
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Literal,
-    Sequence,
-)
+from typing import TYPE_CHECKING, Literal, Sequence
 
 import numpy as np
 
@@ -64,6 +60,7 @@ if TYPE_CHECKING:
         DataLayout3D,
         DataLayoutND,
         DTypeLike,
+        ParamAttrLike,
         ShapeLike,
     )
 
@@ -86,8 +83,8 @@ class _InstanceNormBase(Layer):
         num_features: int,
         epsilon: float = 1e-5,
         momentum: float = 0.9,
-        weight_attr: ParamAttr | bool | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         data_format: Literal["NCHW"] = "NCHW",
         name: str | None = None,
     ) -> None:
@@ -702,8 +699,8 @@ class _BatchNormBase(Layer):
         num_features: int,
         momentum: float = 0.9,
         epsilon: float = 1e-05,
-        weight_attr: ParamAttr | bool | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout2D | str = 'NCHW',
         use_global_stats: bool | None = None,
         name: str | None = None,
@@ -946,8 +943,8 @@ class BatchNorm(Layer):
         is_test: bool = False,
         momentum: float = 0.9,
         epsilon: float = 1e-05,
-        param_attr: ParamAttr | bool | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        param_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         dtype: DTypeLike = 'float32',
         data_layout: DataLayout2D = 'NCHW',
         in_place: bool = False,
@@ -1233,8 +1230,8 @@ class BatchNorm1D(_BatchNormBase):
         num_features: int,
         momentum: float = 0.9,
         epsilon: float = 1e-05,
-        weight_attr: ParamAttr | bool | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout1D = 'NCL',
         use_global_stats: bool | None = None,
         name: str | None = None,
@@ -1445,8 +1442,8 @@ class BatchNorm3D(_BatchNormBase):
         num_features: int,
         momentum: float = 0.9,
         epsilon: float = 1e-05,
-        weight_attr: ParamAttr | bool | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout3D = 'NCDHW',
         use_global_stats: bool | None = None,
         name: str | None = None,
@@ -1579,10 +1576,10 @@ class SyncBatchNorm(_BatchNormBase):
         num_features: int,
         momentum: float = 0.9,
         epsilon: float = 1e-05,
-        weight_attr: ParamAttr | bool | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = 'NCHW',
-        name=None,
+        name: str | None = None,
     ) -> None:
         super().__init__(
             num_features,
