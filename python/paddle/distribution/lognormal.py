@@ -11,11 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence, Union
 
 import paddle
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import ExpTransform
 from paddle.distribution.transformed_distribution import TransformedDistribution
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import NestedSequence
+
+    _LognormalBoundary: TypeAlias = Union[
+        float,
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[Union[np.float32, np.float64]],
+        Tensor,
+    ]
 
 
 class LogNormal(TransformedDistribution):
@@ -89,14 +108,16 @@ class LogNormal(TransformedDistribution):
                 [0.34939718])
     """
 
-    def __init__(self, loc, scale):
+    def __init__(
+        self, loc: _LognormalBoundary, scale: _LognormalBoundary
+    ) -> None:
         self._base = Normal(loc=loc, scale=scale)
         self.loc = self._base.loc
         self.scale = self._base.scale
         super().__init__(self._base, [ExpTransform()])
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of lognormal distribution.
 
         Returns:
@@ -105,7 +126,7 @@ class LogNormal(TransformedDistribution):
         return paddle.exp(self._base.mean + self._base.variance / 2)
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of lognormal distribution.
 
         Returns:
@@ -115,7 +136,7 @@ class LogNormal(TransformedDistribution):
             2 * self._base.mean + self._base.variance
         )
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         The entropy is
@@ -135,7 +156,7 @@ class LogNormal(TransformedDistribution):
         """
         return self._base.entropy() + self._base.mean
 
-    def probs(self, value):
+    def probs(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
 
         Args:
@@ -147,7 +168,7 @@ class LogNormal(TransformedDistribution):
         """
         return paddle.exp(self.log_prob(value))
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: LogNormal) -> Tensor:
         r"""The KL-divergence between two lognormal distributions.
 
         The probability density function (pdf) is
