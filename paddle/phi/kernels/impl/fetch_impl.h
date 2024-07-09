@@ -32,7 +32,7 @@ void FetchArrayKernel(const Context& ctx,
                       const TensorArray& x,
                       TensorArray* out) {
   out->resize(x.size());
-  for (int i = 0; i < x.size(); ++i) {
+  for (size_t i = 0; i < x.size(); ++i) {
     phi::Copy(ctx, x[i], phi::CPUPlace(), true, &(out->at(i)));
   }
 }
