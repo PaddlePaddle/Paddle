@@ -28,7 +28,7 @@ from paddle.tensor import multinomial
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
 
-    from paddle import Tensor
+    from paddle import Tensor, dtype
     from paddle._typing import NestedSequence
 
     _CategoricalBoundary: TypeAlias = Union[
@@ -106,6 +106,7 @@ class Categorical(distribution.Distribution):
             [-5.10270691, -2.22287226, -1.31060708])
     """
     logits: Tensor
+    dtype: dtype
 
     def __init__(
         self,
