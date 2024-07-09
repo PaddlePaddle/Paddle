@@ -50,7 +50,6 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/src/core/value_impl.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
@@ -3019,7 +3018,6 @@ void ExpandOp::Build(pir::Builder &builder,
 bool ExpandOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(x());
-
   const auto &expand_shape_shape_or_data =
       infer_context->GetShapeOrDataForValue(shape());
 
@@ -3043,7 +3041,6 @@ bool ExpandOp::InferSymbolicShape(
                  ? expand_shape_shape_or_data.data().value()
                  : expand_shape_shape_or_data.shape();
     }
-    // get new symbol
     if (dims.empty()) {
       dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
     }
