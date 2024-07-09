@@ -4206,6 +4206,7 @@
   output : Tensor[]{sections.size()}
   infer_meta :
     func : SplitInferMeta
+    spmd_rule : SplitInferSpmdDynamic
   kernel :
     func : split
   backward : split_grad

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import collections
 import glob
@@ -156,7 +158,7 @@ def bootstrap_context():
     bdist_egg.write_stub = origin_write_stub
 
 
-def load_op_meta_info_and_register_op(lib_filename):
+def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
     core.load_op_meta_info_and_register_op(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
@@ -887,7 +889,7 @@ def is_cuda_file(path):
     return items[-1] in cuda_suffix
 
 
-def get_build_directory(verbose=False):
+def get_build_directory(verbose: bool = False) -> str:
     """
     Return paddle extension root directory to put shared library. It could be specified by
     ``export PADDLE_EXTENSION_DIR=XXX`` . If not set, ``~/.cache/paddle_extension`` will be used
@@ -928,7 +930,7 @@ def get_build_directory(verbose=False):
     return root_extensions_directory
 
 
-def parse_op_info(op_name):
+def parse_op_info(op_name: str) -> tuple[list[str], list[str], list[str]]:
     """
     Parse input names and outputs detail information from registered custom op
     from OpInfoMap.

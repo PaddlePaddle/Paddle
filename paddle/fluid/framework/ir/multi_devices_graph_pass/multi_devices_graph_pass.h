@@ -154,40 +154,6 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
   bool IsEncoded(const std::string &p_name) const;
 };
 
-class NoReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
- protected:
-  void InsertCollectiveOp(ir::Graph *result,
-                          ir::Node *node,
-                          const std::string &p_name,
-                          const std::string &g_name) const override {}
-
-  void InsertPostprocessOps(ir::Graph *result) const override {}
-};
-
-class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
- protected:
-  void InsertCollectiveOp(ir::Graph *result,
-                          ir::Node *node,
-                          const std::string &p_name,
-                          const std::string &g_name) const override {}
-
-  bool NeedCollectiveForGrad(const std::string &grad_name,
-                             std::vector<ir::Node *> ops) const override {
-    return false;
-  }
-
-  bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const override {
-    if (node->Op()->Type() == "recv") {
-      VLOG(1) << "set recv op do_not_run to true";
-      node->Op()->SetAttr("do_not_run", 1);
-      node->Op()->Flush();
-    }
-    return false;
-  }
-
-  void InsertPostprocessOps(ir::Graph *result) const override {}
-};
-
 class BalanceVarSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   int GetVarDeviceID(const std::string &varname) const;
@@ -228,29 +194,6 @@ class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
       const std::vector<ir::Node *> &topo_ops) const;
 
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
-};
-
-class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
- protected:
-  virtual void Init() const;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
-
-  virtual void InsertPostprocessOps(ir::Graph *result) const;
-
-  virtual void InsertCollectiveOp(ir::Graph *result,
-                                  ir::Node *node,
-                                  const std::string &p_name,
-                                  const std::string &g_name) const;
-
-  virtual void ResetState() const;
-
-  int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
-
-  int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
-
-  mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
-  mutable bool need_broadcast_var_{false};
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
