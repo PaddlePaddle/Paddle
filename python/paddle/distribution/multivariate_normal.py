@@ -89,6 +89,10 @@ class MultivariateNormal(distribution.Distribution):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.55541301)
     """
+    loc: Tensor
+    covariance_matrix: Tensor | None
+    precision_matrix: Tensor | None
+    scale_tril: Tensor | None
 
     def __init__(
         self,
