@@ -187,6 +187,13 @@ pir::Value array_read(pir::Value array, pir::Value i) {
   return array_read_op.out();
 }
 
+pir::Value fetch(pir::Value value, std::string name, int col) {
+  auto fetch_op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::FetchOp>(
+          value, name, col);
+  return fetch_op.out();
+}
+
 pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i) {
   auto array_write_op =
       ApiBuilder::Instance()

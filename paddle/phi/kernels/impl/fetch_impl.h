@@ -27,4 +27,14 @@ void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   phi::Copy(ctx, x, phi::CPUPlace(), true, out);
 }
 
+template <typename T, typename Context>
+void FetchArrayKernel(const Context& ctx,
+                      const TensorArray& x,
+                      TensorArray* out) {
+  out->resize(x.size());
+  for (int i = 0; i < x.size(); ++i) {
+    phi::Copy(ctx, x[i], phi::CPUPlace(), true, &(out->at(i)));
+  }
+}
+
 }  // namespace phi

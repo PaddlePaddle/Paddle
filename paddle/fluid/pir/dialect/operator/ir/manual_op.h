@@ -308,6 +308,48 @@ class ArrayReadOp : public pir::Op<ArrayReadOp,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
+class FetchOp : public pir::Op<FetchOp,
+                               paddle::dialect::InferMetaInterface,
+                               paddle::dialect::InferSymbolicShapeInterface,
+                               paddle::dialect::OpYamlInfoInterface,
+                               paddle::dialect::GetKernelTypeForVarInterface,
+                               pir::SideEffectTrait,
+                               pir::ImmutableLayoutTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.fetch"; }
+  static const char *attributes_name[2];
+  static constexpr uint32_t attributes_num = 2;
+  static OpInfoTuple GetOpInfo();
+  static void Build(const pir::Builder &builder,
+                    const pir::OperationArgument &argument,
+                    pir::Value x_,
+                    const std::string &name,
+                    int col);
+  static void Build(const pir::Builder &builder,
+                    const pir::OperationArgument &argument,
+                    pir::Value x_,
+                    pir::AttributeMap attributes);
+  void VerifySig();
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+  static std::vector<std::vector<pir::Value>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      pir::AttributeMap *p_attributes);
+  pir::Value x() { return operand_source(0); }
+  pir::Value out() { return result(0); }
+};
+
 class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
                                      paddle::dialect::VjpInterface,
@@ -821,6 +863,7 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FetchOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)

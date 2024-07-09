@@ -468,7 +468,13 @@ void HandleForSpecialOp(pir::Operation* op,
     auto fetch_var_name = fetch_src_name + "@fetch";
     auto* var = const_cast<Scope*>(value_exe_info->GetScope()->root())
                     ->Var(fetch_var_name);
-    var->GetMutable<phi::DenseTensor>();
+    if (op->operand_source(0)
+            .type()
+            .isa<paddle::dialect::DenseTensorArrayType>()) {
+      var->GetMutable<phi::TensorArray>();
+    } else {
+      var->GetMutable<phi::DenseTensor>();
+    }
     auto value = op->result(0);
 
     value_exe_info->Add(value, fetch_var_name);
