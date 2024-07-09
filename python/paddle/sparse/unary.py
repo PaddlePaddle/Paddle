@@ -168,16 +168,18 @@ def transpose(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.transpose(sparse_x, [1, 0])
             >>> out
-            Tensor(shape=[2, 2], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
                 indices=[[0, 0]],
                 values=[[-2.,  0.],
                         [ 1.,  2.]])
+
     """
     return _C_ops.sparse_transpose(x, perm)
 
