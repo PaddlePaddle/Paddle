@@ -88,6 +88,7 @@ std::vector<pir::Type> FetchOp::InferMeta(
   pir::Type out_type = x_.type();
 
   // Auto Parallel condition
+#ifdef PADDLE_WITH_DISTRIBUTE
   ProcessMeshAttribute op_mesh;
   if (HasDistInput(input_values, &op_mesh)) {
     CvtAllInputsToDist(input_values, op_mesh);
@@ -115,6 +116,7 @@ std::vector<pir::Type> FetchOp::InferMeta(
         ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
     return argument_outputs;
   }
+#endif
 
   argument_outputs.push_back(out_type);
 
