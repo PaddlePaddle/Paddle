@@ -14,7 +14,6 @@
 
 import logging
 import os
-import sys
 from collections import deque
 from enum import Enum
 
@@ -22,10 +21,6 @@ import paddle
 from paddle.base import log_helper
 
 from .graphs import CUDAGraph
-
-logger = log_helper.get_logger(
-    __name__, logging.INFO, fmt='[%(levelname)s] %(message)s'
-)
 
 # CUDAGraphedLayer Debug tools
 enable_debug_print = bool(
@@ -35,11 +30,15 @@ debug_cudagraphedlayer_fallback_to_default = bool(
     int(os.getenv('PADDLE_DEBUG_CUDAGRAPHEDLAYER_FALLBACK_TO_DEFAULT', '0'))
 )
 
+logger = log_helper.get_logger(
+    __name__, logging.INFO, fmt='[%(levelname)s] %(message)s'
+)
+
 
 def debug_print(x):
     if not enable_debug_print:
         return
-    print(x, file=sys.stderr)
+    logger.info(x)
 
 
 def print_tensor(

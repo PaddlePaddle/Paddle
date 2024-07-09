@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 
 #ifdef PADDLE_WITH_CUDA
