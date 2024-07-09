@@ -122,25 +122,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForLookupTable(
-    const std::vector<framework::shape_t>& inputs_shape,
-    const framework::AttrMapType& attrs) {
-  CHECK(!inputs_shape.empty() && !inputs_shape[0].empty())
-      << "The input's shape size is 0! Please check again.";
-
-  auto res = inputs_shape[1];
-  res.back() = inputs_shape[0].back();
-  return {res};
-}
-
-std::vector<Type> InferDtypeForLookupTable(
-    const std::vector<Type>& inputs_type, const framework::AttrMapType& attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -152,10 +133,6 @@ CINN_REGISTER_HELPER(lookup_table_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForLookupTable)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForLookupTable))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLookupTable))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective);
   return true;

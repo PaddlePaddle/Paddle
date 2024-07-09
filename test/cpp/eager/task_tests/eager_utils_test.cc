@@ -33,19 +33,17 @@ TEST(EagerUtils, AutoGradMeta) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
+  dt0->mutable_data<float>(phi::CPUPlace())[0] = 10.0;
   paddle::Tensor et0 = paddle::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
+  dt1->mutable_data<float>(phi::CPUPlace())[0] = 20.0;
   paddle::Tensor et1 = paddle::Tensor(dt1);
 
   // unsafe_autograd_meta()
@@ -108,11 +106,10 @@ paddle::Tensor CreateTestCPUTensor(T val, const paddle::framework::DDim& ddim) {
       phi::DenseTensorMeta(phi::DataType::FLOAT32, ddim);
   paddle::Tensor tensor;
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<T>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<T>(phi::CPUPlace());
   for (int64_t i = 0; i < dt->numel(); i++) {
     dt_ptr[i] = val;
   }

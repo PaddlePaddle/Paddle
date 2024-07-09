@@ -243,7 +243,6 @@ DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
 DECLARE_FILE_SYMBOLS(op_compatible_info);
-DECLARE_FILE_SYMBOLS(gather_op_handle);
 
 namespace paddle {
 namespace pybind {
@@ -1223,7 +1222,7 @@ PYBIND11_MODULE(libpaddle, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
-                  [](platform::CUDAPlace place, int mode) {
+                  [](phi::GPUPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
                         place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })
@@ -1236,7 +1235,7 @@ PYBIND11_MODULE(libpaddle, m) {
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
 #endif
 
-  m.def("wait_device", [](const platform::Place &place) {
+  m.def("wait_device", [](const phi::Place &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
 
@@ -1919,113 +1918,110 @@ All parameter, weight, gradient are variables in Paddle.
       .def("temp", []() { return kTempVarName; });
 
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-      .def_static("create",
-                  [](paddle::platform::CPUPlace &place)
-                      -> paddle::platform::DeviceContext * {
-                    auto *context = new phi::CPUContext();
-                    context->SetAllocator(
-                        paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(place)
-                            .get());
-                    context->SetHostAllocator(
-                        paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(paddle::platform::CPUPlace())
-                            .get());
-                    context->SetZeroAllocator(
-                        paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetZeroAllocator(place)
-                            .get());
-                    context->SetHostZeroAllocator(
-                        paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetZeroAllocator(paddle::platform::CPUPlace())
-                            .get());
-                    return context;
-                  })
       .def_static(
           "create",
-          [](paddle::platform::XPUPlace &place)
-              -> paddle::platform::DeviceContext * {
+          [](phi::CPUPlace &place) -> paddle::platform::DeviceContext * {
+            auto *context = new phi::CPUContext();
+            context->SetAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(place)
+                    .get());
+            context->SetHostAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(phi::CPUPlace())
+                    .get());
+            context->SetZeroAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetZeroAllocator(place)
+                    .get());
+            context->SetHostZeroAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetZeroAllocator(phi::CPUPlace())
+                    .get());
+            return context;
+          })
+      .def_static(
+          "create",
+          [](phi::XPUPlace &place) -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use XPUPlace in CPU/GPU version, "
                 "Please recompile or reinstall Paddle with XPU support."));
 #else
-      auto* context = new paddle::platform::XPUDeviceContext(place);
-      context->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(place)
-          .get());
-      context->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
-      context->SetZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(place)
-          .get());
-      context->SetHostZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
-          .get());
-      return context;
+            auto *context = new paddle::platform::XPUDeviceContext(place);
+            context->SetAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(place)
+                    .get());
+            context->SetHostAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(phi::CPUPlace())
+                    .get());
+            context->SetZeroAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetZeroAllocator(place)
+                    .get());
+            context->SetHostZeroAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetZeroAllocator(phi::CPUPlace())
+                    .get());
+            return context;
 #endif
           })
-      .def_static("create",
-                  [](paddle::platform::CustomPlace &place)
-                      -> paddle::platform::DeviceContext * {
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-                    PADDLE_THROW(platform::errors::PermissionDenied(
-                        "Cannot use CustomPlace in CPU/GPU/XPU version, "
-                        "Please recompile or reinstall Paddle with "
-                        "CustomDevice support."));
-#else
-                return new paddle::platform::CustomDeviceContext(place);
-#endif
-                  })
       .def_static(
           "create",
-          [](paddle::platform::CUDAPlace &place)
-              -> paddle::platform::DeviceContext * {
+          [](phi::CustomPlace &place) -> paddle::platform::DeviceContext * {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                "Please recompile or reinstall Paddle with "
+                "CustomDevice support."));
+#else
+            return new paddle::platform::CustomDeviceContext(place);
+#endif
+          })
+      .def_static(
+          "create",
+          [](phi::GPUPlace &place) -> paddle::platform::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
-      auto* context = new phi::GPUContext(place);
-      context->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(place, context->stream())
-          .get());
-      context->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
-      context->SetZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetZeroAllocator(place)
-        .get());
-      context->SetHostZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetZeroAllocator(paddle::platform::CPUPlace())
-        .get());
-      context->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
-          .get());
-      context->PartialInitWithAllocator();
-      return context;
+            auto *context = new phi::GPUContext(place);
+            context->SetAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(place, context->stream())
+                    .get());
+            context->SetHostAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(phi::CPUPlace())
+                    .get());
+            context->SetZeroAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetZeroAllocator(place)
+                    .get());
+            context->SetHostZeroAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetZeroAllocator(phi::CPUPlace())
+                    .get());
+            context->SetPinnedAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(phi::GPUPinnedPlace())
+                    .get());
+            context->PartialInitWithAllocator();
+            return context;
 #endif
           })
       .def_static(
           "create",
-          [](paddle::platform::CUDAPinnedPlace &place)
-              -> paddle::platform::DeviceContext * {
+          [](phi::GPUPinnedPlace &place) -> paddle::platform::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPinnedPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
-                  return new paddle::platform::CUDAPinnedDeviceContext(place);
+            return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
           });
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -2126,35 +2122,35 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CPUPlace &place) {
+              const phi::CPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::XPUPlace &place) {
+              const phi::XPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CUDAPlace &place) {
+              const phi::GPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CUDAPinnedPlace &place) {
+              const phi::GPUPinnedPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::CustomPlace &place) {
+              const phi::CustomPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2191,7 +2187,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<const platform::Place &>())
+      .def(py::init<const phi::Place &>())
       .def("close", &Executor::Close)
       .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
@@ -2283,9 +2279,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const platform::Place &,
-                    const interpreter::Plan &,
-                    Scope *>())
+      .def(py::init<const phi::Place &, const interpreter::Plan &, Scope *>())
       .def("run",
            [](StandaloneExecutor &self,
               std::vector<std::string> feed_names,
@@ -2386,7 +2380,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
+  m.def("_cuda_synchronize", [](const phi::GPUPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
   m.def("_set_warmup", [](bool warmup) {
@@ -2657,7 +2651,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
-          platform::CUDAPlace(dev_id));
+          phi::GPUPlace(dev_id));
       dev_ctx->cudnn_workspace_handle().ResetWorkspace();
     }
     platform::EmptyCache();
