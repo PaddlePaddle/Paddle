@@ -21,7 +21,7 @@ import paddle
 from paddle.distribution import distribution
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import Tensor, dtype
 
 
 class MultivariateNormal(distribution.Distribution):
@@ -93,6 +93,7 @@ class MultivariateNormal(distribution.Distribution):
     covariance_matrix: Tensor | None
     precision_matrix: Tensor | None
     scale_tril: Tensor | None
+    dtype: dtype
 
     def __init__(
         self,
