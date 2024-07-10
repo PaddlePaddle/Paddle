@@ -51,6 +51,7 @@ USE_PIR_PASS(fused_rotary_position_embedding_pass);
 USE_PIR_PASS(depthwise_conv_onednn_pass);
 USE_PIR_PASS(squeeze_transpose_onednn_fuse_pass);
 USE_PIR_PASS(conv2d_bn_onednn_fuse_pass);
+USE_PIR_PASS(conv2d_bias_bn_onednn_fuse_pass);
 USE_PIR_PASS(conv2d_bias_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_fuse_pass);
 USE_PIR_PASS(conv3d_bias_fuse_pass);

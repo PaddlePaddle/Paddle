@@ -12,13 +12,11 @@ register_operators(
   fused_feedforward_op
   fused_multi_transformer_op
   fused_multi_transformer_int8_op
-  resnet_unit_op
   fused_gemm_epilogue_op
   resnet_basic_block_op)
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)
-  op_library(resnet_unit_op)
   op_library(fused_gemm_epilogue_op)
   op_library(fused_attention_op)
   op_library(fused_feedforward_op)
@@ -45,10 +43,6 @@ if(WITH_GPU OR WITH_ROCM)
     op_library(fused_attention_op)
     op_library(fused_multi_transformer_op)
     op_library(fused_multi_transformer_int8_op)
-  endif()
-  # resnet_unit needs cudnn 8.0 above
-  if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))
-    op_library(resnet_unit_op)
   endif()
 
   if(CUDA_VERSION GREATER_EQUAL 11.6)
