@@ -92,30 +92,13 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
                              size_t loss_scale,
                              proto::VarType::Type dtype) const;
 
-  details::VarHandle *CreateReduceOp(ir::Graph *result,
-                                     const std::string &og,
-                                     size_t dst_dev_id) const;
-
   void CreateComputationalOp(ir::Graph *result,
                              ir::Node *node,
                              size_t dev_id) const;
 
   bool IsSparseGradient(const std::string &og) const;
 
-  void CreateAllReduceOp(ir::Graph *result,
-                         ir::Node *node,
-                         const std::string &og,
-                         bool is_encoded = false) const;
-
-  void CreateBroadcastOp(ir::Graph *result,
-                         const std::string &p_name,
-                         size_t src_dev_id) const;
-
   void InsertScaleLossGradOp(ir::Graph *result, const ir::Node *node) const;
-
-  void CreateFusedBroadcastOp(
-      ir::Graph *result,
-      const std::vector<std::unordered_set<std::string>> &bcast_varnames) const;
 
   void SetCommunicationContext(details::OpHandleBase *op_handle,
                                const phi::Place &p) const;

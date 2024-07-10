@@ -22,21 +22,13 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
-#include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
-#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#if defined(PADDLE_WITH_DGC)
-#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
-#endif
 
 namespace paddle::framework::ir {
 
@@ -400,103 +392,6 @@ void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
 #endif
 }
 
-void MultiDevSSAGraphBuilderBase::CreateBroadcastOp(ir::Graph *result,
-                                                    const std::string &p_name,
-                                                    size_t src_dev_id) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto *op_handle = new details::BroadcastOpHandle(
-      result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_,
-      nccl_ctxs_);
-#elif defined(PADDLE_WITH_XPU_BKCL)
-  auto *op_handle = new details::BroadcastOpHandle(
-      result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_,
-      bkcl_ctxs_);
-#else
-  auto *op_handle = new details::BroadcastOpHandle(
-      result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_);
-#endif
-  result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
-
-  auto *in = result->Get<details::GraphVars>(details::kGraphVars)
-                 .at(src_dev_id)
-                 .at(p_name)
-                 .back();
-  op_handle->AddInput(in);
-
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
-    SetCommunicationContext(op_handle, p);
-    auto &vars =
-        result->Get<details::GraphVars>(details::kGraphVars).at(i).at(p_name);
-    auto *out_var = new details::VarHandle(
-        result->CreateEmptyNode(p_name, ir::Node::Type::kVariable),
-        vars.size(),
-        i,
-        p_name,
-        p);
-    vars.emplace_back(out_var);
-    op_handle->AddOutput(out_var);
-  }
-}
-
-void MultiDevSSAGraphBuilderBase::CreateFusedBroadcastOp(
-    ir::Graph *result,
-    const std::vector<std::unordered_set<std::string>> &bcast_varnames) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto *op_handle = new details::FusedBroadcastOpHandle(
-      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_,
-      nccl_ctxs_);
-#elif defined(PADDLE_WITH_XPU_BKCL)
-  auto *op_handle = new details::FusedBroadcastOpHandle(
-      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_,
-      bkcl_ctxs_);
-#else
-  auto *op_handle = new details::FusedBroadcastOpHandle(
-      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_);
-#endif
-  result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
-
-  for (auto &p : places_) {
-    SetCommunicationContext(op_handle, p);
-  }
-
-  for (size_t dev_id = 0; dev_id < bcast_varnames.size(); ++dev_id) {
-    for (auto &p_name : bcast_varnames[dev_id]) {
-      auto *in = result->Get<details::GraphVars>(details::kGraphVars)
-                     .at(dev_id)
-                     .at(p_name)
-                     .back();
-      op_handle->AddInput(in);
-      for (size_t out_dev_id = 0; out_dev_id < places_.size(); ++out_dev_id) {
-        auto &p = places_[out_dev_id];
-        auto &vars = result->Get<details::GraphVars>(details::kGraphVars)
-                         .at(out_dev_id)
-                         .at(p_name);
-        auto *out_var = new details::VarHandle(
-            result->CreateEmptyNode(p_name, ir::Node::Type::kVariable),
-            vars.size(),
-            out_dev_id,
-            p_name,
-            p);
-        vars.emplace_back(out_var);
-        op_handle->AddOutput(out_var);
-      }
-    }
-  }
-}
-
 void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
                                                         ir::Node *node,
                                                         size_t dev_id) const {
@@ -506,92 +401,6 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
                                        places_[dev_id],
                                        dev_id));
   CreateOpHandleIOs(result, node, dev_id);
-}
-
-void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
-                                                    ir::Node *node,
-                                                    const std::string &og,
-                                                    bool is_encoded) const {
-  auto append_allreduce_op = [&](const std::vector<Scope *> &scopes,
-                                 const std::vector<platform::Place> &places)
-      -> details::OpHandleBase * {
-    if (is_encoded) {
-#if defined(PADDLE_WITH_DGC) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::SparseAllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places,
-              multi_nccl_ctxs_,
-              is_encoded,
-              strategy_.num_trainers_ * places_.size()));
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "This version of PaddlePaddle does NOT support DGC, "
-          "but got DGC grad in CreateAllReduceOp. "
-          "Please compile PaddlePaddle WITH_DGC first."));
-#endif
-    } else {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::AllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places,
-              multi_nccl_ctxs_));
-#elif defined(PADDLE_WITH_XPU_BKCL)
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::AllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places,
-              multi_bkcl_ctxs_));
-#else
-      result->Get<GraphOps>(kGraphOps).emplace_back(
-          new details::AllReduceOpHandle(
-              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes,
-              places));
-#endif
-    }
-    return result->Get<GraphOps>(kGraphOps).back();
-  };
-
-  details::OpHandleBase *op_handle = nullptr;
-  if (!strategy_.enable_parallel_graph_)
-    op_handle = append_allreduce_op(local_scopes_, places_);
-
-  for (size_t i = 0; i < places_.size(); ++i) {
-    if (strategy_.enable_parallel_graph_) {
-      op_handle = append_allreduce_op({local_scopes_[i]}, {places_[i]});
-    }
-
-    SetCommunicationContext(op_handle, places_[i]);
-    auto &vars = result->Get<details::GraphVars>(details::kGraphVars)[i][og];
-    PADDLE_ENFORCE_EQ(vars.empty(),
-                      false,
-                      platform::errors::InvalidArgument(
-                          "Can not find Var(%s) in Place[%d] "
-                          "Paddle Can not add AllReduce OP for Var(%s).",
-                          og,
-                          i,
-                          og));
-    auto &prev_grad = vars.back();
-    op_handle->AddInput(prev_grad);
-    VLOG(10) << "all_reduce_op_handle add input " << prev_grad->DebugString();
-
-    auto var = new details::VarHandle(
-        result->CreateEmptyNode(og, ir::Node::Type::kVariable),
-        vars.size(),
-        i,
-        og,
-        places_[i]);
-    vars.emplace_back(var);
-    op_handle->AddOutput(var);
-    VLOG(10) << "all_reduce_op_handle add output " << og
-             << ", handle:" << var->DebugString();
-  }
 }
 
 void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
@@ -636,56 +445,6 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOps(
             result->CreateOpNode(node->Op()), s, p, scope_idx));
     CreateOpHandleIOs(result, node, scope_idx);
   }
-}
-
-details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
-    ir::Graph *result, const std::string &og, size_t dst_dev_id) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new details::ReduceOpHandle(
-      result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_,
-      nccl_ctxs_));
-#elif defined(PADDLE_WITH_XPU_BKCL)
-  result->Get<GraphOps>(kGraphOps).emplace_back(new details::ReduceOpHandle(
-      result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_,
-      bkcl_ctxs_));
-#else
-  result->Get<GraphOps>(kGraphOps).emplace_back(new details::ReduceOpHandle(
-      result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
-      local_scopes_,
-      places_));
-#endif
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
-    SetCommunicationContext(op_handle, p);
-    auto &vars = result->Get<details::GraphVars>(details::kGraphVars)[i][og];
-    PADDLE_ENFORCE_EQ(vars.empty(),
-                      false,
-                      platform::errors::InvalidArgument(
-                          "Can not find Var(%s) in Place[%d] "
-                          "Paddle Can not add Reduce OP for Var(%s).",
-                          og,
-                          i,
-                          og));
-    auto &prev_grad = vars.back();
-    op_handle->AddInput(prev_grad);
-  }
-  auto &vars =
-      result->Get<details::GraphVars>(details::kGraphVars)[dst_dev_id][og];
-  auto var = new details::VarHandle(
-      result->CreateEmptyNode(og, ir::Node::Type::kVariable),
-      vars.size(),
-      dst_dev_id,
-      og,
-      places_[dst_dev_id]);
-  vars.emplace_back(var);
-  op_handle->AddOutput(var);
-  return var;
 }
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {

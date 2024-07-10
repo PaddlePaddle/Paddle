@@ -18,7 +18,6 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
@@ -66,7 +65,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // AppendPassWithCheck(strategy_.cache_runtime_context_,
     //                     "runtime_context_cache_pass");
 
-    SetCollectiveContext();
+    // SetCollectiveContext();
   }
 
   void ResolveOptionConfliction() {
@@ -169,32 +168,33 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #endif
   }
 
-  void SetCollectiveContext() const {
-    CollectiveContext *context = CollectiveContext::GetInstance();
-    context->endpoints_ = strategy_.trainers_endpoints_;
-    context->trainer_id_ = strategy_.trainer_id_;
-    PADDLE_ENFORCE_GE(
-        strategy_.trainer_id_,
-        0,
-        platform::errors::InvalidArgument(
-            "The trainer_id_ of strategy_ must be greater than or equal to 0, "
-            "but received strategy_.trainer_id_ = %d.",
-            strategy_.trainer_id_));
+  // void SetCollectiveContext() const {
+  //   CollectiveContext *context = CollectiveContext::GetInstance();
+  //   context->endpoints_ = strategy_.trainers_endpoints_;
+  //   context->trainer_id_ = strategy_.trainer_id_;
+  //   PADDLE_ENFORCE_GE(
+  //       strategy_.trainer_id_,
+  //       0,
+  //       platform::errors::InvalidArgument(
+  //           "The trainer_id_ of strategy_ must be greater than or equal to 0,
+  //           " "but received strategy_.trainer_id_ = %d.",
+  //           strategy_.trainer_id_));
 
-    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
-      PADDLE_ENFORCE_LT(
-          static_cast<size_t>(strategy_.trainer_id_),
-          strategy_.trainers_endpoints_.size(),
-          platform::errors::InvalidArgument(
-              "The trainer_id_ of strategy_ must be less than the "
-              "size of vector strategy_.trainers_endpoints_, "
-              "but received strategy_.trainer_id_ = %d, "
-              "the size of strategy_.trainers_endpoints_ is %d.",
-              static_cast<size_t>(strategy_.trainer_id_),
-              strategy_.trainers_endpoints_.size()));
-    }
-    VLOG(1) << "CollectiveContext:" << context->String();
-  }
+  //   if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty())
+  //   {
+  //     PADDLE_ENFORCE_LT(
+  //         static_cast<size_t>(strategy_.trainer_id_),
+  //         strategy_.trainers_endpoints_.size(),
+  //         platform::errors::InvalidArgument(
+  //             "The trainer_id_ of strategy_ must be less than the "
+  //             "size of vector strategy_.trainers_endpoints_, "
+  //             "but received strategy_.trainer_id_ = %d, "
+  //             "the size of strategy_.trainers_endpoints_ is %d.",
+  //             static_cast<size_t>(strategy_.trainer_id_),
+  //             strategy_.trainers_endpoints_.size()));
+  //   }
+  //   VLOG(1) << "CollectiveContext:" << context->String();
+  // }
 
   void AppendAddReaderDependencyPass() {
     AppendPass("add_reader_dependency_pass");
