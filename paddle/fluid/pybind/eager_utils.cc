@@ -2611,6 +2611,10 @@ void* PackHook::operator()(void* py_tensor) {
   Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  if (ret == Py_None) {
+    Py_XDECREF(args);
+    return Py_None;
+  }
   PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
@@ -2670,6 +2674,10 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  if (ret == Py_None) {
+    Py_XDECREF(args);
+    return Py_None;
+  }
   PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
