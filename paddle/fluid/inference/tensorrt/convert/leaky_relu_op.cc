@@ -43,7 +43,7 @@ class LeakyReluOpConverter : public OpConverter {
       engine_->SetTensorDynamicRange(input, in_scale);
     }
 #else
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     std::unique_ptr<phi::DenseTensor> alpha_tensor(new phi::DenseTensor());
     alpha_tensor->Resize(common::make_ddim({2}));
     float* alpha_data = alpha_tensor->mutable_data<float>(place);

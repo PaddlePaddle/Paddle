@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import distribution
@@ -19,6 +22,9 @@ from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor, dtype
 
 
 class Gamma(exponential_family.ExponentialFamily):
@@ -77,7 +83,13 @@ class Gamma(exponential_family.ExponentialFamily):
                    [-1.99634242,  0.17067254])
     """
 
-    def __init__(self, concentration, rate):
+    concentration: Tensor
+    rate: Tensor
+    dtype: dtype
+
+    def __init__(
+        self, concentration: float | Tensor, rate: float | Tensor
+    ) -> None:
         if not in_dynamic_mode():
             check_type(
                 concentration,
@@ -106,7 +118,7 @@ class Gamma(exponential_family.ExponentialFamily):
         super().__init__(self.concentration.shape)
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of gamma distribution.
 
         Returns:
@@ -115,7 +127,7 @@ class Gamma(exponential_family.ExponentialFamily):
         return self.concentration / self.rate
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of gamma distribution.
 
         Returns:
@@ -123,7 +135,7 @@ class Gamma(exponential_family.ExponentialFamily):
         """
         return self.concentration / self.rate.pow(2)
 
-    def prob(self, value):
+    def prob(self, value: float | Tensor) -> Tensor:
         """Probability density function evaluated at value
 
         Args:
@@ -134,7 +146,7 @@ class Gamma(exponential_family.ExponentialFamily):
         """
         return paddle.exp(self.log_prob(value))
 
-    def log_prob(self, value):
+    def log_prob(self, value: float | Tensor) -> Tensor:
         """Log probability density function evaluated at value
 
         Args:
@@ -150,7 +162,7 @@ class Gamma(exponential_family.ExponentialFamily):
             - paddle.lgamma(self.concentration)
         )
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """Entropy of gamma distribution
 
         Returns:
@@ -163,7 +175,7 @@ class Gamma(exponential_family.ExponentialFamily):
             + (1.0 - self.concentration) * paddle.digamma(self.concentration)
         )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -175,7 +187,7 @@ class Gamma(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:
@@ -191,7 +203,7 @@ class Gamma(exponential_family.ExponentialFamily):
             self.concentration.expand(shape)
         ) / self.rate.expand(shape)
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Gamma) -> Tensor:
         """The KL-divergence between two gamma distributions.
 
         Args:
@@ -215,8 +227,8 @@ class Gamma(exponential_family.ExponentialFamily):
         t4 = (other.rate - self.rate) * (self.concentration / self.rate)
         return t1 + t2 + t3 + t4
 
-    def _natural_parameters(self):
+    def _natural_parameters(self) -> Tensor:
         return (self.concentration - 1, -self.rate)
 
-    def _log_normalizer(self, x, y):
+    def _log_normalizer(self, x: Tensor, y: Tensor) -> Tensor:
         return paddle.lgamma(x + 1) + (x + 1) * paddle.log(-y.reciprocal())

@@ -39,11 +39,11 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
           ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
           : dense_contents_.GetMutable<phi::DenseTensor>();
 
-  if (platform::is_gpu_place(tensor->place())) {
+  if (phi::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
-  } else if (platform::is_cpu_place(tensor->place())) {
+  } else if (phi::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
 #ifdef PADDLE_WITH_HIP
@@ -60,7 +60,7 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
         DivNRanksForAllReduce<phi::CPUContext>(tensor, nranks, context));
 #endif
     VLOG(4) << "after div 2" << *tensor;
-  } else if (platform::is_xpu_place(tensor->place())) {
+  } else if (phi::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
     PADDLE_THROW(
         platform::errors::Unimplemented("DivNRanks is not supported on XPU / "
@@ -226,7 +226,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {  // NOLINT
+  if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
                           dense_tensors_,
@@ -237,7 +237,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
     ConcatTensorsWithType(
         static_cast<const platform::XPUDeviceContext &>(context),
@@ -249,7 +249,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     ConcatTensorsWithType(static_cast<const phi::CPUContext &>(context),
                           dense_tensors_,
                           &dense_contents_,
@@ -262,7 +262,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {  // NOLINT
+  if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
                          &dense_contents_,
@@ -273,7 +273,7 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
     SplitTensorsWithType(
         static_cast<const platform::XPUDeviceContext &>(context),
@@ -285,7 +285,7 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
                          &dense_contents_,
                          &dense_tensors_,
@@ -754,7 +754,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       }
 
 #ifdef PADDLE_WITH_XPU_BKCL
-      if (platform::is_xpu_place(group_tensor.place())) {
+      if (phi::is_xpu_place(group_tensor.place())) {
         auto dev_ctx = static_cast<platform::XPUDeviceContext *>(
             platform::DeviceContextPool::Instance().Get(place_));
         if (HasGrad(var_index)) {
