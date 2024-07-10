@@ -39,7 +39,7 @@ static void AllReduce(const phi::DenseTensor &src,
                       const platform::BKCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_xpu_place(place),
+      phi::is_xpu_place(place),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
@@ -150,7 +150,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_xpu_place(place_),
+      phi::is_xpu_place(place_),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
