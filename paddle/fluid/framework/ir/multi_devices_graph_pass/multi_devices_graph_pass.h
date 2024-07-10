@@ -118,7 +118,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
       const std::vector<std::unordered_set<std::string>> &bcast_varnames) const;
 
   void SetCommunicationContext(details::OpHandleBase *op_handle,
-                               const platform::Place &p) const;
+                               const phi::Place &p) const;
 
   void CreateOpHandleIOs(ir::Graph *result,
                          ir::Node *node,

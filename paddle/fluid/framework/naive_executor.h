@@ -104,7 +104,7 @@ class NaiveExecutor {
   void CreateOps(const ProgramDesc& desc, int block_id);
 
  private:
-  const platform::Place place_;
+  const phi::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_{nullptr};

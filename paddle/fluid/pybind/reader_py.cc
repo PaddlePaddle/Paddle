@@ -153,7 +153,7 @@ class MultiDeviceFeedReader {
         ret_(),
         drop_last_(drop_last),
         pin_memory_(pin_memory) {
-    std::vector<framework::DDim> dims;
+    std::vector<phi::DDim> dims;
     for (auto &shape : shapes) {
       dims.push_back(common::make_ddim(shape));
     }

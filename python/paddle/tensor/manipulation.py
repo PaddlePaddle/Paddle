@@ -4162,7 +4162,9 @@ def scatter_nd_add(
             [3, 5, 9, 10]
     """
     if x.dtype != updates.dtype:
-        raise ValueError("x and updates must have same data type.")
+        raise TypeError(
+            f"x and updates must have same data type but x.dtype={convert_dtype(x.dtype)}, updates.dtype={convert_dtype(updates.dtype)}"
+        )
 
     if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)

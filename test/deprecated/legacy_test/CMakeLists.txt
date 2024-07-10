@@ -182,6 +182,7 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
