@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cuda.h>
+#include <cuda_runtime.h>
 #include <chrono>
 #include <iostream>
 #include <mutex>
@@ -21,6 +23,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 namespace common {
 
@@ -54,28 +57,50 @@ class PerformanceStatistician {
       record_[label][thread_id].push_back(TimePointInfo{is_start, time_point});
     }
   }
-  // Insert time duration(ms) directly
-  void InsertTimePoint(const std::string& label, float event_duration) {
-    std::thread::id thread_id = std::this_thread::get_id();
+
+  void Start(const std::string& label) {
+    InsertTimePoint(label, /* is_start = */ true);
+  }
+
+  void End(const std::string& label) {
+    InsertTimePoint(label, /* is_start = */ false);
+  }
+
+  void CudaStart(const std::string& label) {
     std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    cudaEvent_t e_start, e_stop;
+    cudaEventCreate(&e_start);
+    cudaEventCreate(&e_stop);
+    cuda_events_[label].push_back(e_start);
+    cuda_events_[label].push_back(e_stop);
+    cudaEventRecord(cuda_events_[label][0], 0);
+  }
+
+  void CudaEnd(const std::string& label) {
+    std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    PADDLE_ENFORCE_NE(cuda_events_.count(label),
+                      0,
+                      common::errors::InvalidArgument(
+                          "Key for cuda time record does not exist"));
+    PADDLE_ENFORCE_EQ(
+        cuda_events_[label].size(),
+        2,
+        common::errors::InvalidArgument("Size of cuda_events must be 2"));
+    cudaEventRecord(cuda_events_[label][1], 0);
+    cudaEventSynchronize(cuda_events_[label][1]);
+    float event_duration;
+    cudaEventElapsedTime(
+        &event_duration, cuda_events_[label][0], cuda_events_[label][1]);
+    std::thread::id thread_id = std::this_thread::get_id();
     TimePoint start_time_point = std::chrono::steady_clock::now();
     TimePoint end_time_point =
         start_time_point + std::chrono::nanoseconds(
                                static_cast<int64_t>(event_duration * 1000000));
     record_[label][thread_id].push_back(TimePointInfo{true, start_time_point});
     record_[label][thread_id].push_back(TimePointInfo{false, end_time_point});
-  }
-
-  void Start(const std::string& label) {
-    InsertTimePoint(label, /* is_start = */ true);
-  }
-
-  void Insert(const std::string& label, float event_duration) {
-    InsertTimePoint(label, event_duration);
-  }
-
-  void End(const std::string& label) {
-    InsertTimePoint(label, /* is_start = */ false);
+    cudaEventDestroy(cuda_events_[label][0]);
+    cudaEventDestroy(cuda_events_[label][1]);
+    cuda_events_.erase(label);
   }
 
   std::vector<TimePointInfo> Record(const std::string& label) const {
@@ -132,6 +157,7 @@ class PerformanceStatistician {
 
  private:
   std::unordered_map<std::string, TimeRecordPerThread> record_;
+  std::unordered_map<std::string, std::vector<cudaEvent_t>> cuda_events_;
   std::mutex record_mtx_;
 };
 

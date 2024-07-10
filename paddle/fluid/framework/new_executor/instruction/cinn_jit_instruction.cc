@@ -74,19 +74,12 @@ class CinnJitInstruction::FnPtrImpl {
       ::common::PerformanceStatistician& ps =
           ::common::PerformanceStatistician::Instance();
       auto data_p = static_cast<void*>(func_args_.data());
-      cudaEvent_t e_start, e_stop;
-      cudaEventCreate(&e_start);
-      cudaEventCreate(&e_stop);
       cudaDeviceSynchronize();
       if (is_gpu) {
-        cudaEventRecord(e_start, 0);
+        ps.CudaStart(FLAGS_cinn_kernel_execution_label);
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
-        cudaEventRecord(e_stop, 0);
-        cudaEventSynchronize(e_stop);
-        float event_duration;
-        cudaEventElapsedTime(&event_duration, e_start, e_stop);
-        ps.Insert(FLAGS_cinn_kernel_execution_label, event_duration);
+        ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
       } else {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
