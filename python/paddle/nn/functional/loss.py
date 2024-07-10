@@ -829,14 +829,10 @@ def binary_cross_entropy_with_logits(
         )
 
     if in_dynamic_or_pir_mode():
-        if isinstance(logit, paddle.pir.Value):
-            dtype = logit.dtype
-        else:
-            dtype = logit._dtype
         one = _C_ops.full(
             [1],
             1.0,
-            dtype,
+            logit.dtype,
             _current_expected_place(),
         )
 
