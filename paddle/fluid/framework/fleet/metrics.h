@@ -70,19 +70,19 @@ class BasicAucCalculator {
   void add_data(const float* d_pred,
                 const int64_t* d_label,
                 int batch_size,
-                const paddle::platform::Place& place);
+                const phi::Place& place);
   // add mask data
   void add_mask_data(const float* d_pred,
                      const int64_t* d_label,
                      const int64_t* d_mask,
                      int batch_size,
-                     const paddle::platform::Place& place);
+                     const phi::Place& place);
   // add uid data
   void add_uid_data(const float* d_pred,
                     const int64_t* d_label,
                     const int64_t* d_uid,
                     int batch_size,
-                    const paddle::platform::Place& place);
+                    const phi::Place& place);
 
   void compute();
   void computeWuAuc();
@@ -156,8 +156,7 @@ class Metric {
     BasicAucCalculator* GetCalculator() { return calculator; }
 
     // add_data
-    virtual void add_data(const Scope* exe_scope,
-                          const paddle::platform::Place& place) {
+    virtual void add_data(const Scope* exe_scope, const phi::Place& place) {
       int label_len = 0;
       const int64_t* label_data = NULL;
       int pred_len = 0;
@@ -234,8 +233,7 @@ class Metric {
       calculator = new BasicAucCalculator();
     }
     virtual ~WuAucMetricMsg() {}
-    void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place) override {
+    void add_data(const Scope* exe_scope, const phi::Place& place) override {
       int label_len = 0;
       const int64_t* label_data = NULL;
       get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
@@ -297,7 +295,7 @@ class Metric {
     }
     virtual ~MultiTaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place UNUSED) override {
+                  const phi::Place& place UNUSED) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -378,7 +376,7 @@ class Metric {
     }
     virtual ~CmatchRankMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place UNUSED) override {
+                  const phi::Place& place UNUSED) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -440,8 +438,7 @@ class Metric {
       calculator->init(bucket_size);
     }
     virtual ~MaskMetricMsg() {}
-    void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place) override {
+    void add_data(const Scope* exe_scope, const phi::Place& place) override {
       int label_len = 0;
       const int64_t* label_data = NULL;
       get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
@@ -502,7 +499,7 @@ class Metric {
     }
     virtual ~CmatchRankMaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place UNUSED) override {
+                  const phi::Place& place UNUSED) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;

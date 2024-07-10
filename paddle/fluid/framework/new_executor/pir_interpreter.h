@@ -163,7 +163,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   // Note(sonder): share the op dependency and event analysis procedure.
   bool is_shared_results_build_{false};
 
-  const platform::Place place_;
+  const phi::Place place_;
 
   // from variable scope
 

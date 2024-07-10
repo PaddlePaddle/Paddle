@@ -38,7 +38,7 @@ struct ScaleLossGradOpHandle final : public OpHandleBase {
   ScaleLossGradOpHandle(ir::Node *node,
                         size_t num_dev,
                         Scope *scope,
-                        platform::Place place,
+                        phi::Place place,
                         platform::DeviceContext *context,
                         proto::VarType::Type dtype);
 
@@ -50,7 +50,7 @@ struct ScaleLossGradOpHandle final : public OpHandleBase {
 
   std::string Name() const override;
 
-  platform::Place GetPlace() const { return place_; }
+  phi::Place GetPlace() const { return place_; }
 
   void RunOnVar(Variable *var, bool record_event = false);
 
@@ -64,7 +64,7 @@ struct ScaleLossGradOpHandle final : public OpHandleBase {
  private:
   float coeff_;
   Scope *scope_;
-  platform::Place place_;
+  phi::Place place_;
   proto::VarType::Type out_dtype_;
 };
 

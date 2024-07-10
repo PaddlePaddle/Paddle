@@ -212,13 +212,13 @@ class HeterXpuTrainer : public TrainerBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void HeterMemCpy(phi::DenseTensor* tensor,
                    phi::DenseTensor* root_tensor,
-                   const paddle::platform::Place& thread_place,
+                   const phi::Place& thread_place,
                    gpuStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
   void HeterMemCpy(phi::DenseTensor* thread_tensor,
                    phi::DenseTensor* root_tensor,
-                   const paddle::platform::Place& thread_place);
+                   const phi::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);
   template <typename T>
@@ -235,7 +235,7 @@ class HeterXpuTrainer : public TrainerBase {
   int xpu_begin_op_index_;
   int xpu_end_op_index_;
   bool running_;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::mutex mutex_;
   ProgramDesc program_;
   std::condition_variable cond_;
@@ -289,7 +289,7 @@ class PSGPUTrainer : public TrainerBase {
   std::vector<std::string> need_merge_var_names_;
   std::vector<std::string> trainable_param_;
   float scale_datanorm_;
-  paddle::platform::Place place_;
+  phi::Place place_;
   ProgramDesc program_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
@@ -325,7 +325,7 @@ class PipelineTrainer : public TrainerBase {
 
  protected:
   int num_microbatches_;
-  platform::Place place_;
+  phi::Place place_;
   std::vector<std::string> skip_vars_;
   TrainerDesc trainer_desc_;
 
@@ -364,7 +364,7 @@ class HeterPipelineTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
 
   int num_microbatches_;
-  platform::Place place_;
+  phi::Place place_;
   TrainerDesc trainer_desc_;
 
   int num_pipeline_stages_;

@@ -163,13 +163,13 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
           &PADDLE_GET_CONST(phi::DenseTensor, fetch_list[micro_batch_id][i]));
     }
     phi::DenseTensor merged_tensor;
-    MergeTensors(tensors_ptr, platform::CPUPlace(), &merged_tensor);
+    MergeTensors(tensors_ptr, phi::CPUPlace(), &merged_tensor);
     out->at(i) = std::move(merged_tensor);
   }
 }
 
 void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
-                  const platform::Place dst_place,
+                  const phi::Place dst_place,
                   phi::DenseTensor* target) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),
