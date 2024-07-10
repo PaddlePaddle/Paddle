@@ -16,7 +16,6 @@ import abc
 from typing import List, Tuple
 
 import paddle
-from paddle import _legacy_C_ops as _C_ops
 from paddle.framework import in_dynamic_mode
 
 from ..layer.layers import Layer
@@ -78,6 +77,7 @@ class LinearQuanter(Layer):
         self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
+        self._bnt = (1 << (self._bit_length - 1)) - 1
         self._group_size = group_size
         if isinstance(self._bit_length, tuple):
             if (
@@ -106,29 +106,14 @@ class LinearQuanter(Layer):
 
     def forward(self, input):
         if in_dynamic_mode():
-            if len(self._scales.shape) > 1:
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
-                quant_weight = paddle.clip(
-                    paddle.round(input.cast('float32') / new_s * self._qmax),
-                    self._qmin,
-                    self._qmax,
-                )
-                return quant_weight.cast(input.dtype)
-            return _C_ops.quantize_linear(
-                input.cast('float32'),
-                self._scales,
-                self._zero_point,
-                "quant_axis",
-                self._quant_axis,
-                "bit_length",
-                self._bit_length,
-                "qmin",
-                self._qmin,
-                "qmax",
-                self._qmax,
-            ).cast(input.dtype)
+            # todo: groupwise
+            quant_tensor = paddle.clip(
+                paddle.round(input.cast('float32') / self._scales)
+                + self._zero_point,
+                -self._bnt - 1,
+                self._bnt,
+            )
+            return quant_tensor.cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
@@ -219,28 +204,11 @@ class LinearDequanter(Layer):
 
     def forward(self, input):
         if in_dynamic_mode():
-            if len(self._scales.shape) > 1:
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
-                quant_dequant_weight = (
-                    input.cast('float32') / self._qmax * new_s
-                )
-                return quant_dequant_weight.cast(input.dtype)
-
-            return _C_ops.dequantize_linear(
-                input.cast('float32'),
-                self._scales,
-                self._zero_point,
-                "quant_axis",
-                self._quant_axis,
-                "bit_length",
-                self._bit_length,
-                "qmin",
-                self._qmin,
-                "qmax",
-                self._qmax,
-            ).cast(input.dtype)
+            # todo: groupwise
+            quant_dequant_tensor = (
+                input.cast('float32') - self._zero_point
+            ) * self._scales
+            return quant_dequant_tensor.cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
