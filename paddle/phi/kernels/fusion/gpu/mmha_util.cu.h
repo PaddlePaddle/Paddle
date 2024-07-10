@@ -3461,11 +3461,7 @@ inline __device__ void zero(T& dst) {  // NOLINT
   dst = tmp.raw;
 }
 
-#ifdef PADDLE_WITH_HIP
-template <int WARPS_PER_BLOCK, int WARP_SIZE_T = 64>
-#else
 template <int WARPS_PER_BLOCK, int WARP_SIZE_T = 32>
-#endif
 inline __device__ float block_sum(float* red_smem, float sum) {
   int warp = threadIdx.x / WARP_SIZE_T;
   int lane = threadIdx.x % WARP_SIZE_T;
@@ -3748,13 +3744,8 @@ struct Qk_dot {
   }
 };
 
-#ifdef PADDLE_WITH_HIP
-constexpr int32_t WARP_SIZE_TMP = 64;
-constexpr int32_t HALF_WARP = 32;
-#else
 constexpr int32_t WARP_SIZE_TMP = 32;
 constexpr int32_t HALF_WARP = 16;
-#endif
 constexpr float QUANT_MAX_BOUND = 127.0;
 constexpr float QUANT_MIN_BOUND = -127.0;
 

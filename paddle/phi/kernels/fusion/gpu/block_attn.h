@@ -127,11 +127,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
   static_assert(Dh_MAX % THREADS_PER_VALUE == 0, "");
 
-#ifdef PADDLE_WITH_HIP
-  constexpr int WARP_SIZE = 64;
-#else
   constexpr int WARP_SIZE = 32;
-#endif
   constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
 
   extern __shared__ char smem_[];
@@ -450,7 +446,13 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+  qk_max = -FLT_MAX;
+  qk_max = red_smem[lane];
+#else
   qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
+#endif
+
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
 #ifdef PADDLE_WITH_HIP
@@ -631,11 +633,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
   static_assert(Dh_MAX % THREADS_PER_VALUE == 0, "");
 
-#ifdef PADDLE_WITH_HIP
-  constexpr int WARP_SIZE = 64;
-#else
   constexpr int WARP_SIZE = 32;
-#endif
   constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
 
   extern __shared__ char smem_[];
@@ -985,8 +983,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
 
     __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+    qk_maxs[local_hi] = -FLT_MAX;
+    qk_maxs[local_hi] = red_smem[lane_id];
+#else
     qk_maxs[local_hi] =
         lane_id < WARPS_PER_BLOCK ? red_smem[lane_id] : -FLT_MAX;
+#endif
+
 #pragma unroll
     for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
       qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
