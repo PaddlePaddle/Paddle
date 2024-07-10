@@ -46,12 +46,8 @@ class TestBackwardHasNoGradError(Dy2StTestBase):
         x = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], 'float32')
         x.stop_gradient = False
 
-        with self.assertRaisesRegex(
-            ValueError,
-            "op 'pd_op.matmul_double_grad' has no grad op, consider enable prim to decompose it.",
-        ):
-            x_grad_grad = static_net(x)
-            x_grad_grad.backward()
+        x_grad_grad = static_net(x)
+        x_grad_grad.backward()
 
 
 if __name__ == "__main__":
