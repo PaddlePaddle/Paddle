@@ -327,7 +327,7 @@
   kernel :
     func : fetch
     param : [x]
-  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
+  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait, paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : floor_divide
