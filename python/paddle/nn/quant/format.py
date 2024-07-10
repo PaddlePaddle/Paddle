@@ -77,7 +77,6 @@ class LinearQuanter(Layer):
         self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
-        self._bnt = (1 << (self._bit_length - 1)) - 1
         self._group_size = group_size
         if isinstance(self._bit_length, tuple):
             if (
@@ -110,8 +109,8 @@ class LinearQuanter(Layer):
             quant_tensor = paddle.clip(
                 paddle.round(input.cast('float32') / self._scales)
                 + self._zero_point,
-                -self._bnt - 1,
-                self._bnt,
+                self._qmin,
+                self._qmax,
             )
             return quant_tensor.cast(input.dtype)
         else:
