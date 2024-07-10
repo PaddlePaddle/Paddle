@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -559,11 +559,7 @@ def log1p(x: Tensor, name: str | None = None) -> Tensor:
 @dygraph_only
 def cast(
     x: Tensor,
-    index_dtype: (
-        Literal['uint8', 'int8', 'int16', 'int32', 'int64']
-        | type[np.uint8 | np.int8 | np.int16 | np.int32 | np.int64]
-        | None
-    ) = None,
+    index_dtype: DTypeLike | None = None,
     value_dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
