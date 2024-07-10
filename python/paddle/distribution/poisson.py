@@ -20,7 +20,7 @@ import paddle
 from paddle.distribution import distribution
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import Tensor, dtype
 
 
 class Poisson(distribution.Distribution):
@@ -77,6 +77,7 @@ class Poisson(distribution.Distribution):
              [0.06825157  , 1.53426421  ]])
     """
     rate: Tensor
+    dtype: dtype
 
     def __init__(self, rate: float | Tensor) -> None:
         self.dtype = paddle.get_default_dtype()
