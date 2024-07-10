@@ -4318,6 +4318,17 @@
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
 
+- op: legacy_crop (crop)
+  backward: legacy_crop_grad (crop_grad)
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+  int_array:
+    offsets :
+      data_type : int
+      tensor_name : Offsets
+
 - op: limit_by_capacity
   outputs :
     out : Out
