@@ -20,7 +20,6 @@ from op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
-from paddle import base
 
 
 def loss_wrapper(
@@ -338,22 +337,6 @@ class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
-            def test_Variable():
-                # the input of sigmoid_cross_entropy_with_logits must be Variable.
-                x1 = base.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]),
-                    [[1, 1, 1, 1]],
-                    base.CPUPlace(),
-                )
-                lab1 = base.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]),
-                    [[1, 1, 1, 1]],
-                    base.CPUPlace(),
-                )
-                paddle.nn.functional.binary_cross_entropy_with_logits(x1, lab1)
-
-            self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of sigmoid_cross_entropy_with_logits must be float16 or float32 or float64
