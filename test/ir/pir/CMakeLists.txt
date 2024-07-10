@@ -28,7 +28,6 @@ foreach(target ${TEST_INTERP_CASES})
 endforeach()
 
 foreach(target ${TEST_IR_SYSTEM_CASES})
-  message(STATUS "Processing EST_IR_SYSTEM_CASES target: ${target}")
   py_test_modules(${target} MODULES ${target} ENVS FLAGS_enable_pir_api=true)
 endforeach()
 
