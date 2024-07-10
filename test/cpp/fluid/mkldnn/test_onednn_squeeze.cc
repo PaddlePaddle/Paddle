@@ -37,19 +37,17 @@ void AddVarToScope(const std::string var_name,
   std::uniform_real_distribution<float> dist(0, 100);
 
   phi::DenseTensor tmp_tensor;
-  auto* tmp_data =
-      tmp_tensor.mutable_data<DataType>(dims, paddle::platform::CPUPlace());
+  auto* tmp_data = tmp_tensor.mutable_data<DataType>(dims, phi::CPUPlace());
   auto* tensor = scope->Var(var_name)->GetMutable<phi::DenseTensor>();
-  tensor->mutable_data<DataType>(dims, paddle::platform::CPUPlace());
+  tensor->mutable_data<DataType>(dims, phi::CPUPlace());
   for (auto i = 0; i < tensor->numel(); ++i) {
     tmp_data[i] = static_cast<DataType>(dist(engine));
   }
-  paddle::framework::TensorCopySync(
-      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
 }
 void test_squeeze() {
   framework::Scope scope;
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   // Prepare Op description
   framework::OpDesc desc;
   // We assume it is kNHWC, so that can use this transformation
@@ -73,7 +71,7 @@ void test_squeeze() {
 
 void test_squeeze2() {
   framework::Scope scope;
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   // Prepare Op description
   framework::OpDesc desc;
   // We assume it is HNWC, so that can use this transformation

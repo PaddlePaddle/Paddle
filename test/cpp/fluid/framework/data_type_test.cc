@@ -21,8 +21,8 @@
 #include "paddle/fluid/platform/place.h"
 
 TEST(DataType, float16) {
-  using paddle::platform::CPUPlace;
   using paddle::platform::float16;
+  using phi::CPUPlace;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::FP16;
 
@@ -44,7 +44,7 @@ TEST(DataType, float16) {
 
 TEST(DataType, bfloat16) {
   using paddle::platform::bfloat16;
-  using paddle::platform::CPUPlace;
+  using phi::CPUPlace;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::BF16;
 

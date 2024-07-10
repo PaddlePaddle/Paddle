@@ -100,7 +100,7 @@ void MultiStreamCompute(const AllocationPtr &first_data,
 }
 
 TEST(Malloc, GPUContextMultiStream) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   platform::SetDeviceId(0);
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
@@ -130,7 +130,7 @@ TEST(Malloc, GPUContextMultiStream) {
                           .get());
     ctx->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -138,7 +138,7 @@ TEST(Malloc, GPUContextMultiStream) {
             .get());
     ctx->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(ctx);
@@ -176,7 +176,7 @@ TEST(Malloc, GPUContextMultiStream) {
 }
 
 TEST(Malloc, GPUContextMultiThreadMultiStream) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   platform::SetDeviceId(0);
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
@@ -207,7 +207,7 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
                           .get());
     ctx->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -215,11 +215,11 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
             .get());
     ctx->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .GetZeroAllocator(phi::CPUPlace())
             .get());
     ctx->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(ctx);
@@ -262,14 +262,14 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
 }
 
 TEST(Malloc, AllocZero) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   AllocationPtr allocation_ptr = Alloc(place, 0);
   EXPECT_GE(allocation_ptr->size(), 0);
 }
 
 TEST(Malloc, AllocWithStream) {
   size_t size = 1024;
-  AllocationPtr allocation = Alloc(platform::CUDAPlace(), size, phi::Stream(0));
+  AllocationPtr allocation = Alloc(phi::GPUPlace(), size, phi::Stream(0));
   EXPECT_EQ(allocation->size(), 1024);
 }
 
