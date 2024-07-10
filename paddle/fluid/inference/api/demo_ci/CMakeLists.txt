@@ -209,6 +209,7 @@ if(NOT WIN32)
       xxhash
       cryptopp
       utf8proc
+      ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/libyaml-cpp.a
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
     set(DEPS
@@ -233,7 +234,8 @@ else()
       cryptopp-static
       utf8proc_static
       ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} shlwapi.lib)
+  set(DEPS ${DEPS} shlwapi.lib
+           ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/yaml-cpp.lib)
 endif()
 
 if(WITH_GPU)
