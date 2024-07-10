@@ -214,7 +214,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     else:
         if img.mode == 'P':
             palette = img.getpalette()
-            img = np.array(img)
+            img = np.asarray(img)
             img = np.pad(
                 img,
                 ((pad_top, pad_bottom), (pad_left, pad_right)),
@@ -224,7 +224,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             img.putpalette(palette)
             return img
 
-        img = np.array(img)
+        img = np.asarray(img)
         # RGB image
         if len(img.shape) == 3:
             img = np.pad(
