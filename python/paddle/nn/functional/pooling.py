@@ -834,9 +834,9 @@ def max_unpool1d(
 
     if output_size is not None:
         output_size = (
-            output_size[:2] + [1]
-            if isinstance(output_size, list)
-            else (1,) + output_size[2:]
+            output_size[:2]
+            + ([1] if isinstance(output_size, list) else (1,))
+            + output_size[2:]
         )
     output_size = _unpool_output_size(
         x, kernel_size, stride, padding, output_size
