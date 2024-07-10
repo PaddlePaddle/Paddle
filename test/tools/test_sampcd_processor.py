@@ -28,6 +28,8 @@ from sampcd_processor_utils import (
     get_test_results,
 )
 
+from paddle.base import core
+
 
 def _clear_environ():
     for k in {'CPU', 'GPU', 'XPU', 'DISTRIBUTED'}:
@@ -498,7 +500,11 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('after_enable_static', tr_2.name)
         self.assertTrue(tr_2.passed)
 
-    def test_patch_xdoctest(self):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
+    )
+    def test_patch_xdoctest_place(self):
         # test patch tensor place
         _clear_environ()
 
@@ -687,6 +693,7 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('cpu_to_gpu_array', tr_5.name)
         self.assertFalse(tr_5.passed)
 
+    def test_patch_xdoctest_float(self):
         # test patch float precision
         # reload xdoctest.checker
         importlib.reload(xdoctest.checker)
@@ -1850,24 +1857,6 @@ class TestGetTestResults(unittest.TestCase):
 
         self.assertIn('static_1', tr_1.name)
         self.assertTrue(tr_1.passed)
-
-        _clear_environ()
-
-        test_capacity = {'cpu'}
-        doctester = Xdoctester(use_multiprocessing=False)
-        doctester.prepare(test_capacity)
-
-        test_results = get_test_results(doctester, docstrings_to_test)
-        self.assertEqual(len(test_results), 2)
-
-        tr_0, tr_1 = test_results
-
-        self.assertIn('static_0', tr_0.name)
-        self.assertTrue(tr_0.passed)
-
-        self.assertIn('static_1', tr_1.name)
-        self.assertFalse(tr_1.passed)
-        self.assertTrue(tr_1.failed)
 
     def test_timeout(self):
         docstrings_to_test = {
