@@ -89,7 +89,7 @@ TEST(OperatorBase, all) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -225,7 +225,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
     op_with_kernel,
     CPU,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     MY_SPECIAL_NAME,
     paddle::framework::special_type_value,
     paddle::framework::CPUKernel2Test<float, float>);
@@ -243,7 +243,7 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -276,7 +276,7 @@ TEST(OpKernel, multi_inputs) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   scope.Var("x0")->GetMutable<phi::DenseTensor>();
   scope.Var("x1")->GetMutable<phi::DenseTensor>();
@@ -421,7 +421,7 @@ TEST(IndicateVarDataTypeTest, other) {
   op_desc.set_type("indicate_other_data_type_test");
   BuildVar("Other", {"lod_rank_table_1"}, op_desc.add_inputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -455,7 +455,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -543,7 +543,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
   BuildVar("X", {"x.0"}, op_desc.add_inputs());
   BuildVar("Out", {"out.0"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -650,7 +650,7 @@ TEST(OpWithUnusedVar, all) {
   BuildVar("X", {"X"}, op_desc.add_inputs());
   BuildVar("Y", {"Y"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
@@ -675,7 +675,7 @@ TEST(OpWithoutUnusedVar, all) {
   BuildVar("X", {"X"}, op_desc.add_inputs());
   BuildVar("Y", {"Y"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();

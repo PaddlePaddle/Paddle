@@ -56,7 +56,7 @@ class DataTransferHelper {
                                  bool static_build = false);
 
  private:
-  platform::Place place_;
+  phi::Place place_;
   VariableScope* var_scope_;
   Scope* scope_;
 };

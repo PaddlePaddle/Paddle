@@ -513,7 +513,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
         self.assertRaises(IndexError, check_raise_is_test)
 
     def test_check_raise2(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             with static_guard():
                 ref6 = paddle.static.data(
                     name='ref6',
