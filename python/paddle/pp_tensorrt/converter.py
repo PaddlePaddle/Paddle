@@ -40,6 +40,9 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
+def get_trt_version():
+    return trt.__version__
+
 
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
@@ -219,13 +222,14 @@ class PaddleToTensorRTConverter:
         return out
 
     def convert(self, network, paddle_op, inputs):
+        trt_version = get_trt_version()
         op_name = paddle_op.name()
         if op_name in ["cf.yield"]:
             return
         elif op_name in GENERAL_PLUGIN_OPS_LIST:
             out = network.add_plugin_v2(inputs)
         else:
-            converter_func = converter_registry.get(op_name)
+            converter_func = converter_registry.get(op_name, trt_version)
             if converter_func is None:
                 raise NotImplementedError(
                     f"Converter for {op_name} not implemented."

@@ -104,8 +104,8 @@ def get_axes_for_reduce_op(
     return axes
 
 
-@converter_registry.register("pd_op.add")
-@converter_registry.register("pd_op.elementwise_add")
+@converter_registry.register("pd_op.add", trt_version="8.x")
+@converter_registry.register("pd_op.elementwise_add", trt_version="8.x")
 def add_converter(network, paddle_op, inputs):
     input_a, input_b = inputs
     input_b_shape = paddle_op.operands()[1].source().shape
@@ -127,13 +127,13 @@ def add_converter(network, paddle_op, inputs):
     return output
 
 
-@converter_registry.register("pd_op.relu")
+@converter_registry.register("pd_op.relu", trt_version="8.x")
 def relu_converter(network, paddle_op, inputs):
     out = network.add_activation(inputs[0], trt.ActivationType.RELU)
     return out
 
 
-@converter_registry.register("pd_op.matmul")
+@converter_registry.register("pd_op.matmul", trt_version="8.x")
 def matmul_converter(network, paddle_op, inputs):
     weight_shape = paddle_op.operands()[1].source().shape
     transpose_x = paddle_op.attrs()["transpose_x"]
@@ -163,7 +163,7 @@ def matmul_converter(network, paddle_op, inputs):
     return out
 
 
-@converter_registry.register("pd_op.full_int_array")
+@converter_registry.register("pd_op.full_int_array", trt_version="8.x")
 def full_int_array_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["value"]
     shape_weight = trt.Weights(np.array(shape, dtype=np.int32))
@@ -171,7 +171,7 @@ def full_int_array_converter(network, paddle_op, inputs):
     return full_int_array_tensor
 
 
-@converter_registry.register("pd_op.reshape")
+@converter_registry.register("pd_op.reshape", trt_version="8.x")
 def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
     shuffle_layer = network.add_shuffle(input_tensor)
@@ -186,7 +186,7 @@ def reshape_converter(network, paddle_op, inputs):
     return shuffle_layer
 
 
-@converter_registry.register("pd_op.transpose")
+@converter_registry.register("pd_op.transpose", trt_version="8.x")
 def transpose_converter(network, paddle_op, inputs):
     perm = paddle_op.attrs()["perm"]
     transposed_tensor = network.add_shuffle(inputs[0])
@@ -204,7 +204,7 @@ def full_converter(network, paddle_op, inputs):
     return full_tensor
 
 
-@converter_registry.register("pd_op.scale")
+@converter_registry.register("pd_op.scale", trt_version="8.x")
 def scale_converter(network, paddle_op, inputs):
     scale = paddle_op.attrs()["scale"]
     bias = paddle_op.attrs().get("bias", 0.0)
@@ -220,7 +220,7 @@ def scale_converter(network, paddle_op, inputs):
     return scale_layer
 
 
-@converter_registry.register("pd_op.softmax")
+@converter_registry.register("pd_op.softmax", trt_version="8.x")
 def softmax_converter(network, paddle_op, inputs):
     axis = paddle_op.attrs().get("axis", 0)
     if axis < 0:
@@ -231,7 +231,7 @@ def softmax_converter(network, paddle_op, inputs):
     return softmax_layer
 
 
-@converter_registry.register("pd_op.layer_norm")
+@converter_registry.register("pd_op.layer_norm", trt_version="8.x")
 def layernorm_converter(network, paddle_op, inputs):
     input_a, scale, bias = inputs
     begin_norm_axis = paddle_op.attrs().get("begin_norm_axis", 0)
@@ -273,7 +273,7 @@ def layernorm_converter(network, paddle_op, inputs):
     return layer_norm
 
 
-@converter_registry.register("pd_op.conv2d")
+@converter_registry.register("pd_op.conv2d", trt_version="8.x")
 def conv2d_converter(network, paddle_op, inputs):
     input_tensor, weight = inputs
     weight_shape = paddle_op.operands()[1].source().shape
@@ -297,7 +297,7 @@ def conv2d_converter(network, paddle_op, inputs):
     return conv_layer
 
 
-@converter_registry.register("pd_op.pool2d")
+@converter_registry.register("pd_op.pool2d", trt_version="8.x")
 def pool2d_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     pooling_type = paddle_op.attrs().get("pooling_type", "max")
@@ -334,8 +334,8 @@ def pool2d_converter(network, paddle_op, inputs):
     return pool_layer
 
 
-@converter_registry.register("pd_op.batch_norm")
-@converter_registry.register("pd_op.batch_norm_")
+@converter_registry.register("pd_op.batch_norm", trt_version="8.x")
+@converter_registry.register("pd_op.batch_norm_", trt_version="8.x")
 def batch_norm_converter(network, paddle_op, inputs):
     input_tensor, mean, variance, scale, bias = inputs
 
