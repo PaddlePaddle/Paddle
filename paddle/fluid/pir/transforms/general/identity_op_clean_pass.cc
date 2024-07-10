@@ -242,8 +242,8 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
     auto res = pat.ResultPattern();
 
     const auto &res_scale_input = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return 1.f - match_ctx.Attr<float>("value");
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return 1.f - match_ctx.Attr<double>("value");
         });
 
     const auto &full_op_res = res.Op(
