@@ -33,12 +33,15 @@ if TYPE_CHECKING:
     from paddle import Tensor, dtype
     from paddle._typing import NestedSequence
 
+    _NormalLocBase: TypeAlias = Union[float, complex]
+    _NormalLocNDArray: TypeAlias = Union[
+        np.float32, np.float64, np.complex64, np.complex128
+    ]
     _NormalLoc: TypeAlias = Union[
-        float,
-        complex,
+        _NormalLocBase,
         Sequence[float],
         NestedSequence[float],
-        npt.NDArray[Union[np.float32, np.float64]],
+        npt.NDArray[_NormalLocNDArray],
         Tensor,
     ]
     _NormalScale: TypeAlias = Union[
