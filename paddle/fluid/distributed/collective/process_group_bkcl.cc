@@ -509,6 +509,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
                     0,
                     phi::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
+  platform::XPUDeviceGuard guard(opts.device_id);
   platform::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
