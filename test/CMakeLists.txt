@@ -29,9 +29,9 @@ function(py_test_modules TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS}
-          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data -E env
-          ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+          ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
@@ -39,7 +39,7 @@ function(py_test_modules TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE} -E env ${FLAGS_PIR_MODE}
+          ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
