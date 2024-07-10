@@ -1210,3 +1210,5 @@ set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
+                     PROPERTIES TIMEOUT 120)
