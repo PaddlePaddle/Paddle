@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 
@@ -19,12 +22,19 @@ from ..base.framework import in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..nn import Layer
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = ['viterbi_decode', 'ViterbiDecoder']
 
 
 def viterbi_decode(
-    potentials, transition_params, lengths, include_bos_eos_tag=True, name=None
-):
+    potentials: Tensor,
+    transition_params: Tensor,
+    lengths: Tensor,
+    include_bos_eos_tag: bool = True,
+    name: str | None = None,
+) -> Tensor:
     """
     Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
 
@@ -141,13 +151,18 @@ class ViterbiDecoder(Layer):
              [1, 1]])
     """
 
-    def __init__(self, transitions, include_bos_eos_tag=True, name=None):
+    def __init__(
+        self,
+        transitions: Tensor,
+        include_bos_eos_tag: bool = True,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.transitions = transitions
         self.include_bos_eos_tag = include_bos_eos_tag
         self.name = name
 
-    def forward(self, potentials, lengths):
+    def forward(self, potentials: Tensor, lengths: Tensor) -> Tensor:
         return viterbi_decode(
             potentials,
             self.transitions,
