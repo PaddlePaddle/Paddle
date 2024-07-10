@@ -7865,9 +7865,9 @@ def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [5.])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, (paddle.Tensor, Variable)):
+    if not isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
 
     out = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
