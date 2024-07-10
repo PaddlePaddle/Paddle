@@ -149,10 +149,6 @@ int ExtractMulNumberFromExpr(const ir::Expr& expr) {
   } else if (expr.As<ir::Div>()) {
     auto div = expr.As<ir::Div>();
     return ExtractMulNumberFromExpr(div->a());
-  } else if (expr.As<ir::Add>()) {
-    auto add = expr.As<ir::Add>();
-    return std::max(ExtractMulNumberFromExpr(add->a()),
-                    ExtractMulNumberFromExpr(add->b()));
   } else {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
@@ -227,15 +223,6 @@ struct CommonFactorTrait<Gcd> {
         auto div = expr.As<ir::Div>();
         return cinn::common::AutoSimplify(
             ir::Div::Make(Simplify(div->a(), factor), div->b()));
-      } else if (expr.As<ir::Add>()) {
-        auto add = expr.As<ir::Add>();
-        const ir::Expr lhs_common_factor =
-            ir::Expr(ExtractMulNumberFromExpr(add->a()));
-        const ir::Expr rhs_common_factor =
-            ir::Expr(ExtractMulNumberFromExpr(add->b()));
-        return cinn::common::AutoSimplify(
-            ir::Add::Make(Simplify(add->a(), lhs_common_factor),
-                          Simplify(add->b(), rhs_common_factor)));
       }
       return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
     }
