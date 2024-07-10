@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 
 TEST(DataTypeTransform, GPUTransform) {
-  auto cpu_place = paddle::platform::CPUPlace();
-  auto gpu_place = paddle::platform::CUDAPlace(0);
+  auto cpu_place = phi::CPUPlace();
+  auto gpu_place = phi::GPUPlace(0);
   phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())

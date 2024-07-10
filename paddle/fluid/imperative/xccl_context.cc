@@ -40,7 +40,7 @@ static void XcclAllReduce(const phi::DenseTensor &src,
                           const phi::ccl::CCLComm &comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
@@ -160,7 +160,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place_),
+      phi::is_custom_place(place_),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));

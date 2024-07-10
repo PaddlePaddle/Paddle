@@ -1818,7 +1818,7 @@ class Model:
         drop_last: bool = False,
         shuffle: bool = True,
         num_workers: int = 0,
-        callbacks: list[Callback] | None = None,
+        callbacks: Sequence[Callback] | Callback | None = None,
         accumulate_grad_batches: int = 1,
         num_iters: int | None = None,
     ) -> None:
@@ -1860,7 +1860,7 @@ class Model:
                 subprocess used and loading data in main process.
                 When train_data and eval_data are both the instance of
                 Dataloader, this parameter will be ignored. Default: 0.
-            callbacks (list[Callback]|None, optional): A list of `Callback` instances to apply
+            callbacks (Sequence[Callback]|Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, :ref:`api_paddle_callbacks_ProgBarLogger` and
                 :ref:`api_paddle_callbacks_ModelCheckpoint` are automatically inserted. Default: None.
             accumulate_grad_batches (int, optional): The number of batches to accumulate gradient
@@ -2060,7 +2060,7 @@ class Model:
         log_freq: int = 10,
         verbose: int = 2,
         num_workers: int = 0,
-        callbacks: list[Callback] | None = None,
+        callbacks: Sequence[Callback] | Callback | None = None,
         num_iters: int | None = None,
     ) -> dict[str, float | npt.NDArray[Any]]:
         """
@@ -2081,7 +2081,7 @@ class Model:
                 0 for no subprocess used and loading data in main process. When
                 train_data and eval_data are both the instance of Dataloader,
                 this parameter will be ignored. Default: 0.
-            callbacks (list[Callback]|None, optional): A list of `Callback` instances to apply
+            callbacks (Sequence[Callback]|Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
             num_iters (int|None, optional): The number of iterations to evaluate the model.
@@ -2172,7 +2172,7 @@ class Model:
         num_workers: int = ...,
         stack_outputs: Literal[True] = ...,
         verbose: int = ...,
-        callbacks: Callback | None = ...,
+        callbacks: Sequence[Callback] | Callback | None = ...,
     ) -> list[npt.NDArray[Any]]:
         ...
 
@@ -2184,7 +2184,7 @@ class Model:
         num_workers: int = ...,
         stack_outputs: Literal[False] = ...,
         verbose: int = ...,
-        callbacks: Callback | None = ...,
+        callbacks: Sequence[Callback] | Callback | None = ...,
     ) -> list[tuple[npt.NDArray[Any], ...]]:
         ...
 
@@ -2196,7 +2196,7 @@ class Model:
         num_workers: int = ...,
         stack_outputs: bool = ...,
         verbose: int = ...,
-        callbacks: Callback | None = ...,
+        callbacks: Sequence[Callback] | Callback | None = ...,
     ) -> list[npt.NDArray[Any] | tuple[npt.NDArray[Any], ...]]:
         ...
 
@@ -2229,7 +2229,7 @@ class Model:
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
             verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per batch. Default: 1.
-            callbacks(Callback, optional): A Callback instance, Default: None.
+            callbacks(Sequence[Callback]|Callback|None, optional): A Callback instance, Default: None.
 
         Returns:
             list: output of models.

@@ -39,7 +39,7 @@ template <typename T>
 class TestElementwiseOpGradGrad {
  public:
   TestElementwiseOpGradGrad(const std::string &op_type,
-                            const platform::Place &place,
+                            const phi::Place &place,
                             const framework::DDim &dims,
                             const std::vector<std::string> &inputs,
                             const std::vector<std::string> &outputs)
@@ -84,7 +84,7 @@ class TestElementwiseOpGradGrad {
     for (auto &in_name : inputs_) {
       auto dst = in_out_tensors_[in_name]->template data<T>();
       auto src = feed_datas_[in_name].data();
-      auto src_place = platform::CPUPlace();
+      auto src_place = phi::CPUPlace();
       if (platform::is_cpu_place(place_)) {
         auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes);
@@ -122,7 +122,7 @@ class TestElementwiseOpGradGrad {
       auto &out_tensor =
           scope_.FindVar(out_name)->template Get<phi::DenseTensor>();
       if (platform::is_gpu_place(place_)) {
-        framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
+        framework::TensorCopySync(out_tensor, phi::CPUPlace(), &cpu_out);
       } else {
         cpu_out = out_tensor;
       }
@@ -162,7 +162,7 @@ class TestElementwiseOpGradGrad {
 
  protected:
   std::string op_type_;
-  platform::Place place_;
+  phi::Place place_;
   framework::DDim dims_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;

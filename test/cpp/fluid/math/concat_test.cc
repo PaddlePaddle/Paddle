@@ -46,9 +46,9 @@ void ConcatCase1(DeviceContext* context) {
   out.mutable_data<int>(dim_out, Place());
 
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.mutable_data<int>(dim_a, phi::CPUPlace());
+    input_b_cpu.mutable_data<int>(dim_b, phi::CPUPlace());
+    out_cpu.mutable_data<int>(dim_out, phi::CPUPlace());
   }
 
   int* a_ptr = nullptr;
@@ -98,8 +98,7 @@ void ConcatCase1(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopySync(
-        out, paddle::platform::CPUPlace(), &out_cpu);
+    paddle::framework::TensorCopySync(out, phi::CPUPlace(), &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -151,9 +150,9 @@ void ConcatCase2(DeviceContext* context) {
   out.mutable_data<int>(dim_out, Place());
 
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.mutable_data<int>(dim_a, phi::CPUPlace());
+    input_b_cpu.mutable_data<int>(dim_b, phi::CPUPlace());
+    out_cpu.mutable_data<int>(dim_out, phi::CPUPlace());
   }
 
   int* a_ptr = nullptr;
@@ -203,8 +202,7 @@ void ConcatCase2(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopySync(
-        out, paddle::platform::CPUPlace(), &out_cpu);
+    paddle::framework::TensorCopySync(out, phi::CPUPlace(), &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -260,9 +258,9 @@ void ConcatCase3(DeviceContext* context) {
   out.mutable_data<int>(dim_out, Place());
 
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.mutable_data<int>(dim_a, phi::CPUPlace());
+    input_b_cpu.mutable_data<int>(dim_b, phi::CPUPlace());
+    out_cpu.mutable_data<int>(dim_out, phi::CPUPlace());
   }
 
   int* a_ptr = nullptr;
@@ -312,8 +310,7 @@ void ConcatCase3(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopySync(
-        out, paddle::platform::CPUPlace(), &out_cpu);
+    paddle::framework::TensorCopySync(out, phi::CPUPlace(), &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -371,9 +368,9 @@ void ConcatCase4(DeviceContext* context) {
   out.mutable_data<int>(dim_out, Place());
 
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.mutable_data<int>(dim_a, phi::CPUPlace());
+    input_b_cpu.mutable_data<int>(dim_b, phi::CPUPlace());
+    out_cpu.mutable_data<int>(dim_out, phi::CPUPlace());
   }
 
   int* a_ptr = nullptr;
@@ -424,8 +421,7 @@ void ConcatCase4(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    paddle::framework::TensorCopySync(
-        out, paddle::platform::CPUPlace(), &out_cpu);
+    paddle::framework::TensorCopySync(out, phi::CPUPlace(), &out_cpu);
     out_ptr = out_cpu.data<int>();
   } else {
     out_ptr = out.data<int>();
@@ -469,26 +465,25 @@ void TestConcatMain() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>() {
-  auto* context = new phi::GPUContext(paddle::platform::CUDAPlace());
-  context->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
-          .get());
+void TestConcatMain<phi::GPUContext, phi::GPUPlace>() {
+  auto* context = new phi::GPUContext(phi::GPUPlace());
+  context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::GPUPlace(), context->stream())
+                            .get());
   context->PartialInitWithAllocator();
 
-  ConcatCase1<phi::GPUContext, paddle::platform::CUDAPlace>(context);
-  ConcatCase2<phi::GPUContext, paddle::platform::CUDAPlace>(context);
-  ConcatCase3<phi::GPUContext, paddle::platform::CUDAPlace>(context);
-  ConcatCase4<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase1<phi::GPUContext, phi::GPUPlace>(context);
+  ConcatCase2<phi::GPUContext, phi::GPUPlace>(context);
+  ConcatCase3<phi::GPUContext, phi::GPUPlace>(context);
+  ConcatCase4<phi::GPUContext, phi::GPUPlace>(context);
 
   delete context;
 }
 #endif
 
 TEST(math, concat) {
-  TestConcatMain<phi::CPUContext, paddle::platform::CPUPlace>();
+  TestConcatMain<phi::CPUContext, phi::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>();
+  TestConcatMain<phi::GPUContext, phi::GPUPlace>();
 #endif
 }

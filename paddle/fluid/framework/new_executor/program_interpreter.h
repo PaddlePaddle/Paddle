@@ -183,7 +183,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // op profiling status
   bool is_in_op_profiling_mode_{false};
 
-  const platform::Place place_;
+  const phi::Place place_;
   const BlockDesc& block_;  // not owned
 
   interpreter::DependencyBuilder dependency_builder_;

@@ -98,7 +98,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int vec_size = 1) {
   PADDLE_ENFORCE_GE(numel,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "element quantity should be greater than or equal 0,"
                         " but received value is: %d.",
                         numel));
@@ -145,15 +145,15 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   PADDLE_ENFORCE_GT(
       x_dim,
       0,
-      platform::errors::InvalidArgument("x dim number should greater than 0,"
-                                        " but received value is: %d",
-                                        x_dim));
+      phi::errors::InvalidArgument("x dim number should greater than 0,"
+                                   " but received value is: %d",
+                                   x_dim));
   PADDLE_ENFORCE_GT(
       y_dim,
       0,
-      platform::errors::InvalidArgument("y dim number should greater than 0,"
-                                        " but received value is: %d",
-                                        y_dim));
+      phi::errors::InvalidArgument("y dim number should greater than 0,"
+                                   " but received value is: %d",
+                                   y_dim));
 
   const int kThreadsPerBlock = 256;
   // NOTE(zengjinle): cast std::min<int64_t> result to int is safe here, because
