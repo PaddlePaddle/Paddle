@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/impl/legacy_crop_kernel_impl.h"
 
-namespace cinn {
-namespace hlir {
-namespace framework {}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
+PD_REGISTER_KERNEL(
+    legacy_crop_grad, GPU, ALL_LAYOUT, phi::CropGradKernel, float, double) {}

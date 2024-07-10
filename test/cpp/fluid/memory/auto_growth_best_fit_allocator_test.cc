@@ -30,7 +30,7 @@ class RecordedAllocator : public Allocator {
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());  // NOLINT
+    return new Allocation(malloc(size), size, phi::CPUPlace());  // NOLINT
   }
 
   void FreeImpl(phi::Allocation *allocation) override {
@@ -68,7 +68,7 @@ static void TestFreeIdleChunk(bool free_idle_chunk,
     } else {
       ASSERT_EQ(recorded_allocator->AllocatedSize(), memory_size + alignment);
     }
-    ag_allocator->Release(platform::CPUPlace());
+    ag_allocator->Release(phi::CPUPlace());
   }
 }
 
@@ -85,7 +85,7 @@ class LimitedResourceAllocator : public Allocator {
     }
 
     allocated_size_ += size;
-    return new Allocation(malloc(size), size, platform::CPUPlace());  // NOLINT
+    return new Allocation(malloc(size), size, phi::CPUPlace());  // NOLINT
   }
 
   void FreeImpl(phi::Allocation *allocation) override {

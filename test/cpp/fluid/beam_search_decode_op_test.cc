@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-using CPUPlace = paddle::platform::CPUPlace;
+using CPUPlace = phi::CPUPlace;
 using LoD = paddle::framework::LoD;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
