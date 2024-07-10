@@ -21,7 +21,7 @@ import paddle
 from paddle import base
 from paddle.base.framework import EagerParamBase
 
-sys.path.append("../../dygraph_to_static")
+sys.path.append("../dygraph_to_static")
 from dygraph_to_static_utils import enable_to_static_guard
 
 

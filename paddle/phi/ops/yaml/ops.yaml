@@ -1961,7 +1961,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_like
-  args : (Tensor x, Scalar(double) value, DataType dtype = DataType::UNDEFINED, Place place = {})
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor(out)
   infer_meta :
     func : CreateLikeInferMeta
