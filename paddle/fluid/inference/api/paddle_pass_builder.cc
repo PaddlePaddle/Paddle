@@ -637,6 +637,8 @@ const std::vector<std::string> kPirMkldnnPasses {
       "squeeze_transpose_onednn_fuse_pass",       //
       "conv2d_bn_onednn_fuse_pass",               //
       "conv2d_bias_fuse_pass",                    //
+      "conv2d_transpose_bn_fuse_pass",            //
+      "conv2d_transpose_bias_bn_fuse_pass",       //
       "conv2d_transpose_bias_fuse_pass",          //
       "conv3d_bias_fuse_pass",                    //
       "conv_elementwise_add_onednn_fuse_pass",    //

@@ -36,6 +36,15 @@ class Complex128Type;
 
 }  // namespace pir
 
+namespace paddle::dialect {
+
+class SelectedRowsType;
+class DenseTensorArrayType;
+class SparseCooTensorType;
+class SparseCsrTensorType;
+
+}  // namespace paddle::dialect
+
 // clang-format off
 #define FOR_EACH_PIR_ALTERNATIVE_TYPLE(__macro)     \
   __macro(::pir::VectorType)                        \
@@ -52,7 +61,11 @@ class Complex128Type;
   __macro(::pir::IndexType)                         \
   __macro(::pir::BoolType)                          \
   __macro(::pir::Complex64Type)                     \
-  __macro(::pir::Complex128Type)
+  __macro(::pir::Complex128Type)                    \
+  __macro(::paddle::dialect::SelectedRowsType)      \
+  __macro(::paddle::dialect::DenseTensorArrayType)  \
+  __macro(::paddle::dialect::SparseCooTensorType)   \
+  __macro(::paddle::dialect::SparseCsrTensorType)
 // clang-format on
 
 namespace cinn::dialect::ir {

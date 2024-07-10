@@ -367,7 +367,7 @@ int TransLayerNormPluginDynamic::enqueue(
 
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
-  platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  phi::GPUPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
 

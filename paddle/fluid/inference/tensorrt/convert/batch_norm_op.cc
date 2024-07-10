@@ -72,7 +72,7 @@ class BatchNormOpConverter : public OpConverter {
     scale_tensor.Resize(Scale_t->dims());
     variance_tensor.Resize(Variance_t->dims());
 
-    platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     // copy data from gpu to cpu
     paddle::framework::TensorCopySync((*Bias_t), cpu_place, &bias_tensor);
     paddle::framework::TensorCopySync((*Mean_t), cpu_place, &mean_tensor);
@@ -80,11 +80,10 @@ class BatchNormOpConverter : public OpConverter {
     paddle::framework::TensorCopySync(
         (*Variance_t), cpu_place, &variance_tensor);
 
-    auto* bias_data = bias_tensor.mutable_data<float>(platform::CPUPlace());
-    auto* mean_data = mean_tensor.mutable_data<float>(platform::CPUPlace());
-    auto* scale_data = scale_tensor.mutable_data<float>(platform::CPUPlace());
-    auto* variance_data =
-        variance_tensor.mutable_data<float>(platform::CPUPlace());
+    auto* bias_data = bias_tensor.mutable_data<float>(phi::CPUPlace());
+    auto* mean_data = mean_tensor.mutable_data<float>(phi::CPUPlace());
+    auto* scale_data = scale_tensor.mutable_data<float>(phi::CPUPlace());
+    auto* variance_data = variance_tensor.mutable_data<float>(phi::CPUPlace());
 
     std::unique_ptr<phi::DenseTensor> combile_scale_tensor(
         new phi::DenseTensor());
@@ -95,9 +94,9 @@ class BatchNormOpConverter : public OpConverter {
     combile_bias_tensor->Resize(bias_tensor.dims());
 
     auto* combile_scale_data =
-        combile_scale_tensor->mutable_data<float>(platform::CPUPlace());
+        combile_scale_tensor->mutable_data<float>(phi::CPUPlace());
     auto* combile_bias_data =
-        combile_bias_tensor->mutable_data<float>(platform::CPUPlace());
+        combile_bias_tensor->mutable_data<float>(phi::CPUPlace());
 
     size_t ele_num = combile_scale_tensor->memory_size() / sizeof(float);
 
