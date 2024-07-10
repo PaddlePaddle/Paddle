@@ -62,7 +62,7 @@ void PrintVar(framework::Scope* scope,
       if (phi::is_cpu_place(tensor->place())) {                          \
         data = tensor->data<cpp_type>();                                 \
       } else {                                                           \
-        platform::CPUPlace cpu_place;                                    \
+        phi::CPUPlace cpu_place;                                         \
         paddle::framework::TensorCopy(*tensor, cpu_place, &cpu_tensor);  \
         data = cpu_tensor.data<cpp_type>();                              \
       }                                                                  \

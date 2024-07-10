@@ -58,7 +58,7 @@ void* GetBasePtr(const std::shared_ptr<Allocation>& allocation) {
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream) {
+uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream) {
   return allocation::AllocatorFacade::Instance().Release(place, stream);
 }
 

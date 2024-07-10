@@ -938,22 +938,20 @@ static void RegisterOperatorKernel(
     op_kernel_func = func;
   }
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, platform::CPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, platform::CUDAPlace());
+      name, op_kernel_func, proto::VarType::RAW, phi::GPUPlace());
 #endif
 #if defined(PADDLE_WITH_XPU)
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, platform::XPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, phi::XPUPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : device_types) {
-    RegisterOperatorKernelWithPlace(name,
-                                    op_kernel_func,
-                                    proto::VarType::RAW,
-                                    platform::CustomPlace(dev_type));
+    RegisterOperatorKernelWithPlace(
+        name, op_kernel_func, proto::VarType::RAW, phi::CustomPlace(dev_type));
   }
 #endif
 }

@@ -53,7 +53,7 @@ void SetMicroId(paddle::framework::Scope* scope,
     memory::Copy(
         place,
         tensor_data,
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         reinterpret_cast<void*>(temp_ptr),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),

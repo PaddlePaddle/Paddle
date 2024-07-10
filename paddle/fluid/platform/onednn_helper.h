@@ -33,28 +33,26 @@ using phi::OneDNNContext;
 #endif
 namespace platform {
 
-inline void ClearMKLDNNCache(const platform::Place& place,
-                             void* ptr = nullptr) {
+inline void ClearMKLDNNCache(const phi::Place& place, void* ptr = nullptr) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
     dev_ctx->ResetBlobMap(ptr);
   }
 }
 
-inline void DontClearMKLDNNCache(const platform::Place& place) {
+inline void DontClearMKLDNNCache(const phi::Place& place) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
     dev_ctx->BlockNextCacheClearing();
   }
 }
 
 // If OneDNN build and CPU place then register suffix in DeviceContext
-inline void AttachPointerHashToMKLDNNKey(void* ptr,
-                                         const platform::Place& place) {
+inline void AttachPointerHashToMKLDNNKey(void* ptr, const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     // Static vars will remember first executor and its thread
     // so both of them need to be processed by the same thread within
@@ -81,7 +79,7 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
 
 inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
-    const platform::Place& place) {
+    const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
@@ -115,7 +113,7 @@ inline void RegisterModelLayout(
 }
 
 inline void RegisterModelLayout(const ::pir::Block* ir_block,
-                                const platform::Place& place) {
+                                const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block

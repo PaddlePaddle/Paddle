@@ -88,7 +88,7 @@ void CreateVarsOnScope(framework::Scope* scope) {
 }
 
 void InitTensorsOnServer(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -104,7 +104,7 @@ void InitTensorsOnServer(framework::Scope* scope,
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
@@ -136,7 +136,7 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 void StartSendAndRecvServer(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
@@ -226,7 +226,7 @@ TEST(SENDANDRECV, CPU) {
                         "Client Start Fail, Check Your Code & Env"));
 
   framework::Scope* scope = (*micro_scope)[0];
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
 
   framework::Executor exe(place);

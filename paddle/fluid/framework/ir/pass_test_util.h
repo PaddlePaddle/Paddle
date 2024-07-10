@@ -133,7 +133,7 @@ bool RunPassAndAssert(Graph* graph,
 ///
 template <typename T>
 void InitLoDTensorHolder(const Scope& scope,
-                         const paddle::platform::Place& place,
+                         const phi::Place& place,
                          const std::string& var_name,
                          const std::vector<int64_t>& dims,
                          const T* data = nullptr);

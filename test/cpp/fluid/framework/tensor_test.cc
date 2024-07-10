@@ -54,26 +54,26 @@ TEST(DenseTensor, MutableData) {
     float* p2 = nullptr;
     // initialization
     p1 = src_tensor.mutable_data<float>(common::make_ddim({1, 2, 3}),
-                                        platform::CPUPlace());
+                                        phi::CPUPlace());
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // memory is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(common::make_ddim({3, 4}),
-                                        platform::CPUPlace());
+                                        phi::CPUPlace());
     EXPECT_NE(p2, nullptr);
     auto p2_holder1 = src_tensor.Holder();
     EXPECT_NE(p1_holder.get(), p2_holder1.get());
     // set src_tensor a new dim with same size
     // memory block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(common::make_ddim({2, 2, 3}),
-                                        platform::CPUPlace());
+                                        phi::CPUPlace());
     auto p2_holder2 = src_tensor.Holder();
     EXPECT_EQ(p2_holder1.get(), p2_holder2.get());
     // set src_tensor a new dim with smaller size
     // memory block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(common::make_ddim({2, 2}),
-                                        platform::CPUPlace());
+                                        phi::CPUPlace());
     auto p2_holder3 = src_tensor.Holder();
     EXPECT_EQ(p1, p2);
     EXPECT_EQ(p2_holder2.get(), p2_holder3.get());
@@ -83,7 +83,7 @@ TEST(DenseTensor, MutableData) {
     // set src_tensor a different type but smaller size.
     // memory block is supposed to be unchanged.
     auto* tmp = src_tensor.mutable_data<uint8_t>(common::make_ddim({2, 2}),
-                                                 platform::CPUPlace());
+                                                 phi::CPUPlace());
     p3 = reinterpret_cast<float*>(tmp);
     auto p3_holder1 = src_tensor.Holder();
     EXPECT_EQ(p1, p3);
@@ -92,7 +92,7 @@ TEST(DenseTensor, MutableData) {
     // set src_tensor a different type but bigger size.
     // memory block is supposed to be changed.
     auto* tmp2 = src_tensor.mutable_data<double>(common::make_ddim({2, 2, 3}),
-                                                 platform::CPUPlace());
+                                                 phi::CPUPlace());
     auto p3_holder2 = src_tensor.Holder();
     p4 = reinterpret_cast<float*>(tmp2);
     EXPECT_NE(p1, p4);
@@ -103,12 +103,12 @@ TEST(DenseTensor, MutableData) {
   {
     phi::DenseTensor src_tensor;
     int8_t* p1 = src_tensor.mutable_data<int8_t>(common::make_ddim({1}),
-                                                 platform::CPUPlace());
+                                                 phi::CPUPlace());
     EXPECT_NE(p1, nullptr);
     *p1 = 1;
 
     uint8_t* p2 = src_tensor.mutable_data<uint8_t>(common::make_ddim({1}),
-                                                   platform::CPUPlace());
+                                                   phi::CPUPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_EQ(static_cast<int>(p2[0]), 1);
   }
@@ -120,25 +120,25 @@ TEST(DenseTensor, MutableData) {
     float* p2 = nullptr;
     // initialization
     p1 = src_tensor.mutable_data<float>(common::make_ddim({1, 2, 3}),
-                                        platform::CUDAPlace(0));
+                                        phi::GPUPlace(0));
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // memory is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(common::make_ddim({3, 1024}),
-                                        platform::CUDAPlace(0));
+                                        phi::GPUPlace(0));
     auto p2_holder = src_tensor.Holder();
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1_holder.get(), p2_holder.get());
     // set src_tensor a new dim with same size
     // memory block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(common::make_ddim({2, 2, 3}),
-                                        platform::CUDAPlace(0));
+                                        phi::GPUPlace(0));
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
     // memory block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(common::make_ddim({2, 2}),
-                                        platform::CUDAPlace(0));
+                                        phi::GPUPlace(0));
     EXPECT_EQ(p1, p2);
   }
 #endif
@@ -161,8 +161,7 @@ TEST(DenseTensor, ShareDataWith) {
     }
     ASSERT_TRUE(caught);
 
-    src_tensor.mutable_data<int>(common::make_ddim({2, 3, 4}),
-                                 platform::CPUPlace());
+    src_tensor.mutable_data<int>(common::make_ddim({2, 3, 4}), phi::CPUPlace());
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
@@ -172,7 +171,7 @@ TEST(DenseTensor, ShareDataWith) {
     phi::DenseTensor src_tensor;
     phi::DenseTensor dst_tensor;
     src_tensor.mutable_data<int>(common::make_ddim({2, 3, 4}),
-                                 platform::CUDAPlace(0));
+                                 phi::GPUPlace(0));
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
@@ -182,8 +181,7 @@ TEST(DenseTensor, ShareDataWith) {
 TEST(DenseTensor, Slice) {
   {
     phi::DenseTensor src_tensor;
-    src_tensor.mutable_data<int>(common::make_ddim({5, 3, 4}),
-                                 platform::CPUPlace());
+    src_tensor.mutable_data<int>(common::make_ddim({5, 3, 4}), phi::CPUPlace());
     phi::DenseTensor slice_tensor = src_tensor.Slice(1, 3);
     phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
@@ -194,12 +192,11 @@ TEST(DenseTensor, Slice) {
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<int>());
     uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
-        src_tensor.mutable_data<int>(src_tensor.dims(), platform::CPUPlace()));
+        src_tensor.mutable_data<int>(src_tensor.dims(), phi::CPUPlace()));
     uintptr_t slice_data_address =
         reinterpret_cast<uintptr_t>(slice_tensor.data<int>());
-    uintptr_t slice_mutable_data_address =
-        reinterpret_cast<uintptr_t>(slice_tensor.mutable_data<int>(
-            slice_tensor.dims(), platform::CPUPlace()));
+    uintptr_t slice_mutable_data_address = reinterpret_cast<uintptr_t>(
+        slice_tensor.mutable_data<int>(slice_tensor.dims(), phi::CPUPlace()));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     EXPECT_EQ(slice_data_address, slice_mutable_data_address);
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
@@ -209,7 +206,7 @@ TEST(DenseTensor, Slice) {
   {
     phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(common::make_ddim({6, 9}),
-                                    platform::CUDAPlace(0));
+                                    phi::GPUPlace(0));
     phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
     phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
@@ -218,14 +215,13 @@ TEST(DenseTensor, Slice) {
 
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<double>());
-    uintptr_t src_mutable_data_address =
-        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
-            src_tensor.dims(), platform::CUDAPlace(0)));
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<double>(src_tensor.dims(), phi::GPUPlace(0)));
     uintptr_t slice_data_address =
         reinterpret_cast<uintptr_t>(slice_tensor.data<double>());
     uintptr_t slice_mutable_data_address =
         reinterpret_cast<uintptr_t>(slice_tensor.mutable_data<double>(
-            slice_tensor.dims(), platform::CUDAPlace(0)));
+            slice_tensor.dims(), phi::GPUPlace(0)));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     EXPECT_EQ(slice_data_address, slice_mutable_data_address);
     EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
@@ -235,7 +231,7 @@ TEST(DenseTensor, Slice) {
 
 TEST(DenseTensor, ReshapeToMatrix) {
   phi::DenseTensor src;
-  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, platform::CPUPlace());
+  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, phi::CPUPlace());
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
@@ -254,7 +250,7 @@ TEST(DenseTensor, Layout) {
 TEST(DenseTensor, FP16) {
   using platform::float16;
   phi::DenseTensor src;
-  float16* src_ptr = src.mutable_data<float16>({2, 3}, platform::CPUPlace());
+  float16* src_ptr = src.mutable_data<float16>({2, 3}, phi::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {
     src_ptr[i] = static_cast<float16>(i);
   }
@@ -269,8 +265,7 @@ TEST(DenseTensor, FP16) {
 TEST(DenseTensor, Split) {
   {
     phi::DenseTensor src_tensor;
-    src_tensor.mutable_data<int>(common::make_ddim({6, 2}),
-                                 platform::CPUPlace());
+    src_tensor.mutable_data<int>(common::make_ddim({6, 2}), phi::CPUPlace());
     std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Split(2, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
@@ -283,14 +278,14 @@ TEST(DenseTensor, Split) {
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<int>());
     uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
-        src_tensor.mutable_data<int>(src_tensor.dims(), platform::CPUPlace()));
+        src_tensor.mutable_data<int>(src_tensor.dims(), phi::CPUPlace()));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     for (int i = 0; i < 3; ++i) {
       uintptr_t split_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].data<int>());
       uintptr_t split_mutable_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<int>(
-              split_tensor_list[i].dims(), platform::CPUPlace()));
+              split_tensor_list[i].dims(), phi::CPUPlace()));
       EXPECT_EQ(split_data_address, split_mutable_data_address);
       EXPECT_EQ(src_data_address + 2 * 2 * i * sizeof(int), split_data_address);
     }
@@ -299,7 +294,7 @@ TEST(DenseTensor, Split) {
   {
     phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(common::make_ddim({6, 4}),
-                                    platform::CUDAPlace(0));
+                                    phi::GPUPlace(0));
     std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Split(2, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
@@ -311,16 +306,15 @@ TEST(DenseTensor, Split) {
 
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<double>());
-    uintptr_t src_mutable_data_address =
-        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
-            src_tensor.dims(), platform::CUDAPlace(0)));
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<double>(src_tensor.dims(), phi::GPUPlace(0)));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     for (int i = 0; i < 3; ++i) {
       uintptr_t split_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].data<double>());
       uintptr_t split_mutable_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<double>(
-              split_tensor_list[i].dims(), platform::CUDAPlace(0)));
+              split_tensor_list[i].dims(), phi::GPUPlace(0)));
       EXPECT_EQ(split_data_address, split_mutable_data_address);
       EXPECT_EQ(src_data_address + 2 * 4 * i * sizeof(double),
                 split_data_address);
@@ -332,8 +326,7 @@ TEST(DenseTensor, Split) {
 TEST(DenseTensor, Chunk) {
   {
     phi::DenseTensor src_tensor;
-    src_tensor.mutable_data<int>(common::make_ddim({6, 2}),
-                                 platform::CPUPlace());
+    src_tensor.mutable_data<int>(common::make_ddim({6, 2}), phi::CPUPlace());
     std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Chunk(3, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
@@ -346,13 +339,13 @@ TEST(DenseTensor, Chunk) {
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<int>());
     uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
-        src_tensor.mutable_data<int>(src_tensor.dims(), platform::CPUPlace()));
+        src_tensor.mutable_data<int>(src_tensor.dims(), phi::CPUPlace()));
     for (int i = 0; i < 3; ++i) {
       uintptr_t split_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].data<int>());
       uintptr_t split_mutable_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<int>(
-              split_tensor_list[i].dims(), platform::CPUPlace()));
+              split_tensor_list[i].dims(), phi::CPUPlace()));
       EXPECT_EQ(src_data_address, src_mutable_data_address);
       EXPECT_EQ(split_data_address, split_mutable_data_address);
       EXPECT_EQ(src_data_address + 2 * 2 * i * sizeof(int), split_data_address);
@@ -362,7 +355,7 @@ TEST(DenseTensor, Chunk) {
   {
     phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(common::make_ddim({6, 4}),
-                                    platform::CUDAPlace(0));
+                                    phi::GPUPlace(0));
     std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Chunk(3, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
@@ -374,16 +367,15 @@ TEST(DenseTensor, Chunk) {
 
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<double>());
-    uintptr_t src_mutable_data_address =
-        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
-            src_tensor.dims(), platform::CUDAPlace(0)));
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<double>(src_tensor.dims(), phi::GPUPlace(0)));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     for (int i = 0; i < 3; ++i) {
       uintptr_t split_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].data<double>());
       uintptr_t split_mutable_data_address =
           reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<double>(
-              split_tensor_list[i].dims(), platform::CUDAPlace(0)));
+              split_tensor_list[i].dims(), phi::GPUPlace(0)));
       EXPECT_EQ(split_data_address, split_mutable_data_address);
       EXPECT_EQ(src_data_address + 2 * 4 * i * sizeof(double),
                 split_data_address);
