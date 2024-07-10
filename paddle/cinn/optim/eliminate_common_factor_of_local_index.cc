@@ -276,8 +276,7 @@ struct CommonFactorTrait<Symbolic> {
                                ExtractSymbolicFromExpr(expr2))) != ir::Expr(0);
     };
     if (IsSymbolicNotEqual(expr1, expr2)) {
-      return cinn::common::AutoSimplify(ir::Add::Make(
-          ExtractSymbolicFromExpr(expr1), ExtractSymbolicFromExpr(expr2)));
+      return ir::Expr(0);
     }
     return ExtractSymbolicFromExpr(expr1);
   }
