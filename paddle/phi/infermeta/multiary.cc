@@ -2593,6 +2593,35 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
   rpn_roi_probs->set_dims(common::make_ddim({-1, 1}));
 }
 
+void LegacyGenerateProposalsInferMeta(const MetaTensor& scores,
+                                      const MetaTensor& bbox_deltas,
+                                      const MetaTensor& im_info,
+                                      const MetaTensor& anchors,
+                                      const MetaTensor& variances,
+                                      int pre_nms_top_n,
+                                      int post_nms_top_n,
+                                      float nms_thresh,
+                                      float min_size,
+                                      float eta,
+                                      MetaTensor* rpn_rois,
+                                      MetaTensor* rpn_roi_probs,
+                                      MetaTensor* rpn_rois_num) {
+  GenerateProposalsV2InferMeta(scores,
+                               bbox_deltas,
+                               im_info,
+                               anchors,
+                               variances,
+                               pre_nms_top_n,
+                               post_nms_top_n,
+                               nms_thresh,
+                               min_size,
+                               eta,
+                               true,
+                               rpn_rois,
+                               rpn_roi_probs,
+                               rpn_rois_num);
+}
+
 void GraphKhopSamplerInferMeta(const MetaTensor& row,
                                const MetaTensor& col_ptr,
                                const MetaTensor& x,
