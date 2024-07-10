@@ -250,6 +250,11 @@ def auc(
             ins_tag_weight = paddle.full(
                 shape=[1, 1], dtype="float32", fill_value=1.0
             )
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
+        check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
+        check_variable_and_dtype(
+            ins_tag_weight, 'ins_tag_weight', ['float32', 'float64'], 'auc'
+        )
         stat_pos = paddle.zeros(shape=[1, num_thresholds + 1], dtype="int64")
         stat_neg = paddle.zeros(shape=[1, num_thresholds + 1], dtype="int64")
         auc_out, batch_stat_pos, batch_stat_neg = _C_ops.auc(
@@ -260,7 +265,7 @@ def auc(
             ins_tag_weight,
             curve,
             num_thresholds,
-            slide_steps,
+            0,
         )
         return (
             auc_out,

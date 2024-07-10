@@ -207,7 +207,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
     return;                                                                    \
   }
 
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     PADDLE_TENSOR_ADD(float, phi::GPUContext);
     PADDLE_TENSOR_ADD(double, phi::GPUContext);
@@ -227,7 +227,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   out.device(p) = out + in;                                \
   return;
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     PADDLE_TENSOR_ADD(float, phi::CPUContext);
     PADDLE_TENSOR_ADD(double, phi::CPUContext);
     PADDLE_TENSOR_ADD(platform::complex<float>, phi::CPUContext);
@@ -256,7 +256,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
     return;                                                      \
   }
 
-  if (platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     PADDLE_TENSOR_ADD_CUSTOM(float);
     PADDLE_TENSOR_ADD_CUSTOM(double);
@@ -266,7 +266,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 
 #ifdef PADDLE_WITH_XPU
-  if (platform::is_xpu_place(place)) {
+  if (phi::is_xpu_place(place)) {
     if (data_type == framework::DataTypeTrait<float>::DataType()) {
       XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
     } else if (data_type ==
@@ -326,7 +326,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (paddle::platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::GPUContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::GPUContext, double);
   } else {
@@ -381,7 +381,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::GPUContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::GPUContext, double);
   } else {
@@ -447,13 +447,13 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (paddle::platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, float);
     PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, double);
   } else {
 #endif
 #if defined(PADDLE_WITH_XPU)
-    if (paddle::platform::is_xpu_place(place)) {
+    if (phi::is_xpu_place(place)) {
       PADDLE_SELECTED_ROWS_ADD(phi::XPUContext, float);
     } else {
 #endif
@@ -514,9 +514,8 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
   }
 }
 
-static platform::Place GetPlaceOfVar(
-    const std::shared_ptr<VariableWrapper>& var) {
-  platform::Place place;
+static phi::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var) {
+  phi::Place place;
   if (var->Var().IsType<phi::DenseTensor>()) {  // NOLINT
     place = var->Var().Get<phi::DenseTensor>().place();
   } else if (var->Var().IsType<phi::SelectedRows>()) {
@@ -655,7 +654,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
   }
 
   auto* dst_var = Var();
-  platform::Place place = GetPlaceOfVar(var);
+  phi::Place place = GetPlaceOfVar(var);
   if (!dst_var->OverriddenStopGradient()) {
     if (CurCnt() == 0) {
       MoveOrCopyVar(dst_var->MutableVar(), var->MutableVar(), unchange_input);
@@ -702,7 +701,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
                                         size_t trace_id,
                                         bool unchange_input) {
   auto* dst_var = Var();
-  platform::Place place = GetPlaceOfVar(var);
+  phi::Place place = GetPlaceOfVar(var);
   if (!dst_var->OverriddenStopGradient()) {
     if (ref_cnt_ == 1) {
       MoveOrCopyVar(dst_var->MutableVar(),
@@ -734,7 +733,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
       }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (paddle::platform::is_gpu_place(place)) {  // NOLINT
+      if (phi::is_gpu_place(place)) {  // NOLINT
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
           if (!var_info.var->Var().IsType<phi::SelectedRows>()) {
