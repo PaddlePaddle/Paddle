@@ -1021,11 +1021,20 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
           reinterpret_cast<PyTypeObject *>(outputs_dtype_obj->ob_type)
               ->tp_name));
     }
+    PyObject *converter_debug_info_obj = PyTuple_GET_ITEM(args, 6);
+    std::string converter_debug_info =
+        CastPyArg2String(converter_debug_info_obj, "converter_debug_info", 6);
     // Call ir static api
     CallStackRecorder callstack_recoder("tensorrt_engine");
     callstack_recoder.Record();
-    auto static_api_out = paddle::dialect::tensorrt_engine(
-        x, trt_param, input_names, output_names, outputs_shape, outputs_dtype);
+    auto static_api_out =
+        paddle::dialect::tensorrt_engine(x,
+                                         trt_param,
+                                         input_names,
+                                         output_names,
+                                         outputs_shape,
+                                         outputs_dtype,
+                                         converter_debug_info);
     callstack_recoder.AttachToOps();
     return ToPyObject(static_api_out);
   } catch (...) {

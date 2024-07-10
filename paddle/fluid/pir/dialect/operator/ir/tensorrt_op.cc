@@ -24,7 +24,7 @@
 namespace paddle {
 namespace dialect {
 
-const char *TensorRTEngineOp::attributes_name[12] = {"engine_serialized_data",
+const char *TensorRTEngineOp::attributes_name[13] = {"engine_serialized_data",
                                                      "workspace_size",
                                                      "allow_build_at_runtime",
                                                      "input_names",
@@ -35,7 +35,8 @@ const char *TensorRTEngineOp::attributes_name[12] = {"engine_serialized_data",
                                                      "dynamic_shape_lens",
                                                      "min_input_shape_vector",
                                                      "max_input_shape_vector",
-                                                     "opt_input_shape_vector"};
+                                                     "opt_input_shape_vector",
+                                                     "converter_debug_info"};
 
 OpInfoTuple TensorRTEngineOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -70,7 +71,9 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
       paddle::dialect::OpAttributeInfo(
           "max_input_shape_vector", "pir::ArrayAttribute", ""),
       paddle::dialect::OpAttributeInfo(
-          "opt_input_shape_vector", "pir::ArrayAttribute", "")};
+          "opt_input_shape_vector", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "converter_debug_info", "pir::StrAttribute", "")};
 
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out",
@@ -111,7 +114,8 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
                              std::vector<std::string> input_names,
                              std::vector<std::string> output_names,
                              std::vector<std::vector<int64_t>> outputs_shape,
-                             std::vector<phi::DataType> outputs_dtype) {
+                             std::vector<phi::DataType> outputs_dtype,
+                             const std::string &converter_debug_info) {
   VLOG(4) << "Start build TensorRTEngineOp";
 
   VLOG(4) << "Builder construction inputs";
@@ -138,6 +142,10 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   pir::Attribute attr_outputs_rank =
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outputs_rank_tmp);
   argument.AddAttribute("outputs_rank", attr_outputs_rank);
+
+  pir::Attribute attr_converter_debug_info =
+      pir::StrAttribute::get(pir::IrContext::Instance(), converter_debug_info);
+  argument.AddAttribute("converter_debug_info", attr_converter_debug_info);
 
   std::vector<std::string> dynamic_shape_names;
   std::vector<int> dynamic_shape_lens;
@@ -234,6 +242,7 @@ void TensorRTEngineOp::VerifySig() {
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, min_input_shape_vector);
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, max_input_shape_vector);
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, opt_input_shape_vector);
+    VERIFY_ATTRIBUTE(pir::StrAttribute, converter_debug_info);
   }
 
   VLOG(4) << "Verifying outputs:";

@@ -107,6 +107,7 @@ std::vector<pir::Value> tensorrt_engine(
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
     std::vector<std::vector<int64_t>> outputs_shape,
-    std::vector<phi::DataType> outputs_dtype);
+    std::vector<phi::DataType> outputs_dtype,
+    const std::string& converter_debug_info);
 }  // namespace dialect
 }  // namespace paddle

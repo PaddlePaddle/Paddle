@@ -129,7 +129,8 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
                                                     input_names,
                                                     output_names,
                                                     outputs_shape,
-                                                    outputs_dtype)
+                                                    outputs_dtype,
+                                                    "NO DEBUG INFO")
           .out();
   auto assign_input = builder.Build<pir::SplitOp>(tensorrt_result).outputs()[0];
   builder.Build<paddle::dialect::AssignOut_Op>(assign_input, y_value);
@@ -265,7 +266,8 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
                                                     input_names,
                                                     output_names,
                                                     outputs_shape,
-                                                    outputs_dtype)
+                                                    outputs_dtype,
+                                                    "NO DEBUG INFO")
           .out();
   auto assign_input = builder.Build<pir::SplitOp>(tensorrt_result).outputs()[0];
   builder.Build<paddle::dialect::AssignOut_Op>(assign_input, y_value);

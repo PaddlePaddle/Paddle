@@ -145,6 +145,14 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
         std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
   }
 
+  auto converter_debug_info = op_attributes.at("converter_debug_info")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+  VLOG(6) << "======== TensorRT Graph Converter Info in tensorrt_engine_op("
+          << op_ << "):=======";
+  VLOG(6) << converter_debug_info;
+  VLOG(6) << "================================================================="
+             "===============";
   trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
       params, paddle::platform::NaiveLogger::Global());
   trt_engine_->Deserialize(engine_serialized_data);
