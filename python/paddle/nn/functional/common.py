@@ -1737,7 +1737,7 @@ def pad(
         pad_from_first_axis (bool, optional): When mode is ``'constant'`` and the input ``'pad'`` is a list or tuple and the
            length of ``'pad'`` is not ``2*(x.ndim - 2)``, the order of padding can be customized. If True, the padding will be started from
            the first axis of ``'x'``; if False, it will be started from the last axis of ``'x'``. Default: True.
-        name (str | None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
