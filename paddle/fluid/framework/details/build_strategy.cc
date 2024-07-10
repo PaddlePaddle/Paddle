@@ -57,7 +57,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
-    AppendAddReaderDependencyPass();
+    // AppendAddReaderDependencyPass();
     AppendMultiDevPass();
     AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
@@ -65,8 +65,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // attr if putting it after MultiDevPass.
     // AppendPassWithCheck(strategy_.cache_runtime_context_,
     //                     "runtime_context_cache_pass");
-    // AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
-    //                     "modify_op_lock_and_record_event_pass");
 
     SetCollectiveContext();
   }
@@ -389,7 +387,6 @@ USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
 // USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
-USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(coalesce_grad_tensor_pass);
 USE_PASS(graph_to_program_pass);

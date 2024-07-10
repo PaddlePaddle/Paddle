@@ -1,8 +1,3 @@
-cc_library(
-  modify_op_lock_and_record_event_pass
-  SRCS modify_op_lock_and_record_event_pass.cc
-  DEPS detail_op_handle op_graph_view)
-
 if(WITH_GPU AND WITH_DGC)
   list(APPEND ALL_REDUCE_OP_HANDLES detail_op_handle)
 endif()
