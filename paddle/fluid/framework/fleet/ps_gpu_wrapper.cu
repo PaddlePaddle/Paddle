@@ -84,7 +84,7 @@ __global__ void PushCopy(FeaturePushValue* dest,
 
 PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
 
-void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
+void PSGPUWrapper::CopyKeys(const phi::Place& place,
                             uint64_t** origin_keys,
                             uint64_t* total_keys,
                             const int64_t* gpu_len,
@@ -123,7 +123,7 @@ __global__ void CopyKeysKernel2(const int total_len,
   }
 }
 
-void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
+void PSGPUWrapper::CopyKeys(const phi::Place& place,
                             uint64_t** origin_keys,
                             uint64_t* total_keys,
                             const int64_t* slot_lens,
