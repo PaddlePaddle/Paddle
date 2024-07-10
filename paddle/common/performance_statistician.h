@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <cuda.h>
-#include <cuda_runtime.h>
 #include <chrono>
 #include <iostream>
 #include <mutex>
@@ -23,6 +21,10 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
 #include "paddle/common/enforce.h"
 
 namespace common {
