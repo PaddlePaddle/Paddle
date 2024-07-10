@@ -1831,7 +1831,7 @@ TEST(GatherNdGradInferSpmd, Ctor) {
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({0, -1}));
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({0, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({-1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]), std::vector<int64_t>({-1}));
 
   // inputs: [-1, -1], [0, -1, -1] --> [0, -1, -1]
