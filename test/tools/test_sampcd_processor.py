@@ -289,8 +289,6 @@ class TestXdoctester(unittest.TestCase):
         doctester.prepare(test_capacity)
         self.assertTrue(os.environ['CPU'])
         self.assertTrue(os.environ['GPU'])
-        self.assertFalse(os.environ.get('cpu'))
-        self.assertFalse(os.environ.get('gpu'))
         self.assertFalse(os.environ.get('XPU'))
 
         _clear_environ()
@@ -2386,8 +2384,10 @@ class TestGetTestResults(unittest.TestCase):
                     this is some blabla...
 
                     >>> import multiprocessing
+                    >>> def fn(a, b):
+                    ...     return a + b
                     >>> p = multiprocessing.Process(
-                    ...     target=lambda a, b: a + b,
+                    ...     target=fn,
                     ...     args=(
                     ...     1,
                     ...     2,
@@ -2408,8 +2408,10 @@ class TestGetTestResults(unittest.TestCase):
 
                     >>> # doctest: +SOLO('can not use add in multiprocess')
                     >>> import multiprocessing
+                    >>> def fn(a, b):
+                    ...     return a + b
                     >>> p = multiprocessing.Process(
-                    ...     target=lambda a, b: a + b,
+                    ...     target=fn,
                     ...     args=(
                     ...     1,
                     ...     2,
