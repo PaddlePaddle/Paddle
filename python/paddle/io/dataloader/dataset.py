@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# type: ignore[type-arg]
-# Ignore type checking for `Dataset` generics.
-
 from __future__ import annotations
 
 import bisect
