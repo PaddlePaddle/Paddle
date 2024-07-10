@@ -188,7 +188,7 @@ ir::Expr ExtractSymbolicFromExpr(const ir::Expr& expr) {
     return ir::Expr(0);
   } else if (expr.As<ir::_Var_>()) {
     auto var = expr.As<ir::_Var_>();
-    if ((utils::StartsWith(var->name, "S"))) {
+    if (utils::StartsWith(var->name, "S")) {
       return ir::ir_utils::IRCopy(expr);
     }
     return ir::Expr(0);
@@ -196,7 +196,8 @@ ir::Expr ExtractSymbolicFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating symbolic, expr = " << expr;
     return ir::Expr(0);
   }
-  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+  PADDLE_THROW(phi::errors::Fatal(
+      "Dead code. Fail to extract symbolic from expression."));
 }
 
 class Gcd {};
@@ -228,17 +229,17 @@ struct CommonFactorTrait<Gcd> {
             ir::Div::Make(Simplify(div->a(), factor), div->b()));
       } else if (expr.As<ir::Add>()) {
         auto add = expr.As<ir::Add>();
-        ir::Expr lhs_expr = add->a();
-        ir::Expr rhs_expr = add->b();
-        int lhs_common_factor = ExtractMulNumberFromExpr(lhs_expr);
-        int rhs_common_factor = ExtractMulNumberFromExpr(rhs_expr);
+        const ir::Expr lhs_common_factor =
+            ir::Expr(ExtractMulNumberFromExpr(add->a()));
+        const ir::Expr rhs_common_factor =
+            ir::Expr(ExtractMulNumberFromExpr(add->b()));
         return cinn::common::AutoSimplify(
-            ir::Add::Make(Simplify(lhs_expr, ir::Expr(lhs_common_factor)),
-                          Simplify(rhs_expr, ir::Expr(rhs_common_factor))));
+            ir::Add::Make(Simplify(add->a(), lhs_common_factor),
+                          Simplify(add->b(), rhs_common_factor)));
       }
       return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
     }
-    return ir::ir_utils::IRCopy(expr);
+    return expr;
   }
 };
 
