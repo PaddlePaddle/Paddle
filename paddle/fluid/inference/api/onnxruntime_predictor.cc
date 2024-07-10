@@ -270,7 +270,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
       new ZeroCopyTensor(static_cast<void *>(scope_.get()), this));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (phi::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
     auto gpu_place = place_;
@@ -290,7 +290,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
   std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (phi::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
     auto gpu_place = place_;
@@ -335,7 +335,7 @@ bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
 
 bool ONNXRuntimePredictor::ZeroCopyRun(bool switch_stream) {
   try {
-    const char *device_name = platform::is_cpu_place(place_) ? "Cpu" : "Cuda";
+    const char *device_name = phi::is_cpu_place(place_) ? "Cpu" : "Cuda";
     std::vector<Ort::Value> inputs;
     inputs.reserve(input_desc_.size());
     for (auto desc : input_desc_) {
