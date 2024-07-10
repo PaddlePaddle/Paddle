@@ -1695,6 +1695,10 @@ def cond(
 
     def empty_tensor(input, shape):
         if in_dynamic_or_pir_mode():
+            if in_pir_mode():
+                raise ValueError(
+                    "only support x is nonempty tensor in static graph mode"
+                )
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
