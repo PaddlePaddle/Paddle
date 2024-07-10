@@ -50,7 +50,7 @@ def _as_np_array(array, dtype=None):
     if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
         array = np.asarray(array, dtype=dtype, copy=False)
     else:
-        array = np.array(array, dtype=dtype)
+        array = np.array(array, dtype=dtype, copy=False)
     return array
 
 
