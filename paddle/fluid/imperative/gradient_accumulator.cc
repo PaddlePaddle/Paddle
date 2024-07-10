@@ -514,9 +514,8 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
   }
 }
 
-static platform::Place GetPlaceOfVar(
-    const std::shared_ptr<VariableWrapper>& var) {
-  platform::Place place;
+static phi::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var) {
+  phi::Place place;
   if (var->Var().IsType<phi::DenseTensor>()) {  // NOLINT
     place = var->Var().Get<phi::DenseTensor>().place();
   } else if (var->Var().IsType<phi::SelectedRows>()) {
@@ -655,7 +654,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
   }
 
   auto* dst_var = Var();
-  platform::Place place = GetPlaceOfVar(var);
+  phi::Place place = GetPlaceOfVar(var);
   if (!dst_var->OverriddenStopGradient()) {
     if (CurCnt() == 0) {
       MoveOrCopyVar(dst_var->MutableVar(), var->MutableVar(), unchange_input);
@@ -702,7 +701,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
                                         size_t trace_id,
                                         bool unchange_input) {
   auto* dst_var = Var();
-  platform::Place place = GetPlaceOfVar(var);
+  phi::Place place = GetPlaceOfVar(var);
   if (!dst_var->OverriddenStopGradient()) {
     if (ref_cnt_ == 1) {
       MoveOrCopyVar(dst_var->MutableVar(),

@@ -962,7 +962,7 @@ def quantile(
 def nanquantile(
     x: Tensor,
     q: float | Sequence[float] | Tensor,
-    axis: list[int] | int = None,
+    axis: list[int] | int | None = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
 ) -> Tensor:

@@ -90,8 +90,7 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     return true;
   }
 
-  const auto* calc_ctx =
-      platform::DeviceContextPool::Instance().Get(task_place_);
+  const auto* calc_ctx = phi::DeviceContextPool::Instance().Get(task_place_);
   comm_event_.Wait(platform::Place2DeviceType(task_place_), calc_ctx);
 
   if (FLAGS_nccl_blocking_wait) {
@@ -351,7 +350,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
                     0,
                     phi::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
-  platform::CUDAPlace place(opts.device_id);
+  phi::GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
@@ -795,7 +794,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   }
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
 
   place_to_calc_event_.emplace(
       place_key,

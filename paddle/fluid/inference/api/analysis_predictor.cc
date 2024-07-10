@@ -139,6 +139,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace paddle {
 namespace {
@@ -151,17 +152,17 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
                                 .get());
   gpu_context->SetPinnedAllocator(
       memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .GetAllocator(phi::GPUPinnedPlace())
           .get());
   gpu_context->SetHostAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(platform::CPUPlace())
+                                    .GetAllocator(phi::CPUPlace())
                                     .get());
   gpu_context->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetZeroAllocator(place_)
                                     .get());
   gpu_context->SetHostZeroAllocator(
       memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   gpu_context->SetGenerator(
       phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
@@ -257,7 +258,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
 
 bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
-                               const platform::Place &place) {
+                               const phi::Place &place) {
   framework::DDim ddim = common::make_ddim(pt.shape);
   void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
@@ -320,7 +321,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
                  static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  pt.data.data(),
                  pt.data.length(),
                  dev_ctx->stream());
@@ -333,7 +334,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     auto dst_xpu_place = place;
     memory::Copy(dst_xpu_place,
                  static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  pt.data.data(),
                  pt.data.length());
 #else
@@ -349,7 +350,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
         pool.Get(custom_place));
     memory::Copy(custom_place,
                  static_cast<void *>(input_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  pt.data.data(),
                  pt.data.length(),
                  dev_ctx->stream());
@@ -389,6 +390,10 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
       device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
+  }
+  if (FLAGS_enable_pir_api) {
+    config_.EnableNewExecutor(true);
+    config_.EnableNewIR(true);
   }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
@@ -548,7 +553,7 @@ void AnalysisPredictor::InitPlace() {
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-    place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
+    place_ = phi::GPUPlace(config_.gpu_device_id());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (config_.thread_local_stream_enabled()) {
       LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
@@ -558,7 +563,7 @@ void AnalysisPredictor::InitPlace() {
   } else if (config_.use_xpu()) {
 #ifdef PADDLE_WITH_XPU
     phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
-    place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
+    place_ = phi::XPUPlace(config_.xpu_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use XPU forward propagation (inference without lite "
@@ -567,7 +572,7 @@ void AnalysisPredictor::InitPlace() {
 #endif  // PADDLE_WITH_XPU
   } else if (config_.use_ipu()) {
 #ifdef PADDLE_WITH_IPU
-    place_ = paddle::platform::IPUPlace();
+    place_ = phi::IPUPlace();
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use IPU forward propagation, but Paddle was not compiled "
@@ -575,8 +580,8 @@ void AnalysisPredictor::InitPlace() {
 #endif
   } else if (config_.use_custom_device()) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    place_ = paddle::platform::CustomPlace(config_.custom_device_type(),
-                                           config_.custom_device_id());
+    place_ = phi::CustomPlace(config_.custom_device_type(),
+                              config_.custom_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use CustomDevice forward propagation, but Paddle was not "
@@ -584,7 +589,7 @@ void AnalysisPredictor::InitPlace() {
         "with WITH_CUSTOM_DEVICE."));
 #endif
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   }
 }
 
@@ -709,12 +714,12 @@ void AnalysisPredictor::InitDeviceContexts() {
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
           xpu_context->SetHostAllocator(
-              instance.GetAllocator(platform::CPUPlace()).get());
+              instance.GetAllocator(phi::CPUPlace()).get());
           xpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
           xpu_context->SetZeroAllocator(
               instance.GetZeroAllocator(place_).get());
           xpu_context->SetHostZeroAllocator(
-              instance.GetZeroAllocator(platform::CPUPlace()).get());
+              instance.GetZeroAllocator(phi::CPUPlace()).get());
           xpu_context->SetStream(predictor_stream_);
           return std::unique_ptr<phi::DeviceContext>(xpu_context);
         }));
@@ -1026,25 +1031,20 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      if (load_pir_model_ && for_save) {
+        sub_scope_->Var(data_name);
+      }
       idx2feeds_[feed_idx] = data_name;
       feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
     }
 
-    for (auto var : op->results()) {
-      std::string var_name;
-      auto is_persistable =
-          var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
-      if (is_persistable && is_persistable.data()) {
-        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
-          var_name = param_op.param_name();
-          param_name_var_pairs.emplace_back(var_name, var);
-        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
-          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-          param_name_var_pairs.emplace_back(var_name, var);
-        }
-      }
+    if (op->isa<::pir::ParameterOp>()) {
+      std::string var_name =
+          op->attribute<pir::StrAttribute>("parameter_name").AsString();
+      auto var = op->result(0);
+      param_name_var_pairs.emplace_back(var_name, var);
     }
   }
 
@@ -1071,19 +1071,20 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
     if (var == nullptr) {
       if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+        const phi::DeviceContext *dev_ctx = nullptr;
+        dev_ctx = pool.Get(place_);
+        pir::Type type_ = pir::GetDataTypeFromValue(value);
+        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+        dev_ctx->Alloc(tensor_temp, type_data);
       } else {
         PADDLE_THROW(platform::errors::Unavailable(
             "Only support parameter data of type DenseTensor."));
       }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-    tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-
-    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-    const phi::DeviceContext *dev_ctx = pool.Get(place_);
-    pir::Type type_ = pir::GetDataTypeFromValue(value);
-    phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-    dev_ctx->Alloc(tensor_temp, type_data);
     tensor_out.push_back(tensor_temp);
   }
 
@@ -1621,13 +1622,13 @@ void AnalysisPredictor::MkldnnPostReset() {
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
-          (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
+          (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
-      auto shape_blob_size = static_cast<phi::OneDNNContext *>(
-                                 (&platform::DeviceContextPool::Instance())
-                                     ->Get(platform::CPUPlace()))
-                                 ->GetShapeBlobSize();
+      auto shape_blob_size =
+          static_cast<phi::OneDNNContext *>(
+              (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
+              ->GetShapeBlobSize();
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
@@ -1911,7 +1912,7 @@ void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
   // set data.
   int num_elems = inference::VecReduceToInt(shape);
   output->data.Resize(num_elems * sizeof(T));
-  paddle::memory::Copy(platform::CPUPlace(),
+  paddle::memory::Copy(phi::CPUPlace(),
                        output->data.data(),
                        fetch.place(),
                        fetch.data<T>(),
@@ -2872,15 +2873,15 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
       if (platform::is_cpu_place(tensor->place())) {
         auto &int32_tensor = *tensor;
         if (tensor->dtype() == phi::DataType::INT64) {
-          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+          auto *cpu_ctx = pool.Get(phi::CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
               *tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(platform::CPUPlace(),
+        paddle::memory::Copy(phi::CPUPlace(),
                              int32_host.data(),
-                             platform::CPUPlace(),
+                             phi::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (platform::is_gpu_place(tensor->place())) {
@@ -2893,7 +2894,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
               *tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(platform::CPUPlace(),
+        paddle::memory::Copy(phi::CPUPlace(),
                              int32_host.data(),
                              int32_tensor.place(),
                              int32_tensor.data<int>(),
@@ -3307,7 +3308,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   op->SetAttr("file_path", dir + "/params");
   op->CheckAttrs();
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(save_program, scope(), 0, true, true);
 }
