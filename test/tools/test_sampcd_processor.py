@@ -693,6 +693,10 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('cpu_to_gpu_array', tr_5.name)
         self.assertFalse(tr_5.passed)
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
+    )
     def test_patch_xdoctest_float(self):
         # test patch float precision
         # reload xdoctest.checker
