@@ -19,7 +19,9 @@
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
 // sparse header
+#include "paddle/common/flags.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace phi {
 
@@ -123,21 +125,23 @@ void SyncBatchNormKernel(const Context& ctx,
                                       stream));
       VLOG(3) << "Sync result using all reduce";
     } else {
-      auto comm_ctx =
-          static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
-      if (comm_ctx) {
-        comm = comm_ctx->GetNcclComm();
-        int dtype = phi::ToNCCLDataType(mean_out->dtype());
-        // In-place operation
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::ncclAllReduce(stats,
-                                        stats,
-                                        2 * C + 1,
-                                        static_cast<ncclDataType_t>(dtype),
-                                        ncclSum,
-                                        comm,
-                                        stream));
-        VLOG(3) << "Sync result using all reduce";
+      if (FLAGS_dynamic_static_unified_comm) {
+        auto comm_ctx =
+            static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+        if (comm_ctx) {
+          comm = comm_ctx->GetNcclComm();
+          int dtype = phi::ToNCCLDataType(mean_out->dtype());
+          // In-place operation
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              phi::dynload::ncclAllReduce(stats,
+                                          stats,
+                                          2 * C + 1,
+                                          static_cast<ncclDataType_t>(dtype),
+                                          ncclSum,
+                                          comm,
+                                          stream));
+          VLOG(3) << "Sync result using all reduce";
+        }
       }
     }
 #endif
