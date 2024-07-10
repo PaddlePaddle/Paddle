@@ -113,6 +113,7 @@ SpmdInfo GatherNdInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo GatherNdGradInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& index,
                                const DistMetaTensor& out_grad) {
+  // x should be replicated, x_grad also should be replicated too
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   EXTRACT_SHAPE_AND_DIST_ATTR(index);
   EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
@@ -129,9 +130,8 @@ SpmdInfo GatherNdGradInferSpmd(const DistMetaTensor& x,
 
   std::vector<int64_t> x_grad_dims_mapping(x_dims_mapping_src);
   for (int i = 0; i < x_ndim; ++i) {
-    x_grad_dims_mapping[i] = out_grad_dims_mapping_dst[i];
+    x_grad_dims_mapping[i] = -1;
   }
-
   TensorDistAttr x_grad_dist_attr(x_dist_attr_src);
   x_grad_dist_attr.set_dims_mapping(x_grad_dims_mapping);
 

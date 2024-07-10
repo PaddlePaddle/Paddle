@@ -1816,7 +1816,7 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   out_grad_dist_attr.set_process_mesh(process_mesh);
 
   // inputs: [-1], [0, -1] --> [0, -1]
-  // x_grad: [0, -1]
+  // x_grad: [0]
   x_dist_attr.set_dims_mapping({-1});
   index_dist_attr.set_dims_mapping({0, -1});
   out_grad_dist_attr.set_dims_mapping({-1});
@@ -1841,7 +1841,7 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   out_grad_shape = {16, 16, 32};
   x_dist_attr.set_dims_mapping({-1, -1});
   index_dist_attr.set_dims_mapping({0, -1, -1});
-  out_grad_dist_attr.set_dims_mapping({-1, -1});
+  out_grad_dist_attr.set_dims_mapping({0, -1, -1});
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
   index = phi::distributed::DistMetaTensor(phi::make_ddim(index_shape),
                                            index_dist_attr);
