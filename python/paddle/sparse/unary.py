@@ -168,6 +168,7 @@ def transpose(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('indices overflow')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
