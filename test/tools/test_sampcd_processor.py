@@ -16,6 +16,7 @@
 
 import importlib
 import os
+import tempfile
 import unittest
 
 import xdoctest
@@ -79,11 +80,29 @@ class Test_TestResult(unittest.TestCase):
             r = _TestResult(name='good', passed=True, bad=True)
 
 
-class Test_get_api_md5(unittest.TestCase):
+class TestSpecFile(unittest.TestCase):
     def setUp(self):
-        self.api_pr_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec')
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.api_dev_spec_filename = os.path.join(
+            self.temp_dir.name, 'API_DEV.spec'
         )
+        self.api_pr_spec_filename = os.path.join(
+            self.temp_dir.name, 'API_PR.spec'
+        )
+        self.api_diff_spec_filename = os.path.join(
+            self.temp_dir.name, 'dev_pr_diff_api.spec'
+        )
+        self.init_file()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def init_file(self):
+        raise NotImplementedError
+
+
+class Test_get_api_md5(TestSpecFile):
+    def init_file(self):
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write(
                 "\n".join(
@@ -97,11 +116,8 @@ class Test_get_api_md5(unittest.TestCase):
                 )
             )
 
-    def tearDown(self):
-        os.remove(self.api_pr_spec_filename)
-
     def test_get_api_md5(self):
-        res = get_api_md5('paddle/fluid/API_PR.spec')
+        res = get_api_md5(self.api_pr_spec_filename)
         self.assertEqual(
             "ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ff0f188c95030158cc6398d2a6c55one",
             res['paddle.one_plus_one'],
@@ -123,11 +139,8 @@ class Test_get_api_md5(unittest.TestCase):
         )
 
 
-class Test_get_incrementapi(unittest.TestCase):
-    def setUp(self):
-        self.api_pr_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec')
-        )
+class Test_get_incrementapi(TestSpecFile):
+    def init_file(self):
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write(
                 "\n".join(
@@ -139,9 +152,7 @@ class Test_get_incrementapi(unittest.TestCase):
                     ]
                 )
             )
-        self.api_dev_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_DEV.spec')
-        )
+
         with open(self.api_dev_spec_filename, 'w') as f:
             f.write(
                 "\n".join(
@@ -150,17 +161,13 @@ class Test_get_incrementapi(unittest.TestCase):
                     ]
                 )
             )
-        self.api_diff_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "dev_pr_diff_api.spec")
-        )
-
-    def tearDown(self):
-        os.remove(self.api_pr_spec_filename)
-        os.remove(self.api_dev_spec_filename)
-        os.remove(self.api_diff_spec_filename)
 
     def test_it(self):
-        get_incrementapi()
+        get_incrementapi(
+            api_dev_spec_fn=self.api_dev_spec_filename,
+            api_pr_spec_fn=self.api_pr_spec_filename,
+            api_diff_spec_fn=self.api_diff_spec_filename,
+        )
         with open(self.api_diff_spec_filename, 'r') as f:
             lines = f.readlines()
             self.assertCountEqual(
