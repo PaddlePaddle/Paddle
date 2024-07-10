@@ -46,7 +46,7 @@ def viterbi_decode(
         lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of [batch_size]. The data type is int64.
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -115,7 +115,7 @@ class ViterbiDecoder(Layer):
         transitions (`Tensor`): The transition matrix. Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -150,6 +150,12 @@ class ViterbiDecoder(Layer):
             [[0, 0],
              [1, 1]])
     """
+
+    transitions: Tensor
+    include_bos_eos_tag: bool
+    name: str | None
+    potentials: Tensor
+    lengths: Tensor
 
     def __init__(
         self,
