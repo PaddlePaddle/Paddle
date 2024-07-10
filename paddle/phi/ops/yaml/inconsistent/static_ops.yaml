@@ -318,18 +318,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits: pir::ImmutableLayoutTrait
 
-- op : fetch
-  args : (Tensor x, str name, int col)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : fetch
-    param : [x]
-  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait, paddle::dialect::ForwardOnlyTrait
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : floor_divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
