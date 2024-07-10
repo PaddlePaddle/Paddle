@@ -229,7 +229,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_config PROPERTIES TIMEOUT 300)
     set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
     if(WIN32)
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 300)

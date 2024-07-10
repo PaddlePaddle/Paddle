@@ -21,11 +21,14 @@ list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
 list(REMOVE_ITEM TEST_INTERP_CASES test_subgraph_exporter)
 
 foreach(target ${TEST_INTERP_CASES})
-  py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
-                  FLAGS_enable_pir_in_executor=true)
+  if(NOT ${target} STREQUAL "test_config")
+    py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
+                    FLAGS_enable_pir_in_executor=true)
+  endif()
 endforeach()
 
 foreach(target ${TEST_IR_SYSTEM_CASES})
+  message(STATUS "Processing EST_IR_SYSTEM_CASES target: ${target}")
   py_test_modules(${target} MODULES ${target} ENVS FLAGS_enable_pir_api=true)
 endforeach()
 
@@ -40,6 +43,8 @@ py_test_modules(
   MIN_GRAPH_SIZE=0
   FLAGS_enable_pir_in_executor=1
   FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
+
+py_test_modules(test_config MODULES test_config ENVS FLAGS_enable_pir_api=true)
 
 add_subdirectory(fused_pass)
 add_subdirectory(translator)
