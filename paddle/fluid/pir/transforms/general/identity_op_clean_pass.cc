@@ -91,22 +91,22 @@ class RemoveRedundantScalePattern : public paddle::drr::DrrPatternBase {
           if (match_ctx.Attr<bool>("bias_after_scale_1")) {
             res_bias_1 = match_ctx.Attr<float>("bias_1");
           } else {
-            res_bias_1 = match_ctx.Attr<float>("value_1") *
+            res_bias_1 = match_ctx.Attr<double>("value_1") *
                          match_ctx.Attr<float>("bias_1");
           }
           if (match_ctx.Attr<bool>("bias_after_scale_2")) {
-            res_bias_2 = res_bias_1 * match_ctx.Attr<float>("value_2") +
+            res_bias_2 = res_bias_1 * match_ctx.Attr<double>("value_2") +
                          match_ctx.Attr<float>("bias_2");
           } else {
             res_bias_2 = (res_bias_1 + match_ctx.Attr<float>("bias_2")) *
-                         match_ctx.Attr<float>("value_2");
+                         match_ctx.Attr<double>("value_2");
           }
           return res_bias_2;
         });
     const auto &res_scale_input = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("value_1") *
-                 match_ctx.Attr<float>("value_2");
+          return match_ctx.Attr<double>("value_1") *
+                 match_ctx.Attr<double>("value_2");
         });
 
     const auto &full_op_res = res.Op(paddle::dialect::FullOp::name(),
