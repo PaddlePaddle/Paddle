@@ -45,7 +45,7 @@ class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
     scale_op({&pat.Tensor("x"), &full_op()}, {&pat.Tensor("scale_out")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Attr<float>("value") == 1.0 &&
+      return (match_ctx.Attr<double>("value") == 1.0 &&
               match_ctx.Attr<float>("bias") == 0.0);
     });
 
