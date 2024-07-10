@@ -133,6 +133,14 @@ class TestDygraphMultiForward(unittest.TestCase):
 
         with base.dygraph.guard():
             paddle.seed(SEED)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(SEED)
+                paddle.framework.random._manual_program_seed(SEED)
+            else:
+                paddle.framework.random._manual_program_seed(SEED)
+
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(
                 learning_rate=1e-3, parameters=mnist.parameters()
@@ -172,6 +180,13 @@ class TestDygraphMultiForward(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(SEED)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(SEED)
+                paddle.framework.random._manual_program_seed(SEED)
+            else:
+                paddle.framework.random._manual_program_seed(SEED)
             exe = base.Executor(
                 base.CPUPlace()
                 if not core.is_compiled_with_cuda()
@@ -203,10 +218,6 @@ class TestDygraphMultiForward(unittest.TestCase):
             for param in mnist.parameters():
                 static_param_name_list.append(param.name)
                 static_params.append(param)
-
-            exe.run(
-                paddle.static.default_startup_program(),
-            )
 
             if paddle.framework.use_pir_api():
                 parameter_mapping = create_parameter_mapping(
