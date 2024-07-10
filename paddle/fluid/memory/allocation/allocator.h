@@ -96,7 +96,7 @@ class Allocator;
  */
 class Allocation : public phi::Allocation {
  public:
-  Allocation(void* ptr, size_t size, platform::Place place)
+  Allocation(void* ptr, size_t size, phi::Place place)
       : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
   Allocation(void* ptr,
              void* base_ptr,

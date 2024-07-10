@@ -24,20 +24,14 @@ bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
   bool flatten = GetBoolAttr(op, "flatten");
   bool keepdims = GetBoolAttr(op, "keepdims");
 
-  const auto &input_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &input_sym_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  int rank = input_sym_shape.size();
 
   const auto &axis_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   int axis =
       static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
-
-  const std::vector<symbol::DimExpr> &input_sym_shape =
-      input_shape_or_data.data().has_value()
-          ? input_shape_or_data.data().value()
-          : input_shape_or_data.shape();
-
-  int rank = input_sym_shape.size();
   if (axis < 0) axis += rank;
 
   const auto &out_sym_shape = [&] {
@@ -308,6 +302,79 @@ bool EinsumOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool FlattenOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &attributes = op->attributes();
+  int start_axis =
+      attributes.at("start_axis").dyn_cast<pir::Int32Attribute>().data();
+  int stop_axis =
+      attributes.at("stop_axis").dyn_cast<pir::Int32Attribute>().data();
+
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  int in_dims_size = x_shape.size();
+
+  if (in_dims_size == 0) {
+    PADDLE_ENFORCE_EQ(
+        start_axis == 0 || start_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The start_axis should be 0 or -1 when "
+                                     "the input tensor is a 0D-Tensor"));
+    PADDLE_ENFORCE_EQ(
+        stop_axis == 0 || stop_axis == -1,
+        true,
+        phi::errors::InvalidArgument("The stop_axis should be 0 or -1 when the "
+                                     "input tensor is a 0D-Tensor"));
+    // this can ensure out shape {1}
+    start_axis = 0;
+    stop_axis = -1;
+  }
+
+  if (start_axis < 0) {
+    start_axis = start_axis + in_dims_size;
+  }
+  if (stop_axis < 0) {
+    stop_axis = stop_axis + in_dims_size;
+  }
+  if (in_dims_size > 0) {
+    PADDLE_ENFORCE_GE(
+        stop_axis,
+        start_axis,
+        phi::errors::InvalidArgument("The stop_axis should be greater"
+                                     "than or equal to start_axis."));
+  }
+
+  symbol::DimExpr outer{1};
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
+  for (int i = 0; i < start_axis; ++i) {
+    out_shape.push_back(x_shape[i]);
+  }
+  for (int i = start_axis; i <= stop_axis; i++) {
+    outer = outer * x_shape[i];
+  }
+  out_shape.push_back(outer);
+  for (int i = stop_axis + 1; i < in_dims_size; i++) {
+    out_shape.push_back(x_shape[i]);
+  }
+
+  symbol::ShapeOrDataDimExprs out_shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), out_shape_data);
+
+  std::vector<symbol::DimExpr> xshape_shape = x_shape;
+  xshape_shape.insert(xshape_shape.begin(), symbol::DimExpr{0});
+  symbol::ShapeOrDataDimExprs xshape_shape_data{
+      symbol::TensorShapeOrDataDimExprs(xshape_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(1), xshape_shape_data);
+  return true;
+}
+
+bool Flatten_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FlattenOpInferSymbolicShape(op, infer_context);
+}
+
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
@@ -504,7 +571,7 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  bool keepdim = GetBoolAttr(op, "keep_dim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
   bool reduce_all = GetBoolAttr(op, "reduce_all");
 
   auto axis_gen_op = op->operand_source(1).defining_op();

@@ -22,11 +22,7 @@ set(op_handle_srcs
     share_tensor_buffer_functor.cc
     computation_op_handle.cc
     share_tensor_buffer_op_handle.cc
-    rpc_op_handle.cc
-    fetch_barrier_op_handle.cc
-    multi_devices_helper.cc
     variable_visitor.cc
-    gather_op_handle.cc
     eager_deletion_op_handle.cc)
 
 if(WITH_DGC)
@@ -81,7 +77,6 @@ set(IR_PASS_DEPS
     multi_batch_merge_pass
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
-    sequential_execution_pass
     add_reader_dependency_pass
     modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass
@@ -91,7 +86,6 @@ set(IR_PASS_DEPS
     sync_batch_norm_pass
     runtime_context_cache_pass
     graph_to_program_pass
-    fix_op_run_order_pass
     fuse_gemm_epilogue_pass
     fused_attention_pass
     fuse_adamw_op_pass

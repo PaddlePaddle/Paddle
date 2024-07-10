@@ -356,9 +356,6 @@ void HashInferMeta(const MetaTensor& x,
                    int64_t mod_by,
                    MetaTensor* out);
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
-
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
@@ -713,6 +710,8 @@ void FillSplitOutDims(const MetaTensor& x,
                       const int axis_value,
                       const std::vector<int64_t>& sections_vec,
                       std::vector<MetaTensor*>* out);
+
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SplitInferMeta(const MetaTensor& x_meta,
                     const IntArray& sections,

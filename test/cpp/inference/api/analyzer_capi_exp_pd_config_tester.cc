@@ -112,7 +112,6 @@ TEST(PD_Config, interface) {
   bool is_valid = PD_ConfigIsValid(config);
   EXPECT_FALSE(is_valid);
 
-  PD_ConfigPartiallyRelease(config);
   PD_ConfigDestroy(config);
 }
 
