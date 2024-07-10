@@ -109,8 +109,8 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
@@ -264,8 +264,8 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
@@ -402,8 +402,8 @@ class FusedDotProductAttentionWithDropoutPattern
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
@@ -572,8 +572,8 @@ class FusedDotProductAttentionGradWithDropoutPattern
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
