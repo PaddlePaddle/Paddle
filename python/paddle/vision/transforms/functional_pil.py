@@ -63,16 +63,16 @@ def to_tensor(pic, data_format='CHW'):
 
     # PIL Image
     if pic.mode == 'I':
-        img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
     elif pic.mode == 'I;16':
         # cast and reshape not support int16
         img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
     elif pic.mode == 'F':
-        img = paddle.to_tensor(np.array(pic, np.float32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.float32, copy=False))
     elif pic.mode == '1':
-        img = 255 * paddle.to_tensor(np.array(pic, np.uint8, copy=False))
+        img = 255 * paddle.to_tensor(np.asarray(pic, np.uint8, copy=False))
     else:
-        img = paddle.to_tensor(np.array(pic, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, copy=False))
 
     if pic.mode == 'YCbCr':
         nchannel = 3
@@ -401,7 +401,7 @@ def adjust_hue(img, hue_factor):
 
     h, s, v = img.convert('HSV').split()
 
-    np_h = np.array(h, dtype=np.uint8)
+    np_h = np.asarray(h, dtype=np.uint8)
     np_h = np_h.astype(np.int16)
     np_h = (np_h + int(hue_factor * 255)) % 256
     np_h = np_h.astype(np.uint8)
@@ -534,7 +534,7 @@ def to_grayscale(img, num_output_channels=1):
         img = img.convert('L')
     elif num_output_channels == 3:
         img = img.convert('L')
-        np_img = np.array(img, dtype=np.uint8)
+        np_img = np.asarray(img, dtype=np.uint8)
         np_img = np.dstack([np_img, np_img, np_img])
         img = Image.fromarray(np_img, 'RGB')
     else:
@@ -553,14 +553,14 @@ def erase(img, i, j, h, w, v, inplace=False):
          j (int): x coordinate of the top-left point of erased region.
          h (int): Height of the erased region.
          w (int): Width of the erased region.
-         v (np.array): value used to replace the pixels in erased region.
+         v (np.asarray): value used to replace the pixels in erased region.
          inplace (bool, optional): Whether this transform is inplace. Default: False.
 
      Returns:
          PIL.Image: Erased image.
 
     """
-    np_img = np.array(img, dtype=np.uint8)
+    np_img = np.asarray(img, dtype=np.uint8)
     np_img[i : i + h, j : j + w, ...] = v
     img = Image.fromarray(np_img, 'RGB')
     return img
