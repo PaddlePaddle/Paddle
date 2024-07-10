@@ -164,7 +164,7 @@ class StudentT(distribution.Distribution):
         super().__init__(batch_shape)
         self._chi2 = Gamma(0.5 * self.df, paddle.full_like(self.df, 0.5))
 
-    def _check_nonnegative(self, value: Tensor) -> Tensor:
+    def _check_nonnegative(self, value: Tensor) -> bool:
         """Check the non-negative constraint for input parameters
 
         Args:
