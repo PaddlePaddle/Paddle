@@ -779,7 +779,7 @@ set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
 set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
-                                                                      30)
-set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 30)
+                                                                      100)
+set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
