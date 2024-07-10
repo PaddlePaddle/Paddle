@@ -87,7 +87,6 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
-    calc_reduced_attention_scores,
     flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
@@ -292,6 +291,5 @@ __all__ = [
     'flash_attention_with_sparse_mask',
     'flash_attn_qkvpacked',
     'flash_attn_varlen_qkvpacked',
-    'calc_reduced_attention_scores',
     'group_norm',
 ]
