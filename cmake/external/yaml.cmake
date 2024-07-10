@@ -57,7 +57,7 @@ else()
   set(YAML_CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
-if(MSVC)
+if(MSVC_STATIC_CRT)
   foreach(
     flag_var
     CMAKE_CXX_FLAGS

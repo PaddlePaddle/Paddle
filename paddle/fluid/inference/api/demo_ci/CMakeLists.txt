@@ -209,7 +209,6 @@ if(NOT WIN32)
       xxhash
       cryptopp
       utf8proc
-      yaml
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
     set(DEPS
@@ -233,7 +232,6 @@ else()
       xxhash
       cryptopp-static
       utf8proc_static
-      yaml
       ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif()
