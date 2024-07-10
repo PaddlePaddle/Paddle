@@ -22,8 +22,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
@@ -509,5 +508,4 @@ void CustomKernelInstruction::Run() {
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

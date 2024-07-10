@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -65,7 +64,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
 
 void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
-  auto cpu_place = platform::CPUPlace();
+  auto cpu_place = phi::CPUPlace();
 
   if (src_var.IsType<phi::DenseTensor>()) {
     auto *tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
@@ -86,5 +85,4 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -32,9 +32,8 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
-#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -144,9 +143,10 @@ void PrintResult(const TuningResult& result) {
 }
 
 TuningResult AutoTuner::Tune(const TuningOptions& options) {
-  CHECK_GT(options.num_tuning_rounds, 0) << "Invalid config";
-  VLOG(3) << "Begin tuning with round num=" << options.num_tuning_rounds
-          << ", tasks size=" << tasks_.size();
+  PADDLE_ENFORCE_GT(options.num_tuning_rounds,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The num_tuning_rounds should be greater than 0."));
 
   TuningResult result;
   result.subgraphs.resize(tasks_.size());

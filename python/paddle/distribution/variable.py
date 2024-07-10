@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
+
 import paddle
 from paddle.distribution import constraint
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distribution.constraint import Constraint
 
 
 class Variable:
@@ -24,32 +32,38 @@ class Variable:
         event_rank (int): The rank of event dimensions.
     """
 
-    def __init__(self, is_discrete=False, event_rank=0, constraint=None):
+    def __init__(
+        self,
+        is_discrete: bool = False,
+        event_rank: int = 0,
+        constraint: Constraint | None = None,
+    ) -> None:
         self._is_discrete = is_discrete
         self._event_rank = event_rank
         self._constraint = constraint
 
     @property
-    def is_discrete(self):
+    def is_discrete(self) -> bool:
         return self._is_discrete
 
     @property
-    def event_rank(self):
+    def event_rank(self) -> int:
         return self._event_rank
 
-    def constraint(self, value):
+    def constraint(self, value: Tensor) -> Tensor:
         """Check whether the 'value' meet the constraint conditions of this
         random variable."""
+        assert self._constraint is not None
         return self._constraint(value)
 
 
 class Real(Variable):
-    def __init__(self, event_rank=0):
+    def __init__(self, event_rank: int = 0) -> None:
         super().__init__(False, event_rank, constraint.real)
 
 
 class Positive(Variable):
-    def __init__(self, event_rank=0):
+    def __init__(self, event_rank: int = 0) -> None:
         super().__init__(False, event_rank, constraint.positive)
 
 
@@ -62,14 +76,14 @@ class Independent(Variable):
             reinterpreted.
     """
 
-    def __init__(self, base, reinterpreted_batch_rank):
+    def __init__(self, base: Variable, reinterpreted_batch_rank: int) -> None:
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
         super().__init__(
             base.is_discrete, base.event_rank + reinterpreted_batch_rank
         )
 
-    def constraint(self, value):
+    def constraint(self, value: Tensor) -> Tensor:
         ret = self._base.constraint(value)
         if ret.dim() < self._reinterpreted_batch_rank:
             raise ValueError(
@@ -81,22 +95,22 @@ class Independent(Variable):
 
 
 class Stack(Variable):
-    def __init__(self, vars, axis=0):
+    def __init__(self, vars: Sequence[Variable], axis: int = 0) -> None:
         self._vars = vars
         self._axis = axis
 
     @property
-    def is_discrete(self):
+    def is_discrete(self) -> bool:
         return any(var.is_discrete for var in self._vars)
 
     @property
-    def event_rank(self):
+    def event_rank(self) -> int:
         rank = max(var.event_rank for var in self._vars)
         if self._axis + rank < 0:
             rank += 1
         return rank
 
-    def constraint(self, value):
+    def constraint(self, value: Tensor) -> Tensor:
         if not (-value.dim() <= self._axis < value.dim()):
             raise ValueError(
                 f'Input dimensions {value.dim()} should be grater than stack '

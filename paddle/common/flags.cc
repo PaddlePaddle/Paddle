@@ -281,6 +281,21 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
                           "Exhaustive search times for cuDNN convolution, "
                           "default is -1, not exhaustive search");
 
+#ifdef PADDLE_WITH_HIP
+/**
+ * MIOPEN related FLAG
+ * Name: FLAGS_batch_norm_use_miopen
+ * Since Version:
+ * Value Range:
+ * Example:
+ * Note: Use MIOpen batch norm instead of native
+ */
+PHI_DEFINE_EXPORTED_bool(batch_norm_use_miopen,
+                         false,
+                         "Whether use MIOpen batch norm or not, "
+                         "default is false, not use miopen bn");
+#endif
+
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_batchnorm_spatial_persistent
@@ -1289,6 +1304,16 @@ PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
                          "Whether enable fuse_parallel_matmul_pass in cinn.");
 
 /**
+ * CINN fallback fusion ops FLAG
+ * Name: FLAGS_enable_fusion_fallback
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
+                         false,
+                         "Whether enable fallback fusion ops in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1453,6 +1478,10 @@ PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
                          "whether truncate the logging files under directory "
                          "FLAGS_logging_pir_py_code_dir");
 
+PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
+                         false,
+                         "whether dump symbolic dims into pir py code.");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api
@@ -1612,6 +1641,11 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
 
+PHI_DEFINE_EXPORTED_int64(
+    pir_broadcast_tree_limit,
+    32,
+    "Maximum number of broadcast nodes allowed in a tree");
+
 PHI_DEFINE_EXPORTED_string(
     nvidia_package_dir,  // NOLINT
     "",
@@ -1711,6 +1745,11 @@ PHI_DEFINE_EXPORTED_int32(
     -1,
     "Max count of eliminate redundant computation in CSE, for debug usage");
 
+PHI_DEFINE_EXPORTED_bool(
+    use_xqa_optim,
+    false,
+    "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
@@ -1718,6 +1757,18 @@ PHI_DEFINE_EXPORTED_string(
     "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
+
+/**
+ * Apply global search in blaslt FLAG
+ * Name: enable_blaslt_global_search
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply global search in blaslt.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_blaslt_global_search,
+                         false,
+                         "Whether to use global search in blaslt.");
 
 PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                            "",
@@ -1739,3 +1790,33 @@ PHI_DEFINE_EXPORTED_string(
     win_cuda_bin_dir,  // NOLINT
     "",
     "Specify path for loading *.dll about cuda on windows");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp32,
+                           1e-6,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_fp32,
+                           1e-6,
+                           "It controls the rtol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp16,
+                           1e-3,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_fp16,
+                           1e-3,
+                           "It controls the rtol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_bf16,
+                           1e-3,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_bf16,
+                           1e-3,
+                           "It controls the rtol of accuracy_check op");

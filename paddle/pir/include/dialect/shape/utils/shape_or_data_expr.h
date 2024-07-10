@@ -116,8 +116,10 @@ class ShapeOrData {
 
 using TensorShapeOrDataDimExprs = ShapeOrData<DimExpr>;
 using TensorListShapeOrDataDimExprs = std::vector<TensorShapeOrDataDimExprs>;
-using ShapeOrDataDimExprsBase =
-    std::variant<TensorShapeOrDataDimExprs, TensorListShapeOrDataDimExprs>;
+using NullShapeOrDataDimExpr = std::monostate;
+using ShapeOrDataDimExprsBase = std::variant<NullShapeOrDataDimExpr,
+                                             TensorShapeOrDataDimExprs,
+                                             TensorListShapeOrDataDimExprs>;
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
  public:
@@ -128,6 +130,9 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   ShapeOrDataDimExprs(
       const TensorListShapeOrDataDimExprs& tensor_list_dim_exprs)
       : ShapeOrDataDimExprsBase(tensor_list_dim_exprs) {}
+
+  ShapeOrDataDimExprs(const NullShapeOrDataDimExpr& null_dim_expr)  // NOLINT
+      : ShapeOrDataDimExprsBase(null_dim_expr) {}
 
   template <typename T>
   bool isa() const {

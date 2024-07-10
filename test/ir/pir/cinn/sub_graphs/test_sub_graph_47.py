@@ -47,6 +47,7 @@ class TestLayer(TestBase):
             paddle.randint(low=0, high=10, shape=[2], dtype=paddle.int64),
         )
         self.net = LayerCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

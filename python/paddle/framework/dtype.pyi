@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..base.core import (
+    finfo as core_finfo,
+    iinfo as core_iinfo,
+)
+
 class dtype: ...
 
 uint8: dtype
@@ -29,3 +34,9 @@ complex64: dtype
 complex128: dtype
 
 bool: dtype
+
+float8_e4m3fn: dtype
+float8_e5m2: dtype
+
+def finfo(dtype: dtype | str) -> core_finfo: ...
+def iinfo(dtype: dtype | str) -> core_iinfo: ...

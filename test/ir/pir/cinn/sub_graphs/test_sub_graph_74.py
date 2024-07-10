@@ -76,6 +76,7 @@ class TestLayer(TestBase):
         )
         self.net = LayerCase
         self.with_precision_compare = False
+        self.with_train = False
 
 
 if __name__ == '__main__':

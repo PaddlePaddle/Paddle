@@ -35,7 +35,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
 #if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_RCCL)
-  place_ = platform::CUDAPlace(place_id);
+  place_ = phi::GPUPlace(place_id);
 #endif
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(
       trainer_desc.device_worker_name());

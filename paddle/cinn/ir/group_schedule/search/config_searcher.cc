@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -28,7 +28,8 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
     const BucketInfo& bucket_info,
     double sampling_prob,
     int max_sampling_times,
-    int repeats)
+    int repeats,
+    std::vector<std::vector<double>> weights)
     : program_(program),
       bucket_info_(bucket_info),
       measurer_(program),
@@ -36,16 +37,30 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
       max_sampling_times_(max_sampling_times),
       repeats_(repeats) {
   double weighted_space_size = 1.0;
-  for (const auto& dim : bucket_info_.space) {
-    PADDLE_ENFORCE_EQ(dim.upper_bound - dim.lower_bound + 1,
-                      dim.weights.size(),
-                      ::common::errors::InvalidArgument(
-                          "The number of weights does not match the difference "
-                          "between the upper and lower bound"));
-
-    double weights_sum =
-        std::accumulate(dim.weights.begin(), dim.weights.end(), 0.0);
-    weighted_space_size *= weights_sum;
+  if (weights.size() == 0) {
+    for (int i = 0; i < bucket_info_.space.size(); i++) {
+      auto weight =
+          std::vector<double>(bucket_info_.space[i].upper_bound -
+                                  bucket_info_.space[i].lower_bound + 1,
+                              1.0);
+      double weights_sum = std::accumulate(weight.begin(), weight.end(), 0.0);
+      weighted_space_size *= weights_sum;
+      weights_.push_back(weight);
+    }
+  } else {
+    for (int i = 0; i < bucket_info_.space.size(); i++) {
+      PADDLE_ENFORCE_EQ(
+          bucket_info_.space[i].upper_bound -
+              bucket_info_.space[i].lower_bound + 1,
+          weights[i].size(),
+          ::common::errors::InvalidArgument(
+              "The number of weights does not match the difference "
+              "between the upper and lower bound"));
+      double weights_sum =
+          std::accumulate(weights[i].begin(), weights[i].end(), 0.0);
+      weighted_space_size *= weights_sum;
+      weights_.push_back(weights[i]);
+    }
   }
   sampling_times_ =
       std::min(static_cast<int>(weighted_space_size * sampling_prob),
@@ -54,8 +69,9 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
   // Generate Sampling Inputs
   const auto Sample = [&]() -> std::vector<int64_t> {
     std::vector<int64_t> samples;
-    for (BucketInfo::Dimension dim : bucket_info_.space) {
-      int sampled = utils::SampleDiscreteFromDistribution<double>(dim.weights,
+    for (int i = 0; i < bucket_info_.space.size(); i++) {
+      BucketInfo::Dimension dim = bucket_info_.space[i];
+      int sampled = utils::SampleDiscreteFromDistribution<double>(weights_[i],
                                                                   &rand_seed_);
       samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
     }
@@ -80,19 +96,15 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
 ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
     const CandidateType& candidate) {
   auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
-  IterSpaceType iter_space_type = [&] {
-    std::vector<std::pair<std::string, std::string>> res;
-    for (const auto& dim : bucket_info_.space) {
-      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
-    }
-    return res;
-  }();
-  ScheduleConfig::TileConfig config{
-      candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
-  tile_config_database->AddConfig(
-      cinn::common::DefaultTarget(), bucket_info_, config);
-  auto& schedule_config_manager = ScheduleConfigManager::Instance();
-  schedule_config_manager.AddConfigDatabase("custom", tile_config_database);
+  VLOG(3) << "Bucket_info_.space.size is " << bucket_info_.space.size();
+  if (candidate.size() != 0) {
+    ScheduleConfig::TileConfig config{
+        candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
+    tile_config_database->AddConfig(
+        cinn::common::DefaultTarget(), bucket_info_, config);
+    auto& schedule_config_manager = ScheduleConfigManager::Instance();
+    schedule_config_manager.AddConfigDatabase("search", tile_config_database);
+  }
   measurer_.Compile();
 
   for (auto& input_name_and_shapes : inputs_sampling_) {
@@ -201,7 +213,7 @@ std::pair<ScoreType, CandidateType> ScheduleConfigSearcher::Search(
   VLOG(6) << "Candidate num = " << candidates.size();
   for (const auto& candidate : candidates) {
     ScoreType score = (*objective_func_)(candidate);
-    VLOG(6) << "Candidate: [" << utils::Join<int>(candidate, ", ") << "]";
+    VLOG(6) << "Candidate: [" << utils::Join<int64_t>(candidate, ", ") << "]";
     VLOG(6) << "Score = " << score;
     records_[score] = candidate;
   }

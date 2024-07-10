@@ -423,7 +423,7 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   {% set kernel = op["kernel"] %}
   {% if kernel["data_type"] is not none or kernel["backend"] is not none
       or kernel["force_backend"] is not none
-      or "complex_promote" in op or "data_transform" in op 
+      or "complex_promote" in op or "data_transform" in op
       or "get_expected_kernel_type" in op%}
  protected:
     {% if kernel["data_type"] is not none or kernel["backend"] is not none
@@ -629,7 +629,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{attr | to_int_array_tensors_name}}", this->Input("{{attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif attr["typename"] is scalar and 
+      {% elif attr["typename"] is scalar and
       ("is_support_tensor" not in attr or attr["is_support_tensor"] is false)%}
     if (this->HasInput("{{attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{attr | to_scalar_tensor_name}}", this->Input("{{attr | to_scalar_tensor_name}}"));
@@ -848,7 +848,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     auto {{outputs[i] + "_t"}} = this->GetSingleInputGrad({{name_in_forward_orig | to_opmaker_name}});
     {% elif output_typename == "Tensor[]" %}
     auto {{outputs[i] + "_t"}} = this->GetMultiInputGrad({{name_in_forward_orig | to_opmaker_name}});
-    {%- endif %}    
+    {%- endif %}
   {%- endfor %}
 {%- endmacro %}
 
@@ -864,7 +864,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
       {{outputs[i]}}[i] = &{{outputs[i] + "_t"}}[i];
     }
     {{outputs[i]}} = this->GetOutputPtr({{outputs[i]}});
-    {%- endif %}    
+    {%- endif %}
   {%- endfor %}
 {%- endmacro %}
 
@@ -876,7 +876,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     auto {{outputs[i] + "_name"}} = this->GetOutputName({{outputs[i] + "_t"}});
     {% elif output_typename == "Tensor[]" %}
     auto {{outputs[i] + "_name"}} = this->GetOutputName({{outputs[i] + "_t"}});
-    {%- endif %}    
+    {%- endif %}
   {%- endfor %}
 {%- endmacro %}
 

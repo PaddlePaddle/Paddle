@@ -930,13 +930,14 @@ class TestFunctional(unittest.TestCase):
         pil_img = Image.fromarray(np_img).convert('I')
         pil_tensor = F.to_tensor(pil_img)
 
-        pil_img = Image.fromarray(np_img).convert('I;16')
+        pil_img_16bit = Image.new('I;16', pil_img.size)
+        pil_img_16bit.paste(pil_img)
         pil_tensor = F.to_tensor(pil_img)
 
         pil_img = Image.fromarray(np_img).convert('F')
         pil_tensor = F.to_tensor(pil_img)
 
-        pil_img = Image.fromarray(np_img).convert('1')
+        pil_img = Image.fromarray(np_img).convert('L')
         pil_tensor = F.to_tensor(pil_img)
 
         pil_img = Image.fromarray(np_img).convert('YCbCr')

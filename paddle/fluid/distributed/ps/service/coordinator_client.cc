@@ -25,8 +25,7 @@
 static const int MIN_PORT = 8500;
 static const int MAX_PORT = 65535;
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 PD_DEFINE_uint64(total_fl_client_size, 100, "supported total fl client size");
 PD_DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
@@ -201,5 +200,4 @@ void CoordinatorClient::SendFLStrategy(const uint32_t& client_id) {
   return;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

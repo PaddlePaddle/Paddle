@@ -24,9 +24,7 @@ limitations under the License. */
 
 COMMON_DECLARE_string(selected_gpus);
 
-namespace phi {
-namespace backends {
-namespace gpu {
+namespace phi::backends::gpu {
 
 static inline std::vector<std::string> Split(std::string const& original,
                                              char separator) {
@@ -83,6 +81,4 @@ size_t GpuMinChunkSize() {
   return 1 << 8;
 }
 
-}  // namespace gpu
-}  // namespace backends
-}  // namespace phi
+}  // namespace phi::backends::gpu

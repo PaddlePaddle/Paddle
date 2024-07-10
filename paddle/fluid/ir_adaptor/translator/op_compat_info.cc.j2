@@ -2,7 +2,7 @@
 
 namespace paddle {
 namespace translator {
-    
+
 OpNameNormalizer::OpNameNormalizer() {
     op_name_mappings = {
         {% for legacy_name, normalized_name in op_name_pairs.items() %}
@@ -11,35 +11,35 @@ OpNameNormalizer::OpNameNormalizer() {
     };
     op_arg_name_mappings = {
         {% for op_name, arg_name_mappings in op_arg_name_pairs.items() %}
-        { 
-            "{{op_name}}", 
+        {
+            "{{op_name}}",
             {
                 {% for normalized_name, legacy_name in arg_name_mappings.items() %}
                 { "{{normalized_name}}", "{{legacy_name}}" },
                 {% endfor %}
-            }, 
+            },
         },
         {% endfor %}
     };
     op_mutable_attributes = {
         {% for op_name, mutable_attributes in op_mutable_attributes.items() %}
-        { 
-            "{{op_name}}", 
+        {
+            "{{op_name}}",
             {
                 {% for attribute_name in mutable_attributes %}
                 "{{attribute_name}}",
                 {% endfor %}
-            }, 
+            },
         },
         {% endfor %}
     };
     op_mutable_attribute_infos = {
         {% for op_name, mutable_attribute_infos in op_mutable_attribute_infos.items() %}
-        { 
-            "{{op_name}}", 
+        {
+            "{{op_name}}",
             {
                 {% for attribute_name, attribute_info in mutable_attribute_infos.items() %}
-                { 
+                {
                     "{{attribute_name}}",
                     {
                     {% for candidate_var_name in attribute_info  %}
@@ -48,7 +48,7 @@ OpNameNormalizer::OpNameNormalizer() {
                     },
                 },
                 {% endfor %}
-            }, 
+            },
         },
         {% endfor %}
     };

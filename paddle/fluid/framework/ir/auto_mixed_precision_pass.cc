@@ -26,9 +26,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 
@@ -1023,9 +1021,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
   VLOG(4) << "insert number of cast op: " << cache.size();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(auto_mixed_precision_pass,
               paddle::framework::ir::AutoMixedPrecisionPass);

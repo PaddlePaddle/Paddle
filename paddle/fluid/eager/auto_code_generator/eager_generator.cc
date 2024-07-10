@@ -33,8 +33,7 @@
 
 #define NUM_CREATED_DUP_INPUTS 4
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // To handle append_op at python-level
 std::unordered_map<std::string, std::vector<std::string>>
@@ -1957,12 +1956,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
-              "  paddle::Tensor& %s = *%s;\n";
+              "  paddle::Tensor& %s = *%s;\n"
+              "  (void)%s; // To avoid error: unused variable\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                    output_name,
                                                    output_var_args_name,
                                                    output_varname,
-                                                   output_var_args_name);
+                                                   output_var_args_name,
+                                                   output_varname);
         }
       } else {
         if (!forward_inplace_map.empty() &&
@@ -3310,8 +3311,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   GenerateNodeHFile(node_h_path, grad_node_h_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {

@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/phi/common/port.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void save_paddle2cinn_varmap(
     std::unordered_map<std::string, std::string> paddle2cinn_var_map,
@@ -45,5 +44,4 @@ void save_paddle2cinn_varmap(
   outfile.close();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

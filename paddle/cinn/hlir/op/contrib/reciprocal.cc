@@ -100,7 +100,6 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
@@ -109,11 +108,9 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
 
         ir::Tensor out = Reciprocal(tensor_A, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of Reciprocal is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -149,7 +146,6 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
@@ -158,11 +154,9 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
 
         ir::Tensor out = Reciprocal(tensor_A, tensor_name);
         std::vector<CINNValue> res;
-        stages->InsertLazily(out);
         res.push_back(CINNValue(out));
         CHECK(!out_type.empty())
             << "Output type of Reciprocal is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -170,23 +164,6 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
   strategy->AddImpl(
       reciprocal_compute, lang::PackedFunc(), "strategy.reciprocal.x86", 1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForReciprocal(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty())
-      << "The input's shape size is empty! Please check again.";
-  std::vector<framework::shape_t> res{inputs_shape[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForReciprocal(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
 }
 
 }  // namespace op
@@ -202,10 +179,6 @@ CINN_REGISTER_HELPER(reciprocal_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForReciprocal)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForReciprocalSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForReciprocal))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForReciprocal))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);

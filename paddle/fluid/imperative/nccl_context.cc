@@ -33,14 +33,11 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 void NCCLParallelContext::BcastNCCLId(
@@ -134,7 +131,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place_),
+      phi::is_gpu_place(place_),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
@@ -232,5 +229,4 @@ void NCCLParallelContext::SynchronizeCompute() {
 
 #endif
 
-}  //  namespace imperative
-}  //  namespace paddle
+}  // namespace paddle::imperative

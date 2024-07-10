@@ -26,6 +26,8 @@ struct GroupInfo;
 
 namespace ir {
 
+using IterSpaceType = std::vector<std::pair<std::string, std::string>>;
+
 struct ScheduleConfig {
   struct BaseInfo {
     std::vector<int64_t> reduce_axis;
@@ -37,14 +39,12 @@ struct ScheduleConfig {
     bool has_dynamic_spatial{false};
     bool has_dynamic_reduce{false};
     bool is_reduce_all{false};
+    IterSpaceType iter_space_type;
 
     std::set<std::string> reduce_tensor_names;
     std::set<std::string> temp_var_names;
     std::set<std::string> shared_var_names;
     std::set<std::string> direct_output_var_names;
-
-    std::unordered_map<std::string, BroadcastInfo> broadcast_info;
-    std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
   };
 
   struct TileConfig {
@@ -64,7 +64,6 @@ struct BucketInfo {
     int upper_bound;
     std::string iter_type;
     bool is_dynamic;
-    std::vector<double> weights;
     Dimension()
         : lower_bound(0),
           upper_bound(INT_MAX),
@@ -75,18 +74,9 @@ struct BucketInfo {
           upper_bound(upper),
           iter_type(iter_type),
           is_dynamic(is_dynamic) {}
-    Dimension(int low,
-              int upper,
-              std::string iter_type,
-              bool is_dynamic,
-              std::vector<double> weights)
-        : lower_bound(low),
-          upper_bound(upper),
-          iter_type(iter_type),
-          is_dynamic(is_dynamic),
-          weights(weights) {}
   };
   std::vector<Dimension> space;
+  int bucket_priority = 100;
 
   std::string ToString() const;
   BucketInfo() = default;
@@ -97,6 +87,7 @@ struct BucketInfo {
              bool sp_is_dynamic,
              bool rb_is_dynamic);
   explicit BucketInfo(size_t size) : space(std::vector<Dimension>(size)) {}
+  explicit BucketInfo(const std::vector<Dimension>& dims);
   bool operator==(const BucketInfo& other) const;
 };
 

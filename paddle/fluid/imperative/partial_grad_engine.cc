@@ -38,8 +38,7 @@
 
 COMMON_DECLARE_bool(sort_sum_gradient);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 struct HashPair {
   template <class T1, class T2>
@@ -319,7 +318,7 @@ static std::string GradPendingOpTypes(const GradOpNode &node) {
 
 static void FillConstantLike(const VariableWrapper &ref_var,
                              VariableWrapper *dst_var,
-                             const platform::Place &place,
+                             const phi::Place &place,
                              float value) {
   auto &ref_tensor = ref_var.Var().Get<phi::DenseTensor>();
   auto *dst_tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -476,7 +475,7 @@ class ReadyGradVarInfoMap {
   }
 
   std::shared_ptr<VarBase> Get(const VariableWrapper *var,
-                               const platform::Place &place,
+                               const phi::Place &place,
                                bool *is_last) {
     auto iter = vars_.find(var);
     PADDLE_ENFORCE_EQ(
@@ -592,7 +591,7 @@ class PartialGradTask {
                   const std::vector<std::shared_ptr<VarBase>> &output_targets,
                   const std::vector<std::shared_ptr<VarBase>> &output_grads,
                   const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-                  const platform::Place &place,
+                  const phi::Place &place,
                   bool create_graph,
                   bool retain_graph,
                   bool allow_unused,
@@ -637,7 +636,7 @@ class PartialGradTask {
   std::unordered_set<VariableWrapper *> no_grad_var_grad_;
   std::vector<std::weak_ptr<VariableWrapper>> reset_stop_gradient_vars_;
 
-  platform::Place place_;
+  phi::Place place_;
   bool create_graph_;
   bool retain_graph_;
   bool allow_unused_;
@@ -649,7 +648,7 @@ PartialGradTask::PartialGradTask(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place,
+    const phi::Place &place,
     bool create_graph,
     bool retain_graph,
     bool allow_unused,
@@ -1147,7 +1146,7 @@ PartialGradEngine::PartialGradEngine(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place,
+    const phi::Place &place,
     bool create_graph,
     bool retain_graph,
     bool allow_unused,
@@ -1184,5 +1183,4 @@ void PartialGradEngine::Execute() {
   Clear();
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

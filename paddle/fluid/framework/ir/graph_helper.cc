@@ -17,7 +17,6 @@ limitations under the License. */
 #include <queue>
 #include <stack>
 
-#include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -40,9 +39,7 @@ PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "FLAGS_print_sub_graph_dir is used "
                               "to print the nodes of sub_graphs.");
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 namespace {
 
 template <class NodeComparator = ir::NodeComp>
@@ -582,21 +579,6 @@ void ReplaceAllReduceOp(const Node &node,
   all_reduce_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                              (static_cast<int>(OpRole::kBackward)));
 
-  // handle grad merge
-  if (dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handle)) {
-    VLOG(4) << "FusedGradMergeAllReduceOpHandle: add cond to c_allreduce_sum";
-    const std::string cond_name =
-        dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handle)
-            ->GradMergeCondName();
-    all_reduce_op_desc.SetInput("Cond", {cond_name});
-  } else if (dynamic_cast<details::GradMergeAllReduceOpHandle *>(&op_handle)) {
-    VLOG(4) << "GradMergeAllReduceOpHandle: add cond to c_allreduce_sum";
-    const std::string cond_name =
-        dynamic_cast<details::GradMergeAllReduceOpHandle *>(&op_handle)
-            ->GradMergeCondName();
-    all_reduce_op_desc.SetInput("Cond", {cond_name});
-  }
-
   // Add dependency for FusedAllReduce.
   // For the following example:
   // ### fused_grad = FusedAllReduce(grad0, grad1, grad2, ...)
@@ -964,6 +946,4 @@ std::vector<std::vector<std::vector<ir::Node::Dep>>> GetOpDependencies(
   return deps;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

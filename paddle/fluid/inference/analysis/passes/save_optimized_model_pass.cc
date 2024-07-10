@@ -20,9 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/scope.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   std::string model_opt_cache_dir = argument->optimized_model_save_path();
@@ -93,7 +91,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
     op->SetAttr("file_path", save_params_path);
     op->CheckAttrs();
 
-    framework::Executor exe(platform::CPUPlace{});
+    framework::Executor exe(phi::CPUPlace{});
     exe.Run(save_program, &scope, 0, true, true);
   };
   // TODO(shentanyue01): Setting hardware and version identification for
@@ -137,6 +135,4 @@ std::string SaveOptimizedModelPass::repr() const {
   return "save_optimized_model_pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

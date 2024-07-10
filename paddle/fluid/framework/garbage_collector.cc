@@ -24,10 +24,9 @@ COMMON_DECLARE_double(eager_delete_tensor_gb);
 COMMON_DECLARE_double(memory_fraction_of_eager_deletion);
 COMMON_DECLARE_bool(fast_eager_deletion_mode);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
-GarbageCollector::GarbageCollector(const platform::Place &place,
+GarbageCollector::GarbageCollector(const phi::Place &place,
                                    size_t max_memory_size)
     : garbages_(std::make_unique<GarbageQueue>()),
       mutex_(nullptr),
@@ -38,7 +37,7 @@ GarbageCollector::GarbageCollector(const platform::Place &place,
   }
 }
 
-CPUGarbageCollector::CPUGarbageCollector(const platform::CPUPlace &place,
+CPUGarbageCollector::CPUGarbageCollector(const phi::CPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
@@ -47,7 +46,7 @@ void CPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 }
 
 #ifdef PADDLE_WITH_XPU
-XPUGarbageCollector::XPUGarbageCollector(const platform::XPUPlace &place,
+XPUGarbageCollector::XPUGarbageCollector(const phi::XPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
@@ -56,7 +55,7 @@ void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 #endif
 
 #ifdef PADDLE_WITH_IPU
-IPUGarbageCollector::IPUGarbageCollector(const platform::IPUPlace &place,
+IPUGarbageCollector::IPUGarbageCollector(const phi::IPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 void IPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
@@ -66,7 +65,7 @@ void IPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
-    const platform::CUDAPlace &place, size_t max_memory_size)
+    const phi::GPUPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void UnsafeFastGPUGarbageCollector::ClearCallback(
@@ -75,7 +74,7 @@ void UnsafeFastGPUGarbageCollector::ClearCallback(
 }
 
 DefaultStreamGarbageCollector::DefaultStreamGarbageCollector(
-    const platform::CUDAPlace &place, size_t max_memory_size)
+    const phi::GPUPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void DefaultStreamGarbageCollector::Wait() const {
@@ -87,7 +86,7 @@ void DefaultStreamGarbageCollector::ClearCallback(
   static_cast<phi::GPUContext *>(this->dev_ctx_)->AddStreamCallback(callback);
 }
 
-StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
+StreamGarbageCollector::StreamGarbageCollector(const phi::GPUPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size),
       stream_(nullptr),
@@ -119,7 +118,7 @@ void StreamGarbageCollector::ClearCallback(
 }
 
 CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
-    const platform::CUDAPinnedPlace &place, size_t max_memory_size)
+    const phi::GPUPinnedPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void CUDAPinnedGarbageCollector::ClearCallback(
@@ -130,7 +129,7 @@ void CUDAPinnedGarbageCollector::ClearCallback(
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 CustomDefaultStreamGarbageCollector::CustomDefaultStreamGarbageCollector(
-    const platform::CustomPlace &place, size_t max_memory_size)
+    const phi::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void CustomDefaultStreamGarbageCollector::Wait() const {
@@ -145,7 +144,7 @@ void CustomDefaultStreamGarbageCollector::ClearCallback(
 }
 
 CustomDeviceUnsafeFastGarbageCollector::CustomDeviceUnsafeFastGarbageCollector(
-    const platform::CustomPlace &place, size_t max_memory_size)
+    const phi::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void CustomDeviceUnsafeFastGarbageCollector::ClearCallback(
@@ -154,7 +153,7 @@ void CustomDeviceUnsafeFastGarbageCollector::ClearCallback(
 }
 
 CustomStreamGarbageCollector::CustomStreamGarbageCollector(
-    const platform::CustomPlace &place, size_t max_memory_size)
+    const phi::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   phi::DeviceGuard guard(place);
   stream_ = std::make_unique<phi::stream::Stream>();
@@ -200,7 +199,7 @@ double GetEagerDeletionMemoryFraction() {
 }
 
 std::unique_ptr<GarbageCollector> CreateGarbageCollector(
-    const platform::Place &place, const size_t max_memory_size) {
+    const phi::Place &place, const size_t max_memory_size) {
   std::unique_ptr<GarbageCollector> gc = nullptr;
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -249,5 +248,4 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
   return std::unique_ptr<GarbageCollector>(gc.release());
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

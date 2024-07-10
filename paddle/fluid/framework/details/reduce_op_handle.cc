@@ -26,9 +26,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Whether to make the result of computation deterministic in CPU side.");
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 std::once_flag CollectiveContext::init_flag_;
 std::unique_ptr<CollectiveContext> CollectiveContext::context_;
@@ -113,7 +111,7 @@ void ReduceOpHandle::RunImpl() {
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
-  platform::Place t_out_p;
+  phi::Place t_out_p;
   if (platform::is_gpu_place(in_p)) {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()),
                       true,
@@ -121,7 +119,7 @@ void ReduceOpHandle::RunImpl() {
                           "Places of input and output must be all on GPU."));
     t_out_p = out_var_handle->place();
   } else {
-    t_out_p = platform::CPUPlace();
+    t_out_p = phi::CPUPlace();
   }
 
   if (pre_in_var->IsType<phi::SelectedRows>()) {
@@ -177,7 +175,7 @@ void ReduceOpHandle::RunImpl() {
 
           auto trg = out_var->GetMutable<phi::DenseTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
-            TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+            TensorCopy(reduce_sum_trg, phi::CPUPlace(), trg);
           }
         }
       });
@@ -318,6 +316,4 @@ std::vector<const T *> ReduceOpHandle::GetInputValues(
 }
 
 std::string ReduceOpHandle::Name() const { return "reduce"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

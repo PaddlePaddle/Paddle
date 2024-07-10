@@ -23,8 +23,7 @@
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 DrrPatternContext::DrrPatternContext() {
   source_pattern_graph_ = std::make_shared<SourcePatternGraph>();
@@ -294,5 +293,4 @@ drr::Tensor& SourcePattern::OutputNoneTensor() {
   return ctx_->SourceTensorPattern(Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME);
 }
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr

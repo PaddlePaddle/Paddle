@@ -21,8 +21,7 @@
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            const std::string& group_key,
@@ -266,5 +265,4 @@ std::string NCCLCommTask::GetTraceMsg() {
          ",nranks:" + std::to_string(size_);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

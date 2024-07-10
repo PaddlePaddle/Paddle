@@ -47,10 +47,14 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     need_merge_var_names_.push_back(
         trainer_desc.downpour_param().stat_var_names(i));
   }
+  use_ps_gpu_ = trainer_desc.use_ps_gpu();
+  use_gpu_graph_ = trainer_desc.use_gpu_graph();
+  VLOG(3) << "Initialize use_ps_gpu_:" << use_ps_gpu_
+          << "; use_gpu_graph_:" << use_gpu_graph_;
 #ifdef PADDLE_WITH_HETERPS
   for (int i = 0; i < thread_num_; ++i) {
     int num = trainer_desc.worker_places(i);
-    platform::CUDAPlace place = platform::CUDAPlace(num);
+    phi::GPUPlace place = phi::GPUPlace(num);
     places_.push_back(place);
   }
 #endif
@@ -156,45 +160,49 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (auto& th : wait_futures) {
     th.get();
   }
-#ifndef PADDLE_WITH_GPU_GRAPH
+
 #ifdef PADDLE_WITH_HETERPS
-  for (int num = 0; num < thread_num_; ++num) {
-    auto place = places_[num];
-    Scope* scope = workers_[num]->GetThreadScope();
-    auto& block = main_program.Block(0);
-    for (auto& var : block.AllVars()) {
+  // only gpups mode
+  if (!use_gpu_graph_ && use_ps_gpu_) {
+    for (int num = 0; num < thread_num_; ++num) {
+      auto place = places_[num];
+      Scope* scope = workers_[num]->GetThreadScope();
+      auto& block = main_program.Block(0);
+      for (auto& var : block.AllVars()) {
+        if (var->Persistable()) {
+          auto name = var->Name();
+          Variable* root_var = root_scope_->FindVar(name);
+          if (!root_var) {
+            continue;
+          }
+          if (root_var->IsType<phi::SelectedRows>()) {
+            continue;
+          }
+          phi::DenseTensor* root_tensor =
+              root_var->GetMutable<phi::DenseTensor>();
+          auto* ptr = scope->Var(name);
+          InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+          phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
+          TensorCopy(*root_tensor, place, thread_tensor);
+        }
+      }
+    }
+  }
+#endif
+  if (!use_gpu_graph_) {  // cpups mode
+    for (auto& var : main_program.Block(0).AllVars()) {
       if (var->Persistable()) {
-        auto name = var->Name();
-        Variable* root_var = root_scope_->FindVar(name);
-        if (!root_var) {
-          continue;
+        auto it = std::find(need_merge_var_names_.begin(),
+                            need_merge_var_names_.end(),
+                            var->Name());
+        if (it == need_merge_var_names_.end() &&
+            var->GetType() != proto::VarType::SELECTED_ROWS) {
+          VLOG(2) << "train param: " << var->Name();
+          trainable_param_.push_back(var->Name());
         }
-        if (root_var->IsType<phi::SelectedRows>()) {
-          continue;
-        }
-        phi::DenseTensor* root_tensor =
-            root_var->GetMutable<phi::DenseTensor>();
-        auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
-        TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
   }
-#endif
-  for (auto& var : main_program.Block(0).AllVars()) {
-    if (var->Persistable()) {
-      auto it = std::find(need_merge_var_names_.begin(),
-                          need_merge_var_names_.end(),
-                          var->Name());
-      if (it == need_merge_var_names_.end() &&
-          var->GetType() != proto::VarType::SELECTED_ROWS) {
-        VLOG(2) << "train param: " << var->Name();
-        trainable_param_.push_back(var->Name());
-      }
-    }
-  }
-#endif
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -278,15 +286,15 @@ template <typename T>
 void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                     phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopy(*root_tensor, phi::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopy(*tensor, phi::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
+  TensorCopy(tmp_root, phi::CPUPlace(), root_tensor);
 }
 void MultiTrainer::MergeWorkerVars() {
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
@@ -331,13 +339,16 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
-#ifdef PADDLE_WITH_GPU_GRAPH
-  // graph copy dense param to root scope
-  for (int i = 0; i < thread_num_; ++i) {
-    workers_[i]->Finalize();
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  // gpugraph mode
+  if (use_gpu_graph_ && use_ps_gpu_) {
+    // graph copy dense param to root scope
+    for (int i = 0; i < thread_num_; ++i) {
+      workers_[i]->Finalize();
+    }
+  } else if (use_ps_gpu_) {  // gpups mode
+    MergeDenseParam();
   }
-#elif PADDLE_WITH_HETERPS
-  MergeDenseParam();
 #endif
 #if defined PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
@@ -404,7 +415,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
         exit(-1);                                                              \
       }                                                                        \
       phi::DenseTensor tmp_tensor;                                             \
-      TensorCopy(*thread_tensor, platform::CPUPlace(), &tmp_tensor);           \
+      TensorCopy(*thread_tensor, phi::CPUPlace(), &tmp_tensor);                \
       phi::funcs::set_constant(*dev_ctx_, thread_tensor, 0.0);                 \
     }                                                                          \
   } while (0)

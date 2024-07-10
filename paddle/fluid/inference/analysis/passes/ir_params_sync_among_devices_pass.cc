@@ -32,9 +32,7 @@ PD_DEFINE_bool(  // NOLINT
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
@@ -54,7 +52,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
                     true,
                     platform::errors::PreconditionNotMet(
                         "The gpu_device_id field should be valid"));
-  platform::Place place = platform::CUDAPlace(argument->gpu_device_id());
+  phi::Place place = phi::GPUPlace(argument->gpu_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -101,7 +99,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
-        platform::CPUPlace cpu_place;
+        phi::CPUPlace cpu_place;
         phi::DenseTensor temp_tensor;
         temp_tensor.Resize(t->dims());
         paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
@@ -142,8 +140,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
   LOG(INFO) << "Sync params from CPU to " << argument->custom_device_type()
             << ":" << argument->custom_device_id();
 
-  platform::Place place = platform::CustomPlace(argument->custom_device_type(),
-                                                argument->custom_device_id());
+  phi::Place place = phi::CustomPlace(argument->custom_device_type(),
+                                      argument->custom_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -156,7 +154,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
     if (var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<phi::DenseTensor>();
 
-      platform::CPUPlace cpu_place;
+      phi::CPUPlace cpu_place;
       phi::DenseTensor temp_tensor;
       temp_tensor.Resize(t->dims());
 
@@ -180,8 +178,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
   LOG(INFO) << "Sync params from CPU to XPU: "
             << "xpu_device_id - " << argument->xpu_device_id();
 
-  platform::CPUPlace cpu_place;
-  platform::Place xpu_place = platform::XPUPlace(argument->xpu_device_id());
+  phi::CPUPlace cpu_place;
+  phi::Place xpu_place = phi::XPUPlace(argument->xpu_device_id());
   auto *scope = argument->scope_ptr();
   framework::ir::Graph &main_graph = argument->main_graph();
 
@@ -229,13 +227,11 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
     CopyParamsToXpu(argument);
   }
 #endif
-  paddle::memory::Release(platform::CPUPlace());
+  paddle::memory::Release(phi::CPUPlace());
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {
   return "ir_params_sync_among_devices_pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

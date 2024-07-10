@@ -204,7 +204,7 @@ def make_hashable(x, error_msg=None):
             return tuple(map(make_hashable, x.values()))
 
         error_msg = error_msg or "Requires a hashable object."
-        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+        raise ValueError(f"{error_msg} But received type: {type_name(x)}")
 
     return x
 
@@ -327,8 +327,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         callable_func = getattr(module, func_name)
     else:
         raise ValueError(
-            'Function: %s doesn\'t exist in the Module transformed from AST.'
-            % func_name
+            f'Function: {func_name} doesn\'t exist in the Module transformed from AST.'
         )
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.

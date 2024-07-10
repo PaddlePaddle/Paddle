@@ -21,21 +21,17 @@
 #endif
 #include <algorithm>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
     Scope *scope,
     size_t scope_idx,
-    const platform::Place &place,
+    const phi::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars,
     GarbageCollector *gc)
     : OpHandleBase(node),
@@ -213,6 +209,4 @@ std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
   return var_names;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

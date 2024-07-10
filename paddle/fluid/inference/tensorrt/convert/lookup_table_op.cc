@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class LookupTableOpConverter : public OpConverter {
  public:
@@ -72,9 +70,7 @@ class LookupTableV2OpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(lookup_table, LookupTableOpConverter);
 REGISTER_TRT_OP_CONVERTER(lookup_table_v2, LookupTableV2OpConverter);

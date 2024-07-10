@@ -55,8 +55,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
     ir::Tensor b = b_expr.as_tensor_ref();
     std::string tensor_name = "assert_true_out";
     auto out = pe::Identity(b, tensor_name).front();
-    auto stages = CreateStages({out});
-    std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+    std::vector<CINNValue> res{CINNValue(out)};
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -65,17 +64,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
                     "strategy.assert_true.x86",
                     1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForAssertTrue(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  return inputs_shape;
-}
-
-std::vector<Type> InferDtypeForAssertTrue(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  return inputs_type;
 }
 
 }  // namespace op
@@ -89,10 +77,6 @@ CINN_REGISTER_HELPER(assert_true_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForAssertTrue)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForAssertTrue))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForAssertTrue))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

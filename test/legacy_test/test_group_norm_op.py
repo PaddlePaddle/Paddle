@@ -209,7 +209,7 @@ class TestGroupNormOp(OpTest):
             gpu_grads,
             inputs_to_check,
             0.005,
-            "Gradient Check On %s" % str(place),
+            f"Gradient Check On {place}",
         )
 
     def test_check_grad(self):
@@ -1748,7 +1748,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit fwd',
             )
 
             # TODO: fix the diff between cpu and gpu grad is large in original op
@@ -1762,7 +1762,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit rev',
             )
 
     def test_jit_comp_with_cinn(self):
@@ -1820,7 +1820,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn fwd',
             )
             # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
@@ -1832,7 +1832,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn rev',
             )
             i += 1
 

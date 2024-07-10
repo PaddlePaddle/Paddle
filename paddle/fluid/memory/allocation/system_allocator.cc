@@ -46,9 +46,7 @@ COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 void* AlignedMalloc(size_t size) {
   void* p = nullptr;
@@ -292,7 +290,7 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   void* p;
-  auto place = platform::CustomPlace(dev_type_, dev_id_);
+  auto place = phi::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   p = device->MemoryAllocate(size);
   if (LIKELY(p)) {
@@ -335,7 +333,7 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
                         size,
                         plug_alloc_size));
   plug_alloc_size -= size;
-  auto place = platform::CustomPlace(dev_type_, dev_id_);
+  auto place = phi::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
   if (FLAGS_custom_device_mem_record) {
@@ -348,6 +346,4 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
 bool CustomAllocator::UseGpu() const { return true; }
 #endif
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail

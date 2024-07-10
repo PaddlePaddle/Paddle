@@ -176,6 +176,12 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   void SyncCalcStream(const Place& place);
   phi::distributed::BKCLCommContext* GetCommContext();
 
+  virtual void StartCoalescing();
+
+  virtual void EndCoalescing(
+      std::optional<std::vector<std::shared_ptr<ProcessGroup::Task>>>
+          tasks_opt = std::nullopt);
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
   std::mutex mutex_;
@@ -183,6 +189,10 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   std::unordered_map<std::string, phi::XPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::XPUContext>>
       place_to_comm_ctx_;
+
+  // For colaescing tensors processing (eg. batch_isend_irecv)
+  bool is_coalescing_{false};
+  std::vector<std::string> colaescing_place_keys_;
 };
 
 }  //  namespace distributed

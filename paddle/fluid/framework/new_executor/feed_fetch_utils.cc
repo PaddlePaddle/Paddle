@@ -19,8 +19,7 @@
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
@@ -114,7 +113,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
     auto* dst =
         &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
     if (src.IsInitialized()) {
-      TensorCopy(src, platform::CPUPlace(), dst);
+      TensorCopy(src, phi::CPUPlace(), dst);
       dst->set_lod(src.lod());
     } else {
       VLOG(6) << "Found " << var_name
@@ -150,13 +149,13 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
           &PADDLE_GET_CONST(phi::DenseTensor, fetch_list[micro_batch_id][i]));
     }
     phi::DenseTensor merged_tensor;
-    MergeTensors(tensors_ptr, platform::CPUPlace(), &merged_tensor);
+    MergeTensors(tensors_ptr, phi::CPUPlace(), &merged_tensor);
     out->at(i) = std::move(merged_tensor);
   }
 }
 
 void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
-                  const platform::Place dst_place,
+                  const phi::Place dst_place,
                   phi::DenseTensor* target) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),
@@ -253,5 +252,4 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

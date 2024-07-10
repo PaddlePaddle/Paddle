@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 void BroadcastOpHandle::RunImpl() {
   platform::RecordEvent record_event(
@@ -83,7 +81,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       RunAndRecordEvent(out_p, [in_tensor, out_var] {
         paddle::framework::TensorCopy(
             in_tensor,
-            platform::CPUPlace(),
+            phi::CPUPlace(),
             &VariableVisitor::GetMutableTensor(out_var));
       });
     }
@@ -257,7 +255,7 @@ void BroadcastOpHandle::InitOutputValue(
                         platform::errors::PreconditionNotMet(
                             "Places of input and output must be all on GPU."));
     } else {
-      t_out_p = platform::CPUPlace();
+      t_out_p = phi::CPUPlace();
     }
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
     VariableVisitor::GetMutableTensor(out_var).mutable_data(t_out_p,
@@ -266,6 +264,4 @@ void BroadcastOpHandle::InitOutputValue(
 }
 
 std::string BroadcastOpHandle::Name() const { return "broadcast"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

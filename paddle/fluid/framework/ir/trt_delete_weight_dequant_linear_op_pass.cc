@@ -20,9 +20,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                                 \
@@ -219,7 +217,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
   // Device context
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -373,9 +371,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_delete_weight_dequant_linear_op_pass,
               paddle::framework::ir::TrtDeleteWeightQuantDequantLinearOpPass);

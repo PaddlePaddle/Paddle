@@ -2,6 +2,7 @@
 # Code owners are expected to take responsibility for review patches to respective file.
 
 /CMakeLists.txt @wanghuancoder @Aurelius84 @XiaoguangHu01 @qili93
+paddle/fluid/distributed/collective @sneaxiy @ForFishes
 paddle/fluid/eager/autograd_meta.cc @JiabinYang @phlrain
 paddle/fluid/eager/autograd_meta.h @JiabinYang @phlrain
 paddle/fluid/eager/backward.cc @JiabinYang @phlrain
@@ -46,14 +47,13 @@ paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @zhiqiu
 paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder @Aurelius84
 paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen
 pyproject.toml @SigureMo @gouzil
-python/paddle/autograd/backward_utils.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98
+python/paddle/autograd/backward_utils.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98 @cyber-pioneer
 python/paddle/autograd/ir_backward.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98
 python/paddle/base/backward.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
 python/paddle/base/compiler.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
 python/paddle/base/dygraph/layers.py @JiabinYang @phlrain
 python/paddle/base/framework.py @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
 python/paddle/base/__init__.py @phlrain @Aurelius84 @qili93
-python/paddle/base/parallel_executor.py @Xreki @zhhsplendid @Aurelius84
 python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py @Aurelius84 @phlrain
 python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py @Aurelius84 @phlrain
 python/paddle/base/tests/unittests/white_list/check_shape_white_list.py @hong19860320 @Aurelius84 @phlrain

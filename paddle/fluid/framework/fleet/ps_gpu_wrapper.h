@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -120,8 +120,7 @@ class PSGPUWrapper {
      * @Brief get data
      */
     template <typename T>
-    T* mutable_data(const size_t total_bytes,
-                    const paddle::platform::Place& place) {
+    T* mutable_data(const size_t total_bytes, const phi::Place& place) {
       if (buf_ == nullptr) {
         buf_ = memory::AllocShared(place, total_bytes);
       } else if (buf_->size() < total_bytes) {
@@ -169,33 +168,33 @@ class PSGPUWrapper {
     sleep_seconds_before_fail_exit_ = 300;
   }
 
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const std::vector<int>& slot_dim,
                   const int hidden_size);
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place,
+  void PushSparseGrad(const phi::Place& place,
                       const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int batch_size);
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
                 int slot_num,
                 int total_len);
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
@@ -252,9 +251,11 @@ class PSGPUWrapper {
     if (s_instance_ == nullptr) {
       return;
     }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
-      this->EndPass();
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
+        this->EndPass();
+      }
     }
 #endif
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
@@ -814,10 +815,12 @@ class PSGPUWrapper {
   void SetPullFeatureSlotNum(int sparse_slot_num, int float_slot_num) {
     slot_num_for_pull_feature_ = sparse_slot_num;
     float_slot_num_ = float_slot_num;
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
-    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-    gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
-                                    float_slot_num_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+      gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
+                                      float_slot_num_);
+    }
 #endif
     VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_
             << ", float_slot_num is " << float_slot_num_;

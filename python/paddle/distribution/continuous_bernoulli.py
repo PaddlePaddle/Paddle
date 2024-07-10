@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor, dtype
 
 
 class ContinuousBernoulli(distribution.Distribution):
@@ -97,14 +103,16 @@ class ContinuousBernoulli(distribution.Distribution):
             [0.20103608, 0.07641447])
     """
 
-    def __init__(self, probs, lims=(0.499, 0.501)):
+    probs: Tensor
+    lims: Tensor
+    dtype: dtype
+
+    def __init__(
+        self, probs: float | Tensor, lims: tuple[float] = (0.499, 0.501)
+    ) -> None:
         self.dtype = paddle.get_default_dtype()
         self.probs = self._to_tensor(probs)
         self.lims = paddle.to_tensor(lims, dtype=self.dtype)
-        if not self._check_constraint(self.probs):
-            raise ValueError(
-                'Every element of input parameter `probs` should be nonnegative.'
-            )
 
         # eps_prob is used to clip the input `probs` in the range of [eps_prob, 1-eps_prob]
         eps_prob = paddle.finfo(self.probs.dtype).eps
@@ -116,7 +124,7 @@ class ContinuousBernoulli(distribution.Distribution):
             batch_shape = self.probs.shape
         super().__init__(batch_shape)
 
-    def _to_tensor(self, probs):
+    def _to_tensor(self, probs: float | Tensor) -> Tensor:
         """Convert the input parameters into tensors
 
         Returns:
@@ -129,18 +137,7 @@ class ContinuousBernoulli(distribution.Distribution):
             self.dtype = probs.dtype
         return probs
 
-    def _check_constraint(self, value):
-        """Check the constraint for input parameters
-
-        Args:
-            value (Tensor)
-
-        Returns:
-            bool: pass or not.
-        """
-        return (value >= 0).all() and (value <= 1).all()
-
-    def _cut_support_region(self):
+    def _cut_support_region(self) -> Tensor:
         """Generate stable support region indicator (prob < self.lims[0] && prob >= self.lims[1] )
 
         Returns:
@@ -151,7 +148,7 @@ class ContinuousBernoulli(distribution.Distribution):
             paddle.greater_than(self.probs, self.lims[1]),
         )
 
-    def _cut_probs(self):
+    def _cut_probs(self) -> Tensor:
         """Cut the probability parameter with stable support region
 
         Returns:
@@ -163,7 +160,7 @@ class ContinuousBernoulli(distribution.Distribution):
             self.lims[0] * paddle.ones_like(self.probs),
         )
 
-    def _tanh_inverse(self, value):
+    def _tanh_inverse(self, value: Tensor) -> Tensor:
         """Calculate the tanh inverse of value
 
         Args:
@@ -174,7 +171,7 @@ class ContinuousBernoulli(distribution.Distribution):
         """
         return 0.5 * (paddle.log1p(value) - paddle.log1p(-value))
 
-    def _log_constant(self):
+    def _log_constant(self) -> Tensor:
         """Calculate the logarithm of the constant factor :math:`C(lambda)` in the pdf of the Continuous Bernoulli distribution
 
         Returns:
@@ -209,7 +206,7 @@ class ContinuousBernoulli(distribution.Distribution):
         )
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of Continuous Bernoulli distribution.
 
         Returns:
@@ -230,7 +227,7 @@ class ContinuousBernoulli(distribution.Distribution):
         )
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of Continuous Bernoulli distribution.
 
         Returns:
@@ -251,7 +248,7 @@ class ContinuousBernoulli(distribution.Distribution):
             self._cut_support_region(), propose, taylor_expansion
         )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
         Args:
@@ -263,7 +260,7 @@ class ContinuousBernoulli(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
         Args:
@@ -280,7 +277,7 @@ class ContinuousBernoulli(distribution.Distribution):
         u = paddle.uniform(shape=output_shape, dtype=self.dtype, min=0, max=1)
         return self.icdf(u)
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density function.
 
         Args:
@@ -290,10 +287,6 @@ class ContinuousBernoulli(distribution.Distribution):
           Tensor: log probability. The data type is the same as `self.probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be >= 0.0 and <= 1.0.'
-            )
         eps = paddle.finfo(self.probs.dtype).eps
         cross_entropy = paddle.nan_to_num(
             value * paddle.log(self.probs)
@@ -302,7 +295,7 @@ class ContinuousBernoulli(distribution.Distribution):
         )
         return self._log_constant() + cross_entropy
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density function.
 
         Args:
@@ -313,7 +306,7 @@ class ContinuousBernoulli(distribution.Distribution):
         """
         return paddle.exp(self.log_prob(value))
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         The entropy is
@@ -342,7 +335,7 @@ class ContinuousBernoulli(distribution.Distribution):
             ),
         )
 
-    def cdf(self, value):
+    def cdf(self, value: Tensor) -> Tensor:
         r"""Cumulative distribution function
 
         .. math::
@@ -363,10 +356,6 @@ class ContinuousBernoulli(distribution.Distribution):
             Tensor: quantile of :attr:`value`. The data type is the same as `self.probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be >= 0.0 and <= 1.0.'
-            )
         cut_probs = self._cut_probs()
         cdfs = (
             paddle.pow(cut_probs, value)
@@ -387,7 +376,7 @@ class ContinuousBernoulli(distribution.Distribution):
             ),
         )
 
-    def icdf(self, value):
+    def icdf(self, value: Tensor) -> Tensor:
         r"""Inverse cumulative distribution function
 
         .. math::
@@ -407,10 +396,6 @@ class ContinuousBernoulli(distribution.Distribution):
             Tensor: the value of the r.v. corresponding to the quantile. The data type is the same as `self.probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be >= 0.0 and <= 1.0.'
-            )
         cut_probs = self._cut_probs()
         return paddle.where(
             self._cut_support_region(),
@@ -422,7 +407,7 @@ class ContinuousBernoulli(distribution.Distribution):
             value,
         )
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: ContinuousBernoulli) -> Tensor:
         r"""The KL-divergence between two Continuous Bernoulli distributions with the same `batch_shape`.
 
         The probability density function (pdf) is

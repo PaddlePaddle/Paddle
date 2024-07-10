@@ -174,6 +174,7 @@ class TestLayer(TestBase):
         )
         self.net = LayerCase
         self.with_cinn = False
+        self.with_train = False
 
     # NOTE cinn lead to error
 

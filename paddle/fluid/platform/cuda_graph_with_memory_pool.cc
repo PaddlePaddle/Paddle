@@ -22,8 +22,7 @@
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void InitCUDNNRelatedHandle(phi::GPUContext* dev_ctx) {
@@ -57,7 +56,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
     // Record method: RecordCapturingDeviceContext.
     PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "FLAGS_new_executor_use_cuda_graph must be True when "
                           "capturing stream is recorded."));
     if (num_stream > 1) {
@@ -186,5 +185,4 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
 }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

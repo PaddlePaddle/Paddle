@@ -57,6 +57,7 @@ from .layer.common import (
     Dropout2D,
     Dropout3D,
     Embedding,
+    FeatureAlphaDropout,
     Flatten,
     Fold,
     Identity,
@@ -69,7 +70,9 @@ from .layer.common import (
     Upsample,
     UpsamplingBilinear2D,
     UpsamplingNearest2D,
+    ZeroPad1D,
     ZeroPad2D,
+    ZeroPad3D,
 )
 
 # TODO: import all neural network related api under this directory,
@@ -135,6 +138,8 @@ from .layer.pooling import (
     AvgPool3D,
     FractionalMaxPool2D,
     FractionalMaxPool3D,
+    LPPool1D,
+    LPPool2D,
     MaxPool1D,
     MaxPool2D,
     MaxPool3D,
@@ -192,6 +197,7 @@ __all__ = [
     'Dropout3D',
     'Bilinear',
     'AlphaDropout',
+    'FeatureAlphaDropout',
     'Unfold',
     'Fold',
     'RNNCellBase',
@@ -300,4 +306,8 @@ __all__ = [
     'Unflatten',
     'FractionalMaxPool2D',
     'FractionalMaxPool3D',
+    'LPPool1D',
+    'LPPool2D',
+    'ZeroPad1D',
+    'ZeroPad3D',
 ]

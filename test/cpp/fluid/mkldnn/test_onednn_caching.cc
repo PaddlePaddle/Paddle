@@ -54,7 +54,7 @@ class CacheTester {
 };
 
 template <typename T>
-void RunOperator(const platform::Place &place,
+void RunOperator(const phi::Place &place,
                  const std::string &op_type,
                  const framework::DDim &dims,
                  const std::string &first_input) {

@@ -89,6 +89,9 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
               SimplifyTensorShapeOrData(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
+      },
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }
@@ -101,6 +104,9 @@ void SimplifyDimExpr(pir::Operation* module_op) {
 
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
+      if (!value || !value.type()) {
+        return;
+      }
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           shape_analysis->GetShapeOrDataForValue(value);
       VLOG(8) << op.name() << "     origin_shape_or_data: " << shape_or_data;

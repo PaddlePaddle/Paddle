@@ -135,11 +135,11 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   Json var_json;
   if (value) {
     value_id_map[value] = value_id_;
-    var_json[ID] = value_id_;
+    var_json[VALUE_ID] = value_id_;
     VLOG(6) << "Finish write value " << value_id_ << ".";
     value_id_++;
   } else {
-    var_json[ID] = 0;  // NULL_TYPE
+    var_json[VALUE_ID] = 0;  // NULL_TYPE
     VLOG(6) << "Finish write NULL_TYPE value.";
   }
 
@@ -148,10 +148,91 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
 
   return var_json;
 }
+#define OPTIONAL_CHECK(array_json, attr_name, int)          \
+  if (op.attributes().count(attr_name) > 0) {               \
+    array_json.emplace_back(                                \
+        ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)); \
+  } else {                                                  \
+    array_json.emplace_back(int);                           \
+  }
 
-Json ProgramWriter::WriteOp(const pir::Operation& op) {
+#define ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)   \
+  static_cast<int32_t>(op.attributes()                      \
+                           .at(attr_name)                   \
+                           .dyn_cast<pir::ArrayAttribute>() \
+                           .at(0)                           \
+                           .dyn_cast<pir::BoolAttribute>()  \
+                           .data())
+Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
+  std::vector<std::string> AttrsNameList = {"is_distributed",
+                                            "is_parameter",
+                                            "need_clip",
+                                            "parameter_name",
+                                            "persistable",
+                                            "stop_gradient",
+                                            "trainable",
+                                            "op_callstack" /*no need*/};
+
+  for (auto attr : op.attributes()) {
+    auto attr_name = attr.first;
+    auto it = std::find(AttrsNameList.begin(), AttrsNameList.end(), attr_name);
+    if (it == AttrsNameList.end()) {
+      PADDLE_ENFORCE(
+          false,
+          common::errors::InvalidArgument(
+              "attr name %s not supposed be serialized in WriteParameterOP, "
+              "please add it in order and add deserialization code in "
+              "ReadParameterOP.",
+              attr_name));
+    }
+  }
+  // attr_name ; type
+  // is_distributed; array(bool)
+  // is_parameter; array(bool)
+  // need_clip; array(bool)
+  // parameter_name; string
+  // persistable; array(bool)
+  // stop_gradient; array(bool)
+  // trainable; array(bool)
   Json op_json = Json::object();
-  op_json[ID] = op.name();
+  op_json[ID] = PARAMETEROP;
+  // serialize opoperands
+  VLOG(4) << "Begin write Operation " << op.name() << ".";
+  op_json[OPRESULTS] = WriteValue(op.result(0));
+  Json attrs_json = Json::array();
+  OPTIONAL_CHECK(attrs_json, "is_distributed", 0)
+  OPTIONAL_CHECK(attrs_json, "is_parameter", 1)
+  OPTIONAL_CHECK(attrs_json, "need_clip", 0)
+
+  if (op.attributes().count("parameter_name") > 0) {
+    attrs_json.emplace_back(op.attributes()
+                                .at("parameter_name")
+                                .dyn_cast<pir::StrAttribute>()
+                                .AsString());
+  } else {
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "parameter_name not found in ParameterOp"));
+  }
+  op_json[ATTRS] = attrs_json;
+
+  Json other_attrs_json = Json::array();
+  OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
+  OPTIONAL_CHECK(other_attrs_json, "stop_gradient", 1)
+  OPTIONAL_CHECK(other_attrs_json, "trainable", 1)
+  if (trainable_) {
+    op_json[OPRESULTS_ATTRS] = other_attrs_json;
+  }
+  return op_json;
+}
+Json ProgramWriter::WriteOp(const pir::Operation& op) {
+  if (op.isa<pir::ParameterOp>()) {
+    return WriteParameterOP(op);
+  }
+  Json op_json = Json::object();
+  auto op_name = op.name();
+  GetCompressOpName(&op_name);
+  op_json[ID] = op_name;
   // serialize opoperands
   VLOG(4) << "Begin write Operation " << op.name() << ".";
   Json operands_json = Json::array();
@@ -195,10 +276,10 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   Json operand_json = Json::object();
   if (op_operand.source()) {
     int64_t id = value_id_map[op_operand.source()];
-    operand_json[ID] = id;
+    operand_json[VALUE_ID] = id;
     VLOG(6) << "Finish write OpOperand " << id << ".";
   } else {
-    operand_json[ID] = 0;  // NULL_VALUE
+    operand_json[VALUE_ID] = 0;  // NULL_VALUE
     VLOG(6) << "Finish write NULL_VALUE OpOperand.";
   }
 
@@ -213,11 +294,11 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
       op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
     auto [_1, attr_info, _3, _4, _5] =
         op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-    if (!attr_info.empty()) {
-      for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
-        if (attr_map.find(it->name) != attr_map.end()) {
+    if (attr_info.size() != 0) {
+      for (const auto& val : attr_info) {
+        if (attr_map.find(val.name) != attr_map.end()) {
           attrs_json.emplace_back(
-              WriteAttribute(it->name, attr_map.at(it->name)));
+              WriteAttribute(val.name, attr_map.at(val.name)));
         }
       }
     }

@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -191,8 +190,13 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& xshape,
                               const DistMetaTensor& out_grad) {
-  return ReshapeGradInferSpmd(xshape, out_grad);
+  // TODO(jeff41404): when ReshapeInferSpmd and ReshapeGradInferSpmd can deliver
+  // distributed attribute of xshape, we will use ReshapeGradInferSpmd directly
+  // in future return ReshapeGradInferSpmd(xshape, out_grad);
+  auto shape = phi::vectorize(xshape.dims());
+  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  const auto& spmd = ReshapeInferSpmd(out_grad, shape);
+  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

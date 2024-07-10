@@ -42,8 +42,7 @@
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info) {
@@ -397,7 +396,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+  paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
@@ -407,5 +406,4 @@ bool GetCondData(const phi::DenseTensor& cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

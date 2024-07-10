@@ -24,9 +24,7 @@
 COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -262,7 +260,7 @@ void AllReduceOpHandle::AllReduceFunc(
           numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, size] {
         auto dst_ptr = var->GetMutable<phi::DenseTensor>()->data();
-        platform::CPUPlace cpu_place;
+        phi::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
       });
     }
@@ -335,6 +333,4 @@ void AllReduceOpHandle::SyncNCCLAllReduce() {
 #endif
 
 std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

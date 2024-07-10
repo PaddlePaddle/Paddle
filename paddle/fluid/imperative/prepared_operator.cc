@@ -39,8 +39,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(run_kp_kernel);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static const phi::Kernel empty_kernel;
 static const framework::RuntimeContext empty_ctx({}, {});
@@ -353,7 +352,7 @@ PreparedOp PrepareImpl(
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
                 << " | kernel key: " << phi_cpu_kernel_key
                 << " | kernel: " << phi_cpu_kernel;
-        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
+        auto* cpu_ctx = pool.Get(phi::CPUPlace());
         return PreparedOp(op,
                           empty_ctx,
                           phi_cpu_kernel_key,
@@ -377,18 +376,18 @@ PreparedOp PrepareImpl(
   auto kernel_iter = kernels.find(fluid_kernel_type);
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-  if (paddle::platform::is_xpu_place(fluid_kernel_type.place_) &&
+  if (phi::is_xpu_place(fluid_kernel_type.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {
     VLOG(3) << "fluid missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
+    fluid_kernel_type.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  if (paddle::platform::is_xpu_place(fluid_kernel_type.place_)) {
+  if (phi::is_xpu_place(fluid_kernel_type.place_)) {
     if (use_xpu_kp_kernel_rt) {
       VLOG(3) << "fluid xpu_kp using rt mode ";
     }
@@ -406,28 +405,28 @@ PreparedOp PrepareImpl(
       VLOG(3) << "fluid missing XPU kernel: " << op.Type()
               << ", expected_kernel_key:" << fluid_kernel_type
               << ", fallbacking to CPU one!";
-      fluid_kernel_type.place_ = platform::CPUPlace();
+      fluid_kernel_type.place_ = phi::CPUPlace();
       kernel_iter = kernels.find(fluid_kernel_type);
     }
   }
 #endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
-      paddle::platform::is_ipu_place(fluid_kernel_type.place_)) {
+      phi::is_ipu_place(fluid_kernel_type.place_)) {
     VLOG(3) << "missing IPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
+    fluid_kernel_type.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
-      paddle::platform::is_custom_place(fluid_kernel_type.place_)) {
+      phi::is_custom_place(fluid_kernel_type.place_)) {
     VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
+    fluid_kernel_type.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
@@ -440,8 +439,8 @@ PreparedOp PrepareImpl(
                                  op.Type(),
                                  KernelTypeToString(fluid_kernel_type)));
 
-  if (!platform::places_are_same_class(fluid_kernel_type.place_,
-                                       dev_ctx->GetPlace())) {
+  if (!phi::places_are_same_class(fluid_kernel_type.place_,
+                                  dev_ctx->GetPlace())) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
   }
   return PreparedOp(
@@ -752,5 +751,4 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
   }
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

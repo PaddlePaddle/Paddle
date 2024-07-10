@@ -23,7 +23,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/utils/functional.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pe {
@@ -141,7 +141,10 @@ ir::Tensor Squeeze(const ir::Tensor& A,
         output_shape.push_back(A->shape[idx]);
         position.push_back(idx);
       } else {
-        CHECK_EQ(A->shape[idx], Expr(1));
+        PADDLE_ENFORCE_EQ(A->shape[idx],
+                          Expr(1),
+                          phi::errors::InvalidArgument(
+                              "The dimension to squeeze must be 1."));
       }
     }
   } else {
@@ -184,8 +187,10 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
             idx.push_back(indice[i]);
           }
         }
-        CHECK_EQ(idx.size(), A->shape.size())
-            << "The index size not equal with the input rank.";
+        PADDLE_ENFORCE_EQ(idx.size(),
+                          A->shape.size(),
+                          phi::errors::InvalidArgument(
+                              "The index size not equal with the input rank."));
         return A(idx);
       },
       UniqName(output_name));
@@ -360,8 +365,8 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
                          const std::vector<symbol::DimExpr>& output_dim_exprs,
                          const std::string& name) {
   if (output_dim_exprs.size() != 1) {
-    LOG(WARNING) << "pe::GenerateShape will return a meaningless tensor when "
-                    "output_dim_exprs.size() != 1";
+    VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
+               "output_dim_exprs.size() != 1";
     return Compute(
         {Expr(1)},
         [=](const std::vector<Expr>& indice) { return Expr(1); },
@@ -424,7 +429,11 @@ ir::Tensor IsClose(const ir::Tensor& x,
         check_x_nan || check_y_nan, check_nan_same, check_diff);
   };
   auto fn = [=](const std::vector<Expr>& indice) {
-    CHECK_EQ(indice.size(), y->shape.size());
+    PADDLE_ENFORCE_EQ(
+        indice.size(),
+        y->shape.size(),
+        phi::errors::InvalidArgument(
+            "The indice size should be equal to y's shape size."));
     return fnop(x(indice), y(indice));
   };
   auto res = Compute(x->shape, fn, out_name);

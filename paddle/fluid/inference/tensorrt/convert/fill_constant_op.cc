@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class FillConstantOpConverter : public OpConverter {
  public:
@@ -97,13 +95,13 @@ class FillConstantOpConverter : public OpConverter {
       void* trt_data = nullptr;
       size_t trt_num;
       if (dtype == 2 || dtype == 3) {  // int,int64
-        auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
+        auto* tmp_ptr = out_tensor->mutable_data<int>(phi::CPUPlace());
         for (int64_t i = 0; i < out_tensor->numel(); i++)
           tmp_ptr[i] = std::stoi(str_value);
         trt_dtype = nvinfer1::DataType::kINT32;
         trt_data = static_cast<void*>(tmp_ptr);
       } else if (dtype == 5) {  // float
-        auto* tmp_ptr = out_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* tmp_ptr = out_tensor->mutable_data<float>(phi::CPUPlace());
         for (int64_t i = 0; i < out_tensor->numel(); i++)
           tmp_ptr[i] = std::stof(str_value);
         trt_data = static_cast<void*>(tmp_ptr);
@@ -124,8 +122,6 @@ class FillConstantOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fill_constant, FillConstantOpConverter);
