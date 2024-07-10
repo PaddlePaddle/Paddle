@@ -241,14 +241,14 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
 
-    if (platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr),
                   inputs[i].data.data(),
                   inputs[i].data.length());
-    } else if (platform::is_gpu_place(place_)) {
+    } else if (phi::is_gpu_place(place_)) {
       PADDLE_ENFORCE_EQ(
-          platform::is_xpu_place(place_),
+          phi::is_xpu_place(place_),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
@@ -267,7 +267,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with CUDA, should not reach here."));
 #endif
-    } else if (platform::is_xpu_place(place_)) {
+    } else if (phi::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
       auto dst_xpu_place = place_;
       memory::Copy(dst_xpu_place,

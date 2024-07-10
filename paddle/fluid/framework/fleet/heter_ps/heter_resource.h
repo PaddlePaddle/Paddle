@@ -89,11 +89,11 @@ class XPUResource {
 
 #if defined(PADDLE_WITH_CUDA)
 using DevResource = GPUResource;
-using DevPlace = platform::CUDAPlace;
+using DevPlace = phi::GPUPlace;
 using AnyDeviceGuard = platform::CUDADeviceGuard;
 #elif defined(PADDLE_WITH_XPU_KP)
 using DevResource = XPUResource;
-using DevPlace = platform::XPUPlace;
+using DevPlace = phi::XPUPlace;
 using AnyDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 #endif
 

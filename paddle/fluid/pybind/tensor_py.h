@@ -482,7 +482,7 @@ void SetTensorFromPyArrayT(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
         array.nbytes());
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
     ctx.Wait();
 #else
@@ -768,7 +768,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
   auto &stop = *pstop;
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
-  const framework::DDim &srcDDim = self.dims();
+  const phi::DDim &srcDDim = self.dims();
   PADDLE_ENFORCE(
       0 <= dim && dim < srcDDim.size(),
       platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
@@ -810,7 +810,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
 }
 
 inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
-                                    const framework::DDim &ddim) {
+                                    const phi::DDim &ddim) {
   phi::DenseTensor *output = new phi::DenseTensor();
   output->Resize(ddim);
   auto place = self.place();
@@ -881,7 +881,7 @@ inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {
-  framework::DDim dstDDim = self.dims();
+  phi::DDim dstDDim = self.dims();
   dstDDim[dim] = static_cast<int64_t>(slicelength);
   std::vector<int> axes({dim});
   std::vector<int> starts({static_cast<int>(start)});
@@ -906,7 +906,7 @@ inline phi::DenseTensor *_sliceAndConcat(const phi::DenseTensor &self,
     }
 
     // do the concat operation
-    framework::DDim dstDDim = self.dims();
+    phi::DDim dstDDim = self.dims();
     dstDDim[dim] = static_cast<int64_t>(slicelength);
     phi::DenseTensor *output1 = _getTensor(self, dstDDim);
     _concatCompute<T>(ins, output1, ctx, dim);
@@ -1117,8 +1117,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &ctx = *pool.Get(tensor.place());
       auto p = dense_tensor->place();
       phi::DenseTensor cpu_tensor;
@@ -1149,7 +1148,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       return py_arr;
     }
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     auto p = tensor.place();
     phi::DenseTensor cpu_tensor;

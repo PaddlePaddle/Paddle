@@ -48,7 +48,7 @@ class StandaloneExecutor {
 
  private:
   bool is_interpretercore_build_result_shared_{false};
-  const platform::Place place_;
+  const phi::Place place_;
   interpreter::Plan plan_;
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 

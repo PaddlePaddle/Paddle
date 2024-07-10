@@ -435,10 +435,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
         if (blocking) {
-          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          phi::DeviceContextPool::Instance().Get(dst_device)->Wait();
           auto src_device = src_tensor.place();
           if (!(src_device == dst_device)) {
-            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+            phi::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
       } else if (src->Var().IsType<phi::SelectedRows>()) {
@@ -451,10 +451,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
                               dst_device,
                               dst_selected_rows->mutable_value());
         if (blocking) {
-          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          phi::DeviceContextPool::Instance().Get(dst_device)->Wait();
           auto src_device = src_selected_rows.value().place();
           if (!(src_device == dst_device)) {
-            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+            phi::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
       }
