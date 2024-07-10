@@ -182,6 +182,7 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -396,7 +397,6 @@ list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
-list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -475,12 +475,6 @@ set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
   test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(test_install_check MODULES test_install_check ENVS
-                FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(test_install_check_pir MODULES test_install_check ENVS
-                FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
-set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fuse_dot_product_attention_pass MODULES
@@ -653,16 +647,12 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
-                                                                        120)
-set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
-set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
                                                                        120)
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
@@ -694,7 +684,6 @@ set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
 
 set(TEST_CINN_OPS
     test_softmax_op
-    test_reduce_op
     test_slice_op
     test_slice_op_deprecated
     test_gather_nd_op
@@ -702,7 +691,6 @@ set(TEST_CINN_OPS
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
-    test_scatter_nd_op
     test_instance_norm_op
     test_instance_norm_op_deprecated
     test_cumsum_op
@@ -737,7 +725,6 @@ set(STATIC_BUILD_TESTS
     test_momentum_op
     test_momentum_op_deprecated
     test_nce_deprecated
-    test_reduce_op
     test_sparse_conv_op
     test_sparse_norm_op
     test_tensor_array_to_tensor
@@ -784,13 +771,12 @@ set_tests_properties(
 )
 set_tests_properties(test_layer_norm_op_deprecated_static_build
                      PROPERTIES TIMEOUT 1500)
-set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
-set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)

@@ -26,7 +26,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
@@ -574,10 +574,10 @@ void SyncBatchNormGradFunctor(
   int global_gid = 0;
   ncclComm_t comm = nullptr;
 
-  if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
+  if (phi::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
     auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
+        phi::distributed::ProcessGroupMapFromGid::getInstance()->get(
             global_gid));
     comm = nccl_pg->NCCLComm(x->place());
   } else {

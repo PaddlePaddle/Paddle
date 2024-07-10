@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, cpu_add) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -113,7 +113,7 @@ TEST(selected_rows_functor, cpu_add) {
 }
 
 TEST(selected_rows_functor, cpu_add_to) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -206,7 +206,7 @@ TEST(selected_rows_functor, cpu_add_to) {
 }
 
 TEST(selected_rows_functor, cpu_merge_average_float) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -244,7 +244,7 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_float) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -283,7 +283,7 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_int) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -322,7 +322,7 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_multi) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -374,7 +374,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -432,7 +432,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 }
 
 TEST(selected_rows_functor, cpu_sum_to) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)

@@ -91,7 +91,7 @@ struct ReduceOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+        this->SetDeviceContext(phi::GPUPlace(p_ctx.first),
                                p_ctx.second.ctx_.get());
       }
     }
@@ -108,7 +108,7 @@ struct ReduceOpHandle : public OpHandleBase {
         bkcl_ctxs_(bkcl_ctxs) {
     if (bkcl_ctxs_) {
       for (auto &p_ctx : bkcl_ctxs_->contexts_) {
-        this->SetDeviceContext(platform::XPUPlace(p_ctx.first),
+        this->SetDeviceContext(phi::XPUPlace(p_ctx.first),
                                p_ctx.second.ctx_.get());
       }
     }
@@ -137,7 +137,7 @@ struct ReduceOpHandle : public OpHandleBase {
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle,
-      const platform::Place &out_place,
+      const phi::Place &out_place,
       phi::SelectedRows *dst_selecte_rows);
 #endif
 

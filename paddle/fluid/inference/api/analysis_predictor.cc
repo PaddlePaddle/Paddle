@@ -296,13 +296,13 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
             "The data contained in the input PaddleTensor had wrong length."));
   }
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     if (input_ptr != nullptr) {
       std::memcpy(
           static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
     }
-  } else if (platform::is_ipu_place(place)) {
+  } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     std::memcpy(
         static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
@@ -310,8 +310,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with WITH_IPU, should not reach here."));
 #endif
-  } else if (platform::is_gpu_place(place)) {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+  } else if (phi::is_gpu_place(place)) {
+    PADDLE_ENFORCE_EQ(phi::is_xpu_place(place),
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
@@ -329,7 +329,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with CUDA, should not reach here."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     auto dst_xpu_place = place;
     memory::Copy(dst_xpu_place,
@@ -341,7 +341,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with XPU, should not reach here."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
@@ -2606,16 +2606,16 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {  // NOLINT
+  if (phi::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_ipu_place(place_)) {
+  } else if (phi::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_xpu_place(place_)) {
+  } else if (phi::is_xpu_place(place_)) {
     auto xpu_place = place_;
     res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-  } else if (platform::is_custom_place(place_)) {
+  } else if (phi::is_custom_place(place_)) {
     auto custom_place = place_;
     res->SetPlace(PaddlePlace::kCUSTOM,
                   custom_place.GetDeviceId(),
@@ -2648,16 +2648,16 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {  // NOLINT
+  if (phi::is_cpu_place(place_)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_ipu_place(place_)) {
+  } else if (phi::is_ipu_place(place_)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_xpu_place(place_)) {
+  } else if (phi::is_xpu_place(place_)) {
     auto xpu_place = place_;
     res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-  } else if (platform::is_custom_place(place_)) {
+  } else if (phi::is_custom_place(place_)) {
     auto custom_place = place_;
     res->SetPlace(PaddlePlace::kCUSTOM,
                   custom_place.GetDeviceId(),
@@ -2870,7 +2870,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
         is_shape_tensor) {
       std::vector<int> int32_host(tensor->numel());
 
-      if (platform::is_cpu_place(tensor->place())) {
+      if (phi::is_cpu_place(tensor->place())) {
         auto &int32_tensor = *tensor;
         if (tensor->dtype() == phi::DataType::INT64) {
           auto *cpu_ctx = pool.Get(phi::CPUPlace());
@@ -2884,7 +2884,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
                              phi::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
-      } else if (platform::is_gpu_place(tensor->place())) {
+      } else if (phi::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto *dev_ctx = pool.Get(tensor->place());
         auto &int32_tensor = *tensor;

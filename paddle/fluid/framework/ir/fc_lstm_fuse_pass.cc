@@ -220,7 +220,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
       const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
 
       auto lstm_bias_data =
-          lstm_bias_tensor->mutable_data<float>(platform::CPUPlace());
+          lstm_bias_tensor->mutable_data<float>(phi::CPUPlace());
       auto* fc_bias_data = fc_bias_tensor.data<float>();
 
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {
