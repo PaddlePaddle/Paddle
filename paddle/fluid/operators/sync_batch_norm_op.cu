@@ -17,6 +17,8 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
+#include "paddle/common/flags.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 // sparse header
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
@@ -107,7 +109,21 @@ void SyncBatchNormKernel(const Context& ctx,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
     if (comm == nullptr) {
-      comm = ctx.nccl_comm();
+      if (FLAGS_dynamic_static_unified_comm) {
+        auto comm_ctx =
+            static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+        PADDLE_ENFORCE_NE(
+            comm_ctx,
+            nullptr,
+            errors::Unavailable(
+                "NCCLCommContext is nullptr, collective op should "
+                "has ring_id attr."));
+        if (comm_ctx) {
+          comm = comm_ctx->GetNcclComm();
+        }
+      } else {
+        comm = ctx.nccl_comm();
+      }
     }
 
     if (comm) {
