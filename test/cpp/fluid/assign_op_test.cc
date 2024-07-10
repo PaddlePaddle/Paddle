@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 TEST(AssignOp, AssignLoDTensor) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
 
   paddle::framework::Variable output;
@@ -46,7 +46,7 @@ TEST(AssignOp, AssignLoDTensor) {
 }
 
 TEST(AssignOp, AssignLoDTensorArray) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
 
   paddle::framework::Variable output;
@@ -77,7 +77,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
 }
 
 TEST(AssignOp, AssignSelectedRows) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
 
   paddle::framework::Variable output;

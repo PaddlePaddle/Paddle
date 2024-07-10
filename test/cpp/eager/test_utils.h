@@ -28,13 +28,12 @@
 
 namespace eager_test {
 
-inline paddle::Tensor CreateTensorWithValue(
-    const phi::DDim& ddim,
-    const paddle::platform::Place& place,
-    const phi::DataType& dtype,
-    const phi::DataLayout& layout,
-    float value,
-    bool is_leaf = true) {
+inline paddle::Tensor CreateTensorWithValue(const phi::DDim& ddim,
+                                            const phi::Place& place,
+                                            const phi::DataType& dtype,
+                                            const phi::DataLayout& layout,
+                                            float value,
+                                            bool is_leaf = true) {
   paddle::Tensor out =
       paddle::experimental::full(common::vectorize(ddim),
                                  paddle::experimental::Scalar(value),
@@ -63,13 +62,12 @@ bool CompareGradTensorWithValue(const paddle::Tensor& target, T value) {
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx =
-        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
+    paddle::memory::Copy(phi::CPUPlace(),
                          host_data.data(),
-                         paddle::platform::CUDAPlace(),
+                         phi::GPUPlace(),
                          ptr,
                          sizeof(T) * grad_dense->numel(),
                          stream);
@@ -101,13 +99,12 @@ bool CompareTensorWithValue(const paddle::Tensor& target, T value) {
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx =
-        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
+    paddle::memory::Copy(phi::CPUPlace(),
                          host_data.data(),
-                         paddle::platform::CUDAPlace(),
+                         phi::GPUPlace(),
                          ptr,
                          sizeof(T) * dense_t->numel(),
                          stream);
@@ -129,7 +126,7 @@ bool CompareTensorWithValue(const paddle::Tensor& target, T value) {
   return true;
 }
 
-inline void InitEnv(paddle::platform::Place place) {
+inline void InitEnv(phi::Place place) {
   // Prepare Device Contexts
   // Init DeviceContextPool
   paddle::framework::InitDevices();

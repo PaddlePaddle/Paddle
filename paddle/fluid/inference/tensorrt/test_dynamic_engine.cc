@@ -37,21 +37,21 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -187,21 +187,21 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   TensorRTDynamicEngineTest() : engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -347,21 +347,21 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
   TensorRTDynamicTestFusedTokenPrune()
       : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -550,21 +550,21 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
   TensorRTDynamicTestFusedTokenPruneHalf()
       : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -750,21 +750,21 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
