@@ -58,7 +58,7 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
 TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type(
       paddle::framework::proto::VarType::FP32,
-      paddle::platform::CPUPlace(),
+      phi::CPUPlace(),
       phi::DataLayout::kNCHW);
   auto kernel_key =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type);
@@ -69,7 +69,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
 #ifdef PADDLE_WITH_DNNL
   paddle::framework::OpKernelType op_kernel_type_onednn(
       paddle::framework::proto::VarType::FP32,
-      paddle::platform::CPUPlace(),
+      phi::CPUPlace(),
       phi::DataLayout::ONEDNN,
       paddle::framework::LibraryType::kMKLDNN);
   auto kernel_key_onednn =
@@ -82,7 +82,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::OpKernelType op_kernel_type_cudnn(
       paddle::framework::proto::VarType::FP32,
-      paddle::platform::CPUPlace(),
+      phi::CPUPlace(),
       phi::DataLayout::kNCHW,
       paddle::framework::LibraryType::kCUDNN);
   auto kernel_key_cudnn =

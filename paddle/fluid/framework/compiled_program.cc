@@ -75,15 +75,6 @@ class CompiledProgramPrivate {
 
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
-  inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
-
-  void ApplyFixOpRunOrderPass(ir::Graph *graph) {
-    if (build_strategy_.fix_op_run_order_) {
-      auto pass = ir::PassRegistry::Instance().Get("fix_op_run_order_pass");
-      pass->Apply(graph);
-    }
-  }
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
@@ -516,7 +507,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
     for (int i = 0; i < count; i++) {
       if (!platform::is_gpu_place(places[i])) return;
 
-      platform::CUDAPlace device = places[i];
+      phi::GPUPlace device = places[i];
       devices.push_back(device.GetDeviceId());
     }
 
@@ -593,7 +584,6 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
-  // PrepareForCUDAGraphCapture(graph);
   graph = member_->ApplyMemoryOptimizePass(graph);
 }
 
@@ -729,7 +719,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
           platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
-      platform::CPUPlace cpu;
+      phi::CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();

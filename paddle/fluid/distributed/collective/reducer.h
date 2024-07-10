@@ -70,11 +70,11 @@ class EagerGroup {
   std::shared_ptr<ProcessGroup::Task> task;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::Place &);
+  void ConcatTensors(const phi::Place &);
 
   // context is used to select the stream for split
 
-  void SplitTensors(const platform::DeviceContext &);
+  void SplitTensors(const phi::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };

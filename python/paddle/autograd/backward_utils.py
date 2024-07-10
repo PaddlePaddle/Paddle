@@ -51,6 +51,8 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.relu",
     "pd_op.sigmoid",
     "pd_op.divide",
+    "pd_op.pow",
+    "pd_op.elementwise_pow",
 ]
 
 

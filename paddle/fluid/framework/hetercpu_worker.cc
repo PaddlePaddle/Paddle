@@ -58,7 +58,7 @@ void HeterTask::PackTask(Scope* thread_scope,
         thread_var->GetMutable<phi::DenseTensor>();
     Variable* task_var = scope_->FindVar(use_slots[i]);
     phi::DenseTensor* task_tensor = task_var->GetMutable<phi::DenseTensor>();
-    TensorCopy(*thread_tensor, platform::CPUPlace(), task_tensor);
+    TensorCopy(*thread_tensor, phi::CPUPlace(), task_tensor);
     auto& tensor_lod = thread_tensor->lod()[0];
     LoD thread_lod{tensor_lod};
     task_tensor->set_lod(thread_lod);

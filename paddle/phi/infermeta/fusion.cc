@@ -5119,4 +5119,214 @@ void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->set_dtype(x[0]->dtype());
 }
 
+// Shape of bitmask
+static phi::DDim GetBitmaskDims(std::vector<int> out_shape) {
+  int c = out_shape.back();
+  int64_t nhw = std::accumulate(out_shape.begin(),
+                                out_shape.end(),
+                                1,
+                                std::multiplies<int>()) /  // NOLINT
+                c;
+  int32_t c_int32_elems = ((c + 63) & ~63) / 32;
+  int32_t nhw_int32_elems = static_cast<int32_t>(((nhw + 31) & ~31));
+  std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
+  return common::make_ddim(bitmask_shape);
+}
+
+void ResnetUnitInferMeta(const MetaTensor& x,
+                         const MetaTensor& filter_x,
+                         const MetaTensor& scale_x,
+                         const MetaTensor& bias_x,
+                         const MetaTensor& mean_x,
+                         const MetaTensor& var_x,
+                         const MetaTensor& z,
+                         const MetaTensor& filter_z,
+                         const MetaTensor& scale_z,
+                         const MetaTensor& bias_z,
+                         const MetaTensor& mean_z,
+                         const MetaTensor& var_z,
+                         int stride,
+                         int stride_z,
+                         int padding,
+                         int dilation,
+                         int group,
+                         float momentum,
+                         float epsilon,
+                         const std::string& data_format,
+                         bool fuse_add,
+                         bool has_shortcut,
+                         bool use_global_stats,
+                         bool is_test,
+                         bool use_addto,
+                         const std::string& act_type,
+                         MetaTensor* out,
+                         MetaTensor* bit_mask,
+                         MetaTensor* conv_x,
+                         MetaTensor* saved_mean_x,
+                         MetaTensor* saved_invstd_x,
+                         MetaTensor* running_mean_x,
+                         MetaTensor* running_var_x,
+                         MetaTensor* conv_z,
+                         MetaTensor* saved_mean_z,
+                         MetaTensor* saved_invstd_z,
+                         MetaTensor* running_mean_z,
+                         MetaTensor* running_var_z) {
+  // Check dims of inputs
+  const auto& x_dims = x.dims();
+  const auto& w_dims = filter_x.dims();
+  std::vector<int64_t> bn_param_shape = common::vectorize(scale_x.dims());
+  if (1 == bn_param_shape.size()) {
+    bn_param_shape = {1, 1, 1, bn_param_shape[0]};
+  }
+  phi::DDim bn_param_dims = common::make_ddim(bn_param_shape);
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of input "
+                                   "must equal to 4."
+                                   "But received: the shape of input "
+                                   "= [%s], the dimension of input = "
+                                   "[%d]",
+                                   x_dims,
+                                   x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of filter "
+                                   "must equal to 4."
+                                   "But received: the shape of filter "
+                                   "= [%s], the dimension of filter = [%d] ",
+                                   w_dims,
+                                   w_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      bn_param_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of bn param "
+                                   "must equal to 4."
+                                   "But received: the shape of bn param "
+                                   "= [%s], the dimension of bn param = [%d] ",
+                                   bn_param_dims,
+                                   bn_param_dims.size()));
+  bool is_nchw = (data_format == "NCHW");
+  // Calculate the dims of outputs
+  int batch = x_dims[0];
+  int output_channel = w_dims[0];
+  int filter_size = w_dims[2];
+  std::vector<int> out_shape;
+  out_shape.push_back(batch);
+  if (is_nchw) {
+    int out_h = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+    int out_w = (x_dims[3] + padding * 2 - filter_size) / stride + 1;
+    out_shape.push_back(output_channel);
+    out_shape.push_back(out_h);
+    out_shape.push_back(out_w);
+  } else {
+    int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
+    int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+    out_shape.push_back(out_h);
+    out_shape.push_back(out_w);
+    out_shape.push_back(output_channel);
+  }
+
+  auto y_dims = common::make_ddim(out_shape);
+  auto bitmask_dims = GetBitmaskDims(out_shape);
+  // Set dims of outputs
+  out->set_dims(y_dims);
+  bit_mask->set_dims(bitmask_dims);
+  conv_x->set_dims(y_dims);
+  saved_mean_x->set_dims(bn_param_dims);
+  saved_invstd_x->set_dims(bn_param_dims);
+  running_mean_x->set_dims(bn_param_dims);
+  running_var_x->set_dims(bn_param_dims);
+
+  out->set_dtype(x.dtype());
+  bit_mask->set_dtype(filter_x.dtype());
+  conv_x->set_dtype(x.dtype());
+  saved_mean_x->set_dtype(mean_x.dtype());
+  saved_invstd_x->set_dtype(var_x.dtype());
+  running_mean_x->set_dtype(mean_x.dtype());
+  running_var_x->set_dtype(var_x.dtype());
+  if (has_shortcut) {
+    conv_z->set_dims(y_dims);
+    saved_mean_z->set_dims(bn_param_dims);
+    saved_invstd_z->set_dims(bn_param_dims);
+    running_mean_z->set_dims(bn_param_dims);
+    running_var_z->set_dims(bn_param_dims);
+
+    conv_z->set_dtype(z.dtype());
+    saved_mean_z->set_dtype(mean_z.dtype());
+    saved_invstd_z->set_dtype(var_z.dtype());
+    running_mean_z->set_dtype(mean_z.dtype());
+    running_var_z->set_dtype(var_z.dtype());
+  }
+}
+
+void ResnetUnitGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& filter_x,
+                             const MetaTensor& conv_x,
+                             const MetaTensor& scale_x,
+                             const MetaTensor& bias_x,
+                             const MetaTensor& saved_mean_x,
+                             const MetaTensor& saved_invstd_x,
+                             const MetaTensor& z,
+                             const MetaTensor& filter_z,
+                             const MetaTensor& conv_z,
+                             const MetaTensor& scale_z,
+                             const MetaTensor& bias_z,
+                             const MetaTensor& saved_mean_z,
+                             const MetaTensor& saved_invstd_z,
+                             const MetaTensor& out,
+                             const MetaTensor& bit_mask,
+                             const MetaTensor& out_grad,
+                             int stride,
+                             int stride_z,
+                             int padding,
+                             int dilation,
+                             int group,
+                             float momentum,
+                             float epsilon,
+                             const std::string& data_format,
+                             bool fuse_add,
+                             bool has_shortcut,
+                             bool use_global_stats,
+                             bool is_test,
+                             bool use_addto,
+                             const std::string& act_type,
+                             MetaTensor* x_grad,
+                             MetaTensor* filter_x_grad,
+                             MetaTensor* scale_x_grad,
+                             MetaTensor* bias_x_grad,
+                             MetaTensor* z_grad,
+                             MetaTensor* filter_z_grad,
+                             MetaTensor* scale_z_grad,
+                             MetaTensor* bias_z_grad) {
+  const auto& x_dims = x.dims();
+  const auto& filter_x_dims = filter_x.dims();
+  const auto& param_dims = scale_x.dims();
+  x_grad->set_dims(x_dims);
+  filter_x_grad->set_dims(filter_x_dims);
+  scale_x_grad->set_dims(param_dims);
+  bias_x_grad->set_dims(param_dims);
+  x_grad->set_dtype(x.dtype());
+  filter_x_grad->set_dtype(filter_x.dtype());
+  scale_x_grad->set_dtype(scale_x.dtype());
+  bias_x_grad->set_dtype(bias_x.dtype());
+
+  if (fuse_add || has_shortcut) {
+    const auto& z_dims = z.dims();
+    z_grad->set_dims(z_dims);
+    z_grad->set_dtype(z.dtype());
+  }
+  if (has_shortcut) {
+    const auto filter_z_dims = filter_z.dims();
+    filter_z_grad->set_dims(filter_z_dims);
+    scale_z_grad->set_dims(param_dims);
+    bias_z_grad->set_dims(param_dims);
+
+    filter_z_grad->set_dtype(filter_z.dtype());
+    scale_z_grad->set_dtype(scale_z.dtype());
+    bias_z_grad->set_dtype(bias_z.dtype());
+  }
+}
+
 }  // namespace phi
