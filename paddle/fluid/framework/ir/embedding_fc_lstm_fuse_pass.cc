@@ -97,7 +97,7 @@ static int BuildFusion(Graph* graph,
     auto embedding_data = embedding_tensor.data<float>();
     auto weightx_data = weightx_tensor.data<float>();
     auto embeddings_data =
-        embeddings_tensor->mutable_data<float>(platform::CPUPlace());
+        embeddings_tensor->mutable_data<float>(phi::CPUPlace());
 
     // Adding biases to GEMM result to be
     auto* lstm_bias_var = scope->FindVar(bias->Name());

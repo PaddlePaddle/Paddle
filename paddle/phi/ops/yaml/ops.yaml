@@ -1653,6 +1653,7 @@
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
   backward : fake_quantize_dequantize_moving_average_abs_max_grad
+  inplace: (in_scale -> out_scale)
 
 - op : fake_quantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1663,6 +1664,7 @@
     func : fake_quantize_moving_average_abs_max
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
+  inplace: (in_scale -> out_scale)
 
 - op : fake_quantize_range_abs_max
   args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1673,6 +1675,7 @@
     func : fake_quantize_range_abs_max
     data_type : x
   optional : iter, out_scales
+  inplace: (in_scale -> out_scale)
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
@@ -1810,6 +1813,7 @@
   view : (x -> out)
   intermediate : xshape
   backward : flatten_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flip
   args : (Tensor x, int[] axis)
@@ -2269,10 +2273,11 @@
   backward: hinge_loss_grad
 
 - op : histogram
-  args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
+  args : (Tensor input, Tensor weight, int64_t bins = 100, int min = 0, int max = 0, bool density = false)
   output : Tensor(out)
   infer_meta :
     func : HistogramInferMeta
+  optional : weight
   kernel :
     func : histogram
 
@@ -3633,6 +3638,7 @@
     func : reduce_as
     data_type : x
   backward : reduce_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
@@ -3786,10 +3792,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : round
-  args : (Tensor x)
+  args : (Tensor x, int decimals = 0 )
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : round
   inplace : (x -> out)
@@ -4199,6 +4206,7 @@
   output : Tensor[]{sections.size()}
   infer_meta :
     func : SplitInferMeta
+    spmd_rule : SplitInferSpmdDynamic
   kernel :
     func : split
   backward : split_grad

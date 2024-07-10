@@ -92,7 +92,7 @@ class Table {
   // only for tensor table
   virtual int32_t SetProgramEnv(
       framework::Scope *scope UNUSED,
-      platform::Place place UNUSED,
+      phi::Place place UNUSED,
       const std::vector<framework::ProgramDesc> *sub_program UNUSED) {
     return 0;
   }

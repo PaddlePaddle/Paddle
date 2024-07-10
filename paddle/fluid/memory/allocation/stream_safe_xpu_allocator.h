@@ -57,7 +57,7 @@ class StreamSafeXPUAllocator
       public std::enable_shared_from_this<StreamSafeXPUAllocator> {
  public:
   StreamSafeXPUAllocator(std::shared_ptr<Allocator> underlying_allocator,
-                         platform::XPUPlace place,
+                         phi::XPUPlace place,
                          XPUStream default_stream);
   ~StreamSafeXPUAllocator();
 
@@ -68,7 +68,7 @@ class StreamSafeXPUAllocator
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
-  uint64_t ReleaseImpl(const platform::Place &place) override;
+  uint64_t ReleaseImpl(const phi::Place &place) override;
 
  private:
   void ProcessUnfreedAllocations();
@@ -79,7 +79,7 @@ class StreamSafeXPUAllocator
   static SpinLock allocator_map_lock_;
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  platform::XPUPlace place_;
+  phi::XPUPlace place_;
   XPUStream default_stream_;
   std::list<StreamSafeXPUAllocation *> unfreed_allocations_;
   SpinLock unfreed_allocation_lock_;

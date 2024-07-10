@@ -96,7 +96,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
   }
 
   void InitTensorHolder(Scope* scope,
-                        const paddle::platform::Place& place,
+                        const phi::Place& place,
                         const std::string& var_name) {
     auto x = scope->Var(var_name);
     auto tensor = x->GetMutable<phi::DenseTensor>();

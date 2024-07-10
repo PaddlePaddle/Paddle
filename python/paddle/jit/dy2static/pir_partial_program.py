@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import itertools
 from functools import cached_property
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -36,6 +39,9 @@ from .utils import (
     cinn_is_enabled,
     cse_is_enabled,
 )
+
+if TYPE_CHECKING:
+    from .program_translator import ConcreteProgram
 
 __all__ = []
 
@@ -134,11 +140,11 @@ class RunnableProgram:
     """
 
     @cached_property
-    def get_value_name_map(self):
+    def get_value_name_map(self) -> ValueDict:
         return self._get_value_name_map_from_program(self.program)
 
     @classmethod
-    def _get_value_name_map_from_program(cls, program):
+    def _get_value_name_map_from_program(cls, program) -> ValueDict:
         ret = ValueDict()
         ret[fake_value()] = "FakeVar"
         for keyword, arg in program.global_block().kwargs().items():
@@ -686,7 +692,7 @@ class PartialProgramLayer:
         return restored_nest_out
 
     @cached_property
-    def origin_runnable_program(self):
+    def origin_runnable_program(self) -> RunnableProgram:
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
         params = self._param_values
@@ -784,9 +790,9 @@ class PartialProgramLayer:
                         forward_shape_analysis
                     )
                     forward_name_value_map = {
-                        item.name: item
+                        name: item
                         for item in forward_program.list_vars()
-                        if item.has_name
+                        for name in item._names
                     }
 
                     def share_symbol_shape_from_forward_to_backward(
@@ -1322,7 +1328,9 @@ class PartialProgramLayer:
         return vars if vars else None
 
 
-def partial_program_from(concrete_program, from_method=False):
+def partial_program_from(
+    concrete_program: ConcreteProgram, from_method: bool = False
+) -> PartialProgramLayer:
     inputs = concrete_program.inputs
 
     # NOTE(SigureMo): Remove the first arg `self` from method args.

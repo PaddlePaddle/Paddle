@@ -87,7 +87,7 @@ void GetHeterListenAndServProgram(framework::ProgramDesc* program,
   op->SetAttr("pserver_id", 0);
 }
 
-void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
+void CreateVarsOnScope(framework::Scope* scope, phi::CPUPlace* place) {
   auto x_var = scope->Var("x");
   x_var->GetMutable<phi::DenseTensor>();
 
@@ -99,7 +99,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
@@ -120,7 +120,7 @@ void InitTensorsOnClient(framework::Scope* scope,
 }
 
 void InitTensorsOnClient2(framework::Scope* scope,
-                          platform::CPUPlace* place,
+                          phi::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
@@ -141,7 +141,7 @@ void InitTensorsOnClient2(framework::Scope* scope,
 }
 
 void InitTensorsOnServer(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 }
@@ -149,7 +149,7 @@ void InitTensorsOnServer(framework::Scope* scope,
 void RunHeterServerOp(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   phi::CPUContext ctx(place);
 
@@ -211,7 +211,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
           .get();
 
   framework::Scope* scope = (*micro_scope)[0];
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
 
   // create var on local scope

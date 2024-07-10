@@ -46,7 +46,7 @@ HasElementsInstruction::HasElementsInstruction(
   auto* bool_tensor = value_exe_info_->GetVarByValue(op_->result(0))
                           ->GetMutable<phi::DenseTensor>();
   bool_tensor->Resize(phi::make_ddim({1}));
-  has_elements_ = pool.Get(platform::CPUPlace())->Alloc<bool>(bool_tensor);
+  has_elements_ = pool.Get(phi::CPUPlace())->Alloc<bool>(bool_tensor);
 
   auto stack_value =
       op_->dyn_cast<paddle::dialect::HasElementsOp>().operand_source(0);

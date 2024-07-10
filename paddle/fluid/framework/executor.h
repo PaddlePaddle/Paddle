@@ -157,10 +157,10 @@ class TEST_API Executor {
 
   void ReleaseTrainer(std::shared_ptr<TrainerBase> trainer);
 
-  const platform::Place GetPlace() const { return place_; }
+  const phi::Place GetPlace() const { return place_; }
 
  private:
-  const platform::Place place_;
+  const phi::Place place_;
 };
 
 }  // namespace framework

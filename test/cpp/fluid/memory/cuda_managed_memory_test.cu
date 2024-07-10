@@ -51,7 +51,7 @@ TEST(ManagedMemoryTest, H2DTest) {
   uint64_t n_data = 1024;
   uint64_t step = 1;
   allocation::AllocationPtr allocation =
-      Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
+      Alloc(phi::GPUPlace(0), n_data * sizeof(int));
   int* data = static_cast<int*>(allocation->ptr());
 
   memset(data, 0, n_data * sizeof(int));          // located on host memory
@@ -78,8 +78,7 @@ TEST(ManagedMemoryTest, D2HTest) {
 
   uint64_t n_data = 1024;
   uint64_t step = 1;
-  AllocationPtr allocation =
-      Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
+  AllocationPtr allocation = Alloc(phi::GPUPlace(0), n_data * sizeof(int));
   int* data = static_cast<int*>(allocation->ptr());
 
   write_kernel<<<1, 1024>>>(data, n_data, step);  // located on device memory
@@ -108,9 +107,8 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
   uint64_t n_data = available_mem * 2 / sizeof(int) +
                     1;  // requires more than 2 * available_mem bytes
   uint64_t step = std::max(n_data / 1024, static_cast<uint64_t>(1));
-  AllocationPtr data_allocation =
-      Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
-  AllocationPtr sum_allocation = Alloc(platform::CUDAPlace(0), sizeof(int));
+  AllocationPtr data_allocation = Alloc(phi::GPUPlace(0), n_data * sizeof(int));
+  AllocationPtr sum_allocation = Alloc(phi::GPUPlace(0), sizeof(int));
   int* data = static_cast<int*>(data_allocation->ptr());
   int* sum = static_cast<int*>(sum_allocation->ptr());
   (*sum) = 0;
@@ -131,7 +129,7 @@ TEST(ManagedMemoryTest, OOMExceptionTest) {
   if (!platform::IsGPUManagedMemorySupported(0)) {
     return;
   }
-  EXPECT_THROW(Alloc(platform::CUDAPlace(0), size_t(1) << 60),
+  EXPECT_THROW(Alloc(phi::GPUPlace(0), size_t(1) << 60),
                memory::allocation::BadAlloc);
 }
 
