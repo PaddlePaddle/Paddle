@@ -140,20 +140,15 @@ platform::DeviceContext* ParseDeviceContext(
             op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
-        PADDLE_ENFORCE_EQ(
-            comm_context_manager.Has(std::to_string(ring_id)),
-            true,
-            phi::errors::InvalidArgument(
-                "You choose to use new communication library by "
-                "setting environment "
-                "variable FLAGS_dynamic_static_unified_comm True. "
-                "But ring_id(%d) is "
-                "not found in comm_context_manager.",
-                std::to_string(ring_id)));
-        auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
-        static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-            ->GetDevContext()
-            ->SetCommContext(comm_context);
+        if (comm_context_manager.Has(std::to_string(ring_id))) {
+          auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+          static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+              ->GetDevContext()
+              ->SetCommContext(comm_context);
+        } else {
+          VLOG(10) << "ring_id " << ring_id
+                   << " not found in comm_context_manager for op " << op_name;
+        }
       }
     }
 
