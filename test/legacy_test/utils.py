@@ -22,6 +22,11 @@ from paddle import base, get_flags, set_flags, static
 from paddle.base import core
 from paddle.base.framework import _dygraph_guard
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.pir_utils import DygraphOldIrGuard
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -169,22 +174,29 @@ def pir_executor_guard():
         set_flags({"FLAGS_enable_pir_in_executor": tmp_cpp})
 
 
+ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
+    "FLAGS_enable_pir_in_executor", True
+)
+
+
 def to_pir_pt_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        ir_outs = None
-        if os.environ.get('FLAGS_use_stride_kernel', False):
-            return
-        with static.scope_guard(static.Scope()):
-            with static.program_guard(static.Program()):
-                pir_flag = 'FLAGS_enable_pir_in_executor'
-                try:
-                    os.environ[pir_flag] = 'True'
-                    set_flags({pir_flag: True})
-                    ir_outs = fn(*args, **kwargs)
-                finally:
-                    del os.environ[pir_flag]
-                    set_flags({pir_flag: False})
+        with DygraphOldIrGuard():
+            pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
+            original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
+            if os.environ.get('FLAGS_use_stride_kernel', False):
+                return
+            with static.scope_guard(static.Scope()):
+                with static.program_guard(static.Program()):
+                    with EnvironmentVariableGuard(
+                        ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True
+                    ):
+                        try:
+                            set_flags({pt_in_dy2st_flag: True})
+                            ir_outs = fn(*args, **kwargs)
+                        finally:
+                            set_flags({pt_in_dy2st_flag: original_flag_value})
         return ir_outs
 
     return impl
