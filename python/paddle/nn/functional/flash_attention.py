@@ -22,7 +22,6 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.incubate.nn.functional import fused_dot_product_attention
 
 g_enable_math = None
 g_enable_flash = None
@@ -1068,6 +1067,8 @@ def scaled_dot_product_attention(
     # NOTE: fused_dot_product_attention runs faster on Hopper devices
     # but slower on Ampere devices.
     if is_device_hopper():
+        from paddle.incubate.nn.functional import fused_dot_product_attention
+
         return fused_dot_product_attention(
             query=query,
             key=key,
