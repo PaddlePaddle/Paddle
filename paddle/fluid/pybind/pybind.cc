@@ -1236,7 +1236,7 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
   m.def("wait_device", [](const phi::Place &place) {
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
+    phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
 
   m.def("from_dlpack", [](py::capsule *dltensor) {
@@ -2381,7 +2381,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const phi::GPUPlace &place) {
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
+    phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
   m.def("_set_warmup", [](bool warmup) {
 #if defined(PADDLE_WITH_CUDA)
@@ -2650,8 +2650,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_cuda_current_device_id", &platform::GetCurrentDeviceId);
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
-      auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
-          phi::GPUPlace(dev_id));
+      auto *dev_ctx =
+          phi::DeviceContextPool::Instance().GetByPlace(phi::GPUPlace(dev_id));
       dev_ctx->cudnn_workspace_handle().ResetWorkspace();
     }
     platform::EmptyCache();

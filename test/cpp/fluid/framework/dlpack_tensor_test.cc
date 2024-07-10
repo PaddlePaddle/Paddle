@@ -46,7 +46,7 @@ constexpr uint8_t GetDLDataTypeCode() {
 }  // namespace
 
 template <typename T>
-void TestMain(const platform::Place &place, uint16_t lanes) {
+void TestMain(const phi::Place &place, uint16_t lanes) {
   DDim dims{4, 5, 6, 7};
   phi::DenseTensor tensor;
   tensor.Resize(dims);
@@ -84,7 +84,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 }
 
 template <typename T>
-void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
+void TestToDLManagedTensor(const phi::Place &place, uint16_t lanes) {
   DDim dims{6, 7};
   phi::DenseTensor tensor;
   tensor.Resize(dims);
@@ -109,14 +109,13 @@ void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
 template <typename T>
 void TestMainLoop() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  std::vector<platform::Place> places{platform::CPUPlace(),
-                                      platform::CUDAPlace(0),
-                                      platform::CUDAPinnedPlace()};
+  std::vector<platform::Place> places{
+      phi::CPUPlace(), phi::GPUPlace(0), phi::GPUPinnedPlace()};
   if (platform::GetGPUDeviceCount() > 1) {
-    places.emplace_back(platform::CUDAPlace(1));
+    places.emplace_back(phi::GPUPlace(1));
   }
 #else
-  std::vector<platform::Place> places{platform::CPUPlace()};
+  std::vector<platform::Place> places{phi::CPUPlace()};
 #endif
   std::vector<uint16_t> lanes{1, 2};
   for (auto &p : places) {

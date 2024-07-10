@@ -892,7 +892,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         }
         if (set_to_zero) {
           auto* dev_ctx =
-              platform::DeviceContextPool::Instance().Get(grad_t->place());
+              phi::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
           if (is_leaf) {
             std::static_pointer_cast<egr::GradNodeAccumulation>(
@@ -937,7 +937,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
           t = static_cast<phi::distributed::DistTensor*>(grad->impl().get())
                   ->unsafe_mutable_value();
         }
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
         grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
@@ -957,7 +957,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
                   meta->MutableGrad()->impl().get())
                   ->unsafe_mutable_value();
         }
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
         meta->MutableGrad()->set_impl(
