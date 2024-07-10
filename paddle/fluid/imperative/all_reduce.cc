@@ -59,7 +59,7 @@ static void AllReduce(const phi::DenseTensor &src,
                       const platform::NCCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place),
+      phi::is_gpu_place(place),
       true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
@@ -88,7 +88,7 @@ static void AllReduce(const phi::SelectedRows &src,
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place),
+      phi::is_gpu_place(place),
       true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
