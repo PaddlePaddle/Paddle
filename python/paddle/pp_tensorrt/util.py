@@ -111,7 +111,8 @@ def enforce_op_lower_trt(program, op_name):
 def predict_program(program, feed_data, fetch_var_list):
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
-            executor = paddle.static.Executor()
+            place = paddle.CUDAPlace(0)
+            executor = paddle.static.Executor(place)
             output = executor.run(
                 program, feed=feed_data, fetch_list=fetch_var_list
             )

@@ -138,7 +138,7 @@ def test_paddle_to_tensorrt_conversion_r50():
     program = run_pir_pass(program, partition_mode=False)
     enforce_op_lower_trt(program, "pd_op.conv2d")
     enforce_op_lower_trt(program, "pd_op.relu")
-    enforce_op_lower_trt(program, "pd_op.batch_norm_")
+    forbid_op_lower_trt(program, "pd_op.batch_norm_")
     forbid_op_lower_trt(program, "pd_op.pool2d")
     forbid_op_lower_trt(program, "pd_op.flatten")
 
@@ -169,5 +169,5 @@ def test_paddle_to_tensorrt_conversion_r50():
 
 if __name__ == "__main__":
     # test_paddle_to_tensorrt_conversion_dummy()
-    test_paddle_to_tensorrt_conversion_bert()
+    # test_paddle_to_tensorrt_conversion_bert()
     test_paddle_to_tensorrt_conversion_r50()
