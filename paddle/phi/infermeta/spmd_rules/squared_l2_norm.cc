@@ -30,8 +30,14 @@ using phi::distributed::auto_parallel::str_join;
 SpmdInfo SquaredL2NormInferSpmd(const DistMetaTensor& x) {
   VLOG(4) << "SquaredL2NormInferSpmd:";
   VLOG(4) << "Using ReductionInferSpmd Rule as interal implement.";
-  return ReductionInferSpmdBase(
+  SpmdInfo info = ReductionInferSpmdBase(
       x, {}, false, static_cast<int>(ReduceType::kRedSum));
+  // NOTE: reduce output is 0D tensor which has a dims_mapping as {}, while
+  // output of squared_l2_norm is a tensor with shape [1] therefore it need to
+  // have a dims_mapping as {-1}.
+  auto& out_dist_dst = PADDLE_GET(TensorDistAttr, info.second[0]);
+  out_dist_dst.set_dims_mapping({-1});
+  return info;
 }
 
 }  // namespace distributed
