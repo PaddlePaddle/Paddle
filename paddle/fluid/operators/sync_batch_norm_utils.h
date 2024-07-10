@@ -28,7 +28,9 @@ namespace cub = hipcub;
 #endif
 #include "paddle/phi/core/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/common/layout.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -581,7 +583,20 @@ void SyncBatchNormGradFunctor(
             global_gid));
     comm = nccl_pg->NCCLComm(x->place());
   } else {
-    comm = ctx.nccl_comm();
+    if (FLAGS_dynamic_static_unified_comm) {
+      auto comm_ctx =
+          static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      if (comm_ctx) {
+        comm = comm_ctx->GetNcclComm();
+      }
+    } else {
+      comm = ctx.nccl_comm();
+    }
   }
 
   if (comm) {
