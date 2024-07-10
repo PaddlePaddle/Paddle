@@ -128,9 +128,9 @@ void TestBeamSearch() {
     cpu_selected_scores = selected_scores;
   } else {
     paddle::framework::TensorCopySync(
-        selected_ids, paddle::platform::CPUPlace(), &cpu_selected_ids);
+        selected_ids, phi::CPUPlace(), &cpu_selected_ids);
     paddle::framework::TensorCopySync(
-        selected_scores, paddle::platform::CPUPlace(), &cpu_selected_scores);
+        selected_scores, phi::CPUPlace(), &cpu_selected_scores);
     cpu_selected_ids.set_lod(selected_ids.lod());
     cpu_selected_scores.set_lod(selected_scores.lod());
   }
@@ -148,13 +148,13 @@ void TestBeamSearch() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
+void TestBeamSearch<phi::GPUContext, phi::GPUPlace>() {
   phi::DenseTensor ids;
   phi::DenseTensor scores;
   phi::DenseTensor pre_ids;
   phi::DenseTensor pre_scores;
 
-  auto* place = new paddle::platform::CUDAPlace();
+  auto* place = new phi::GPUPlace();
   auto* context = new phi::GPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
@@ -211,9 +211,9 @@ void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
     cpu_selected_scores = selected_scores;
   } else {
     paddle::framework::TensorCopySync(
-        selected_ids, paddle::platform::CPUPlace(), &cpu_selected_ids);
+        selected_ids, phi::CPUPlace(), &cpu_selected_ids);
     paddle::framework::TensorCopySync(
-        selected_scores, paddle::platform::CPUPlace(), &cpu_selected_scores);
+        selected_scores, phi::CPUPlace(), &cpu_selected_scores);
     cpu_selected_ids.set_lod(selected_ids.lod());
     cpu_selected_scores.set_lod(selected_scores.lod());
   }
@@ -230,12 +230,8 @@ void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
 }
 #endif
 
-TEST(BeamSearch, CPU) {
-  TestBeamSearch<phi::CPUContext, paddle::platform::CPUPlace>();
-}
+TEST(BeamSearch, CPU) { TestBeamSearch<phi::CPUContext, phi::CPUPlace>(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(BeamSearch, GPU) {
-  TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>();
-}
+TEST(BeamSearch, GPU) { TestBeamSearch<phi::GPUContext, phi::GPUPlace>(); }
 #endif
