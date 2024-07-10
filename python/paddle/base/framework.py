@@ -179,6 +179,15 @@ def get_flags(flags):
 
 # use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
+    """use `__slots__` to share across threads"""
+
+    __slots__ = (
+        '_in_to_static_mode_',
+        '_functional_dygraph_context_manager',
+        '_dygraph_tracer_',
+        '_use_pir_api_',
+    )
+
     def __init__(self):
         """
         init the thread local data.
@@ -207,7 +216,7 @@ class GlobalThreadLocal(threading.local):
             global _dygraph_tracer_
             _dygraph_tracer_ = val
             core._switch_tracer(val)
-        self.__dict__[name] = val
+        super().__setattr__(name, val)
 
 
 _dygraph_tracer_ = None
