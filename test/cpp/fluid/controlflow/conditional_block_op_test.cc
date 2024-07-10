@@ -21,10 +21,10 @@ limitations under the License. */
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 using Scope = paddle::framework::Scope;
 using Variable = paddle::framework::Variable;
-using Place = paddle::platform::Place;
+using Place = phi::Place;
 
 TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
-  Place place = paddle::platform::CPUPlace();
+  Place place = phi::CPUPlace();
   Scope scope;
 
   Variable* cond_var = scope.Var("condition");

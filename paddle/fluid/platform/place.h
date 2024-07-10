@@ -62,7 +62,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       platform::CUDAPlace p(place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
       return typename Visitor::result_type();
 #endif
@@ -72,7 +72,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       platform::CUDAPinnedPlace p;
       return visitor(p);
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
       return typename Visitor::result_type();
 #endif
@@ -82,7 +82,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       platform::XPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Paddle is not compiled with XPU. Cannot visit xpu device"));
       return typename Visitor::result_type();
 #endif
@@ -92,7 +92,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       platform::IPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Paddle is not compiled with IPU. Cannot visit ipu device"));
       return typename Visitor::result_type();
 #endif
@@ -102,7 +102,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       platform::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
       return visitor(p);
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Paddle is not compiled with CUSTOM. Cannot visit custom device"));
 #endif
     }

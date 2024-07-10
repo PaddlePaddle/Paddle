@@ -212,6 +212,7 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
@@ -441,6 +442,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_install_check)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -1210,3 +1212,12 @@ set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
+                                                                        120)
+set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
+py_test_modules(test_install_check MODULES test_install_check ENVS
+                FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+py_test_modules(test_install_check_pir MODULES test_install_check ENVS
+                FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
+set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
