@@ -37,7 +37,7 @@ struct InputVars {
 };
 
 template <typename T>
-bool TestMain(const platform::Place &place,
+bool TestMain(const phi::Place &place,
               const std::string &op_type,
               const framework::DDim &dims,
               const int num_inputs) {

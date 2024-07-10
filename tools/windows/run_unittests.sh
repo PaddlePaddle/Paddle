@@ -173,7 +173,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_onednn_multi_gru_fuse_pass$|\
 ^test_onednn_multi_gru_seq_fuse_pass$|\
 ^test_onednn_reshape_transpose_matmul_fuse_pass$|\
-^test_conv2d_layer$|\
+^test_conv2d_layer_deprecated$|\
 ^test_conv3d_layer$|\
 ^test_decorator$|\
 ^test_flash_attention$|\

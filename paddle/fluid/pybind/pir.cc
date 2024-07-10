@@ -323,7 +323,7 @@ std::string GetValueName(Value value) {
 
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Currently, we can only get name of Value from "
-      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp/SetParameterOp."));
 }
 
 py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {

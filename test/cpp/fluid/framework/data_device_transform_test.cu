@@ -110,7 +110,7 @@ TEST(Operator, CPUtoGPU) {
   paddle::framework::InitDevices();
 
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
   // create an op to run on CPU
   paddle::framework::proto::OpDesc cpu_op_desc;
@@ -121,8 +121,7 @@ TEST(Operator, CPUtoGPU) {
   auto cpu_op = paddle::framework::OpRegistry::CreateOp(cpu_op_desc);
   // prepare input
   auto* in_t = scope.Var("IN1")->GetMutable<phi::DenseTensor>();
-  auto* src_ptr =
-      in_t->mutable_data<float>({2, 3}, paddle::platform::CPUPlace());
+  auto* src_ptr = in_t->mutable_data<float>({2, 3}, phi::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {
     src_ptr[i] = static_cast<float>(i);
   }
@@ -149,7 +148,7 @@ TEST(Operator, CPUtoGPU) {
 
   auto gpu_op = paddle::framework::OpRegistry::CreateOp(gpu_op_desc);
 
-  paddle::platform::CUDAPlace cuda_place(0);
+  phi::GPUPlace cuda_place(0);
   // get output
   auto* output2 = scope.Var("OUT2");
   gpu_op->Run(scope, cuda_place);
@@ -161,7 +160,7 @@ TEST(Operator, CPUtoGPU) {
 
   phi::DenseTensor output_tensor;
   paddle::framework::TensorCopy(output2->Get<phi::DenseTensor>(),
-                                paddle::platform::CPUPlace(),
+                                phi::CPUPlace(),
                                 *dev_ctx,
                                 &output_tensor);
 

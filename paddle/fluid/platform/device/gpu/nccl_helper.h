@@ -66,8 +66,8 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclBfloat16;
 #endif
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "This datatype in nccl is not supported."));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("This datatype in nccl is not supported."));
   }
 }
 
@@ -93,8 +93,8 @@ inline ncclDataType_t ToNCCLDataType(phi::DataType type) {
     return ncclBfloat16;
 #endif
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "This datatype in nccl is not supported."));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("This datatype in nccl is not supported."));
   }
 }
 
@@ -164,10 +164,10 @@ class NCCLContextMap {
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1,
                           size_t trainer_id = 0) {
-    PADDLE_ENFORCE_EQ(!places.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The NCCL place should not be empty."));
+    PADDLE_ENFORCE_EQ(
+        !places.empty(),
+        true,
+        phi::errors::InvalidArgument("The NCCL place should not be empty."));
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = p.device;
@@ -177,8 +177,8 @@ class NCCLContextMap {
     PADDLE_ENFORCE_EQ(
         order_.size(),
         contexts_.size(),
-        platform::errors::Unavailable("NCCL Context Map does not support "
-                                      "contain two or more same device."));
+        phi::errors::Unavailable("NCCL Context Map does not support "
+                                 "contain two or more same device."));
 
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if num_trainers == 1, should create a new nccl id for local comms.
@@ -189,7 +189,7 @@ class NCCLContextMap {
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           nccl_id,
-          platform::errors::InvalidArgument("The NCCL id should not be null."));
+          phi::errors::InvalidArgument("The NCCL id should not be null."));
       {
         int nranks = num_trainers * order_.size();
         NCCLGroupGuard gurad;
@@ -339,7 +339,7 @@ class NCCLCommunicator {
                             size_t exter_trainers_num) {
     PADDLE_ENFORCE_EQ(trainers_num,
                       inter_trainers_num * exter_trainers_num,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "trainers_num:%llu != inter_trainers_num:%llu * "
                           "exter_trainers_num:%llu",
                           trainers_num,
@@ -349,7 +349,7 @@ class NCCLCommunicator {
     PADDLE_ENFORCE_GT(
         inter_trainers_num,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The inter_trainers_num:%llu should be larger than 1.",
             inter_trainers_num));
 
@@ -384,7 +384,7 @@ class NCCLCommunicator {
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
     PADDLE_ENFORCE_GT(h_inter_ctxs_.size(),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Hierarchical ctxs should be initialized firstly!"));
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()].get();
   }
@@ -392,7 +392,7 @@ class NCCLCommunicator {
   NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
     PADDLE_ENFORCE_GT(h_exter_ctxs_.size(),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Hierarchical ctxs should be initialized firstly!"));
     return h_exter_ctxs_[run_order % h_exter_ctxs_.size()].get();
   }

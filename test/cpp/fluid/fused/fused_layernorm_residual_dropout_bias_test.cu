@@ -53,7 +53,7 @@ struct TestFusedLayernormResidualDropoutBias {
   std::vector<phi::funcs::LayerNormParamType<T>> correct_means, correct_vars;
   std::vector<uint8_t> correct_mask;
 
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext *ctx;
 
   TestFusedLayernormResidualDropoutBias() {

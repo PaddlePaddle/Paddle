@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+from utils import dygraph_guard
 
 import paddle
 from paddle.static import InputSpec
@@ -211,10 +212,11 @@ class TestReduceAsDynamicShape(unittest.TestCase):
         return res
 
     def test_all_dynamic(self):
-        res_ref = self.base_net()
-        res = self.base_net("static")
-        for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=self.tol)
+        with dygraph_guard():
+            res_ref = self.base_net()
+            res = self.base_net("static")
+            for ref, actual in zip(res_ref, res):
+                np.testing.assert_allclose(ref, actual, rtol=self.tol)
 
 
 if __name__ == "__main__":

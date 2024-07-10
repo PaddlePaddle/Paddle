@@ -34,6 +34,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -626,13 +627,13 @@ struct PirToPyCodeConverterHelper {
       if (i++ > 0) {
         ss << ", ";
       }
-      ss << attr_name << "=" << ConvertAttr(attr);
+      ss << std::quoted(attr_name) << ":" << ConvertAttr(attr);
     });
     VisitSymbolicAttrs(op, [&](const auto& attr_name, const auto& attrs) {
       if (i++ > 0) {
         ss << ", ";
       }
-      ss << attr_name << "=" << ConvertSymbolicAttrs(attrs);
+      ss << std::quoted(attr_name) << ":" << ConvertSymbolicAttrs(attrs);
     });
     return ss.str();
   }
@@ -1248,6 +1249,27 @@ struct PirToPyCodeConverterHelper {
       const auto& name = ::pir::Complex128Type::name();
       return std::string("self.") + name + "()";
     }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SelectedRowsType>) {
+      const auto& name = ::paddle::dialect::SelectedRowsType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::DenseTensorArrayType>) {
+      const auto& name = ::paddle::dialect::DenseTensorArrayType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SparseCooTensorType>) {
+      const auto& name = ::paddle::dialect::SparseCooTensorType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SparseCsrTensorType>) {
+      const auto& name = ::paddle::dialect::SparseCsrTensorType::name();
+      return std::string("self.") + name + "()";
+    }
+
     std::string operator()(AdtTypeId<UnclassifiedType>) {
       std::stringstream ss;
       ss << "self.UnclassifiedType(";
@@ -1272,8 +1294,8 @@ struct PirToPyCodeConverterHelper {
     ss << "self." << ConvertOpUniqueName(op) << " = self.Op("
        << std::quoted(op->name()) << ", " << id << ", "
        << "input_types=" << input_types_str
-       << ", output_types=" << output_types_str << ", attrs=dict("
-       << attrs_as_args << ")";
+       << ", output_types=" << output_types_str << ", attrs={" << attrs_as_args
+       << "}";
     if (!block_signature.empty()) {
       ss << ", " << block_signature;
     }
