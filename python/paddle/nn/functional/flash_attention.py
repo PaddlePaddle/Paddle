@@ -1055,13 +1055,10 @@ def scaled_dot_product_attention(
     """
 
     def is_device_hopper() -> bool:
-        # NOTE: Add more devices name here.
-        hopper_device_names = ["HZZ1", "H100"]
         if paddle.device.is_compiled_with_cuda():
-            device_name = paddle.device.cuda.get_device_name()
-            for name in hopper_device_names:
-                if name in device_name:
-                    return True
+            prop = paddle.device.cuda.get_device_properties()
+            sm_version = prop.major * 10 + prop.minor
+            return sm_version >= 90
         return False
 
     # NOTE: fused_dot_product_attention runs faster on Hopper devices
