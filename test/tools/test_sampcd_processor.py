@@ -2386,15 +2386,16 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import multiprocessing
                     >>> def fn(a, b):
                     ...     return a + b
-                    >>> p = multiprocessing.Process(
-                    ...     target=fn,
-                    ...     args=(
-                    ...     1,
-                    ...     2,
-                    ...     ),
-                    ... )
-                    >>> p.start()
-                    >>> p.join()
+                    >>> if __name__ == '__main__':
+                    ...     p = multiprocessing.Process(
+                    ...         target=fn,
+                    ...         args=(
+                    ...         1,
+                    ...         2,
+                    ...         ),
+                    ...     )
+                    ...     p.start()
+                    ...     p.join()
             """,
             'has_solo': """
             placeholder
@@ -2410,15 +2411,16 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import multiprocessing
                     >>> def fn(a, b):
                     ...     return a + b
-                    >>> p = multiprocessing.Process(
-                    ...     target=fn,
-                    ...     args=(
-                    ...     1,
-                    ...     2,
-                    ...     ),
-                    ... )
-                    >>> p.start()
-                    >>> p.join()
+                    >>> if __name__ == '__main__':
+                    ...     p = multiprocessing.Process(
+                    ...         target=fn,
+                    ...         args=(
+                    ...         1,
+                    ...         2,
+                    ...         ),
+                    ...     )
+                    ...     p.start()
+                    ...     p.join()
             """,
         }
 
