@@ -863,7 +863,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
         });
     const auto &fuse_beta = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<double>("full_1_value");
+          return match_ctx.Attr<double>("full_2_value");
         });
 
     std::vector<const paddle::drr::Tensor *> combine_result_in;
