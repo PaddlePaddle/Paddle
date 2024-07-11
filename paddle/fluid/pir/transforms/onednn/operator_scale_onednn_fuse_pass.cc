@@ -161,7 +161,6 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
         [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<double>("full_1_value");
         });
-
     if (fusable_ops_ == paddle::onednn::dialect::FcOp::name()) {
       fused_op_attrs.emplace("in_num_col_dims", pat.Attr("in_num_col_dims"));
       fused_op_attrs.emplace("activation_type", pat.Attr("activation_type"));
@@ -185,7 +184,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
       fused_op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
       fused_op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
-      fused_op_attrs.emplace("fused_output_scale", pat.Attr("full_1_value"));
+      fused_op_attrs.emplace("fused_output_scale", fused_output_scale);
       fused_op_attrs.emplace("fused_reshape_x", pat.Attr("fused_reshape_x"));
       fused_op_attrs.emplace("fused_transpose_x",
                              pat.Attr("fused_transpose_x"));
@@ -213,7 +212,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("fuse_activation", res.StrAttr(""));
       fused_op_attrs.emplace("fuse_alpha", res.Float32Attr(0.0f));
       fused_op_attrs.emplace("fuse_beta", res.Float32Attr(0.0f));
-      fused_op_attrs.emplace("fused_output_scale", pat.Attr("full_1_value"));
+      fused_op_attrs.emplace("fused_output_scale", fused_output_scale);
       fused_op_attrs.emplace("fused_reshape_x", res.VectorInt32Attr({}));
       fused_op_attrs.emplace("fused_transpose_x", res.VectorInt32Attr({}));
       fused_op_attrs.emplace("fused_reshape_y", res.VectorInt32Attr({}));
@@ -239,7 +238,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
       fused_op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
       fused_op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
-      fused_op_attrs.emplace("fused_output_scale", pat.Attr("full_1_value"));
+      fused_op_attrs.emplace("fused_output_scale", fused_output_scale);
       fused_op_attrs.emplace("fused_unsqueeze2_axes",
                              pat.Attr("fused_unsqueeze2_axes"));
       fused_op_attrs.emplace("scale_x", pat.Attr("scale_x"));
@@ -251,7 +250,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("fuse_activation", res.StrAttr(""));
       fused_op_attrs.emplace("fuse_alpha", res.Float32Attr(0.0f));
       fused_op_attrs.emplace("fuse_beta", res.Float32Attr(0.0f));
-      fused_op_attrs.emplace("fused_output_scale", pat.Attr("full_1_value"));
+      fused_op_attrs.emplace("fused_output_scale", fused_output_scale);
       fused_op_attrs.emplace("fused_unsqueeze2_axes", res.VectorInt32Attr({}));
       fused_op_attrs.emplace("scale_x", res.Float32Attr(1.0f));
       fused_op_attrs.emplace("scale_y", res.Float32Attr(1.0f));
