@@ -61,8 +61,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushDenseOp::name(),
     SeedOp::name(),
     GetTensorFromSelectedRowsOp::name(),
-    RowConvOp::name(),
-    RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
     NceOp::name(),
