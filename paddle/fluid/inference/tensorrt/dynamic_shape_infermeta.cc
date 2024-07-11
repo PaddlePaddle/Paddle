@@ -879,6 +879,16 @@ nvinfer1::DimsExprs SolveInferMeta(
   return ref_dims;
 }
 
+nvinfer1::DimsExprs IsnanV2InferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const nvinfer1::DimsExprs output_dims = inputs[0];
+  return output_dims;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -899,4 +909,5 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(isnan_v2, IsnanV2InferMeta);
 }  // namespace paddle::inference::tensorrt
