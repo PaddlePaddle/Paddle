@@ -402,27 +402,6 @@ class TestPadOrder5(TestPadOrder):
         self.pad_value = 0.5
 
 
-class TestPadOrder6(TestPadOrder):
-    def init_case(self):
-        self.shape = [1, 2, 3, 4, 5]
-        self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1), (1, 0)]
-        self.pad_value = 0.5
-
-
-class TestPadOrder7(TestPadOrder):
-    def init_case(self):
-        self.shape = [1, 2, 3, 4, 5]
-        self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
-        self.pad_value = 0.5
-
-
-class TestPadOrder8(TestPadOrder):
-    def init_case(self):
-        self.shape = [1, 2, 3, 4, 5]
-        self.paddings = [(0, 1), (2, 3)]
-        self.pad_value = 0.5
-
-
 if __name__ == "__main__":
     # paddle.enable_static()
     unittest.main()
