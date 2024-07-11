@@ -273,6 +273,11 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
       },
+      [&](const symbol::TensorArrayShapeOrDataDimExprs& tensor_array) {
+        symbol::TensorArrayShapeOrDataDimExprs simplified_tensor_array(
+            DimExprsVisitor(tensor_array.GetShapeOfFirstItem()));
+        return symbol::ShapeOrDataDimExprs(simplified_tensor_array);
+      },
       [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       });

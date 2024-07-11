@@ -188,6 +188,7 @@ struct ShapeSignatureGenerator {
             }
           },
           [&](const symbol::TensorListShapeOrDataDimExprs& impl) { return; },
+          [&](const symbol::TensorArrayShapeOrDataDimExprs& impl) { return; },
           [&](const symbol::NullShapeOrDataDimExpr& impl) { return; });
     };
 
@@ -247,6 +248,9 @@ struct ShapeSignatureGenerator {
           return std::make_pair(shape, data);
         },
         [&](const symbol::TensorListShapeOrDataDimExprs& impl) -> ResType {
+          return std::make_pair(std::nullopt, std::nullopt);
+        },
+        [&](const symbol::TensorArrayShapeOrDataDimExprs& impl) -> ResType {
           return std::make_pair(std::nullopt, std::nullopt);
         },
         [&](const symbol::NullShapeOrDataDimExpr& impl) -> ResType {
