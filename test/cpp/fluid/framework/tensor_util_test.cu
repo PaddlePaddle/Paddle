@@ -59,7 +59,7 @@ static __global__ void FillFinite(platform::float16* buf) {
 
 TEST(TensorContainsNAN, GPU) {
   phi::GPUPlace gpu(0);
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     phi::DenseTensor tensor;
@@ -88,7 +88,7 @@ TEST(TensorContainsNAN, GPU) {
 
 TEST(TensorContainsInf, GPU) {
   phi::GPUPlace gpu(0);
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     phi::DenseTensor tensor;
@@ -118,7 +118,7 @@ TEST(TensorContainsInf, GPU) {
 TEST(TensorIsfinite, GPU) {
   phi::GPUPlace gpu(0);
   using paddle::platform::float16;
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   // contains inf
   {
@@ -197,7 +197,7 @@ TEST(TensorIsfinite, GPU) {
 
 TEST(TensorContainsInf, GPUWithoutWait) {
   phi::GPUPlace gpu(0);
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     phi::DenseTensor tensor, out;
@@ -236,7 +236,7 @@ TEST(TensorContainsInf, GPUWithoutWait) {
 
 TEST(TensorContainsNAN, GPUWithoutWait) {
   phi::GPUPlace gpu(0);
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     phi::DenseTensor tensor, out;
@@ -275,7 +275,7 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
 
 TEST(TensorIsfinite, GPUWithoutWait) {
   phi::GPUPlace gpu(0);
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
     phi::DenseTensor tensor, out;

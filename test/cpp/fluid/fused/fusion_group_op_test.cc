@@ -173,7 +173,7 @@ void TestMain(const std::vector<std::string>& input_names,
 
   fusion_group_op->Run(scope, place);
 
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
   // Check the output.
