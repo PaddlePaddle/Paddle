@@ -100,7 +100,7 @@ class ScaleMatmulFusePattern : public paddle::drr::DrrPatternBase {
         {"force_fp32_output", res.BoolAttr(false)}};
 
     const auto &matmul_alpha_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> double {
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           auto scale = match_ctx.Attr<double>("scale_");
           return scale;
         });
@@ -225,7 +225,7 @@ class ScaleFusedMatmulFusePattern : public paddle::drr::DrrPatternBase {
         {"force_fp32_output", pat.Attr("force_fp32_output")}};
 
     const auto &matmul_alpha_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> double {
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           auto scale = match_ctx.Attr<double>("scale_");
           auto matmul_alpha = match_ctx.Attr<float>("matmul_alpha");
           return scale * matmul_alpha;

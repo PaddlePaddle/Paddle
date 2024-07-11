@@ -284,7 +284,7 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
       if (conv_input_shape.size() != 4) {
         return false;
       }
-      double epsilon = !match_ctx.Attr<double>("epsilon");
+      float epsilon = !match_ctx.Attr<double>("epsilon");
       if (epsilon < 0.0f || epsilon > 0.001f) {
         return false;
       }
