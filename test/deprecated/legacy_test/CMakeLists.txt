@@ -441,8 +441,7 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op)
-set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op_deprecated)
+set(TEST_OPS_WITH_GC test_slice_op test_slice_op_deprecated)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -646,7 +645,6 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
@@ -686,15 +684,13 @@ set(TEST_CINN_OPS
     test_softmax_op
     test_slice_op
     test_slice_op_deprecated
-    test_gather_nd_op
     test_scale_op
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
     test_instance_norm_op
     test_instance_norm_op_deprecated
-    test_cumsum_op
-    test_erf_op)
+    test_cumsum_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

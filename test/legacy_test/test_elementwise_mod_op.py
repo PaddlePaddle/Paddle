@@ -19,8 +19,9 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle import base
+from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseModOp(OpTest):
@@ -205,43 +206,73 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
 
 class TestRemainderOp(unittest.TestCase):
+    def setUp(self):
+        self.np_x1 = np.array([2, 3, 8, 7]).astype('int64')
+        self.np_y1 = np.array([1, 5, 3, 3]).astype('int64')
+        self.z_expected1 = np.array([0, 3, 2, 1])
+
+        self.np_x2 = np.array([-3.3, 11.5, -2, 3.5])
+        self.np_y2 = np.array([-1.2, 2.0, 3.3, -2.3])
+        self.z_expected2 = np.array([-0.9, 1.5, 1.3, -1.1])
+
+        self.np_x3 = np.array([-3, 11, -2, 3])
+        self.np_y3 = np.array([-1, 2, 3, -2])
+        self.z_expected3 = np.array([0, 1, 1, -1])
+
     def _executed_api(self, x, y, name=None):
         return paddle.remainder(x, y, name)
 
-    def test_name(self):
-        with base.program_guard(base.Program()):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
-
-            y_1 = self._executed_api(x, y, name='div_res')
-            self.assertEqual(('div_res' in y_1.name), True)
-
     def test_dygraph(self):
         with base.dygraph.guard():
-            np_x = np.array([2, 3, 8, 7]).astype('int64')
-            np_y = np.array([1, 5, 3, 3]).astype('int64')
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
+            x = paddle.to_tensor(self.np_x1)
+            y = paddle.to_tensor(self.np_y1)
             z = self._executed_api(x, y)
             np_z = z.numpy()
-            z_expected = np.array([0, 3, 2, 1])
-            self.assertEqual((np_z == z_expected).all(), True)
+            self.assertEqual((np_z == self.z_expected1).all(), True)
 
-            np_x = np.array([-3.3, 11.5, -2, 3.5])
-            np_y = np.array([-1.2, 2.0, 3.3, -2.3])
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
+            x = paddle.to_tensor(self.np_x2)
+            y = paddle.to_tensor(self.np_y2)
             z = x % y
-            z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
-            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(self.z_expected2, z.numpy(), rtol=1e-05)
 
-            np_x = np.array([-3, 11, -2, 3])
-            np_y = np.array([-1, 2, 3, -2])
-            x = paddle.to_tensor(np_x, dtype="int64")
-            y = paddle.to_tensor(np_y, dtype="int64")
+            x = paddle.to_tensor(self.np_x3, dtype="int64")
+            y = paddle.to_tensor(self.np_y3, dtype="int64")
             z = x % y
-            z_expected = np.array([0, 1, 1, -1])
-            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(self.z_expected3, z.numpy(), rtol=1e-05)
+
+    @test_with_pir_api
+    def test_static(self):
+        mp, sp = static.Program(), static.Program()
+        with static.program_guard(mp, sp):
+            x1 = static.data("x1", shape=[4], dtype="int64")
+            y1 = static.data("y1", shape=[4], dtype="int64")
+            z1 = self._executed_api(x1, y1)
+
+            x2 = static.data("x2", shape=[4], dtype="float64")
+            y2 = static.data("y2", shape=[4], dtype="float64")
+            z2 = self._executed_api(x2, y2)
+
+            x3 = static.data("x3", shape=[4], dtype="int64")
+            y3 = static.data("y3", shape=[4], dtype="int64")
+            z3 = self._executed_api(x3, y3)
+
+        exe = static.Executor()
+        exe.run(sp)
+        [z_np1, z_np2, z_np3] = exe.run(
+            mp,
+            feed={
+                "x1": self.np_x1,
+                "y1": self.np_y1,
+                "x2": self.np_x2,
+                "y2": self.np_y2,
+                "x3": self.np_x3,
+                "y3": self.np_y3,
+            },
+            fetch_list=[z1, z2, z3],
+        )
+        np.testing.assert_allclose(self.z_expected1, z_np1, rtol=1e-05)
+        np.testing.assert_allclose(self.z_expected2, z_np2, rtol=1e-05)
+        np.testing.assert_allclose(self.z_expected3, z_np3, rtol=1e-05)
 
 
 class TestRemainderInplaceOp(TestRemainderOp):

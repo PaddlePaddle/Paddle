@@ -756,7 +756,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 #ifdef PADDLE_WITH_XPU_BKCL
       if (phi::is_xpu_place(group_tensor.place())) {
         auto dev_ctx = static_cast<platform::XPUDeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(place_));
+            phi::DeviceContextPool::Instance().Get(place_));
         if (HasGrad(var_index)) {
           auto var_base = vars_[var_index]->GradVarBase();
           auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -773,7 +773,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         }
       }
 #else
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
       if (HasGrad(var_index)) {
         auto var_base = vars_[var_index]->GradVarBase();
         auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -924,7 +924,7 @@ void Reducer::ProcessUnusedDenseVars() {
   // avoid conflicts with communication.
   VLOG(3) << "Local used vars : "
           << string::join_strings(local_used_vars_, ',');
-  const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+  const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
   // H2D is to allreduce the local_used_vars_
   auto *global_used_tensor = global_used_vars_.GetMutable<phi::DenseTensor>();
   framework::TensorFromVector<int>(
@@ -976,7 +976,7 @@ void Reducer::ProcessUnusedDenseVars() {
       // 4. set grad tensor
       auto *dest_grad_tensor =
           grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
-      const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
       paddle::framework::TensorCopy(
           src_tensor, place_, *dev_ctx, dest_grad_tensor);
       dest_grad_tensor->Resize(dest_dims);
