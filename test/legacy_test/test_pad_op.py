@@ -325,7 +325,7 @@ class TestPadOrder(unittest.TestCase):
         self.init_case()
         pad_from_first_axis = True
         x_np = np.random.random(self.shape).astype('float32')
-        paddings_np = self.paddings
+        paddings_np = self.paddings.copy()
         if len(paddings_np) < len(self.shape):
             paddings_np += [(0, 0)] * (len(self.shape) - len(paddings_np))
         out_np = np.pad(
@@ -347,7 +347,7 @@ class TestPadOrder(unittest.TestCase):
         self.init_case()
         pad_from_first_axis = False
         x_np = np.random.random(self.shape).astype('float32')
-        paddings_np = self.paddings
+        paddings_np = self.paddings.copy()
         if len(paddings_np) < len(self.shape):
             paddings_np += [(0, 0)] * (len(self.shape) - len(paddings_np))
         paddings_np.reverse()
