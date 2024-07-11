@@ -152,7 +152,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   if (var->IsType<phi::DenseTensor>() &&
       var->Get<phi::DenseTensor>().initialized()) {
     phi::DenseTensor cpu_tensor;
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     paddle::framework::TensorCopy(
         var->Get<phi::DenseTensor>(), place, &cpu_tensor);
     paddle::platform::DeviceContextPool& pool =

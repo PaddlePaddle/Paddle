@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 
 from ..base.core import LoDTensor
 from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
+
+if TYPE_CHECKING:
+    from typing_extensions import CapsuleType
+
+    from paddle import Tensor
 
 __all__ = [
     'to_dlpack',
@@ -24,7 +33,7 @@ __all__ = [
 ]
 
 
-def to_dlpack(x):
+def to_dlpack(x: Tensor) -> CapsuleType:
     """
     Encodes a tensor to DLPack.
 
@@ -62,7 +71,7 @@ def to_dlpack(x):
     return x._to_dlpack()
 
 
-def from_dlpack(dlpack):
+def from_dlpack(dlpack: CapsuleType) -> Tensor:
     """
     Decodes a DLPack to a tensor.
 

@@ -15,8 +15,8 @@
 #include "paddle/fluid/memory/allocation/stream_safe_xpu_allocator.h"
 #include <thread>
 
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
@@ -87,7 +87,7 @@ void StreamSafeXPUAllocation::RecordStreamPrivate(XPUStream stream) {
 
 StreamSafeXPUAllocator::StreamSafeXPUAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    platform::XPUPlace place,
+    phi::XPUPlace place,
     XPUStream default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),

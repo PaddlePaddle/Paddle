@@ -54,7 +54,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 #ifdef PADDLE_WITH_HETERPS
   for (int i = 0; i < thread_num_; ++i) {
     int num = trainer_desc.worker_places(i);
-    platform::CUDAPlace place = platform::CUDAPlace(num);
+    phi::GPUPlace place = phi::GPUPlace(num);
     places_.push_back(place);
   }
 #endif
@@ -286,15 +286,15 @@ template <typename T>
 void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                     phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopy(*root_tensor, phi::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopy(*tensor, phi::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
+  TensorCopy(tmp_root, phi::CPUPlace(), root_tensor);
 }
 void MultiTrainer::MergeWorkerVars() {
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
@@ -415,7 +415,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
         exit(-1);                                                              \
       }                                                                        \
       phi::DenseTensor tmp_tensor;                                             \
-      TensorCopy(*thread_tensor, platform::CPUPlace(), &tmp_tensor);           \
+      TensorCopy(*thread_tensor, phi::CPUPlace(), &tmp_tensor);                \
       phi::funcs::set_constant(*dev_ctx_, thread_tensor, 0.0);                 \
     }                                                                          \
   } while (0)

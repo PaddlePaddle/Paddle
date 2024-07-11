@@ -81,7 +81,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       RunAndRecordEvent(out_p, [in_tensor, out_var] {
         paddle::framework::TensorCopy(
             in_tensor,
-            platform::CPUPlace(),
+            phi::CPUPlace(),
             &VariableVisitor::GetMutableTensor(out_var));
       });
     }
@@ -255,7 +255,7 @@ void BroadcastOpHandle::InitOutputValue(
                         platform::errors::PreconditionNotMet(
                             "Places of input and output must be all on GPU."));
     } else {
-      t_out_p = platform::CPUPlace();
+      t_out_p = phi::CPUPlace();
     }
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
     VariableVisitor::GetMutableTensor(out_var).mutable_data(t_out_p,

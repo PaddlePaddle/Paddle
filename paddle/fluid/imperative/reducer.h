@@ -178,7 +178,7 @@ class Reducer {
   std::vector<std::vector<size_t>> group_indices_;
   std::vector<Group> groups_;
   size_t next_group_ = 0;
-  platform::Place place_;
+  phi::Place place_;
   std::once_flag once_flag_;
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;

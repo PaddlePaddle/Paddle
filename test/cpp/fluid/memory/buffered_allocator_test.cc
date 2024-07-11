@@ -56,9 +56,9 @@ class StubAllocator : public Allocator {
   phi::Allocation *AllocateImpl(size_t size) override {
     ++construct_count_;
     if (size == 0) {
-      return new StubAllocation(nullptr, 0, platform::CPUPlace());
+      return new StubAllocation(nullptr, 0, phi::CPUPlace());
     } else {
-      return new StubAllocation(new uint8_t[size], size, platform::CPUPlace());
+      return new StubAllocation(new uint8_t[size], size, phi::CPUPlace());
     }
   }
 

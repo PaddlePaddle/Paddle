@@ -193,22 +193,21 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
             "FLOAT64 is supported in Tensor. Others not implements"));
     }
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    paddle::platform::CUDAPlace gpu_place(dst.device_);
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    phi::GPUPlace gpu_place(dst.device_);
     auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.Get(gpu_place));
 
     if (src.place() == PlaceType::kCPU) {
       paddle::memory::Copy(gpu_place,
                            static_cast<void*>(dst_data),
-                           paddle::platform::CPUPlace(),
+                           phi::CPUPlace(),
                            src_data,
                            data_len,
                            dev_ctx->stream());
     } else {
       paddle::memory::Copy(gpu_place,
                            static_cast<void*>(dst_data),
-                           paddle::platform::CUDAPlace(),
+                           phi::GPUPlace(),
                            src_data,
                            data_len,
                            dev_ctx->stream());

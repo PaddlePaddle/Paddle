@@ -159,27 +159,6 @@ class TestGenerateProposals(LayerTest):
         np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
 
 
-class TestMulticlassNMS2(unittest.TestCase):
-    def test_multiclass_nms2(self):
-        program = Program()
-        with program_guard(program):
-            bboxes = paddle.static.data(
-                name='bboxes', shape=[-1, 10, 4], dtype='float32'
-            )
-            scores = paddle.static.data(
-                name='scores', shape=[-1, 10], dtype='float32'
-            )
-            output = paddle.incubate.layers.multiclass_nms2(
-                bboxes, scores, 0.3, 400, 200, 0.7
-            )
-            output2, index = paddle.incubate.layers.multiclass_nms2(
-                bboxes, scores, 0.3, 400, 200, 0.7, return_index=True
-            )
-            self.assertIsNotNone(output)
-            self.assertIsNotNone(output2)
-            self.assertIsNotNone(index)
-
-
 class TestDistributeFpnProposals(LayerTest):
     def static_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.static_graph():

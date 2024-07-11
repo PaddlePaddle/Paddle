@@ -39,7 +39,7 @@ TEST_API std::vector<phi::DenseTensor> SplitLoDTensor(
 TEST_API void MergeLoDTensor(
     phi::DenseTensor* target,
     const std::vector<const phi::DenseTensor*>& lod_tensors,
-    platform::Place dst_place);
+    phi::Place dst_place);
 
 /*
  * LoD is short for Level of Details.
@@ -144,7 +144,7 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
       TensorCopy(source.Slice(ins, ins + 1),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  phi::CPUContext(),
                  &slice);
     }

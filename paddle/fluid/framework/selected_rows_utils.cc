@@ -53,7 +53,7 @@ void SerializeToStream(std::ostream& os,
 void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx = nullptr;
-  dev_ctx = pool.Get(platform::CPUPlace());
+  dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(is, selected_rows, *dev_ctx);
 }
 

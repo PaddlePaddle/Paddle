@@ -136,7 +136,7 @@ TEST(float16, floating) {
   PADDLE_ENFORCE_EQ(
       std::is_floating_point<float16>::value,
       true,
-      platform::errors::Unavailable("The float16 support in CPU failed."));
+      phi::errors::Unavailable("The float16 support in CPU failed."));
 }
 
 TEST(float16, print) {

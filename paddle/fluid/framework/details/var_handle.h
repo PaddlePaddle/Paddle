@@ -122,7 +122,7 @@ struct VarHandle : public VarHandleBase {
             size_t version,
             size_t scope_index,
             std::string name,
-            platform::Place place)
+            phi::Place place)
       : VarHandleBase(node),
         version_(version),
         scope_idx_(scope_index),
@@ -153,7 +153,7 @@ struct VarHandle : public VarHandleBase {
   size_t version_;
   size_t scope_idx_;
   std::string name_;
-  platform::Place place_;
+  phi::Place place_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Only when this event is triggered, var is generated.
   gpuEvent_t event_;

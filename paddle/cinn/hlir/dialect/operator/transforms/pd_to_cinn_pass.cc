@@ -642,7 +642,7 @@ class SplitWithNumOpPattern
       paddle::dialect::SplitWithNumOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SplitWithNumOp op) const override {
-    return IsDefinedBy<FullOp>(op, 1);
+    return IsDefinedBy<FullOp>(op, 1) && GetSpitDim(op) > 0;
   }
 
   void Rewrite(paddle::dialect::SplitWithNumOp op,
@@ -674,8 +674,7 @@ class SplitWithNumOpPattern
   std::vector<int64_t> GetSections(paddle::dialect::SplitWithNumOp op,
                                    int axis) const {
     std::vector<int64_t> result;
-    auto split_dim =
-        op.x().type().dyn_cast<paddle::dialect::DenseTensorType>().dims()[axis];
+    const int64_t split_dim = GetSpitDim(op);
     auto split_num = op->attribute<::pir::Int32Attribute>("num").data();
     auto part_ele = (split_dim + split_num - 1) / split_num;
     int total_split_num = 0;
@@ -686,6 +685,14 @@ class SplitWithNumOpPattern
 
     result.push_back(split_dim - total_split_num);
     return result;
+  }
+
+  int64_t GetSpitDim(paddle::dialect::SplitWithNumOp op) const {
+    const int axis = GetAxis(op);
+    return op.x()
+        .type()
+        .dyn_cast<paddle::dialect::DenseTensorType>()
+        .dims()[axis];
   }
 };
 

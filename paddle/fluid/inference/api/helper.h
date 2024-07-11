@@ -439,7 +439,7 @@ static inline double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);
 }
 
-static inline void DisplayMemoryInfo(platform::Place place,
+static inline void DisplayMemoryInfo(phi::Place place,
                                      const std::string &hint) {
 #ifdef PADDLE_WITH_CUDA
   // size_t free, total;
