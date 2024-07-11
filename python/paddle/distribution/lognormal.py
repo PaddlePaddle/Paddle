@@ -28,7 +28,18 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import NestedSequence
 
-    _LognormalBoundary: TypeAlias = Union[
+    _LognormalLocBase: TypeAlias = Union[float, complex]
+    _LognormalLocNDArray: TypeAlias = Union[
+        np.float32, np.float64, np.complex64, np.complex128
+    ]
+    _LognormalLoc: TypeAlias = Union[
+        _LognormalLocBase,
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[_LognormalLocNDArray],
+        Tensor,
+    ]
+    _LognormalScale: TypeAlias = Union[
         float,
         Sequence[float],
         NestedSequence[float],
@@ -62,7 +73,7 @@ class LogNormal(TransformedDistribution):
     * :math:`scale = \sigma`: is the stddevs of the underlying Normal distribution.
 
     Args:
-        loc(int|float|list|tuple|numpy.ndarray|Tensor): The means of the underlying Normal distribution.
+        loc(int|float|complex|list|tuple|numpy.ndarray|Tensor): The means of the underlying Normal distribution.The data type is float32, float64, complex64 and complex128.
         scale(int|float|list|tuple|numpy.ndarray|Tensor): The stddevs of the underlying Normal distribution.
 
     Examples:
@@ -110,9 +121,7 @@ class LogNormal(TransformedDistribution):
     loc: Tensor
     scale: Tensor
 
-    def __init__(
-        self, loc: _LognormalBoundary, scale: _LognormalBoundary
-    ) -> None:
+    def __init__(self, loc: _LognormalLoc, scale: _LognormalScale) -> None:
         self._base = Normal(loc=loc, scale=scale)
         self.loc = self._base.loc
         self.scale = self._base.scale
