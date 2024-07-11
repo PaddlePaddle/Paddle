@@ -144,13 +144,6 @@ void AnalysisConfig::SetModel(
     prog_file_ = prog_file_path_or_model_dir_path;
     params_file_ = params_file_path_or_model_prefix;
   }
-  std::ifstream fin(prog_file_, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin.is_open()),
-      true,
-      platform::errors::NotFound(
-          "Cannot open file %s, please confirm whether the file is normal.",
-          prog_file_));
 
   Update();
 }
