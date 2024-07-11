@@ -19,6 +19,7 @@ import inspect
 import os
 import pickle
 import sys
+import textwrap
 import threading
 import types
 import warnings
@@ -97,7 +98,7 @@ ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 _LayerT = TypeVar("_LayerT", bound=Layer)
 _RetT = TypeVar("_RetT")
 _InputT = ParamSpec("_InputT")
-Backends: TypeAlias = Literal["CINN"]
+Backends: TypeAlias = Literal["CINN", 'inference']
 
 
 @contextmanager
@@ -217,11 +218,6 @@ def paddle_inference_decorator(function=None, **kwargs):
         used_as_at_decorator = True
 
     def decorator(func=None):
-        import inspect
-        import os
-        import sys
-        import textwrap
-
         if isinstance(func, paddle.nn.Layer):
             func = func.forward
 
@@ -297,8 +293,6 @@ def paddle_inference_decorator(function=None, **kwargs):
                 )
 
         def internel_decorator(*args, **kwargs):
-            import paddle
-
             def get_tensor(run_time_args, arg_name):
                 if isinstance(run_time_args, paddle.Tensor):
                     return [run_time_args]
@@ -531,7 +525,7 @@ def paddle_inference_decorator(function=None, **kwargs):
                     )
 
             device_num = paddle.device.get_device()
-            gpu_id = (int)(device_num.split(':')[1])
+            gpu_id = int(device_num.split(':')[1])
             config.enable_use_gpu(
                 memory_pool_init_size_mb,
                 gpu_id,
