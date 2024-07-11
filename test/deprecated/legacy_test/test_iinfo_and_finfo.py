@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from distutils.version import LooseVersion
 
 import numpy as np
 
@@ -77,7 +76,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertAlmostEqual(xinfo.eps, xninfo.eps)
             self.assertAlmostEqual(xinfo.tiny, xninfo.tiny)
             self.assertAlmostEqual(xinfo.resolution, xninfo.resolution)
-            if LooseVersion(np.__version__) >= LooseVersion('1.22.0'):
+            if np.lib.NumpyVersion(np.__version__) >= "1.22.0":
                 self.assertAlmostEqual(
                     xinfo.smallest_normal, xninfo.smallest_normal
                 )
@@ -97,7 +96,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertAlmostEqual(xinfo.eps, xninfo.eps, places=16)
             self.assertAlmostEqual(xinfo.tiny, xninfo.tiny, places=16)
             self.assertAlmostEqual(xinfo.resolution, xninfo.resolution)
-            if LooseVersion(np.__version__) >= LooseVersion('1.22.0'):
+            if np.lib.NumpyVersion(np.__version__) >= "1.22.0":
                 self.assertAlmostEqual(
                     xinfo.smallest_normal, xninfo.smallest_normal, places=16
                 )
