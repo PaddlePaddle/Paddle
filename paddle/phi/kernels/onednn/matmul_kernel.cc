@@ -562,6 +562,15 @@ void MatmulWithFlattenKernel(const Context &dev_ctx,
       dev_ctx, x_matrix, y_matrix, x_dims, y_dims, false, false, out);
 }
 
+template <typename T, typename Context>
+void LegacyMatmulKernel(const Context &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        bool transpose_x,
+                        bool transpose_y,
+                        DenseTensor *out) {
+  MatmulKernel(dev_ctx, x, y, transpose_x, transpose_y, out);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matmul,
@@ -583,3 +592,14 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    phi::dtype::bfloat16,
                    uint8_t,
                    int8_t) {}
+
+PD_REGISTER_KERNEL(legacy_matmul,
+                   OneDNN,
+                   ONEDNN,
+                   phi::LegacyMatmulKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::MatmulGetkernelTypeForVar;
+}

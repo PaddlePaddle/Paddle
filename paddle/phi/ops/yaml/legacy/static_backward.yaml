@@ -195,6 +195,32 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : legacy_matmul_double_grad
+  forward : legacy_matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f) -> Tensor(grad_x), Tensor(grad_y)
+  args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f)
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, y, grad_out]
+  kernel :
+    func : legacy_matmul_double_grad
+    param: [x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y]
+  composite : legacy_matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y, x_grad, y_grad, grad_out_grad)
+  optional : grad_x_grad, grad_y_grad
+
+- backward_op : legacy_matmul_grad
+  forward : legacy_matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : legacy_matmul_grad
+    param: [x, y, out_grad, transpose_x, transpose_y]
+    data_type: out_grad
+  backward : legacy_matmul_double_grad
+
 - backward_op : legacy_nearest_interp_grad
   forward : legacy_nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float scale, str interp_method, bool align_corners, int align_mode)

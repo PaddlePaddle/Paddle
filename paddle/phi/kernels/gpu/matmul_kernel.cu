@@ -104,3 +104,35 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
   }
 }
 #endif
+
+#if defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(legacy_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
+                   int8_t,
+                   float,
+                   double,
+                   phi::dtype::float16);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 11060
+PD_REGISTER_KERNEL(legacy_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
+                   int8_t,
+                   float,
+                   double,
+                   phi::dtype::float16);
+#else
+PD_REGISTER_KERNEL(legacy_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
+                   float,
+                   double,
+                   phi::dtype::float16);
+#endif
+#endif

@@ -433,6 +433,17 @@
     data_type : x
   backward : legacy_expand_grad
 
+- op : legacy_matmul
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false, float alpha=1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param: [x, y, transpose_x, transpose_y]
+  kernel :
+    func : legacy_matmul
+    param: [x, y, transpose_x, transpose_y]
+  backward : legacy_matmul_grad
+
 - op : legacy_nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)

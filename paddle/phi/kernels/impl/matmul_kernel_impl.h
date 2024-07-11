@@ -2185,4 +2185,13 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
       dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
 }
 
+template <typename T, typename Context>
+void LegacyMatmulKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        bool transpose_x,
+                        bool transpose_y,
+                        DenseTensor* out) {
+  MatmulKernel(ctx, x, y, transpose_x, transpose_y, out);
+}
 }  // namespace phi

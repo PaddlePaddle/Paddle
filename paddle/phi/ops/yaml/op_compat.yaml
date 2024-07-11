@@ -2132,6 +2132,20 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   manual_signature : [legacy_expand, legacy_expand_grad]
 
+- op : legacy_matmul (matmul)
+  backward : legacy_matmul_grad (matmul_grad), legacy_matmul_double_grad (matmul_grad_grad), legacy_matmul_triple_grad (matmul_triple_grad)
+  inputs :
+    {x : X, y : Y}
+  attrs :
+    {transpose_x : transpose_X, transpose_y : transpose_Y}
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32",
+             float Scale_x = 1.0f, float Scale_y = 1.0f,
+             float Scale_out = 1.0f, bool force_fp32_output = false]
+  complex_promote : [X, Y]
+
 - op : legacy_nearest_interp (nearest_interp)
   backward : legacy_nearest_interp_grad (nearest_interp_grad)
   inputs :

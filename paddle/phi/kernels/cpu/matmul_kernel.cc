@@ -36,3 +36,14 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    phi::MatmulWithFlattenKernel,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(legacy_matmul,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

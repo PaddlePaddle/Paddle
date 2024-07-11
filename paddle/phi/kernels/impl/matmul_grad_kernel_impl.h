@@ -2018,4 +2018,31 @@ void MatmulWithFlattenDoubleGradKernel(
   }
 }
 
+template <typename T, typename Context>
+void LegacyMatmulGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            const DenseTensor& out_grad,
+                            bool transpose_x,
+                            bool transpose_y,
+                            DenseTensor* dx,
+                            DenseTensor* dy) {
+  MatmulGradKernel(dev_ctx, x, y, out_grad, transpose_x, transpose_y, dx, dy);
+}
+
+template <typename T, typename Context>
+void LegacyMatmulDoubleGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const DenseTensor& y,
+                                  const DenseTensor& dout,
+                                  const paddle::optional<DenseTensor>& ddx,
+                                  const paddle::optional<DenseTensor>& ddy,
+                                  bool transpose_x,
+                                  bool transpose_y,
+                                  DenseTensor* dx,
+                                  DenseTensor* dy,
+                                  DenseTensor* ddout) {
+  MatmulDoubleGradKernel(
+      dev_ctx, x, y, dout, ddx, ddy, transpose_x, transpose_y, dx, dy, ddout);
+}
 }  // namespace phi
