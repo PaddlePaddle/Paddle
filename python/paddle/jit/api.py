@@ -144,9 +144,9 @@ def ignore_module(modules: list[ModuleType]) -> None:
 
 
 def _check_and_set_backend(backend, build_strategy):
-    if backend not in ['CINN', 'paddle_inference', None]:
+    if backend not in ['CINN', 'inference', None]:
         raise ValueError(
-            f"The backend of to_static should be 'CINN' or 'paddle_inference' or None, but received {backend}."
+            f"The backend of to_static should be 'CINN' or 'inference' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -213,12 +213,19 @@ def to_static(
     ...
 
 
-def paddle_inference_decorator(**kwargs):
+def paddle_inference_decorator(function=None, **kwargs):
+    used_as_at_decorator = False
+    if function is None:
+        used_as_at_decorator = True
+
     def decorator(func=None):
         import inspect
         import os
         import sys
         import textwrap
+
+        if isinstance(func, paddle.nn.Layer):
+            func = func.forward
 
         predictors = [None]
         signature = inspect.signature(func)
@@ -238,6 +245,7 @@ def paddle_inference_decorator(**kwargs):
         precision_mode = kwargs.get("precision_mode", "float32")
         switch_ir_optim = kwargs.get("switch_ir_optim", True)
         switch_ir_debug = kwargs.get("switch_ir_debug", False)
+        enable_cinn = kwargs.get("enable_cinn", False)
 
         with_trt = kwargs.get("with_trt", False)
         trt_precision_mode = kwargs.get("trt_precision_mode", "float32")
@@ -255,8 +263,9 @@ def paddle_inference_decorator(**kwargs):
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
-
-        assert arg_names[0] == "self"
+        print(py_script)
+        if used_as_at_decorator:
+            assert arg_names[0] == "self"
         save_path = save_model_dir + "/infer"
         d2s_input_info_path = save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
@@ -308,7 +317,7 @@ def paddle_inference_decorator(**kwargs):
                     return [None]
                 else:
                     raise AssertionError(
-                        f'''we only support adding @paddle.jit.to_static(backend='paddle_inference', ) in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
+                        f'''we only support adding @paddle.jit.to_static(backend='inference', ) in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
                         but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
                     )
 
@@ -316,8 +325,9 @@ def paddle_inference_decorator(**kwargs):
             collected_names = []
             for i in range(len(args)):
                 collected_names.append(arg_names[i])
-                if i > 0:
-                    input_tensor_lists += get_tensor(args[i], arg_names[i])
+                if i == 0 and used_as_at_decorator:
+                    continue
+                input_tensor_lists += get_tensor(args[i], arg_names[i])
 
             position_arguments_num = len(args)
             # some are invoked from keyword arguments.
@@ -336,13 +346,10 @@ def paddle_inference_decorator(**kwargs):
                     collected_names.append(arg_names[i])
 
             if collected_names != arg_names:
-                print(
-                    "below arguments are not specified:",
-                    set(arg_names) - set(collected_names),
+                unspecified_names = str(set(arg_names) - set(collected_names))
+                raise ValueError(
+                    f"some arguments are not specified when you invoke your function, you must specify your all arguments, below arguments are not specified: {unspecified_names}"
                 )
-                assert (
-                    collected_names == arg_names
-                ), "some arguments are not specified when you invoke your function, you must specify your all arguments."
 
             # initiate the d2s_input_shapes.
             if len(d2s_input_shapes) == 0:
@@ -412,7 +419,7 @@ def paddle_inference_decorator(**kwargs):
                 input_specs = []
                 # first we handle Positional Arguments
                 for i in range(len(args)):
-                    if i == 0:
+                    if i == 0 and used_as_at_decorator:
                         assert isinstance(args[i], paddle.nn.Layer)
                     else:
                         input_specs.append(
@@ -453,7 +460,10 @@ def paddle_inference_decorator(**kwargs):
                         d2s_input_names[d2s_shapes_id] = input_specs[i].name
                         d2s_shapes_id += 1
                     elif input_specs[i] is None:
-                        d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
+                        if used_as_at_decorator:
+                            d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
+                        else:
+                            d2s_input_names[d2s_shapes_id] = arg_names[i]
                         d2s_shapes_id += 1
 
                 os.environ["TRITON_KERNEL_CACHE_DIR"] = save_model_dir
@@ -461,11 +471,14 @@ def paddle_inference_decorator(**kwargs):
                 print("we are doing d2s!!")
                 print("input_specs: ", input_specs)
                 sys.stdout.flush()
-                input_specs = [input_specs]
-                mylayer = WrappedLayer(args[0])
+
+                to_d2s_thing = func
+                if used_as_at_decorator:
+                    to_d2s_thing = WrappedLayer(args[0])
+                    input_specs = [input_specs]
 
                 model = paddle.jit.to_static(
-                    mylayer,
+                    to_d2s_thing,
                     input_spec=input_specs,
                     full_graph=True,
                 )
@@ -514,6 +527,8 @@ def paddle_inference_decorator(**kwargs):
             config.switch_ir_optim(switch_ir_optim)
             if exp_enable_use_cutlass:
                 config.exp_enable_use_cutlass()
+            if enable_cinn:
+                config.enable_cinn()
             config.enable_new_ir(enable_new_ir)
 
             def get_infer_precision(precision_str):
@@ -586,6 +601,13 @@ def paddle_inference_decorator(**kwargs):
 
         return internel_decorator
 
+    if function is not None:
+        if isinstance(function, Layer):
+            function.forward = decorator(function)
+            return function
+        else:
+            return decorator(function)
+
     return decorator
 
 
@@ -614,9 +636,11 @@ def to_static(
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` `inference` or
             None. When backend is `CINN`, CINN compiler will be used to speed up
-            training and inference.
+            training and inference. when backend is `inference`, we will automatically
+            use jit.save to save the dynamic function into static model in the disk, and
+            then use paddle inference for speeding up inference, without traning.
         kwargs: Support keys including `property`, set `property` to True if the function
             is python property.
 
@@ -693,6 +717,10 @@ def to_static(
         )
     _check_and_set_backend(backend, build_strategy)
 
+    # This is for inference use.
+    if backend == "inference":
+        return paddle_inference_decorator(function, **kwargs)
+
     # for usage: `to_static(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
@@ -705,10 +733,6 @@ def to_static(
             return function
         else:
             return decorated(function)
-
-    # This is for paddle_inference use.
-    if backend == "paddle_inference":
-        return paddle_inference_decorator(**kwargs)
 
     # for usage: `@to_static`
     return decorated
