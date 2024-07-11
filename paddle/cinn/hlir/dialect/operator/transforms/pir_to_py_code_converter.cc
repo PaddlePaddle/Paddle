@@ -670,7 +670,7 @@ struct PirToPyCodeConverterHelper {
         [](const symbol::TensorListShapeOrDataDimExprs& impl) {
           return ConvertTensorListShapeOrData(impl);
         },
-        [](const symbol::TensorArrayShapeOrDataDimExprs& impl) {
+        [](const symbol::RankedTensorArrayShapeOrDataDimExprs& impl) {
           // TODO(Hongqing-work): support tensor_array to py
           return std::string("self.s_tensor_array()");
         },

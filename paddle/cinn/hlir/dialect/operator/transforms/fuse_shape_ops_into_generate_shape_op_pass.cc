@@ -70,7 +70,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
       [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
         return true;
       },
-      [](const symbol::TensorArrayShapeOrDataDimExprs& dim_expr) {
+      [](const symbol::RankedTensorArrayShapeOrDataDimExprs& dim_expr) {
         return false;
       },
       [](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {

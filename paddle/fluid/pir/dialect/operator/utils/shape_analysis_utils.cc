@@ -45,10 +45,10 @@ symbol::ShapeOrDataDimExprs ClearDataInfo(
         }
         return symbol::ShapeOrDataDimExprs{new_shape_exprs};
       },
-      [](const symbol::TensorArrayShapeOrDataDimExprs& shape_exprs) {
+      [](const symbol::RankedTensorArrayShapeOrDataDimExprs& shape_exprs) {
         return symbol::ShapeOrDataDimExprs{
-            symbol::TensorArrayShapeOrDataDimExprs{
-                shape_exprs.GetShapeOfFirstItem()}};
+            symbol::RankedTensorArrayShapeOrDataDimExprs{
+                shape_exprs.GetShapeHint()}};
       },
       [](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return symbol::ShapeOrDataDimExprs{null_shape_or_data};

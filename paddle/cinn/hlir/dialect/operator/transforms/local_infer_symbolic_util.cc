@@ -76,10 +76,11 @@ void InitLocalShapeAnalysis(const pir::Operation& op,
         return symbol::ShapeOrDataDimExprs(ret);
       };
   auto NewSymbolReplacedTensorArray =
-      [&](const symbol::TensorArrayShapeOrDataDimExprs& tensor_array_shape) {
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs&
+              tensor_array_shape) {
         return symbol::ShapeOrDataDimExprs(
-            symbol::TensorArrayShapeOrDataDimExprs(NewSymbolReplacedDimExprs(
-                tensor_array_shape.GetShapeOfFirstItem())));
+            symbol::RankedTensorArrayShapeOrDataDimExprs(
+                NewSymbolReplacedDimExprs(tensor_array_shape.GetShapeHint())));
       };
   auto NewSymbolReplacedNull =
       [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {

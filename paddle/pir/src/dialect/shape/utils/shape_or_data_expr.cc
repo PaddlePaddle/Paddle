@@ -58,9 +58,9 @@ ShapeOrDataDimExprs SubstituteShapeOrData(
         }
         return ShapeOrDataDimExprs(substituted_tensor_list);
       },
-      [&](const TensorArrayShapeOrDataDimExprs& tensor_array) {
-        TensorArrayShapeOrDataDimExprs substituted_tensor_array(
-            SubstituteDimExprVector(tensor_array.GetShapeOfFirstItem(),
+      [&](const RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
+        RankedTensorArrayShapeOrDataDimExprs substituted_tensor_array(
+            SubstituteDimExprVector(tensor_array.GetShapeHint(),
                                     substitution_pattern));
         return ShapeOrDataDimExprs(substituted_tensor_array);
       },
@@ -94,9 +94,9 @@ std::ostream& operator<<(std::ostream& stream,
           }
         }
       },
-      [&](const TensorArrayShapeOrDataDimExprs& tensor_array_shape_data) {
+      [&](const RankedTensorArrayShapeOrDataDimExprs& tensor_array_shape_data) {
         stream << "TensorArray with first item shape"
-               << tensor_array_shape_data.GetShapeOfFirstItem();
+               << tensor_array_shape_data.GetShapeHint();
       },
       [&](const NullShapeOrDataDimExpr& null_shape_data) {
         stream << "shape[NULL], data[NULL]";

@@ -89,10 +89,10 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
       },
-      [](const symbol::TensorArrayShapeOrDataDimExprs& tensor_array) {
+      [](const symbol::RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
         return symbol::ShapeOrDataDimExprs(
-            symbol::TensorArrayShapeOrDataDimExprs(
-                SimplifyDimExprVector(tensor_array.GetShapeOfFirstItem())));
+            symbol::RankedTensorArrayShapeOrDataDimExprs(
+                SimplifyDimExprVector(tensor_array.GetShapeHint())));
       },
       [](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(null_shape_or_data);

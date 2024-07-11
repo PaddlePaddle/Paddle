@@ -119,26 +119,21 @@ using TensorShapeOrDataDimExprs = ShapeOrData<DimExpr>;
 using TensorListShapeOrDataDimExprs = std::vector<TensorShapeOrDataDimExprs>;
 
 /* TensorArray can append tensors dynamically. In a static graph, we only
- * store the shape of its first element to represent as much shape information
- * as possible, because we assume that all elements in the TensorArray have
- * identical rank, with equal constraints on specific dimensions. */
-class TensorArrayShapeOrDataDimExprs {
+ * store the shape of one element as a hint, because we assume that all elements
+ * in the TensorArray have the same rank, and with equal constraints on specific
+ * dimensions. */
+class RankedTensorArrayShapeOrDataDimExprs {
  public:
-  TensorArrayShapeOrDataDimExprs() = default;
-  explicit TensorArrayShapeOrDataDimExprs(const std::vector<DimExpr>& shape)
-      : first_item_shape_{shape} {}
-  const std::vector<DimExpr>& GetShapeOfFirstItem() const {
-    return first_item_shape_;
-  }
-  void SetShapeOfFirstItem(const std::vector<DimExpr>& shape) {
-    first_item_shape_ = shape;
-  }
-  bool operator==(const TensorArrayShapeOrDataDimExprs& other) const {
-    if (first_item_shape_.size() != other.first_item_shape_.size())
-      return false;
-    for (size_t i = 0; i < first_item_shape_.size(); ++i) {
-      DimExpr dim0 = symbol::SimplifyDimExpr(first_item_shape_[i]);
-      DimExpr dim1 = symbol::SimplifyDimExpr(other.first_item_shape_[i]);
+  RankedTensorArrayShapeOrDataDimExprs() = default;
+  explicit RankedTensorArrayShapeOrDataDimExprs(
+      const std::vector<DimExpr>& shape)
+      : shape_hint_{shape} {}
+  const std::vector<DimExpr>& GetShapeHint() const { return shape_hint_; }
+  bool operator==(const RankedTensorArrayShapeOrDataDimExprs& other) const {
+    if (shape_hint_.size() != other.shape_hint_.size()) return false;
+    for (size_t i = 0; i < shape_hint_.size(); ++i) {
+      DimExpr dim0 = symbol::SimplifyDimExpr(shape_hint_[i]);
+      DimExpr dim1 = symbol::SimplifyDimExpr(other.shape_hint_[i]);
       if (dim0 != dim1) return false;
     }
 
@@ -146,13 +141,14 @@ class TensorArrayShapeOrDataDimExprs {
   }
 
  private:
-  std::vector<DimExpr> first_item_shape_;
+  std::vector<DimExpr> shape_hint_;
 };
 
-using ShapeOrDataDimExprsBase = std::variant<NullShapeOrDataDimExpr,
-                                             TensorShapeOrDataDimExprs,
-                                             TensorListShapeOrDataDimExprs,
-                                             TensorArrayShapeOrDataDimExprs>;
+using ShapeOrDataDimExprsBase =
+    std::variant<NullShapeOrDataDimExpr,
+                 TensorShapeOrDataDimExprs,
+                 TensorListShapeOrDataDimExprs,
+                 RankedTensorArrayShapeOrDataDimExprs>;
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
  public:
@@ -164,8 +160,8 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
       const TensorListShapeOrDataDimExprs& tensor_list_dim_exprs)
       : ShapeOrDataDimExprsBase(tensor_list_dim_exprs) {}
 
-  ShapeOrDataDimExprs(
-      const TensorArrayShapeOrDataDimExprs& tensor_array_dim_exprs)  // NOLINT
+  ShapeOrDataDimExprs(const RankedTensorArrayShapeOrDataDimExprs&
+                          tensor_array_dim_exprs)  // NOLINT
       : ShapeOrDataDimExprsBase(tensor_array_dim_exprs) {}
 
   ShapeOrDataDimExprs(const NullShapeOrDataDimExpr& null_dim_expr)  // NOLINT
@@ -265,10 +261,10 @@ struct hash<symbol::TensorListShapeOrDataDimExprs> {
 };
 
 template <>
-struct hash<symbol::TensorArrayShapeOrDataDimExprs> {
+struct hash<symbol::RankedTensorArrayShapeOrDataDimExprs> {
   std::size_t operator()(
-      const symbol::TensorArrayShapeOrDataDimExprs& obj) const {
-    return std::hash<std::vector<symbol::DimExpr>>()(obj.GetShapeOfFirstItem());
+      const symbol::RankedTensorArrayShapeOrDataDimExprs& obj) const {
+    return std::hash<std::vector<symbol::DimExpr>>()(obj.GetShapeHint());
   }
 };
 
