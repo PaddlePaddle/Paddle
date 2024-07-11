@@ -6346,6 +6346,8 @@ def diff(
             attrs_2 = ()
 
             dim_len = new_input.shape[axis]
+            if dim_len < 0:
+                dim_len = paddle.shape(new_input)[axis]
 
             starts_1 = [0]
             attrs_1 += ('starts', starts_1)
@@ -8446,7 +8448,7 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Any number of 1-D input Tensors. Supported data types: bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor), cartesian product of input tensors with the same data type.
