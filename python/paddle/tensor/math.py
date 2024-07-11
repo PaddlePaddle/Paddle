@@ -6346,6 +6346,8 @@ def diff(
             attrs_2 = ()
 
             dim_len = new_input.shape[axis]
+            if dim_len < 0:
+                dim_len = paddle.shape(new_input)[axis]
 
             starts_1 = [0]
             attrs_1 += ('starts', starts_1)
