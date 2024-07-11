@@ -105,27 +105,22 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
 }
 #endif
 
-#if defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if CUDA_VERSION >= 12010 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 890
 PD_REGISTER_KERNEL(legacy_matmul,
                    GPU,
                    ALL_LAYOUT,
                    phi::LegacyMatmulKernel,
-                   int8_t,
                    float,
                    double,
-                   phi::dtype::float16);
-#endif
-
-#if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 11060
-PD_REGISTER_KERNEL(legacy_matmul,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LegacyMatmulKernel,
-                   int8_t,
-                   float,
-                   double,
-                   phi::dtype::float16);
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   int8_t) {
 #else
 PD_REGISTER_KERNEL(legacy_matmul,
                    GPU,
@@ -133,6 +128,36 @@ PD_REGISTER_KERNEL(legacy_matmul,
                    phi::LegacyMatmulKernel,
                    float,
                    double,
-                   phi::dtype::float16);
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   int8_t) {
 #endif
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+  if (kernel_key.dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT16);
+  }
+}
+#else
+PD_REGISTER_KERNEL(legacy_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}
 #endif

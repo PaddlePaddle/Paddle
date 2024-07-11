@@ -73,11 +73,17 @@ PD_REGISTER_KERNEL(legacy_matmul_grad,
                    phi::LegacyMatmulGradKernel,
                    float,
                    double,
-                   phi::dtype::float16);
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(legacy_matmul_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::LegacyMatmulDoubleGradKernel,
                    float,
-                   double);
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
