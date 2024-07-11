@@ -161,7 +161,7 @@ PreparedOp PrepareImpl(
     const phi::KernelFactory& phi_kernel_factory,
     const phi::OpUtilsMap& phi_op_utils_map,
     const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
 #ifdef PADDLE_WITH_DNNL
