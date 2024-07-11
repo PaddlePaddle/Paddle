@@ -562,7 +562,7 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
 }
 
 static void IncreaseTensorReferenceCountUntilCopyComplete(
-    const paddle::Tensor& tensor, const platform::Place& place) {
+    const paddle::Tensor& tensor, const phi::Place& place) {
   auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
 
   auto tracer = egr::Controller::Instance().GetCurrentTracer();

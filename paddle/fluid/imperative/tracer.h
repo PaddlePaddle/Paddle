@@ -41,8 +41,7 @@ enum class AmpLevel;
 enum class AmpDtype;
 
 using GarbageCollectorMap =
-    std::map<platform::Place,
-             std::unique_ptr<paddle::framework::GarbageCollector>>;
+    std::map<phi::Place, std::unique_ptr<paddle::framework::GarbageCollector>>;
 
 class UniqueNameGenerator {
  public:
@@ -73,7 +72,7 @@ class Tracer {
                const NameVarMap<VarType>& ins,
                const NameVarMap<VarType>& outs,
                framework::AttributeMap attrs,
-               const platform::Place& place,
+               const phi::Place& place,
                bool trace_backward,
                const std::map<std::string, std::string>& inplace_map = {},
                paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
@@ -85,7 +84,7 @@ class Tracer {
       const NameVarMap<VarType>& ins,
       const NameVarMap<VarType>& outs,
       framework::AttributeMap& attrs,  // NOLINT
-      const platform::Place& place,
+      const phi::Place& place,
       bool trace_backward,
       const std::map<std::string, std::string>& inplace_map = {},
       paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
@@ -173,7 +172,7 @@ class Tracer {
       framework::AttributeMap attrs) const;
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
-      const platform::Place& place);
+      const phi::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
@@ -191,8 +190,7 @@ const std::shared_ptr<Tracer>& GetCurrentTracer();
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
 const std::shared_ptr<AmpAttrs>& GetCurrentAmpAttrs();
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
-    const std::shared_ptr<imperative::VarBase>& var,
-    const platform::Place& place);
+    const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place);
 
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
 

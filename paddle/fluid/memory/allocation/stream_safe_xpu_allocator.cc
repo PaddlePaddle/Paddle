@@ -163,7 +163,7 @@ void StreamSafeXPUAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeXPUAllocator::ReleaseImpl(const platform::Place& place) {
+uint64_t StreamSafeXPUAllocator::ReleaseImpl(const phi::Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeXPUAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;
@@ -200,7 +200,7 @@ uint64_t StreamSafeXPUAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeXPUAllocation::once_flag_;
 
-std::map<platform::Place, std::vector<StreamSafeXPUAllocator*>>
+std::map<phi::Place, std::vector<StreamSafeXPUAllocator*>>
     StreamSafeXPUAllocator::allocator_map_;
 SpinLock StreamSafeXPUAllocator::allocator_map_lock_;
 
