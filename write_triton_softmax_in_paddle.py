@@ -129,7 +129,6 @@ def softmax(x):
         outs = _C_ops._run_custom_op(op_name, x)
         return outs[0]
     else:
-        print(f"== we are in dynamic to static mode, op_name: {op_name}")
         helper = LayerHelper(op_name, **locals())
         inputs = {
             'x': x,
@@ -143,21 +142,23 @@ def softmax(x):
         return out
 
 
-# 这里封装了个 softmax_layer 类，是用来验证装饰器的！
-class softmax_layer(paddle.nn.Layer):
+
+class ExampleLayer(paddle.nn.Layer):
     def __init__(self, hidd):
         super().__init__()
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=False)
 
     @paddle.jit.to_static(backend="paddle_inference")
     def forward(self, x):
-        for i in range(1000):
-            # x = paddle.nn.functional.softmax(x,-1)
-            x = softmax(x)
+        for i in range(10):
+            x = paddle.nn.functional.softmax(x,-1)
         x = x.cast("float32")
-        x = self.fn(x)
+        x = self.func(x)
         return x
 
+    def func(self, x):
+        x = x + x
+        return self.fn(x)
 
 batch = 4096
 hidd = 1024
@@ -165,8 +166,24 @@ dtype = "bfloat16"
 x = paddle.rand([batch, hidd], dtype=dtype)
 
 # this is for inference decorator.
-mylayer = softmax_layer(hidd)
-mylayer(x)
+mylayer0 = ExampleLayer(hidd)
+mylayer1 = ExampleLayer(hidd)
+
+
+print(mylayer0(x) - mylayer1(x))
+
+exit(0)
+
+
+# mylayer0.haha = paddle.jit.to_static(mylayer0.haha, backend="paddle_inference")
+# mylayer0(x)
+
+mylayer0 = paddle.jit.to_static(mylayer0, backend="paddle_inference")
+mylayer0(x)
+
+mylayer0(x)
+
+exit(0)
 
 # warm up.
 for i in range(100):

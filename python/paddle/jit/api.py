@@ -263,7 +263,6 @@ def paddle_inference_decorator(function=None, **kwargs):
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
-        print(py_script)
         if used_as_at_decorator:
             assert arg_names[0] == "self"
         save_path = save_model_dir + "/infer"
@@ -483,16 +482,6 @@ def paddle_inference_decorator(function=None, **kwargs):
                     full_graph=True,
                 )
                 paddle.jit.save(model, save_path, skip_prune_program=True)
-
-                # for name, param in args[0].named_parameters():
-                #     a = paddle.rand((1,))
-                #     paddle.assign(a, param)
-                #     print(param.shape)
-                #     print(name)
-
-                # for name, param in args[0].named_parameters():
-                #     print(name)
-                #     print(param.shape)
 
                 # save d2s_shapes
                 assert len(d2s_input_names) == len(d2s_input_shapes)
