@@ -747,24 +747,20 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   std::vector<int64_t> axes_vec = details::GetVectorAttr(op, "axes");
 
-  // // Currently, we DO NOT support any element in `starts` is a Symbol.
   ExprVec starts = slice_utils::GetExprVecFromData(starts_shape_data);
   ExprVec ends = slice_utils::GetExprVecFromData(ends_shape_data);
 
   std::vector<int64_t> infer_flags = details::GetVectorAttr(op, "infer_flags");
-
   const std::vector<int64_t> decrease_axis =
       details::GetVectorAttr(op, "decrease_axis");
-
-  infer_context->SetShapeOrDataForValue(
-      res,
+  auto res_shape_or_data =
       slice_utils::SliceRawInferSymbolicShape(operand_shape_or_data,
                                               starts,
                                               ends,
                                               axes_vec,
                                               infer_flags,
-                                              decrease_axis));
-
+                                              decrease_axis);
+  infer_context->SetShapeOrDataForValue(res, res_shape_or_data);
   return true;
 }
 
