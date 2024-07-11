@@ -306,7 +306,6 @@ bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
   if (axis < 0) axis += input_shape.shape().size();
   bool soft_label =
       attributes.at("soft_label").dyn_cast<pir::BoolAttribute>().data();
-
   PADDLE_ENFORCE(!soft_label || input_dim.size() == index_dim.size(),
                  phi::errors::InvalidArgument(
                      "The input and index should have the same rank when "
@@ -319,9 +318,7 @@ bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
   auto out_dim = index_dim;
 
   if (index_dim.size() == input_dim.size()) {
-    if (!soft_label) {
-      out_dim.erase(out_dim.begin() + axis);
-    } else {
+    if (soft_label) {
       out_dim[axis] = 1;
     }
     softmax_dim[axis] = input_dim[axis];
