@@ -45,15 +45,12 @@ if TYPE_CHECKING:
     _TransformInputKeys: TypeAlias = Sequence[
         Literal["image", "coords", "boxes", "mask"]
     ]
-    _InterpolationPil: TypeAlias = Literal[
-        "nearest", "bilinear", "bicubic", "lanczos", "hamming"
-    ]
-    _InterpolationCv2: TypeAlias = Literal[
-        "nearest", "bilinear", "area", "bicubic", "lanczos"
-    ]
-    _PaddingMode: TypeAlias = Literal[
-        "constant", "edge", "reflect", "symmetric"
-    ]
+    from .functional import (
+        _InterpolationCv2,
+        _InterpolationPil,
+        _PaddingMode,
+    )
+
 
 _InputT = TypeVar(
     "_InputT", "Tensor", "PILImage", "npt.NDArray[Any]", contravariant=True
@@ -235,7 +232,7 @@ class BaseTransform(_Transform[_InputT, _RetT]):
             ...     else:
             ...         raise TypeError("Unexpected type {}".format(type(img)))
             ...
-            >>> class CustomRandomFlip(BaseTransform):
+            >>> class CustomRandomFlip(BaseTransform): # type: ignore[type-arg]
             ...     def __init__(self, prob=0.5, keys=None):
             ...         super().__init__(keys)
             ...         self.prob = prob
@@ -1578,10 +1575,10 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
             - "bicubic": cv2.INTER_CUBIC
         fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
             image. If given a number, the value is used for all bands respectively.
-        center (2-tuple, optional): Optional center of rotation, (x, y).
+        center (tuple|None, optional): Optional center of rotation, (x, y).
             Origin is the upper left corner.
             Default is the center of the image.
-        keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+        keys (list[str]|tuple[str]|None, optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
@@ -1616,7 +1613,7 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
     )
     interpolation: _InterpolationPil | _InterpolationCv2
     fill: Size3
-    center: list[float] | tuple[float, float]
+    center: list[float] | tuple[float, float] | None
 
     def __init__(
         self,
@@ -1632,7 +1629,7 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
         ) = None,
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         fill: Size3 = 0,
-        center: list[float] | tuple[float, float] = None,
+        center: list[float] | tuple[float, float] | None = None,
         keys: _TransformInputKeys | None = None,
     ) -> None:
         self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2,))

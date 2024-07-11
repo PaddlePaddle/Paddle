@@ -876,7 +876,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
-    auto src_place = platform::CPUPlace();
+    auto src_place = phi::CPUPlace();
 
     memory_copy(dst_place,
                 reinterpret_cast<char *>(d_key_bufs[cur_stream]->ptr()),
@@ -956,7 +956,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
-    auto src_place = platform::CPUPlace();
+    auto src_place = phi::CPUPlace();
 
     memory_copy(dst_place,
                 reinterpret_cast<char *>(d_key_bufs[cur_stream]->ptr()),
@@ -1051,7 +1051,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_grad(
                                     len,
                                     stream,
                                     false);
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
   memory_copy(
       dst_place, &uniq_len, src_place, d_num_runs_out, sizeof(int), stream);
@@ -1071,7 +1071,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::dynamic_merge_grad(
     size_t &segment_len,  // NOLINT
     bool enable_segment_merge_grad) {
   int dev_id = resource_->dev_id(gpu_num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  phi::GPUPlace place = phi::GPUPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
@@ -1233,7 +1233,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::segment_merge_grad(
     size_t &segments_num) {  // the number of segment merged keys // NOLINT
 
   int dev_id = resource_->dev_id(gpu_num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  phi::GPUPlace place = phi::GPUPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
@@ -1457,7 +1457,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_keys(
     StreamType stream) {
 #if defined(PADDLE_WITH_CUDA)
   int dev_id = resource_->dev_id(gpu_num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  phi::GPUPlace place = phi::GPUPlace(dev_id);
 
   thread_local std::shared_ptr<memory::Allocation> d_fea_num_info = nullptr;
   uint32_t *d_offset = AllocCache<uint32_t>(
@@ -1562,7 +1562,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, d_merged_keys_ptr, d_idx_ptr, uniq_len, stream, dev_id);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
 
   memory_copy(dst_place,
@@ -1724,7 +1724,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, d_keys, d_idx_ptr, len, stream, dev_id);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
 
   memory_copy(dst_place,
@@ -1953,7 +1953,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
                                              stream,
                                              gpu_accessor_);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place,
               h_left,
@@ -2107,7 +2107,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
                                        (int64_t)uniq_len,
                                        stream);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place,
               h_left,
@@ -2247,7 +2247,7 @@ int HeterComm<KeyType, ValType, GradType, GPUAccessor>::dedup_keys_and_fillidx(
     uint32_t *d_merged_cnts,
     bool filter_zero,
     cudaStream_t stream) {
-  platform::CUDAPlace place = platform::CUDAPlace(gpu_id);
+  phi::GPUPlace place = phi::GPUPlace(gpu_id);
   platform::CUDADeviceGuard guard(gpu_id);
   if (stream == 0) {
     stream = resource_->local_stream(gpu_id, 0);
@@ -3598,7 +3598,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_grad(
     void *d_out_grads,
     const cudaStream_t &stream) {
   platform::CUDADeviceGuard guard(gpu_id);
-  auto place = platform::CUDAPlace(gpu_id);
+  auto place = phi::GPUPlace(gpu_id);
   thread_local std::shared_ptr<memory::Allocation> d_fea_num_info = nullptr;
   uint32_t *d_offset =
       AllocCache<uint32_t>(&d_fea_num_info, place, sizeof(uint32_t) * len * 4);

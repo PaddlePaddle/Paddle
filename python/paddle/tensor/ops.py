@@ -35,7 +35,6 @@ __inplace_unary_func__ = [
     'rsqrt_',
     'ceil_',
     'floor_',
-    'round_',
     'reciprocal_',
     'sigmoid_',
     'abs_',
@@ -687,7 +686,7 @@ def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def round(x: Tensor, name: str | None = None) -> Tensor:
+def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
     """
 
     Round the values in the input to the nearest integer value.
@@ -704,6 +703,7 @@ def round(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): Input of Round operator, an N-D Tensor, with data type float32, float64 or float16.
+        decimals(int): Rounded decimal place (default: 0).
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -721,15 +721,29 @@ def round(x: Tensor, name: str | None = None) -> Tensor:
             [-1., -0.,  1.,  2.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.round(x)
+        return _C_ops.round(x, decimals)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
         )
         helper = LayerHelper('round', **locals())
+        attrs = {
+            'decimals': int(decimals),
+        }
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out})
+        helper.append_op(
+            type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs
+        )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def round_(x, decimals=0, name=None):
+    r"""
+    Inplace version of ``round`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_round`.
+    """
+    return _C_ops.round_(x, decimals)
 
 
 def rsqrt(x: Tensor, name: str | None = None) -> Tensor:

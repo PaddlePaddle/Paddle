@@ -113,7 +113,7 @@ bool CUDAMallocAsyncAllocation::CanBeFreed(bool synchronize) {
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    const platform::CUDAPlace& place,
+    const phi::GPUPlace& place,
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),

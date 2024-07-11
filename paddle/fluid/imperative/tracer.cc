@@ -115,7 +115,7 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const platform::Place& place) {
   // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
   // need to add callback, see tensor_utils.cc:245
-  auto place_ = platform::is_gpu_place(place) ? place : var->Place();
+  auto place_ = phi::is_gpu_place(place) ? place : var->Place();
 
   auto tracer = imperative::GetCurrentTracer();
   auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
@@ -135,7 +135,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
   // if not exists, create a new GarbageCollector at given place
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc = std::make_unique<framework::DefaultStreamGarbageCollector>(place, 0);
 
@@ -145,7 +145,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
-    } else if (platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc = std::make_unique<framework::CUDAPinnedGarbageCollector>(place, 0);
 
@@ -156,7 +156,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
       gc = std::make_unique<framework::XPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
@@ -165,10 +165,10 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
-    } else if (platform::is_cpu_place(place)) {
+    } else if (phi::is_cpu_place(place)) {
       gc = std::make_unique<framework::CPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
-    } else if (platform::is_ipu_place(place)) {
+    } else if (phi::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
       gc = std::make_unique<framework::IPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
@@ -177,7 +177,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc =
@@ -298,7 +298,7 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   }
 
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     const auto& new_tmp = ins_amp == nullptr ? ins : *ins_amp;
     const auto& tracer = imperative::GetCurrentTracer();
     ins_amp = std::make_unique<NameVarMap<VarType>>(
@@ -309,21 +309,21 @@ void Tracer::TraceOpImpl(const std::string& type,
   const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
 
   try {
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
       platform::SetXPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);
 #else
@@ -426,7 +426,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap& attrs,
-                     const paddle::platform::Place& place,
+                     const phi::Place& place,
                      paddle::framework::AttributeMap* default_attrs,
                      bool use_default_attr_map,
                      const std::map<std::string, std::string>& inplace_map) {
@@ -544,7 +544,7 @@ void Tracer::TraceOp(const std::string& type,
   }
 }
 
-TEST_API void Tracer::SetExpectedPlace(platform::Place place) {
+TEST_API void Tracer::SetExpectedPlace(phi::Place place) {
   expected_place_ = place;
 }
 TEST_API bool Tracer::HasGrad() const { return has_grad_; }

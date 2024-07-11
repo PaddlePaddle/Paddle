@@ -256,15 +256,16 @@
     data_type : grad_output
 
 - op : fused_dot_product_attention
-  args : (Tensor q, Tensor k, Tensor v, Tensor mask, float scaling_factor, float dropout_probability, bool is_training = false, bool is_causal_masking = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor bias, Tensor cu_seqlen_q, Tensor cu_seqlen_kv, float scaling_factor, float dropout_probability, bool is_training = false, str mask_type_str = "none", str bias_type_str = "none")
   output : Tensor(out), Tensor(softmax_out), Tensor(rng_state)
   infer_meta :
     func : FusedDotProductAttentionInferMeta
-    param : [q, k, v]
+    param : [q, k, v, bias]
   kernel :
     func : fused_dot_product_attention
     data_type : q
   backward : fused_dot_product_attention_grad
+  optional : bias, cu_seqlen_q, cu_seqlen_kv
   support_dygraph_mode : true
 
 - op : fused_dropout_add
@@ -521,6 +522,16 @@
   optional : fc_bias
   intermediate : fc_out
 
+- op : fusion_seqpool_concat
+  args: (Tensor[] x, str pooltype = "SUM", int axis = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: FusionSeqpoolConcatInferMeta
+  kernel:
+    func: fusion_seqpool_concat
+    data_type: x
+  support_dygraph_mode : true
+
 - op : fusion_seqpool_cvm_concat
   args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", bool use_cvm = true, int axis = 1)
   output: Tensor (out)
@@ -669,6 +680,27 @@
   kernel :
     func : quantize_xpu
     data_type : x
+
+- op : resnet_unit
+  args: (Tensor x, Tensor filter_x, Tensor scale_x, Tensor bias_x, Tensor mean_x,
+    Tensor var_x, Tensor z, Tensor filter_z, Tensor scale_z, Tensor bias_z, Tensor
+    mean_z, Tensor var_z, int stride = 1, int stride_z = 1, int padding = 0, int dilation
+    = 1, int group = 1, float momentum = 0.9, float epsilon = 1e-5, str data_format
+    = "NHWC", bool fuse_add = false, bool has_shortcut = false, bool use_global_stats
+    = false, bool is_test = false, bool use_addto = false, str act_type = "relu")
+  output: Tensor (out), Tensor (bit_mask), Tensor (conv_x), Tensor (saved_mean_x),
+    Tensor (saved_invstd_x), Tensor (running_mean_x), Tensor (running_var_x), Tensor
+    (conv_z), Tensor (saved_mean_z), Tensor (saved_invstd_z), Tensor (running_mean_z),
+    Tensor (running_var_z)
+  infer_meta:
+    func: ResnetUnitInferMeta
+  kernel:
+    func: resnet_unit
+    data_type: x
+  optional: z, filter_z, scale_z, bias_z, mean_z, var_z, conv_z, saved_mean_z, saved_invstd_z,
+    running_mean_z, running_var_z
+  backward: resnet_unit_grad
+  support_dygraph_mode : true
 
 - op : roformer_relative_embedding_xpu
   args : (Tensor x, Tensor sin_emb, Tensor cos_emb, int max_pos_len)

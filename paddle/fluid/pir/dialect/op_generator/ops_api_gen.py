@@ -133,6 +133,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'assign_value',
     'share_data_',
     'onednn_to_paddle_layout',
+    'lars_momentum_',
     'lrn',
     'multi_gru',
     'matmul_with_flatten',
@@ -145,9 +146,12 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'coalesce_tensor_',
     'send_v2',
     'recv_v2',
+    'sequence_expand',
+    'sequence_softmax',
     'c_allgather',
     'qkv_unpack_mha',
     'hash',
+    'beam_search_decode',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -196,8 +200,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_lstm',
     'fusion_seqpool_cvm_concat',
     'nce',
-    'lars_momentum',
-    'lars_momentum_',
     'lrn',
     'max_pool2d_v2',
     'partial_sum',

@@ -131,7 +131,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place_),
+      phi::is_gpu_place(place_),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));

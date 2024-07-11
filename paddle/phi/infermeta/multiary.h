@@ -616,6 +616,22 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void LegacyInterpolateInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& out_size,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
+    const MetaTensor& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    MetaTensor* output,
+    MetaConfig config = MetaConfig());
+
 void IndexPutInferMeta(const MetaTensor& x,
                        const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,

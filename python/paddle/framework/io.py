@@ -198,10 +198,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
                 )
-                assert structured_name is not None, (
-                    "Cannot find saved variable (%s)'s structured name in saved model."
-                    % var_name
-                )
+                assert (
+                    structured_name is not None
+                ), f"Cannot find saved variable ({var_name})'s structured name in saved model."
                 structured_para_dict[structured_name] = load_param_dict[
                     var_name
                 ]
@@ -339,8 +338,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.load` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.load` is not supported."
             )
 
     # construct inner config
@@ -364,8 +362,7 @@ def _parse_save_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.save` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.save` is not supported."
             )
 
     # construct inner config
@@ -932,7 +929,7 @@ def _legacy_save(obj, path, protocol=2):
     if not isinstance(obj, dict):
         raise NotImplementedError(
             "Now only supports save state_dict of Layer or Optimizer, "
-            "expect dict, but received %s." % type(obj)
+            f"expect dict, but received {type(obj)}."
         )
 
     if len(obj) == 0:
@@ -1229,6 +1226,32 @@ def load(path, **configs):
                             program = Program.parse_from_string(
                                 program_desc_str
                             )
+                            if paddle.framework.in_pir_executor_mode():
+                                with paddle.pir_utils.IrGuard():
+                                    program = paddle.pir.translate_to_pir(
+                                        program.desc
+                                    )
+                                    block = program.global_block()
+                                    remove_op_list = []
+                                    for op in block.ops:
+                                        if op.name() == "pd_op.feed":
+                                            var_name = op.attrs()["name"]
+                                            org_value = op.result(0)
+                                            with block:
+                                                value = paddle.static.data(
+                                                    name=var_name,
+                                                    shape=org_value.shape,
+                                                    dtype=org_value.dtype,
+                                                )
+                                                org_value.replace_all_uses_with(
+                                                    value
+                                                )
+                                                value.get_defining_op().move_before(
+                                                    op
+                                                )
+                                            remove_op_list.append(op)
+                                    for op in remove_op_list:
+                                        block.remove_op(op)
                             return program
                     except:
                         raise ValueError(

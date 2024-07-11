@@ -30,17 +30,17 @@ namespace allocation {
 
 class NaiveBestFitAllocator : public Allocator {
  public:
-  explicit NaiveBestFitAllocator(const platform::Place &p) : place_(p) {}
+  explicit NaiveBestFitAllocator(const phi::Place &p) : place_(p) {}
 
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
-  uint64_t ReleaseImpl(const platform::Place &place) override;
+  uint64_t ReleaseImpl(const phi::Place &place) override;
 
  private:
-  platform::Place place_;
+  phi::Place place_;
 };
 
 }  // namespace allocation

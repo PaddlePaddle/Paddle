@@ -30,7 +30,7 @@ constexpr int MaxDeviceTypes =
     static_cast<int>(platform::DeviceType::MAX_DEVICE_TYPES);
 
 typedef void (*EventCreateFunction)(DeviceEvent*,
-                                    const platform::Place&,
+                                    const phi::Place&,
                                     unsigned int flag);
 typedef void (*EventRecordFunction)(DeviceEvent*, const DeviceContext*);
 typedef bool (*EventQueryFunction)(const DeviceEvent*);
@@ -56,12 +56,12 @@ enum EventStatus {
 
 class DeviceEvent {
  public:
-  explicit DeviceEvent(const platform::Place& place, unsigned int flag)
+  explicit DeviceEvent(const phi::Place& place, unsigned int flag)
       : event_(), place_(place), flag_(flag) {
     type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
     PADDLE_ENFORCE_LT(type_id_,
                       MaxDeviceTypes,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Required type < %d, but received type = %d",
                           MaxDeviceTypes,
                           type_id_));
@@ -69,13 +69,13 @@ class DeviceEvent {
     // TODO(Aurelius84): only support CPU/CUDA.
     PADDLE_ENFORCE_LT(type_id_,
                       3,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "Currently DeviceEvent do not support %s", place));
 #endif
     PADDLE_ENFORCE_NOT_NULL(
         event_creator_[type_id_],
-        platform::errors::Unavailable(
-            "event_creator_[%d] shall not be nullptr.", type_id_));
+        phi::errors::Unavailable("event_creator_[%d] shall not be nullptr.",
+                                 type_id_));
     event_creator_[type_id_](this, place, flag);
   }
 
@@ -84,8 +84,8 @@ class DeviceEvent {
   void Record(const DeviceContext* dev_ctx) {
     PADDLE_ENFORCE_NOT_NULL(
         event_recorder_[type_id_],
-        platform::errors::Unavailable(
-            "event_recorder_[%d] shall not be nullptr.", type_id_));
+        phi::errors::Unavailable("event_recorder_[%d] shall not be nullptr.",
+                                 type_id_));
     if (!recorded_) {
       recorded_ = true;
     }
@@ -95,8 +95,8 @@ class DeviceEvent {
   bool Query() {
     PADDLE_ENFORCE_NOT_NULL(
         event_querier_[type_id_],
-        platform::errors::Unavailable(
-            "event_querier_[%d] shall not be nullptr.", type_id_));
+        phi::errors::Unavailable("event_querier_[%d] shall not be nullptr.",
+                                 type_id_));
     if (!recorded_) {
       VLOG(4) << "Event " << this << " is not recorded yet, and skip query!";
       return true;
@@ -107,15 +107,15 @@ class DeviceEvent {
   void Finish() const {
     PADDLE_ENFORCE_NOT_NULL(
         event_finisher_[type_id_],
-        platform::errors::Unavailable(
-            "event_finisher_[%d] shall not be nullptr.", type_id_));
+        phi::errors::Unavailable("event_finisher_[%d] shall not be nullptr.",
+                                 type_id_));
     event_finisher_[type_id_](this);
   }
 
   void SetFinished() {
     PADDLE_ENFORCE_NOT_NULL(
         event_finished_setter_[type_id_],
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "event_finished_setter_[%d] shall not be nullptr.", type_id_));
     event_finished_setter_[type_id_](this);
   }
@@ -123,18 +123,18 @@ class DeviceEvent {
   void Reset() {
     PADDLE_ENFORCE_NOT_NULL(
         event_resetter_[type_id_],
-        platform::errors::Unavailable(
-            "event_resetter_[%d] shall not be nullptr.", type_id_));
+        phi::errors::Unavailable("event_resetter_[%d] shall not be nullptr.",
+                                 type_id_));
     event_resetter_[type_id_](this);
   }
 
   void Wait(const DeviceType& waiter_type, const DeviceContext* context) const {
     auto waiter_idx = DeviceTypeToId(waiter_type);
-    PADDLE_ENFORCE_NOT_NULL(event_waiter_[waiter_idx][type_id_],
-                            platform::errors::Unavailable(
-                                "event_waiter_[%d][%d] shall not be nullptr.",
-                                waiter_idx,
-                                type_id_));
+    PADDLE_ENFORCE_NOT_NULL(
+        event_waiter_[waiter_idx][type_id_],
+        phi::errors::Unavailable("event_waiter_[%d][%d] shall not be nullptr.",
+                                 waiter_idx,
+                                 type_id_));
     if (!recorded_) {
       VLOG(4) << "Event " << this << " is not recorded yet, and skip wait!";
       return;
@@ -148,7 +148,7 @@ class DeviceEvent {
 
  private:
   std::shared_ptr<void> event_;
-  platform::Place place_;
+  phi::Place place_;
   int type_id_;
   unsigned int flag_;
 

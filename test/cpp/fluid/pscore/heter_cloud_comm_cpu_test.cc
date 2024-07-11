@@ -44,7 +44,7 @@ void CreateVarsOnScope(framework::Scope* scope) {
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
 
@@ -176,7 +176,7 @@ void PressTestSendRecv(
 
 void TestScopeSendRecv(
     std::shared_ptr<distributed::HeterClient> heter_client_ptr_) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
   framework::Executor exe(place);
   std::shared_ptr<framework::Scope> send_scope_ptr =
@@ -254,7 +254,7 @@ TEST(HETERSENDANDRECV, CPU) {
           {switch_a_endpoint, switch_b_endpoint}, {}, 0);
 
   framework::ProgramDesc program;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 

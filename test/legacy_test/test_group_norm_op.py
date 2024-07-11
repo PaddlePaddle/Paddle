@@ -209,7 +209,7 @@ class TestGroupNormOp(OpTest):
             gpu_grads,
             inputs_to_check,
             0.005,
-            f"Gradient Check On {str(place)}",
+            f"Gradient Check On {place}",
         )
 
     def test_check_grad(self):

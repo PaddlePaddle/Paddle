@@ -279,9 +279,7 @@ class LayerObjectHelper(LayerHelperBase):
         if isinstance(act, str):
             act = {'type': act}
         else:
-            raise TypeError(
-                str(act) + " should be unicode or str in %s ", self.name
-            )
+            raise TypeError(f"{act} should be unicode or str in {self.name}")
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
@@ -2491,8 +2489,7 @@ class Layer:
             excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
-                "excluded_layers should be type nn.Layer or list, but got %s.",
-                type(excluded_layers).__name__,
+                f"excluded_layers should be type nn.Layer or list, but got {type(excluded_layers).__name__}.",
             )
 
         def layer_trans(layer):
@@ -2558,8 +2555,7 @@ class Layer:
             excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
-                "excluded_layers should be type nn.Layer or list, but got %s.",
-                type(excluded_layers).__name__,
+                f"excluded_layers should be type nn.Layer or list, but got {type(excluded_layers).__name__}.",
             )
 
         def layer_trans(layer):
@@ -2626,8 +2622,7 @@ class Layer:
             excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
-                "excluded_layers should be type nn.Layer or list, but got %s.",
-                type(excluded_layers).__name__,
+                f"excluded_layers should be type nn.Layer or list, but got {type(excluded_layers).__name__}.",
             )
 
         def layer_trans(layer):

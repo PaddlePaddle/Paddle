@@ -111,7 +111,7 @@ void InitTensorsOnClient(framework::Scope* scope,
 
   memory::Copy(place,
                reinterpret_cast<void*>(micro_id_ptr),
-               platform::CPUPlace(),
+               phi::CPUPlace(),
                reinterpret_cast<void*>(temp_ptr),
                micro_id_var->numel() *
                    framework::SizeOfType(
@@ -126,7 +126,7 @@ void InitTensorsOnClient(framework::Scope* scope,
   float* x_vec_ptr = x_vec.data();
   memory::Copy(place,
                reinterpret_cast<void*>(x_ptr),
-               platform::CPUPlace(),
+               phi::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
                x_var->numel() * phi::SizeOf(x_var->dtype()),
                stream);
@@ -138,7 +138,7 @@ void InitTensorsOnClient(framework::Scope* scope,
 }
 
 void InitTensorsOnServer(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -160,7 +160,7 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 void StartSendAndRecvServer(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
@@ -243,7 +243,7 @@ TEST(SENDANDRECV, GPU) {
   }
 
   framework::Scope* scope = (*micro_scope)[0];
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())

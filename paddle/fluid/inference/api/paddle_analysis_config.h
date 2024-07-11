@@ -889,18 +889,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void UseOptimizedModel(bool x = true) { use_optimized_model_ = x; }
 
-  void EnableDlnne(
-      int min_subgraph_size = 3,
-      int max_batch_size = 1,
-      bool use_static_batch = false,
-      std::string weight_share_mode = "0",
-      std::unordered_set<std::string> disable_nodes_by_outputs = {},
-      std::map<std::string, std::vector<int64_t>> input_dict = {},
-      bool use_calib_mode = false,
-      Precision precision_mode = Precision::kFloat32);
-
-  bool dlnne_enabled() const { return use_dlnne_; }
-
   ///
   /// \brief Control whether to debug IR graph analysis phase.
   /// This will generate DOT files for visualizing the computation graph after
@@ -1132,7 +1120,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// stream to the thread, and this behavior may be changed in the future.
   ///
   void EnableGpuMultiStream();
-  void PartiallyRelease();
 
   ///
   /// \brief Print the summary of config.
@@ -1299,17 +1286,6 @@ struct PD_INFER_DECL AnalysisConfig {
   // min_shape, max_shape and opt_shape and save in shape_range_info_path_;
   bool collect_shape_range_info_{false};
   std::string shape_range_info_path_;
-
-  // dlnne related.
-  bool use_dlnne_{false};
-  int dlnne_min_subgraph_size_{3};
-  int dlnne_max_batchsize_{1};
-  std::unordered_set<std::string> dlnne_disable_nodes_by_outputs_;
-  bool dlnne_use_static_batch_{true};
-  std::string dlnne_weight_share_mode_;
-  std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict_{};
-  bool dlnne_use_calib_mode_{false};
-  Precision dlnne_precision_mode_{Precision::kFloat32};
 
   // memory reuse related.
   bool enable_memory_optim_{false};

@@ -44,6 +44,8 @@ vartype_to_datatype = {
     VarDesc.VarType.INT8: DataType.INT8,
     VarDesc.VarType.COMPLEX64: DataType.COMPLEX64,
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
+    VarDesc.VarType.FP8_E4M3FN: DataType.FLOAT8_E4M3FN,
+    VarDesc.VarType.FP8_E5M2: DataType.FLOAT8_E5M2,
 }
 
 datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
@@ -73,6 +75,8 @@ np_type_to_paddle_type = {
     np.int8: DataType.INT8,
     np.complex64: DataType.COMPLEX64,
     np.complex128: DataType.COMPLEX128,
+    "float8_e4m3fn": DataType.FLOAT8_E4M3FN,
+    "float8_e5m2": DataType.FLOAT8_E5M2,
 }
 
 _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
@@ -88,6 +92,8 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     DataType.UINT8: 'uint8',
     DataType.COMPLEX64: 'complex64',
     DataType.COMPLEX128: 'complex128',
+    DataType.FLOAT8_E4M3FN: 'float8_e4m3fn',
+    DataType.FLOAT8_E5M2: 'float8_e5m2',
 }
 
 
@@ -108,13 +114,17 @@ def convert_np_dtype_to_dtype_(np_dtype):
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
+        dtype = 'float8_e4m3fn'
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
+        dtype = 'float8_e5m2'
     else:
         dtype = np.dtype(np_dtype)
 
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 # program is a global instance.

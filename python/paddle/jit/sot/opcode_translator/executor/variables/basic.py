@@ -39,9 +39,9 @@ from ....utils import (
 from ....utils.exceptions import HasNoAttributeError, InnerError
 from ..dispatch_functions import tensor_numel
 from ..guard import (
-    StringifyExpression,
+    StringifiedExpression,
     check_guard,
-    object_equal_stringify_guard,
+    object_equal_stringified_guard,
     stringify_pyobject,
     union_free_vars,
 )
@@ -262,7 +262,7 @@ class TensorDtypeVariable(DataVariable):
         super().__init__(value, graph, tracker)
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, GetAttrTracker) and isinstance(
             self.tracker.obj, TensorVariable
         ):
@@ -271,7 +271,7 @@ class TensorDtypeVariable(DataVariable):
             )
             dtype_str, dtype_free_vars = stringify_pyobject(self.value)
             return [
-                StringifyExpression(
+                StringifiedExpression(
                     f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
                     [tensor_value_tracer],
                     union_free_vars(
@@ -281,7 +281,7 @@ class TensorDtypeVariable(DataVariable):
                 )
             ]
         else:
-            return object_equal_stringify_guard(self)
+            return object_equal_stringified_guard(self)
 
     def get_py_value(self, allow_tensor=False):
         return super().get_py_value(allow_tensor)
@@ -409,7 +409,7 @@ class TensorVariable(VariableBase):
         codegen.gen_load_fast(self.out_var_name)
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
@@ -417,7 +417,7 @@ class TensorVariable(VariableBase):
         else:
             str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
                 [frame_value_tracer],
                 union_free_vars(
@@ -684,7 +684,7 @@ class SymbolicVariable(VariableBase):
         codegen.gen_call_method(0)  # TODO
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
@@ -700,9 +700,9 @@ class SymbolicVariable(VariableBase):
         symbolic_input.setdefault(self.value, 0)
         symbolic_input[self.value] += 1
         if self.need_guard_value:
-            return super().make_stringify_guard()
+            return super().make_stringified_guard()
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"id(type({{}})) == {id(self.get_py_type())}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
@@ -807,7 +807,7 @@ class ObjectVariable(VariableBase):
         tracker(Tracker): The Tracker object that tracks the information of this variable.
     """
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
     def __init__(self, obj, graph, tracker):
         super().__init__(graph, tracker)
@@ -872,19 +872,19 @@ class SliceVariable(VariableBase):
         )
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         result = (
             [
-                StringifyExpression(
+                StringifiedExpression(
                     "isinstance({}, slice)",
                     [frame_value_tracer],
                     frame_value_tracer.free_vars,
                 ),
             ]
-            + self.getattr("start").make_stringify_guard()
-            + self.getattr("stop").make_stringify_guard()
-            + self.getattr("step").make_stringify_guard()
+            + self.getattr("start").make_stringified_guard()
+            + self.getattr("stop").make_stringified_guard()
+            + self.getattr("step").make_stringified_guard()
         )
         return result
 
@@ -946,7 +946,7 @@ class ModuleVariable(VariableBase):
         return None
 
     # Happened in a inline import statement.
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
 
 class DygraphTracerVariable(VariableBase):
@@ -959,7 +959,7 @@ class DygraphTracerVariable(VariableBase):
         return self.value
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         return []
 
     @property
@@ -997,30 +997,30 @@ class NumpyVariable(VariableBase):
         return self.value
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.get_py_value(), np.number):
             frame_value_tracer = self.tracker.trace_value_from_frame()
 
             def format_dtype(dtype: np.dtype):
-                return f"np.{str(dtype)}"
+                return f"np.{dtype}"
 
             def format_number(number: np.number):
-                return f"{format_dtype(number.dtype)}({str(number.item())})"
+                return f"{format_dtype(number.dtype)}({number.item()})"
 
             return [
-                StringifyExpression(
+                StringifiedExpression(
                     f"{{}} == {format_number(self.get_py_value())}",
                     [frame_value_tracer],
                     union_free_vars(frame_value_tracer.free_vars, {"np": np}),
                 ),
-                StringifyExpression(
+                StringifiedExpression(
                     f"{{}}.dtype == {format_dtype(self.get_py_value().dtype)}",
                     [frame_value_tracer],
                     union_free_vars(frame_value_tracer.free_vars, {"np": np}),
                 ),
             ]
         else:
-            return object_equal_stringify_guard(self)
+            return object_equal_stringified_guard(self)
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

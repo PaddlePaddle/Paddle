@@ -48,17 +48,8 @@ bool ProcessGroupBKCL::BKCLTask::IsCompleted() {
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
 bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
-  // Warning here when use calc stream but also invoke waiting explicitly.
-  if (UseCalcStream()) {
-    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
-               "useless.";
-    return true;
-  }
-
-  const auto* calc_ctx = static_cast<XPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place_));
-  comm_event_->Block(*calc_ctx);
-
+  const auto* calc_ctx =
+      static_cast<XPUContext*>(phi::DeviceContextPool::Instance().Get(place_));
   if (barrier_) {
     // If we use the work to do barrier, we should block cpu
 
@@ -70,6 +61,15 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
     xpu_wait();
     calc_ctx->Wait();
   }
+  // Warning here when use calc stream but also invoke waiting explicitly.
+  if (UseCalcStream()) {
+    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
+               "useless.";
+    return true;
+  }
+
+  comm_event_->Block(*calc_ctx);
+
   return true;
 }
 
@@ -202,7 +202,7 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
 
   calc_event_ = std::make_shared<XPUEventManager>();
   auto* calc_ctx = static_cast<phi::XPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
   auto comm_ctx = std::make_unique<XPUDeviceContext>(place, true);
   // comm_ctx does not require a pre-allocated GM buffer
@@ -267,8 +267,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   fn(bkcl_comm_ctx, bkcl_stream);
 
   if (!use_calc_stream) {
-    PADDLE_ENFORCE_NOT_NULL(
-        comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
+                            phi::errors::Fatal("comm context is nullptr."));
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
@@ -318,12 +318,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   auto bkcl_comm_ctx = this->GetCommContext();
-
   fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
 
   if (!use_calc_stream) {
-    PADDLE_ENFORCE_NOT_NULL(
-        comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
+                            phi::errors::Fatal("comm context is nullptr."));
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
@@ -508,7 +507,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   platform::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
@@ -547,7 +546,7 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const auto& iter = place_to_comm_ctx_.find(key);
     PADDLE_ENFORCE_NE(iter,
                       place_to_comm_ctx_.end(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Cannot find device context in process group."));
     return iter->second.get();
   }

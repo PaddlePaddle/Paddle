@@ -2188,12 +2188,12 @@ class Resharder:
                             self.dist_context,
                             out_var,
                             [-1] * len(out_var.shape),
-                            src_tensor_attr.process_mesh,
+                            dst_input_attr[0],  # process_mesh
                             chunk_id=src_tensor_attr.chunk_id,
                         )
                     naive_set_dist_op_attr_for_program_by_mesh(
                         op,
-                        src_tensor_attr.process_mesh,
+                        dst_input_attr[0],  # process_mesh
                         self.dist_context,
                         chunk_id=src_tensor_attr.chunk_id,
                     )
