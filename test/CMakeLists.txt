@@ -50,6 +50,8 @@ function(py_test_modules TARGET_NAME)
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     endif()
+    set_tests_properties(${TARGET_NAME} PROPERTIES ENVIRONMENT
+                                                   ${FLAGS_PIR_MODE})
   endif()
 endfunction()
 
