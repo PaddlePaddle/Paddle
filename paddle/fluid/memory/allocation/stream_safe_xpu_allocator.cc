@@ -15,8 +15,8 @@
 #include "paddle/fluid/memory/allocation/stream_safe_xpu_allocator.h"
 #include <thread>
 
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {

@@ -2339,6 +2339,9 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
   VLOG(4) << "type_name: " << type_name;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
+    if (len == 0) {
+      return std::vector<phi::Scalar>({});
+    }
     PyObject* item = nullptr;
     item = PyList_GetItem(obj, 0);
     if (PyObject_CheckFloat(item)) {
@@ -2363,6 +2366,13 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
       }
       return value;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidType(
+          "%s(): argument (position %d) must be "
+          "a list of int, float, complex, or bool, but got %s",
+          op_type,
+          arg_pos + 1,
+          ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
@@ -2372,9 +2382,6 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-
-  // Fake a ScalarArray
-  return std::vector<phi::Scalar>({phi::Scalar(1.0)});
 }
 
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,

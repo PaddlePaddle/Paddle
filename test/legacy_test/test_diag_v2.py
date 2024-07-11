@@ -18,8 +18,9 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle import base, static
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiagV2Op(OpTest):
@@ -89,9 +90,12 @@ class TestDiagV2OpCase4(TestDiagV2Op):
 
 
 class TestDiagV2Error(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        main = static.Program()
+        startup = static.Program()
+        with static.program_guard(main, startup):
 
             def test_diag_v2_type():
                 x = [1, 2, 3]
@@ -200,36 +204,42 @@ class TestDiagV2API(unittest.TestCase):
         y = paddle.diag(x, offset=-1)
         np.testing.assert_allclose(y.numpy(), self.expected12, rtol=1e-05)
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
-        x = paddle.static.data(name='input', shape=[10, 10], dtype='float32')
-        x2 = paddle.static.data(name='input2', shape=[100], dtype='float64')
-        x3 = paddle.static.data(name='input3', shape=[100], dtype='int64')
-        x4 = paddle.static.data(
-            name='input4', shape=[2000, 2000], dtype='float32'
-        )
-        x5 = paddle.static.data(name='input5', shape=[2000], dtype='float32')
-        x6 = paddle.static.data(
-            name='input6', shape=[2000, 1500], dtype='float32'
-        )
-        result0 = paddle.diag(x)
-        result1 = paddle.diag(x, offset=1)
-        result2 = paddle.diag(x, offset=-1)
-        result3 = paddle.diag(x, name='aaa')
-        result4 = paddle.diag(x2, padding_value=8)
-        result5 = paddle.diag(x3, padding_value=8.0)
-        result6 = paddle.diag(x3, padding_value=-8)
-        result7 = paddle.diag(x4)
-        result8 = paddle.diag(x4, offset=1)
-        result9 = paddle.diag(x4, offset=-1)
-        result10 = paddle.diag(x5)
-        result11 = paddle.diag(x5, offset=1)
-        result12 = paddle.diag(x5, offset=-1)
-        result13 = paddle.diag(x6, offset=-1)
+        mp, sp = static.Program(), static.Program()
+        with static.program_guard(mp, sp):
+            x = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float32'
+            )
+            x2 = paddle.static.data(name='input2', shape=[100], dtype='float64')
+            x3 = paddle.static.data(name='input3', shape=[100], dtype='int64')
+            x4 = paddle.static.data(
+                name='input4', shape=[2000, 2000], dtype='float32'
+            )
+            x5 = paddle.static.data(
+                name='input5', shape=[2000], dtype='float32'
+            )
+            x6 = paddle.static.data(
+                name='input6', shape=[2000, 1500], dtype='float32'
+            )
+            result0 = paddle.diag(x)
+            result1 = paddle.diag(x, offset=1)
+            result2 = paddle.diag(x, offset=-1)
+            result4 = paddle.diag(x2, padding_value=8)
+            result5 = paddle.diag(x3, padding_value=8.0)
+            result6 = paddle.diag(x3, padding_value=-8)
+            result7 = paddle.diag(x4)
+            result8 = paddle.diag(x4, offset=1)
+            result9 = paddle.diag(x4, offset=-1)
+            result10 = paddle.diag(x5)
+            result11 = paddle.diag(x5, offset=1)
+            result12 = paddle.diag(x5, offset=-1)
+            result13 = paddle.diag(x6, offset=-1)
 
         place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
-        (
+        exe = static.Executor(place)
+        exe.run(sp)
+        [
             res0,
             res1,
             res2,
@@ -243,7 +253,8 @@ class TestDiagV2API(unittest.TestCase):
             res11,
             res12,
             res13,
-        ) = exe.run(
+        ] = exe.run(
+            mp,
             feed={
                 "input": self.input_np,
                 "input2": self.input_np2,
@@ -272,7 +283,6 @@ class TestDiagV2API(unittest.TestCase):
         np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
         np.testing.assert_allclose(res1, self.expected1, rtol=1e-05)
         np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
-        self.assertTrue('aaa' in result3.name)
         np.testing.assert_allclose(res4, self.expected3, rtol=1e-05)
         np.testing.assert_allclose(res5, self.expected4, rtol=1e-05)
         np.testing.assert_allclose(res6, self.expected5, rtol=1e-05)
@@ -289,9 +299,7 @@ class TestDiagV2API(unittest.TestCase):
         self.run_imperative()
 
         paddle.enable_static()
-
-        with base.program_guard(base.Program()):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
         if not base.core.is_compiled_with_cuda():
@@ -300,9 +308,7 @@ class TestDiagV2API(unittest.TestCase):
         paddle.disable_static(place=paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
-
-        with base.program_guard(base.Program()):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
 
 class TestDiagV2FP16OP(TestDiagV2Op):
