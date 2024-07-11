@@ -750,7 +750,7 @@ void SplitFunctionDispatchWithDifferentShape(
 
   auto device_array_ptr = memory_utils::Alloc(
       ctx.GetPlace(),
-      outs->size() * sizeof(char*),
+      outs->size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
   IndexT* device_val_array_real_ptr = nullptr;
@@ -758,19 +758,19 @@ void SplitFunctionDispatchWithDifferentShape(
                      device_array_ptr->ptr(),
                      phi::CPUPlace(),
                      setter.array.data,
-                     outs->size() * sizeof(char*),
+                     outs->size() * sizeof(T*),
                      ctx.stream());
   if (Size != SegmentedArraySize::kVariableLength) {
     auto device_val_array_ptr = memory_utils::Alloc(
         ctx.GetPlace(),
-        static_cast<int>(Size) * sizeof(T),
+        static_cast<int>(Size) * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     memory_utils::Copy(ctx.GetPlace(),
                        device_val_array_ptr->ptr(),
                        phi::CPUPlace(),
                        setter.val_array.data,
-                       static_cast<int>(Size) * sizeof(T),
+                       static_cast<int>(Size) * sizeof(T*),
                        ctx.stream());
     device_val_array_real_ptr =
         reinterpret_cast<IndexT*>(device_val_array_ptr->ptr());
