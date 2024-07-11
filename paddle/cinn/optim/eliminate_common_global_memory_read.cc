@@ -57,6 +57,20 @@ std::unordered_map<ir::Var, ir::Var> ConstructForVarReplaceMap(
   return ret;
 }
 
+template <typename OpType>
+bool IsPureExpr(const ir::Expr& expr) {
+  if (expr.is_constant()) {
+    return true;
+  } else if (expr.As<ir::_Var_>()) {
+    return true;
+  } else if (expr.As<OpType>()) {
+    auto sub_expr = expr.As<OpType>();
+    return IsPureExpr<OpType>(sub_expr->a()) &&
+           IsPureExpr<OpType>(sub_expr->b());
+  }
+  return false;
+}
+
 struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -121,10 +135,21 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       return false;
     };
 
+    auto IndiceComplexExpr =
+        [&](const IndicesAndExtent& indice_and_extent) -> bool {
+      for (const auto& index : indice_and_extent.indices) {
+        if (!(IsPureExpr<ir::Add>(index) || IsPureExpr<ir::Mul>(index))) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     auto IsGlobalTensorNeedEliminate =
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
       if (indice_and_extent.size() <= 1) return false;
       if (IndiceContainsLoad(indice_and_extent[0])) return false;
+      if (IndiceComplexExpr(indice_and_extent[0])) return false;
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 
