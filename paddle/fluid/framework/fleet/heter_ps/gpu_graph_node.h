@@ -216,7 +216,7 @@ struct NeighborSampleResult {
     sample_size = _sample_size;
     key_size = _key_size;
     platform::CUDADeviceGuard guard(dev_id);
-    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    phi::GPUPlace place = phi::GPUPlace(dev_id);
     if (stream != 0) {
       val_mem = memory::AllocShared(
           place,
@@ -366,7 +366,7 @@ struct NeighborSampleResultV2 {
     key_size = _key_size;
     edge_to_id_len = _edge_to_id_len;
     platform::CUDADeviceGuard guard(dev_id);
-    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    phi::GPUPlace place = phi::GPUPlace(dev_id);
     if (stream != 0) {
       val_mem = memory::AllocShared(
           place,
@@ -428,7 +428,7 @@ struct NodeQueryResult {
   std::shared_ptr<memory::Allocation> val_mem;
   void initialize(int query_size, int dev_id) {
     platform::CUDADeviceGuard guard(dev_id);
-    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    phi::GPUPlace place = phi::GPUPlace(dev_id);
     if (stream != 0) {
       val_mem = memory::AllocShared(
           place,

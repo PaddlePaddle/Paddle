@@ -67,7 +67,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   void PrepareFeedFetch();
 
   NativeConfig config_;
-  platform::Place place_;
+  phi::Place place_;
   std::unique_ptr<framework::Executor> executor_;
   std::shared_ptr<framework::Scope> scope_;
   std::unique_ptr<framework::ExecutorPrepareContext> ctx_;

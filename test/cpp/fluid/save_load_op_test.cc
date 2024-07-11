@@ -23,7 +23,7 @@ PD_DECLARE_KERNEL(load_sr, CPU, ALL_LAYOUT);
 
 TEST(SaveLoadOp, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();
@@ -67,7 +67,7 @@ TEST(SaveLoadOp, CPU) {
 
 TEST(SaveLoadOpSelectedRows, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   auto var = scope.Var("test_var_sr");
   auto selected_rows = var->GetMutable<phi::SelectedRows>();
@@ -104,7 +104,7 @@ TEST(SaveLoadOpSelectedRows, CPU) {
 
 TEST(SaveFP16Op, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();
@@ -150,7 +150,7 @@ TEST(SaveFP16Op, CPU) {
 
 TEST(LoadFP16Op, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();

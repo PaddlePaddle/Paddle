@@ -215,7 +215,7 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto* matmul_y =
         scope->FindVar(matmul_v2_in_y->Name())->GetMutable<phi::DenseTensor>();
-    auto y_data = matmul_y->mutable_data<float>(platform::CPUPlace());
+    auto y_data = matmul_y->mutable_data<float>(phi::CPUPlace());
     for (int i = 0; i < matmul_y->numel(); ++i) {
       y_data[i] *= scale;
     }

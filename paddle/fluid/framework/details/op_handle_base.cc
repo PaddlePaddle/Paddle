@@ -265,7 +265,7 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
   }
 }
 
-void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
+void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
       // Dummy Variable is used to represent dependencies between operators,
@@ -329,7 +329,7 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #endif
 }
 
-void OpHandleBase::RunAndRecordEvent(platform::Place p,
+void OpHandleBase::RunAndRecordEvent(phi::Place p,
                                      const std::function<void()> &callback) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_cpu_place(p) || events_.empty()) {

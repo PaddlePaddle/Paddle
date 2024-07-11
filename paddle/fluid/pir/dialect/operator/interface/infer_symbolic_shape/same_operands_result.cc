@@ -33,7 +33,6 @@ OP_SAME_OPERANDS_AND_RESULT(Acos_)
 OP_SAME_OPERANDS_AND_RESULT(Acosh)
 OP_SAME_OPERANDS_AND_RESULT(Acosh_)
 OP_SAME_OPERANDS_AND_RESULT(Angle)
-OP_SAME_OPERANDS_AND_RESULT(Argsort)
 OP_SAME_OPERANDS_AND_RESULT(Asin)
 OP_SAME_OPERANDS_AND_RESULT(Asin_)
 OP_SAME_OPERANDS_AND_RESULT(Asinh)
@@ -173,6 +172,15 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
     infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   }
 
+  return true;
+}
+
+bool ArgsortOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(1), operand_shape_or_data);
   return true;
 }
 

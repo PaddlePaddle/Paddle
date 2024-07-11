@@ -79,7 +79,7 @@ class BKCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatBKCLAllReduce(platform::Place place,
+  void FlatBKCLAllReduce(phi::Place place,
                          const void* sendbuff,
                          void* recvbuff,
                          size_t count,
@@ -107,7 +107,7 @@ class BKCLOpHandleBase : public OpHandleBase {
         platform::errors::PreconditionNotMet("bckl all reduce failed"));
   }
 
-  void BKCLAllReduce(platform::Place place,
+  void BKCLAllReduce(phi::Place place,
                      const void* sendbuff,
                      void* recvbuff,
                      size_t count,

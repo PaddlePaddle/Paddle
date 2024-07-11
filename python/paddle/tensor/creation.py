@@ -983,7 +983,12 @@ def fill_constant(
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
-        _C_ops.full_(out, shape, value, dtype, place)
+
+        if out.dtype != dtype:
+            raise TypeError(
+                "Required out.dtype == dtype if specifying out, but recevied f{out.dtype} != f{dtype}"
+            )
+        out = _C_ops.full_(out, shape, value, dtype, place)
         out.stop_gradient = True
         return out
 
@@ -2533,12 +2538,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
-        if in_dynamic_mode():
-            if output is None:
-                output = _C_ops.assign(input)
-            else:
-                _C_ops.assign_out_(input, output)
-        elif in_pir_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:

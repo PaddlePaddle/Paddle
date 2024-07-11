@@ -22,7 +22,7 @@ namespace framework {
 
 SelectInputInstruction::SelectInputInstruction(
     size_t id,
-    const platform::Place &place,
+    const phi::Place &place,
     ::pir::Operation *op,
     ValueExecutionInfo *value_exe_info)
     : InstructionBase(id, place),
@@ -65,7 +65,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
   std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
-  framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
+  framework::TensorCopySync(mask, phi::CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(phi::errors::Fatal(
       "This version of PaddlePaddle does NOT support GPU, "

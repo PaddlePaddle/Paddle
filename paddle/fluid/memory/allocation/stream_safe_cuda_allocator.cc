@@ -162,7 +162,7 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    platform::CUDAPlace place,
+    phi::GPUPlace place,
     gpuStream_t default_stream,
     bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
