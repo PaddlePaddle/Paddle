@@ -290,7 +290,7 @@ __global__ void PushMergeCopy(const size_t N,
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     uint64_t** gpu_keys,
     const std::vector<float*>& values,
     const float* total_values_gpu,
@@ -326,7 +326,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const std::vector<const float*>& grad_values,
     float* total_grad_values_gpu,
     const std::vector<int64_t>& slot_lengths,
@@ -391,7 +391,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const uint64_t* total_keys,
     float** gpu_values,
     const float* total_values_gpu,
@@ -424,7 +424,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const uint64_t* total_keys,
     float** grad_values,
     float* total_grad_values_gpu,
@@ -466,7 +466,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const uint64_t* total_keys,
     float** grad_values,
     float* total_grad_values_gpu,

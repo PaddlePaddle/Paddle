@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {

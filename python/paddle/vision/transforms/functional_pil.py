@@ -40,7 +40,18 @@ except:
         'hamming': Image.HAMMING,
     }
 
+
 __all__ = []
+
+
+def _as_np_array(array, dtype=None):
+    # See more details in:
+    # https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+        array = np.asarray(array, dtype=dtype, copy=False)
+    else:
+        array = np.array(array, dtype=dtype, copy=False)
+    return array
 
 
 def to_tensor(pic, data_format='CHW'):
@@ -63,16 +74,16 @@ def to_tensor(pic, data_format='CHW'):
 
     # PIL Image
     if pic.mode == 'I':
-        img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
+        img = paddle.to_tensor(_as_np_array(pic, np.int32))
     elif pic.mode == 'I;16':
         # cast and reshape not support int16
-        img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
+        img = paddle.to_tensor(_as_np_array(pic, np.int32))
     elif pic.mode == 'F':
-        img = paddle.to_tensor(np.array(pic, np.float32, copy=False))
+        img = paddle.to_tensor(_as_np_array(pic, np.float32))
     elif pic.mode == '1':
-        img = 255 * paddle.to_tensor(np.array(pic, np.uint8, copy=False))
+        img = 255 * paddle.to_tensor(_as_np_array(pic, np.uint8))
     else:
-        img = paddle.to_tensor(np.array(pic, copy=False))
+        img = paddle.to_tensor(_as_np_array(pic))
 
     if pic.mode == 'YCbCr':
         nchannel = 3
