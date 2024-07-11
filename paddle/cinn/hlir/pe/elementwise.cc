@@ -21,7 +21,6 @@
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/common/enforce.h"
 namespace cinn {

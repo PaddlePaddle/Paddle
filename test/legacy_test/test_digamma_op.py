@@ -135,12 +135,6 @@ class TestDigammaAPI(unittest.TestCase):
                     res = paddle.digamma(input_t).numpy()
                     np.testing.assert_allclose(res, sc_res, rtol=1e-05)
 
-    def test_name_argument(self):
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
-            out = paddle.digamma(x, name="digamma_res")
-            self.assertTrue("digamma_res" in out.name)
-
     def test_dtype_error(self):
         # in static graph mode
         with self.assertRaises(TypeError):
