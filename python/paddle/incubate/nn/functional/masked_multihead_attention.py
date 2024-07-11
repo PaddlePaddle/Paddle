@@ -28,7 +28,7 @@ def masked_multihead_attention(
     qkv_out_scale=None,
     out_shift=None,
     out_smooth=None,
-    seq_len=1,
+    seq_len=0,
     rotary_emb_dims=0,
     use_neox_rotary_style=False,
     compute_dtype='default',
