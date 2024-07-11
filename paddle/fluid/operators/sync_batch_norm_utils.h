@@ -601,7 +601,7 @@ void SyncBatchNormGradFunctor(
   } else {
     if (FLAGS_dynamic_static_unified_comm) {
       auto comm_ctx =
-          static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+          static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
       if (comm_ctx) {
         comm = comm_ctx->GetNcclComm();
         int dtype = phi::ToNCCLDataType(mean_out->dtype());
@@ -617,6 +617,7 @@ void SyncBatchNormGradFunctor(
         VLOG(3) << "Sync result using all reduce";
       }
     }
+  }
 #endif
 
   if (layout == DataLayout::kNCHW) {
