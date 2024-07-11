@@ -17,6 +17,7 @@ import os
 import unittest
 
 print("aaaaaaaaaaaaaaaaaa", os.environ.get("FLAGS_enable_pir_api", "cccc"))
+print("bbbbbbbbbbbb", type(os.environ.get("FLAGS_enable_pir_api", "cccc")))
 import numpy as np
 
 import paddle
