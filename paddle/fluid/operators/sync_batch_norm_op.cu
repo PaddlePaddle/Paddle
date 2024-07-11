@@ -18,10 +18,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
-// sparse header
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/phi/kernels/sparse/empty_kernel.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
+#endif
+
+// sparse header
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
 
