@@ -26,7 +26,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/phi/core/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
@@ -576,27 +576,14 @@ void SyncBatchNormGradFunctor(
   int global_gid = 0;
   ncclComm_t comm = nullptr;
 
-  if (phi::distributed::ProcessGroupMapFromGid::getInstance()->has(
+  if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
     auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-        phi::distributed::ProcessGroupMapFromGid::getInstance()->get(
+        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
             global_gid));
     comm = nccl_pg->NCCLComm(x->place());
   } else {
-    if (FLAGS_dynamic_static_unified_comm) {
-      auto comm_ctx =
-          static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
-      if (comm_ctx) {
-        comm = comm_ctx->GetNcclComm();
-      }
-    } else {
-      comm = ctx.nccl_comm();
-    }
+    comm = ctx.nccl_comm();
   }
 
   if (comm) {
@@ -611,7 +598,25 @@ void SyncBatchNormGradFunctor(
                                     comm,
                                     stream));
     VLOG(3) << "Sync result using all reduce";
-  }
+  } else {
+    if (FLAGS_dynamic_static_unified_comm) {
+      auto comm_ctx =
+          static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+      if (comm_ctx) {
+        comm = comm_ctx->GetNcclComm();
+        int dtype = phi::ToNCCLDataType(mean_out->dtype());
+        // In-place operation
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllReduce(stats,
+                                        stats,
+                                        2 * C + 1,
+                                        static_cast<ncclDataType_t>(dtype),
+                                        ncclSum,
+                                        comm,
+                                        stream));
+        VLOG(3) << "Sync result using all reduce";
+      }
+    }
 #endif
 
   if (layout == DataLayout::kNCHW) {
