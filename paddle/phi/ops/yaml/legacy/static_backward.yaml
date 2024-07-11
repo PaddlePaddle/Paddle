@@ -205,7 +205,7 @@
   kernel :
     func : legacy_matmul_double_grad
     param: [x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y]
-  composite : legacy_matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y, x_grad, y_grad, grad_out_grad)
+  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y, x_grad, y_grad, grad_out_grad)
   optional : grad_x_grad, grad_y_grad
 
 - backward_op : legacy_matmul_grad
