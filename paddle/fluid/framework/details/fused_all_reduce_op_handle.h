@@ -48,21 +48,21 @@ namespace details {
 struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
-                         const std::vector<platform::Place> &places,
+                         const std::vector<phi::Place> &places,
                          const size_t num_of_all_reduce,
                          const platform::NCCLCommunicator *ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
 struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
-                         const std::vector<platform::Place> &places,
+                         const std::vector<phi::Place> &places,
                          const size_t num_of_all_reduce,
                          const platform::BKCLCommunicator *ctxs);
 #else
 struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
-                         const std::vector<platform::Place> &places,
+                         const std::vector<phi::Place> &places,
                          const size_t num_of_all_reduce);
 #endif
   std::string Name() const override;

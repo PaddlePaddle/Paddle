@@ -146,7 +146,7 @@ void BufferedReader::ReadAsync(size_t i) {
         //   - If src Tensor on CPU memory, we copy it to CUDAPinned memory
         //   - IF src Tensor on CUDAPinned memory, we use it directly
         //   - IF src Tensor on CUDA memory, we use it directly
-        platform::CUDAPinnedPlace cuda_pinned_place;
+        phi::GPUPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event(
@@ -223,7 +223,7 @@ void BufferedReader::ReadAsync(size_t i) {
             phi::memory_utils::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
-            platform::CUDAPinnedPlace cuda_pinned_place;
+            phi::GPUPinnedPlace cuda_pinned_place;
             phi::DenseTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(

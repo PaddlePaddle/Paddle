@@ -29,7 +29,7 @@ namespace paddle::framework::details {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places,
+                                     const std::vector<phi::Place> &places,
                                      const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
   PADDLE_ENFORCE_EQ(places_.size(),
@@ -44,7 +44,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #elif defined(PADDLE_WITH_XPU_BKCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places,
+                                     const std::vector<phi::Place> &places,
                                      const platform::BKCLCommunicator *ctxs)
     : BKCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
   PADDLE_ENFORCE_EQ(places_.size(),
@@ -59,7 +59,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places)
+                                     const std::vector<phi::Place> &places)
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
   PADDLE_ENFORCE_EQ(places_.size(),
                     local_scopes_.size(),
@@ -114,7 +114,7 @@ void AllReduceOpHandle::AllReduceImpl(
           num_places));
 
   std::vector<const void *> lod_tensor_data;
-  std::vector<platform::Place> places;
+  std::vector<phi::Place> places;
   lod_tensor_data.reserve(num_places);
   places.reserve(num_places);
   int64_t numel = -1;
@@ -202,7 +202,7 @@ void AllReduceOpHandle::AllReduceFunc(
     std::vector<const void *> lod_tensor_data,
     const framework::proto::VarType::Type &dtype,
     int64_t numel,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const std::vector<std::string> &out_var_names) {
   if (platform::is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
