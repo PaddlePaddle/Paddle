@@ -19,13 +19,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle._typing import DTypeLike
 
 from .. import core, framework
 from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -116,7 +116,10 @@ def monkey_patch_math_tensor():
             numel == 1
         ), "only one element variable can be converted to float."
         assert var._is_initialized(), "variable's tensor is not initialized"
-        if var.dtype == core.VarDesc.VarType.BF16:
+        if (
+            var.dtype == core.VarDesc.VarType.BF16
+            or var.dtype == core.DataType.BFLOAT16
+        ):
             var = var.astype('float32')
         return float(np.array(var))
 
@@ -124,7 +127,10 @@ def monkey_patch_math_tensor():
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to long."
         assert var._is_initialized(), "variable's tensor is not initialized"
-        if var.dtype == core.VarDesc.VarType.BF16:
+        if (
+            var.dtype == core.VarDesc.VarType.BF16
+            or var.dtype == core.DataType.BFLOAT16
+        ):
             var = var.astype('float32')
         return int(np.array(var))
 
@@ -132,7 +138,10 @@ def monkey_patch_math_tensor():
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to int."
         assert var._is_initialized(), "variable's tensor is not initialized"
-        if var.dtype == core.VarDesc.VarType.BF16:
+        if (
+            var.dtype == core.VarDesc.VarType.BF16
+            or var.dtype == core.DataType.BFLOAT16
+        ):
             var = var.astype('float32')
         return int(np.array(var))
 
@@ -151,7 +160,10 @@ def monkey_patch_math_tensor():
             numel == 1
         ), "only one element variable can be converted to python index."
         assert var._is_initialized(), "variable's tensor is not initialized"
-        if var.dtype == core.VarDesc.VarType.BF16:
+        if (
+            var.dtype == core.VarDesc.VarType.BF16
+            or var.dtype == core.DataType.BFLOAT16
+        ):
             var = var.astype('float32')
         return int(np.array(var))
 

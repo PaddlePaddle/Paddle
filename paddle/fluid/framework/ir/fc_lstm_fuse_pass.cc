@@ -19,15 +19,11 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -224,7 +220,7 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
       const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
 
       auto lstm_bias_data =
-          lstm_bias_tensor->mutable_data<float>(platform::CPUPlace());
+          lstm_bias_tensor->mutable_data<float>(phi::CPUPlace());
       auto* fc_bias_data = fc_bias_tensor.data<float>();
 
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {
@@ -379,9 +375,7 @@ void FCLstmFusePass::ApplyImpl(ir::Graph* graph) const {
                             fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(mul_lstm_fuse_pass, paddle::framework::ir::MulLstmFusePass);
 REGISTER_PASS(fc_lstm_fuse_pass, paddle::framework::ir::FCLstmFusePass);

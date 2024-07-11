@@ -342,7 +342,7 @@ class AMPState:
                     for in_var_name in op.input_arg_names:
                         assert (
                             in_var.dtype == block.var(in_var_name).dtype
-                        ), f"{in_var}, {block.var(in_var_name)}, {str(op)}"
+                        ), f"{in_var}, {block.var(in_var_name)}, {op}"
                     out_var.desc.set_dtype(in_var.dtype)
                 elif int(op.attr('op_role')) == 257:
                     pass
@@ -547,7 +547,7 @@ class AMPState:
                     else:
                         assert (
                             in_var.dtype == dst_dtype
-                        ), f"op [{op.type}] expect input [{in_name}] to be dtype [{dst_dtype}] BUT got [{in_var.dtype}]. {str(op)}"
+                        ), f"op [{op.type}] expect input [{in_name}] to be dtype [{dst_dtype}] BUT got [{in_var.dtype}]. {op}"
 
         for out_name in op.output_names:
             if src_dtype == paddle.float32 and _keep_fp32_output(op, out_name):

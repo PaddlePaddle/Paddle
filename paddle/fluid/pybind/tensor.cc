@@ -72,7 +72,6 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -210,7 +209,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
            })
-      .def("_slice", &phi::DenseTensor::Slice)
+      .def("_slice",
+           [](phi::DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
+             if (!self.meta().is_contiguous()) {
+               PADDLE_THROW(platform::errors::InvalidArgument(
+                   "Tensor is not contiguous, cannot call "
+                   "_slice on it."));
+             }
+             return self.Slice(begin_idx, end_idx);
+           })
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
            [](const phi::DenseTensor &self) { return self.IsInitialized(); })
@@ -227,149 +234,147 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.set_layout(common::StringToDataLayout(layout));
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, paddle::platform::CustomPlace &place) {
+           [](phi::DenseTensor &self, phi::CustomPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, paddle::platform::CUDAPlace &place) {
+           [](phi::DenseTensor &self, phi::GPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, paddle::platform::XPUPlace &place) {
+           [](phi::DenseTensor &self, phi::XPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, paddle::platform::CPUPlace &place) {
+           [](phi::DenseTensor &self, phi::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_double",
-           [](phi::DenseTensor &self, paddle::platform::CPUPlace &place) {
+           [](phi::DenseTensor &self, phi::CPUPlace &place) {
              self.mutable_data<double>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, paddle::platform::CPUPlace &place) {
+           [](phi::DenseTensor &self, phi::CPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, paddle::platform::CustomPlace &place) {
+           [](phi::DenseTensor &self, phi::CustomPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, paddle::platform::XPUPlace &place) {
+           [](phi::DenseTensor &self, phi::XPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, paddle::platform::CUDAPlace &place) {
+           [](phi::DenseTensor &self, phi::GPUPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def(
-          "_alloc_int",
-          [](phi::DenseTensor &self, paddle::platform::CUDAPinnedPlace &place) {
-            self.mutable_data<int>(place);
-          })
-      .def(
-          "_alloc_float",
-          [](phi::DenseTensor &self, paddle::platform::CUDAPinnedPlace &place) {
-            self.mutable_data<float>(place);
-          })
+      .def("_alloc_int",
+           [](phi::DenseTensor &self, phi::GPUPinnedPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("_alloc_float",
+           [](phi::DenseTensor &self, phi::GPUPinnedPlace &place) {
+             self.mutable_data<float>(place);
+           })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              paddle::platform::CPUPlace &place,
+              phi::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              paddle::platform::CustomPlace &place,
+              phi::CustomPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              paddle::platform::XPUPlace &place,
+              phi::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              paddle::platform::CUDAPlace &place,
+              phi::GPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](phi::DenseTensor &self,
-              paddle::platform::CUDAPinnedPlace &place,
+              phi::GPUPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_clear", &phi::DenseTensor::clear)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::CPUPlace>,
+           &TensorCopyFrom<phi::CPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::CustomPlace>,
+           &TensorCopyFrom<phi::CustomPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::XPUPlace>,
+           &TensorCopyFrom<phi::XPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::CUDAPlace>,
+           &TensorCopyFrom<phi::GPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
+           &TensorCopyFrom<phi::GPUPinnedPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::IPUPlace>,
+           &TensorCopyFrom<phi::IPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::Place>,
+           &TensorCopyFrom<phi::Place>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           SetTensorFromPyArray<phi::CPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::CustomPlace>,
+           SetTensorFromPyArray<phi::CustomPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::XPUPlace>,
+           SetTensorFromPyArray<phi::XPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           SetTensorFromPyArray<phi::GPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::IPUPlace>,
+           SetTensorFromPyArray<phi::IPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
+           SetTensorFromPyArray<phi::GPUPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false,
@@ -684,27 +689,31 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return dst;
            })
-      .def("_copy",
-           [](const phi::DenseTensor &self, const platform::Place &place) {
-             // follow fetch_op's inplementation
-             phi::DenseTensor dst;
-             if (self.IsInitialized() && self.numel() > 0) {
-               TensorCopySync(self, place, &dst);
-             } else {
-               // Not copy, if the src tensor is empty.
-               dst.clear();
-               dst.Resize({0});
-             }
-             dst.set_lod(self.lod());
-             return dst;
+      .def("_copy", [](const phi::DenseTensor &self, const phi::Place &place) {
+        // follow fetch_op's inplementation
+        phi::DenseTensor dst;
+        if (self.IsInitialized() && self.numel() > 0) {
+          TensorCopySync(self, place, &dst);
+        } else {
+          // Not copy, if the src tensor is empty.
+          dst.clear();
+          dst.Resize({0});
+        }
+        dst.set_lod(self.lod());
+        return dst;
 #ifdef _WIN32
-           });
+      });
 #else
            })
 #ifdef PADDLE_WITH_CUDA
       .def("_share_buffer_with",
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
+              if (!src.meta().is_contiguous()) {
+                PADDLE_THROW(platform::errors::InvalidArgument(
+                    "Tensor is not contiguous, cannot call "
+                    "share_buffer_with on it."));
+              }
              auto *cuda_ipc_allocation =
                  dynamic_cast<memory::allocation::CudaIpcAllocation *>(
                      src.Holder().get());
@@ -727,7 +736,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  std::make_shared<memory::allocation::Allocation>(
                      cuda_ipc_allocation->ptr(),
                      cuda_ipc_allocation->base_ptr(), size,
-                     platform::CUDAPlace(device_id));
+                     phi::GPUPlace(device_id));
 
              self.ResetHolderWithType(shared_reader_holder, dtype);
              self.Resize(dims);
@@ -900,12 +909,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                // copy data & reset holder
                if (platform::is_cuda_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
-                 memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
-                              platform::CUDAPinnedPlace(), data_ptr, data_size);
+                 memory::Copy(phi::CPUPlace(), shared_holder->ptr(),
+                              phi::GPUPinnedPlace(), data_ptr, data_size);
 #endif
                } else {
-                 memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
-                              platform::CPUPlace(), data_ptr, data_size);
+                 memory::Copy(phi::CPUPlace(), shared_holder->ptr(),
+                              phi::CPUPlace(), data_ptr, data_size);
                }
                self.ResetHolder(shared_holder);
                mmap_allocation = shared_holder.get();

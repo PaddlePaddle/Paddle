@@ -174,7 +174,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         // useless out_node can be removed, not need set it persistable !
         if (out_node->outputs.empty()) remove_nodes.emplace(out_node);
       }
-      op->Run(*local_scope, platform::CPUPlace());
+      op->Run(*local_scope, phi::CPUPlace());
       folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable

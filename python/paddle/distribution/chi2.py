@@ -11,11 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution.gamma import Gamma
 from paddle.framework import in_dynamic_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor, dtype
 
 __all__ = ["Chi2"]
 
@@ -39,12 +47,16 @@ class Chi2(Gamma):
 
     """
 
-    def __init__(self, df):
+    df: Tensor
+    rate: Tensor
+    dtype: dtype
+
+    def __init__(self, df: float | Tensor) -> None:
         if not in_dynamic_mode():
             check_type(
                 df,
                 'df',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Chi2',
             )
 
@@ -58,7 +70,8 @@ class Chi2(Gamma):
 
         self.rate = paddle.full_like(self.df, 0.5)
 
-        if not paddle.all(self.df > 0):
-            raise ValueError("The arg of `df` must be positive.")
+        if in_dynamic_mode():
+            if not paddle.all(self.df > 0):
+                raise ValueError("The arg of `df` must be positive.")
 
         super().__init__(self.df * 0.5, self.rate)

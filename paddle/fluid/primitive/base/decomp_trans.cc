@@ -39,22 +39,23 @@ using Program = pir::Program;
 
 // some outputs like xshape will no longer used after decomp, and those outputs
 // will skip checking.
-std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
-                                                          "pd_op.unsqueeze",
-                                                          "pd_op.flatten",
-                                                          "pd_op.batch_norm",
-                                                          "pd_op.batch_norm_",
-                                                          "pd_op.dropout"};
-//
-std::unordered_set<std::string> dynamic_shape_blacklist = {
+std::unordered_set<std::string> decomp_op_contain_none = {
     "pd_op.squeeze",
     "pd_op.unsqueeze",
+    "pd_op.flatten",
     "pd_op.batch_norm",
     "pd_op.batch_norm_",
-    "pd_op.bmm",
-    "pd_op.flatten",
+    "pd_op.dropout",
     "pd_op.instance_norm",
-    "pd_op.one_hot"};
+};
+//
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze",
+                                                           "pd_op.batch_norm",
+                                                           "pd_op.batch_norm_",
+                                                           "pd_op.bmm",
+                                                           "pd_op.flatten",
+                                                           "pd_op.one_hot"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {

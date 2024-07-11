@@ -59,7 +59,7 @@ parallel_list="^init_phi_test$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
 ^test_conv2d_api_deprecated$|\
-^test_conv2d_layer$|\
+^test_conv2d_layer_deprecated$|\
 ^test_conv2d_op_depthwise_conv$|\
 ^test_conv2d_transpose_layer$|\
 ^test_conv2d_transpose_op_depthwise_conv$|\
@@ -119,6 +119,7 @@ parallel_list="^init_phi_test$|\
 ^test_fused_transformer_encoder_layer$|\
 ^test_fused_transformer_with_amp_decorator$|\
 ^test_fused_dot_product_attention_op$|\
+^test_fused_dot_product_attention_op_static$|\
 ^test_fuse_dot_product_attention_pass$|\
 ^test_fused_dot_product_attention_pass$|\
 ^test_gather_nd_op$|\

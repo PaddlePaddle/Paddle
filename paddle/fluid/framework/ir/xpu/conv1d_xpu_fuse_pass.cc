@@ -514,16 +514,11 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
             scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
         auto bn_var_t =
             scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
-        float* filter_ptr =
-            filter_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_scale_ptr =
-            bn_scale_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_bias_ptr =
-            bn_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_mean_ptr =
-            bn_mean_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_var_ptr =
-            bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
+        float* filter_ptr = filter_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_scale_ptr = bn_scale_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_bias_ptr = bn_bias_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_mean_ptr = bn_mean_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_var_ptr = bn_var_t->mutable_data<float>(phi::CPUPlace());
         auto mean_len = bn_mean_t->numel();
         auto filter_len = filter_t->numel();
         auto filter_stride = filter_len / mean_len;
@@ -534,7 +529,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
         auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
                                  ->GetMutable<phi::DenseTensor>();
         float* fusion_bias_ptr =
-            fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+            fusion_bias_t->mutable_data<float>(phi::CPUPlace());
         // recompute bias and weights
         if (!with_conv_bias) {  // prev node is conv
           for (int i = 0; i < mean_len; ++i) {

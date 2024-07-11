@@ -16,21 +16,13 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, Sequence, overload
+from typing import TYPE_CHECKING, Any, Sequence, overload
 
 import numpy as np
 import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import (
-    DTypeLike,
-    NestedNumbericSequence,
-    Numberic,
-    PlaceLike,
-    ShapeLike,
-    TensorLike,
-)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -54,6 +46,17 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumbericSequence,
+        Numberic,
+        ParamAttrLike,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 __all__ = []
 
@@ -174,7 +177,7 @@ def create_parameter(
     shape: ShapeLike,
     dtype: DTypeLike,
     name: str | None = None,
-    attr: ParamAttr | None = None,
+    attr: ParamAttrLike | None = None,
     is_bias: bool = False,
     default_initializer: paddle.nn.initializer.Initializer | None = None,
 ) -> paddle.Tensor:
@@ -946,7 +949,7 @@ def full_like(
 def fill_constant(
     shape: ShapeLike,
     dtype: DTypeLike,
-    value: float | paddle.Tensor,
+    value: bool | float | paddle.Tensor,
     force_cpu: bool = False,
     out: paddle.Tensor | None = None,
     name: str | None = None,
@@ -980,7 +983,12 @@ def fill_constant(
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
-        _C_ops.full_(out, shape, value, dtype, place)
+
+        if out.dtype != dtype:
+            raise TypeError(
+                "Required out.dtype == dtype if specifying out, but recevied f{out.dtype} != f{dtype}"
+            )
+        out = _C_ops.full_(out, shape, value, dtype, place)
         out.stop_gradient = True
         return out
 
@@ -1019,6 +1027,8 @@ def fill_constant(
                 'complex64',
                 'complex128',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'fill_constant',
         )
@@ -1737,12 +1747,14 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> paddle.Tensor:
+) -> list[paddle.Tensor]:
     ...
 
 
 @overload
-def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+def meshgrid(
+    *args: paddle.Tensor, name: str | None = None
+) -> list[paddle.Tensor]:
     ...
 
 
@@ -1906,7 +1918,7 @@ def diag_embed(
         input_shape = list(input.shape)
         assert len(input_shape) >= 1, (
             "Input must be at least 1-dimensional, "
-            "But received Input's dimensional: %s.\n" % len(input_shape)
+            f"But received Input's dimensional: {len(input_shape)}.\n"
         )
 
         assert np.abs(dim1) <= len(input_shape), (
@@ -2476,7 +2488,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
              [2.5 2.5]]
             >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(
             ...     np.int64
-            ... )  # type: ignore
+            ... )  # type: ignore[var-annotated]
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
@@ -2526,12 +2538,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
-        if in_dynamic_mode():
-            if output is None:
-                output = _C_ops.assign(input)
-            else:
-                _C_ops.assign_out_(input, output)
-        elif in_pir_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:

@@ -65,11 +65,7 @@ int32_t PsLocalClient::Initialize() {
                                            const std::string& mode) {
   auto* table_ptr = GetTable(table_id);
   table_ptr->Flush();
-#ifdef PADDLE_WITH_GPU_GRAPH
-  table_ptr->Save_v2(epoch, mode);
-#else
   table_ptr->Save(epoch, mode);
-#endif
   return done();
 }
 
@@ -111,10 +107,9 @@ int32_t PsLocalClient::Initialize() {
   size_t region_data_idx = 0;
   size_t shard_data_size = num_per_shard;
   size_t shard_buffer_remain = shard_data_size * sizeof(float);
-  PADDLE_ENFORCE_EQ(
-      shard_buffer_remain,
-      region_buffer.size() * sizeof(float),
-      platform::errors::PreconditionNotMet("pull dense size error."));
+  PADDLE_ENFORCE_EQ(shard_buffer_remain,
+                    region_buffer.size() * sizeof(float),
+                    phi::errors::PreconditionNotMet("pull dense size error."));
   size_t index = 0;
   while (shard_buffer_remain > 0 && region_idx < region_num) {
     auto& region = regions[region_idx];
@@ -209,7 +204,7 @@ int32_t PsLocalClient::Initialize() {
     PADDLE_ENFORCE_LE(
         offset + data_num,
         data_size,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "invalid dense size, cur pos[%d] data_num[%d] size[%d]",
             offset,
             data_num,

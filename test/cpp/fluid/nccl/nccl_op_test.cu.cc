@@ -66,7 +66,7 @@ class NCCLTester : public ::testing::Test {
   }
 
   void NCCLInitOp() {
-    paddle::platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
 
     op1->SetType("ncclInit");

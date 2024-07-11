@@ -13,11 +13,10 @@
 # limitations under the License.
 
 
-from test.cinn.utils.testing import assert_llir_equal
-
 from paddle.cinn import ir, to_cinn_llir
 from paddle.cinn.runtime.data_array import DataArray
 from paddle.cinn.schedule import IRSchedule as sch
+from test.cinn.utils.testing import assert_llir_equal
 
 
 def test_fuse():

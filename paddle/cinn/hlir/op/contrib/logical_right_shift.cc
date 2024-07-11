@@ -34,7 +34,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/common/flags.h"
 
@@ -59,7 +58,8 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
       [&](common::NVGPUArch) { extern_func += "nvgpu_"; },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED
-      });
+      },
+      [&](common::HygonDCUArchHIP) { extern_func += "hygonDcuHip_"; });
 
   extern_func += "logical_right_shift";
 
@@ -106,8 +106,7 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
         std::string tensor_name = pack_args[2].operator std::string();
 
         auto out = LogicalRightShift(A, B, target, tensor_name);
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -116,29 +115,6 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
                     "strategy.logical_right_shift.x86",
                     1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForLogicalRightShift(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 2U)
-      << "The input's shape size should be 2! Please check again.";
-  CHECK_EQ(inputs_shape[0].size(), inputs_shape[1].size())
-      << "The inputs' dims should be equal.";
-  std::vector<framework::shape_t> res{inputs_shape[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForLogicalRightShift(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 2UL)
-      << "The logical_right_shift op should has two inputs! Please check.";
-  CHECK_EQ(inputs_type[0], inputs_type[1])
-      << "The data type of input tensors of logical_right_shift op should be "
-         "equal, but here x:"
-      << inputs_type[0] << " != y:" << inputs_type[1] << "! Please check.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
 }
 
 }  // namespace op
@@ -152,10 +128,6 @@ CINN_REGISTER_HELPER(logical_right_shift_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForLogicalRightShift)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForLogicalRightShift))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalRightShift))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);

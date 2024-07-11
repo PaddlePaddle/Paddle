@@ -21,7 +21,6 @@
 #     C++        CUDA C++       Go
 # -------------------------------------------
 # cc_library    nv_library   go_library
-# cc_binary     nv_binary    go_binary
 # cc_test       nv_test      go_test
 # -------------------------------------------
 #
@@ -51,11 +50,6 @@
 # Static libraries can be composed of other static libraries:
 #
 #   cc_library(composed DEPS dependent1 dependent2 dependent3)
-#
-# To build an executable binary file from some source files and
-# dependent libraries:
-#
-#   cc_binary(example SRCS main.cc something.cc DEPS example1 example2)
 #
 # To build an executable binary file using NVCC, use the nv_ prefixed
 # version:
@@ -436,28 +430,6 @@ function(cc_library TARGET_NAME)
   endif()
 endfunction()
 
-function(cc_binary TARGET_NAME)
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(cc_binary "${options}" "${oneValueArgs}"
-                        "${multiValueArgs}" ${ARGN})
-  add_executable(${TARGET_NAME} ${cc_binary_SRCS})
-  if(cc_binary_DEPS)
-    target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
-    add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
-    common_link(${TARGET_NAME})
-  endif()
-  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
-  if(WITH_ROCM)
-    target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
-  endif()
-
-  check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
-
-endfunction()
-
 function(cc_test_build TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs "")
@@ -737,6 +709,11 @@ function(nv_test TARGET_NAME)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
+    if(WIN32)
+      target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+    else()
+      target_link_libraries(${TARGET_NAME} python)
+    endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})

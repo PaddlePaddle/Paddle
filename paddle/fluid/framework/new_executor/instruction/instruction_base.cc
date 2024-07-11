@@ -23,8 +23,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 static DDim GetDimsDebug(const Scope& scope,
                          const std::string& name,
@@ -153,7 +152,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   if (var->IsType<phi::DenseTensor>() &&
       var->Get<phi::DenseTensor>().initialized()) {
     phi::DenseTensor cpu_tensor;
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     paddle::framework::TensorCopy(
         var->Get<phi::DenseTensor>(), place, &cpu_tensor);
     paddle::platform::DeviceContextPool& pool =
@@ -409,5 +408,4 @@ std::string InstructionBase::DebugStringEx(
   ss << "}.";
   return ss.str();
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

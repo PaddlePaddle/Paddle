@@ -31,7 +31,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
     Scope *scope,
     size_t scope_idx,
-    const platform::Place &place,
+    const phi::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars,
     GarbageCollector *gc)
     : OpHandleBase(node),

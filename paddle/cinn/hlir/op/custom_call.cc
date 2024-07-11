@@ -110,7 +110,12 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
-                         common::ARMArch>) {});
+                         common::ARMArch>) {},
+        [&](common::HygonDCUArchHIP) {
+          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+          host_args.push_back(kernel_stream);
+          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+        });
     auto call_extern_api = ir::Call::Make(Void(),
                                           custom_call_api,
                                           host_args,
@@ -977,10 +982,6 @@ bool RegisterCustomCallArgsFunc() {
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForTriangularSolve);
   CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_nvgpu",
-      cinn::common::DefaultNVGPUTarget(),
-      CustomCallArgsForAssertTrue);
-  CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cuda_memset",
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForMemset);
@@ -1025,11 +1026,6 @@ bool RegisterCustomCallArgsFunc() {
       CustomCallArgsForCholesky);
 
 #endif
-
-  CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_host",
-      cinn::common::DefaultHostTarget(),
-      CustomCallArgsForAssertTrue);
 
   return true;
 }

@@ -26,7 +26,6 @@ from typing_extensions import ParamSpec, Self
 import paddle
 import paddle.pir.core as ir_static
 from paddle import decomposition, get_flags
-from paddle._typing import NestedSequence
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -38,7 +37,6 @@ from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
-from paddle.static import InputSpec, Program
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -75,6 +73,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from paddle._typing import NestedSequence
+    from paddle.static import InputSpec, Program
     from paddle.static.amp.fp16_utils import AmpOptions
 
 _RetT = TypeVar("_RetT")
@@ -538,7 +538,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
     def get_concrete_program(
         self, *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
+    ) -> tuple[ConcreteProgram, PirPartialProgramLayer]:
         raise NotImplementedError("Not implemented yet.")
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -829,7 +829,7 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
 
     def get_concrete_program(
         self, *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
+    ) -> tuple[ConcreteProgram, PirPartialProgramLayer]:
         """
         Returns traced concrete program and inner executable partial layer.
 

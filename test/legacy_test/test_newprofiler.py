@@ -56,7 +56,7 @@ class TestProfiler(unittest.TestCase):
 
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2)
-        ) as prof:
+        ) as prof:  # noqa: F811
             self.assertEqual(utils._is_profiler_used, True)
             with profiler.RecordEvent(name='test'):
                 y = x / 2.0
@@ -68,7 +68,7 @@ class TestProfiler(unittest.TestCase):
                 closed=0, ready=1, record=1, repeat=1
             ),
             on_trace_ready=my_trace_back,
-        ) as prof:
+        ) as prof:  # noqa: F811
             y = x / 2.0
         prof = None
         with profiler.Profiler(
@@ -77,7 +77,7 @@ class TestProfiler(unittest.TestCase):
                 closed=0, ready=0, record=2, repeat=1
             ),
             on_trace_ready=my_trace_back,
-        ) as prof:
+        ) as prof:  # noqa: F811
             for i in range(3):
                 y = x / 2.0
                 prof.step()

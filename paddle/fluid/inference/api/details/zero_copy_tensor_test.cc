@@ -48,8 +48,7 @@ struct TensorWrapper : public Tensor {
 std::unique_ptr<Tensor> CreateTensor(paddle_infer::PlaceType place,
                                      paddle::framework::Scope* scope,
                                      const std::string& name) {
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const auto& dev_ctxs = pool.device_contexts();
   return std::unique_ptr<Tensor>(
       new TensorWrapper{place, scope, &dev_ctxs, name});

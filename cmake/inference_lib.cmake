@@ -168,6 +168,12 @@ function(copy_part_of_third_party TARGET DST)
     SRCS ${UTF8PROC_INSTALL_DIR}/include ${UTF8PROC_LIBRARIES}
     DSTS ${dst_dir} ${dst_dir}/lib)
 
+  set(dst_dir "${DST}/third_party/install/yaml-cpp")
+  copy(
+    ${TARGET}
+    SRCS ${YAML_INSTALL_DIR}/include ${YAML_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
+
   if(WITH_CRYPTO)
     set(dst_dir "${DST}/third_party/install/cryptopp")
     copy(
@@ -287,7 +293,7 @@ else()
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
     if(WITH_GPU OR WITH_ROCM)
       set(paddle_phi_kernel_gpu_lib
-          ${PADDLE_BINARY_DIR}/paddle/phi/libphi_kernel_gpu.*)
+          ${PADDLE_BINARY_DIR}/paddle/phi/libphi_gpu.*)
       copy(
         inference_lib_dist
         SRCS ${paddle_phi_kernel_gpu_lib}

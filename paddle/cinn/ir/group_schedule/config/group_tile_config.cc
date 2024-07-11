@@ -53,6 +53,9 @@ BucketInfo::BucketInfo(const std::vector<BucketInfo::Dimension>& dims) {
 }
 
 bool BucketInfo::operator==(const BucketInfo& other) const {
+  if (this->bucket_priority != other.bucket_priority) {
+    return false;
+  }
   if (this->space.size() != other.space.size()) {
     return false;
   }

@@ -21,8 +21,8 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
 #ifdef PADDLE_WITH_IPU
