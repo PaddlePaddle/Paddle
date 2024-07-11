@@ -67,18 +67,17 @@ TEST(Benchmark, FluidScaleCUDA) {
                          stream);
 
     if (mode == "Accuracy") {
-      benchmark_fluid_scale(
-          X, platform::Place(place), true /* accuracy_check */);
+      benchmark_fluid_scale(X, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "WarmUp") {
-      benchmark_fluid_scale(X, platform::Place(place));
+      benchmark_fluid_scale(X, phi::Place(place));
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_scale_cuda.out");
 #endif
-      benchmark_fluid_scale(X, platform::Place(place));
+      benchmark_fluid_scale(X, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -136,17 +135,17 @@ TEST(Benchmark, FluidMatmulCUDA) {
 
     if (mode == "Accuracy") {
       benchmark_fluid_matmul(
-          X, Y, platform::Place(place), true /* accuracy_check */);
+          X, Y, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "WarmUp") {
-      benchmark_fluid_matmul(X, Y, platform::Place(place));
+      benchmark_fluid_matmul(X, Y, phi::Place(place));
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_matmul_cuda.out");
 #endif
-      benchmark_fluid_matmul(X, Y, platform::Place(place));
+      benchmark_fluid_matmul(X, Y, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -230,17 +229,17 @@ TEST(Benchmark, FluidMLPCUDA) {
 
     if (mode == "Accuracy") {
       benchmark_fluid_mlp(
-          X, Ws, Bs, platform::Place(place), true /* accuracy_check */);
+          X, Ws, Bs, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "WarmUp") {
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
+      benchmark_fluid_mlp(X, Ws, Bs, phi::Place(place));
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_mlp_cuda.out");
 #endif
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
+      benchmark_fluid_mlp(X, Ws, Bs, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();

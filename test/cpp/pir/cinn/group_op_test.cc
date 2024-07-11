@@ -213,7 +213,7 @@ TEST(GroupOp, CINNLowering) {
   pass_manager.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager.Run(program.get());
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
