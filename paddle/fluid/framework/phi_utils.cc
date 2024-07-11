@@ -63,7 +63,7 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       paddle::framework::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
+  phi::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == phi::Backend::ONEDNN) {

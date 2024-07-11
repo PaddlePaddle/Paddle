@@ -161,7 +161,7 @@ PreparedOp PrepareImpl(
     const phi::KernelFactory& phi_kernel_factory,
     const phi::OpUtilsMap& phi_op_utils_map,
     const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
 #ifdef PADDLE_WITH_DNNL
@@ -376,7 +376,7 @@ PreparedOp PrepareImpl(
   auto kernel_iter = kernels.find(fluid_kernel_type);
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-  if (paddle::platform::is_xpu_place(fluid_kernel_type.place_) &&
+  if (phi::is_xpu_place(fluid_kernel_type.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {
     VLOG(3) << "fluid missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
@@ -387,7 +387,7 @@ PreparedOp PrepareImpl(
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  if (paddle::platform::is_xpu_place(fluid_kernel_type.place_)) {
+  if (phi::is_xpu_place(fluid_kernel_type.place_)) {
     if (use_xpu_kp_kernel_rt) {
       VLOG(3) << "fluid xpu_kp using rt mode ";
     }
@@ -412,7 +412,7 @@ PreparedOp PrepareImpl(
 #endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
-      paddle::platform::is_ipu_place(fluid_kernel_type.place_)) {
+      phi::is_ipu_place(fluid_kernel_type.place_)) {
     VLOG(3) << "missing IPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
@@ -422,7 +422,7 @@ PreparedOp PrepareImpl(
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
-      paddle::platform::is_custom_place(fluid_kernel_type.place_)) {
+      phi::is_custom_place(fluid_kernel_type.place_)) {
     VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -439,8 +439,8 @@ PreparedOp PrepareImpl(
                                  op.Type(),
                                  KernelTypeToString(fluid_kernel_type)));
 
-  if (!platform::places_are_same_class(fluid_kernel_type.place_,
-                                       dev_ctx->GetPlace())) {
+  if (!phi::places_are_same_class(fluid_kernel_type.place_,
+                                  dev_ctx->GetPlace())) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
   }
   return PreparedOp(

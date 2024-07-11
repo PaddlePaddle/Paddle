@@ -43,7 +43,7 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
 template <typename VarType>
 void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
                                  const imperative::NameVarMap<VarType>& op_outs,
-                                 platform::Place place) {
+                                 phi::Place place) {
   for (const auto& pair : op_outs) {
     for (const auto& ivar : pair.second) {
       auto* var = ivar->MutableVar();

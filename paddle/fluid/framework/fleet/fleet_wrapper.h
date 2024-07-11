@@ -146,7 +146,7 @@ class FleetWrapper {
       const uint64_t table_id,
       int fea_dim,
       uint64_t padding_id,
-      platform::Place place,
+      phi::Place place,
       std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
       std::vector<phi::DenseTensor*>* outputs);      // NOLINT
 
@@ -183,7 +183,7 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm,
       int batch_size,
-      const paddle::platform::Place& place,
+      const phi::Place& place,
       gpuStream_t stream,
       gpuEvent_t event);
 #endif
@@ -195,7 +195,7 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm,
       int batch_size,
-      const paddle::platform::Place& place);
+      const phi::Place& place);
 #endif
   void PushDenseVarsAsync(
       const Scope& scope,
@@ -255,7 +255,7 @@ class FleetWrapper {
       bool scale_sparse,
       const std::string& accessor,
       const std::string& click_name,
-      platform::Place place,
+      phi::Place place,
       const std::vector<std::string>& input_names,
       std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
       std::vector<const phi::DenseTensor*>* outputs);  // NOLINT

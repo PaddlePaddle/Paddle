@@ -35,7 +35,12 @@ void GetDecompressOpName(std::string* op_name) {
   *op_name = DECOMPRESS_DIALECT_ID(name.first) + "." + name.second;
   return;
 }
-
+/**
+ * If you need to support deserialize type or attr in a new dialect, please add
+ * the corresponding method according to the naming convention in the following
+ * class, and add a branch of the newly added deserialization structure
+ * in the implementation function of the method.
+ */
 class AttrTypeReader {
  public:
   static pir::Attribute ReadBuiltInAttr(const std::string attr_name,

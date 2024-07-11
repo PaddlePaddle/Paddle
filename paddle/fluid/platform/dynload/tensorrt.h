@@ -63,9 +63,9 @@ extern void* tensorrt_plugin_dso_handle;
         tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
       });                                                                     \
       static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
-      PADDLE_ENFORCE_NOT_NULL(p_##__name,                                     \
-                              platform::errors::Unavailable(                  \
-                                  "Load tensorrt api %s failed", #__name));   \
+      PADDLE_ENFORCE_NOT_NULL(                                                \
+          p_##__name,                                                         \
+          phi::errors::Unavailable("Load tensorrt api %s failed", #__name));  \
       using tensorrt_func = decltype(&::__name);                              \
       return reinterpret_cast<tensorrt_func>(p_##__name)(args...);            \
     }                                                                         \
@@ -82,7 +82,7 @@ extern void* tensorrt_plugin_dso_handle;
       });                                                                      \
       static void* p_##__name = dlsym(tensorrt_plugin_dso_handle, #__name);    \
       PADDLE_ENFORCE_NOT_NULL(p_##__name,                                      \
-                              platform::errors::Unavailable(                   \
+                              phi::errors::Unavailable(                        \
                                   "Load tensorrt plugin %s failed", #__name)); \
       using tensorrt_plugin_func = decltype(&::__name);                        \
       return reinterpret_cast<tensorrt_plugin_func>(p_##__name)(args...);      \

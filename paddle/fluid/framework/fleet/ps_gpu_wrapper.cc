@@ -2325,7 +2325,7 @@ void PSGPUWrapper::DumpToMem() {
 #endif
 }
 
-void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
+void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
@@ -2335,7 +2335,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
              "PullSparse is not used.";
 }
 
-void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
+void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
@@ -2656,7 +2656,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   VLOG(3) << "End PullSparse";
 }
 
-void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
+void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
                                   const int table_id,
                                   const std::vector<const uint64_t*>& keys,
                                   const std::vector<const float*>& grad_values,
