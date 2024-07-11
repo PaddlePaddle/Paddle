@@ -995,8 +995,8 @@ def scaled_dot_product_attention(
     attn_mask: Tensor | None = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
-    scaling_factor: float = None,
     training: bool = True,
+    scaling_factor: float = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1030,10 +1030,10 @@ def scaled_dot_product_attention(
                         key, value that is added to the attention score.
         dropout_p(float, optional): The dropout ratio.
         is_causal(bool, optional): Whether enable causal mode.
+        training(bool, optional): Whether it is in the training phase.
         scaling_factor (float): The scaling factor for the attention scores.
                         Currently only fused_dot_product_attention supports
                         custom scaling_factor.
-        training(bool, optional): Whether it is in the training phase.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -1076,8 +1076,8 @@ def scaled_dot_product_attention(
             attn_mask=attn_mask,
             dropout_p=dropout_p,
             is_causal=is_causal,
-            scaling_factor=scaling_factor,
             training=training,
+            scaling_factor=scaling_factor,
             name=name,
         )
 
