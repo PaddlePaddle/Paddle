@@ -28,7 +28,7 @@ def masked_multihead_attention(
     qkv_out_scale=None,
     out_shift=None,
     out_smooth=None,
-    seq_len=0,
+    seq_len=None,
     rotary_emb_dims=0,
     use_neox_rotary_style=False,
     compute_dtype='default',
@@ -152,6 +152,8 @@ def masked_multihead_attention(
         inputs['out_shift'] = out_shift
     if out_smooth is not None:
         inputs['out_smooth'] = out_smooth
+    if seq_len is not None:
+        inputs['seq_len'] = seq_len
 
     outputs = {
         'out': out,
@@ -163,7 +165,6 @@ def masked_multihead_attention(
         inputs=inputs,
         outputs=outputs,
         attrs={
-            'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
             'use_neox_rotary_style': use_neox_rotary_style,
             'compute_dtype': compute_dtype,

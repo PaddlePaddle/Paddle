@@ -1000,7 +1000,7 @@ void DispatchWithDtype(const Context &dev_ctx,
                        const paddle::optional<DenseTensor> &qkv_out_scale,
                        const paddle::optional<DenseTensor> &out_shift,
                        const paddle::optional<DenseTensor> &out_smooth,
-                       int seq_len,
+                       const paddle::optional<DenseTensor> &seq_len,
                        int rotary_emb_dims,
                        const bool use_neox_rotary_style,
                        const float out_scale,
@@ -1078,6 +1078,19 @@ void DispatchWithDtype(const Context &dev_ctx,
     params.beam_width = beam_cache_offset->dims()[1];
   }
 
+  // ----------------------------------------------------------------
+  if (seq_len) {
+    int *seq_len_cpu = new int[1];
+    cudaMemcpy(
+        seq_len_cpu, seq_len->data<int>(), sizeof(int), cudaMemcpyDeviceToHost);
+    timestep = seq_len_cpu[0];
+  }
+  // ----------------------------------------------------------------
+
+  // if(seq_len) {
+  //   timestep = seq_len->data<int>()[0];
+  // }
+
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
   params.cache_kv = const_cast<T *>(cache_kv_out->data<T>());
   params.neox_rotary_style = use_neox_rotary_style;
@@ -1085,7 +1098,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.cache_batch_size = cache_bsz;
   params.num_head = num_head;
   params.kv_num_head = k_num_head;
-  timestep = seq_len > 0 ? seq_len : timestep;
   params.timestep = timestep;
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
@@ -1190,7 +1202,7 @@ void DispatchWithDtype(const Context &dev_ctx,
                        const paddle::optional<DenseTensor> &qkv_out_scale,
                        const paddle::optional<DenseTensor> &out_shift,
                        const paddle::optional<DenseTensor> &out_smooth,
-                       int seq_len,
+                       const paddle::optional<DenseTensor> &seq_len,
                        int rotary_emb_dims,
                        const bool use_neox_rotary_style,
                        const float out_scale,
@@ -1217,7 +1229,7 @@ void MMHAKernel(const Context &dev_ctx,
                 const paddle::optional<DenseTensor> &qkv_out_scale,
                 const paddle::optional<DenseTensor> &out_shift,
                 const paddle::optional<DenseTensor> &out_smooth,
-                int seq_len,
+                const paddle::optional<DenseTensor> &seq_len,
                 int rotary_emb_dims,
                 const bool use_neox_rotary_style,
                 const std::string &compute_dtype,
