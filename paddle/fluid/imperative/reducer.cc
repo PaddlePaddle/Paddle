@@ -26,8 +26,7 @@
 #endif
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/string/string_helper.h"
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
@@ -1160,5 +1159,4 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
 }
 #endif
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

@@ -29,8 +29,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
@@ -94,5 +93,4 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   VLOG(6) << "copy finished. ";
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

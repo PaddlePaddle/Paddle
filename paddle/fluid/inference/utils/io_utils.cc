@@ -23,8 +23,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/utils/shape_range_info.pb.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 // =========================================================
 //       Item        |        Type       |      Bytes
@@ -344,5 +343,4 @@ void UpdateShapeRangeInfo(
   inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
 
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference

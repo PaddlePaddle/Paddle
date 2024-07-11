@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 struct EigenScale<Eigen::DefaultDevice, T> {
@@ -52,5 +51,4 @@ template struct EigenScale<Eigen::DefaultDevice, int64_t>;
 template struct EigenScale<Eigen::DefaultDevice, dtype::complex<float>>;
 template struct EigenScale<Eigen::DefaultDevice, dtype::complex<double>>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

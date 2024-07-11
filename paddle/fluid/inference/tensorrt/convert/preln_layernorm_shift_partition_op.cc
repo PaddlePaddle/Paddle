@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/prelnlayernorm_shift_partition_op.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
  public:
@@ -83,9 +81,7 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(preln_layernorm_shift_partition,
                           PrelnLayerNormShiftPartitionOpConverter);

@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FusedFeedForwardPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init(scope_name, graph);
@@ -751,9 +749,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
   return graph;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fused_feedforward_pass,
               paddle::framework::ir::FusedFeedForwardPass);

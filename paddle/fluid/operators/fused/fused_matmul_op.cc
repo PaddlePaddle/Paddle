@@ -20,8 +20,7 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 static std::vector<int64_t> GetInputShape(phi::DDim dim,
                                           std::vector<int> shape,
@@ -237,8 +236,7 @@ class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(fused_matmul,

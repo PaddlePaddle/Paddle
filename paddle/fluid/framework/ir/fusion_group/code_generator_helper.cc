@@ -19,10 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 template <typename T>
 static T StringTo(const std::string& str) {
@@ -219,7 +216,4 @@ std::string OperationExpression::GetExpression(
   return ret.str();
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

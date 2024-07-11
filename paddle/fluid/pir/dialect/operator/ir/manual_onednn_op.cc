@@ -43,9 +43,7 @@ paddle::onednn::dialect::ExpandOp
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/op_base.h"
 
-namespace paddle {
-namespace onednn {
-namespace dialect {
+namespace paddle::onednn::dialect {
 
 const char* ExpandOp::attributes_name[1] = {"mkldnn_data_type"};  // NOLINT
 
@@ -358,9 +356,7 @@ bool ExpandOp::InferSymbolicShape(
   return true;
 }
 
-}  // namespace dialect
-}  // namespace onednn
-}  // namespace paddle
+}  // namespace paddle::onednn::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::onednn::dialect::ExpandOp)
 #endif

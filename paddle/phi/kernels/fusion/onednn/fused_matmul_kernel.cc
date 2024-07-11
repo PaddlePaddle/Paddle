@@ -20,8 +20,7 @@
 
 using dnnl::memory;
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename XT, typename YT, typename OT>
 class FusedMatmulOneDNNHandler
@@ -599,8 +598,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_matmul,
                    OneDNN,

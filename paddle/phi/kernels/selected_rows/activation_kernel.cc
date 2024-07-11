@@ -19,8 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 template <typename T, typename Context>
 void SquareKernel(const Context& dev_ctx,
@@ -40,8 +39,7 @@ void SqrtKernel(const Context& dev_ctx,
   phi::SqrtKernel<T, Context>(dev_ctx, x.value(), out->mutable_value());
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL(
     square_sr, CPU, ALL_LAYOUT, phi::sr::SquareKernel, float, double) {}

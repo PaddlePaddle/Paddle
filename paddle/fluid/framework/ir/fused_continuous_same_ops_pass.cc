@@ -23,17 +23,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct ContinuousSameOpsPattern : public PatternBase {
   ContinuousSameOpsPattern(PDPattern* pattern,
@@ -85,7 +79,8 @@ ContinuousSameOpsPattern::ContinuousSameOpsPattern(
       .LinksTo({second_out_var_node});
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 /*
 Fused continuous same ops into one.
@@ -221,9 +216,7 @@ void FusedContinuousSameOpsPass::ApplyImpl(ir::Graph* graph) const {
   LOG(INFO) << "Total delete op counts: " << total_delete_op_count;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fused_continuous_same_ops_pass,
               paddle::framework::ir::FusedContinuousSameOpsPass);

@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename DeviceContext, typename T>
 void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
@@ -100,5 +99,4 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 template class FCFunctor<CPUContext, float>;
 template class FCFunctor<CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

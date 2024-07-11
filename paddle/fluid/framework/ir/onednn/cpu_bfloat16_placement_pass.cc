@@ -21,9 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -111,9 +109,7 @@ int CPUBfloat16PlacementPass::RemoveUnsupportedOperators(
   return detected_operators;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(cpu_bfloat16_placement_pass,
               paddle::framework::ir::CPUBfloat16PlacementPass)

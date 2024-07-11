@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename Context, typename T>
 void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
@@ -28,5 +27,4 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
 template class MatrixSolveFunctor<CPUContext, float>;
 template class MatrixSolveFunctor<CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

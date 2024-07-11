@@ -21,8 +21,7 @@
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_string(allocator_strategy);
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 static bool IsStreamSafeAllocator() {
   return (FLAGS_allocator_strategy == "auto_growth" &&
@@ -1359,5 +1358,4 @@ std::ostream &operator<<(std::ostream &out, const EagerGroup &group) {
   return out;
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace paddle::distributed

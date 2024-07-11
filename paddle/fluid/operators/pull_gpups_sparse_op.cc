@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/operators/pull_gpups_sparse_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class PullGpuPSSparseOp : public framework::OperatorWithKernel {
  public:
@@ -136,8 +135,7 @@ class PushGpuPSSparseOp : public framework::OperatorWithKernel {
                           ctx.GetPlace());
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_gpups_sparse,

@@ -17,8 +17,7 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 using Tensor = phi::DenseTensor;
 
@@ -155,8 +154,7 @@ $$
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(fused_adam,

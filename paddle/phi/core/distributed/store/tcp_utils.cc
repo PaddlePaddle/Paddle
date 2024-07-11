@@ -20,9 +20,7 @@
 
 #include "glog/logging.h"
 
-namespace phi {
-namespace distributed {
-namespace tcputils {
+namespace phi::distributed::tcputils {
 
 std::error_code socket_error() {
 #ifdef _WIN32
@@ -223,6 +221,4 @@ std::string receive_string(SocketType socket) {
   return std::string(v.data(), v.size());
 }
 
-}  // namespace tcputils
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed::tcputils

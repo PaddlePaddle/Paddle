@@ -24,8 +24,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 namespace py = ::pybind11;
 
@@ -348,8 +347,7 @@ class PyFuncOp : public framework::OperatorBase {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/alltoall_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class AllToAllBaseOp : public framework::OperatorWithKernel {
  public:
@@ -61,8 +60,7 @@ Scatter tensors from all participators to all participators.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

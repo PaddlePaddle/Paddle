@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void InterpreterCoreFastGarbageCollector::Add(Variable* var,
                                               const Instruction&) {
@@ -102,5 +101,4 @@ void InterpreterCoreFastGarbageCollector::Add(Garbage garbage) {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

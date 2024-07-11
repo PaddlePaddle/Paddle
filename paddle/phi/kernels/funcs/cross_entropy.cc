@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 using Tensor = phi::DenseTensor;
 template <typename T,
@@ -124,5 +123,4 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 template class CrossEntropyFunctor<phi::CPUContext, float>;
 template class CrossEntropyFunctor<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs
