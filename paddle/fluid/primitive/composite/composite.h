@@ -1514,6 +1514,32 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   }
 }
 
+template <typename T>
+Tensor lerp_decomp(const Tensor& x, const Tensor& y, const Tensor& weight) {
+  Tensor x_cast = x;
+  Tensor y_cast = y;
+  Tensor weight_cast = weight;
+  bool need_cast = false;
+  if (is_half_dtype(x.dtype())) {
+    need_cast = true;
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+  if (is_half_dtype(y.dtype())) {
+    need_cast = true;
+    y_cast = cast<T>(y, DataType::FLOAT32);
+  }
+  if (is_half_dtype(weight.dtype())) {
+    need_cast = true;
+    weight_cast = cast<T>(weight, DataType::FLOAT32);
+  }
+  Tensor res = x_cast + weight_cast * (y_cast - x_cast);
+  if (need_cast) {
+    return cast<T>(res, x.dtype());
+  } else {
+    return res;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive

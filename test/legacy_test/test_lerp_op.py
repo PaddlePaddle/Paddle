@@ -29,6 +29,8 @@ class TestLerp(OpTest):
     def setUp(self):
         self.op_type = "lerp"
         self.python_api = paddle.lerp
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
         self.init_xyshape()
@@ -53,10 +55,10 @@ class TestLerp(OpTest):
         self.wshape = [1]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestLerpWithDim2(TestLerp):
@@ -270,7 +272,7 @@ class TestLerpBF16(TestLerp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -280,6 +282,7 @@ class TestLerpBF16(TestLerp):
             'Out',
             user_defined_grads=[self.x_grad, self.y_grad],
             check_pir=True,
+            check_prim_pir=True,
         )
 
 
