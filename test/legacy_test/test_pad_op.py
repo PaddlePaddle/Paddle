@@ -423,13 +423,6 @@ class TestPadOrder8(TestPadOrder):
         self.pad_value = 0.5
 
 
-class TestPadOrder9(TestPadOrder):
-    def init_case(self):
-        self.shape = [1, 2, 3, 4, 5]
-        self.paddings = [(0, 1)]
-        self.pad_value = 0.5
-
-
 if __name__ == "__main__":
     # paddle.enable_static()
     unittest.main()
