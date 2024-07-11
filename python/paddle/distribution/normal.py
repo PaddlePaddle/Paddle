@@ -39,8 +39,8 @@ if TYPE_CHECKING:
     ]
     _NormalLoc: TypeAlias = Union[
         _NormalLocBase,
-        Sequence[float],
-        NestedSequence[float],
+        Sequence[_NormalLocBase],
+        NestedSequence[_NormalLocBase],
         npt.NDArray[_NormalLocNDArray],
         Tensor,
     ]
