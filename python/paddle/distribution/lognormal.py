@@ -34,8 +34,8 @@ if TYPE_CHECKING:
     ]
     _LognormalLoc: TypeAlias = Union[
         _LognormalLocBase,
-        Sequence[float],
-        NestedSequence[float],
+        Sequence[_LognormalLocBase],
+        NestedSequence[_LognormalLocBase],
         npt.NDArray[_LognormalLocNDArray],
         Tensor,
     ]
