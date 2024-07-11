@@ -328,6 +328,29 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = True
             self.trans_y = False
 
+    class TestMatMulOp22(TestMatMulV2Op):
+        """
+        case 22 : (x.ndim <= 2) && (y.ndim >= 3)
+        """
+
+        def config(self):
+            self.x_shape = (10, 100)
+            self.y_shape = (5, 100, 4)
+            self.trans_x = False
+            self.trans_y = False
+
+    class TestMatMulOp23(TestMatMulV2Op):
+        """
+        case 23 : (x.ndim <= 2) && (y.ndim >= 3),
+                  trans_y is True
+        """
+
+        def config(self):
+            self.x_shape = (10, 100)
+            self.y_shape = (5, 4, 100)
+            self.trans_x = False
+            self.trans_y = True
+
     @check_run_big_shape_test()
     class TestMatMulOpLargeShape1(TestMatMulV2Op):
         """
