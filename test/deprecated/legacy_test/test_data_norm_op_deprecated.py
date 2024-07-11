@@ -13,8 +13,10 @@
 # limitations under the License.
 """This is unit test of Test data_norm Op."""
 
+import os
 import unittest
 
+print("aaaaaaaaaaaaaaaaaa", os.environ.get("FLAGS_enable_pir_api", "cccc"))
 import numpy as np
 
 import paddle
