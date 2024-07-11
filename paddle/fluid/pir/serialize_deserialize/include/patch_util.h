@@ -11,10 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+#include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 
-#include "nlohmann/json.hpp"
-#include "yaml-cpp/yaml.h"
+namespace pir {
 
-using Json = nlohmann::json;
-using Yaml = YAML::Node;
+Json GetAttrTypeJson(const YAML::Node &action);
+
+Json BuildAttrJsonPatch(const YAML::Node &action);
+
+Json YamlParser(const std::string &yaml_file);
+
+}  // namespace pir
