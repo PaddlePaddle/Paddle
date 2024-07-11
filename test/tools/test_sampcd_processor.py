@@ -16,6 +16,7 @@
 
 import importlib
 import os
+import sys
 import tempfile
 import unittest
 
@@ -1880,7 +1881,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(1)
                     >>> import time
                     >>> time.sleep(3)
             """,
@@ -1915,7 +1916,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(1)
                     >>> # doctest: +SKIP('skip')
                     >>> import time
                     >>> time.sleep(3)
@@ -1928,7 +1929,7 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +SKIP('skip')
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(1)
                     >>> import time
                     >>> time.sleep(3)
             """,
@@ -1945,7 +1946,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(1)
                     >>> import time
                     >>> time.sleep(3)
 
@@ -2368,6 +2369,11 @@ class TestGetTestResults(unittest.TestCase):
         self.assertTrue(tr_6.badstatement)
         self.assertFalse(tr_6.passed)
 
+    @unittest.skipIf(
+        not sys.platform.startswith('linux'),
+        "CI checks on linux, we only care this situation about multiprocessing!"
+        "Or pickle may fail.",
+    )
     def test_single_process_directive(self):
         _clear_environ()
 
@@ -2384,18 +2390,15 @@ class TestGetTestResults(unittest.TestCase):
                     this is some blabla...
 
                     >>> import multiprocessing
-                    >>> def fn(a, b):
-                    ...     return a + b
-                    >>> if __name__ == '__main__':
-                    ...     p = multiprocessing.Process(
-                    ...         target=fn,
-                    ...         args=(
-                    ...         1,
-                    ...         2,
-                    ...         ),
-                    ...     )
-                    ...     p.start()
-                    ...     p.join()
+                    >>> p = multiprocessing.Process(
+                    ...     target=lambda a, b: a + b,
+                    ...     args=(
+                    ...     1,
+                    ...     2,
+                    ...     ),
+                    ... )
+                    >>> p.start()
+                    >>> p.join()
             """,
             'has_solo': """
             placeholder
@@ -2409,18 +2412,15 @@ class TestGetTestResults(unittest.TestCase):
 
                     >>> # doctest: +SOLO('can not use add in multiprocess')
                     >>> import multiprocessing
-                    >>> def fn(a, b):
-                    ...     return a + b
-                    >>> if __name__ == '__main__':
-                    ...     p = multiprocessing.Process(
-                    ...         target=fn,
-                    ...         args=(
-                    ...         1,
-                    ...         2,
-                    ...         ),
-                    ...     )
-                    ...     p.start()
-                    ...     p.join()
+                    >>> p = multiprocessing.Process(
+                    ...     target=lambda a, b: a + b,
+                    ...     args=(
+                    ...     1,
+                    ...     2,
+                    ...     ),
+                    ... )
+                    >>> p.start()
+                    >>> p.join()
             """,
         }
 
