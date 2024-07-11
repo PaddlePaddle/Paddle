@@ -72,7 +72,7 @@ void TensorFromStream(std::istream& is,
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
 TEST_API void TensorCopy(const phi::DenseTensor& src,
-                         const platform::Place& dst_place,
+                         const phi::Place& dst_place,
                          const platform::DeviceContext& ctx,
                          phi::DenseTensor* dst);
 
@@ -84,11 +84,11 @@ TEST_API void TensorCopy(const phi::DenseTensor& src,
 // when dst is used in dst_place's stream the copy operation may be
 // not completed.
 TEST_API void TensorCopy(const phi::DenseTensor& src,
-                         const platform::Place& dst_place,
+                         const phi::Place& dst_place,
                          phi::DenseTensor* dst);
 
 TEST_API void TensorCopySync(const phi::DenseTensor& src,
-                             const platform::Place& dst_place,
+                             const phi::Place& dst_place,
                              phi::DenseTensor* dst);
 
 template <typename T>
