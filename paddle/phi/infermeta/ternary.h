@@ -128,6 +128,11 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
                                  MetaTensor* softmax_lse,
                                  MetaTensor* seed_offset);
 
+void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& softmax_lse,
+                                    MetaTensor* reduced_scores);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,

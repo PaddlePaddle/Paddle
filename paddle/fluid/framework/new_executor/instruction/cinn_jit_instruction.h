@@ -45,7 +45,7 @@ class CinnJitInstruction : public InstructionBase {
 
   std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
 
-  platform::Place place_;
+  phi::Place place_;
 
   phi::DeviceContext* dev_ctx_;
 

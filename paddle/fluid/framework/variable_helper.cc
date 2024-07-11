@@ -64,7 +64,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
 
 void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
-  auto cpu_place = platform::CPUPlace();
+  auto cpu_place = phi::CPUPlace();
 
   if (src_var.IsType<phi::DenseTensor>()) {
     auto *tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();

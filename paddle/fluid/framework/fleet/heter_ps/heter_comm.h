@@ -26,7 +26,7 @@ limitations under the License. */
 #elif defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
 #include "paddle/fluid/framework/barrier.h"
@@ -287,7 +287,7 @@ class HeterComm {
   struct LocalStorage {
     LocalStorage() { sem_wait = std::make_unique<Semaphore>(); }
     void init(int device_num, int dev_id, phi::Stream stream) {
-      place_ = platform::CUDAPlace(dev_id);
+      place_ = phi::GPUPlace(dev_id);
       h_recv_offsets.resize(device_num);
       h_fea_sizes.resize(device_num);
       stream_ = stream;
@@ -376,10 +376,10 @@ class HeterComm {
     }
 
 #if defined(PADDLE_WITH_CUDA)
-    platform::CUDAPlace place_;
+    phi::GPUPlace place_;
 
 #elif defined(PADDLE_WITH_XPU_KP)
-    platform::XPUPlace place_;
+    phi::XPUPlace place_;
 #endif
     phi::Stream stream_;
     std::shared_ptr<memory::Allocation> all_keys_mem = nullptr;
