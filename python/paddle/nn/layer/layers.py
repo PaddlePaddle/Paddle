@@ -1399,6 +1399,8 @@ class Layer:
             prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
             include_sublayers(bool, optional): Whether include the buffers of sublayers.
                 If True, also include the named buffers from sublayers. Default: True.
+            remove_duplicate(bool, optional): Whether to remove duplicated buffers in the result.
+                Default: True.
 
         Yields:
             (string, Tensor): Tuple of name and tensor
