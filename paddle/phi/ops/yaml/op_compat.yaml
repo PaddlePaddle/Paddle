@@ -2133,7 +2133,7 @@
   manual_signature : [legacy_expand, legacy_expand_grad]
 
 - op : legacy_matmul (matmul)
-  backward : legacy_matmul_grad (matmul_grad), legacy_matmul_double_grad (matmul_grad_grad), legacy_matmul_triple_grad (matmul_triple_grad)
+  backward : legacy_matmul_grad (matmul_grad), legacy_matmul_double_grad (matmul_grad_grad)
   inputs :
     {x : X, y : Y}
   attrs :
