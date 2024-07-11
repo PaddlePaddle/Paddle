@@ -604,7 +604,7 @@ void SyncBatchNormGradFunctor(
           static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
       if (comm_ctx) {
         comm = comm_ctx->GetNcclComm();
-        int dtype = phi::ToNCCLDataType(mean_out->dtype());
+        int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
         // In-place operation
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::ncclAllReduce(stats,
