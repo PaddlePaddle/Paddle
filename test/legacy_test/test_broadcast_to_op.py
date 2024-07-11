@@ -68,7 +68,7 @@ class TestBroadcastToAPI(unittest.TestCase):
             out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
             out_3 = paddle.broadcast_to(x, shape=expand_shape)
 
-            g0 = base.backward.calc_gradient(out_2, x)
+            g0 = base.backward.gradients(out_2, x)
 
             exe = base.Executor(place=base.CPUPlace())
             res_1, res_2, res_3 = exe.run(

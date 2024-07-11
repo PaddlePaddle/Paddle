@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base.backward import calc_gradient
+from paddle.base.backward import gradients
 
 paddle.enable_static()
 
@@ -32,8 +32,8 @@ class TestCalcGradient(unittest.TestCase):
             y = paddle.create_parameter(dtype="float32", shape=[10, 8])
             mul_out = paddle.matmul(x=x, y=y)
             mean_out = paddle.mean(mul_out)
-            a = calc_gradient(mean_out, mul_out)
-            b = calc_gradient(mean_out, x)
+            a = gradients(mean_out, mul_out)
+            b = gradients(mean_out, x)
         place = base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup)
