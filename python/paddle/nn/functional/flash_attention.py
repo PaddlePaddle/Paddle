@@ -1026,7 +1026,7 @@ def scaled_dot_product_attention(
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
-        attn_mask(Tensor, optional): A float mask of the same type as query,
+        attn_mask(Tensor|None, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
         dropout_p(float, optional): The dropout ratio.
         is_causal(bool, optional): Whether enable causal mode.
