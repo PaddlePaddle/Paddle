@@ -2027,7 +2027,8 @@ void LegacyMatmulGradKernel(const Context& dev_ctx,
                             bool transpose_y,
                             DenseTensor* dx,
                             DenseTensor* dy) {
-  MatmulGradKernel(dev_ctx, x, y, out_grad, transpose_x, transpose_y, dx, dy);
+  MatmulGradKernel<T, Context>(
+      dev_ctx, x, y, out_grad, transpose_x, transpose_y, dx, dy);
 }
 
 template <typename T, typename Context>
@@ -2042,7 +2043,7 @@ void LegacyMatmulDoubleGradKernel(const Context& dev_ctx,
                                   DenseTensor* dx,
                                   DenseTensor* dy,
                                   DenseTensor* ddout) {
-  MatmulDoubleGradKernel(
+  MatmulDoubleGradKernel<T, Context>(
       dev_ctx, x, y, dout, ddx, ddy, transpose_x, transpose_y, dx, dy, ddout);
 }
 }  // namespace phi

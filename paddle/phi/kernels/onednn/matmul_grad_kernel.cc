@@ -239,7 +239,8 @@ void LegacyMatmulGradKernel(const Context &dev_ctx,
                             bool transpose_y,
                             DenseTensor *dx,
                             DenseTensor *dy) {
-  MatmulGradKernel(dev_ctx, x, y, dout, transpose_x, transpose_y, dx, dy);
+  MatmulGradKernel<T, Context>(
+      dev_ctx, x, y, dout, transpose_x, transpose_y, dx, dy);
 }
 }  // namespace phi
 

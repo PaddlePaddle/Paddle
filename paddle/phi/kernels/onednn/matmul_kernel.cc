@@ -569,7 +569,7 @@ void LegacyMatmulKernel(const Context &dev_ctx,
                         bool transpose_x,
                         bool transpose_y,
                         DenseTensor *out) {
-  MatmulKernel(dev_ctx, x, y, transpose_x, transpose_y, out);
+  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, out);
 }
 }  // namespace phi
 
