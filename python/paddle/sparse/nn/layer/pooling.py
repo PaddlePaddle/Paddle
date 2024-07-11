@@ -12,9 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle.nn import Layer
 
 from .. import functional as F
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout3D,
+        Size3,
+        Size6,
+    )
+    from paddle.nn.functional.common import _PaddingSizeMode
 
 
 class MaxPool3D(Layer):
@@ -72,16 +85,24 @@ class MaxPool3D(Layer):
             [2, 1, 2, 2, 3]
     """
 
+    kernel_size: Size3
+    stride: Size3 | None
+    padding: _PaddingSizeMode | Size3 | Size6
+    return_mask: bool
+    ceil_mode: bool
+    data_format: DataLayout3D
+    name: str | None
+
     def __init__(
         self,
-        kernel_size,
-        stride=None,
-        padding=0,
-        return_mask=False,
-        ceil_mode=False,
-        data_format="NDHWC",
-        name=None,
-    ):
+        kernel_size: Size3,
+        stride: Size3 | None = None,
+        padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        return_mask: bool = False,
+        ceil_mode: bool = False,
+        data_format: DataLayout3D = "NDHWC",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -91,7 +112,7 @@ class MaxPool3D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return F.max_pool3d(
             x,
             kernel_size=self.ksize,
@@ -102,7 +123,7 @@ class MaxPool3D(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
             **self.__dict__
         )

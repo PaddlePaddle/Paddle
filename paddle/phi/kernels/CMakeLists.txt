@@ -232,6 +232,7 @@ if(WITH_ROCM)
     kernel_gpu
     "gpu/affine_grid_grad_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
+    "gpu/calc_reduced_attn_kernel.cu"
     "gpu/cholesky_solve_kernel.cu"
     "gpu/eigh_kernel.cu"
     "gpu/eigvalsh_kernel.cu"
