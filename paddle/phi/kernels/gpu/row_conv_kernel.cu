@@ -14,8 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 
 namespace {
