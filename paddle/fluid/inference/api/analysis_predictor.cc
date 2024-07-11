@@ -316,7 +316,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
@@ -343,8 +343,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = place;
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -516,10 +515,9 @@ bool AnalysisPredictor::Init(
     }
     // NOTE: If the external_stream equals to global_device_contexts's stream,
     // then fallback.
-    auto global_stream =
-        static_cast<phi::GPUContext *>(
-            platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
+    auto global_stream = static_cast<phi::GPUContext *>(
+                             phi::DeviceContextPool::Instance().Get(place_))
+                             ->stream();
     if (predictor_stream_ != global_stream) {
       InitResourceManager(predictor_stream_);
       InitDeviceContexts();
@@ -534,7 +532,7 @@ bool AnalysisPredictor::Init(
     }
     if (predictor_stream_ == nullptr) {
       auto *global_context = static_cast<phi::XPUContext *>(
-          platform::DeviceContextPool::Instance().Get(place_));
+          phi::DeviceContextPool::Instance().Get(place_));
       predictor_stream_ = global_context->stream();
     }
     InitDeviceContexts();
@@ -733,8 +731,7 @@ void *AnalysisPredictor::GetExecStream() const {
     if (private_context_) {
       return predictor_stream_;
     } else {
-      paddle::platform::DeviceContextPool &pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
           ->stream();
     }
@@ -745,8 +742,7 @@ void *AnalysisPredictor::GetExecStream() const {
     if (private_context_) {
       return predictor_stream_;
     } else {
-      paddle::platform::DeviceContextPool &pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
           ->stream();
     }
@@ -754,8 +750,7 @@ void *AnalysisPredictor::GetExecStream() const {
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (place_.GetType() == phi::AllocationType::CUSTOM) {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     return reinterpret_cast<const phi::CustomContext *>(pool.Get(place_))
         ->stream();
   }
@@ -768,8 +763,7 @@ const void *AnalysisPredictor::GetDeviceContexts() const {
   if (private_context_) {
     return &device_contexts_;
   } else {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     const auto &dev_ctxs = pool.device_contexts();
     return &dev_ctxs;
   }
@@ -1622,12 +1616,12 @@ void AnalysisPredictor::MkldnnPostReset() {
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
-          (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
+          (&phi::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
       auto shape_blob_size =
           static_cast<phi::OneDNNContext *>(
-              (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
+              (&phi::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetShapeBlobSize();
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
@@ -1715,7 +1709,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    phi::DeviceContextPool::SetDeviceContexts(&device_contexts_);
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
   }
@@ -1801,7 +1795,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+    phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
@@ -2679,7 +2673,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    phi::DeviceContextPool::SetDeviceContexts(&device_contexts_);
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
   }
@@ -2760,7 +2754,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+    phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
@@ -2825,8 +2819,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
   auto hook = [&](const std::string &op_type,
                   const std::string &input_name,
                   const paddle::Tensor &input_tensor) -> void {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto *dev_ctx = pool.Get(place_);
@@ -3872,8 +3865,7 @@ void InternalUtils::DisableTensorRtHalfOps(
 void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
   paddle::gpuStreamSynchronize(dev_ctx->stream());
 #endif

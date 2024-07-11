@@ -494,8 +494,7 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
       platform::errors::Fatal("%s has no compatible phi kernel!",
                               op_type.c_str()));
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   phi::GPUPlace place(platform::GetCurrentDeviceId());
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
 
@@ -576,7 +575,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
   phi::GPUPlace place(platform::GetCurrentDeviceId());
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
       [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {

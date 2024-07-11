@@ -199,7 +199,7 @@ void QkvToContextPluginDynamic::configurePlugin(
     int device_id = 0;
     cudaGetDevice(&device_id);
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
     const phi::GPUContext &dev_ctx = *device_ctx;
     auto stream = dev_ctx.stream();
     tensor_.Resize({batch, seq_len, seq_len, head_number_});
@@ -390,7 +390,7 @@ int QkvToContextPluginDynamic::enqueue(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
     phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
@@ -490,7 +490,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
