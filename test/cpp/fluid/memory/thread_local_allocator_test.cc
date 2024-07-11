@@ -55,12 +55,11 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
         cv.wait(lock, [&] { return flag; });
       }
       for (size_t j = 0; j < devices.size(); ++j) {
-        thread_allocations[j][i] =
-            memory::Alloc(platform::CUDAPlace(devices[j]), 10);
+        thread_allocations[j][i] = memory::Alloc(phi::GPUPlace(devices[j]), 10);
         auto tl_allocator_impl =
             ThreadLocalCUDAAllocatorPool::Instance().Get(devices[j]);
         allocator_addresses[j][i] = tl_allocator_impl.get();
-        memory::Release(platform::CUDAPlace(devices[j]));
+        memory::Release(phi::GPUPlace(devices[j]));
       }
     });
   }

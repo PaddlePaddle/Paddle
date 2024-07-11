@@ -144,13 +144,13 @@ T *Tensor::data(PlaceType *place, int *size) const {
   EAGER_GET_TENSOR(phi::DenseTensor);
   auto *res = tensor->data<T>();
 
-  if (paddle::platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     *place = PlaceType::kCPU;
-  } else if (paddle::platform::is_gpu_place(tensor->place())) {
+  } else if (phi::is_gpu_place(tensor->place())) {
     *place = PlaceType::kGPU;
-  } else if (paddle::platform::is_xpu_place(tensor->place())) {
+  } else if (phi::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
-  } else if (paddle::platform::is_custom_place(tensor->place())) {
+  } else if (phi::is_custom_place(tensor->place())) {
     *place = PlaceType::kCUSTOM;
   } else {
     *place = PlaceType::kUNK;
@@ -245,8 +245,7 @@ void Tensor::CopyFromCpu(const T *data) {
 #endif
   } else if (place_ == PlaceType::kCUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     phi::CustomPlace custom_place(device_type_, device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
@@ -389,7 +388,7 @@ void Tensor::CopyToCpuImpl(T *data,
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  if (paddle::platform::is_cpu_place(t_place)) {
+  if (phi::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_DNNL
     if (tensor->layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;
@@ -410,7 +409,7 @@ void Tensor::CopyToCpuImpl(T *data,
 #else
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #endif
-  } else if (paddle::platform::is_ipu_place(t_place)) {
+  } else if (phi::is_ipu_place(t_place)) {
 #ifdef PADDLE_WITH_IPU
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #else
@@ -467,8 +466,7 @@ void Tensor::CopyToCpuImpl(T *data,
 #endif
   } else {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -904,7 +902,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  if (paddle::platform::is_cpu_place(t_place)) {
+  if (phi::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_DNNL
     if (tensor->layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;

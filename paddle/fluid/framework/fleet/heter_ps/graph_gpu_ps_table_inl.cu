@@ -790,8 +790,7 @@ void GpuPsGraphTable::weighted_sample(GpuPsCommGraph& graph,
                                       float* weight_array,
                                       bool return_weight) {
   platform::CUDADeviceGuard guard(resource_->dev_id(remote_gpu_id));
-  platform::CUDAPlace place =
-      platform::CUDAPlace(resource_->dev_id(cur_gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(cur_gpu_id));
   auto cur_stream = resource_->remote_stream(remote_gpu_id, cur_gpu_id);
   constexpr int BLOCK_SIZE = 256;
 
@@ -903,8 +902,7 @@ void GpuPsGraphTable::unweighted_sample(GpuPsCommGraph& graph,
                                         float* weight_array,
                                         bool return_weight) {
   platform::CUDADeviceGuard guard(resource_->dev_id(remote_gpu_id));
-  platform::CUDAPlace place =
-      platform::CUDAPlace(resource_->dev_id(cur_gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(cur_gpu_id));
   auto cur_stream = resource_->remote_stream(remote_gpu_id, cur_gpu_id);
 
   if (sample_size > SAMPLE_SIZE_THRESHOLD) {
@@ -1714,7 +1712,7 @@ GpuPsGraphTable::get_edge_type_graph(int gpu_id, int edge_type_len) {
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
 
   std::vector<std::shared_ptr<phi::Allocation>> graphs_vec;
@@ -1787,7 +1785,7 @@ void GpuPsGraphTable::rank_build_ps(int dev_num,
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
-    auto src_place = platform::CPUPlace();
+    auto src_place = phi::CPUPlace();
     memory_copy(dst_place,
                 reinterpret_cast<char*>(d_key_bufs[cur_stream]->ptr()),
                 src_place,
@@ -2130,7 +2128,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
   // build final.actual_val
   if (compress) {
     CUDA_CHECK(cudaStreamSynchronize(stream));
-    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+    phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
     platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
     size_t temp_storage_bytes = 0;
     int total_sample_size = 0;
@@ -2213,7 +2211,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     return result;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
 
   int* actual_sample_size = result.actual_sample_size;
@@ -2521,7 +2519,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
 
   if (compress) {
     CUDA_CHECK(cudaStreamSynchronize(stream));
-    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+    phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
     platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
     size_t temp_storage_bytes = 0;
     int total_sample_size = 0;
@@ -2759,7 +2757,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     return result;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
 
   int* actual_sample_size = result.actual_sample_size;
@@ -3107,7 +3105,7 @@ std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_all2all(
     int gpu_id, int edge_idx, uint64_t* key, int len) {
   platform::CUDADeviceGuard guard(gpu_id);
   auto& loc = storage_[gpu_id];
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   auto stream = resource_->local_stream(gpu_id, 0);
 
   loc.alloc(len, sizeof(int));
@@ -3142,7 +3140,7 @@ std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_all2all(
 std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_single(
     int gpu_id, int edge_idx, uint64_t* key, int len) {
   int total_gpu = resource_->total_device();
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   auto stream = resource_->local_stream(gpu_id, 0);
 
@@ -3383,7 +3381,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes_all2all(
     return 0;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -3604,7 +3602,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes_normal(
     is_float_feature = true;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -3969,7 +3967,7 @@ int GpuPsGraphTable::get_rank_info_of_nodes(int gpu_id,
     return -1;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -4170,7 +4168,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
     return -1;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);

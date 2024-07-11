@@ -27,7 +27,7 @@ T* CreateForSaveCombineOp(int x,
                           int y,
                           const std::vector<int>& lod_info,
                           std::string var_name,
-                          const paddle::platform::CPUPlace& place,
+                          const phi::CPUPlace& place,
                           paddle::framework::Scope* scope,
                           paddle::framework::LoD* expect_lod) {
   auto var = scope->Var(var_name);
@@ -84,7 +84,7 @@ void CheckValues(T* expect,
 template <typename T, typename U>
 void SaveLoadCombineOp() {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
@@ -159,7 +159,7 @@ TEST(SaveLoadCombineBF16Op, CPU) {
 // to save as FP16.
 TEST(SaveCombineFP16Op, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
@@ -241,7 +241,7 @@ TEST(SaveCombineFP16Op, CPU) {
 // to load tensors with FP16 precision.
 TEST(LoadCombineFP16Op, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
@@ -327,7 +327,7 @@ TEST(LoadCombineFP16Op, CPU) {
 // Test with original SaveLoadTest
 TEST(SaveLoadTestWithCombineOp, CPU) {
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();

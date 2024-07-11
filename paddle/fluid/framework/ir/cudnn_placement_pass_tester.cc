@@ -29,7 +29,7 @@ class PlacementPassTest {
     if (!is_registered) {
       auto& all_kernels = OperatorWithKernel::AllOpKernels();
 
-      platform::CUDAPlace place = platform::CUDAPlace(0);
+      phi::GPUPlace place = phi::GPUPlace(0);
       OpKernelType plain_kernel_type = OpKernelType(proto::VarType::FP32,
                                                     place,
                                                     DataLayout::kAnyLayout,
