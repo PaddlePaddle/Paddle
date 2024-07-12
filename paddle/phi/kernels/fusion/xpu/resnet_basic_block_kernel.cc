@@ -37,25 +37,25 @@ class ResnetBasicBlockAttr {
                                 const paddle::optional<DenseTensor> &bias3_in,
                                 const paddle::optional<DenseTensor> &mean3_in,
                                 const paddle::optional<DenseTensor> &var3_in,
-                                int stride1,
-                                int stride2,
-                                int stride3,
-                                int padding1,
-                                int padding2,
-                                int padding3,
-                                int dilation1,
-                                int dilation2,
-                                int dilation3,
-                                int group,
+                                int stride1_in,
+                                int stride2_in,
+                                int stride3_in,
+                                int padding1_in,
+                                int padding2_in,
+                                int padding3_in,
+                                int dilation1_in,
+                                int dilation2_in,
+                                int dilation3_in,
+                                int group_in,
                                 float momentum_in,
-                                float epsilon,
-                                const std::string &data_format,
-                                bool has_shortcut,
-                                bool use_global_stats,
-                                bool is_test,
-                                bool trainable_statistics,
-                                const std::string &act_type,
-                                bool find_conv_input_max,
+                                float epsilon_in,
+                                const std::string &data_format_in,
+                                bool has_shortcut_in,
+                                bool use_global_stats_in,
+                                bool is_test_in,
+                                bool trainable_statistics_in,
+                                const std::string &act_type_in,
+                                bool find_conv_input_max_in,
                                 DenseTensor *out,
                                 DenseTensor *conv1,
                                 DenseTensor *saved_mean1,
@@ -79,10 +79,25 @@ class ResnetBasicBlockAttr {
                                 DenseTensor *max_filter2,
                                 DenseTensor *max_input3,
                                 DenseTensor *max_filter3) {
-    eps = static_cast<double>(epsilon);
+    padding1 = padding1_in;
+    padding2 = padding2_in;
+    padding3 = padding3_in;
+    stride1 = stride1_in;
+    stride2 = stride2_in;
+    stride3 = stride3_in;
+    dilation1 = dilation1_in;
+    dilation2 = dilation2_in;
+    dilation3 = dilation3_in;
+    group = group_in;
+
+    eps = static_cast<double>(epsilon_in);
     momentum = static_cast<double>(momentum_in);
-    find_max = find_conv_input_max;
-    const auto trainable_stats = trainable_statistics;
+    has_shortcut = has_shortcut_in;
+    find_max = find_conv_input_max_in;
+
+    const auto is_test = is_test_in;
+    const auto use_global_stats = use_global_stats_in;
+    const auto trainable_stats = trainable_statistics_in;
 
     bool test_mode = is_test && (!trainable_stats);
     global_stats = test_mode || use_global_stats;
