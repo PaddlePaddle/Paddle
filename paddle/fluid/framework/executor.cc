@@ -527,7 +527,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     gc->DirectClearCallback(callback);
   } else {
     VLOG(4) << "Sync deleting scope";
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
     callback();
   }
 }

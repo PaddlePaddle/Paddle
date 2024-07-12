@@ -84,7 +84,7 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
   PADDLE_ENFORCE_EQ(
       var_list_.size(),
       var_name_2_id_.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of variable_list and var_name_2_id map should be equal"));
 }
 
@@ -431,12 +431,12 @@ void BuildValue(pir::Value value,
     tensor_array->clear();
     for (size_t i = 0; i < value.type().dyn_cast<pir::VectorType>().size();
          i++) {
-      PADDLE_ENFORCE(value.type()
-                         .dyn_cast<pir::VectorType>()[i]
-                         .isa<paddle::dialect::AllocatedDenseTensorType>(),
-                     paddle::platform::errors::Fatal(
-                         "Element of VectorType output only support "
-                         "DenseTensorType"));
+      PADDLE_ENFORCE(
+          value.type()
+              .dyn_cast<pir::VectorType>()[i]
+              .isa<paddle::dialect::AllocatedDenseTensorType>(),
+          phi::errors::Fatal("Element of VectorType output only support "
+                             "DenseTensorType"));
       auto var_i = CreateVar(value, var_name_prefix, false, value_exe_info);
 
       var_i->GetMutable<phi::DenseTensor>();
@@ -495,9 +495,9 @@ void HandleForSpecialOp(pir::Operation* op,
         }
       }
     }
-    PADDLE_ENFORCE(var,
-                   paddle::platform::errors::InvalidArgument(
-                       "The variable %s should exist", name));
+    PADDLE_ENFORCE(
+        var,
+        phi::errors::InvalidArgument("The variable %s should exist", name));
 
     value_exe_info->Add(value, name);
   } else if (op->isa<pir::CombineOp>()) {
@@ -755,8 +755,8 @@ void BuildScope(const pir::Block& block,
             << value_exe_info->GetScope();
     Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
     PADDLE_ENFORCE(var,
-                   paddle::platform::errors::InvalidArgument(
-                       "The variable %s should exist", kwarg.first));
+                   phi::errors::InvalidArgument("The variable %s should exist",
+                                                kwarg.first));
 
     value_exe_info->Add(kwarg.second, kwarg.first);
   }
@@ -948,9 +948,8 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
       attr_map[legacy_arg_name] = val.dyn_cast<pir::Int64Attribute>().data();
     } else if (val.isa<pir::ArrayAttribute>()) {
       auto array_list = val.dyn_cast<pir::ArrayAttribute>().AsVector();
-      PADDLE_ENFORCE(
-          array_list.size() > 0,
-          paddle::platform::errors::Fatal("Attribute %s is empty", name));
+      PADDLE_ENFORCE(array_list.size() > 0,
+                     phi::errors::Fatal("Attribute %s is empty", name));
       if (array_list[0].isa<pir::Int32Attribute>()) {
         std::vector<int> vec_int;
         for (auto attribute : array_list) {

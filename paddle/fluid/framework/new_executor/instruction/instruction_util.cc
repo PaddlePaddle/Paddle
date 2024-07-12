@@ -76,7 +76,7 @@ platform::DeviceContext* ParseDeviceContext(
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (platform::is_gpu_place(place) || platform::is_custom_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_custom_place(place)) {
     VLOG(6) << "Parse DeviceContext for " << op_name
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
@@ -144,7 +144,7 @@ platform::DeviceContext* ParseDeviceContext(
 }
 
 OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
 
@@ -174,16 +174,15 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
     auto op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
     if (op_name == "pd_op.coalesce_tensor" &&
-        (!platform::is_xpu_place(place) ||
+        (!phi::is_xpu_place(place) ||
          op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
         op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
         op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
       return OpFuncType::kGpuSync;
     }
 
-    if (platform::is_gpu_place(place) &&
-        (op_name == "pd_op.memcpy_d2h" ||
-         op_name == "pd_op.memcpy_d2h_multi_io")) {
+    if (phi::is_gpu_place(place) && (op_name == "pd_op.memcpy_d2h" ||
+                                     op_name == "pd_op.memcpy_d2h_multi_io")) {
       return OpFuncType::kGpuSync;
     }
 
@@ -388,17 +387,17 @@ void InsertInplacedExternalInputsToOuts(
 }
 
 bool GetCondData(const phi::DenseTensor& cond) {
-  if (paddle::platform::is_cpu_place(cond.place())) {
+  if (phi::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
-  // when platform::is_gpu_place(cond.place()) or
-  // platform::is_xpu_place(cond.place()) is true
+  // when phi::is_gpu_place(cond.place()) or
+  // phi::is_xpu_place(cond.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
-  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
       "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
       "WITH_XPU option."));

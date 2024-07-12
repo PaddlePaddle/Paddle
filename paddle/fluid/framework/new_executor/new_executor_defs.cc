@@ -177,7 +177,7 @@ Instruction::Instruction(size_t id,
 
 void Instruction::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return;
   }
 
