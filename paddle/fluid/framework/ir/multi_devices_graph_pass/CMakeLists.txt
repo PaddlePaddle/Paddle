@@ -6,8 +6,3 @@ cc_library(
   multi_devices_graph_pass
   SRCS multi_devices_graph_pass.cc
   DEPS detail_op_handle ${ALL_REDUCE_OP_HANDLES})
-
-cc_library(
-  add_reader_dependency_pass
-  SRCS add_reader_dependency_pass.cc
-  DEPS graph graph_helper pass)

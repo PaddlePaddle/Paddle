@@ -56,7 +56,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
-    // AppendAddReaderDependencyPass();
     AppendMultiDevPass();
     AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
@@ -64,8 +63,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // attr if putting it after MultiDevPass.
     // AppendPassWithCheck(strategy_.cache_runtime_context_,
     //                     "runtime_context_cache_pass");
-
-    // SetCollectiveContext();
   }
 
   void ResolveOptionConfliction() {
@@ -166,38 +163,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #ifdef PADDLE_WITH_CUDA
     AppendPassWithCheck(strategy_.fused_feedforward_, "fused_feedforward_pass");
 #endif
-  }
-
-  // void SetCollectiveContext() const {
-  //   CollectiveContext *context = CollectiveContext::GetInstance();
-  //   context->endpoints_ = strategy_.trainers_endpoints_;
-  //   context->trainer_id_ = strategy_.trainer_id_;
-  //   PADDLE_ENFORCE_GE(
-  //       strategy_.trainer_id_,
-  //       0,
-  //       platform::errors::InvalidArgument(
-  //           "The trainer_id_ of strategy_ must be greater than or equal to 0,
-  //           " "but received strategy_.trainer_id_ = %d.",
-  //           strategy_.trainer_id_));
-
-  //   if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty())
-  //   {
-  //     PADDLE_ENFORCE_LT(
-  //         static_cast<size_t>(strategy_.trainer_id_),
-  //         strategy_.trainers_endpoints_.size(),
-  //         platform::errors::InvalidArgument(
-  //             "The trainer_id_ of strategy_ must be less than the "
-  //             "size of vector strategy_.trainers_endpoints_, "
-  //             "but received strategy_.trainer_id_ = %d, "
-  //             "the size of strategy_.trainers_endpoints_ is %d.",
-  //             static_cast<size_t>(strategy_.trainer_id_),
-  //             strategy_.trainers_endpoints_.size()));
-  //   }
-  //   VLOG(1) << "CollectiveContext:" << context->String();
-  // }
-
-  void AppendAddReaderDependencyPass() {
-    AppendPass("add_reader_dependency_pass");
   }
 
   // Convert graph to run on multi-devices.
@@ -394,7 +359,6 @@ USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(runtime_context_cache_pass);
-USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);

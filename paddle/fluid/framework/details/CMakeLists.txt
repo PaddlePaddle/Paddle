@@ -56,7 +56,6 @@ set(IR_PASS_DEPS
     multi_batch_merge_pass
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
-    add_reader_dependency_pass
     coalesce_grad_tensor_pass
     fuse_adam_op_pass
     fuse_sgd_op_pass
