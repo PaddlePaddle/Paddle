@@ -56,7 +56,7 @@ class TestMatmulAddFusePattern(PassTest):
                 )
                 matmul_out = paddle.matmul(reshape_x, reshape_y)
                 out = paddle.add(
-                    paddle.reshape(matmul_out, [5, 1, 1, 5]), residual
+                    paddle.reshape(matmul_out, [5, 5]), residual
                 )
                 out = paddle.assign(out)
                 self.pass_attr_list = [{'matmul_reshape_add_pass': {}}]

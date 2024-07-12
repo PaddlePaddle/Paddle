@@ -102,6 +102,8 @@ class MatmulReshapeElementwiseAddFusePattern
     const auto &in_num_col_dims_attr =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          // in mul op, after reshape input x, w,
+          // the x and w dims must be 2
           return static_cast<int>(x_dims.size()) - 1;
         });
 
@@ -112,10 +114,7 @@ class MatmulReshapeElementwiseAddFusePattern
                                    {"padding_weights", res.BoolAttr(false)},
                                }});
     fc_op({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
-          {&res.Tensor("matmul_out")});
-    const auto &reshape = res.Op(paddle::dialect::ReshapeOp::name());
-    reshape({&res.Tensor("matmul_out"), &res.Tensor("shape")},
-            {&res.Tensor("add_out"), &res.Tensor("xshape")});
+          {&res.Tensor("add_out")});
   }
 };
 
