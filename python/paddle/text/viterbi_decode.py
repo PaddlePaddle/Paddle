@@ -154,8 +154,6 @@ class ViterbiDecoder(Layer):
     transitions: Tensor
     include_bos_eos_tag: bool
     name: str | None
-    potentials: Tensor
-    lengths: Tensor
 
     def __init__(
         self,
