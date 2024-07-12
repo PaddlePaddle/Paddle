@@ -31,6 +31,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | helinwang | He-Lin Wang |
 | heliqi | Li-Qi He |
 | houj04 | HOU Jue |
+| [dynamicheart](https://github.com/dynamicheart) | Jianbang Yang |
 | HulekJakub | Jakub Hulek |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
@@ -124,4 +125,3 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
 | [will-jl944](https://github.com/will-jl944) | Jiafeng Lu |
 | [gouzil](https://github.com/gouzil) | Chuan Tian |
-| [dynamicheart](https://github.com/dynamicheart) | Jianbang Yang |
