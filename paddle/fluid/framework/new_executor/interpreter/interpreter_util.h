@@ -120,7 +120,7 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);
 
 void SetDeviceCommContext(::pir::Operation* op,
-                          platform::DeviceContext* dev_ctx);
+                          platform::DeviceContext*& dev_ctx);
 
 std::unordered_set<std::string> GetSpecialOpNames();
 
