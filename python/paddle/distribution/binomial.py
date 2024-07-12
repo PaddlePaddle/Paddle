@@ -22,7 +22,7 @@ from paddle.distribution import distribution
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class Binomial(distribution.Distribution):
@@ -74,7 +74,7 @@ class Binomial(distribution.Distribution):
             [2.94053698, 3.00781751, 2.51124287])
     """
 
-    dtype: DTypeLike
+    dtype: _DTypeLiteral
     total_count: Tensor
     probs: Tensor
 
@@ -90,11 +90,13 @@ class Binomial(distribution.Distribution):
             batch_shape = self.total_count.shape
         super().__init__(batch_shape)
 
-    def _to_tensor(self, total_count, probs):
+    def _to_tensor(
+        self, total_count: int | Tensor, probs: float | Tensor
+    ) -> list[Tensor]:
         """Convert the input parameters into Tensors if they were not and broadcast them
 
         Returns:
-            Tuple[Tensor, Tensor]: converted total_count and probs.
+            list[Tensor]: converted total_count and probs.
         """
         # convert type
         if isinstance(probs, float):
@@ -188,10 +190,10 @@ class Binomial(distribution.Distribution):
         """Log probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability. The data type is the same as `probs`.
+            Tensor: log probability. The data type is the same as `probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
 

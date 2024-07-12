@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -30,7 +30,7 @@ from paddle.nn.functional import (
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import ShapeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 # Smallest representable number
 EPS = {
@@ -100,6 +100,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
     name: str
     probs: Tensor
     logits: Tensor
+    dtype: _DTypeLiteral
 
     def __init__(self, probs: float | Tensor, name: str | None = None) -> None:
         self.name = name or 'Bernoulli'
@@ -143,7 +144,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         return paddle.multiply(self.probs, (1 - self.probs))
 
-    def sample(self, shape: ShapeLike) -> Tensor:
+    def sample(self, shape: Sequence[int]) -> Tensor:
         """Sample from Bernoulli distribution.
 
         Args:
@@ -190,7 +191,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return paddle.bernoulli(self.probs.expand(shape), name=name)
 
-    def rsample(self, shape: ShapeLike, temperature: float = 1.0) -> Tensor:
+    def rsample(self, shape: Sequence[int], temperature: float = 1.0) -> Tensor:
         """Sample from Bernoulli distribution (reparameterized).
 
         The `rsample` is a continuously approximate of Bernoulli distribution reparameterized sample method.
