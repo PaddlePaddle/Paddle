@@ -146,7 +146,7 @@ void BufferedReader::ReadAsync(size_t i) {
         //   - If src Tensor on CPU memory, we copy it to CUDAPinned memory
         //   - IF src Tensor on CUDAPinned memory, we use it directly
         //   - IF src Tensor on CUDA memory, we use it directly
-        platform::CUDAPinnedPlace cuda_pinned_place;
+        phi::GPUPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event(
@@ -223,7 +223,7 @@ void BufferedReader::ReadAsync(size_t i) {
             phi::memory_utils::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
-            platform::CUDAPinnedPlace cuda_pinned_place;
+            phi::GPUPinnedPlace cuda_pinned_place;
             phi::DenseTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
@@ -270,7 +270,7 @@ void BufferedReader::ReadAsync(size_t i) {
         xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::XPUDeviceGuard guard(place_.device);
+      phi::backends::xpu::XPUDeviceGuard guard(place_.device);
       int r = xpu_event_record(events_[i].get(), compute_stream_);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());
