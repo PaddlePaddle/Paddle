@@ -358,13 +358,13 @@ TEST(test_tracer, test_current_tracer) {
 TEST(test_tracer, test_expected_place) {
   // default expected place is CPUPlace
   imperative::Tracer tracer;
-  ASSERT_EQ(platform::is_cpu_place(tracer.ExpectedPlace()), true);
+  ASSERT_EQ(phi::is_cpu_place(tracer.ExpectedPlace()), true);
   {
 #ifdef PADDLE_WITH_CUDA
     // set to CUDAPlace
     platform::CUDAPlace gpu_place(0);
     tracer.SetExpectedPlace(gpu_place);
-    ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+    ASSERT_EQ(phi::is_gpu_place(tracer.ExpectedPlace()), true);
 #endif
   }
   {
@@ -372,7 +372,7 @@ TEST(test_tracer, test_expected_place) {
     // set to XPUPlace
     platform::XPUPlace xpu_place(0);
     tracer.SetExpectedPlace(xpu_place);
-    ASSERT_EQ(platform::is_xpu_place(tracer.ExpectedPlace()), true);
+    ASSERT_EQ(phi::is_xpu_place(tracer.ExpectedPlace()), true);
 #endif
   }
 }
@@ -589,7 +589,7 @@ TEST(test_tracer, test_execution_context) {
   auto ctx = framework::RuntimeContext({}, {});
   NameVarBaseMap ins = {{"X", {nullptr}}, {"Y", {nullptr}}};
   NameVarBaseMap outs = {{"Out", {nullptr}}};
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(platform::CPUPlace());
   auto dy_ctx = DygraphExecutionContext<VarBase>((*op.get()),
                                                  scope,

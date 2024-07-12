@@ -896,7 +896,7 @@ static void RegisterOperatorKernelWithPlace(
     const std::string& name,
     const OperatorWithKernel::OpKernelFunc& op_kernel_func,
     const proto::VarType::Type type,
-    const platform::Place& place) {
+    const phi::Place& place) {
   OpKernelType key(type, place);
   VLOG(3) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;

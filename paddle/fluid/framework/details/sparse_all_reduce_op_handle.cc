@@ -35,7 +35,7 @@ namespace paddle::framework::details {
 SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const platform::NCCLCommunicator *ctxs,
     bool is_encoded,
     int nranks)

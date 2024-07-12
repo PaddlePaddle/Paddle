@@ -375,8 +375,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
-                                             const platform::Place& src_place,
-                                             const platform::Place& dst_place,
+                                             const phi::Place& src_place,
+                                             const phi::Place& dst_place,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
@@ -446,7 +446,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 }
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
-                        const platform::Place& place,
+                        const phi::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableValueMap* outs_map_temp,
                         VariableScope* var_scope,
@@ -742,7 +742,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
-                                 const platform::Place& place,
+                                 const phi::Place& place,
                                  const VariableNameMap& out_names,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,

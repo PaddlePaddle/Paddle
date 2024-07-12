@@ -279,7 +279,7 @@ bool VarBase::_IsGradientSetEmpty() {
   return res;
 }
 
-std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
+std::shared_ptr<VarBase> VarBase::NewVarBase(const phi::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<phi::DenseTensor>() ||
@@ -475,7 +475,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
-                          const platform::Place& place) {
+                          const phi::Place& place) {
   auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel,
@@ -538,7 +538,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VarBase>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place) {
+                 const phi::Place& place) {
   OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
 }
 
@@ -547,7 +547,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VariableWrapper>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place) {
+                 const phi::Place& place) {
   OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
 }
 
@@ -556,7 +556,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<egr::EagerVariable>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place) {
+                 const phi::Place& place) {
   OpBaseRunImpl<egr::EagerVariable>(op, ins, outs, attrs, default_attrs, place);
 }
 
@@ -605,7 +605,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
@@ -632,7 +632,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameTensorMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   // Do Nothing in Eager Mode.
   return nullptr;

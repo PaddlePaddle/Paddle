@@ -170,7 +170,7 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx() const { return scope_idx_; }
   const std::string& Name() const override { return name_; }
   const std::string& name() const { return name_; }
-  const platform::Place& place() const { return place_; }
+  const phi::Place& place() const { return place_; }
 };
 
 // Dummy Variable. It is used to represent dependencies between operators

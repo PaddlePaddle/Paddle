@@ -111,12 +111,12 @@ void ScaleAPI(const paddle::Tensor& x,
   auto dense_out = std::make_shared<phi::DenseTensor>(
       paddle::memory::Alloc(place, bytes_size), std::move(tensor_meta));
   // Handle Device Context
-  const paddle::platform::Place& expected_kernel_place =
+  const phi::Place& expected_kernel_place =
       Controller::Instance().GetExpectedPlace();
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
 
-  if (expected_kernel_place == paddle::platform::CPUPlace()) {
+  if (expected_kernel_place == phi::CPUPlace()) {
     auto* dev_ctx =
         dynamic_cast<phi::CPUContext*>(pool.Get(expected_kernel_place));
     if (!dev_ctx) {
@@ -133,7 +133,7 @@ void ScaleAPI(const paddle::Tensor& x,
                                          dense_out.get());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (expected_kernel_place == paddle::platform::CUDAPlace()) {
+  } else if (expected_kernel_place == phi::GPUPlace()) {
     auto* dev_ctx =
         dynamic_cast<phi::GPUContext*>(pool.Get(expected_kernel_place));
     if (!dev_ctx) {
