@@ -4438,7 +4438,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
              [1, 2, 3]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.expand_as(x, None, y.shape)
+        return _C_ops.expand_as(x, y, y.shape)
     else:
         check_variable_and_dtype(
             x,

@@ -29,8 +29,13 @@ void ExpandAsKernel(const Context& ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
+  std::vector<int> real_target_shape = target_shape;
+  if (y && y->IsInitialized()) {
+    real_target_shape = common::vectorize<int>(y->dims());
+  }
+
   int rank = x.dims().size();
-  int target_rank = static_cast<int>(target_shape.size());
+  int target_rank = static_cast<int>(real_target_shape.size());
   auto vec_in_dims = common::vectorize<int>(x.dims());
 
   unsigned int diff = target_rank - rank;
@@ -38,40 +43,40 @@ void ExpandAsKernel(const Context& ctx,
 
   for (unsigned int i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
-        target_shape[i],
+        real_target_shape[i],
         0,
         errors::InvalidArgument("The value of target shape cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
-          target_shape[i],
+          real_target_shape[i],
           0,
           errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand_as_v2 op.",
-              target_shape[i]));
-    } else if (target_shape[i] > 0) {
+              real_target_shape[i]));
+    } else if (real_target_shape[i] > 0) {
       if (vec_in_dims[i] != 1) {
         PADDLE_ENFORCE_EQ(
             vec_in_dims[i],
-            target_shape[i],
+            real_target_shape[i],
             errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand_as_v2 op.",
                 vec_in_dims[i],
-                target_shape[i]));
+                real_target_shape[i]));
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          target_shape[i],
+          real_target_shape[i],
           -1,
           errors::InvalidArgument(
               "When the value in shape is negative for expand_as_v2 op, "
               "only -1 is supported, but the value received is %d.",
-              target_shape[i]));
+              real_target_shape[i]));
     }
   }
 
-  ExpandKernel<T, Context>(ctx, x, target_shape, out);
+  ExpandKernel<T, Context>(ctx, x, real_target_shape, out);
 }
 
 }  // namespace phi
