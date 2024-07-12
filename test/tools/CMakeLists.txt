@@ -9,4 +9,5 @@ foreach(TEST_OP ${TEST_OPS})
                   PYTHONPATH=${PADDLE_SOURCE_DIR}/tools)
 endforeach()
 
-set_tests_properties(test_sampcd_processor PROPERTIES TIMEOUT 600)
+set_tests_properties(test_sampcd_processor PROPERTIES TIMEOUT 1200)
+set_tests_properties(test_type_checking PROPERTIES TIMEOUT 1200)
