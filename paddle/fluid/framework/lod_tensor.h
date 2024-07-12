@@ -34,7 +34,7 @@ namespace framework {
 
 // Split phi::DenseTensor and copy to each place specified in places.
 TEST_API std::vector<phi::DenseTensor> SplitLoDTensor(
-    const phi::DenseTensor& src, const std::vector<platform::Place> places);
+    const phi::DenseTensor& src, const std::vector<phi::Place> places);
 
 TEST_API void MergeLoDTensor(
     phi::DenseTensor* target,
@@ -117,7 +117,7 @@ template <typename T>
 phi::DenseTensor LodExpand(const phi::DenseTensor& source,
                            const LoD& lod,
                            size_t level,
-                           const platform::Place& place) {
+                           const phi::Place& place) {
   LoD abs_lod = ToAbsOffset(lod);
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];

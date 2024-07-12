@@ -44,7 +44,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
     char* temp_ptr = temp.data();
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  temp_ptr,
                  tensor->place(),
                  tensor->data(),
@@ -368,7 +368,7 @@ int HeterClient::Recv(const platform::DeviceContext& ctx,
   VLOG(4) << "RecvFromSwitch done";
   // save in worker
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
   auto& res_io_buffer = closure->cntl.response_attachment();
   VLOG(4) << "entering DeserializeFromMultiVarMsgAndIOBuf";

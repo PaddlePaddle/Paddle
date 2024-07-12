@@ -179,7 +179,7 @@ static bool IsCUDAGraphCapturing() {
 
 class AllocatorFacadePrivate {
  public:
-  using AllocatorMap = std::map<platform::Place, std::shared_ptr<Allocator>>;
+  using AllocatorMap = std::map<phi::Place, std::shared_ptr<Allocator>>;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   using CUDAAllocatorMap =
@@ -361,8 +361,8 @@ class AllocatorFacadePrivate {
 #endif
   }
 
-  inline const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::Place& place, size_t size) {
+  inline const std::shared_ptr<Allocator>& GetAllocator(const phi::Place& place,
+                                                        size_t size) {
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : GetAllocatorMap())
@@ -1463,7 +1463,7 @@ class AllocatorFacadePrivate {
 
   void InitZeroSizeAllocators() {
     if (!zero_size_allocators_.empty()) return;
-    std::vector<platform::Place> places;
+    std::vector<phi::Place> places;
     places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int device_count = platform::GetGPUDeviceCount();
@@ -1535,7 +1535,7 @@ class AllocatorFacadePrivate {
   void WrapStatAllocator() {
     for (auto& pair : allocators_) {
       // Now memory stats is only supported for CPU, GPU, XPU and CustomDevice
-      const platform::Place& place = pair.first;
+      const phi::Place& place = pair.first;
       if (platform::is_cpu_place(place) ||
           platform::is_cuda_pinned_place(place) ||
           platform::is_gpu_place(place) || platform::is_custom_place(place) ||
@@ -1547,9 +1547,9 @@ class AllocatorFacadePrivate {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // a standalone CUDA allocator to support multi-stream GC in new executor
-  std::map<platform::Place, std::shared_ptr<StreamSafeCUDAAllocator>>
+  std::map<phi::Place, std::shared_ptr<StreamSafeCUDAAllocator>>
       default_stream_safe_cuda_allocators_;
-  std::map<platform::Place, std::shared_ptr<CUDAMallocAsyncAllocator>>
+  std::map<phi::Place, std::shared_ptr<CUDAMallocAsyncAllocator>>
       default_cuda_malloc_async_allocators_;
   CUDAAllocatorMap cuda_allocators_;
   std::shared_timed_mutex cuda_allocator_mutex_;
@@ -1557,7 +1557,7 @@ class AllocatorFacadePrivate {
 
 #ifdef PADDLE_WITH_XPU
   // a standalone XPU allocator to support multi-stream GC in new executor
-  std::map<platform::Place, std::shared_ptr<StreamSafeXPUAllocator>>
+  std::map<phi::Place, std::shared_ptr<StreamSafeXPUAllocator>>
       default_stream_safe_xpu_allocators_;
   XPUAllocatorMap xpu_allocators_;
   std::shared_timed_mutex xpu_allocator_mutex_;
@@ -1566,7 +1566,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   // a standalone custom device allocator to support multi-stream GC in new
   // executor
-  std::map<platform::Place, std::shared_ptr<StreamSafeCustomDeviceAllocator>>
+  std::map<phi::Place, std::shared_ptr<StreamSafeCustomDeviceAllocator>>
       default_stream_safe_custom_device_allocators_;
   CustomDeviceAllocatorMap custom_device_allocators_;
   std::shared_timed_mutex custom_device_allocator_mutex_;
@@ -1616,7 +1616,7 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const platform::Place& place) {
+    const phi::Place& place) {
   return GetPrivate()->GetAllocator(
       place, /* A non-zero num to choose allocator_ */ 1);
 }
@@ -1639,32 +1639,31 @@ void* AllocatorFacade::GetBasePtr(
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
-    const platform::Place& place) {
+    const phi::Place& place) {
   return GetPrivate()->GetAllocator(place, /* zero size */ 0);
 }
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
-    const platform::Place& place, size_t size) {
+    const phi::Place& place, size_t size) {
   return std::shared_ptr<phi::Allocation>(Alloc(place, size));
 }
 
-AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
-                                     size_t size) {
+AllocationPtr AllocatorFacade::Alloc(const phi::Place& place, size_t size) {
   return GetPrivate()->GetAllocator(place, size)->Allocate(size);
 }
 
-uint64_t AllocatorFacade::Release(const platform::Place& place) {
+uint64_t AllocatorFacade::Release(const phi::Place& place) {
   return GetPrivate()
       ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
 }
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
-    const platform::Place& place, size_t size, const phi::Stream& stream) {
+    const phi::Place& place, size_t size, const phi::Stream& stream) {
   return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));
 }
 
-AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
+AllocationPtr AllocatorFacade::Alloc(const phi::Place& place,
                                      size_t size,
                                      const phi::Stream& stream) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -1768,7 +1767,7 @@ void AllocatorFacade::EraseStream(std::shared_ptr<phi::Allocation> allocation,
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const platform::Place& place, gpuStream_t stream) {
+    const phi::Place& place, gpuStream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
 
   if (!m->IsStreamSafeCUDAAllocatorUsed() &&
@@ -1841,7 +1840,7 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
 #endif
 #elif defined(PADDLE_WITH_XPU)
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const platform::Place& place, XPUStream stream) {
+    const phi::Place& place, XPUStream stream) {
   AllocatorFacadePrivate* m = GetPrivate();
 
   // The XPU currently does not have the concept of MallocAsyncAllocatorUsed
@@ -1879,7 +1878,7 @@ void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const platform::Place& place, phi::stream::stream_t stream) {
+    const phi::Place& place, phi::stream::stream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
 
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {

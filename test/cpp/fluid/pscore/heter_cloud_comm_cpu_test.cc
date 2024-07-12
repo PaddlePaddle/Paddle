@@ -60,8 +60,7 @@ void InitTensorsOnClient(framework::Scope* scope,
   }
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) {
     x_ptr[i] = 1.0;
   }
