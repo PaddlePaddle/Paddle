@@ -561,9 +561,6 @@ class Xdoctester(DocTester):
         result = result_queue.get(
             timeout=directives.get('timeout', TEST_TIMEOUT)
         )
-        if self._use_multiprocessing:
-            result_queue.close()
-            result_queue.join_thread()
         processer.join()
 
         return result

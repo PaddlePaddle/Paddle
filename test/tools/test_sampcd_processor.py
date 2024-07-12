@@ -1861,7 +1861,6 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('static_1', tr_1.name)
         self.assertTrue(tr_1.passed)
 
-    @unittest.skip("TODO:bug")
     def test_timeout(self):
         docstrings_to_test = {
             'timeout_false': """
@@ -1871,8 +1870,9 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(1)
-                    >>> a = 1
+                    >>> # doctest: +TIMEOUT(10)
+                    >>> import time
+                    >>> time.sleep(0.1)
             """,
             'timeout_true': """
             this is docstring...
@@ -1881,10 +1881,9 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(1)
-                    >>> # try to timeout
-                    >>> while True:
-                    ...     a = 1
+                    >>> # doctest: +TIMEOUT(10)
+                    >>> import time
+                    >>> time.sleep(15)
             """,
             'timeout_false_with_skip_0': """
             this is docstring...
@@ -1893,9 +1892,10 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(1)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> # doctest: +SKIP('skip')
-                    >>> a = 1
+                    >>> import time
+                    >>> time.sleep(0.1)
             """,
             'timeout_false_with_skip_1': """
             this is docstring...
@@ -1905,8 +1905,9 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +SKIP('skip')
-                    >>> # doctest: +TIMEOUT(1)
-                    >>> a = 1
+                    >>> # doctest: +TIMEOUT(10)
+                    >>> import time
+                    >>> time.sleep(0.1)
             """,
             'timeout_true_with_skip_0': """
             this is docstring...
@@ -1915,11 +1916,10 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(1)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> # doctest: +SKIP('skip')
-                    >>> # try to timeout
-                    >>> while True:
-                    ...     a = 1
+                    >>> import time
+                    >>> time.sleep(15)
             """,
             'timeout_true_with_skip_1': """
             this is docstring...
@@ -1929,10 +1929,9 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +SKIP('skip')
-                    >>> # doctest: +TIMEOUT(1)
-                    >>> # try to timeout
-                    >>> while True:
-                    ...     a = 1
+                    >>> # doctest: +TIMEOUT(10)
+                    >>> import time
+                    >>> time.sleep(15)
             """,
             'timeout_more_codes': """
             this is docstring...
@@ -1941,15 +1940,15 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(1)
-                    >>> a = 1
+                    >>> # doctest: +TIMEOUT(10)
+                    >>> import time
+                    >>> time.sleep(0.1)
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(1)
-                    >>> # try to timeout
-                    >>> while True:
-                    ...     a = 1
+                    >>> # doctest: +TIMEOUT(10)
+                    >>> import time
+                    >>> time.sleep(15)
 
             """,
         }

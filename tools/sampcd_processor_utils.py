@@ -48,7 +48,7 @@ ENV_KEY_TEST_CAPACITY = 'SAMPLE_CODE_TEST_CAPACITY'
 API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
 API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
 API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
-TEST_TIMEOUT = 10
+TEST_TIMEOUT = 15
 
 PAT_API_SPEC_MEMBER = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
 # insert ArgSpec for changing the API's type annotation can trigger the CI
