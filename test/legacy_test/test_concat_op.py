@@ -313,6 +313,15 @@ def create_test_AxisTensor(parent):
                 )
             }
 
+        def test_check_output(self):
+            if self.dtype == np.uint16:
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(
+                    place, check_pir=True, check_symbol_infer=False
+                )
+            else:
+                self.check_output(check_pir=True, check_symbol_infer=False)
+
         def test_check_grad(self):
             if (
                 parent.__name__ == 'TestConcatOp4'
