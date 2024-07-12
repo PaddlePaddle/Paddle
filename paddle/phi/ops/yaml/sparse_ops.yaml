@@ -256,7 +256,7 @@
   backward : reshape_grad
 
 - op : scale
-  args : (Tensor x, double scale, double bias, bool bias_after_scale)
+  args : (Tensor x, float scale, float bias, bool bias_after_scale)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

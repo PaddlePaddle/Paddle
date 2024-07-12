@@ -295,8 +295,8 @@
            reshape_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
 - backward_op : scale_grad
-  forward : scale(Tensor x, double scale, double bias, bool bias_after_scale) -> Tensor(out)
-  args : (Tensor out_grad, double scale)
+  forward : scale(Tensor x, float scale, float bias, bool bias_after_scale) -> Tensor(out)
+  args : (Tensor out_grad, float scale)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

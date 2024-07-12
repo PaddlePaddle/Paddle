@@ -3187,10 +3187,10 @@
     out : Out
   scalar :
     scale :
-      data_type : double
+      data_type : float
       tensor_name : ScaleTensor
     bias :
-      data_type : double
+      data_type : float
       support_tensor : false
   extra :
     attrs : [bool use_mkldnn = false]
