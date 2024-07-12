@@ -4,9 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-if((NOT (WITH_COVERAGE))
-   AND (WITH_GPU)
-   AND (LINUX))
+if(NOT (WITH_COVERAGE))
   foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS
                     PYTHONPATH=${PADDLE_SOURCE_DIR}/tools)
