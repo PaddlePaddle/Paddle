@@ -15,6 +15,7 @@
 #include "paddle/fluid/pir/transforms/tensorrt/trt_op_marker_pass.h"
 #include <glog/logging.h>
 #include <bitset>
+#include <vector>
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -596,6 +597,133 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
   }
 };
 
+class UnsqueezeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::UnsqueezeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::UnsqueezeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::UnsqueezeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value axis = op.operand_source(1);
+    if (!axis) {
+      VLOG(3) << "The necessary attributes of the unsuqeeze axis is missing";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class Unsqueeze_OpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Unsqueeze_Op> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Unsqueeze_Op>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::Unsqueeze_Op op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value axis = op.operand_source(1);
+    if (!axis) {
+      VLOG(3) << "The necessary attributes of the unsuqeeze axis is missing";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class SqueezeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SqueezeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SqueezeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SqueezeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    pir::Value axis_ = op.operand_source(1);
+    std::vector<int64_t> axes;
+
+    if (axis_) {
+      bool is_from_tensor = false;
+      phi::IntArray axis = phi::IntArray(
+          paddle::dialect::ParseValueShape(axis_, &is_from_tensor));
+      for (auto a : axis.GetData()) {
+        axes.push_back(a);
+      }
+    }
+
+    if (axes.empty()) {
+      auto input_var_name = op.operand_source(0);
+      auto input_var_name_type =
+          input_var_name.type().dyn_cast<paddle::dialect::DenseTensorType>();
+      auto input_var_name_shape = input_var_name_type.dims();
+
+      for (int i = 0; i < input_var_name_shape.size(); ++i) {
+        int64_t s = input_var_name_shape[i];
+        if (s == -1) {
+          VLOG(3) << "The necessary attributes of the squeeze operator axis is "
+                     "missing. ss =====-1";
+          return false;
+        } else if (s == 1) {
+          axes.push_back(s);
+        }
+      }
+
+      if (axes.empty()) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SliceOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("axes")) {
+      VLOG(3)
+          << "The necessary attribute of the slice operator axes are missing.";
+      return false;
+    }
+
+    auto axes_attr = op->attribute<pir::ArrayAttribute>("axes");
+
+    std::vector<int64_t> axes;
+    for (const auto &attr : axes_attr.AsVector()) {
+      axes.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+    }
+    pir::Value input = op.operand_source(0);
+
+    auto inputs = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto inputs_shape = inputs.dims();
+    if (axes.size() != inputs_shape.size()) {
+      VLOG(3) << "The shape of attributes of the slice operator axes "
+                 "and starts are not equal.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -638,6 +766,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<GatherOpPattern>(context));
     ps.Add(std::make_unique<GatherNdOpPattern>(context));
     ps.Add(std::make_unique<ScaleOpPattern>(context));
+    ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
+    ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
+    ps.Add(std::make_unique<SliceOpPattern>(context));
     return ps;
   }
 };
