@@ -1943,7 +1943,8 @@ class Fleet:
         # if id(default_program) != id(losses[0].block.program):
         #     paddle.framework.switch_main_program(losses[0].block.program)
         # join phase program add communication ops from startup_programs. But python return original startup_program
-        ori_startup_programs[0]._rebuild_from_desc(startup_programs[0].desc)
+        for i in range(len(ori_startup_programs)):
+            ori_startup_programs[i]._rebuild_from_desc(startup_programs[i].desc)
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
 
