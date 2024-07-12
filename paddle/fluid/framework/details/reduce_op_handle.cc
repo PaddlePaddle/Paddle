@@ -37,7 +37,7 @@ static inline std::string GetRemoteVarName(const std::string &var_name,
 }
 
 void ReduceOpHandle::Wait(
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes) {
+    const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes) {
   // TODO(gongwb): use event wait?
   for (auto &dev_ctx : dev_ctxes) {
     dev_ctx.second->Wait();
@@ -86,7 +86,7 @@ void ReduceOpHandle::RunImpl() {
                                  in_0_handle->name()));
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
-  std::vector<platform::Place> in_places;  // used to get dev_ctx
+  std::vector<phi::Place> in_places;  // used to get dev_ctx
   for (auto *in_handle : in_var_handles) {
     in_places.emplace_back(in_handle->place());
     auto in_var =
