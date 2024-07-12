@@ -35,7 +35,7 @@ struct VarMetaInfo {
 
   VarMetaInfo(const std::string& name,
               const phi::DataType& dtype,
-              const platform::Place& place)
+              const phi::Place& place)
       : name_(name), dtype_(dtype), place_(place) {}
 
   bool operator==(const VarMetaInfo& other) const {

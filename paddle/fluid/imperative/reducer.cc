@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/string/string_helper.h"
