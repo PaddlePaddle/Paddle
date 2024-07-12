@@ -161,7 +161,8 @@
     func : ReduceScatterInferMeta
     param: [x, nranks]
   kernel :
-    func : c_reducescatter
+    func : reduce_scatter
+    param: [x, nranks]
 
 - op : c_scatter
   args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
