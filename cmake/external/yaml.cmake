@@ -73,9 +73,11 @@ if(WIN32)
     endforeach()
   endif()
 else()
-  set(YAML_LIBRARIES
-      "${YAML_INSTALL_DIR}/lib/libyaml-cpp${CMAKE_STATIC_LIBRARY_SUFFIX}"
-      CACHE FILEPATH "yaml library." FORCE)
+  find_library(
+    YAML_LIBRARIES
+    NAMES "libyaml-cpp${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    PATHS ${YAML_INSTALL_DIR}/lib/ ${YAML_INSTALL_DIR}/lib64/ CACHE FILEPATH
+          "yaml library." FORCE)
   set(YAML_CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   set(YAML_CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
