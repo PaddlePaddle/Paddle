@@ -17,7 +17,7 @@ function(py_test_modules TARGET_NAME)
     string(REGEX MATCH "_deprecated$" DEPRECATED_MODULES
                  "${py_test_modules_MODULES}")
     string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
-    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=1)
+    set(FLAGS_PIR_MODE "")
     if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
        OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
       set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
