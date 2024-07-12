@@ -243,7 +243,7 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx = nullptr;
-  dev_ctx = pool.Get(platform::CPUPlace());
+  dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
 
@@ -423,7 +423,7 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
 
 void MergeLoDTensor(phi::DenseTensor *target,
                     const std::vector<const phi::DenseTensor *> &lod_tensors,
-                    platform::Place dst_place) {
+                    phi::Place dst_place) {
   PADDLE_ENFORCE_EQ(lod_tensors.empty(),
                     false,
                     platform::errors::InvalidArgument(

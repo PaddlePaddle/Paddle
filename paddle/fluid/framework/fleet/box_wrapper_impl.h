@@ -19,7 +19,7 @@ namespace paddle {
 namespace framework {
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
-void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
+void BoxWrapper::PullSparseCase(const phi::Place& place,
                                 const std::vector<const uint64_t*>& keys,
                                 const std::vector<float*>& values,
                                 const std::vector<int64_t>& slot_lengths,
@@ -128,7 +128,7 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
 void BoxWrapper::PushSparseGradCase(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const std::vector<const uint64_t*>& keys,
     const std::vector<const float*>& grad_values,
     const std::vector<int64_t>& slot_lengths,

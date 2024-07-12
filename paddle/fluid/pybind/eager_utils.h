@@ -83,7 +83,7 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj,
     ssize_t arg_pos,
     const phi::distributed::ProcessMesh* mesh = nullptr);
-platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
+phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos);

@@ -109,7 +109,7 @@ inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
 }
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
-                                      const platform::Place &place) {
+                                      const phi::Place &place) {
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
   CHECK_EQ(static_cast<int>(pool.size()), thread_num_);

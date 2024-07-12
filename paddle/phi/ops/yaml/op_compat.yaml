@@ -1922,7 +1922,7 @@
 
 - op : histogram
   inputs :
-    input : X
+    {input: X, weight : Weight}
   outputs :
     out : Out
 
@@ -2104,6 +2104,17 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : legacy_bilinear_interp (bilinear_interp)
+  backward : legacy_bilinear_interp_grad (bilinear_interp_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
+  attrs:
+    data_format: data_layout
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : legacy_expand (expand)
   backward : legacy_expand_grad (expand_grad)
   inputs :
@@ -2120,6 +2131,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   manual_signature : [legacy_expand, legacy_expand_grad]
+
+- op : legacy_nearest_interp (nearest_interp)
+  backward : legacy_nearest_interp_grad (nearest_interp_grad)
+  inputs :
+    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
+  outputs :
+    output : Out
+  attrs:
+    data_format: data_layout
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : lerp
   backward : lerp_grad
@@ -2539,6 +2561,14 @@
   attrs :
     {scale_data : Scale_data,  shift_data : Shift_data}
   manual_signature : [multi_gru]
+
+- op : multiclass_nms
+  inputs:
+    {bboxes : BBoxes, scores : Scores}
+  outputs:
+    out : Out
+  get_expected_kernel_type :
+    multiclass_nms : GetMulticlassNmsExpectedKernelType
 
 - op : multiclass_nms3
   inputs :
@@ -3062,6 +3092,13 @@
       tensors_name : ShapeTensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+
+- op : resnet_unit
+  backward: resnet_unit_grad
+  inputs:
+    {x : X, filter_x : FilterX, scale_x : ScaleX, bias_x : BiasX, mean_x : MeanX, var_x : VarX, z : Z, filter_z : FilterZ, scale_z : ScaleZ, bias_z : BiasZ, mean_z : MeanZ, var_z : VarZ}
+  outputs:
+    {out : Y, bit_mask : BitMask, conv_x : ConvX, saved_mean_x : SavedMeanX, saved_invstd_x : SavedInvstdX, running_mean_x : RunningMeanX, running_var_x : RunningVarX, conv_z : ConvZ, saved_mean_z : SavedMeanZ, saved_invstd_z : SavedInvstdZ, running_mean_z : RunningMeanZ, running_var_z : RunningVarZ}
 
 - op : reverse
   inputs:
@@ -4275,11 +4312,22 @@
   outputs :
     out : Out
 
-- op: lars_momentum
+- op: lars_momentum_ (lars_momentum)
   inputs:
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: legacy_crop (crop)
+  backward: legacy_crop_grad (crop_grad)
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    out : Out
+  int_array:
+    offsets :
+      data_type : int
+      tensor_name : Offsets
 
 - op: limit_by_capacity
   outputs :

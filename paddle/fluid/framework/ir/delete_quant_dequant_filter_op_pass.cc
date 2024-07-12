@@ -128,7 +128,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     auto w_dims = weight_tensor->dims();
 
     float* quantized_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+        weight_tensor->mutable_data<float>(phi::CPUPlace());
 
     // Get weight scale
     if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {

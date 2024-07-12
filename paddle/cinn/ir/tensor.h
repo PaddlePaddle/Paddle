@@ -186,8 +186,6 @@ class _Tensor_ : public ExprNode<_Tensor_> {
 
   void Verify() const override;
 
-  bool IsReduceInited(poly::StageMap stages) const;
-
   //! Tell whether this tensor represents a tuple (consists of one or multiple
   //! tensors as output of a extern Call).
   bool is_tuple() const;
@@ -224,8 +222,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * Get a new tensor with the \p shape with a newly allocated buffer.
    * NOTE the tensor to Reshape should not be an inlined computation.
    */
-  ir::Tensor ReshapeCopied(const std::vector<Expr>& shape,
-                           poly::StageMap stages) const;
+  ir::Tensor ReshapeCopied(const std::vector<Expr>& shape) const;
 
   /**
    * Tell whether this tensor has same shape with \p other.
@@ -304,19 +301,6 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   void WithBuffer(const std::string& memory_type,
                   const std::string& buffer_name = "",
                   const Type& type = Void());
-  Tensor GetInitTensor(
-      poly::StageMap stages,
-      const Target& target = cinn::common::DefaultHostTarget()) const;
-
-  /**
-   * Create the initialization tensor.
-   * @param stages The stages.
-   * @param init_val The initial value.
-   * @return The initializing tensor.
-   */
-  ir::Tensor InitReduction(
-      poly::StageMap stages,
-      const Target& target = cinn::common::DefaultHostTarget()) const;
 
   const std::optional<std::vector<Expr>>& value() const { return value_; }
 

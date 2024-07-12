@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
 
 import numpy as np
@@ -4160,12 +4161,14 @@ def scatter_nd_add(
             >>> print(output.shape)
             [3, 5, 9, 10]
     """
+    if x.dtype != updates.dtype:
+        raise TypeError(
+            f"x and updates must have same data type but x.dtype={convert_dtype(x.dtype)}, updates.dtype={convert_dtype(updates.dtype)}"
+        )
+
     if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
-        if x.dtype != updates.dtype:
-            raise ValueError("x and updates must have same data type.")
-
         helper = LayerHelper('scatter_nd_add', **locals())
         dtype = helper.input_dtype(input_param_name='x')
         output = helper.create_variable_for_type_inference(dtype)
@@ -4721,12 +4724,13 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     )
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
-                    assert dim_idx < len(x.shape), (
-                        "The index of 0 in `shape` must be less than "
-                        "the input tensor X's dimensions. "
-                        "But received shape[%d] = 0, X's dimensions = %d."
-                        % (dim_idx, len(x.shape))
-                    )
+                    if math.prod(x.shape):
+                        assert dim_idx < len(x.shape), (
+                            "The index of 0 in `shape` must be less than "
+                            "the input tensor X's dimensions. "
+                            "But received shape[%d] = 0, X's dimensions = %d."
+                            % (dim_idx, len(x.shape))
+                        )
                 else:
                     assert dim_size > 0, (
                         "Each dimension value of 'shape' in reshape must not "
@@ -5275,6 +5279,7 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
+        check_dtype(index.dtype, "index", ['int32', 'int64'], 'gather_nd')
         return _C_ops.gather_nd(x, index)
     else:
         check_variable_and_dtype(
@@ -5290,10 +5295,10 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
                 'int32',
                 'int64',
             ],
-            'gather_np',
+            'gather_nd',
         )
         check_variable_and_dtype(
-            index, 'index', ['int32', 'int64'], 'gather_np'
+            index, 'index', ['int32', 'int64'], 'gather_nd'
         )
         helper = LayerHelper('gather_nd', **locals())
         dtype = helper.input_dtype()

@@ -641,12 +641,12 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
                               phi::DenseTensor* bq_tensor,
                               phi::DenseTensor* bk_tensor,
                               phi::DenseTensor* bv_tensor) {
-  auto* wq_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* wk_data = wk_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* wv_data = wv_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bq_data = bq_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bk_data = bk_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bv_data = bv_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* wq_data = wq_tensor->mutable_data<T>(phi::CPUPlace());
+  auto* wk_data = wk_tensor->mutable_data<T>(phi::CPUPlace());
+  auto* wv_data = wv_tensor->mutable_data<T>(phi::CPUPlace());
+  auto* bq_data = bq_tensor->mutable_data<T>(phi::CPUPlace());
+  auto* bk_data = bk_tensor->mutable_data<T>(phi::CPUPlace());
+  auto* bv_data = bv_tensor->mutable_data<T>(phi::CPUPlace());
 
   auto combined_w_dims =
       common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
@@ -655,7 +655,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
   auto* tmp_combined_w_data =
-      tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
+      tmp_combined_w_tensor.mutable_data<T>(phi::CPUPlace());
 
   std::vector<T*> w_vec = {wq_data, wk_data, wv_data};
   int dims_h = static_cast<int>(combined_w_dims[0]),
@@ -672,14 +672,14 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   }
 
   wq_tensor->Resize(combined_w_dims);
-  auto* new_combined_w_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* new_combined_w_data = wq_tensor->mutable_data<T>(phi::CPUPlace());
   memcpy(
       new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
 
   phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
   auto* tmp_combined_bias_data =
-      tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
+      tmp_combined_bias_tensor.mutable_data<T>(phi::CPUPlace());
 
   size_t bias_size = bq_tensor->numel();
   memcpy(tmp_combined_bias_data, bq_data, sizeof(T) * bias_size);
@@ -688,8 +688,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
       tmp_combined_bias_data + 2 * bias_size, bv_data, sizeof(T) * bias_size);
 
   bq_tensor->Resize(combined_bias_dims);
-  auto* new_combined_bias_data =
-      bq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* new_combined_bias_data = bq_tensor->mutable_data<T>(phi::CPUPlace());
   memcpy(new_combined_bias_data,
          tmp_combined_bias_data,
          sizeof(T) * bq_tensor->numel());
@@ -928,7 +927,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
-    paddle::memory::Release(platform::CPUPlace());
+    paddle::memory::Release(phi::CPUPlace());
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1350,12 +1349,12 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
-    auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* wq_data = wq_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* wk_data = wk_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* wv_data = wv_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bq_data = bq_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bk_data = bk_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bv_data = bv_tensor->mutable_data<float>(phi::CPUPlace());
 
     auto combined_w_dims =
         common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
@@ -1373,7 +1372,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     phi::DenseTensor tmp_combined_w_tensor;
     tmp_combined_w_tensor.Resize(combined_w_dims);
     auto* tmp_combined_w_data =
-        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+        tmp_combined_w_tensor.mutable_data<float>(phi::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
     int dims_h = static_cast<int>(combined_w_dims[0]),
@@ -1390,19 +1389,18 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     }
 
     wq_tensor->Resize(combined_w_dims);
-    auto* new_combined_w_data =
-        wq_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_combined_w_data = wq_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_combined_w_data,
            tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
-    paddle::memory::Release(platform::CPUPlace());
+    paddle::memory::Release(phi::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     auto* tmp_combined_bias_data =
-        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+        tmp_combined_bias_tensor.mutable_data<float>(phi::CPUPlace());
 
     size_t bias_size = bq_tensor->numel();
     memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
@@ -1414,7 +1412,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
     bq_tensor->Resize(combined_bias_dims);
     auto* new_combined_bias_data =
-        bq_tensor->mutable_data<float>(platform::CPUPlace());
+        bq_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_combined_bias_data,
            tmp_combined_bias_data,
            sizeof(float) * bq_tensor->numel());

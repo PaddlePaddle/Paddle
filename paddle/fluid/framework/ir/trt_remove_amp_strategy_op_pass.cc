@@ -41,8 +41,7 @@ void CastDataTypeInplace(phi::DenseTensor *tensor) {
     tmp_data[i] = static_cast<OutType>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(
-      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
 }
 }  // namespace
 

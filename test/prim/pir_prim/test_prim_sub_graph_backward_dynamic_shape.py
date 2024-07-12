@@ -107,6 +107,14 @@ def divide_net(x, y):
     return x / y
 
 
+def elementwise_pow_net(x, y):
+    return paddle.pow(x, y)
+
+
+def pow_net(x):
+    return paddle.pow(x, 3.2)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -1143,6 +1151,183 @@ class TestPrimDivideWithGrad11(TestPrimTwoWithGrad):
         self.net = divide_net
         self.enable_cinn = False
         self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad1(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [1, 1, 40]
+        self.init_x_shape = [None, None, 40]
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad2(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [1, 200, 1]
+        self.init_x_shape = [None, None, 1]
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad3(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 1]
+        self.init_x_shape = [None, None, 1]
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad4(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.y_shape = [1, 1, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad5(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.y_shape = [1, 200, 1]
+        self.init_y_shape = [None, None, 1]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad6(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.y_shape = [30, 200, 1]
+        self.init_y_shape = [None, None, 1]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad7(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad8(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.y_shape = [40]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad9(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [40]
+        self.init_x_shape = [None]
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad10(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.y_shape = [200, 40]
+        self.init_y_shape = self.y_shape
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimElementwisePowWithGrad11(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [200, 40]
+        self.init_x_shape = self.x_shape
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = elementwise_pow_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimPowWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [100, 20, 30]
+        self.init_x_shape = [None, None, 30]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = pow_net
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":

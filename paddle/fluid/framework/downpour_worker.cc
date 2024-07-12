@@ -219,7 +219,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     }
     phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
-                                                 platform::CPUPlace());
+                                                 phi::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
     LoD data_lod{tensor_lod};

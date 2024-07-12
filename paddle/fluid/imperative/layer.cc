@@ -240,7 +240,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
-              platform::DeviceContextPool::Instance().Get(grad_t->place());
+              phi::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0f);
         } else {
           grad_t->clear();
@@ -302,10 +302,10 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     new_var->SetType(Type());
     framework::TensorCopy(src_tensor, dst_place, dst_tensor);
     if (blocking) {
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
       auto src_place = src_tensor.place();
       if (!(src_place == dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+        phi::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
     VLOG(4) << "copy tensor " << Name() << " from " << Place() << " to "
@@ -323,10 +323,10 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                           dst_place,
                           dst_selected_rows->mutable_value());
     if (blocking) {
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
       auto src_place = src_selected_rows.place();
       if (!(src_place == dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+        phi::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
     dst_selected_rows->set_height(src_selected_rows.height());
@@ -365,7 +365,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     InnerSetOverriddenStopGradient(src.OverriddenStopGradient());
   }
 
-  platform::Place place = src.Place();
+  phi::Place place = src.Place();
   if (src.Var().IsType<phi::DenseTensor>()) {
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
     auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();
@@ -413,7 +413,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     framework::TensorCopy(src_tensor, place, dst_tensor);
   }
   if (blocking) {
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
+    phi::DeviceContextPool::Instance().Get(place)->Wait();
   }
 }
 
