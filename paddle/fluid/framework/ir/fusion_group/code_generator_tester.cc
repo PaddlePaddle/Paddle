@@ -230,7 +230,7 @@ void TestMainImpl(std::string func_name,
   device_code.Launch(n, &args);
 
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
 
   // Copy the results back to CPU.
