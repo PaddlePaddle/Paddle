@@ -115,7 +115,7 @@ class TensorToTest(unittest.TestCase):
         tensor2 = paddle.to_tensor([1, 2, 3])
         tensor2 = tensor2.to(tensor1)
         self.assertTrue(tensor2.dtype, tensor1.dtype)
-        self.assertTrue(str(tensor2.place), str(tensor1.place))
+        self.assertTrue(type(tensor2.place), type(tensor1.place))
 
     def test_kwargs(self):
         tensorx = paddle.to_tensor([1, 2, 3])

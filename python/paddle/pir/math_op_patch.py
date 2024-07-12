@@ -609,7 +609,7 @@ def monkey_patch_value():
         self,
         device=None,
         dtype=None,
-        blocking: bool | None = None,
+        blocking=None,
     ):
         if device is None and dtype is None and blocking is None:
             return self
