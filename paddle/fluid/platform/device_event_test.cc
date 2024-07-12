@@ -21,8 +21,8 @@
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;
 
-using paddle::platform::DeviceContextPool;
 using paddle::platform::DeviceEvent;
+using phi::DeviceContextPool;
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
