@@ -2900,15 +2900,14 @@ def shard_dataloader(
             ...     def __len__(self):
             ...         return self.num_samples
 
-            >>> HIDDEN_SIZE = 8
             >>> class MlpModel(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super(MlpModel, self).__init__()
             ...         self.w0 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh0, [dist.Replicate(), dist.Shard(1)])
             ...         self.w1 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh1, [dist.Replicate(), dist.Shard(0)])
 
             ...     def forward(self, x):
