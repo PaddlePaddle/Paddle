@@ -306,7 +306,7 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
-                             const platform::Place& place) {
+                             const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -416,7 +416,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
 }
 
 void ApplyDeviceGuard(const OperatorBase* op_base,
-                      const platform::Place& place,
+                      const phi::Place& place,
                       OpKernelType* expected_kernel_key) {
   bool need_change_place =
       (op_base->HasAttr("op_device") &&
@@ -498,7 +498,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
 }
 
 platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
-                                                const platform::Place& place) {
+                                                const phi::Place& place) {
   auto& pool = platform::DeviceContextPool::Instance();
   auto* default_dev_ctx = pool.Get(place);
 
@@ -548,7 +548,7 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
 }
 
 void HandleOperatorBase(
-    const platform::Place& place,
+    const phi::Place& place,
     std::shared_ptr<OperatorBase> op,
     OpFuncNode* op_func_node,
     Scope* scope,
@@ -573,7 +573,7 @@ void HandleOperatorBase(
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const platform::Place& place,
+void BuildOpFuncList(const phi::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,

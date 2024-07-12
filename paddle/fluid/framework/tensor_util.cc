@@ -37,7 +37,7 @@ namespace framework {
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
-                    const platform::Place& dst_place,
+                    const phi::Place& dst_place,
                     const platform::DeviceContext& ctx,
                     TENSOR* dst) {
   if (&src == dst) {
@@ -272,7 +272,7 @@ void TensorCopyImpl(const TENSOR& src,
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
-                    const platform::Place& dst_place,
+                    const phi::Place& dst_place,
                     TENSOR* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx = nullptr;
@@ -286,13 +286,13 @@ void TensorCopyImpl(const TENSOR& src,
 }
 
 void TensorCopy(const phi::DenseTensor& src,
-                const platform::Place& dst_place,
+                const phi::Place& dst_place,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, dst);
   dst->set_strides(src.strides());
 }
 void TensorCopy(const phi::DenseTensor& src,
-                const platform::Place& dst_place,
+                const phi::Place& dst_place,
                 const platform::DeviceContext& ctx,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, ctx, dst);
@@ -300,7 +300,7 @@ void TensorCopy(const phi::DenseTensor& src,
 }
 
 void TensorCopySync(const phi::DenseTensor& src,
-                    const platform::Place& dst_place,
+                    const phi::Place& dst_place,
                     phi::DenseTensor* dst) {
   if (&src == dst) {
     auto src_copy = src;
@@ -575,7 +575,7 @@ void TensorToStream(std::ostream& os,
 struct DeserializedDataFunctor {
   DeserializedDataFunctor(void** buf,
                           phi::DenseTensor* tensor,
-                          const platform::Place& place)
+                          const phi::Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
   template <typename T>
@@ -737,7 +737,7 @@ void TensorFromStream(std::istream& is,
 // get tensor data point by DLDataType
 void* GetDstPtrByDLDataType(DLDataType type,
                             phi::DenseTensor* dst,
-                            const platform::Place& dst_place) {
+                            const phi::Place& dst_place) {
   // vector types not currently supported
   PADDLE_ENFORCE_LE(type.lanes,
                     1,

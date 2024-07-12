@@ -139,12 +139,12 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   PADDLE_ENFORCE_EQ(
       global_transfer_scope_cache.size(),
       threads_num,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "The size of scope cache is not equal to thread number."));
   PADDLE_ENFORCE_EQ(
       global_transfer_data_cache.size(),
       threads_num,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "The size of data cache is not equal to thread number."));
 }
 
@@ -161,7 +161,7 @@ void profile(bool use_mkldnn, bool use_bfloat16) {
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData() {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
-    PADDLE_THROW(platform::errors::NotFound("Missing input data path"));
+    PADDLE_THROW(phi::errors::NotFound("Missing input data path"));
   }
 
   std::ifstream fin(FLAGS_infer_data);
@@ -192,8 +192,7 @@ std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
     const std::string &line) {
   const auto fields = Split<std::string>(line, ';');
 
-  if (fields.size() < 5)
-    PADDLE_THROW(platform::errors::Fatal("Invalid input line"));
+  if (fields.size() < 5) PADDLE_THROW(phi::errors::Fatal("Invalid input line"));
 
   std::vector<paddle::PaddleTensor> tensors;
 
@@ -231,8 +230,7 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
 template <typename T>
 paddle::PaddleTensor ParseTensor(const std::string &field) {
   const auto data = Split<std::string>(field, ':');
-  if (data.size() < 2)
-    PADDLE_THROW(platform::errors::Fatal("Invalid data field"));
+  if (data.size() < 2) PADDLE_THROW(phi::errors::Fatal("Invalid data field"));
 
   std::string shape_str = data[0];
   const auto shape = Split<int>(shape_str, ' ');

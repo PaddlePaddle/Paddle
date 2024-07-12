@@ -140,7 +140,7 @@ class MultiDeviceFeedReader {
       const std::vector<std::vector<int>> &shapes,
       const std::vector<framework::proto::VarType::Type> &dtypes,
       const std::vector<bool> &need_check_feed,
-      const std::vector<platform::Place> &dst_places,
+      const std::vector<phi::Place> &dst_places,
       bool use_double_buffer,
       bool drop_last,
       bool pin_memory = false)
@@ -496,7 +496,7 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
+         const std::vector<phi::Place> &dst_places,
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory) {
@@ -521,7 +521,7 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
+         const std::vector<phi::Place> &dst_places,
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory) {

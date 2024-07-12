@@ -352,7 +352,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("get_device_id",
            [](const phi::GPUPlace &self) { return self.GetDeviceId(); })
       .def("_type", &PlaceIndex<phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::Place>)
       .def("_equals", &IsSamePlace<phi::GPUPlace, phi::GPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPlace, phi::CPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPlace, phi::XPUPlace>)
@@ -433,7 +433,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            })
 #ifdef PADDLE_WITH_XPU
       .def("_type", &PlaceIndex<phi::XPUPlace>)
-      .def("_equals", &IsSamePlace<phi::XPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<phi::XPUPlace, phi::Place>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::GPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::CPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::XPUPlace>)
@@ -494,7 +494,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
   cpuplace.def(py::init<>())
       .def("_type", &PlaceIndex<phi::CPUPlace>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::Place>)
       .def("_equals", &IsSamePlace<phi::CPUPlace, phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::CPUPlace, phi::GPUPlace>)
       .def("_equals", &IsSamePlace<phi::CPUPlace, phi::CPUPlace>)
@@ -541,7 +541,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
         return std::make_unique<phi::GPUPinnedPlace>();
       }))
       .def("_type", &PlaceIndex<phi::GPUPinnedPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::Place>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::GPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::CPUPlace>)
@@ -588,7 +588,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #endif
            })
       .def("_type", &PlaceIndex<phi::IPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<phi::IPUPlace, phi::Place>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::GPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::CPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::XPUPlace>)
@@ -596,17 +596,17 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::GPUPinnedPlace>)
       .def("__str__", string::to_string<const phi::IPUPlace &>);
 
-  py::class_<platform::Place> platformplace(m, "Place");
+  py::class_<phi::Place> platformplace(m, "Place");
   g_place_pytype = reinterpret_cast<PyTypeObject *>(platformplace.ptr());
   platformplace.def(py::init<>())
-      .def("_type", &PlaceIndex<platform::Place>)
-      .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
-      .def("_equals", &IsSamePlace<platform::Place, phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<platform::Place, phi::CPUPlace>)
-      .def("_equals", &IsSamePlace<platform::Place, phi::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::Place, phi::IPUPlace>)
-      .def("_equals", &IsSamePlace<platform::Place, phi::GPUPinnedPlace>)
-      .def("_equals", &IsSamePlace<platform::Place, phi::CustomPlace>)
+      .def("_type", &PlaceIndex<phi::Place>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::Place>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::GPUPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::CPUPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::XPUPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::IPUPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::GPUPinnedPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, phi::CustomPlace>)
       .def("is_gpu_place",
            [](phi::Place &self) { return platform::is_gpu_place(self); })
       .def("is_cpu_place",

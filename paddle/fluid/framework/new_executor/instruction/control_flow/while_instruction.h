@@ -42,7 +42,7 @@ class WhileInstruction : public InstructionBase {
 
  public:
   WhileInstruction(size_t id,
-                   const platform::Place& place,
+                   const phi::Place& place,
                    ::pir::Operation* op,
                    ValueExecutionInfo* parent_exe_info,
                    interpreter::ExecutionConfig execution_config);
