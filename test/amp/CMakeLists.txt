@@ -12,7 +12,7 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
-    string(REGEX MATCH "_deprecated$" DEPRECATED_MODULES
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES
                  "${py_test_modules_MODULES}")
     string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
     set(FLAGS_PIR_MODE "")
