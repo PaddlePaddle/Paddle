@@ -46,6 +46,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | cjld | Dun Liang |
 | lipeng-unisound | Peng Li |
 | gavin1332 | Yi Liu |
+| cqulilujia | Lujia Li |
 | liuyuan | Yuan Liu |
 | livc | Zhao Li |
 | llxxxll | Yong-Feng Liu |
