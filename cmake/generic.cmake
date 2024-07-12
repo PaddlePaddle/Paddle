@@ -1154,7 +1154,7 @@ function(py_test TARGET_NAME)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
-    string(REGEX MATCH "_deprecated$" DEPRECATED_MODULES "${py_test_SRCS}")
+    string(REGEX MATCH "_deprecated\\.py$" DEPRECATED_MODULES "${py_test_SRCS}")
     string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
     set(FLAGS_PIR_MODE "")
     if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
