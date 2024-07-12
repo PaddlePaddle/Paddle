@@ -235,7 +235,7 @@ class TestGroupNormSiluTRTPattern(PassTest):
         self.check_pass_correct()
 
 
-class TestFlattenConCatPattern(PassTest):
+class TestFlattenConCatTRTPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -263,6 +263,83 @@ class TestFlattenConCatPattern(PassTest):
                         "pd_op.fusion_transpose_flatten_concat": 0,
                     }
                     yield [main_prog, start_prog], False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
+class TestGatherNdTRTPattern(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def sample_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[1, 3, 4], dtype='float32'
+                )
+                index = paddle.static.data(
+                    name='index', shape=[1, 2, 2], dtype='int32'
+                )
+                gather_nd_out = paddle.gather_nd(x, index)
+                out = paddle.assign(gather_nd_out)
+                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
+                self.feeds = {
+                    "x": np.random.random([1, 3, 4]).astype("float32"),
+                    "index": np.random.random([1, 2, 2]).astype("int32"),
+                }
+
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.fusion_transpose_flatten_concat": 0,
+                }
+                yield [main_prog, start_prog], False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
+class TestSliceTRTPattern(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def sample_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[4, 5, 6], dtype='float32'
+                )
+
+                # Convert starts and ends to tensors
+                axes = [0, 1, 2]
+                starts = [-3, 0, 2]
+                ends = [3, 2, 4]
+
+                sliced_1 = paddle.slice(x, axes=axes, starts=starts, ends=ends)
+                # print("Sliced output shape:", sliced_1.shape)
+
+                out = paddle.assign(sliced_1)
+                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
+                self.feeds = {
+                    "x": np.random.random([4, 5, 6]).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.conv2d": 0,
+                }
+                yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():
