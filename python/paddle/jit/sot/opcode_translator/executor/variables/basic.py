@@ -585,7 +585,7 @@ class TensorVariable(VariableBase):
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
             ).bind(self, name)
-        elif name in paddle_tensor_methods:
+        elif name in paddle_tensor_methods():
             from .callable import TensorFunctionVariable
 
             fn_var = TensorFunctionVariable(

@@ -22,10 +22,18 @@ def is_inplace_api(func):
     return func in inplace_apis
 
 
-def get_tensor_methods():
+def get_Variable_methods():
     return [
         member_name
         for member_name, member in inspect.getmembers(paddle.static.Variable)
+        if inspect.isfunction(member)
+    ]
+
+
+def get_Value_methods():
+    return [
+        member_name
+        for member_name, member in inspect.getmembers(paddle.pir.Value)
         if inspect.isfunction(member)
     ]
 
@@ -74,7 +82,20 @@ def get_paddle_api():
     )
 
 
-paddle_tensor_methods = get_tensor_methods()
+def create_get_tensor_methods():
+    value_methods = get_Value_methods()
+    variable_methods = get_Variable_methods()
+
+    def _get_tensor_methods():
+        if paddle.base.framework.use_pir_api():
+            return value_methods
+        else:
+            return variable_methods
+
+    return _get_tensor_methods
+
+
+paddle_tensor_methods = create_get_tensor_methods()
 paddle_api_list = get_paddle_api()
 
 # TODO(Aurelius84): It seems that we use it to judge 'in_paddle_module()'.
