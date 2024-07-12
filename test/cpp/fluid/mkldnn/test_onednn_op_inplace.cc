@@ -37,9 +37,9 @@ struct InputVars {
 };
 
 template <typename T>
-bool TestMain(const platform::Place &place,
+bool TestMain(const phi::Place &place,
               const std::string &op_type,
-              const framework::DDim &dims,
+              const phi::DDim &dims,
               const int num_inputs) {
   framework::Scope scope;
 
@@ -79,7 +79,7 @@ bool TestMain(const platform::Place &place,
     y_ptr[i] = static_cast<T>(0);
   }
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Out of place (reference) computation
   auto op_ref =
@@ -111,14 +111,14 @@ bool TestMain(const platform::Place &place,
                                                   {{"use_mkldnn", {true}}});
 
   op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  phi::DeviceContextPool::Instance().Get(place)->Wait();
 
   // Get in-place result
   auto &out_tensor = scope.FindVar("x")->Get<phi::DenseTensor>();
   PADDLE_ENFORCE_EQ(
       &out_tensor,
       input_names[0].tensor,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input and output vars should share tensor for In-place test"));
 
   // compare results
@@ -129,13 +129,13 @@ bool TestMain(const platform::Place &place,
 }
 
 TEST(test_softmax_inplace, cpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "softmax", dims, 1));
 }
 
 TEST(test_relu_inplace, cpu_place) {
-  framework::DDim dims({1, 12, 20, 20});
+  phi::DDim dims({1, 12, 20, 20});
   phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "relu", dims, 1));
 }

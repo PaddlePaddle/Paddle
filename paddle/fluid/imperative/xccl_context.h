@@ -31,7 +31,7 @@ namespace imperative {
 class XCCLParallelContext : public ParallelContext {
  public:
   explicit XCCLParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
+                               const phi::Place& place)
       : ParallelContext(strategy, place) {}
 
   ~XCCLParallelContext() override = default;

@@ -81,29 +81,29 @@ NCCLCommContext& NCCLCommContext::Instance() {
 
 NCCLComm* NCCLCommContext::CreateComm(
     ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(nccl_id,
-                          platform::errors::InvalidArgument(
-                              "The nccl unique id should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      nccl_id,
+      phi::errors::InvalidArgument("The nccl unique id should not be null."));
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
       rank,
       nranks,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
           rank,
           nranks));
   PADDLE_ENFORCE_GE(
       dev_id,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   ncclComm_t comm = nullptr;
@@ -128,9 +128,9 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
   PADDLE_ENFORCE_GT(
       dev_ids.size(),
       0,
-      platform::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
-                                        "received the size of dev_ids is %d.",
-                                        dev_ids.size()));
+      phi::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
+                                   "received the size of dev_ids is %d.",
+                                   dev_ids.size()));
 
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];  // NOLINT
@@ -139,7 +139,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Expected comm_map_.count(ring_id) = 0. But received "
                         "comm_map_.count(ring_id) is %d.",
                         comm_map_.count(ring_id)));
@@ -163,8 +163,8 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   PADDLE_ENFORCE_GT(
       dev_ids.size(),
       0,
-      paddle::platform::errors::InvalidArgument(
-          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
+      phi::errors::InvalidArgument("dev ids = [%d], it should greater than 0.",
+                                   dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
@@ -187,7 +187,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "comm_map_ of ring_id: %s should be 0. %s is provided",
                         ring_id,
                         comm_map_.count(ring_id)));
@@ -216,7 +216,7 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -224,11 +224,11 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .GetAllocator(phi::GPUPinnedPlace())
           .get());
   dev_ctx->PartialInitWithAllocator();
 
@@ -257,8 +257,7 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
 
   if (ring_id == 0) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(dev_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(dev_id)));
     dev_ctx->set_nccl_comm(comm);
   }
   VLOG(4) << "add nccl comm: " << comm_map_[ring_id][dev_id].get()
@@ -313,29 +312,29 @@ class BKCLCommImpl : public BKCLComm {
 
 BKCLComm* BKCLCommContext::CreateComm(
     BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id, int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(bkcl_id,
-                          platform::errors::InvalidArgument(
-                              "The bkcl unique id should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      bkcl_id,
+      phi::errors::InvalidArgument("The bkcl unique id should not be null."));
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
       rank,
       nranks,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
           rank,
           nranks));
   PADDLE_ENFORCE_GE(
       dev_id,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   BKCLContext_t comm = nullptr;
@@ -361,7 +360,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -369,7 +368,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);
@@ -386,8 +385,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
   comm_map_mutex_.unlock();
   if (ring_id == 0) {
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::XPUPlace(dev_id)));
+        phi::DeviceContextPool::Instance().Get(phi::XPUPlace(dev_id)));
     dev_ctx->SetBkclContext(comm);
   }
   VLOG(3) << "add bkcl comm: " << comm_map_[ring_id][dev_id].get()
@@ -485,29 +483,29 @@ XCCLComm* XCCLCommContext::CreateComm(phi::ccl::CCLRootId* xccl_id,
                                       int rank,
                                       int dev_id,
                                       int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(xccl_id,
-                          platform::errors::InvalidArgument(
-                              "The xccl unique id should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      xccl_id,
+      phi::errors::InvalidArgument("The xccl unique id should not be null."));
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
       rank,
       nranks,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
           rank,
           nranks));
   PADDLE_ENFORCE_GE(
       dev_id,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   phi::ccl::CCLComm comm = nullptr;
@@ -532,8 +530,8 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
   PADDLE_ENFORCE_GT(
       dev_ids.size(),
       0,
-      paddle::platform::errors::InvalidArgument(
-          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
+      phi::errors::InvalidArgument("dev ids = [%d], it should greater than 0.",
+                                   dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(1) << "Begin CreateXCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
@@ -553,7 +551,7 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "comm_map_ of ring_id: %s should be 0. %s is provided",
                         ring_id,
                         comm_map_.count(ring_id)));
@@ -578,7 +576,7 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -586,11 +584,11 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   // dev_ctx->PartialInitWithAllocator();
 
@@ -619,7 +617,7 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
 
   if (ring_id == 0) {
     auto* dev_ctx = static_cast<phi::CustomContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->set_xccl_comm(comm);
   }
   VLOG(4) << "add xccl comm: " << comm_map_[ring_id][dev_id].get()

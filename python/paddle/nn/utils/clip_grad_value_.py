@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Iterable
+
 import paddle
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
 
 @paddle.autograd.no_grad()
 def clip_grad_value_(
-    parameters,
-    clip_value,
-):
+    parameters: Iterable[Tensor] | Tensor,
+    clip_value: float,
+) -> None:
     r"""
     Clips gradient of an iterable of parameters at specified value.
     The gradient will be modified in place.

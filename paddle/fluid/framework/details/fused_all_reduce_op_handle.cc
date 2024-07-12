@@ -34,7 +34,7 @@ typedef std::vector<
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce,
     const platform::NCCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
@@ -43,7 +43,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce,
     const platform::BKCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
@@ -52,7 +52,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce)
     : AllReduceOpHandle(node, local_scopes, places),
       num_of_all_reduce_(num_of_all_reduce) {}
@@ -114,7 +114,7 @@ void FusedAllReduceOpHandle::RunImpl() {
   gpuStream_t compute_stream{nullptr};
 
   if (FLAGS_allreduce_record_one_event) {
-    auto gpu_place = platform::CUDAPlace(places_[0].GetDeviceId());
+    auto gpu_place = phi::GPUPlace(places_[0].GetDeviceId());
     compute_stream =
         platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);

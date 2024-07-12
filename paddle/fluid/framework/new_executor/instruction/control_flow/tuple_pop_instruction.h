@@ -31,7 +31,7 @@ class ValueExecutionInfo;
 class TuplePopInstruction : public InstructionBase {
  public:
   TuplePopInstruction(size_t id,
-                      const platform::Place& place,
+                      const phi::Place& place,
                       ::pir::Operation* op,
                       ValueExecutionInfo* value_exe_info);
 

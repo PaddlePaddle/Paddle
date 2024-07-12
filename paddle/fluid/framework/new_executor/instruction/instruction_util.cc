@@ -63,7 +63,7 @@ std::vector<int> GetValueIds(pir::Value value,
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::string& execution_stream,
     const int stream_priority) {
   auto& op_attributes = op->attributes();
@@ -143,7 +143,7 @@ platform::DeviceContext* ParseDeviceContext(
   return origin_dev_ctx;
 }
 
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -396,7 +396,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+  paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "

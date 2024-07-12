@@ -117,7 +117,7 @@ class TestReduceOnPlateauDecay:
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
-            test_prog = main_prog.clone()
+            test_prog = main_prog
 
         exe = paddle.static.Executor(place)
         exe.run(start_prog)
@@ -329,7 +329,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
             loss = paddle.mean(x)
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
-            test_prog = main_prog.clone()
+            test_prog = main_prog
 
         exe = paddle.static.Executor(place)
         exe.run(start_prog)
@@ -696,7 +696,7 @@ class TestLRScheduler(unittest.TestCase):
 
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
-            test_prog = main_prog.clone()
+            test_prog = main_prog
 
         num = 0
         exe = paddle.static.Executor(place)

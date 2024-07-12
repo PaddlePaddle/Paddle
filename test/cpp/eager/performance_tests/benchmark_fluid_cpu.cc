@@ -40,7 +40,7 @@ namespace imperative {
 
 TEST(Benchmark, FluidScaleCPU) {
   // Prepare Device Contexts
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
@@ -79,14 +79,14 @@ TEST(Benchmark, FluidScaleCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
 
 TEST(Benchmark, FluidMatmulCPU) {
   // Prepare Device Contexts
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
@@ -138,14 +138,14 @@ TEST(Benchmark, FluidMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
 
 TEST(Benchmark, FluidMLPCPU) {
   // Prepare Device Contexts
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
@@ -222,7 +222,7 @@ TEST(Benchmark, FluidMLPCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

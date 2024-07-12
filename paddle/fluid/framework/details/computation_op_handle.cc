@@ -23,7 +23,7 @@ struct VarHandleBase;
 
 ComputationOpHandle::ComputationOpHandle(ir::Node *node,
                                          Scope *scope,
-                                         platform::Place place,
+                                         phi::Place place,
                                          size_t scope_idx)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(*node->Op())),

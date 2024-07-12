@@ -56,7 +56,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
     // Record method: RecordCapturingDeviceContext.
     PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "FLAGS_new_executor_use_cuda_graph must be True when "
                           "capturing stream is recorded."));
     if (num_stream > 1) {
