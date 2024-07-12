@@ -1133,7 +1133,7 @@ PHI_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
 /*
  * CUDAMallocAsyncAllocator related FLAG
  * Name: FLAGS_cuda_malloc_async_pool_memory_throttle_ratio
- * Since Version: 2.7
+ * Since Version: 3.0
  * Value Range:  double, [0.0, 1.0], default=0.8
  * Note:memory_throttle_ratio provides a threshold that determines when to
  * initiate synchronization operations to deallocate memory. This mechanism
