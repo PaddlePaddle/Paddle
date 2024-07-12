@@ -591,7 +591,6 @@ void TensorRTEngineInstruction::BindOutputTensor(
     int output_index,
     std::vector<void *> &buffers,
     int *runtime_batch) {
-  auto dev_place = dev_ctx_->GetPlace();
   int binding_offset = 0;
   const int num_bindings = trt_engine_->GetNbBindings();
   nvinfer1::IExecutionContext *trt_context = nullptr;

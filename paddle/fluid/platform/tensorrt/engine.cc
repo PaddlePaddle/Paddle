@@ -670,7 +670,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
-    auto *fp16_data = cpu_dev_ctx->Alloc<float16>(weight_map[name_with_suffix]);
+    auto *fp16_data =
+        cpu_dev_ctx->Alloc<float16>(weight_map[name_with_suffix].get());
     auto *bf16_data = cpu_dev_ctx->Alloc<bfloat16>(&bf16_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(bf16_data[i]);
@@ -683,7 +684,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp32_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
-    auto *fp16_data = cpu_dev_ctx->Alloc<float16>(weight_map[name_with_suffix]);
+    auto *fp16_data =
+        cpu_dev_ctx->Alloc<float16>(weight_map[name_with_suffix].get());
     auto *fp32_data = cpu_dev_ctx->Alloc<float>(&fp32_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(fp32_data[i]);
@@ -697,7 +699,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
-        cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix]);
+        cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix].get());
     auto *int64_data = cpu_dev_ctx->Alloc<int64_t>(&int64_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
@@ -742,7 +744,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
-    auto *fp32_data = cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix]);
+    auto *fp32_data =
+        cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix].get());
     auto *bf16_data = cpu_dev_ctx->Alloc<bfloat16>(&bf16_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
@@ -755,7 +758,8 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
-    auto *fp32_data = cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix]);
+    auto *fp32_data =
+        cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix].get());
     auto *fp16_data = cpu_dev_ctx->Alloc<float16>(&fp16_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(fp16_data[i]);
@@ -769,7 +773,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
-        cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix]);
+        cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix].get());
     auto *int64_data = cpu_dev_ctx->Alloc<int64_t>(&int64_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
@@ -817,7 +821,8 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
-    auto *fp32_data = cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix]);
+    auto *fp32_data =
+        cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix].get());
     auto *bf16_data = cpu_dev_ctx->Alloc<bfloat16>(&bf16_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
@@ -831,7 +836,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
-        cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix]);
+        cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix].get());
     auto *int64_data = cpu_dev_ctx->Alloc<int64_t>(&int64_tensor);
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
