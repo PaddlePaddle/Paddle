@@ -31,9 +31,9 @@ result = differ.compare(origin, new)
 error = False
 diffs = []
 for each_diff in result:
-    if each_diff[0] in ['-', '?']:  # delete or change API is not allowed
-        error = True
-    elif each_diff[0] == '+':
+    if (
+        each_diff[0] in ['-', '?'] or each_diff[0] == '+'
+    ):  # delete or change API is not allowed
         error = True
 
     if each_diff[0] != ' ':

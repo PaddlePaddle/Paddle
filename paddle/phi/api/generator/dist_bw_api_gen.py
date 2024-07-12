@@ -520,7 +520,10 @@ def generate_backward_api(
     for bw_api in bw_apis:
         dist_bw_api = DistBackwardAPI(bw_api)
         header_file.write(dist_bw_api.gene_api_declaration())
-        source_file.write(dist_bw_api.gene_api_code())
+        if is_fused_backward_yaml is True:
+            source_file.write(dist_bw_api.gene_api_code())
+        else:
+            source_file.write(dist_bw_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

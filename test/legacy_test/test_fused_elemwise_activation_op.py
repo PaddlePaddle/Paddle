@@ -110,29 +110,50 @@ def create_test_class(
         def test_check_grad_normal(self):
             if not grad_check:
                 return
-            self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
+            if self.attrs["save_intermediate_out"]:
+                self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
+            else:
+                self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
 
         def test_check_grad_ignore_x(self):
             if not grad_check:
                 return
-            self.check_grad(
-                ['Y'],
-                ['Out'],
-                max_relative_error=0.005,
-                no_grad_set=set("X"),
-                check_dygraph=False,
-            )
+            if self.attrs["save_intermediate_out"]:
+                self.check_grad(
+                    ['Y'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("X"),
+                    check_dygraph=False,
+                )
+            else:
+                self.check_grad(
+                    ['Y'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("X"),
+                    check_dygraph=False,
+                )
 
         def test_check_grad_ignore_y(self):
             if not grad_check:
                 return
-            self.check_grad(
-                ['X'],
-                ['Out'],
-                max_relative_error=0.005,
-                no_grad_set=set("Y"),
-                check_dygraph=False,
-            )
+            if self.attrs["save_intermediate_out"]:
+                self.check_grad(
+                    ['X'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("Y"),
+                    check_dygraph=False,
+                )
+            else:
+                self.check_grad(
+                    ['X'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("Y"),
+                    check_dygraph=False,
+                )
 
     class TestFusedElementwiseActivationOp_scalar(
         TestFusedElementwiseActivationOp_base
