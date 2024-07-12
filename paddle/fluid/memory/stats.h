@@ -133,8 +133,7 @@ void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
 
-void LogDeviceMemoryStats(const platform::Place& place,
-                          const std::string& op_name);
+void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
 
 #define DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, id)               \
   case id:                                                          \

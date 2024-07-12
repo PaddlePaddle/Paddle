@@ -1695,6 +1695,10 @@ def cond(
 
     def empty_tensor(input, shape):
         if in_dynamic_or_pir_mode():
+            if in_pir_mode():
+                raise ValueError(
+                    "only support x is nonempty tensor in static graph mode"
+                )
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -5372,6 +5376,7 @@ def histogramdd(
             e = paddle.linspace(r[0], r[1], bins[idx] + 1, x.dtype)
             edges.append(e)
             dedges.append(e.diff())
+            hist_shape.append(bins[idx] + 2)
     elif isinstance(
         bins, tuple
     ):  # tuple with D tensors for each innermost dimension
@@ -5380,9 +5385,9 @@ def histogramdd(
             bin = paddle.to_tensor(bin)
             edges.append(bin)
             dedges.append(bin.diff())
+            hist_shape.append(bin.shape[0] + 1)
     else:
         raise ValueError("Input bins must be Tensor[], int[], or int.")
-    hist_shape = [edge.shape[0] + 1 for edge in edges]
     index_list = []
     # edges shape: [D, linspaced]
     # index_list shape: [D, N]

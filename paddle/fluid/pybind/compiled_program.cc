@@ -918,7 +918,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
 
-  cp.def(py::init<const std::vector<platform::Place> &,
+  cp.def(py::init<const std::vector<phi::Place> &,
                   const std::vector<std::string> &,
                   const std::string &,
                   Scope *,

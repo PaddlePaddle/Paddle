@@ -93,7 +93,7 @@ class OpHandleBase {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
   }
-  const std::map<platform::Place, platform::DeviceContext *> &DeviceContext() {
+  const std::map<phi::Place, platform::DeviceContext *> &DeviceContext() {
     return dev_ctxes_;
   }
 
@@ -143,7 +143,7 @@ class OpHandleBase {
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
-  std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
+  std::map<phi::Place, platform::DeviceContext *> dev_ctxes_;
 
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;

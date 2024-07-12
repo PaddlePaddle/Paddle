@@ -74,8 +74,7 @@ class StreamSafeCustomDeviceAllocator
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<platform::Place,
-                  std::vector<StreamSafeCustomDeviceAllocator *>>
+  static std::map<phi::Place, std::vector<StreamSafeCustomDeviceAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

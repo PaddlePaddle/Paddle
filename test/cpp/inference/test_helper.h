@@ -41,10 +41,7 @@ bool cpu_place_used(const paddle::PaddlePlace& place) {
 }  // namespace paddle
 
 template <typename T>
-void SetupTensor(phi::DenseTensor* input,
-                 paddle::framework::DDim dims,
-                 T lower,
-                 T upper) {
+void SetupTensor(phi::DenseTensor* input, phi::DDim dims, T lower, T upper) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -57,7 +54,7 @@ void SetupTensor(phi::DenseTensor* input,
 
 template <typename T>
 void SetupTensor(phi::DenseTensor* input,
-                 paddle::framework::DDim dims,
+                 phi::DDim dims,
                  const std::vector<T>& data) {
   CHECK_EQ(common::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
@@ -76,7 +73,7 @@ void SetupLoDTensor(phi::DenseTensor* input,
 
 template <typename T>
 void SetupLoDTensor(phi::DenseTensor* input,
-                    paddle::framework::DDim dims,
+                    phi::DDim dims,
                     const paddle::framework::LoD lod,
                     const std::vector<T>& data) {
   const size_t level = lod.size() - 1;
@@ -176,7 +173,7 @@ void TestInference(const std::string& dirname,
 
   // Profile the performance
   paddle::platform::ProfilerState state;
-  if (paddle::platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     state = paddle::platform::ProfilerState::kCPU;
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -186,7 +183,7 @@ void TestInference(const std::string& dirname,
     //   int device_id = place.GetDeviceId();
     paddle::platform::SetDeviceId(0);
 #else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "'CUDAPlace' is not supported in CPU only device."));
 #endif
   }

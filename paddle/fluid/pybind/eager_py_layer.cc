@@ -619,6 +619,11 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else if (o == Py_None) {
+          PyTuple_SET_ITEM(tmp_list,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -636,6 +641,11 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else if (o == Py_None) {
+          PyTuple_SET_ITEM(tmp_tuple,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -643,6 +653,11 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
         }
       }
       PyTuple_SET_ITEM(packed_value, i, tmp_tuple);
+    } else if (obj == Py_None) {
+      PyTuple_SET_ITEM(packed_value,
+                       i,
+                       reinterpret_cast<PyObject*>(
+                           (*pack_hook)(reinterpret_cast<void*>(obj))));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "save_for_backward only support Tensor, list of Tensor, tuple of "

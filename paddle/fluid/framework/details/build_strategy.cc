@@ -282,7 +282,7 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
 }
 
 ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
-                                const std::vector<platform::Place> &places,
+                                const std::vector<phi::Place> &places,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
@@ -309,7 +309,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->SetNotOwned<const std::vector<phi::Place>>(kPlaces, &places);
       pass->Erase(ir::kLossVarName);
       pass->SetNotOwned<const std::string>(ir::kLossVarName, &loss_var_name);
       pass->Erase(kLocalScopes);

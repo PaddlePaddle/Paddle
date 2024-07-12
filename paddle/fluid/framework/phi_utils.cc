@@ -250,7 +250,7 @@ void InitDefaultKernelSignatureMap() {
 }
 
 static void SetAllocationForUninitializedDenseTensor(
-    phi::DenseTensor* dense_tensor, const platform::Place& place) {
+    phi::DenseTensor* dense_tensor, const phi::Place& place) {
   int dtype_size = static_cast<int>(dense_tensor->dtype() == DataType::UNDEFINED
                                         ? 0
                                         : phi::SizeOf(dense_tensor->dtype()));

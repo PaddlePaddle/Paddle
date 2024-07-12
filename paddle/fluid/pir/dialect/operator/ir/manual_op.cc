@@ -3172,8 +3172,9 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       auto shape_item = shape.defining_op()
                             ->dyn_cast<paddle::dialect::FullOp>()
                             .attribute("value")
-                            .dyn_cast<pir::FloatAttribute>()
-                            .data();
+                            .dyn_cast<paddle::dialect::ScalarAttribute>()
+                            .data()
+                            .to<double>();
       vec_shape = {static_cast<int64_t>(shape_item)};
     } else if (shape.isa<pir::OpResult>() &&
                shape.defining_op()->isa<paddle::dialect::StackOp>()) {
@@ -3223,11 +3224,13 @@ std::vector<pir::Type> ExpandOp::InferMeta(
               vec_shape.push_back(value);
 
             } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
-              auto shape_item = shape.defining_op()
-                                    ->dyn_cast<paddle::dialect::FullOp>()
-                                    .attribute("value")
-                                    .dyn_cast<pir::FloatAttribute>()
-                                    .data();
+              auto shape_item =
+                  shape.defining_op()
+                      ->dyn_cast<paddle::dialect::FullOp>()
+                      .attribute("value")
+                      .dyn_cast<paddle::dialect::ScalarAttribute>()
+                      .data()
+                      .to<double>();
               vec_shape.push_back(static_cast<int64_t>(shape_item));
 
             } else {

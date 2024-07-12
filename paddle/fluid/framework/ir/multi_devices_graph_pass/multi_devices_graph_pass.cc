@@ -154,7 +154,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 
   loss_var_name_ = Get<const std::string>(kLossVarName);
   VLOG(10) << "Init MultiDevSSAGraphBuilder, loss name: " << loss_var_name_;
-  places_ = Get<const std::vector<platform::Place>>(details::kPlaces);
+  places_ = Get<const std::vector<phi::Place>>(details::kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

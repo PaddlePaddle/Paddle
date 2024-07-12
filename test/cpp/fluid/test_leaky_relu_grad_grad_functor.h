@@ -63,12 +63,12 @@ struct LeakyReluGradGradEachElementFunctor {
 };
 
 template <typename T>
-static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
+static bool TestLeakyReluGradGradMain(const phi::DDim &dim,
                                       const phi::Place &place,
                                       float alpha) {
   LeakyReluGradGradFunctor<T> functor;
   functor.alpha = alpha;
-  auto &dev_ctx = *platform::DeviceContextPool::Instance().Get(place);
+  auto &dev_ctx = *phi::DeviceContextPool::Instance().Get(place);
   phi::DenseTensor *out = nullptr;
   phi::DenseTensor *dout = nullptr;
   phi::DenseTensor *dx = nullptr;
@@ -95,7 +95,7 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
   int64_t limit = x.numel();
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     auto &cuda_dev_ctx = dynamic_cast<phi::GPUContext &>(dev_ctx);
     functor(cuda_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
     platform::ForRange<phi::GPUContext> for_range(cuda_dev_ctx, limit);
