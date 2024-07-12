@@ -105,9 +105,9 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 
     def get_places(self):
         if paddle.is_compiled_with_cuda():
-            places = base.cpu_places(1)
-        else:
             places = base.cuda_places(0)
+        else:
+            places = base.cpu_places(1)
         return places
 
     def test_main(self):
