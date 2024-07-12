@@ -1211,13 +1211,16 @@ void BuildVariableScope(const framework::BlockDesc& block,
 }
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
-                          platform::DeviceContext* dev_ctx) {
+                          platform::DeviceContext*& dev_ctx) {
   if (operator_base->HasAttr("ring_id")) {
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(ring_id))) {
       auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+      dev_ctx = static_cast<platform::DeviceContext*>(
+          static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+              ->GetDevContext());
       if (!dev_ctx->GetCommContext()) {
         dev_ctx->SetCommContext(comm_context);
       }
