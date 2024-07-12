@@ -233,6 +233,8 @@ class TestLerpBF16(TestLerp):
     def setUp(self):
         self.op_type = "lerp"
         self.python_api = paddle.lerp
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.lerp
         self.dtype = np.uint16
         self.init_shape()
         self.init_xyshape()
