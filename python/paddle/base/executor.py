@@ -721,11 +721,12 @@ def _as_lodtensor(data, place, dtype=None):
         assert (
             dtype is not None
         ), 'The dtype should be given when feed data is not np.ndarray'
-        dtype = (
-            convert_dtype(dtype)
-            if isinstance(dtype, core.VarDesc.VarType)
-            else dtype
-        )
+        # dtype = (
+        #     convert_dtype(dtype)
+        #     if isinstance(dtype, core.VarDesc.VarType)
+        #     else dtype
+        # )
+        dtype = convert_dtype(dtype)
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
