@@ -272,7 +272,7 @@ class TensorFunctionVariable(FunctionVariable):
     ):
         fn = getattr(
             paddle.pir.Value
-            if paddle.base.framework.use_pir_api()
+            if paddle.framework.use_pir_api()
             else paddle.static.Variable,
             method_name,
         )
