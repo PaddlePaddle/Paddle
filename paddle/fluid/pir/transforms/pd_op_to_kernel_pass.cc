@@ -1060,7 +1060,7 @@ bool SupportsMKLDNN(const std::string& kernel_name,
                           const paddle::framework::ExecutionContext&)>,
                       paddle::framework::OpKernelType::Hash>::const_reference
                           kern_pair) {
-            return platform::is_cpu_place(kern_pair.first.place_) &&
+            return phi::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ ==
                        paddle::framework::LibraryType::kMKLDNN &&
                    kern_pair.first.data_type_ ==
@@ -1099,7 +1099,7 @@ bool SupportsCPUBF16(const std::string& kernel_name) {
               std::function<void(const paddle::framework::ExecutionContext&)>,
               paddle::framework::OpKernelType::Hash>::const_reference
                  kern_pair) {
-            return platform::is_cpu_place(kern_pair.first.place_) &&
+            return phi::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.place_ == phi::CPUPlace() &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::proto::VarType::Type::
@@ -1315,7 +1315,7 @@ phi::KernelKey GetKernelKey(
   // case that place from (not GPU) to GPU.
   // We handle this special case by following code to fix up the problem.
   // This could be further improved if we had another method.
-  if (!platform::is_gpu_place(place)) {
+  if (!phi::is_gpu_place(place)) {
     if (op->isa<MemcpyOp>()) {
       VLOG(6) << "MemcpyOp need a special handle";
       int dst_place_type = op->attribute("dst_place_type")
@@ -1704,7 +1704,7 @@ void AddShadowFeedForTuplePopOp(
   }
 
   // if value place not gpu, add shadow feed op
-  if (platform::is_gpu_place(place) && add_shadow_feed) {
+  if (phi::is_gpu_place(place) && add_shadow_feed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       AddShadowFeedForValue(i,
                             op_item,
@@ -2866,9 +2866,9 @@ void AddShadowFeedOpForDataOrFeed(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   bool feed_op_add_shadow_feed =
-      (op_item->isa<FeedOp>()) && platform::is_gpu_place(place);
+      (op_item->isa<FeedOp>()) && phi::is_gpu_place(place);
   bool data_op_add_shadow_feed =
-      (op_item->isa<DataOp>()) && platform::is_gpu_place(place) &&
+      (op_item->isa<DataOp>()) && phi::is_gpu_place(place) &&
       (kernel_op->attributes()
            .at("place")
            .dyn_cast<PlaceAttribute>()
@@ -3087,7 +3087,7 @@ void ProcessBlock(
           AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
   }
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
       if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
         auto dtype = dense_tensor_type.dtype();

@@ -161,7 +161,7 @@ class GPUContextAllocatorPool {
     for (int i : devices) {
       auto place = phi::GPUPlace(i);
       auto compute_stream =
-          platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+          phi::DeviceContextPool::Instance().GetByPlace(place)->stream();
       auto allocator = std::shared_ptr<GPUContextAllocator>(
           new GPUContextAllocator(place, compute_stream));
       allocators_.insert(make_pair(place, allocator));

@@ -145,7 +145,7 @@ void *Alloc<phi::XPUPlace>(const phi::XPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   void *p = nullptr;
 
-  platform::XPUDeviceGuard guard(place.device);
+  phi::backends::xpu::XPUDeviceGuard guard(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
@@ -176,7 +176,7 @@ void Free<phi::XPUPlace>(const phi::XPUPlace &place, void *p, size_t size) {
   VLOG(10) << "Free " << size << " bytes on " << phi::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << phi::Place(place);
 
-  platform::XPUDeviceGuard guard(place.device);
+  phi::backends::xpu::XPUDeviceGuard guard(place.device);
   xpu_free(p);
 #else
   PADDLE_THROW(
@@ -473,7 +473,7 @@ class BuddyAllocatorList {
 
 BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
   VLOG(10) << "GetBuddyAllocator place = " << place;
-  if (platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
     return BuddyAllocatorList::Instance(
                platform::PlaceHelper::GetDeviceType(place))
         ->Get(platform::PlaceHelper::GetDeviceId(place));
