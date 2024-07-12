@@ -40,6 +40,10 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
+
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
