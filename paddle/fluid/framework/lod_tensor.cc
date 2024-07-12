@@ -337,7 +337,7 @@ LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
 }
 
 std::vector<phi::DenseTensor> SplitLoDTensor(
-    const phi::DenseTensor &src, const std::vector<platform::Place> places) {
+    const phi::DenseTensor &src, const std::vector<phi::Place> places) {
   PADDLE_ENFORCE_GT(places.size(),
                     0,
                     platform::errors::InvalidArgument(

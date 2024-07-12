@@ -50,7 +50,7 @@ class StatAllocator : public Allocator {
     phi::Allocator::AllocationPtr allocation =
         underlying_allocator_->Allocate(size);
 
-    const platform::Place& place = allocation->place();
+    const phi::Place& place = allocation->place();
     if (platform::is_cpu_place(place) ||
         platform::is_cuda_pinned_place(place)) {
       HOST_MEMORY_STAT_UPDATE(
@@ -66,7 +66,7 @@ class StatAllocator : public Allocator {
     return allocation.release();
   }
 
-  uint64_t ReleaseImpl(const platform::Place& place) override {
+  uint64_t ReleaseImpl(const phi::Place& place) override {
     return underlying_allocator_->Release(place);
   }
 

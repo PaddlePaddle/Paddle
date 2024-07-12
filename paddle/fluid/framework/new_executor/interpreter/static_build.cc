@@ -410,7 +410,7 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
 }
 
 void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
-                                       const platform::Place& dev_place,
+                                       const phi::Place& dev_place,
                                        const OperatorBase& op) {
   auto* scope_var = scope.FindVar(op.Output("Scope"));
   PADDLE_ENFORCE_NOT_NULL(
@@ -458,7 +458,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
 }
 
 void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
-                                 const platform::Place& dev_place,
+                                 const phi::Place& dev_place,
                                  const OperatorBase& op) {
   PADDLE_ENFORCE_NOT_NULL(
       scope.FindVar(op.Input("Condition")),
