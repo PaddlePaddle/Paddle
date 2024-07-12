@@ -219,7 +219,7 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
         shapes[j] = s;
       } else if (s == 1 || s == -1) {
         shapes[j] = l;
-      }else if(l == -1){
+      } else if (l == -1) {
         shapes[j] = s;
       } else {
         PADDLE_THROW(errors::InvalidArgument(
