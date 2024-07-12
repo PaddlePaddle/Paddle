@@ -416,8 +416,10 @@ CustomKernelInstruction::CustomKernelInstruction(
         op->operand_source(yaml_info_parser.InputName2Id().at(pair.first));
     pir::Value output_value =
         op->result(yaml_info_parser.OutputName2Id().at(pair.second));
-    this->AddInplace(value_exec_info_.GetVarByValue(input_value),
-                     value_exec_info_.GetVarByValue(output_value));
+    if (IsInvalid(output_value) && IsInvalid(input_value)) {
+      this->AddInplace(value_exec_info_.GetVarByValue(input_value),
+                       value_exec_info_.GetVarByValue(output_value));
+    }
   }
 
   InitInputsOutputsIds(op, value_exec_info_);
