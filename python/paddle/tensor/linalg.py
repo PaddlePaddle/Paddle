@@ -495,7 +495,7 @@ def vector_norm(
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             out = _C_ops.abs(input)
             if porder == np.float64('inf'):
                 return _C_ops.max(out, axis, keepdim)
