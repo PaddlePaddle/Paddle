@@ -20,8 +20,8 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"

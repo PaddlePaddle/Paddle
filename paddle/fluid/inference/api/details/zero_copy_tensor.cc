@@ -245,8 +245,7 @@ void Tensor::CopyFromCpu(const T *data) {
 #endif
   } else if (place_ == PlaceType::kCUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     phi::CustomPlace custom_place(device_type_, device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
@@ -467,8 +466,7 @@ void Tensor::CopyToCpuImpl(T *data,
 #endif
   } else {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));

@@ -857,7 +857,11 @@ def append_backward_ops(
                 )
 
             else:
-                if op.num_operands() == 0 and op.num_results() != 0:
+                if (
+                    op.num_operands() == 0
+                    and op.num_results() != 0
+                    or op.name() == "pd_op.full_like"
+                ):
                     for value in op.results():
                         if len(state.value_to_valuegrad[value]) > 1:
                             append_add_n(
