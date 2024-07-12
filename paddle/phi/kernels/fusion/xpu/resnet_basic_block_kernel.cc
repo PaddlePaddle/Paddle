@@ -17,6 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+namespace fusion {
 class ResnetBasicBlockAttr {
  public:
   explicit ResnetBasicBlockAttr(const XPUContext &dev_ctx,
@@ -682,11 +683,11 @@ void ResNetBasicBlockXPUKernel(const Context &dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_activation_fusion");
   }
 }
-
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(resnet_basic_block,
                    XPU,
                    ALL_LAYOUT,
-                   phi::ResNetBasicBlockXPUKernel,
+                   phi::fusion::ResNetBasicBlockXPUKernel,
                    float) {}

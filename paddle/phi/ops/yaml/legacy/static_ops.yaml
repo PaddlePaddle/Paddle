@@ -738,32 +738,6 @@
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : resnet_basic_block
-  args: (Tensor x, Tensor filter1, Tensor scale1, Tensor bias1, Tensor mean1, Tensor
-    var1, Tensor filter2, Tensor scale2, Tensor bias2, Tensor mean2, Tensor var2,
-    Tensor filter3, Tensor scale3, Tensor bias3, Tensor mean3, Tensor var3, int stride1
-    = 1, int stride2 = 1, int stride3 = 1, int padding1 = 0, int padding2 = 0, int
-    padding3 = 0, int dilation1 = 1, int dilation2 = 1, int dilation3 = 1, int group
-    = 1, float momentum = 0.9, float epsilon = 1e-5, str data_format = "NCHW", bool
-    has_shortcut = false, bool use_global_stats = false, bool is_test = false, bool
-    trainable_statistics = false, str act_type = "relu", bool find_conv_input_max
-    = true)
-  output: Tensor (out), Tensor (conv1), Tensor (saved_mean1), Tensor (saved_invstd1),
-    Tensor (mean1_out), Tensor (var1_out), Tensor (conv2), Tensor (conv2_input), Tensor
-    (saved_mean2), Tensor (saved_invstd2), Tensor (mean2_out), Tensor (var2_out),
-    Tensor (conv3), Tensor (saved_mean3), Tensor (saved_invstd3), Tensor (mean3_out),
-    Tensor (var3_out), Tensor (max_input1), Tensor (max_filter1), Tensor (max_input2),
-    Tensor (max_filter2), Tensor (max_input3), Tensor (max_filter3)
-  infer_meta:
-    func: ResnetBasicBlockInferMeta
-  kernel:
-    func: resnet_basic_block
-    data_type: x
-  optional: filter3, scale3, bias3, mean3, var3, conv3, saved_mean3, saved_invstd3,
-    mean3_out, var3_out, max_input1, max_filter1, max_input2, max_filter2, max_input3,
-    max_filter3
-  backward: resnet_basic_block_grad
-
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
   output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)

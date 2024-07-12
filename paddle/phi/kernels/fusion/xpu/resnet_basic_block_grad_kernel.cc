@@ -17,6 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+namespace fusion {
 
 class ResnetBasicBlockGradAttr {
  public:
@@ -557,11 +558,11 @@ void ResNetBasicBlockGradXPUKernel(
       dev_ctx.x_context(), x_grad_data, z_grad_data, x_grad_data, x->numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
 }
-
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(resnet_basic_block_grad,
                    XPU,
                    ALL_LAYOUT,
-                   phi::ResNetBasicBlockGradXPUKernel,
+                   phi::fusion::ResNetBasicBlockGradXPUKernel,
                    float) {}

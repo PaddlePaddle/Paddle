@@ -510,26 +510,6 @@ void RankAttentionGradInferMeta(const MetaTensor& x,
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx);
 
-void ResnetBasicBlockGradInferMeta(const MetaTensor& x,
-                                   const MetaTensor& filter1,
-                                   const MetaTensor& scale1,
-                                   const MetaTensor& filter2,
-                                   const MetaTensor& scale2,
-                                   const MetaTensor& filter3,
-                                   const MetaTensor& scale3,
-                                   bool has_shortcut,
-                                   MetaTensor* x_grad,
-                                   MetaTensor* filter1_grad,
-                                   MetaTensor* scale1_grad,
-                                   MetaTensor* bias1_grad,
-                                   MetaTensor* filter2_grad,
-                                   MetaTensor* scale2_grad,
-                                   MetaTensor* bias2_grad,
-                                   MetaTensor* filter3_grad,
-                                   MetaTensor* scale3_grad,
-                                   MetaTensor* bias3_grad,
-                                   MetaConfig config = MetaConfig());
-
 void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                 const MetaTensor& x_grad_grad,
                                 MetaTensor* out_grad_grad);

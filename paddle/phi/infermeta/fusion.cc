@@ -5329,4 +5329,217 @@ void ResnetUnitGradInferMeta(const MetaTensor& x,
   }
 }
 
+void ResnetBasicBlockInferMeta(const MetaTensor& x,
+                               const MetaTensor& filter1,
+                               const MetaTensor& scale1,
+                               const MetaTensor& bias1,
+                               const MetaTensor& mean1,
+                               const MetaTensor& var1,
+                               const MetaTensor& filter2,
+                               const MetaTensor& scale2,
+                               const MetaTensor& bias2,
+                               const MetaTensor& mean2,
+                               const MetaTensor& var2,
+                               const MetaTensor& filter3,
+                               const MetaTensor& scale3,
+                               const MetaTensor& bias3,
+                               const MetaTensor& mean3,
+                               const MetaTensor& var3,
+                               int stride1,
+                               int stride2,
+                               int stride3,
+                               int padding1,
+                               int padding2,
+                               int padding3,
+                               int dilation1,
+                               int dilation2,
+                               int dilation3,
+                               int group,
+                               float momentum,
+                               float epsilon,
+                               const std::string& data_format,
+                               bool has_shortcut,
+                               bool use_global_stats,
+                               bool is_test,
+                               bool trainable_statistics,
+                               const std::string& act_type,
+                               bool find_conv_input_max,
+                               MetaTensor* out,
+                               MetaTensor* conv1,
+                               MetaTensor* saved_mean1,
+                               MetaTensor* saved_invstd1,
+                               MetaTensor* mean1_out,
+                               MetaTensor* var1_out,
+                               MetaTensor* conv2,
+                               MetaTensor* conv2_input,
+                               MetaTensor* saved_mean2,
+                               MetaTensor* saved_invstd2,
+                               MetaTensor* mean2_out,
+                               MetaTensor* var2_out,
+                               MetaTensor* conv3,
+                               MetaTensor* saved_mean3,
+                               MetaTensor* saved_invstd3,
+                               MetaTensor* mean3_out,
+                               MetaTensor* var3_out,
+                               MetaTensor* max_input1,
+                               MetaTensor* max_filter1,
+                               MetaTensor* max_input2,
+                               MetaTensor* max_filter2,
+                               MetaTensor* max_input3,
+                               MetaTensor* max_filter3,
+                               MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NCHW",
+      phi::errors::InvalidArgument("The data format must equal to NCHW. "
+                                   "But received: the data format "
+                                   "= [%s]",
+                                   data_format));
+
+  const auto& x1_dims = x.dims();
+  const auto& w1_dims = filter1.dims();
+  const auto& bn1_param_dims = scale1.dims();
+  PADDLE_ENFORCE_EQ(
+      x1_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of input "
+                                   "must equal to 4."
+                                   "But received: the shape of input "
+                                   "= [%s], the dimension of input = "
+                                   "[%d]",
+                                   x1_dims,
+                                   x1_dims.size()));
+
+  // Calculate the dims of output1
+  int batch = x1_dims[0];
+  int output1_channel = w1_dims[0];
+  int filter1_size = w1_dims[2];
+  int out1_h = (x1_dims[2] + padding1 * 2 - filter1_size) / stride1 + 1;
+  int out1_w = (x1_dims[3] + padding1 * 2 - filter1_size) / stride1 + 1;
+  std::vector<int> out1_shape = {batch, output1_channel, out1_h, out1_w};
+
+  const auto& w2_dims = filter2.dims();
+  const auto& bn2_param_dims = scale2.dims();
+  int output2_channel = w2_dims[0];
+  int filter2_size = w2_dims[2];
+  int out2_h = (out1_h + padding2 * 2 - filter2_size) / stride2 + 1;
+  int out2_w = (out1_w + padding2 * 2 - filter2_size) / stride2 + 1;
+  std::vector<int> out2_shape = {batch, output2_channel, out2_h, out2_w};
+
+  auto y_dims = common::make_ddim(out2_shape);
+  auto conv1_dims = common::make_ddim(out1_shape);
+
+  out->set_dims(y_dims);
+  conv1->set_dims(conv1_dims);
+  saved_mean1->set_dims(bn1_param_dims);
+  saved_invstd1->set_dims(bn1_param_dims);
+  mean1_out->set_dims(bn1_param_dims);
+  var1_out->set_dims(bn1_param_dims);
+  conv2->set_dims(y_dims);
+  conv2_input->set_dims(conv1_dims);
+  saved_mean2->set_dims(bn2_param_dims);
+  saved_invstd2->set_dims(bn2_param_dims);
+  mean2_out->set_dims(bn2_param_dims);
+  var2_out->set_dims(bn2_param_dims);
+
+  out->set_dtype(x.dtype());
+  conv1->set_dtype(x.dtype());
+  saved_mean1->set_dtype(DataType::FLOAT32);
+  saved_invstd1->set_dtype(DataType::FLOAT32);
+  mean1_out->set_dtype(DataType::FLOAT32);
+  var1_out->set_dtype(DataType::FLOAT32);
+
+  conv2->set_dtype(x.dtype());
+  conv2_input->set_dtype(x.dtype());
+
+  saved_mean2->set_dtype(DataType::FLOAT32);
+  saved_invstd2->set_dtype(DataType::FLOAT32);
+  mean2_out->set_dtype(DataType::FLOAT32);
+  var2_out->set_dtype(DataType::FLOAT32);
+
+  if (has_shortcut) {
+    conv3->set_dims(y_dims);
+    saved_mean3->set_dims(bn2_param_dims);
+    saved_invstd3->set_dims(bn2_param_dims);
+    mean3_out->set_dims(bn2_param_dims);
+    var3_out->set_dims(bn2_param_dims);
+
+    conv3->set_dtype(x.dtype());
+    saved_mean3->set_dtype(DataType::FLOAT32);
+    saved_invstd3->set_dtype(DataType::FLOAT32);
+    mean3_out->set_dtype(DataType::FLOAT32);
+    var3_out->set_dtype(DataType::FLOAT32);
+  }
+
+  bool find_max = find_conv_input_max;
+  if (find_max) {
+    auto max_dims = common::make_ddim({6});
+    max_input1->set_dims(max_dims);
+    max_filter1->set_dims(max_dims);
+    max_input2->set_dims(max_dims);
+    max_filter2->set_dims(max_dims);
+
+    max_input1->set_dtype(x.dtype());
+    max_filter1->set_dtype(filter1.dtype());
+    max_input2->set_dtype(DataType::FLOAT32);
+    max_filter2->set_dtype(DataType::FLOAT32);
+    if (has_shortcut) {
+      max_input3->set_dims(max_dims);
+      max_filter3->set_dims(max_dims);
+      max_input3->set_dtype(DataType::FLOAT32);
+      max_filter3->set_dtype(DataType::FLOAT32);
+    }
+  }
+}
+
+void ResnetBasicBlockGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& filter1,
+                                   const MetaTensor& scale1,
+                                   const MetaTensor& filter2,
+                                   const MetaTensor& scale2,
+                                   const MetaTensor& filter3,
+                                   const MetaTensor& scale3,
+                                   bool has_shortcut,
+                                   MetaTensor* x_grad,
+                                   MetaTensor* filter1_grad,
+                                   MetaTensor* scale1_grad,
+                                   MetaTensor* bias1_grad,
+                                   MetaTensor* filter2_grad,
+                                   MetaTensor* scale2_grad,
+                                   MetaTensor* bias2_grad,
+                                   MetaTensor* filter3_grad,
+                                   MetaTensor* scale3_grad,
+                                   MetaTensor* bias3_grad,
+                                   MetaConfig config) {
+  const auto& x1_dims = x.dims();
+  const auto& filter1_x_dims = filter1.dims();
+  const auto& param1_dims = scale1.dims();
+  const auto& filter2_x_dims = filter2.dims();
+  const auto& param2_dims = scale2.dims();
+  x_grad->set_dims(x1_dims);
+  filter1_grad->set_dims(filter1_x_dims);
+  scale1_grad->set_dims(param1_dims);
+  bias1_grad->set_dims(param1_dims);
+  filter2_grad->set_dims(filter2_x_dims);
+  scale2_grad->set_dims(param2_dims);
+  bias2_grad->set_dims(param2_dims);
+  x_grad->set_dtype(x.dtype());
+  filter1_grad->set_dtype(x.dtype());
+  filter2_grad->set_dtype(x.dtype());
+  scale1_grad->set_dtype(DataType::FLOAT32);
+  bias1_grad->set_dtype(DataType::FLOAT32);
+  scale2_grad->set_dtype(DataType::FLOAT32);
+  bias2_grad->set_dtype(DataType::FLOAT32);
+  if (has_shortcut) {
+    const auto& filter_z_dims = filter3.dims();
+    filter3_grad->set_dims(filter_z_dims);
+    scale3_grad->set_dims(param2_dims);
+    bias3_grad->set_dims(param2_dims);
+
+    filter3_grad->set_dtype(x.dtype());
+    scale3_grad->set_dtype(DataType::FLOAT32);
+    bias3_grad->set_dtype(DataType::FLOAT32);
+  }
+}
+
 }  // namespace phi
