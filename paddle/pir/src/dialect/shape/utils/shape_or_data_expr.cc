@@ -95,7 +95,7 @@ std::ostream& operator<<(std::ostream& stream,
         }
       },
       [&](const RankedTensorArrayShapeOrDataDimExprs& tensor_array_shape_data) {
-        stream << "TensorArray with first item shape"
+        stream << "TensorArray with shape hint: "
                << tensor_array_shape_data.GetShapeHint();
       },
       [&](const NullShapeOrDataDimExpr& null_shape_data) {

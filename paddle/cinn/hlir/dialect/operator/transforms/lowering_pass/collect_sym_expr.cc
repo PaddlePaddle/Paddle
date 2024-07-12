@@ -74,7 +74,8 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
         }
       },
       [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
-        PADDLE_THROW(phi::errors::Fatal("Dead code"));
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, TensorArray should not be handled in backend."));
         for (const symbol::DimExpr& dim_expr : tensor_array.GetShapeHint()) {
           DoEach(dim_expr);
         }
