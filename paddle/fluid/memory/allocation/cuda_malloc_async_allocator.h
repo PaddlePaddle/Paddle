@@ -38,7 +38,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
  public:
   CUDAMallocAsyncAllocation(void* ptr,
                             size_t size,
-                            platform::Place place,
+                            phi::Place place,
                             gpuStream_t stream)
       : Allocation(ptr, size, place),
         malloc_stream_(stream),
@@ -74,7 +74,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
  public:
   explicit CUDAMallocAsyncAllocator(
       std::shared_ptr<Allocator> underlying_allocator,
-      const platform::CUDAPlace& place,
+      const phi::GPUPlace& place,
       gpuStream_t default_stream);
 
   bool IsAllocThreadSafe() const override;
@@ -84,14 +84,14 @@ class CUDAMallocAsyncAllocator : public Allocator {
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
-  uint64_t ReleaseImpl(const platform::Place& place) override;
+  uint64_t ReleaseImpl(const phi::Place& place) override;
 
  private:
   void ProcessUnfreedAllocations(bool synchronize = false);
   void TryFree(CUDAMallocAsyncAllocation* allocation);
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  platform::CUDAPlace place_;   // Specifies the CUDA device context.
+  phi::GPUPlace place_;         // Specifies the CUDA device context.
   gpuStream_t default_stream_;  // Default stream for memory operations.
   // TODO(eee4017): We may use a single stream to malloc/free to prevent host
   // blocking

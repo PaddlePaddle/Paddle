@@ -48,7 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -120,8 +120,7 @@ class PSGPUWrapper {
      * @Brief get data
      */
     template <typename T>
-    T* mutable_data(const size_t total_bytes,
-                    const paddle::platform::Place& place) {
+    T* mutable_data(const size_t total_bytes, const phi::Place& place) {
       if (buf_ == nullptr) {
         buf_ = memory::AllocShared(place, total_bytes);
       } else if (buf_->size() < total_bytes) {
@@ -169,33 +168,33 @@ class PSGPUWrapper {
     sleep_seconds_before_fail_exit_ = 300;
   }
 
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const std::vector<int>& slot_dim,
                   const int hidden_size);
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place,
+  void PushSparseGrad(const phi::Place& place,
                       const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int batch_size);
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
                 int slot_num,
                 int total_len);
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,

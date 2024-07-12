@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
+
 import numpy as np
 
 import paddle
@@ -26,6 +30,10 @@ from paddle.base.framework import (
 from paddle.common_ops_import import Variable
 from paddle.framework import LayerHelper
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike, ShapeLike
+
 __all__ = []
 
 _int_dtype_ = [
@@ -39,7 +47,7 @@ _int_dtype_ = [
 
 
 @dygraph_only
-def sin(x, name=None):
+def sin(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise sin of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -49,7 +57,7 @@ def sin(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -72,7 +80,7 @@ def sin(x, name=None):
 
 
 @dygraph_only
-def tan(x, name=None):
+def tan(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise tan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -82,7 +90,7 @@ def tan(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -105,7 +113,7 @@ def tan(x, name=None):
 
 
 @dygraph_only
-def asin(x, name=None):
+def asin(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise asin of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -115,7 +123,7 @@ def asin(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -138,7 +146,9 @@ def asin(x, name=None):
 
 
 @dygraph_only
-def transpose(x, perm, name=None):
+def transpose(
+    x: Tensor, perm: Sequence[int], name: str | None = None
+) -> Tensor:
     """
     Changes the perm order of ``x`` without changing its data, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -149,7 +159,7 @@ def transpose(x, perm, name=None):
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
         perm (list|tuple): Permute the input according to the data of perm.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -158,38 +168,47 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('indices overflow')
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.transpose(sparse_x, [1, 0])
             >>> out
-            Tensor(shape=[2, 2], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
                 indices=[[0, 0]],
                 values=[[-2.,  0.],
                         [ 1.,  2.]])
+
     """
     return _C_ops.sparse_transpose(x, perm)
 
 
-def sum(x, axis=None, dtype=None, keepdim=False, name=None):
+def sum(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    dtype: DTypeLike | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the sum of sparse tensor elements over the given dimension, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
-        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+        axis (int|list|tuple|None, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
             the dimension to reduce is :math:`rank + axis[i]`.
-        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+        dtype (str|None, optional): The dtype of output Tensor. The default value is None, the dtype
             of output is the same as input Tensor `x`.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`.
@@ -275,7 +294,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
 
 @dygraph_only
-def atan(x, name=None):
+def atan(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise atan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -285,7 +304,7 @@ def atan(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -308,7 +327,7 @@ def atan(x, name=None):
 
 
 @dygraph_only
-def sinh(x, name=None):
+def sinh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise sinh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -318,7 +337,7 @@ def sinh(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -341,7 +360,7 @@ def sinh(x, name=None):
 
 
 @dygraph_only
-def asinh(x, name=None):
+def asinh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise asinh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -351,7 +370,7 @@ def asinh(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -374,7 +393,7 @@ def asinh(x, name=None):
 
 
 @dygraph_only
-def atanh(x, name=None):
+def atanh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise atanh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -384,7 +403,7 @@ def atanh(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -407,7 +426,7 @@ def atanh(x, name=None):
 
 
 @dygraph_only
-def tanh(x, name=None):
+def tanh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise tanh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -417,7 +436,7 @@ def tanh(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -440,7 +459,7 @@ def tanh(x, name=None):
 
 
 @dygraph_only
-def square(x, name=None):
+def square(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise square of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -450,7 +469,7 @@ def square(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -473,7 +492,7 @@ def square(x, name=None):
 
 
 @dygraph_only
-def sqrt(x, name=None):
+def sqrt(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise sqrt of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -483,7 +502,7 @@ def sqrt(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -506,7 +525,7 @@ def sqrt(x, name=None):
 
 
 @dygraph_only
-def log1p(x, name=None):
+def log1p(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate the natural log of (1+x), requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -516,7 +535,7 @@ def log1p(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -539,7 +558,12 @@ def log1p(x, name=None):
 
 
 @dygraph_only
-def cast(x, index_dtype=None, value_dtype=None, name=None):
+def cast(
+    x: Tensor,
+    index_dtype: DTypeLike | None = None,
+    value_dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     cast non-zero-index of SparseTensor to `index_dtype`, non-zero-element of SparseTensor to
     `value_dtype` , requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -550,7 +574,7 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
             or crows/cols of SparseCsrTensor. Can be uint8, int8, int16, int32, int64.
         value_dtype (np.dtype|str, optional): Data type of the value of SparseCooTensor,
             SparseCsrTensor. Can be bool, float16, float32, float64, int8, int32, int64, uint8.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -577,7 +601,7 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
 
 
 @dygraph_only
-def pow(x, factor, name=None):
+def pow(x: Tensor, factor: float, name: str | None = None) -> Tensor:
     """
     Calculate elementwise pow of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -588,7 +612,7 @@ def pow(x, factor, name=None):
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
         factor (float|int): factor of pow.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -611,7 +635,7 @@ def pow(x, factor, name=None):
 
 
 @dygraph_only
-def neg(x, name=None):
+def neg(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise negative of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -621,7 +645,7 @@ def neg(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -644,7 +668,7 @@ def neg(x, name=None):
 
 
 @dygraph_only
-def abs(x, name=None):
+def abs(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise absolute value of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -654,7 +678,7 @@ def abs(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -677,13 +701,13 @@ def abs(x, name=None):
 
 
 @dygraph_only
-def coalesce(x, name=None):
+def coalesce(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
 
     Parameters:
         x (Tensor): the input SparseCooTensor.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -710,7 +734,7 @@ def coalesce(x, name=None):
 
 
 @dygraph_only
-def rad2deg(x, name=None):
+def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Convert each of the elements of input x from radian to degree,
     requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -721,7 +745,7 @@ def rad2deg(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -746,7 +770,7 @@ def rad2deg(x, name=None):
 
 
 @dygraph_only
-def deg2rad(x, name=None):
+def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Convert each of the elements of input x from degree to radian,
     requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -757,7 +781,7 @@ def deg2rad(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -782,7 +806,7 @@ def deg2rad(x, name=None):
 
 
 @dygraph_only
-def expm1(x, name=None):
+def expm1(x: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate elementwise `exp(x)-1` , requiring x to be a SparseCooTensor or SparseCsrTensor.
 
@@ -792,7 +816,7 @@ def expm1(x, name=None):
 
     Parameters:
         x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -814,7 +838,7 @@ def expm1(x, name=None):
     return _C_ops.sparse_expm1(x)
 
 
-def reshape(x, shape, name=None):
+def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
     Currently this function can only reshape the sparse dims of ``x`` , but ``shape`` argument must be specified
@@ -840,7 +864,7 @@ def reshape(x, shape, name=None):
         x (Tensor): The input sparse tensor with data type ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``.
         shape (list|tuple): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32``.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -901,14 +925,14 @@ def reshape(x, shape, name=None):
         return out
 
 
-def isnan(x, name=None):
+def isnan(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Return whether every element of input tensor is `NaN` or not, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Args:
         x (Tensor): The input tensor (SparseCooTensor or SparseCsrTensor), it's data type should be float16, float32, float64, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Sparse Tensor with the same shape as ``x``,  the bool result which shows every element of `x` whether it is `NaN` or not.
@@ -949,7 +973,13 @@ def isnan(x, name=None):
         return out
 
 
-def slice(x, axes, starts, ends, name=None):
+def slice(
+    x: Tensor,
+    axes: Sequence[int] | Sequence[Tensor] | Tensor,
+    starts: Sequence[int] | Sequence[Tensor] | Tensor,
+    ends: Sequence[int] | Sequence[Tensor] | Tensor,
+    name: str | None = None,
+) -> Tensor:
     """
     This operator produces a slice of ``x`` along multiple axes for sparse tensors.
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
@@ -1033,7 +1063,13 @@ def slice(x, axes, starts, ends, name=None):
         return out
 
 
-def pca_lowrank(x, q=None, center=True, niter=2, name=None):
+def pca_lowrank(
+    x: Tensor,
+    q: int | None = None,
+    center: bool = True,
+    niter: int = 2,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Performs linear Principal Component Analysis (PCA) on a sparse matrix.
 
@@ -1046,11 +1082,11 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         x (Tensor): The input tensor. Its shape should be `[N, M]`,
             N and M can be arbitrary positive number.
             The data type of x should be float32 or float64.
-        q (int, optional): a slightly overestimated rank of :math:`X`.
+        q (int|None, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
         center (bool, optional): if True, center the input tensor.
             Default value is True.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

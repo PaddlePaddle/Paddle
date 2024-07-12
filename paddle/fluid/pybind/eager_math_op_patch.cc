@@ -79,7 +79,7 @@ static bool IsNumpyArray(PyObject* obj) {
 }
 
 void InitTensorWithNumpyValue(const py::object& array,
-                              const paddle::platform::Place& place,
+                              const phi::Place& place,
                               Tensor* self,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
@@ -93,18 +93,16 @@ void InitTensorWithNumpyValue(const py::object& array,
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->impl().get());
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+    SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
-    SetTensorFromPyArray<platform::CustomPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -136,7 +134,7 @@ std::set<phi::DataType> _complex_dtypes{
 //     '__rtruediv__',
 //     '__matmul__',
 
-void SetDevice(paddle::platform::Place place) {
+void SetDevice(phi::Place place) {
   if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);

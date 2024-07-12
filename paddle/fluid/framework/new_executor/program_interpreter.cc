@@ -48,7 +48,7 @@ COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 
-ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
+ProgramInterpreter::ProgramInterpreter(const phi::Place& place,
                                        const BlockDesc& block,
                                        framework::Scope* scope,
                                        const ExecutionConfig& execution_config)
@@ -1408,7 +1408,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       return;
     }
 
-    const platform::Place& place = allocation->place();
+    const phi::Place& place = allocation->place();
     if (platform::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
     } else if (platform::is_cuda_pinned_place(place)) {

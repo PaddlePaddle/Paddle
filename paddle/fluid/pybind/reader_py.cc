@@ -140,7 +140,7 @@ class MultiDeviceFeedReader {
       const std::vector<std::vector<int>> &shapes,
       const std::vector<framework::proto::VarType::Type> &dtypes,
       const std::vector<bool> &need_check_feed,
-      const std::vector<platform::Place> &dst_places,
+      const std::vector<phi::Place> &dst_places,
       bool use_double_buffer,
       bool drop_last,
       bool pin_memory = false)
@@ -153,7 +153,7 @@ class MultiDeviceFeedReader {
         ret_(),
         drop_last_(drop_last),
         pin_memory_(pin_memory) {
-    std::vector<framework::DDim> dims;
+    std::vector<phi::DDim> dims;
     for (auto &shape : shapes) {
       dims.push_back(common::make_ddim(shape));
     }
@@ -496,7 +496,7 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
+         const std::vector<phi::Place> &dst_places,
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory) {
@@ -521,7 +521,7 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
+         const std::vector<phi::Place> &dst_places,
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory) {

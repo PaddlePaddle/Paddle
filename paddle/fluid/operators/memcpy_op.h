@@ -53,7 +53,7 @@ class MemcpyFunctor {
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
       framework::TensorCopy(
-          lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_, &out_tensor);
+          lod_tensor, phi::GPUPinnedPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CUDA) {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);

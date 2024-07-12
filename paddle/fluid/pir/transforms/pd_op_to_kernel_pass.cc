@@ -1100,7 +1100,7 @@ bool SupportsCPUBF16(const std::string& kernel_name) {
               paddle::framework::OpKernelType::Hash>::const_reference
                  kern_pair) {
             return platform::is_cpu_place(kern_pair.first.place_) &&
-                   kern_pair.first.place_ == platform::CPUPlace() &&
+                   kern_pair.first.place_ == phi::CPUPlace() &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::proto::VarType::Type::
                            VarType_Type_BF16;
