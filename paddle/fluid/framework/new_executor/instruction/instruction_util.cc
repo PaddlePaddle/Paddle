@@ -63,7 +63,7 @@ std::vector<int> GetValueIds(pir::Value value,
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::string& execution_stream,
     const int stream_priority) {
   auto& op_attributes = op->attributes();
@@ -143,7 +143,7 @@ platform::DeviceContext* ParseDeviceContext(
   return origin_dev_ctx;
 }
 
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }

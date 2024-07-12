@@ -18,7 +18,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
+ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const phi::Place& p)
     : place_(p) {
   if (platform::is_gpu_place(place_)) {
     buddy_allocator_ = std::make_unique<memory::detail::BuddyAllocator>(

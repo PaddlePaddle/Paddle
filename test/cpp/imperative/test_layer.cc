@@ -355,8 +355,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
   phi::CPUPlace cpu_place;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
   paddle::framework::RuntimeContext ctx({}, {});
   framework::Scope scope;

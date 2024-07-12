@@ -176,8 +176,7 @@ void StreamSafeCustomDeviceAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeCustomDeviceAllocator::ReleaseImpl(
-    const platform::Place& place) {
+uint64_t StreamSafeCustomDeviceAllocator::ReleaseImpl(const phi::Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeCustomDeviceAllocator*>& allocators =
       allocator_map_[place];
@@ -216,7 +215,7 @@ StreamSafeCustomDeviceAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeCustomDeviceAllocation::once_flag_;
 
-std::map<platform::Place, std::vector<StreamSafeCustomDeviceAllocator*>>
+std::map<phi::Place, std::vector<StreamSafeCustomDeviceAllocator*>>
     StreamSafeCustomDeviceAllocator::allocator_map_;
 SpinLock StreamSafeCustomDeviceAllocator::allocator_map_lock_;
 

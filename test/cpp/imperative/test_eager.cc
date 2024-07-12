@@ -89,7 +89,7 @@ TEST(test_var_helper, eager_var_helper) {
       ->mutable_data<float>(phi::CPUPlace());
   egr_tensor2->MutableVar()->GetMutable<framework::LoDRankTable>();
   VLOG(6) << "egr_tensor create with ";
-  ASSERT_TRUE(platform::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));
+  ASSERT_TRUE(phi::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));
   ASSERT_TRUE(GetDataType<egr::EagerVariable>(egr_tensor) ==
               framework::proto::VarType::FP32);
   GetCachedValue<egr::EagerVariable>(egr_tensor,

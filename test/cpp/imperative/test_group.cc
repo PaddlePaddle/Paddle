@@ -93,8 +93,7 @@ void GroupConcatSplit(Place place, size_t size) {
     group.dtype_ = framework::TransToProtoVarType(tensor->dtype());
   }
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
   {  // concat

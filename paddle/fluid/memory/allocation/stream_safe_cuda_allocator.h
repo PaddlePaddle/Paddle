@@ -82,7 +82,7 @@ class StreamSafeCUDAAllocator
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<platform::Place, std::vector<StreamSafeCUDAAllocator *>>
+  static std::map<phi::Place, std::vector<StreamSafeCUDAAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

@@ -58,9 +58,9 @@ static framework::VariableNameMap CreateVarNameMap(
       PADDLE_ENFORCE_EQ(
           var.dispensable(),
           true,
-          platform::errors::NotFound("Variable %s is not dispensable and "
-                                     "there are no such var in inputs",
-                                     var.name()));
+          phi::errors::NotFound("Variable %s is not dispensable and "
+                                "there are no such var in inputs",
+                                var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
@@ -172,8 +172,8 @@ TEST(test_prepare_op, test_prepare_data) {
       gpu_place);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
-      ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<phi::DenseTensor>().place(), gpu_place));
+      ASSERT_TRUE(phi::is_same_place(vb->Var().Get<phi::DenseTensor>().place(),
+                                     gpu_place));
     }
   }
 }
@@ -230,8 +230,8 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
       cpu_place);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
-      ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<phi::DenseTensor>().place(), cpu_place));
+      ASSERT_TRUE(phi::is_same_place(vb->Var().Get<phi::DenseTensor>().place(),
+                                     cpu_place));
     }
   }
 }

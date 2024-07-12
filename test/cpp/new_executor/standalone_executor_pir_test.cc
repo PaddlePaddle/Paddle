@@ -151,7 +151,7 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   phi::DenseTensorMeta meta(
       phi::DataType::FLOAT32, dims, data_layout, lod, offset);
   paddle::platform::DeviceContext* dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(phi::CPUPlace());
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
 
   phi::DenseTensor tensor_x;
   tensor_x.set_meta(meta);

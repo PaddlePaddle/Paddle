@@ -111,8 +111,7 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 }
 
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
-    const std::shared_ptr<imperative::VarBase>& var,
-    const platform::Place& place) {
+    const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place) {
   // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
   // need to add callback, see tensor_utils.cc:245
   auto place_ = phi::is_gpu_place(place) ? place : var->Place();
@@ -131,7 +130,7 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
 }
 
 paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
-    const platform::Place& place) {
+    const phi::Place& place) {
   // if not exists, create a new GarbageCollector at given place
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
@@ -211,7 +210,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameVarMap<VarType>& ins,
                      const NameVarMap<VarType>& outs,
                      framework::AttributeMap attrs,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
@@ -232,7 +231,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          const NameVarMap<VarType>& ins,
                          const NameVarMap<VarType>& outs,
                          framework::AttributeMap& attrs,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          bool trace_backward,
                          const std::map<std::string, std::string>& inplace_map,
                          paddle::framework::AttributeMap* passed_default_attrs_,
@@ -391,7 +390,7 @@ template TEST_API void Tracer::TraceOp<VarBase>(
     const NameVarMap<VarBase>& ins,
     const NameVarMap<VarBase>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map,
     paddle::framework::AttributeMap* default_attrs,
@@ -402,7 +401,7 @@ template void Tracer::TraceOp<egr::EagerVariable>(
     const NameVarMap<egr::EagerVariable>& ins,
     const NameVarMap<egr::EagerVariable>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map_,
     paddle::framework::AttributeMap* default_attrs,
@@ -470,7 +469,7 @@ void Tracer::TraceOp(const std::string& type,
                                     default_attrs,
                                     use_default_attr_map);
 
-    auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     for (auto& iter : need_backup_inputs2outputs) {
       iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.first->set_strides(need_backup_inputs2strides[iter.first]);
@@ -613,7 +612,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
     framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(phi::CPUPlace());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();

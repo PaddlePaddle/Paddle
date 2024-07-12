@@ -219,7 +219,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
 void HeterXpuTrainer::DumpWork(int tid) {}
 
 void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                     const platform::Place& place) {
+                                     const phi::Place& place) {
   CacheProgram(main_program);
   place_ = place;
   auto& profiler = paddle::ps::CostProfiler::instance();
