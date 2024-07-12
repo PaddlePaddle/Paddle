@@ -158,7 +158,7 @@ void InitWhiteListFormEnv() {
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,
-                         const platform::Place& place) {
+                         const phi::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       platform::errors::NotFound(
@@ -234,7 +234,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Scope& scope,
                          const std::string& var_name,
-                         const platform::Place& place) {
+                         const phi::Place& place) {
   auto* var = scope.FindVar(var_name);
   CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
@@ -259,7 +259,7 @@ bool IsSkipOp(const framework::OperatorBase& op) {
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& exec_scope,
-                        const platform::Place& place) {
+                        const phi::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
