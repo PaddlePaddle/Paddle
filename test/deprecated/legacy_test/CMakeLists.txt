@@ -320,13 +320,19 @@ function(bash_test_modules TARGET_NAME)
     set(timeout ${bash_test_modules_TIMEOUT})
   endif()
 
+  string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+  set(FLAGS_PIR_MODE "")
+  if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
+    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+  endif()
+
   if(WITH_COVERAGE)
     add_test(
       NAME ${TARGET_NAME}
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} WITH_COVERAGE=ON
+        ${bash_test_modules_ENVS} WITH_COVERAGE=ON ${FLAGS_PIR_MODE}
         COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -336,7 +342,7 @@ function(bash_test_modules TARGET_NAME)
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} bash
+        ${bash_test_modules_ENVS} ${FLAGS_PIR_MODE} bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
