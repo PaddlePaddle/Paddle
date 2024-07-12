@@ -44,7 +44,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  phi::DenseTensor *input_tensor,
-                                 const platform::Place &place) {
+                                 const phi::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = common::make_ddim(input_data.shape);
   void *input_tensor_ptr = nullptr;
@@ -82,7 +82,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto gpu_place = place;
     memory::Copy(gpu_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length(),
                  dev_ctx->stream());
@@ -96,7 +96,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto xpu_place = place;
     memory::Copy(xpu_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length());
 #else
@@ -111,7 +111,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto custom_place = place;
     memory::Copy(custom_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length(),
                  dev_ctx->stream());
@@ -216,14 +216,13 @@ bool DistModel::Init() {
 
 bool DistModel::PreparePlace() {
   if (config_.place == "GPU") {  // NOLINT
-    place_ = paddle::platform::CUDAPlace(config_.device_id);
+    place_ = phi::GPUPlace(config_.device_id);
   } else if (config_.place == "CPU") {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   } else if (config_.place == "XPU") {
-    place_ = paddle::platform::XPUPlace(config_.device_id);
+    place_ = phi::XPUPlace(config_.device_id);
   } else if (config_.place == "CUSTOM_DEVICE") {
-    place_ =
-        paddle::platform::CustomPlace(config_.device_type, config_.device_id);
+    place_ = phi::CustomPlace(config_.device_type, config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place must be choosen from GPU or CPU or XPU, but got %s.",
