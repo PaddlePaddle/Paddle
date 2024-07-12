@@ -16,7 +16,12 @@ from __future__ import annotations
 import enum
 import math
 import typing
-from typing import TYPE_CHECKING, Sequence
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Sequence,
+    overload,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -123,7 +128,7 @@ class Transform:
     """
     _type = Type.INJECTION
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     @classmethod
@@ -135,9 +140,19 @@ class Transform:
         """
         return Type.is_injective(cls._type)
 
-    def __call__(
-        self, input: Tensor | Distribution | Transform
-    ) -> Tensor | TransformedDistribution | ChainTransform:
+    @overload
+    def __call__(self, input: Tensor) -> Tensor:
+        ...
+
+    @overload
+    def __call__(self, input: Distribution) -> TransformedDistribution:
+        ...
+
+    @overload
+    def __call__(self, input: Transform) -> ChainTransform:
+        ...
+
+    def __call__(self, input) -> Any:
         """Make this instance as a callable object. The return value is
         depending on the input type.
 
@@ -455,8 +470,6 @@ class AffineTransform(Transform):
                     0.)
     """
     _type = Type.BIJECTION
-    loc: Tensor
-    scale: Tensor
 
     def __init__(self, loc: Tensor, scale: Tensor) -> None:
         if not isinstance(
@@ -548,7 +561,6 @@ class ChainTransform(Transform):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [ 0., -1., -2., -3.])
     """
-    transforms: Sequence[Transform]
 
     def __init__(self, transforms: Sequence[Transform]) -> None:
         if not isinstance(transforms, typing.Sequence):
@@ -733,8 +745,6 @@ class IndependentTransform(Transform):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [6. , 15.])
     """
-    base: Transform
-    _reinterpreted_batch_rank: int
 
     def __init__(self, base: Transform, reinterpreted_batch_rank: int) -> None:
         if not isinstance(base, Transform):
@@ -814,7 +824,6 @@ class PowerTransform(Transform):
                     [0.69314718, 1.38629436])
     """
     _type = Type.BIJECTION
-    power: Tensor
 
     def __init__(self, power: Tensor) -> None:
         if not isinstance(
@@ -888,8 +897,6 @@ class ReshapeTransform(Transform):
                 [0.])
     """
     _type = Type.BIJECTION
-    in_event_shape: Sequence[int]
-    out_event_shape: Sequence[int]
 
     def __init__(
         self, in_event_shape: Sequence[int], out_event_shape: Sequence[int]
@@ -1120,7 +1127,6 @@ class StackTransform(Transform):
                      [2.        , 1.38629436],
                      [3.        , 1.79175949]])
     """
-    transforms: Sequence[Transform]
 
     def __init__(self, transforms: Sequence[Transform], axis: int = 0):
         if not transforms or not isinstance(transforms, typing.Sequence):
