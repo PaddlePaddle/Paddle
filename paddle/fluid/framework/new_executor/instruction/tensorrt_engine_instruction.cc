@@ -645,7 +645,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
   VLOG(1) << "trt output [" << output_name << "] dtype is "
           << TRT2PaddleDataType(trt_type);
   buffers[bind_index] = static_cast<void *>(
-      fluid_t->mutable_data(dev_place, TRT2PaddleDataType(trt_type)));
+      dev_ctx_->Alloc(fluid_t, TRT2PaddleDataType(trt_type)));
 }
 
 void TensorRTEngineInstruction::RunTrt() {
