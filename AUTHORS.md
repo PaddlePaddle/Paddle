@@ -43,6 +43,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | [lidanqing](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg) | DanQing Li |
 | lcy-seso | Ying Cao |
 | cjld | Dun Liang |
+| lj970926 | Jin Li |
 | lipeng-unisound | Peng Li |
 | gavin1332 | Yi Liu |
 | liuyuan | Yuan Liu |
