@@ -46,7 +46,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::VOCAB) {
     var->GetMutable<Vocab>();
   } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
+    var->GetMutable<phi::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::RAW) {

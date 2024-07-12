@@ -59,7 +59,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
   switch (place.GetType()) {
     case phi::AllocationType::GPU: {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::CUDAPlace p(place.GetDeviceId());
+      phi::GPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(phi::errors::Unavailable(
@@ -69,7 +69,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
     }
     case phi::AllocationType::GPUPINNED: {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::CUDAPinnedPlace p;
+      phi::GPUPinnedPlace p;
       return visitor(p);
 #else
       PADDLE_THROW(phi::errors::Unavailable(
@@ -79,7 +79,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
     }
     case phi::AllocationType::XPU: {
 #ifdef PADDLE_WITH_XPU
-      platform::XPUPlace p(place.GetDeviceId());
+      phi::XPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(phi::errors::Unavailable(
@@ -89,7 +89,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
     }
     case phi::AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU
-      platform::IPUPlace p(place.GetDeviceId());
+      phi::IPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(phi::errors::Unavailable(
@@ -99,7 +99,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
     }
     case phi::AllocationType::CUSTOM: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      platform::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
+      phi::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(phi::errors::Unavailable(
@@ -107,7 +107,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
 #endif
     }
     default: {
-      platform::CPUPlace p;
+      phi::CPUPlace p;
       return visitor(p);
     }
   }
