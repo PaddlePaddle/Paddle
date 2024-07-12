@@ -3851,7 +3851,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
-  args : (Tensor x, Scalar scale=1.0, Scalar bias=0.0, bool bias_after_scale=true)
+  args : (Tensor x, Scalar(double) scale=1.0, Scalar(double) bias=0.0, bool bias_after_scale=true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
