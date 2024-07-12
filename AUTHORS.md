@@ -127,3 +127,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | [will-jl944](https://github.com/will-jl944) | Jiafeng Lu |
 | [gouzil](https://github.com/gouzil) | Chuan Tian |
 | [skywalker2012](https://github.com/skywalker2012) | Yong Wei |
+| [dynamicheart](https://github.com/dynamicheart) | Jianbang Yang |
