@@ -93,13 +93,13 @@ size_t PlaceHelper::GetDeviceId(const Place &place) {
 
 Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
   if (dev_type == "cpu") {
-    return platform::CPUPlace();
+    return phi::CPUPlace();
   } else if (dev_type == "gpu") {
-    return platform::CUDAPlace(dev_id);
+    return phi::GPUPlace(dev_id);
   } else if (dev_type == "xpu") {
-    return platform::XPUPlace(dev_id);
+    return phi::XPUPlace(dev_id);
   } else {
-    return platform::CustomPlace(dev_type, dev_id);
+    return phi::CustomPlace(dev_type, dev_id);
   }
 }
 #endif

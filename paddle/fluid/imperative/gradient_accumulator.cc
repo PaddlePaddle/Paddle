@@ -79,7 +79,7 @@ static void MoveOrCopyVar(framework::Variable* dst,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void XPUTensorAddFunctor(const platform::Place& place,
+void XPUTensorAddFunctor(const phi::Place& place,
                          const phi::DenseTensor& src,
                          phi::DenseTensor* dst) {
   using XPUType = typename XPUTypeTrait<T>::Type;

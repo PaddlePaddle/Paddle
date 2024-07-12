@@ -74,7 +74,7 @@ class StreamSafeXPUAllocator
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<platform::Place, std::vector<StreamSafeXPUAllocator *>>
+  static std::map<phi::Place, std::vector<StreamSafeXPUAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

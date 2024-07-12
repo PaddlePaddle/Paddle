@@ -631,7 +631,7 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
 phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   phi::Place place;
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
-    place = ::pybind11::handle(obj).cast<platform::Place>();
+    place = ::pybind11::handle(obj).cast<phi::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::GPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
@@ -1036,7 +1036,7 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
   return result;
 }
 
-PyObject* ToPyObject(const platform::Place& value) {
+PyObject* ToPyObject(const phi::Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();

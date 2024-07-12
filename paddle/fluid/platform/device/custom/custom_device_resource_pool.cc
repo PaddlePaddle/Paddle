@@ -86,7 +86,7 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
          ++i) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceStreamResourcePool(
-              paddle::platform::CustomPlace(place.GetDeviceType(), i)));
+              phi::CustomPlace(place.GetDeviceType(), i)));
     }
   }
   PADDLE_ENFORCE_LT(
@@ -184,7 +184,7 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
          ++i) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceEventResourcePool(
-              paddle::platform::CustomPlace(place.GetDeviceType(), i)));
+              phi::CustomPlace(place.GetDeviceType(), i)));
     }
   }
   PADDLE_ENFORCE_LT(
