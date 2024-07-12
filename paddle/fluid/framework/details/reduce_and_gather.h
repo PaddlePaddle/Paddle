@@ -114,8 +114,8 @@ struct ReduceBufferData {
 struct GatherLocalSelectedRowsFunctor {
   GatherLocalSelectedRowsFunctor(
       const std::vector<const phi::SelectedRows *> &src_selected_rows,
-      const std::vector<platform::Place> &in_places,
-      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      const std::vector<phi::Place> &in_places,
+      const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes,
       const phi::Place &out_place,
       phi::SelectedRows *dst_selected_rows)
       : dev_ctxes_(dev_ctxes),
@@ -164,8 +164,8 @@ struct GatherLocalSelectedRowsFunctor {
   }
 
  private:
-  const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes_;
-  std::vector<platform::Place> in_places_;
+  const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes_;
+  std::vector<phi::Place> in_places_;
   std::vector<phi::DenseTensor> in_tensors_;
 
   phi::Place out_place_;

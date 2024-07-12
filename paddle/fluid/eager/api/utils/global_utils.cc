@@ -23,7 +23,7 @@ thread_local std::shared_ptr<paddle::imperative::Tracer> Controller::tracer_ =
 
 Controller& Controller::Instance() { return *controller_; }
 
-void Controller::SetExpectedPlace(const paddle::platform::Place& place) {
+void Controller::SetExpectedPlace(const phi::Place& place) {
   tracer_->SetExpectedPlace(place);
 }
 
