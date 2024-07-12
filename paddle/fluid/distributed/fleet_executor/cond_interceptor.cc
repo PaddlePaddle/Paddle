@@ -80,14 +80,14 @@ bool CondInterceptor::GetCondResult() {
   if (platform::is_gpu_place(cond_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::DenseTensor cpu_tensor;
-    framework::TensorCopy(cond_tensor, platform::CPUPlace(), &cpu_tensor);
+    framework::TensorCopy(cond_tensor, phi::CPUPlace(), &cpu_tensor);
     platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
   } else if (platform::is_custom_place(cond_tensor.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DenseTensor cpu_tensor;
-    framework::TensorCopy(cond_tensor, platform::CPUPlace(), &cpu_tensor);
+    framework::TensorCopy(cond_tensor, phi::CPUPlace(), &cpu_tensor);
     platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
