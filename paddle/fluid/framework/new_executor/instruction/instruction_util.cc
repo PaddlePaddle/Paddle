@@ -60,6 +60,14 @@ std::vector<int> GetValueIds(pir::Value value,
   return ids;
 }
 
+bool IsPir(pir::Operation* op){
+  return true;
+}
+
+bool IsPir(framework::OperatorBase* op){
+  return false;
+}
+
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
@@ -145,7 +153,7 @@ platform::DeviceContext* ParseDeviceContext(
           static_cast<phi::distributed::NCCLCommContext*>(comm_context)
               ->GetDevContext()
               ->SetCommContext(comm_context);
-          if (typeid(op) == typeid(pir::Operation*)) {
+          if(IsPir(op)) {
             return dev_ctx;
           }
         } else {
