@@ -132,7 +132,6 @@
     Tensor (filter3_grad), Tensor (scale3_grad), Tensor (bias3_grad)
   infer_meta:
     func: ResnetBasicBlockGradInferMeta
-    param: [x, filter1, scale1, filter2, scale2, filter3, scale3, has_shortcut]
   kernel:
     func: resnet_basic_block_grad
     data_type: x
