@@ -525,12 +525,13 @@ def paddle_inference_decorator(function=None, **kwargs):
                     )
 
             device_num = paddle.device.get_device()
-            gpu_id = int(device_num.split(':')[1])
-            config.enable_use_gpu(
-                memory_pool_init_size_mb,
-                gpu_id,
-                get_infer_precision(precision_mode),
-            )
+            if 'gpu' in device_num:
+                gpu_id = int(device_num.split(':')[1])
+                config.enable_use_gpu(
+                    memory_pool_init_size_mb,
+                    gpu_id,
+                    get_infer_precision(precision_mode),
+                )
 
             if with_trt:
                 dynamic_names = []
