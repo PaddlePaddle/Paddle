@@ -25,6 +25,20 @@ std::pair<std::string, std::string> getContentSplitByDot(
   return {str.substr(0, pos), str.substr(pos + 1)};
 }
 
+void GetCompressOpName(std::string* op_name) {
+  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
+  *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
+             "." + name.second;
+  return;
+}
+#define DECOMPRESS_DIALECT_ID(name) \
+  pir::DialectIdMap::Instance()->GetDecompressDialectId(name)
+void GetDecompressOpName(std::string* op_name) {
+  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
+  *op_name = DECOMPRESS_DIALECT_ID(name.first) + "." + name.second;
+  return;
+}
+
 DialectIdMap* DialectIdMap::Instance() {
   static DialectIdMap map;
   return &map;

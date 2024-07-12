@@ -5279,6 +5279,7 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
+        check_dtype(index.dtype, "index", ['int32', 'int64'], 'gather_nd')
         return _C_ops.gather_nd(x, index)
     else:
         check_variable_and_dtype(
@@ -5294,10 +5295,10 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
                 'int32',
                 'int64',
             ],
-            'gather_np',
+            'gather_nd',
         )
         check_variable_and_dtype(
-            index, 'index', ['int32', 'int64'], 'gather_np'
+            index, 'index', ['int32', 'int64'], 'gather_nd'
         )
         helper = LayerHelper('gather_nd', **locals())
         dtype = helper.input_dtype()
