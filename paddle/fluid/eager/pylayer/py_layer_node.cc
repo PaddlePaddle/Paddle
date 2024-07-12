@@ -49,7 +49,7 @@ GradNodePyLayer::operator()(
 
   PADDLE_ENFORCE_EQ(ctx->forward_output_tensor_is_duplicable.size(),
                     grads.size(),
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "%s's grad input size(%s) must be equal with it's "
                         "forward's output size(%s).",
                         name(),
@@ -149,16 +149,15 @@ GradNodePyLayer::operator()(
   auto backward_fn =
       PyObject_GetAttrString(reinterpret_cast<PyObject*>(ctx), "backward");
   if (!backward_fn) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get backward function failed."));
+    PADDLE_THROW(phi::errors::InvalidArgument("Get backward function failed."));
   }
   bool need_grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(create_graph && need_grad_tmp);
   auto outputs = PyObject_CallObject(backward_fn, backward_args);
   egr::Controller::Instance().SetHasGrad(need_grad_tmp);
   if (!outputs) {
-    PADDLE_THROW(paddle::platform::errors::External(
-        pybind11::detail::error_string().c_str()));
+    PADDLE_THROW(
+        phi::errors::External(pybind11::detail::error_string().c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";
@@ -175,7 +174,7 @@ GradNodePyLayer::operator()(
   size_t outputs_size = PyTuple_GET_SIZE(outputs_tuple);
 
   if (outputs_size > ctx->forward_input_tensor_is_duplicable.size()) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The number of outputs of `PyLayer.backward` should be %d, but "
         "received %d.",
         ctx->forward_input_tensor_is_duplicable.size(),
@@ -192,7 +191,7 @@ GradNodePyLayer::operator()(
         PADDLE_ENFORCE_EQ(
             obj,
             Py_None,
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "%s's backward function should return None at %d position, "
                 "because it's forward Tensor's stopgradient is true.",
                 name(),
@@ -221,7 +220,7 @@ GradNodePyLayer::operator()(
       PADDLE_ENFORCE_EQ(
           this->OutputMeta()[i][0].IsStopGradient(),
           true,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "%s's backward function should not return empty at %d position.",
               name(),
               i));
