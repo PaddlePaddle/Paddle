@@ -14,14 +14,13 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
-    string(FIND "${TARGET_NAME}" ".*_deprecated$" DEPRECATED_TARGET_NAME)
-    string(FIND "${py_test_modules_MODULES}" ".*_deprecated\.py$"
-                DEPRECATED_MODULES)
-
-    set(FLAGS_PIR_MODE "")
-    if((NOT DEPRECATED_TARGET_NAME EQUAL -1) OR (NOT DEPRECATED_MODULES EQUAL -1
-                                                ))
-      set(FLAGS_PIR_MODE "FLAGS_enable_pir_api=0")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_MODULES
+                 "${py_test_modules_MODULES}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=1)
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
     endif()
 
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
@@ -51,6 +50,8 @@ function(py_test_modules TARGET_NAME)
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     endif()
+    set_tests_properties(${TARGET_NAME} PROPERTIES ENVIRONMENT
+                                                   ${FLAGS_PIR_MODE})
   endif()
 endfunction()
 

@@ -696,6 +696,14 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 set CUDA_VISIBLE_DEVICES=0
+@REM python %work_dir%\paddle\scripts\installation_validate.py
+@REM goto:eof
+
+@REM :test_whl_pacakage_error
+@REM ::echo 1 > %cache_dir%\error_code.txt
+@REM ::type %cache_dir%\error_code.txt
+@REM echo Test import paddle failed, will exit!
+@REM exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :test_unit
