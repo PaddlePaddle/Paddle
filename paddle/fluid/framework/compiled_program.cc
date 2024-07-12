@@ -55,7 +55,7 @@ static std::unordered_set<std::string> ReaderOpSet() {
 
 class CompiledProgramPrivate {
  public:
-  CompiledProgramPrivate(const std::vector<platform::Place> &places,
+  CompiledProgramPrivate(const std::vector<phi::Place> &places,
                          Scope *global_scope)
       : places_(places), global_scope_(global_scope) {}
 
@@ -314,7 +314,7 @@ class CompiledProgramPrivate {
 #endif
 
   BuildStrategy build_strategy_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
 
@@ -497,7 +497,7 @@ std::vector<Scope *> &CompiledProgram::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
-void InitP2P(const std::vector<platform::Place> &places) {
+void InitP2P(const std::vector<phi::Place> &places) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::call_once(p2p_init_flag, [&]() {
     int count = places.size();
@@ -541,7 +541,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
 #endif
 }
 
-CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
+CompiledProgram::CompiledProgram(const std::vector<phi::Place> &places,
                                  const std::vector<std::string> &bcast_vars,
                                  const std::string &loss_var_name,
                                  Scope *scope,

@@ -107,8 +107,7 @@ void BasicEngine::Init(
     VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
             << " as stop_gradient false";
     var->GradVarBase()->InnerSetOverriddenStopGradient(false);
-    auto* dev_ctx =
-        platform::DeviceContextPool::Instance().Get(fwd_var.place());
+    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(fwd_var.place());
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
@@ -158,7 +157,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       if (tensor && !tensor->IsInitialized()) {
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(op.place());
         // NOTE(zhiqiu): since grad variable is ungenerated, so the dtype is not
         // correct. var->DataType() returns the default dtype, which is float32.
         // Here, we use the type of the corresponding forward datatype.

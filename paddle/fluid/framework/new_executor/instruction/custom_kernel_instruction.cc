@@ -350,7 +350,7 @@ void CustomKernelInstruction::BuildCustomContext(
 
 CustomKernelInstruction::CustomKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
     : InstructionBase(id, place),

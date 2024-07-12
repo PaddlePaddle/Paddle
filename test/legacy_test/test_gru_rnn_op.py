@@ -22,8 +22,10 @@ from op_test import OpTest
 import paddle
 from paddle.base import core
 
-sys.path.append("../../rnn")
+sys.path.append("../deprecated/rnn")
 from convert import get_params_for_net
+
+sys.path.append("../rnn")
 from rnn_numpy import GRU
 
 random.seed(2)

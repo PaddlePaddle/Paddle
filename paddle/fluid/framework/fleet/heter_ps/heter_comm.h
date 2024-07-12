@@ -26,7 +26,7 @@ limitations under the License. */
 #elif defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
 #include "paddle/fluid/framework/barrier.h"
