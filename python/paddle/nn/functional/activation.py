@@ -1299,11 +1299,7 @@ def softmax_(
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    outs_cast = (
-        x
-        if dtype is None
-        else _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-    )
+    outs_cast = x if dtype is None else _C_ops.cast(x, x.dtype, dtype)
     return _C_ops.softmax_(outs_cast, axis)
 
 
