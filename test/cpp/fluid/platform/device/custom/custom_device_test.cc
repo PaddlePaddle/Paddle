@@ -56,12 +56,12 @@ void InitDevice() {
   }
   EXPECT_GT(static_cast<int>(places.size()), 0);
 
-  paddle::platform::DeviceContextPool::Init(places);
+  phi::DeviceContextPool::Init(places);
 }
 
 void TestDeviceInterface(const phi::Place& place) {
   std::cout << "TestDeviceInterface on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
     auto device = phi::DeviceManager::GetDeviceWithPlace(place);
     auto dev_type = phi::PlaceHelper::GetDeviceType(place);
     auto p1 =
@@ -110,7 +110,7 @@ void TestTensorShareDataWith(const phi::Place& place) {
 
 void TestTensorUtils(const phi::Place& place) {
   std::cout << "TestTensorUtils on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place) == false) {
+  if (phi::is_custom_place(place) == false) {
     return;
   }
   phi::DenseTensor src_tensor;
@@ -171,7 +171,7 @@ void TestTensorUtils(const phi::Place& place) {
 
 void TestCustomCCL(const phi::Place& place) {
   std::cout << "TestCustomCCL on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place) == false) {
+  if (phi::is_custom_place(place) == false) {
     return;
   }
   std::string dev_type = place.GetDeviceType();
