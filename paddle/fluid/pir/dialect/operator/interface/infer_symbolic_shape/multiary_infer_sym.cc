@@ -25,8 +25,6 @@ bool AccuracyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &out_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &indices_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const symbol::ShapeOrDataDimExprs &label_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
