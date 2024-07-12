@@ -78,6 +78,7 @@ USE_PIR_PASS(operator_reshape_onednn_fuse_pass);
 USE_PIR_PASS(onednn_placement_pass);
 USE_PIR_PASS(conv2d_transpose_bn_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_bn_fuse_pass);
+USE_PIR_PASS(matmul_reshape_add_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU

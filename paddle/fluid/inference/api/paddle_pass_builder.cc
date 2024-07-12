@@ -648,6 +648,7 @@ const std::vector<std::string> kPirMkldnnPasses {
       "matmul_scale_fuse_pass",                   //
       "scale_matmul_fuse_pass",                   //
       "reshape_transpose_matmul_fuse_pass",       //
+      "matmul_reshape_add_pass",                  //
       "matmul_transpose_reshape_fuse_pass",       //
       "matmul_add_act_fuse_pass",                 //
       "fc_onednn_enable_pass",                    //
