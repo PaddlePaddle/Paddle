@@ -26,6 +26,7 @@ import warnings
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
+from pathlib import Path
 from types import ModuleType
 from typing import (
     TYPE_CHECKING,
@@ -234,7 +235,9 @@ def paddle_inference_decorator(function=None, **kwargs):
 
         memory_pool_init_size_mb = kwargs.get("memory_pool_init_size_mb", 1000)
         cache_static_model = kwargs.get("cache_static_model", False)
-        save_model_dir = kwargs.get("save_model_dir", "/root/.cache/")
+        save_model_dir = kwargs.get(
+            "save_model_dir", os.path.join(Path.home(), ".cache")
+        )
         save_model_dir += "/" + func.__name__
         precision_mode = kwargs.get("precision_mode", "float32")
         switch_ir_optim = kwargs.get("switch_ir_optim", True)
