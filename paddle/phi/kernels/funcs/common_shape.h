@@ -215,11 +215,13 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
     int64_t s = s_dims[i];
     int64_t l = l_dims[j];
     if (s != l) {
-      if (s == -1 || l == -1) {
-        shapes[j] = std::max(s, l);
-      } else if (l == 1) {
+      if (l == 1) {
         shapes[j] = s;
-      } else if (s != 1) {
+      } else if (s == 1 || s == -1) {
+        shapes[j] = l;
+      }else if(l == -1){
+        shapes[j] = s;
+      } else {
         PADDLE_THROW(errors::InvalidArgument(
             "The shape of tensor a %s:%d must match shape of tensor b "
             "%s:%d.",
