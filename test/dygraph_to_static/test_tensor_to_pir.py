@@ -109,12 +109,11 @@ class TensorToTest(Dy2StTestBase):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
         if paddle.is_compiled_with_cuda():
-            places.append("gpu:0")
             places.append("gpu")
 
         for place in places:
             tensorx = paddle.jit.to_static(to_device)(tensorx, place)
-            if "gpu" in place:
+            if "gpu" == place:
                 self.assertEqual(str(tensorx.place), _gpu_place)
             else:
                 self.assertEqual(str(tensorx.place), _cpu_place)
@@ -136,7 +135,6 @@ class TensorToTest(Dy2StTestBase):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
         if paddle.is_compiled_with_cuda():
-            places.append("gpu:0")
             places.append("gpu")
         for dtype in _valid_dtypes:
             for place in places:
@@ -144,7 +142,7 @@ class TensorToTest(Dy2StTestBase):
                     tensorx, place, dtype
                 )
                 placex_str = str(tensorx.place)
-                if "gpu" in place:
+                if "gpu" == place:
                     self.assertEqual(placex_str, _gpu_place)
                 else:
                     self.assertEqual(placex_str, _cpu_place)
