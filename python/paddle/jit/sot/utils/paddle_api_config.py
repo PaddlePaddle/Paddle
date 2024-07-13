@@ -35,6 +35,8 @@ def get_value_methods():
         member_name
         for member_name, member in inspect.getmembers(paddle.pir.Value)
         if inspect.isfunction(member)
+        or inspect.ismethoddescriptor(member)
+        or inspect.isdatadescriptor(member)
     ]
 
 
