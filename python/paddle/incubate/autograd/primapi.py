@@ -12,17 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 import typing
+from typing import TYPE_CHECKING, Sequence, TypeVar
 
 import paddle
 from paddle.base import backward, core, framework
 from paddle.base.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.framework import Block
+
+    _T_TensorOrTensors = TypeVar("_T_TensorOrTensors", Tensor, Sequence[Tensor])
+
 
 @framework.static_only
-def forward_grad(outputs, inputs, grad_inputs=None):
+def forward_grad(
+    outputs: _T_TensorOrTensors,
+    inputs: _T_TensorOrTensors,
+    grad_inputs: _T_TensorOrTensors | None = None,
+) -> _T_TensorOrTensors:
     """Forward mode of automatic differentiation.
 
     Note:
@@ -113,7 +126,11 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
 
 @framework.static_only
-def grad(outputs, inputs, grad_outputs=None):
+def grad(
+    outputs: _T_TensorOrTensors,
+    inputs: _T_TensorOrTensors,
+    grad_outputs: _T_TensorOrTensors | None = None,
+) -> _T_TensorOrTensors:
     """Reverse mode of automatic differentiation.
 
     Note:
@@ -234,12 +251,12 @@ def grad(outputs, inputs, grad_outputs=None):
 
 @framework.static_only
 def to_prim(
-    blocks,
-    blacklist=frozenset(),
-    whitelist=frozenset(),
-    start_idx=-1,
-    backward_length=-1,
-):
+    blocks: Block | Sequence[Block],
+    blacklist: set | frozenset = frozenset(),
+    whitelist: set | frozenset = frozenset(),
+    start_idx: int = -1,
+    backward_length: int = -1,
+) -> None:
     """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
     The operators in blacklist will be excluded from program when lowering into primitives, and only the
     operators in whitelist will be lowering. The priority of blacklist is higher than whitelist, it means
