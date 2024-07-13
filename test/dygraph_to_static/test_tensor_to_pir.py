@@ -95,7 +95,7 @@ def to_invalid_key_error(tensorx, device, dtype, test_key):
 
 class TensorToTest(Dy2StTestBase):
     @test_pir_only
-    def test_Tensor_to_dtype(self):
+    def test_tensor_to_dtype(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         for dtype in _valid_dtypes:
             t = paddle.jit.to_static(to_dtype)(tensorx, dtype)
@@ -103,7 +103,7 @@ class TensorToTest(Dy2StTestBase):
             self.assertEqual(typex_str, "paddle." + dtype)
 
     @test_pir_only
-    def test_Tensor_to_device(self):
+    def test_tensor_to_device(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
         if paddle.is_compiled_with_cuda():
@@ -118,7 +118,7 @@ class TensorToTest(Dy2StTestBase):
                 self.assertEqual(str(tensorx.place), _cpu_place)
 
     @test_pir_only
-    def test_Tensor_to_device2(self):
+    def test_tensor_to_device2(self):
         if paddle.is_compiled_with_cuda():
             x = paddle.to_tensor([1, 2, 3], place="gpu")
         else:
@@ -130,7 +130,7 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(str(x.place), str(y.place))
 
     @test_pir_only
-    def test_Tensor_to_device_dtype(self):
+    def test_tensor_to_device_dtype(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
         if paddle.is_compiled_with_cuda():
@@ -150,7 +150,7 @@ class TensorToTest(Dy2StTestBase):
                 self.assertEqual(typex_str, "paddle." + dtype)
 
     @test_pir_only
-    def test_Tensor_to_blocking(self):
+    def test_tensor_to_blocking(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         tensorx = paddle.jit.to_static(to_device_dtype_blocking)(
             tensorx, "cpu", "int32", False
@@ -170,7 +170,7 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(tensor2.dtype, paddle.float16)
 
     @test_pir_only
-    def test_Tensor_to_other(self):
+    def test_tensor_to_other(self):
         tensor1 = paddle.to_tensor([1, 2, 3], dtype="int8", place="cpu")
         tensor2 = paddle.to_tensor([1, 2, 3])
         tensor2 = paddle.jit.to_static(to_other)(tensor2, tensor1)
@@ -197,21 +197,21 @@ class TensorToTest(Dy2StTestBase):
     def test_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         # device value error
-        try:
-            tensorx = paddle.jit.to_static(to_device)(tensorx, "error_device")
-        except Exception as error:
-            self.assertTrue(
-                "The device must be a string which is like" in str(error)
-            )
+        with self.assertRaises(ValueError) as context1:
+            paddle.jit.to_static(to_device)(tensorx, "error_device")
+        self.assertTrue(
+            "The device must be a string which is like"
+            in str(context1.exception)
+        )
         # invalid key error
-        try:
-            tensorx = paddle.jit.to_static(to_invalid_key_error)(
+        with self.assertRaises(TypeError) as context2:
+            paddle.jit.to_static(to_invalid_key_error)(
                 tensorx, "cpu", "int32", test_key=False
             )
-        except Exception as error:
-            self.assertTrue(
-                "to() got an unexpected keyword argument" in str(error)
-            )
+        self.assertTrue(
+            "to() got an unexpected keyword argument 'test_key'"
+            in str(context2.exception)
+        )
 
 
 if __name__ == '__main__':

@@ -271,9 +271,11 @@ class TensorFunctionVariable(FunctionVariable):
         self, method_name: str, graph: FunctionGraph, tracker: Tracker
     ):
         fn = getattr(
-            paddle.pir.Value
-            if paddle.framework.use_pir_api()
-            else paddle.static.Variable,
+            (
+                paddle.pir.Value
+                if paddle.framework.use_pir_api()
+                else paddle.static.Variable
+            ),
             method_name,
         )
         super().__init__(fn, graph, tracker)
