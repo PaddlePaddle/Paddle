@@ -45,7 +45,7 @@ namespace paddle {
 namespace framework {
 
 IfInstruction::IfInstruction(size_t id,
-                             const platform::Place& place,
+                             const phi::Place& place,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)
@@ -229,7 +229,7 @@ void IfInstruction::Run() {
       DeviceContext().Wait();
       phi::DenseTensor cpu_cond;
       paddle::framework::TensorCopySync(
-          cond_tensor, platform::CPUPlace(), &cpu_cond);
+          cond_tensor, phi::CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(

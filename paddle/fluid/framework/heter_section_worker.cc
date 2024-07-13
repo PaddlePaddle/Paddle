@@ -25,7 +25,7 @@ namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
                 platform::DeviceContext* dev_ctx,
-                const platform::Place& place,
+                const phi::Place& place,
                 int micro_id) {
   // create microbatch_id variable
   // and set micro id value
@@ -53,7 +53,7 @@ void SetMicroId(paddle::framework::Scope* scope,
     memory::Copy(
         place,
         tensor_data,
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         reinterpret_cast<void*>(temp_ptr),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
@@ -324,7 +324,7 @@ void HeterSectionWorker::CreateMicrobatchScopes() {
 
 void HeterSectionWorker::CopyParameters(int microbatch_id,
                                         const ProgramDesc& program,
-                                        const platform::Place& place) {
+                                        const phi::Place& place) {
   auto& global_block = program.Block(0);
   auto var_list = global_block.AllVars();
   if (program.Size() > 1) {

@@ -28,24 +28,23 @@ namespace egr {
 
 TEST(TensorUtils, Test) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        true /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       true /*is_leaf*/);
 
   paddle::Tensor t_grad =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,

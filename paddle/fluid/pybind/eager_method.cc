@@ -76,7 +76,7 @@ namespace paddle::pybind {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
-                                     const paddle::platform::Place& place,
+                                     const phi::Place& place,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
@@ -154,8 +154,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   EAGER_TRY
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -174,8 +174,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto tensor_dims = self->tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
-  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+  Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+  Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (self->tensor.is_dense_tensor()) {
@@ -225,11 +225,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   phi::DenseTensor cpu_tensor;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -356,7 +356,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #endif
 #if defined(PADDLE_WITH_XPU)
   } else if (self->tensor.is_xpu()) {
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -468,8 +468,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
     VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
                "numpy array.";
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -562,7 +562,7 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
 }
 
 static void IncreaseTensorReferenceCountUntilCopyComplete(
-    const paddle::Tensor& tensor, const platform::Place& place) {
+    const paddle::Tensor& tensor, const phi::Place& place) {
   auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
 
   auto tracer = egr::Controller::Instance().GetCurrentTracer();
@@ -892,7 +892,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         }
         if (set_to_zero) {
           auto* dev_ctx =
-              platform::DeviceContextPool::Instance().Get(grad_t->place());
+              phi::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
           if (is_leaf) {
             std::static_pointer_cast<egr::GradNodeAccumulation>(
@@ -937,7 +937,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
           t = static_cast<phi::distributed::DistTensor*>(grad->impl().get())
                   ->unsafe_mutable_value();
         }
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
         grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
@@ -957,7 +957,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
                   meta->MutableGrad()->impl().get())
                   ->unsafe_mutable_value();
         }
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
         meta->MutableGrad()->set_impl(
@@ -1614,8 +1614,8 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   if (tensor.dtype() == proto_type) {                                        \
     auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];    /* NOLINT */  \
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank]; /* NOLINT */  \
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];    /* NOLINT */                \
+    Py_intptr_t py_strides[phi::DDim::kMaxRank]; /* NOLINT */                \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
@@ -1912,6 +1912,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           }
           grad_node->SetGradInMeta(self->tensor, 0);
         }
+      } else {
+        self->tensor.set_autograd_meta(
+            transed_sub_tensor.mutable_autograd_meta());
       }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
@@ -2892,9 +2895,9 @@ static PyObject* tensor_method__share_memory(TensorObject* self,
   const std::string& ipc_name = shared_writer_holder->ipc_name();
   memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
   // 4. copy data & reset holder
-  memory::Copy(platform::CPUPlace(),
+  memory::Copy(phi::CPUPlace(),
                shared_writer_holder->ptr(),
-               platform::CPUPlace(),
+               phi::CPUPlace(),
                data_ptr,
                data_size);
   t->ResetHolder(shared_writer_holder);

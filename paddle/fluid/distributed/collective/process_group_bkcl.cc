@@ -57,7 +57,7 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
     // for xpu (for now), so all we can do is sync whatever stream that we know
     // and hope for the best. Note that for correctness the communication stream
     // needs to be in sync mode.
-    platform::XPUDeviceGuard guard(place_.GetDeviceId());
+    phi::backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     xpu_wait();
     calc_ctx->Wait();
   }
@@ -192,7 +192,7 @@ void ProcessGroupBKCL::BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id) {
 
 void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
                                           const std::string& place_key) {
-  platform::XPUDeviceGuard guard(place.GetDeviceId());
+  phi::backends::xpu::XPUDeviceGuard guard(place.GetDeviceId());
 
   VLOG(3) << "init bkcl rank: " << rank_ << ", nranks: " << size_
           << ", place: " << place_key;
@@ -245,7 +245,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
-  platform::XPUDeviceGuard xpu_guard(place);
+  phi::backends::xpu::XPUDeviceGuard xpu_guard(place);
 
   if (!calc_event_ ||
       (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end())) {
@@ -302,7 +302,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
   int p2p_target_rank = peer;
   std::string key = GetKeyFromPlace(place);
 
-  platform::XPUDeviceGuard xpu_guard(place);
+  phi::backends::xpu::XPUDeviceGuard xpu_guard(place);
 
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
     CreateBKCLEnvCache(place, key);
@@ -509,7 +509,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
                     0,
                     phi::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
-  platform::XPUPlace place(opts.device_id);
+  phi::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});

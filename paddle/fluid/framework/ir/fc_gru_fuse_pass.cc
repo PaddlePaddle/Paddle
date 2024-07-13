@@ -237,7 +237,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
               "GRU and FC biases have to have equal number of elements."));
 
       auto gru_bias_data =
-          gru_bias_tensor->mutable_data<float>(platform::CPUPlace());
+          gru_bias_tensor->mutable_data<float>(phi::CPUPlace());
       auto* fc_bias_data = fc_bias_tensor->data<float>();
 
       // Recompute GRU bias

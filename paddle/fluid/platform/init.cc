@@ -32,8 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -115,20 +115,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                      \
-  {                                                                    \
-    PADDLE_ENFORCE_EQ(                                                 \
-        !platform::dynload::cuptiActivityGetAttribute(                 \
-            attr, &attrValueSize, &attrValue),                         \
-        true,                                                          \
-        platform::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                  \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";          \
-    PADDLE_ENFORCE_EQ(                                                 \
-        !platform::dynload::cuptiActivitySetAttribute(                 \
-            attr, &attrValueSize, &attrValue),                         \
-        true,                                                          \
-        platform::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                 \
+  {                                                               \
+    PADDLE_ENFORCE_EQ(                                            \
+        !platform::dynload::cuptiActivityGetAttribute(            \
+            attr, &attrValueSize, &attrValue),                    \
+        true,                                                     \
+        phi::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
+    PADDLE_ENFORCE_EQ(                                            \
+        !platform::dynload::cuptiActivitySetAttribute(            \
+            attr, &attrValueSize, &attrValue),                    \
+        true,                                                     \
+        phi::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -148,7 +148,7 @@ void LoadCustomDevice(const std::string &library_dir) {
     auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Fail to open library: %s with error: %s", lib_path, dlerror()));
 
     phi::LoadCustomRuntimeLib(lib_path, dso_handle);
@@ -202,7 +202,7 @@ void InitDevices() {
 }
 
 void InitDevices(const std::vector<int> devices) {
-  std::vector<platform::Place> places;
+  std::vector<phi::Place> places;
 
   for (auto device : devices) {
     // In multi process multi gpu mode, we may have gpuid = 7
@@ -213,18 +213,18 @@ void InitDevices(const std::vector<int> devices) {
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    places.emplace_back(platform::CUDAPlace(device));
+    places.emplace_back(phi::GPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
-    places.emplace_back(platform::XPUPlace(device));
+    places.emplace_back(phi::XPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_IPU
-    places.emplace_back(platform::IPUPlace(device));
+    places.emplace_back(phi::IPUPlace(device));
 #endif
   }
-  places.emplace_back(platform::CPUPlace());
+  places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  places.emplace_back(platform::CUDAPinnedPlace());
+  places.emplace_back(phi::GPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
@@ -242,7 +242,7 @@ void InitDevices(const std::vector<int> devices) {
         LOG(INFO) << "CustomDevice: " << dev_type
                   << ", visible devices count: " << device_list.size();
         for (auto &dev_id : device_list) {
-          places.push_back(platform::CustomPlace(dev_type, dev_id));
+          places.push_back(phi::CustomPlace(dev_type, dev_id));
         }
       }
     } else {
@@ -250,7 +250,7 @@ void InitDevices(const std::vector<int> devices) {
     }
   }
 #endif
-  platform::DeviceContextPool::Init(places);
+  phi::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_DNNL
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -324,9 +324,8 @@ void SignalHandle(const char *data, int size) {
 
       sout << "\n----------------------\nError Message "
               "Summary:\n----------------------\n";
-      sout << platform::errors::Fatal(
-                  "`%s` is detected by the operating system.",
-                  ParseSignalErrorString(signal_info))
+      sout << phi::errors::Fatal("`%s` is detected by the operating system.",
+                                 ParseSignalErrorString(signal_info))
                   .to_string();
       std::cout << sout.str() << (*signal_msg_dumper_ptr).str() << std::endl;
     }

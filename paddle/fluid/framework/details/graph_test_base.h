@@ -38,8 +38,7 @@ class DummyOp : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {}
 };
 
 class SumOpMaker : public OpProtoAndCheckerMaker {

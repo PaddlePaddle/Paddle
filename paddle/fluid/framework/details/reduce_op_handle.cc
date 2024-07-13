@@ -37,7 +37,7 @@ static inline std::string GetRemoteVarName(const std::string &var_name,
 }
 
 void ReduceOpHandle::Wait(
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes) {
+    const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes) {
   // TODO(gongwb): use event wait?
   for (auto &dev_ctx : dev_ctxes) {
     dev_ctx.second->Wait();
@@ -86,7 +86,7 @@ void ReduceOpHandle::RunImpl() {
                                  in_0_handle->name()));
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
-  std::vector<platform::Place> in_places;  // used to get dev_ctx
+  std::vector<phi::Place> in_places;  // used to get dev_ctx
   for (auto *in_handle : in_var_handles) {
     in_places.emplace_back(in_handle->place());
     auto in_var =
@@ -111,7 +111,7 @@ void ReduceOpHandle::RunImpl() {
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
-  platform::Place t_out_p;
+  phi::Place t_out_p;
   if (platform::is_gpu_place(in_p)) {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()),
                       true,
@@ -119,7 +119,7 @@ void ReduceOpHandle::RunImpl() {
                           "Places of input and output must be all on GPU."));
     t_out_p = out_var_handle->place();
   } else {
-    t_out_p = platform::CPUPlace();
+    t_out_p = phi::CPUPlace();
   }
 
   if (pre_in_var->IsType<phi::SelectedRows>()) {
@@ -175,7 +175,7 @@ void ReduceOpHandle::RunImpl() {
 
           auto trg = out_var->GetMutable<phi::DenseTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
-            TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+            TensorCopy(reduce_sum_trg, phi::CPUPlace(), trg);
           }
         }
       });

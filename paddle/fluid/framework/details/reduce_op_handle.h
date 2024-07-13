@@ -77,13 +77,13 @@ struct CollectiveContext {
 
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(ir::Node *node,
                  const std::vector<Scope *> &local_scopes,
-                 const std::vector<platform::Place> &places,
+                 const std::vector<phi::Place> &places,
                  const platform::NCCLContextMap *nccl_ctxs)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
@@ -91,7 +91,7 @@ struct ReduceOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+        this->SetDeviceContext(phi::GPUPlace(p_ctx.first),
                                p_ctx.second.ctx_.get());
       }
     }
@@ -100,7 +100,7 @@ struct ReduceOpHandle : public OpHandleBase {
   const platform::BKCLContextMap *bkcl_ctxs_;
   ReduceOpHandle(ir::Node *node,
                  const std::vector<Scope *> &local_scopes,
-                 const std::vector<platform::Place> &places,
+                 const std::vector<phi::Place> &places,
                  const platform::BKCLContextMap *bkcl_ctxs)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
@@ -108,7 +108,7 @@ struct ReduceOpHandle : public OpHandleBase {
         bkcl_ctxs_(bkcl_ctxs) {
     if (bkcl_ctxs_) {
       for (auto &p_ctx : bkcl_ctxs_->contexts_) {
-        this->SetDeviceContext(platform::XPUPlace(p_ctx.first),
+        this->SetDeviceContext(phi::XPUPlace(p_ctx.first),
                                p_ctx.second.ctx_.get());
       }
     }
@@ -116,7 +116,7 @@ struct ReduceOpHandle : public OpHandleBase {
 #else
   ReduceOpHandle(ir::Node *node,
                  const std::vector<Scope *> &local_scopes,
-                 const std::vector<platform::Place> &places)
+                 const std::vector<phi::Place> &places)
       : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
@@ -134,15 +134,14 @@ struct ReduceOpHandle : public OpHandleBase {
   template <typename DevCtx, typename DataType>
   void GatherSelectedRows(
       const std::vector<const phi::SelectedRows *> &src_selecte_rows_,
-      const std::vector<platform::Place> &in_places,
-      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      const std::vector<phi::Place> &in_places,
+      const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle,
-      const platform::Place &out_place,
+      const phi::Place &out_place,
       phi::SelectedRows *dst_selecte_rows);
 #endif
 
-  void Wait(
-      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
+  void Wait(const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes);
 
   template <typename T>
   std::vector<const T *> GetInputValues(

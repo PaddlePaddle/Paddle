@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
@@ -56,8 +56,8 @@ std::vector<int> GetXPUSelectedDevices() {
 void MemcpySyncH2D(void* dst,
                    const void* src,
                    size_t count,
-                   const platform::XPUPlace& dst_place) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+                   const phi::XPUPlace& dst_place) {
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(dst_place);
   phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place, *dev_ctx);
 }
@@ -65,8 +65,8 @@ void MemcpySyncH2D(void* dst,
 void MemcpySyncD2H(void* dst,
                    const void* src,
                    size_t count,
-                   const platform::XPUPlace& src_place) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+                   const phi::XPUPlace& src_place) {
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
   phi::backends::xpu::MemcpySyncD2H(dst, src, count, src_place, *dev_ctx);
 }
@@ -74,11 +74,11 @@ void MemcpySyncD2H(void* dst,
 // if src.device == dst.device and you need sync , after call this function,
 // need to call dev_ctx.Wait()
 void MemcpySyncD2D(void* dst,
-                   const platform::XPUPlace& dst_place,
+                   const phi::XPUPlace& dst_place,
                    const void* src,
-                   const platform::XPUPlace& src_place,
+                   const phi::XPUPlace& src_place,
                    size_t count) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
   phi::backends::xpu::MemcpySyncD2D(
       dst, dst_place, src, src_place, count, *dev_ctx);
@@ -175,7 +175,7 @@ class RecordedXPUMallocHelper {
    */
   void Free(void* ptr, size_t size) {
     XPUDeviceGuard guard(dev_id_);
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = pool.GetByPlace(XPUPlace(dev_id_));
     dev_ctx->Wait();
     xpu_free(ptr);
