@@ -16,7 +16,9 @@ import unittest
 
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    test_ast_only,
     test_pir_only,
+    test_sot_only,
 )
 
 import paddle
@@ -193,8 +195,9 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(str(tensor2.place), get_place())
         self.assertEqual(tensor2.dtype, paddle.int8)
 
+    @test_ast_only
     @test_pir_only
-    def test_error(self):
+    def test_ast_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         # device value error
         with self.assertRaises(ValueError) as context1:
@@ -209,8 +212,27 @@ class TensorToTest(Dy2StTestBase):
                 tensorx, "cpu", "int32", test_key=False
             )
         self.assertTrue(
-            "to() got an unexpected keyword argument 'test_key'"
-            in str(context2.exception)
+            "to() got an unexpected keyword argument" in str(context2.exception)
+        )
+
+    @test_sot_only
+    @test_pir_only
+    def test_sot_error(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        # device value error
+        with self.assertRaises(Exception) as context1:
+            paddle.jit.to_static(to_device)(tensorx, "error_device")
+        self.assertTrue(
+            "The device must be a string which is like"
+            in str(context1.exception)
+        )
+        # invalid key error
+        with self.assertRaises(Exception) as context2:
+            paddle.jit.to_static(to_invalid_key_error)(
+                tensorx, "cpu", "int32", test_key=False
+            )
+        self.assertTrue(
+            "to() got an unexpected keyword argument" in str(context2.exception)
         )
 
 
