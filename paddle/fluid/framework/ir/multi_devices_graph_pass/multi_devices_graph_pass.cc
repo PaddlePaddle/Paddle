@@ -39,55 +39,6 @@ namespace {
 typedef std::vector<details::OpHandleBase *> GraphOps;
 const char kGraphOps[] = "ops";  // NOLINT
 
-bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
-  return PADDLE_GET_CONST(
-             int,
-             node.Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-         static_cast<int>(role);
-}
-
-void PolishGraphToSupportDataHazards(ir::Graph *graph) {
-  for (auto &var_map : graph->Get<details::GraphVars>(details::kGraphVars)) {
-    for (auto &name_pair : var_map) {
-      if (name_pair.second.size() <= 1) {
-        continue;
-      }
-      auto it_new = name_pair.second.rbegin();
-      auto it_old = name_pair.second.rbegin();
-      ++it_old;
-      for (; it_old != name_pair.second.rend(); it_new = it_old, ++it_old) {
-        details::OpHandleBase *write_op = (*it_new)->GeneratedOp();
-        const auto &read_ops = (*it_old)->PendingOps();
-
-        for (auto *read_op : read_ops) {
-          // Manually add a dependency var from read_op to write_op;
-          if (read_op == write_op) {
-            // Read Write is the same op.
-            continue;
-          }
-          bool has_dep = false;
-          for (auto *r_out : read_op->Outputs()) {
-            for (auto *w_in : write_op->Inputs()) {
-              if (r_out->Node() == w_in->Node()) {
-                has_dep = true;
-                break;
-              }
-            }
-          }
-          if (has_dep) continue;
-
-          auto *dep_var =
-              new details::DummyVarHandle(graph->CreateControlDepVar());
-          read_op->AddOutput(dep_var);
-          write_op->AddInput(dep_var);
-          graph->Get<details::GraphDepVars>(details::kGraphDepVars)
-              .emplace(dep_var);
-        }
-      }
-    }
-  }
-}
-
 details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
                                                ir::Node *node,
                                                const phi::Place &place,
@@ -131,19 +82,6 @@ void CreateOpOutput(ir::Graph *graph,
       new_node, version, place_offset, new_node->Name(), place);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
-}
-
-void AddOutputToLeafOps(ir::Graph *graph) {
-  for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
-    if (!op->Outputs().empty()) {
-      continue;
-    }
-    auto *dummy_leaf =
-        new details::DummyVarHandle(graph->CreateControlDepVar());
-    graph->Get<details::GraphDepVars>(details::kGraphDepVars)
-        .emplace(dummy_leaf);
-    op->AddOutput(dummy_leaf);
-  }
 }
 }  // namespace
 
@@ -210,75 +148,15 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
     CreateIsolatedVarNode(&result, var_node);
   }
 
-  // bool is_forwarding = true;
-
   for (ir::Node *node : sorted_ops) {
-    if (DealWithSpecialOp(&result, node)) {
-      continue;
+    // This op runs on all devices
+    if (IsScaleLossOp(node)) {
+      // user can customize loss@grad if not use_default_grad_scale_
+      // InsertScaleLossGradOp(&result, node);
     } else {
-      // This op runs on all devices
-      if (IsScaleLossOp(node)) {
-        // user can customize loss@grad if not use_default_grad_scale_
-        InsertScaleLossGradOp(&result, node);
-        // This assumes the backward generating code will ensure IsScaleLossOp
-        // is true only for the op that scale the final scalar loss.
-        // It also assumes backward op will always follow the forward op in
-        // the block.
-        // is_forwarding = false;
-      } else {
-        CreateComputationalOps(&result, node, places_.size());
-      }
-
-      // // Insert collective ops if nranks > 1
-      // if (!is_forwarding && Get<size_t>(details::kNRanks) > 1) {
-      //   auto &op_desc = *(node->Op());
-      //   bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
-      //   // optimize op is already processed in DealWithSpecialOp,
-      //   // here we only consider backward op
-      //   if (!is_bk_op) continue;
-
-      //   /*
-      //    * the op that will generate the gradient of on parameter will have
-      //    one attr op_role_var
-      //    * to record the parameter and gradient, like:
-      //     attrs {
-      //       name: "op_role_var"
-      //       type: STRINGS
-      //       strings: "fc_1.b_0"
-      //       strings: "fc_1.b_0@GRAD"
-      //     }
-      //    */
-
-      //   // Currently, we assume that once gradient is generated, it can be
-      //   // broadcast, and each gradient is only broadcast once.
-      //   auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
-      //   for (size_t i = 0; i < backward_vars.size(); i += 2) {
-      //     auto &p_name = backward_vars[i];
-      //     auto &g_name = backward_vars[i + 1];
-      //     VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
-      //              << " op_type " << node->Op()->Type();
-      //     if (NeedCollectiveForGrad(g_name, sorted_ops)) {
-      //       // InsertCollectiveOp(&result, node, p_name, g_name);
-      //     }
-      //   }
-      // }
+      CreateComputationalOps(&result, node, places_.size());
     }
   }
-
-  // InsertPostprocessOps(&result);
-
-  /*
-  Dependency graph has been constructed. However, there are still data
-  hazards need to be handled.
-  */
-  // PolishGraphToSupportDataHazards(&result);
-
-  /*
-   * Only variables should be the leaves of graph.
-   */
-  // AddOutputToLeafOps(&result);
-
-  // result.Erase(kGraphOps);
 }
 
 void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
@@ -313,38 +191,9 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
   }
 }
 
-bool MultiDevSSAGraphBuilderBase::DealWithSpecialOp(ir::Graph *result,
-                                                    ir::Node *node) const {
-  return false;
-}
-
 std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
     const ir::Graph &graph) const {
   return ir::TopologySortOperations(graph);
-}
-
-bool MultiDevSSAGraphBuilderBase::UseGPU() const {
-  bool use_gpu = false;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  use_gpu = nccl_ctxs_ != nullptr;
-#endif
-  return use_gpu;
-}
-
-bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
-    const std::string &grad_name, std::vector<ir::Node *> ops) const {
-  // if we have allreduce_op for current gradient variable in the graph,
-  // then we don't need to add allreduce_op_handle for this gradient
-  // NOTE: This is for the case that all gradients should add collective ops
-  for (auto *node : ops) {
-    if (node->Op()->Type() != "allreduce") continue;
-    for (auto const &in_name : node->Op()->InputArgumentNames()) {
-      if (in_name == grad_name) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
@@ -372,35 +221,6 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
     }
     CreateOpOutput(result, op_handle, new_node, p, place_id);
   }
-}
-
-void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
-    details::OpHandleBase *op_handle, const phi::Place &p) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  if (nccl_ctxs_ == nullptr) {
-    op_handle->SetDeviceContext(p,
-                                platform::DeviceContextPool::Instance().Get(p));
-  }
-#elif defined(PADDLE_WITH_XPU_BKCL)
-  if (bkcl_ctxs_ == nullptr) {
-    op_handle->SetDeviceContext(p,
-                                platform::DeviceContextPool::Instance().Get(p));
-  }
-#else
-  op_handle->SetDeviceContext(p,
-                              platform::DeviceContextPool::Instance().Get(p));
-#endif
-}
-
-void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
-                                                        ir::Node *node,
-                                                        size_t dev_id) const {
-  result->Get<GraphOps>(kGraphOps).emplace_back(
-      new details::ComputationOpHandle(result->CreateOpNode(node->Op()),
-                                       local_scopes_[dev_id],
-                                       places_[dev_id],
-                                       dev_id));
-  CreateOpHandleIOs(result, node, dev_id);
 }
 
 void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
@@ -456,40 +276,12 @@ bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
               static_cast<int>(OpRole::kLoss));
 }
 
-bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
-    const std::string &og) const {
-  PADDLE_ENFORCE_NE(all_vars_.count(og),
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Can not find Var(%s) in VarDescs "
-                        "Paddle Can not add Collective OP for Var(%s).",
-                        og,
-                        og));
-  return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
-}
-
 void MultiDevSSAGraphBuilderBase::CreateIsolatedVarNode(
     ir::Graph *graph, ir::Node *var_node) const {
   for (size_t i = 0; i < places_.size(); ++i) {
     VLOG(10) << "Create isolated var node " << var_node->Name() << " at device "
              << i;
     CreateOrGetLatestVarHandle(graph, var_node, places_[i], i);
-  }
-}
-
-void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
-  auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-  for (ir::Node *input : node->inputs) {
-    details::VarHandle *var = nullptr;
-    for (int place_offset = 0; place_offset < num_places; ++place_offset) {
-      auto &var_holders =
-          result->Get<details::GraphVars>(details::kGraphVars)[place_offset];
-      auto &var_holder = var_holders[input->Name()];
-      if (!var_holder.empty()) {
-        var = *var_holder.rbegin();
-        op_handle->AddInput(var);
-      }
-    }
   }
 }
 

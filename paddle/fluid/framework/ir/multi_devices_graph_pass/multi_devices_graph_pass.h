@@ -66,20 +66,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
-  // virtual void InsertCollectiveOp(ir::Graph *result,
-  //                                 ir::Node *node,
-  //                                 const std::string &p_name,
-  //                                 const std::string &g_name) const = 0;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
-
-  // virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
-
-  bool UseGPU() const;
-
-  virtual bool NeedCollectiveForGrad(const std::string &grad_name,
-                                     std::vector<ir::Node *> ops) const;
-
   bool IsScaleLossOp(ir::Node *node) const;
 
   void CreateComputationalOps(ir::Graph *result,
