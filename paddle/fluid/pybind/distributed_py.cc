@@ -563,7 +563,7 @@ void BindDistributed(py::module *m) {
                     self.GetDeviceContext(in_tensor.place(), use_calc_stream);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 if (!use_calc_stream &&
-                    dev_ctx->GetPlace() != platform::CPUPlace()) {
+                    dev_ctx->GetPlace() != phi::CPUPlace()) {
                   // calculate stream will wait comm stream
                   task->UpdateWaitChain(*dev_ctx);
                 }

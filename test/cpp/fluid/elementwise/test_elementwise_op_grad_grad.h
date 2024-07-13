@@ -39,8 +39,8 @@ template <typename T>
 class TestElementwiseOpGradGrad {
  public:
   TestElementwiseOpGradGrad(const std::string &op_type,
-                            const platform::Place &place,
-                            const framework::DDim &dims,
+                            const phi::Place &place,
+                            const phi::DDim &dims,
                             const std::vector<std::string> &inputs,
                             const std::vector<std::string> &outputs)
       : op_type_(op_type),
@@ -84,16 +84,16 @@ class TestElementwiseOpGradGrad {
     for (auto &in_name : inputs_) {
       auto dst = in_out_tensors_[in_name]->template data<T>();
       auto src = feed_datas_[in_name].data();
-      auto src_place = platform::CPUPlace();
-      if (platform::is_cpu_place(place_)) {
+      auto src_place = phi::CPUPlace();
+      if (phi::is_cpu_place(place_)) {
         auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes);
-      } else if (platform::is_gpu_place(place_)) {
+      } else if (phi::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Check your paddle version, current version is not compiled with "
             "cuda"));
 #endif
@@ -108,33 +108,26 @@ class TestElementwiseOpGradGrad {
     Setup();
     auto op = CreateTestOp();
     op->Run(scope_, place_);
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
     phi::DenseTensor cpu_out;
-    PADDLE_ENFORCE_EQ(scope_.kids().empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The scope can not have the child scopes,"
-                          "please check your code."));
+    PADDLE_ENFORCE_EQ(
+        scope_.kids().empty(),
+        true,
+        phi::errors::InvalidArgument("The scope can not have the child scopes,"
+                                     "please check your code."));
 
     // get outputs from scope and compare them with expected_outs
     bool all_equal = true;
     for (auto &out_name : outputs_) {
       auto &out_tensor =
           scope_.FindVar(out_name)->template Get<phi::DenseTensor>();
-      if (platform::is_gpu_place(place_)) {
-        framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
+      if (phi::is_gpu_place(place_)) {
+        framework::TensorCopySync(out_tensor, phi::CPUPlace(), &cpu_out);
       } else {
         cpu_out = out_tensor;
       }
       auto *out_ptr = cpu_out.data<T>();
       size_t numel = static_cast<size_t>(common::product(dims_));
-#ifdef PADDLE_WITH_HIP
-      auto is_equal = std::equal(
-          out_ptr,
-          out_ptr + numel,
-          expected_outs_[out_name].data(),
-          [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
-#else
       bool is_equal;
       if (op_type_ == "elementwise_div_grad_grad") {
         is_equal = std::equal(out_ptr,
@@ -144,10 +137,17 @@ class TestElementwiseOpGradGrad {
                                 return fabs(l - r) < 0.0005;
                               });
       } else {
+#ifdef PADDLE_WITH_HIP
+        is_equal = std::equal(
+            out_ptr,
+            out_ptr + numel,
+            expected_outs_[out_name].data(),
+            [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
+#else
         is_equal = std::equal(
             out_ptr, out_ptr + numel, expected_outs_[out_name].data());
-      }
 #endif
+      }
       if (!is_equal) {
         all_equal = false;
         break;
@@ -162,8 +162,8 @@ class TestElementwiseOpGradGrad {
 
  protected:
   std::string op_type_;
-  platform::Place place_;
-  framework::DDim dims_;
+  phi::Place place_;
+  phi::DDim dims_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   std::map<std::string, phi::DenseTensor *> in_out_tensors_;

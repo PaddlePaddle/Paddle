@@ -30,7 +30,7 @@ namespace allocation {
 class StubAllocation : public Allocation {
  public:
   explicit StubAllocation(size_t size)
-      : Allocation(nullptr, size, platform::CPUPlace()) {}
+      : Allocation(nullptr, size, phi::CPUPlace()) {}
 };
 
 TEST(BestFitAllocator, test_allocation) {

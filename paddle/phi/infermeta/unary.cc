@@ -2072,27 +2072,6 @@ void HashInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
-  PADDLE_ENFORCE_GE(bins,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "The bins should be greater than or equal to 1."
-                        "But received nbins is %d",
-                        bins));
-  PADDLE_ENFORCE_GE(
-      max,
-      min,
-      phi::errors::InvalidArgument("max must be larger or equal to min."
-                                   "But received max is %d, min is %d",
-                                   max,
-                                   min));
-
-  out->set_dims({bins});
-  out->share_lod(input);
-  out->set_dtype(DataType::INT64);
-}
-
 void IdentityLossInferMeta(const MetaTensor& x,
                            int reduction,
                            MetaTensor* out) {
@@ -4263,6 +4242,11 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
   y->set_dtype(out_dtype);
 }
 
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
 void SplitInferMeta(const MetaTensor& x,
                     const IntArray& sections,
                     const Scalar& axis,
@@ -5823,12 +5807,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
        (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+#endif
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(

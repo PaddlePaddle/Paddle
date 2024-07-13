@@ -43,8 +43,8 @@ namespace operators {
 template <typename T>
 class TestElementwiseDivGradGradWithDout : public TestElementwiseOpGradGrad<T> {
  public:
-  TestElementwiseDivGradGradWithDout(const platform::Place &place,
-                                     const framework::DDim &dims)
+  TestElementwiseDivGradGradWithDout(const phi::Place &place,
+                                     const phi::DDim &dims)
       : TestElementwiseOpGradGrad<T>(
             "elementwise_div_grad_grad",
             place,
@@ -93,16 +93,16 @@ class TestElementwiseDivGradGradWithDout : public TestElementwiseOpGradGrad<T> {
 };
 
 TEST(test_elementwise_div_grad_grad, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
+  phi::DDim dims({32, 64});
+  phi::CPUPlace p;
   TestElementwiseDivGradGradWithDout<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_div_grad_grad, gpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CUDAPlace p(0);
+  phi::DDim dims({32, 64});
+  phi::GPUPlace p(0);
   TestElementwiseDivGradGradWithDout<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }

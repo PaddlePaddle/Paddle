@@ -66,7 +66,7 @@ void Carrier::Init(
     const framework::ProgramDesc& program,
     framework::Scope* scope,
     int64_t num_micro_batches,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::string>& inference_root_scope_vars,
     const std::vector<framework::Scope*>& micro_scope_list) {
   rank_ = rank;
@@ -273,7 +273,7 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
 }
 
 static std::shared_ptr<framework::GarbageCollector> GetGC(
-    const platform::Place& place) {
+    const phi::Place& place) {
   int64_t max_memory_size = framework::GetEagerDeletionThreshold();
   std::shared_ptr<framework::GarbageCollector> gc;
   if (max_memory_size >= 0) {

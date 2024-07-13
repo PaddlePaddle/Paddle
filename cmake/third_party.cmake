@@ -377,6 +377,11 @@ if(TARGET extern_json)
   list(APPEND third_party_deps extern_json)
 endif()
 
+include(external/yaml) # find first, then build yaml
+if(TARGET extern_yaml)
+  list(APPEND third_party_deps extern_yaml)
+endif()
+
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
   include(external/pybind11) # prepare submodule pybind11
@@ -559,6 +564,12 @@ endif()
 if(WITH_CUSPARSELT)
   include(external/cusparselt) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cusparselt)
+endif()
+
+if(WITH_ROCM)
+  include(external/flashattn)
+  list(APPEND third_party_deps extern_flashattn)
+  set(WITH_FLASHATTN ON)
 endif()
 
 if(WITH_GPU

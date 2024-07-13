@@ -30,12 +30,6 @@ namespace pir {
 #define DECOMPRESS_DIALECT_ID(name) \
   pir::DialectIdMap::Instance()->GetDecompressDialectId(name)
 
-void GetDecompressOpName(std::string* op_name) {
-  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
-  *op_name = DECOMPRESS_DIALECT_ID(name.first) + "." + name.second;
-  return;
-}
-
 class AttrTypeReader {
  public:
   static pir::Attribute ReadBuiltInAttr(const std::string attr_name,

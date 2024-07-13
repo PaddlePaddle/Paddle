@@ -197,11 +197,11 @@ int MultiheadMatmulRoformerPlugin::enqueue(
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. RoformerQkvToContext-->fp32";
-    auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
-        platform::CUDAPlace(device_id));
+    auto *multihead_temp_data =
+        multihead_temp_tensor.mutable_data<float>(phi::GPUPlace(device_id));
     auto *temp_roformer_data =
         temp_roformer_tensor.mutable_data<float>(  // NOLINT
-            platform::CUDAPlace(device_id));
+            phi::GPUPlace(device_id));
     auto *tmp_roformer_ptr = reinterpret_cast<float *>(temp_roformer_data);
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
@@ -212,8 +212,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[3]));
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias = temp_qk_bias_tensor.mutable_data<float>(
-          platform::CUDAPlace(device_id));
+      auto *temp_qk_bias =
+          temp_qk_bias_tensor.mutable_data<float>(phi::GPUPlace(device_id));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -250,8 +250,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  head_size_);  // k
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
     phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
@@ -278,11 +277,11 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
+            phi::GPUPlace(device_id));
 
     auto *temp_roformer_data =
         temp_roformer_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
+            phi::GPUPlace(device_id));
     half *tmp_roformer_ptr = reinterpret_cast<half *>(temp_roformer_data);
     half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
     half *tptr = qkptr + scratch_size;
@@ -293,9 +292,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[3]));
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
+      auto *temp_qk_bias = reinterpret_cast<half *>(
+          temp_qk_bias_tensor.mutable_data<int16_t>(phi::GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -315,8 +313,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                cudaMemcpyDeviceToDevice);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;

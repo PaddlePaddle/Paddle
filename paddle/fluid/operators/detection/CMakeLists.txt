@@ -30,7 +30,6 @@ endfunction()
 
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
                   anchor_generator_op.cu)
-detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS phi common)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)

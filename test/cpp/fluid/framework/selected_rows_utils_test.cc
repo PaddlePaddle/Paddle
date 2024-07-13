@@ -38,7 +38,7 @@ class SelectedRowsTester : public ::testing::Test {
   }
 
  protected:
-  platform::CPUPlace place_;
+  phi::CPUPlace place_;
   std::unique_ptr<phi::SelectedRows> selected_rows_{nullptr};
 };
 
@@ -73,7 +73,7 @@ TEST_F(SelectedRowsTester, SerializeAndDeserialize) {
 }
 
 TEST(SelectedRows, SparseTable) {
-  platform::CPUPlace cpu;
+  phi::CPUPlace cpu;
   phi::SelectedRows table;
 
   int64_t table_size = 100;
@@ -172,7 +172,7 @@ void f4(phi::SelectedRows* table, int table_size) {
 }
 
 TEST(SelectedRows, MultiThreadAutoIndex) {
-  platform::CPUPlace cpu;
+  phi::CPUPlace cpu;
   phi::SelectedRows table;
 
   int64_t table_size = 100000;
