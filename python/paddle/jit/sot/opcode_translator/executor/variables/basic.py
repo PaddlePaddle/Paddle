@@ -586,8 +586,6 @@ class TensorVariable(VariableBase):
                 builtin_fn, self.graph, DanglingTracker()
             ).bind(self, name)
         elif name in get_tensor_methods():
-            if name in ["numpy", "regisiter_hook"]:
-                raise FallbackError(f"no support {name}.")
             from .callable import TensorFunctionVariable
 
             fn_var = TensorFunctionVariable(
