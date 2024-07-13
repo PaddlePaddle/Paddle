@@ -630,7 +630,7 @@ def _to_tensor_non_static(
                     "\n\tFailed to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
+        elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
