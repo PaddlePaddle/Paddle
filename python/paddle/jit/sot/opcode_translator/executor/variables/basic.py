@@ -32,8 +32,8 @@ from ....utils import (
     ConstTypes,
     FallbackError,
     NameGenerator,
+    get_tensor_methods,
     log,
-    paddle_tensor_methods,
     printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
@@ -585,7 +585,9 @@ class TensorVariable(VariableBase):
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
             ).bind(self, name)
-        elif name in paddle_tensor_methods:
+        elif name in get_tensor_methods():
+            if name in ["numpy", "regisiter_hook"]:
+                raise FallbackError(f"no support {name}.")
             from .callable import TensorFunctionVariable
 
             fn_var = TensorFunctionVariable(
