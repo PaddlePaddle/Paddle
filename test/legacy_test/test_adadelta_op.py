@@ -365,7 +365,7 @@ class TestAdadeltaMultiPrecision2_0(unittest.TestCase):
         out = []
         for idx in range(5):
             (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
+                train_program, feed={"X": x}, fetch_list=[loss]
             )
             out.append(loss_data)
         return out
