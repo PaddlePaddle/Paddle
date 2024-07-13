@@ -81,15 +81,15 @@ class Sampler(Generic[_T]):
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> class MySampler(Sampler):
+            >>> class MySampler(Sampler):  # type: ignore[type-arg]
             ...     def __init__(self, data_source):
             ...         self.data_source = data_source
             ...
             ...     def __iter__(self):
-            ...         return iter(range(len(self.data_source)))
+            ...         return iter(range(len(self.data_source)))  # type: ignore[arg-type]
             ...
             ...     def __len__(self):
-            ...         return len(self.data_source)
+            ...         return len(self.data_source)  # type: ignore[arg-type]
             ...
             >>> sampler = MySampler(data_source=RandomDataset(100))
 
