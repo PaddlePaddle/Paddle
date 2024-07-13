@@ -18,10 +18,12 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import distribution
 
 if TYPE_CHECKING:
-    from paddle import Tensor, dtype
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class MultivariateNormal(distribution.Distribution):
@@ -89,11 +91,12 @@ class MultivariateNormal(distribution.Distribution):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.55541301)
     """
+
     loc: Tensor
     covariance_matrix: Tensor | None
     precision_matrix: Tensor | None
     scale_tril: Tensor | None
-    dtype: dtype
+    dtype: _DTypeLiteral
 
     def __init__(
         self,
@@ -106,7 +109,7 @@ class MultivariateNormal(distribution.Distribution):
         if isinstance(loc, (float, int)):
             loc = paddle.to_tensor([loc], dtype=self.dtype)
         else:
-            self.dtype = loc.dtype
+            self.dtype = convert_dtype(loc.dtype)
         if loc.dim() < 1:
             loc = loc.reshape((1,))
         self.covariance_matrix = None
