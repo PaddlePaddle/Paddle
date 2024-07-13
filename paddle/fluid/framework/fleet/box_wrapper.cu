@@ -142,7 +142,7 @@ __global__ void PushCopy(
   }
 }
 
-void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
+void BoxWrapper::CopyForPull(const phi::Place& place,
                              uint64_t** gpu_keys,
                              const std::vector<float*>& values,
                              void* total_values_gpu,
@@ -229,7 +229,7 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
 #undef EMBEDX_CASE
 }
 
-void BoxWrapper::CopyKeys(const paddle::platform::Place& place,
+void BoxWrapper::CopyKeys(const phi::Place& place,
                           uint64_t** origin_keys,
                           uint64_t* total_keys,
                           const int64_t* gpu_len,
@@ -257,7 +257,7 @@ void BoxWrapper::CopyKeys(const paddle::platform::Place& place,
 #endif
 }
 
-void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
+void BoxWrapper::CopyForPush(const phi::Place& place,
                              const std::vector<const float*>& grad_values,
                              void* total_grad_values_gpu,
                              const std::vector<int64_t>& slot_lengths,

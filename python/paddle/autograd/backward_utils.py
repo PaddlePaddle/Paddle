@@ -50,6 +50,9 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.multiply",
     "pd_op.relu",
     "pd_op.sigmoid",
+    "pd_op.divide",
+    "pd_op.pow",
+    "pd_op.elementwise_pow",
 ]
 
 
@@ -352,7 +355,7 @@ def get_real_op_inputs(op):
         return op.operands_source()
 
 
-def inverse_sort_op(ops):
+def inverse_sort_op(old_ops):
     '''
     if topo graph is op1 -> op2 -> op3
     return [op3, op2, op1]
@@ -363,6 +366,8 @@ def inverse_sort_op(ops):
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
+    ops = []
+    [ops.append(x) for x in old_ops if x not in ops]
     ops_set = set(ops)
     sorted_list = []
     for op in ops:
@@ -449,7 +454,7 @@ def remove_op(block, op, state):
 
             if value in state.sumvaluegrad_to_value:
                 raise ValueError(
-                    'input_grad in [%s] is value which need to sum ', op.name()
+                    f'input_grad in [%s] is value which need to sum {op.name()}'
                 )
     # NOTE(SigureMo): Ensure access to the op's results before removing it.
     # Otherwise, the op will be deconstructed and access the num_results

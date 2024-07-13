@@ -1,63 +1,28 @@
 if(WITH_GPU)
   set(STATIC_BUILD_TESTS
-      test_sub_graph_0
-      test_sub_graph_1
-      test_sub_graph_2
-      test_sub_graph_3
-      test_sub_graph_5
-      test_sub_graph_10
       test_sub_graph_12
-      test_sub_graph_13
-      test_sub_graph_16
-      test_sub_graph_17
-      test_sub_graph_18
-      test_sub_graph_22
       test_sub_graph_23
-      test_sub_graph_24
-      test_sub_graph_25
-      test_sub_graph_26
-      test_sub_graph_27
-      test_sub_graph_28
-      test_sub_graph_29
-      test_sub_graph_30
-      test_sub_graph_31
-      test_sub_graph_33
       test_sub_graph_34
-      test_sub_graph_40
       test_sub_graph_42
       test_sub_graph_43
-      test_sub_graph_44
-      test_sub_graph_48
       test_sub_graph_49
       test_sub_graph_add_n
       test_sub_graph_add
-      test_sub_graph_avg_pool2d
-      test_sub_graph_chunk
-      test_sub_graph_max_pool2d
-      test_sub_graph_reshape
-      test_sub_graph_swish
       test_sub_graph_mul_method
-      test_sub_graph_adaptive_avg_pool2d
+      test_sub_graph_squeeze_unsqueeze
       test_sub_graph_52
-      test_sub_graph_55
       test_sub_graph_56
-      test_sub_graph_59
       test_sub_graph_61
       test_sub_graph_62
-      test_sub_graph_63
-      test_sub_graph_66
       test_sub_graph_67
       test_sub_graph_69
       test_sub_graph_73
-      test_sub_graph_74
       test_sub_graph_77
       test_sub_graph_79
       test_sub_graph_80
       test_sub_graph_82
-      test_sub_graph_84
-      test_sub_graph_86
-      test_sub_graph_87
-      test_sub_graph_88)
+      test_sub_graph_85
+      test_sub_graph_86)
 
   file(
     GLOB DYNAMIC_BUILD_TESTS

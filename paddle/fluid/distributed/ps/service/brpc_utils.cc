@@ -44,7 +44,7 @@ framework::proto::VarType::Type VarMessageToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "VarMessageToVarType:Unsupported type %d", type));
   }
 }
@@ -117,7 +117,7 @@ void SerializeLodTensor(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -164,7 +164,7 @@ void SerializeSelectedRows(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -209,7 +209,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     auto* var = scope->FindVar(msg.varname());
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
     if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
@@ -260,7 +260,7 @@ void DeserializeLodTensor(framework::Variable* var,
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  (void*)temp_ptr,  // NOLINT
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
@@ -304,7 +304,7 @@ void DeserializeSelectedRows(
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  temp_ptr,
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);

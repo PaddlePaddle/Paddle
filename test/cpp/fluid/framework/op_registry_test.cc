@@ -57,9 +57,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE_EQ(
-          i % 2,
-          0,
-          platform::errors::InvalidArgument("'test_attr' must be even!"));
+          i % 2, 0, phi::errors::InvalidArgument("'test_attr' must be even!"));
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);
@@ -98,7 +96,7 @@ TEST(OpRegistry, CreateOp) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   op->Run(scope, cpu_place);
   float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
@@ -137,7 +135,7 @@ TEST(OpRegistry, DefaultValue) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   op->Run(scope, cpu_place);
   ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
@@ -183,7 +181,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_type(paddle::framework::proto::AttrType::INT);
   attr->set_i(4);
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   op->Run(scope, cpu_place);
   int test_attr = op->Attr<int>("test_attr");
@@ -239,7 +237,7 @@ REGISTER_OP_CUDA_KERNEL(
 
 TEST(OperatorRegistrar, CPU) {
   paddle::framework::proto::OpDesc op_desc;
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   op_desc.set_type("op_with_kernel");
@@ -250,7 +248,7 @@ TEST(OperatorRegistrar, CPU) {
 
 TEST(OperatorRegistrar, CUDA) {
   paddle::framework::proto::OpDesc op_desc;
-  paddle::platform::CUDAPlace cuda_place(0);
+  phi::GPUPlace cuda_place(0);
   paddle::framework::Scope scope;
 
   op_desc.set_type("op_with_kernel");
@@ -337,27 +335,27 @@ REGISTER_OP_WITHOUT_GRADIENT(op_with_multi_kernel,
                              paddle::framework::OpKernelTestMaker);
 REGISTER_OP_KERNEL(op_with_multi_kernel,
                    CPU,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    paddle::framework::OpMultiKernelTest<CPUContext, float>);
 REGISTER_OP_KERNEL(op_with_multi_kernel,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    paddle::framework::OpMultiKernelTest2<CPUContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel,
     CUDA,
-    paddle::platform::CUDAPlace,
+    phi::GPUPlace,
     paddle::framework::OpMultiKernelTest<phi::GPUContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel,
     CUDNN,
-    paddle::platform::CUDAPlace,
+    phi::GPUPlace,
     paddle::framework::OpMultiKernelTest2<phi::GPUContext, float>);
 
 TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::proto::OpDesc op_desc;
-  paddle::platform::CUDAPlace cuda_place(0);
-  paddle::platform::CPUPlace cpu_place;
+  phi::GPUPlace cuda_place(0);
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   op_desc.set_type("op_with_multi_kernel");

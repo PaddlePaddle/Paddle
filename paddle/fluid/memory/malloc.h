@@ -29,18 +29,18 @@ using allocation::AllocationPtr;
 using allocation::Allocator;
 using phi::Allocation;
 
-extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                                size_t size);
 
-TEST_API extern AllocationPtr Alloc(const platform::Place& place, size_t size);
+TEST_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
-extern uint64_t Release(const platform::Place& place);
+extern uint64_t Release(const phi::Place& place);
 
-extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::Place& place,
+extern AllocationPtr Alloc(const phi::Place& place,
                            size_t size,
                            const phi::Stream& stream);
 
@@ -50,7 +50,7 @@ extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
+extern uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
 
 void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
@@ -66,7 +66,7 @@ void RecordStream(std::shared_ptr<Allocation> allocation,
 template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
-  ThrustAllocator(platform::Place place, StreamType stream) {
+  ThrustAllocator(phi::Place place, StreamType stream) {
     VLOG(2) << "construct allocator";
     place_ = place;
     stream_ = stream;
@@ -93,7 +93,7 @@ struct ThrustAllocator {
   typedef std::unordered_map<char*, std::shared_ptr<phi::Allocation>>
       allocation_map_type;
   allocation_map_type busy_allocation_;
-  platform::Place place_;
+  phi::Place place_;
   StreamType stream_;
 };
 

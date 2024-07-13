@@ -45,7 +45,6 @@ namespace paddle {
 struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
-extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 AnalysisConfig::AnalysisConfig() {
   // NOTE(liuyuanle): Why put the following code here?
@@ -496,16 +495,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_optimization_level_);
   CP_MEMBER(trt_ops_run_float_);
   CP_MEMBER(trt_exclude_var_names_);
-  // Dlnne related
-  CP_MEMBER(use_dlnne_);
-  CP_MEMBER(dlnne_min_subgraph_size_);
-  CP_MEMBER(dlnne_max_batchsize_);
-  CP_MEMBER(dlnne_use_static_batch_);
-  CP_MEMBER(dlnne_weight_share_mode_);
-  CP_MEMBER(dlnne_use_calib_mode_);
-  CP_MEMBER(dlnne_precision_mode_);
-  CP_MEMBER(dlnne_disable_nodes_by_outputs_);
-  CP_MEMBER(dlnne_input_shape_dict_);
   // OneDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -617,23 +606,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
     auto other_passes = other.pass_builder()->AllPasses();
     for (auto const &pass : other_passes) {
       pass_builder_->AppendPass(pass);
-    }
-  }
-  if (use_dlnne_) {
-    auto all_passes = kDlnneSubgraphPasses;
-    auto other_passes = other.pass_builder()->AllPasses();
-    // We should sort them, because the user may call the SwitchIrDebug
-    // interface, which will change the pass.
-    std::sort(all_passes.begin(), all_passes.end());
-    std::sort(other_passes.begin(), other_passes.end());
-    std::vector<std::string> deleted_passes;
-    std::set_difference(all_passes.begin(),
-                        all_passes.end(),
-                        other_passes.begin(),
-                        other_passes.end(),
-                        std::inserter(deleted_passes, deleted_passes.begin()));
-    for (auto const &ps : deleted_passes) {
-      pass_builder_->DeletePass(ps);
     }
   }
 
@@ -822,27 +794,6 @@ void AnalysisConfig::EnableLowPrecisionIO(bool x) {
   enable_low_precision_io_ = x;
 }
 
-void AnalysisConfig::EnableDlnne(
-    int min_subgraph_size,
-    int max_batch_size,
-    bool use_static_batch,
-    std::string weight_share_mode,
-    std::unordered_set<std::string> disable_nodes_by_outputs,
-    std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
-    bool use_calib_mode,
-    Precision precision_mode) {
-  use_dlnne_ = true;
-  dlnne_min_subgraph_size_ = min_subgraph_size;
-  dlnne_max_batchsize_ = max_batch_size;
-  dlnne_use_static_batch_ = use_static_batch;
-  dlnne_weight_share_mode_ = weight_share_mode;
-  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_outputs;
-  dlnne_input_shape_dict_ = dlnne_input_shape_dict;
-  dlnne_use_calib_mode_ = use_calib_mode;
-  dlnne_precision_mode_ = precision_mode;
-  Update();
-}
-
 void AnalysisConfig::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
     std::map<std::string, std::vector<int>> max_input_shape,
@@ -1022,13 +973,6 @@ void AnalysisConfig::Update() {
     }
   }
 
-  if (use_dlnne_) {
-    pass_builder()->ClearPasses();
-    for (const auto &pass : kDlnneSubgraphPasses) {
-      pass_builder()->AppendPass(pass);
-    }
-  }
-
   if (use_gpu() && use_cudnn_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
@@ -1148,9 +1092,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &name : trt_parameters_run_bfp16_) ss << name.c_str();
   ss << ";";
   ss << trt_forbid_dynamic_op_;
-
-  ss << use_dlnne_;
-  ss << dlnne_min_subgraph_size_;
 
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
@@ -1313,13 +1254,6 @@ void AnalysisConfig::EnableProfile() {
 void AnalysisConfig::DisableGlogInfo() {
   with_glog_info_ = false;
   Update();
-}
-
-void AnalysisConfig::PartiallyRelease() {
-  prog_file_.clear();
-  prog_file_.shrink_to_fit();
-  params_file_.clear();
-  params_file_.shrink_to_fit();
 }
 
 void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }

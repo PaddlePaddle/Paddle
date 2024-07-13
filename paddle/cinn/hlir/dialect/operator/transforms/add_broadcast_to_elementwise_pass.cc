@@ -120,7 +120,10 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                              ->dyn_cast<paddle::dialect::FullOp>()) {
         auto new_full = rewriter->Build<paddle::dialect::FullOp>(
             output_shape,
-            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+            full_op->attribute("value")
+                .dyn_cast<paddle::dialect::ScalarAttribute>()
+                .data()
+                .to<double>(),
             full_op->attribute("dtype")
                 .dyn_cast<paddle::dialect::DataTypeAttribute>()
                 .data(),
@@ -144,7 +147,10 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                              ->dyn_cast<paddle::dialect::FullOp>()) {
         auto new_full = rewriter->Build<paddle::dialect::FullOp>(
             output_shape,
-            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+            full_op->attribute("value")
+                .dyn_cast<paddle::dialect::ScalarAttribute>()
+                .data()
+                .to<double>(),
             full_op->attribute("dtype")
                 .dyn_cast<paddle::dialect::DataTypeAttribute>()
                 .data(),

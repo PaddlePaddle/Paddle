@@ -41,7 +41,7 @@ namespace imperative {
 
 TEST(Benchmark, FluidScaleCUDA) {
   // Prepare Device Contexts
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
@@ -55,13 +55,12 @@ TEST(Benchmark, FluidScaleCUDA) {
     x_tensor->Resize(common::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
     paddle::memory::Copy(place,
                          mutable_x,
-                         platform::CPUPlace(),
+                         phi::CPUPlace(),
                          src_data.data(),
                          sizeof(float) * src_data.size(),
                          stream);
@@ -89,14 +88,14 @@ TEST(Benchmark, FluidScaleCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
 
 TEST(Benchmark, FluidMatmulCUDA) {
   // Prepare Device Contexts
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
@@ -109,8 +108,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
     std::vector<float> y_src_data(4, 2.0);
     std::vector<int64_t> dims = {2, 2};
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -119,7 +117,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
                          mutable_x,
-                         platform::CPUPlace(),
+                         phi::CPUPlace(),
                          x_src_data.data(),
                          sizeof(float) * x_src_data.size(),
                          stream);
@@ -129,7 +127,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
     auto* mutable_y = y_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
                          mutable_y,
-                         platform::CPUPlace(),
+                         phi::CPUPlace(),
                          y_src_data.data(),
                          sizeof(float) * y_src_data.size(),
                          stream);
@@ -157,19 +155,18 @@ TEST(Benchmark, FluidMatmulCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
 
 TEST(Benchmark, FluidMLPCUDA) {
   // Prepare Device Contexts
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -189,7 +186,7 @@ TEST(Benchmark, FluidMLPCUDA) {
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
                          mutable_x,
-                         platform::CPUPlace(),
+                         phi::CPUPlace(),
                          x_src_data.data(),
                          sizeof(float) * x_src_data.size(),
                          stream);
@@ -209,7 +206,7 @@ TEST(Benchmark, FluidMLPCUDA) {
       auto* mutable_w = w_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,
                            mutable_w,
-                           platform::CPUPlace(),
+                           phi::CPUPlace(),
                            w_src_data.data(),
                            sizeof(float) * w_src_data.size(),
                            stream);
@@ -219,7 +216,7 @@ TEST(Benchmark, FluidMLPCUDA) {
       auto* mutable_b = b_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,
                            mutable_b,
-                           platform::CPUPlace(),
+                           phi::CPUPlace(),
                            b_src_data.data(),
                            sizeof(float) * b_src_data.size(),
                            stream);
@@ -252,7 +249,7 @@ TEST(Benchmark, FluidMLPCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

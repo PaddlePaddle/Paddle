@@ -269,7 +269,7 @@ void GraphGpuWrapper::init_type_keys(
     for (size_t j = 0; j < thread_num; j++) {
       auto stream = get_local_stream(j);
       int gpuid = device_id_mapping[j];
-      auto place = platform::CUDAPlace(gpuid);
+      auto place = phi::GPUPlace(gpuid);
       platform::CUDADeviceGuard guard(gpuid);
       keys[f_idx][j] = memory::AllocShared(
           place,
@@ -359,7 +359,7 @@ void GraphGpuWrapper::init_metapath_total_keys() {
   for (size_t j = 0; j < thread_num; j++) {
     auto stream = get_local_stream(j);
     int gpuid = device_id_mapping[j];
-    auto place = platform::CUDAPlace(gpuid);
+    auto place = phi::GPUPlace(gpuid);
     platform::CUDADeviceGuard guard(gpuid);
     d_node_iter_graph_metapath_keys_[j] = memory::AllocShared(
         place,
@@ -642,7 +642,7 @@ void GraphGpuWrapper::shuffle_start_nodes_for_training() {
     for (size_t j = 0; j < d_node_iter_graph_all_type_keys_[i].size(); j++) {
       auto stream = get_local_stream(j);
       int gpuid = device_id_mapping[j];
-      auto place = platform::CUDAPlace(gpuid);
+      auto place = phi::GPUPlace(gpuid);
       platform::CUDADeviceGuard guard(gpuid);
       paddle::memory::ThrustAllocator<cudaStream_t> allocator(place, stream);
       const auto &exec_policy = thrust::cuda::par(allocator).on(stream);
@@ -1047,7 +1047,7 @@ void GraphGpuWrapper::seek_keys_rank(int gpu_id,
                                      int len,
                                      uint32_t *d_out_ranks) {
   platform::CUDADeviceGuard guard(gpu_id);
-  platform::CUDAPlace place = platform::CUDAPlace(gpu_id);
+  phi::GPUPlace place = phi::GPUPlace(gpu_id);
   auto stream = get_local_stream(gpu_id);
 
   if (FLAGS_graph_edges_split_mode == "fennel") {

@@ -32,7 +32,7 @@ TEST(stat_allocator_test, host_memory_stat_test) {
 
   int64_t max_alloc_size = 0;
   for (int64_t size : alloc_sizes) {
-    AllocationPtr allocation = Alloc(platform::CPUPlace(), size);
+    AllocationPtr allocation = Alloc(phi::CPUPlace(), size);
     int64_t alloc_size = static_cast<int64_t>(allocation->size());
     max_alloc_size = std::max(max_alloc_size, alloc_size);
     EXPECT_EQ(HostMemoryStatCurrentValue("Allocated", 0), alloc_size);
@@ -52,7 +52,7 @@ TEST(stat_allocator_test, device_memory_stat_test) {
 
   int64_t max_alloc_size = 0;
   for (int64_t size : alloc_sizes) {
-    AllocationPtr allocation = Alloc(platform::CUDAPlace(), size);
+    AllocationPtr allocation = Alloc(phi::GPUPlace(), size);
     int64_t alloc_size = static_cast<int64_t>(allocation->size());
     max_alloc_size = std::max(max_alloc_size, alloc_size);
     EXPECT_EQ(DeviceMemoryStatCurrentValue("Allocated", 0), alloc_size);

@@ -86,7 +86,7 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const platform::Place& p) {
+  auto to_string = [](const phi::Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
@@ -152,7 +152,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   if (var->IsType<phi::DenseTensor>() &&
       var->Get<phi::DenseTensor>().initialized()) {
     phi::DenseTensor cpu_tensor;
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     paddle::framework::TensorCopy(
         var->Get<phi::DenseTensor>(), place, &cpu_tensor);
     paddle::platform::DeviceContextPool& pool =
@@ -184,7 +184,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
-InstructionBase::InstructionBase(size_t id, const platform::Place& place)
+InstructionBase::InstructionBase(size_t id, const phi::Place& place)
     : next_instrs_in_different_thread_(),
       next_instrs_in_same_thread_(),
       events_to_wait_info_(),

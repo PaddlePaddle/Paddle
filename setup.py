@@ -1143,7 +1143,7 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
-    if env_dict.get("WITH_GPU") == 'ON':
+    if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
         if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
@@ -1181,8 +1181,7 @@ def get_package_data_and_package_dir():
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
-                "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/"
-                % libs_path
+                f"patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' {libs_path}/"
                 + env_dict.get("CINN_LIB_NAME")
             )
             if os.system(command) != 0:
@@ -1192,7 +1191,7 @@ def get_package_data_and_package_dir():
                     + '/'
                     + env_dict.get("CINN_LIB_NAME")
                     + ' failed',
-                    'command: %s' % command,
+                    f'command: {command}',
                 )
     if env_dict.get("WITH_PSLIB") == 'ON':
         shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
@@ -1218,9 +1217,7 @@ def get_package_data_and_package_dir():
                 "ONEDNN_SHARED_LIB"
             )
             if os.system(command) != 0:
-                raise Exception(
-                    "patch libdnnl.so failed, command: %s" % command
-                )
+                raise Exception(f"patch libdnnl.so failed, command: {command}")
         shutil.copy(env_dict.get("ONEDNN_SHARED_LIB"), libs_path)
         if os.name != 'nt':
             package_data['paddle.libs'] += ['libdnnl.so.3']
@@ -1379,8 +1376,8 @@ def get_package_data_and_package_dir():
                         raise Exception(
                             'patch '
                             + env_dict.get("FLUID_CORE_NAME")
-                            + '%s failed' % ext_suffix,
-                            'command: %s' % command,
+                            + f'{ext_suffix} failed',
+                            f'command: {command}',
                         )
     # A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
     ext_modules = [Extension('_foo', [paddle_binary_dir + '/python/stub.cc'])]
@@ -1943,7 +1940,7 @@ def main():
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:
-            raise Exception("strip *.so failed, command: %s" % command)
+            raise Exception(f"strip *.so failed, command: {command}")
 
     # install cpp distribution
     if env_dict.get("WITH_CPP_DIST") == 'ON':
@@ -1957,7 +1954,15 @@ def main():
         )
 
     # generate stub file `tensor.pyi`
-    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+    if os.getenv("SKIP_STUB_GEN", '').lower() not in [
+        'y',
+        'yes',
+        't',
+        'true',
+        'on',
+        '1',
+    ]:
+        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,
