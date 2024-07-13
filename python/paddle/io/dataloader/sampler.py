@@ -69,7 +69,7 @@ class Sampler(Generic[_T]):
             >>> import numpy as np
             >>> from paddle.io import Dataset, Sampler
 
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -142,7 +142,7 @@ class SequenceSampler(Sampler[int]):
             >>> import numpy as np
             >>> from paddle.io import Dataset, SequenceSampler
 
-            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -205,7 +205,7 @@ class RandomSampler(Sampler[int]):
             >>> from paddle.io import Dataset, RandomSampler
 
             >>> np.random.seed(2023)
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...

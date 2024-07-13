@@ -28,7 +28,7 @@ from paddle.framework import in_dynamic_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 __all__ = ["LKJCholesky"]
@@ -147,7 +147,7 @@ class LKJCholesky(distribution.Distribution):
     """
 
     concentration: Tensor
-    dtype: DTypeLike
+    dtype: _DTypeLiteral
     dim: int
     sample_method: Literal["onion", "cvine"]
 
