@@ -142,6 +142,7 @@ def monkey_patch_value():
         return _C_ops.memcpy(self, 1)
 
     @property
+    @fake_interface_only
     def place(self):
         """
         Value don't have 'place' interface in static graph mode
@@ -602,6 +603,31 @@ def monkey_patch_value():
     def value_hash(self):
         return hash(id(self))
 
+    @fake_interface_only
+    def numpy(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
+        Returns:
+            ndarray: The numpy value of current Variable.
+        Returns type:
+            ndarray: dtype is same as current Variable
+        Examples:
+            .. code-block:: python
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> from paddle.nn import Linear
+                >>> import numpy as np
+                >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                >>> with base.dygraph.guard():
+                ...     linear = Linear(32, 64)
+                ...     data_tensor = paddle.to_tensor(data)
+                ...     x = linear(data_tensor)
+                ...     print(x.numpy())
+        """
+        pass
+
     import paddle
 
     value_methods = [
@@ -626,6 +652,7 @@ def monkey_patch_value():
         ('to_dense', to_dense),
         ('indices', indices),
         ('values', values),
+        ("numpy", numpy),
         # For basic operators
         (
             '__add__',
