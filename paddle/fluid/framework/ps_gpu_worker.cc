@@ -210,7 +210,7 @@ PSGPUWorker::~PSGPUWorker() {
 
 int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
                                     const Scope& scope,
-                                    const platform::Place& place) {
+                                    const phi::Place& place) {
   if (shape_check_flag_.load()) {
     // before op run
     InferShapeCheckData check_data;

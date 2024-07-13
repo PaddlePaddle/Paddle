@@ -108,7 +108,7 @@ void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   }
 }
 
-PirInterpreter::PirInterpreter(const platform::Place& place,
+PirInterpreter::PirInterpreter(const phi::Place& place,
                                const std::vector<std::string>& fetch_var_names,
                                const ::pir::Block* ir_block,
                                framework::Scope* scope,
@@ -200,7 +200,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
 }
 
 PirInterpreter::PirInterpreter(
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::string>& fetch_var_names,
     const ::pir::Block* ir_block,
     framework::Scope* scope,
@@ -1144,7 +1144,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       return;
     }
 
-    const platform::Place& place = allocation->place();
+    const phi::Place& place = allocation->place();
     if (platform::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
     } else if (platform::is_cuda_pinned_place(place)) {

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import test_collective_api_base as test_base
 
 import paddle
@@ -64,7 +66,8 @@ class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
-            paddle.distributed.all_reduce(tindata)
+            reduce_type = int(os.getenv("REDUCE_TYPE"))
+            paddle.distributed.all_reduce(tindata, op=reduce_type)
             return [tindata]
 
     def get_model_new(
@@ -93,7 +96,8 @@ class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
-            paddle.distributed.all_reduce(tindata)
+            reduce_type = int(os.getenv("REDUCE_TYPE"))
+            paddle.distributed.all_reduce(tindata, op=reduce_type)
             return [tindata]
 
 

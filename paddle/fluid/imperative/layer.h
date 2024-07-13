@@ -228,14 +228,14 @@ class VarBase {
     return var_->ForwardDataType();
   }
 
-  const platform::Place Place() const { return var_->Place(); }
+  const phi::Place Place() const { return var_->Place(); }
 
   void ClearGradient(bool set_to_zero = true);
 
   void _GradientSetEmpty(bool is_empty = true);
   bool _IsGradientSetEmpty();
 
-  std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+  std::shared_ptr<VarBase> NewVarBase(const phi::Place& dst_place,
                                       const bool blocking) const;
 
   void CopyFrom(const imperative::VarBase& src, bool blocking);
@@ -295,7 +295,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
@@ -304,7 +304,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameTensorMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 void ClearNoNeedBufferInputs(OpBase* op);

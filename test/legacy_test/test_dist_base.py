@@ -1697,22 +1697,13 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         log_name="",
     ):
-        if self._dygraph and (self._gloo_mode or self._nccl2_mode):
-            self.check_with_place_func(
-                model_file=model_file,
-                delta=delta,
-                check_error_log=check_error_log,
-                need_envs=need_envs,
-                log_name=log_name,
-            )
-        else:
-            self.check_with_place_func(
-                model_file=model_file,
-                delta=delta,
-                check_error_log=check_error_log,
-                need_envs=need_envs,
-                log_name=log_name,
-            )
+        self.check_with_place_func(
+            model_file=model_file,
+            delta=delta,
+            check_error_log=check_error_log,
+            need_envs=need_envs,
+            log_name=log_name,
+        )
 
     def check_with_place_func(
         self,

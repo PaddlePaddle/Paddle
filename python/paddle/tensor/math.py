@@ -6346,6 +6346,8 @@ def diff(
             attrs_2 = ()
 
             dim_len = new_input.shape[axis]
+            if dim_len < 0:
+                dim_len = paddle.shape(new_input)[axis]
 
             starts_1 = [0]
             attrs_1 += ('starts', starts_1)
@@ -7865,9 +7867,9 @@ def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [5.])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, (paddle.Tensor, Variable)):
+    if not isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
 
     out = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
@@ -8436,3 +8438,59 @@ def isin(
         return cmp.reshape([])
     else:
         return cmp
+
+
+def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+    """
+    Perform Cartesian product on a given tensor sequence. This behavior is similar to the itertools.product in Python.
+    Equivalent to converting all input tensors into lists, performing itertools.product on these lists,
+    and finally converting the resulting list into tensors.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Any number of 1-D input Tensors. Supported data types: bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), cartesian product of input tensors with the same data type.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> a = paddle.to_tensor([1, 2, 3], dtype='int32')
+            >>> b = paddle.to_tensor([5, 6], dtype='int32')
+            >>> res = paddle.cartesian_prod([a, b])
+            >>> print(res)
+            Tensor(shape=[6, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 5],
+             [1, 6],
+             [2, 5],
+             [2, 6],
+             [3, 5],
+             [3, 6]])
+
+            >>> c = paddle.to_tensor([7, 8, 9], dtype='float32')
+            >>> res = paddle.cartesian_prod([c])
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [7., 8., 9.])
+
+            >>> d = paddle.empty([0], dtype='float64')
+            >>> e = paddle.to_tensor([1, 2], dtype='float64')
+            >>> f = paddle.to_tensor([3, 4, 5, 6, 7], dtype='float64')
+            >>> res = paddle.cartesian_prod([d, e, f])
+            >>> print(res)
+            Tensor(shape=[0, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [])
+    """
+    for tensor in x:
+        if len(tensor.shape) != 1:
+            raise ValueError(
+                f"Expect a 1D vector, but got shape {tensor.shape}"
+            )
+
+    if len(x) == 1:
+        return x[0]
+
+    coordinates = paddle.stack(paddle.meshgrid(x), axis=-1)
+    return paddle.reshape(coordinates, [-1, len(x)])
