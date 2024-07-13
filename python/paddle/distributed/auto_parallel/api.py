@@ -2378,7 +2378,7 @@ def to_static(
             >>> BATCH_NUM = 4
             >>> IMAGE_SIZE = 16
             >>> CLASS_NUM = 8
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, images, labels, num_samples):
             ...         self.images = images
             ...         self.labels = labels
@@ -2885,7 +2885,7 @@ def shard_dataloader(
 
             >>> paddle.seed(1024)
             >>> np.random.seed(1024)
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
             >>>     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len
@@ -2904,10 +2904,10 @@ def shard_dataloader(
             ...     def __init__(self):
             ...         super(MlpModel, self).__init__()
             ...         self.w0 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh0, [dist.Replicate(), dist.Shard(1)])
             ...         self.w1 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh1, [dist.Replicate(), dist.Shard(0)])
 
             ...     def forward(self, x):
@@ -2978,7 +2978,7 @@ def shard_dataloader(
             >>> import numpy as np
             >>> mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
             >>> mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
             ...     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len

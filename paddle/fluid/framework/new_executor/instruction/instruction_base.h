@@ -34,7 +34,7 @@ using SchedulingPriority = int64_t;
 
 class InstructionBase {
  public:
-  explicit InstructionBase(size_t id, const platform::Place& place);
+  explicit InstructionBase(size_t id, const phi::Place& place);
 
   virtual ~InstructionBase() = default;
 

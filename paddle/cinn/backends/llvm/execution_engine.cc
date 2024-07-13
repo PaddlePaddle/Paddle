@@ -109,11 +109,6 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 
 /*static*/ std::unique_ptr<ExecutionEngine> ExecutionEngine::Create(
     const ExecutionOptions &config) {
-  return Create(config, {});
-}
-
-/*static*/ std::unique_ptr<ExecutionEngine> ExecutionEngine::Create(
-    const ExecutionOptions &config, RuntimeSymbols &&module_symbols) {
   VLOG(1) << "===================== Create CINN ExecutionEngine begin "
              "====================";
   VLOG(1) << "initialize llvm config";
@@ -123,8 +118,7 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
   static std::once_flag flag;
   std::call_once(flag, InitializeLLVMPasses);
 
-  auto engine = std::make_unique<ExecutionEngine>(/*enable_object_cache=*/true,
-                                                  std::move(module_symbols));
+  auto engine = std::make_unique<ExecutionEngine>(/*enable_object_cache=*/true);
 
   auto compile_layer_creator =
       [&engine](llvm::orc::JITTargetMachineBuilder jtmb)
@@ -160,9 +154,9 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
       llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
           engine->jit_->getDataLayout().getGlobalPrefix())));
 
-  VLOG(2) << "register runtime call symbols";
+  VLOG(2) << "register global runtime call symbols";
 
-  engine->RegisterRuntimeSymbols();
+  engine->RegisterGlobalRuntimeSymbols();
 
   VLOG(2) << "===================== Create CINN ExecutionEngine end "
              "====================";
@@ -176,7 +170,7 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 }
 
 template <typename CodeGenT>
-void ExecutionEngine::Link(const ir::Module &module, bool add_module) {
+void ExecutionEngine::Link(const ir::Module &module) {
   utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
 
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
@@ -201,10 +195,6 @@ void ExecutionEngine::Link(const ir::Module &module, bool add_module) {
   machine->addPassesToEmitFile(
       pass_manager, rawstream, nullptr, llvm::CGFT_ObjectFile);
   pass_manager.run(*m);
-
-  if (add_module) {
-    AddSelfModule();
-  }
 
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "======= dump jit execution session ======";
@@ -235,6 +225,20 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
   return true;
 }
+
+void ExecutionEngine::RegisterModuleRuntimeSymbols(
+    RuntimeSymbols &&module_symbols) {
+  module_symbols_ = std::forward<RuntimeSymbols>(module_symbols);
+  auto *session = &jit_->getExecutionSession();
+  for (const auto &sym : module_symbols_.All()) {
+    VLOG(0) << "Add symbol: {" << sym.first << ":" << sym.second << "}";
+    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
+        {{session->intern(sym.first),
+          {llvm::pointerToJITTargetAddress(sym.second),
+           llvm::JITSymbolFlags::Exported}}})));
+  }
+}
+
 bool ExecutionEngine::AddSelfModule() {
   return AddModule(std::move(m), std::move(ctx));
 }
@@ -256,8 +260,8 @@ void *ExecutionEngine::Lookup(absl::string_view name) {
   return nullptr;
 }
 
-void ExecutionEngine::RegisterRuntimeSymbols() {
-  utils::RecordEvent("ExecutionEngine RegisterRuntimeSymbols",
+void ExecutionEngine::RegisterGlobalRuntimeSymbols() {
+  utils::RecordEvent("ExecutionEngine RegisterGlobalRuntimeSymbols",
                      utils::EventType::kOrdinary);
   const auto &registry = GlobalSymbolRegistry::Global();
   auto *session = &jit_->getExecutionSession();
@@ -267,19 +271,10 @@ void ExecutionEngine::RegisterRuntimeSymbols() {
           {llvm::pointerToJITTargetAddress(sym.second),
            llvm::JITSymbolFlags::None}}})));
   }
-  for (const auto &sym : module_symbols_.All()) {
-    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
-        {{session->intern(sym.first),
-          {llvm::pointerToJITTargetAddress(sym.second),
-           llvm::JITSymbolFlags::None}}})));
-  }
 }
 
-template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module,
-                                                 bool add_module);
-template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module,
-                                                bool add_module);
-template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module,
-                                                      bool add_module);
+template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module);
 
 }  // namespace cinn::backends

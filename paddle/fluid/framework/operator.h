@@ -107,7 +107,7 @@ constexpr char kAllKernelsMustComputeRuntimeShape[] =
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
-extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+extern std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   std::string result;
@@ -282,7 +282,7 @@ class TEST_API OperatorBase {
 
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
-  void Run(const Scope& scope, const platform::Place& place);
+  void Run(const Scope& scope, const phi::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -364,10 +364,10 @@ class TEST_API OperatorBase {
   virtual void SetIsRuntimeInferShape(bool x UNUSED) {}
 
   virtual void RuntimeInferShape(const Scope& scope UNUSED,
-                                 const platform::Place& place UNUSED,
+                                 const phi::Place& place UNUSED,
                                  const RuntimeContext& ctx UNUSED) const {}
 
-  virtual phi::Place GetExecutionPlace(const platform::Place& place) const {
+  virtual phi::Place GetExecutionPlace(const phi::Place& place) const {
     return place;
   }
 
@@ -417,8 +417,7 @@ class TEST_API OperatorBase {
  private:
   void GenerateTemporaryNames();
   void CheckAllInputOutputSet() const;
-  virtual void RunImpl(const Scope& scope,
-                       const platform::Place& place) const = 0;
+  virtual void RunImpl(const Scope& scope, const phi::Place& place) const = 0;
 };
 
 class ExecutionContext : public phi::KernelContext {
@@ -794,7 +793,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   void RuntimeInferShape(const Scope& scope,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          const RuntimeContext& ctx) const override;
 
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
@@ -816,7 +815,7 @@ class OperatorWithKernel : public OperatorBase {
       const phi::KernelKey& expected_kernel_type) const;
 
   phi::Place GetExecutionPlace(
-      const platform::Place& platform UNUSED) const override {
+      const phi::Place& platform UNUSED) const override {
     return kernel_type_->place_;
   }
 
@@ -863,9 +862,9 @@ class OperatorWithKernel : public OperatorBase {
   void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
 
  private:
-  void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const Scope& scope, const phi::Place& place) const final;
   void RunImpl(const Scope& scope,
-               const platform::Place& place,
+               const phi::Place& place,
                RuntimeContext* runtime_ctx) const;
 
   /**

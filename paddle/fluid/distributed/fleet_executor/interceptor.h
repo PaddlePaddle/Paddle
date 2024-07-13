@@ -73,7 +73,7 @@ class Interceptor {
 
   bool Send(int64_t dst_id, InterceptorMessage& msg);  // NOLINT
 
-  void SetPlace(const platform::Place& place) { place_ = place; }
+  void SetPlace(const phi::Place& place) { place_ = place; }
 
   void SetRootScope(framework::Scope* scope) { root_scope_ = scope; }
   void SetMiniBatchScope(framework::Scope* scope) { minibatch_scope_ = scope; }
@@ -105,7 +105,7 @@ class Interceptor {
   void StopCarrier();
 
   // for runtime
-  platform::Place place_;
+  phi::Place place_;
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
