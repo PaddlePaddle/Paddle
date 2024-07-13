@@ -13,6 +13,12 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
+import logging
+import multiprocessing
+import sys
+import time
+import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,6 +33,20 @@ from typing import (
 
 import paddle
 
+from ..base.framework import (
+    _current_expected_place,
+    _get_paddle_place,
+    _get_paddle_place_list,
+)
+from ..framework import core, in_dynamic_mode
+from .dataloader import BatchSampler, IterableDataset, Subset
+from .dataloader.batch_sampler import _InfiniteIterableSampler
+from .dataloader.dataloader_iter import (
+    _DataLoaderIterMultiProcess,
+    _DataLoaderIterSingleProcess,
+    _DatasetKind,
+)
+
 if TYPE_CHECKING:
     import numbers
 
@@ -35,6 +55,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import PlaceLike
     from paddle.io.dataloader.dataset import Dataset
+
+    from .dataloader.dataloader_iter import _DataLoaderIterBase
 
     _K = TypeVar('_K')
     _V = TypeVar('_V')
@@ -63,27 +85,6 @@ class _CollateFn(Protocol):
     def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
         ...
 
-
-import copy
-import logging
-import multiprocessing
-import sys
-import time
-import warnings
-
-from ..base.framework import (
-    _current_expected_place,
-    _get_paddle_place,
-    _get_paddle_place_list,
-)
-from ..framework import core, in_dynamic_mode
-from .dataloader import BatchSampler, IterableDataset, Subset
-from .dataloader.batch_sampler import _InfiniteIterableSampler
-from .dataloader.dataloader_iter import (
-    _DataLoaderIterMultiProcess,
-    _DataLoaderIterSingleProcess,
-    _DatasetKind,
-)
 
 # NOTE: [ avoid hanging & failed quickly ]
 # These value is used in getting data from another process
@@ -569,9 +570,7 @@ class DataLoader:
             else:
                 return len(self.dataset)
 
-    def __iter__(
-        self,
-    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
+    def __iter__(self) -> _DataLoaderIterBase:
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
@@ -583,7 +582,5 @@ class DataLoader:
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    def __call__(
-        self,
-    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
+    def __call__(self) -> _DataLoaderIterBase:
         return self.__iter__()
