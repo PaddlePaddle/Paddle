@@ -17,10 +17,12 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import distribution
 
 if TYPE_CHECKING:
-    from paddle import Tensor, dtype
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class Poisson(distribution.Distribution):
@@ -76,8 +78,9 @@ class Poisson(distribution.Distribution):
             [[864.80285645, 0.          ],
              [0.06825157  , 1.53426421  ]])
     """
+
     rate: Tensor
-    dtype: dtype
+    dtype: _DTypeLiteral
 
     def __init__(self, rate: float | Tensor) -> None:
         self.dtype = paddle.get_default_dtype()
@@ -99,7 +102,7 @@ class Poisson(distribution.Distribution):
         if isinstance(rate, (float, int)):
             rate = paddle.to_tensor([rate], dtype=self.dtype)
         else:
-            self.dtype = rate.dtype
+            self.dtype = convert_dtype(rate.dtype)
         return rate
 
     @property
