@@ -79,7 +79,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
                                          param_name));
         if (param_var->IsType<phi::DenseTensor>()) {
           auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
-          paddle::platform::CPUPlace cpu_place;
+          phi::CPUPlace cpu_place;
           phi::DenseTensor temp_tensor;
           temp_tensor.Resize(param_tensor->dims());
           paddle::framework::TensorCopySync(

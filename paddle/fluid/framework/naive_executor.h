@@ -48,7 +48,7 @@ class NaiveExecutor {
   using PirHookFunc =
       std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const phi::Place& place) : place_(place) {}
 
   ~NaiveExecutor();
 

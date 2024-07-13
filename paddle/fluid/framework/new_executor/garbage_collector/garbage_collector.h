@@ -80,12 +80,11 @@ inline bool IsInterpretercoreFastGCEnabled() {
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const platform::Place& place,
-    const std::vector<Instruction>& vec_instruction);
+    const phi::Place& place, const std::vector<Instruction>& vec_instruction);
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction);
 
 }  // namespace framework

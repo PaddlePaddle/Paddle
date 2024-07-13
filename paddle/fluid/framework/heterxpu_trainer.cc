@@ -125,7 +125,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 
 #ifdef PADDLE_WITH_XPU
   auto dev_id = place.device;
-  platform::XPUDeviceGuard guard(dev_id);
+  phi::backends::xpu::XPUDeviceGuard guard(dev_id);
 #endif
 
   auto& block = program.Block(0);
@@ -219,7 +219,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
 void HeterXpuTrainer::DumpWork(int tid) {}
 
 void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                     const platform::Place& place) {
+                                     const phi::Place& place) {
   CacheProgram(main_program);
   place_ = place;
   auto& profiler = paddle::ps::CostProfiler::instance();
@@ -361,7 +361,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
         auto dev_id = place.device;
-        platform::XPUDeviceGuard guard(dev_id);
+        phi::backends::xpu::XPUDeviceGuard guard(dev_id);
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
@@ -398,7 +398,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
       auto dev_id = place.device;
-      platform::XPUDeviceGuard guard(dev_id);
+      phi::backends::xpu::XPUDeviceGuard guard(dev_id);
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);

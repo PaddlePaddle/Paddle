@@ -32,8 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -202,7 +202,7 @@ void InitDevices() {
 }
 
 void InitDevices(const std::vector<int> devices) {
-  std::vector<platform::Place> places;
+  std::vector<phi::Place> places;
 
   for (auto device : devices) {
     // In multi process multi gpu mode, we may have gpuid = 7
@@ -213,18 +213,18 @@ void InitDevices(const std::vector<int> devices) {
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    places.emplace_back(platform::CUDAPlace(device));
+    places.emplace_back(phi::GPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
-    places.emplace_back(platform::XPUPlace(device));
+    places.emplace_back(phi::XPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_IPU
-    places.emplace_back(platform::IPUPlace(device));
+    places.emplace_back(phi::IPUPlace(device));
 #endif
   }
-  places.emplace_back(platform::CPUPlace());
+  places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  places.emplace_back(platform::CUDAPinnedPlace());
+  places.emplace_back(phi::GPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
@@ -242,7 +242,7 @@ void InitDevices(const std::vector<int> devices) {
         LOG(INFO) << "CustomDevice: " << dev_type
                   << ", visible devices count: " << device_list.size();
         for (auto &dev_id : device_list) {
-          places.push_back(platform::CustomPlace(dev_type, dev_id));
+          places.push_back(phi::CustomPlace(dev_type, dev_id));
         }
       }
     } else {

@@ -462,8 +462,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   auto* var = scope.Var("OUT1");
   var->GetMutable<paddle::framework::LoDTensorArray>();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
 
   paddle::framework::RuntimeContext ctx({}, {});
@@ -493,7 +492,7 @@ class GetLoDLevelTest : public OperatorWithKernel {
     auto lod_level = ctx->GetLoDLevel("X");
     PADDLE_ENFORCE_GT(lod_level,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The LoD level Input(X) should be larger than 0."));
   }
 };
