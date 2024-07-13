@@ -498,10 +498,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=True,
                         )
-                        if i == 0:
-                            self.assertEqual(exe.prune_called_times, 1)
-                        else:
-                            self.assertEqual(exe.prune_called_times, 1)
+                        self.assertEqual(exe.prune_called_times, 1)
 
     def test_prune_with_cache_program2(self):
         '''
@@ -601,10 +598,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=True,
                         )
-                        if i == 0:
-                            self.assertEqual(exe.prune_called_times, 1)
-                        else:
-                            self.assertEqual(exe.prune_called_times, 1)
+                        self.assertEqual(exe.prune_called_times, 1)
 
     def test_prune_with_multi_optimizers(self):
         '''
