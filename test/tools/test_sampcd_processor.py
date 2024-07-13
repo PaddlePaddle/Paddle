@@ -38,7 +38,7 @@ def _clear_environ():
             del os.environ[k]
 
 
-class Test_TestResult(unittest.TestCase):
+class TestTestResult(unittest.TestCase):
     def test_good_result(self):
         r = _TestResult(name='good', passed=True)
         self.assertTrue(r.passed)
@@ -104,7 +104,7 @@ class TestSpecFile(unittest.TestCase):
         raise NotImplementedError
 
 
-class Test_get_api_md5(TestSpecFile):
+class TestGetApiMd5(TestSpecFile):
     def init_file(self):
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write(
@@ -142,7 +142,7 @@ class Test_get_api_md5(TestSpecFile):
         )
 
 
-class Test_get_incrementapi(TestSpecFile):
+class TestGetIncrementApi(TestSpecFile):
     def init_file(self):
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write(
@@ -165,7 +165,7 @@ class Test_get_incrementapi(TestSpecFile):
                 )
             )
 
-    def test_it(self):
+    def test_get_incrementapi(self):
         get_incrementapi(
             api_dev_spec_fn=self.api_dev_spec_filename,
             api_pr_spec_fn=self.api_pr_spec_filename,

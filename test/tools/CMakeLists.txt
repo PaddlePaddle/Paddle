@@ -10,6 +10,6 @@ if(NOT (WITH_COVERAGE))
                     PYTHONPATH=${PADDLE_SOURCE_DIR}/tools)
   endforeach()
 
-  set_tests_properties(test_sampcd_processor PROPERTIES TIMEOUT 1200)
-  set_tests_properties(test_type_checking PROPERTIES TIMEOUT 1200)
+  set_tests_properties(test_sampcd_processor PROPERTIES TIMEOUT 400)
+  set_tests_properties(test_type_checking PROPERTIES TIMEOUT 300)
 endif()
