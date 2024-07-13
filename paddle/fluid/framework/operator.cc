@@ -70,7 +70,7 @@ PHI_DECLARE_bool(enable_host_event_recorder_hook);
 namespace paddle {
 namespace framework {
 
-std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
+std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(phi::GPUPlace(0), LibraryType::kCUDNN),
     std::make_tuple(phi::GPUPlace(0), LibraryType::kPlain),
     std::make_tuple(phi::CPUPlace(), LibraryType::kMKLDNN),
@@ -156,7 +156,7 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const platform::Place& p) {
+  auto to_string = [](const phi::Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
@@ -784,7 +784,7 @@ const std::vector<Variable*>& RuntimeInferShapeContext::OutputVars(
   return it->second;
 }
 
-void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
@@ -1651,7 +1651,7 @@ void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
-                                           const platform::Place& place,
+                                           const phi::Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
   this->Info().infer_shape_(&infer_shape_ctx);
@@ -1715,7 +1715,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place) const {
+                                 const phi::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
@@ -1753,7 +1753,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place,
+                                 const phi::Place& place,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;

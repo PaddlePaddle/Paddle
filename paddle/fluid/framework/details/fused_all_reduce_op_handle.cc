@@ -34,7 +34,7 @@ typedef std::vector<
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce,
     const platform::NCCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
@@ -43,7 +43,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce,
     const platform::BKCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
@@ -52,7 +52,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce)
     : AllReduceOpHandle(node, local_scopes, places),
       num_of_all_reduce_(num_of_all_reduce) {}

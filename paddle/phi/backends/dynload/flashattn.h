@@ -56,6 +56,7 @@ extern void* flashattn_dso_handle;
   __macro(flash_attn_varlen_fwd);             \
   __macro(flash_attn_bwd);                    \
   __macro(flash_attn_varlen_bwd);             \
+  __macro(calc_reduced_attn_scores);          \
   __macro(flash_attn_fwd_with_bias_and_mask); \
   __macro(flash_attn_bwd_with_bias_and_mask); \
   __macro(flash_attn_error);

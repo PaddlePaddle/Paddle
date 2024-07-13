@@ -328,7 +328,7 @@ static bool IsEqualVar(const framework::Variable& var1,
 }
 
 template <typename T>
-static framework::Variable RandomTensor(const framework::DDim& dims,
+static framework::Variable RandomTensor(const phi::DDim& dims,
                                         const platform::Place& place,
                                         int low = -10,
                                         int high = 10) {
@@ -349,7 +349,7 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
 }
 
 template <typename T>
-static framework::Variable RandomSelectedRows(framework::DDim dims,
+static framework::Variable RandomSelectedRows(phi::DDim dims,
                                               const platform::Place& place,
                                               int64_t row_number,
                                               int low = -10,
@@ -387,7 +387,7 @@ static std::unique_ptr<GradientAccumulator> CreateAccumulator(
 
 static void TestGradientAccumulatorTestUnchangeInput(
     const platform::Place& place, bool sort_gradient) {
-  framework::DDim dim{10, 20};
+  phi::DDim dim{10, 20};
   int64_t maximum_row_number = 100;
 
   std::uniform_int_distribution<int64_t> dist(1, maximum_row_number);
