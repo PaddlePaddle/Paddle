@@ -28,8 +28,9 @@ from paddle.tensor import multinomial
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
 
-    from paddle import Tensor, dtype
+    from paddle import Tensor
     from paddle._typing import NestedSequence
+    from paddle._typing.dtype_like import _DTypeLiteral
 
     _CategoricalBoundary: TypeAlias = Union[
         Sequence[float],
@@ -111,8 +112,9 @@ class Categorical(distribution.Distribution):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-5.10270691, -2.22287226, -1.31060708])
     """
+
     logits: Tensor
-    dtype: dtype
+    dtype: _DTypeLiteral
 
     def __init__(
         self,
@@ -143,7 +145,7 @@ class Categorical(distribution.Distribution):
                 'float32',
                 'float64',
             ]:
-                self.dtype = logits.dtype
+                self.dtype = convert_dtype(logits.dtype)
             self.logits = self._to_tensor(logits)[0]
             if self.dtype != convert_dtype(self.logits.dtype):
                 self.logits = paddle.cast(self.logits, dtype=self.dtype)
