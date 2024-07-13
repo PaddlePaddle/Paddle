@@ -996,22 +996,13 @@ class FleetUtil:
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
             with base.scope_guard(scope):
-                if save_combine:
-                    paddle.static.io.save_inference_model(
-                        model_name,
-                        feeded_vars,
-                        target_vars,
-                        executor,
-                        program=program.clone(),
-                    )
-                else:
-                    paddle.static.io.save_inference_model(
-                        model_name,
-                        feeded_vars,
-                        target_vars,
-                        executor,
-                        program=program.clone(),
-                    )
+                paddle.static.io.save_inference_model(
+                    model_name,
+                    feeded_vars,
+                    target_vars,
+                    executor,
+                    program=program.clone(),
+                )
 
             configs = {
                 "fs.default.name": hadoop_fs_name,

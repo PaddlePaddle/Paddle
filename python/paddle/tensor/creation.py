@@ -635,11 +635,6 @@ def _to_tensor_non_static(
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, core.eager.Tensor) and in_dynamic_mode():
-            data = data._copy_to(place, False)
-            data = _handle_tensor_dtype(data, dtype)
-            data.stop_gradient = stop_gradient
-            return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
