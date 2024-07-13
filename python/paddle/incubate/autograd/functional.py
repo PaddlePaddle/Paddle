@@ -15,15 +15,13 @@
 from __future__ import annotations
 
 import typing
-from typing import TYPE_CHECKING, Protocol, Sequence, overload
+from typing import TYPE_CHECKING, Protocol, Sequence, TypeVar, overload
 
 import paddle
 from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeVar
-
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
