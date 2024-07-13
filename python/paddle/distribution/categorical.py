@@ -150,7 +150,7 @@ class Categorical(distribution.Distribution):
         dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         self._prob = self.logits / dist_sum
 
-    def sample(self, shape: list[int]) -> Tensor:
+    def sample(self, shape: Sequence[int]) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
