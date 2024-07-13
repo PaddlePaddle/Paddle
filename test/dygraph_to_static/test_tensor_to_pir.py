@@ -36,6 +36,22 @@ _valid_dtypes = [
     "bool",
 ]
 
+_cpu_place = "Place(cpu)"
+_gpu_place = "Place(gpu:0)"
+
+
+def place_res():
+    def res():
+        if paddle.is_compiled_with_cuda():
+            return _gpu_place
+        else:
+            return _cpu_place
+
+    return res
+
+
+get_place = place_res()
+
 
 def to_dtype(tensorx, dtype):
     return tensorx.to(dtype)
@@ -55,6 +71,10 @@ def to_other(tensorx, other):
 
 def to_other_blocking(tensorx, other, blocking):
     return tensorx.to(other, blocking)
+
+
+def to_dtype_blocking(tensorx, dtype, blocking):
+    return tensorx.to(dtype, blocking)
 
 
 def to_device_dtype_blocking(tensorx, device, dtype, blocking):
@@ -92,11 +112,10 @@ class TensorToTest(Dy2StTestBase):
 
         for place in places:
             tensorx = paddle.jit.to_static(to_device)(tensorx, place)
-            placex_str = str(tensorx.place)
             if "gpu" in place:
-                self.assertEqual(placex_str, "Place(" + place + ":0)")
+                self.assertEqual(str(tensorx.place), _gpu_place)
             else:
-                self.assertEqual(placex_str, "Place(" + place + ")")
+                self.assertEqual(str(tensorx.place), _cpu_place)
 
     @test_pir_only
     def test_Tensor_to_device2(self):
@@ -124,9 +143,9 @@ class TensorToTest(Dy2StTestBase):
                 )
                 placex_str = str(tensorx.place)
                 if "gpu" in place:
-                    self.assertEqual(placex_str, "Place(" + place + ":0)")
+                    self.assertEqual(placex_str, _gpu_place)
                 else:
-                    self.assertEqual(placex_str, "Place(" + place + ")")
+                    self.assertEqual(placex_str, _cpu_place)
                 typex_str = str(tensorx.dtype)
                 self.assertEqual(typex_str, "paddle." + dtype)
 
@@ -136,17 +155,18 @@ class TensorToTest(Dy2StTestBase):
         tensorx = paddle.jit.to_static(to_device_dtype_blocking)(
             tensorx, "cpu", "int32", False
         )
-        placex_str = str(tensorx.place)
-        self.assertEqual(placex_str, "Place(cpu)")
+        self.assertEqual(str(tensorx.place), _cpu_place)
         self.assertEqual(tensorx.dtype, paddle.int32)
         tensor2 = paddle.to_tensor([4, 5, 6])
         tensor2 = paddle.jit.to_static(to_other_blocking)(
             tensor2, tensorx, False
         )
-        place2_str = str(tensor2.place)
-        self.assertEqual(place2_str, "Place(cpu)")
+        # Note: in static mode, the place of tensor2 is not changed
+        self.assertEqual(str(tensor2.place), get_place())
         self.assertEqual(tensor2.dtype, paddle.int32)
-        tensor2 = tensor2.to("float16", False)
+        tensor2 = paddle.jit.to_static(to_dtype_blocking)(
+            tensor2, "float16", False
+        )
         self.assertEqual(tensor2.dtype, paddle.float16)
 
     @test_pir_only
@@ -155,7 +175,9 @@ class TensorToTest(Dy2StTestBase):
         tensor2 = paddle.to_tensor([1, 2, 3])
         tensor2 = paddle.jit.to_static(to_other)(tensor2, tensor1)
         self.assertEqual(tensor2.dtype, tensor1.dtype)
-        self.assertEqual(str(tensor2.place), str(tensor1.place))
+        # Note: in static mode, the place of tensor2 is not changed
+        self.assertEqual(str(tensor1.place), _cpu_place)
+        self.assertEqual(str(tensor2.place), get_place())
 
     @test_pir_only
     def test_kwargs(self):
@@ -163,13 +185,12 @@ class TensorToTest(Dy2StTestBase):
         tensorx = paddle.jit.to_static(to_kwargs_device_dtype_blocking)(
             tensorx, device="cpu", dtype="int8", blocking=True
         )
-        placex_str = str(tensorx.place)
-        self.assertEqual(placex_str, "Place(cpu)")
+        self.assertEqual(str(tensorx.place), _cpu_place)
         self.assertEqual(tensorx.dtype, paddle.int8)
         tensor2 = paddle.to_tensor([4, 5, 6])
         tensor2 = paddle.jit.to_static(to_kwargs_other)(tensor2, other=tensorx)
-        place2_str = str(tensor2.place)
-        self.assertEqual(place2_str, "Place(cpu)")
+        # Note: in static mode, the place of tensor2 is not changed
+        self.assertEqual(str(tensor2.place), get_place())
         self.assertEqual(tensor2.dtype, paddle.int8)
 
     @test_pir_only
@@ -182,6 +203,7 @@ class TensorToTest(Dy2StTestBase):
             self.assertTrue(
                 "The device must be a string which is like" in str(error)
             )
+        # invalid key error
         try:
             tensorx = paddle.jit.to_static(to_invalid_key_error)(
                 tensorx, "cpu", "int32", test_key=False

@@ -657,8 +657,14 @@ def monkey_patch_value():
                 t_casted = t_used
 
             # 2. Copy casted Tensor(in CPU or GPU) to device
-            if isinstance(device, (paddle.CUDAPlace, paddle.CUDAPinnedPlace)):
+            if isinstance(device, paddle.CUDAPlace):
                 new_t = t_casted.cuda(blocking=blocking)
+            elif isinstance(device, paddle.CUDAPinnedPlace):
+                if blocking is not True:
+                    warnings.warn(
+                        "blocking is not supported, and it will be ignored."
+                    )
+                new_t = _C_ops.memcpy(self, 2)
             elif isinstance(device, paddle.CPUPlace):
                 new_t = t_casted.cpu()
             else:
@@ -837,6 +843,8 @@ def monkey_patch_value():
         if other is not None:
             args.pop("other")
             args["dtype"] = other.dtype
+            # in dy2static, we need show warning for this case
+            other.place  # noqa: B018
 
         return self._to(**args)
 
