@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence, Union
 
 import numpy as np
-import numpy.typing as npt
 
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
@@ -26,6 +25,7 @@ from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from typing_extensions import TypeAlias
 
     from paddle import Tensor
