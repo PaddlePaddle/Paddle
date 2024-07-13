@@ -502,7 +502,10 @@ class profileFileReader(FileReader):
 
     def parseFileByGroup(self, groupId, processNum=8):
         fileFist = self.getFileListByGroup(groupId)
-        return self._parseTask(fileFist)
+        if processNum == 0:
+            return self._parseTask(fileFist)
+        else:
+            return self._parseTask(fileFist)
 
 
 def test_profileFileReader():

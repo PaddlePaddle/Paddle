@@ -156,9 +156,9 @@ class PRChecker:
             PADDLE_ROOT + 'tools/test_runner.py',
             PADDLE_ROOT + 'tools/parallel_UT_rule.py',
         )
-        if 'cmakelist' in filename.lower() or filename.startswith(
-            not_white_files
-        ):
+        if 'cmakelist' in filename.lower():
+            isWhiteFile = False
+        elif filename.startswith(not_white_files):
             isWhiteFile = False
         else:
             isWhiteFile = True
