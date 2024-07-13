@@ -61,29 +61,28 @@ if TYPE_CHECKING:
     _K = TypeVar('_K')
     _V = TypeVar('_V')
 
+    class _CollateFn(Protocol):
+        @overload
+        def __call__(
+            self, batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number]
+        ) -> npt.NDArray[Any]:
+            ...
 
-class _CollateFn(Protocol):
-    @overload
-    def __call__(
-        self, batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number]
-    ) -> npt.NDArray[Any]:
-        ...
+        @overload
+        def __call__(self, batch: Sequence[Tensor]) -> Tensor:
+            ...
 
-    @overload
-    def __call__(self, batch: Sequence[Tensor]) -> Tensor:
-        ...
+        @overload
+        def __call__(self, batch: Sequence[AnyStr]) -> AnyStr:
+            ...
 
-    @overload
-    def __call__(self, batch: Sequence[AnyStr]) -> AnyStr:
-        ...
+        @overload
+        def __call__(self, batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
+            ...
 
-    @overload
-    def __call__(self, batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
-        ...
-
-    @overload
-    def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
-        ...
+        @overload
+        def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
+            ...
 
 
 # NOTE: [ avoid hanging & failed quickly ]
