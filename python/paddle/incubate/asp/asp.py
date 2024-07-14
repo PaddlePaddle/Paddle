@@ -42,9 +42,9 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import PlaceLike
-    from paddle.static import Operator, Program
     from paddle.nn import Layer
     from paddle.optimizer import Optimizer
+    from paddle.static import Operator, Program
 
 __all__ = []
 
