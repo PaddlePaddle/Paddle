@@ -64,7 +64,7 @@ class TestTransformsCV2(unittest.TestCase):
             return img.shape
 
         elif self.backend == 'pil':
-            return np.asarray(img).shape
+            return np.array(img).shape
 
         return img.shape
 
@@ -784,7 +784,7 @@ class TestFunctional(unittest.TestCase):
         )
 
         np.testing.assert_almost_equal(
-            np.asarray(normalized_img_pil), normalized_img_np
+            np.array(normalized_img_pil), normalized_img_np
         )
         np.testing.assert_almost_equal(
             normalized_img_tensor.numpy(), normalized_img_np, decimal=4
@@ -800,7 +800,7 @@ class TestFunctional(unittest.TestCase):
         tensor_cropped_img = F.center_crop(tensor_img, 4)
 
         np.testing.assert_almost_equal(
-            np_cropped_img, np.asarray(pil_cropped_img)
+            np_cropped_img, np.array(pil_cropped_img)
         )
         np.testing.assert_almost_equal(
             np_cropped_img,
@@ -823,7 +823,7 @@ class TestFunctional(unittest.TestCase):
             places.append('gpu')
 
         def test_adjust_brightness(np_img, tensor_img):
-            result_cv2 = np.asarray(F.adjust_brightness(np_img, 1.2))
+            result_cv2 = np.array(F.adjust_brightness(np_img, 1.2))
             result_tensor = F.adjust_brightness(tensor_img, 1.2).numpy()
             result_tensor = np.transpose(result_tensor * 255, (1, 2, 0)).astype(
                 'uint8'
@@ -834,21 +834,21 @@ class TestFunctional(unittest.TestCase):
         # of different between PIL and Tensor. So the results can not equal exactly.
 
         def test_adjust_contrast(np_img, tensor_img):
-            result_pil = np.asarray(F.adjust_contrast(np_img, 0.36))
+            result_pil = np.array(F.adjust_contrast(np_img, 0.36))
             result_tensor = F.adjust_contrast(tensor_img, 0.36).numpy()
             result_tensor = np.transpose(result_tensor * 255, (1, 2, 0))
             diff = np.max(np.abs(result_tensor - result_pil))
             self.assertTrue(diff < 1.1)
 
         def test_adjust_saturation(np_img, tensor_img):
-            result_pil = np.asarray(F.adjust_saturation(np_img, 1.0))
+            result_pil = np.array(F.adjust_saturation(np_img, 1.0))
             result_tensor = F.adjust_saturation(tensor_img, 1.0).numpy()
             result_tensor = np.transpose(result_tensor * 255.0, (1, 2, 0))
             diff = np.max(np.abs(result_tensor - result_pil))
             self.assertTrue(diff < 1.1)
 
         def test_adjust_hue(np_img, tensor_img):
-            result_pil = np.asarray(F.adjust_hue(np_img, 0.45))
+            result_pil = np.array(F.adjust_hue(np_img, 0.45))
             result_tensor = F.adjust_hue(tensor_img, 0.45).numpy()
             result_tensor = np.transpose(result_tensor * 255, (1, 2, 0))
             diff = np.max(np.abs(result_tensor - result_pil))
@@ -871,9 +871,7 @@ class TestFunctional(unittest.TestCase):
         pil_padded_img = F.pad(pil_img, [1, 2], padding_mode='reflect')
         tensor_padded_img = F.pad(tensor_img, [1, 2], padding_mode='reflect')
 
-        np.testing.assert_almost_equal(
-            np_padded_img, np.asarray(pil_padded_img)
-        )
+        np.testing.assert_almost_equal(np_padded_img, np.array(pil_padded_img))
         np.testing.assert_almost_equal(
             np_padded_img,
             tensor_padded_img.numpy().transpose((1, 2, 0)),
@@ -900,7 +898,7 @@ class TestFunctional(unittest.TestCase):
         tensor_resized_img2 = F.resize(tensor_img, (46, 40))
 
         np.testing.assert_almost_equal(
-            np_resized_img, np.asarray(pil_resized_img)
+            np_resized_img, np.array(pil_resized_img)
         )
         np.testing.assert_almost_equal(
             np_resized_img,
@@ -956,7 +954,7 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(np_img, expected)
 
         pil_result = F.erase(pil_img, 10, 10, 5, 5, 0)
-        np.testing.assert_equal(np.asarray(pil_result), expected)
+        np.testing.assert_equal(np.array(pil_result), expected)
 
         np_data = np.random.rand(3, 28, 28).astype('float32')
         places = ['cpu']
@@ -1029,14 +1027,14 @@ class TestFunctional(unittest.TestCase):
         )
 
         np.testing.assert_equal(
-            np_affined_img.shape, np.asarray(pil_affined_img).shape
+            np_affined_img.shape, np.array(pil_affined_img).shape
         )
         np.testing.assert_equal(
             np_affined_img.shape, tensor_affined_img.transpose((1, 2, 0)).shape
         )
 
         np.testing.assert_almost_equal(
-            np.asarray(pil_affined_img),
+            np.array(pil_affined_img),
             tensor_affined_img.numpy().transpose((1, 2, 0)),
             decimal=4,
         )
@@ -1060,7 +1058,7 @@ class TestFunctional(unittest.TestCase):
         )
 
         np.testing.assert_equal(
-            rotated_np_img.shape, np.asarray(rotated_pil_img).shape
+            rotated_np_img.shape, np.array(rotated_pil_img).shape
         )
         np.testing.assert_equal(
             rotated_np_img.shape, rotated_tensor_img1.transpose((1, 2, 0)).shape
@@ -1078,7 +1076,7 @@ class TestFunctional(unittest.TestCase):
         )
 
         np.testing.assert_equal(
-            rotated_np_img.shape, np.asarray(rotated_pil_img).shape
+            rotated_np_img.shape, np.array(rotated_pil_img).shape
         )
 
     def test_perspective(self):
@@ -1100,14 +1098,14 @@ class TestFunctional(unittest.TestCase):
         )
 
         np.testing.assert_equal(
-            np_perspectived_img.shape, np.asarray(pil_perspectived_img).shape
+            np_perspectived_img.shape, np.array(pil_perspectived_img).shape
         )
         np.testing.assert_equal(
             np_perspectived_img.shape,
             tensor_perspectived_img.transpose((1, 2, 0)).shape,
         )
 
-        result_pil = np.asarray(pil_perspectived_img)
+        result_pil = np.array(pil_perspectived_img)
         result_tensor = (
             tensor_perspectived_img.numpy().transpose((1, 2, 0)).astype('uint8')
         )
