@@ -893,8 +893,9 @@ __device__ __forceinline__ void ReadDataBc(
     }
     if (nx == 0 && index_src + NX <= config.in_numel) {
       vecRead = true;
-      index_src0 = index_src;
-      *vec_temp_ptr = vec_src[index_src / NX];
+      index_src0 = index_src / NX;
+      *vec_temp_ptr = vec_src[index_src0];
+      index_src0 *= NX;
     }
     idx_diff = index_src - index_src0;
     T tmp = vec_temp[idx_diff & (NX - 1)];

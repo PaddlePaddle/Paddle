@@ -47,17 +47,14 @@ struct BroadcastTypeClassifier {
                           std::vector<DenseTensor *> *outs,
                           int axis) {
     numel = (*outs)[0]->numel();
-    bool* use_braodcast_tmp = reinterpret_cast<bool*>(&use_broadcast1);
 
 #ifndef PADDLE_WITH_XPU_KP
     for (size_t i = 0; i < ins.size(); ++i) {
       bool is_same_dim = ins[i]->numel() == numel;
       if (is_same_dim) {
         use_broadcast[i] = false;
-        use_braodcast_tmp[i] = false;
       } else {
         use_broadcast[i] = true;
-        use_braodcast_tmp[i] = true;
         broadcast_num++;
       }
       all_elementwise &= is_same_dim;
