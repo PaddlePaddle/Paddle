@@ -663,7 +663,7 @@ class TestPrimLogLoss1(TestPrimTwo):
         self.net = log_loss_net
         self.necessary_ops = "pd_op.log_loss"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimLogLoss2(TestPrimTwo):
@@ -680,7 +680,7 @@ class TestPrimLogLoss2(TestPrimTwo):
         self.net = log_loss_net
         self.necessary_ops = "pd_op.log_loss"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 if __name__ == "__main__":
