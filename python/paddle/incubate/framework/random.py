@@ -112,11 +112,38 @@ def get_rng_state(device=None, use_index=False):
     return state_list
 
 
+@overload
+def set_rng_state(
+    state_list: Sequence[int],
+    device: PlaceLike | None = ...,
+    use_index: Literal[True] = ...,
+) -> None:
+    ...
+
+
+@overload
 def set_rng_state(
     state_list: Sequence[_GeneratorState],
-    device: PlaceLike | None = None,
-    use_index: bool = False,
+    device: PlaceLike | None = ...,
+    use_index: Literal[False] = ...,
 ) -> None:
+    ...
+
+
+@overload
+def set_rng_state(
+    state_list: Sequence[int] | Sequence[_GeneratorState],
+    device: PlaceLike | None = ...,
+    use_index: bool = ...,
+) -> None:
+    ...
+
+
+def set_rng_state(
+    state_list,
+    device=None,
+    use_index=False,
+):
     """
 
     Sets generator state for all device generators.
