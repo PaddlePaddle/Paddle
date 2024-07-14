@@ -145,10 +145,7 @@ class MetaInfo:
 
     @staticmethod
     def from_value(value) -> MetaInfo:
-        if isinstance(value, paddle.pir.Value):
-            name = "Value@NoName"
-        else:
-            name = value.name
+        name = SOT_INFER_META_INNER_VAR_PREFIX
         dtype = MetaInfo._handle_legacy_ir_amp_dtype(value.dtype)
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
         return MetaInfo(
