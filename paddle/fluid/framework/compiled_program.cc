@@ -355,6 +355,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   bool need_mem_opt = build_strategy_.enable_inplace_ ||
                       build_strategy_.enable_addto_ ||
                       build_strategy_.memory_optimize_.get() || is_gc_enabled;
+
   if (!need_mem_opt) return graph;
 
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
