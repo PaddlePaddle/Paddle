@@ -367,7 +367,7 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
   if (dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &x};
     GetGradXOrYOut<T>(
-        dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
+        dev_ctx, place, axis, ins, dout, dy, funcs::DivGradXFunctor<T>());
   }
 }
 
