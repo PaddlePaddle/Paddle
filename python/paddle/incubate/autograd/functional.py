@@ -15,32 +15,67 @@
 from __future__ import annotations
 
 import typing
-from typing import TYPE_CHECKING, Protocol, Sequence, TypeVar, overload
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Protocol,
+    Sequence,
+    overload,
+)
 
 import paddle
 from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
+    from typing_extensions import Unpack
+
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
-    _T_TensorOrTensors = TypeVar("_T_TensorOrTensors", Tensor, Sequence[Tensor])
-
     class _Func(Protocol):
-        def __call__(self, _T_TensorOrTensors) -> _T_TensorOrTensors:
+        @overload
+        def __call__(self, arg: Tensor, /) -> Tensor:
+            ...
+
+        @overload
+        def __call__(self, *args: Tensor) -> Tensor:
             ...
 
 
 @overload
-def vjp(func: _Func, xs: Tensor, v: TensorOrTensors | None = None) -> Tensor:
+def vjp(
+    func: Callable[[Tensor], Tensor],
+    xs: Tensor,
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, Tensor]:
     ...
 
 
 @overload
 def vjp(
-    func: _Func, xs: Sequence[Tensor], v: TensorOrTensors | None = None
-) -> tuple[Tensor]:
+    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    xs: Tensor,
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def vjp(
+    func: Callable[[Tensor], Tensor],
+    xs: Sequence[Tensor],
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, tuple[Tensor, ...]]:
+    ...
+
+
+@overload
+def vjp(
+    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    xs: Sequence[Tensor],
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, tuple[Tensor, ...]]:
     ...
 
 
@@ -103,14 +138,38 @@ def vjp(func, xs, v=None):
 
 
 @overload
-def jvp(func: _Func, xs: Tensor, v: TensorOrTensors | None = None) -> Tensor:
+def jvp(
+    func: Callable[[Tensor], Tensor],
+    xs: Tensor,
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, Tensor]:
     ...
 
 
 @overload
 def jvp(
-    func: _Func, xs: Sequence[Tensor], v: TensorOrTensors | None = None
-) -> tuple[Tensor]:
+    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    xs: Tensor,
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def jvp(
+    func: Callable[[Tensor], Tensor],
+    xs: Sequence[Tensor],
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, tuple[Tensor, ...]]:
+    ...
+
+
+@overload
+def jvp(
+    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    xs: Sequence[Tensor],
+    v: TensorOrTensors | None = None,
+) -> tuple[Tensor, tuple[Tensor, ...]]:
     ...
 
 
