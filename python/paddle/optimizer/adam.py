@@ -744,31 +744,32 @@ class Adam(Optimizer):
                         else None
                     )
                     found_inf = self._get_auxiliary_var('found_inf')
-                    if found_inf:
-                        if isinstance(
-                            found_inf, (core.eager.Tensor, pir.Value)
-                        ):
-                            self._set_auxiliary_var('found_inf', True)
-                    else:
-                        if isinstance(
-                            found_inf, (core.eager.Tensor, pir.Value)
-                        ):
-                            self._set_auxiliary_var('found_inf', False)
-                        _, _, _, _, _, _ = _C_ops.merged_adam_(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            lr_dict[key],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            _beta1,
-                            _beta2,
-                            self._epsilon,
-                            find_master,
-                            False,
-                        )
+                    if isinstance(found_inf, pir.Value):
+                        if found_inf:
+                            if isinstance(
+                                found_inf, (core.eager.Tensor, pir.Value)
+                            ):
+                                self._set_auxiliary_var('found_inf', True)
+                        else:
+                            if isinstance(
+                                found_inf, (core.eager.Tensor, pir.Value)
+                            ):
+                                self._set_auxiliary_var('found_inf', False)
+                    _, _, _, _, _, _ = _C_ops.merged_adam_(
+                        self._param_dict[key][param_group_idx],
+                        grad_dict[key],
+                        lr_dict[key],
+                        self._moment1_dict[key][param_group_idx],
+                        self._moment2_dict[key][param_group_idx],
+                        self._beta1_pow_acc_dict[key][param_group_idx],
+                        self._beta2_pow_acc_dict[key][param_group_idx],
+                        master_weight,
+                        _beta1,
+                        _beta2,
+                        self._epsilon,
+                        find_master,
+                        False,
+                    )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],
