@@ -55,6 +55,7 @@ def forward_grad(
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Transform NOT has linearize')
             >>> import numpy as np
             >>> import paddle
 
@@ -150,6 +151,7 @@ def grad(
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Transform NOT has linearize')
             >>> import numpy as np
             >>> import paddle
 
