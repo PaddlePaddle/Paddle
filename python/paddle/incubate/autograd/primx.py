@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.framework import Block
 
-    _T_TensorOrTensors = TypeVar("_T_TensorOrTensors", Tensor, Sequence[Tensor])
+    _TensorOrTensorsT = TypeVar("_TensorOrTensorsT", Tensor, Sequence[Tensor])
 
 
 def topo_path(
@@ -268,7 +268,7 @@ class Transform:
             del block.vars[name]
         block._sync_with_cpp()
 
-    def var2dot_rec(self, vars: _T_TensorOrTensors) -> _T_TensorOrTensors:
+    def var2dot_rec(self, vars: _TensorOrTensorsT) -> _TensorOrTensorsT:
         """Lookup var2dot recursively."""
         if isinstance(vars, (paddle.base.framework.Variable, paddle.pir.Value)):
             dot = self.var2dot.lookup(vars)
@@ -277,7 +277,7 @@ class Transform:
         dots = [self.var2dot_rec(var) for var in vars]
         return dots
 
-    def dot2bar_rec(self, dots: _T_TensorOrTensors) -> _T_TensorOrTensors:
+    def dot2bar_rec(self, dots: _TensorOrTensorsT) -> _TensorOrTensorsT:
         if isinstance(dots, (paddle.base.framework.Variable, paddle.pir.Value)):
             bar = self.dot2bar.lookup(dots)
             assert bar is not None, 'bar must be not None'
