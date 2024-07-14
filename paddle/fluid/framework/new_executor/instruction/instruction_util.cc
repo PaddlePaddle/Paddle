@@ -149,7 +149,7 @@ platform::DeviceContext* ParseDeviceContext(
           static_cast<phi::distributed::NCCLCommContext*>(comm_context)
               ->GetDevContext()
               ->SetCommContext(comm_context);
-          if(IsPir(op)) {
+          if (IsPir(op)) {
             return dev_ctx;
           }
         } else {
