@@ -142,7 +142,6 @@ def monkey_patch_value():
         return _C_ops.memcpy(self, 1)
 
     @property
-    @fake_interface_only
     def place(self):
         """
         Value don't have 'place' interface in static graph mode
