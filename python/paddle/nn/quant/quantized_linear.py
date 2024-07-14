@@ -27,10 +27,10 @@ from paddle.framework import (
 )
 
 if TYPE_CHECKING:
-    import numpy as np
     from typing_extensions import TypeAlias
 
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
     _Algo: TypeAlias = Literal[
         'weight_only_int8', 'weight_only_int4', 'llm.int8'
@@ -121,7 +121,7 @@ def weight_dequantize(
     x: Tensor,
     scale: Tensor,
     algo: _Algo = "weight_only_int8",
-    out_dtype: Literal['float16', 'bfloat16'] | type[np.float16] = 'float16',
+    out_dtype: DTypeLike = "float16",
     group_size: _GroupSize = -1,
 ) -> Tensor:
     """
@@ -182,7 +182,7 @@ def weight_only_linear(
     weight: Tensor,
     bias: Tensor | None = None,
     weight_scale: Tensor | None = None,
-    weight_dtype: Literal["int4", "int8"] = "int8",
+    weight_dtype: DTypeLike = "int8",
     arch: int | None = None,
     group_size: _GroupSize = -1,
 ) -> Tensor:
