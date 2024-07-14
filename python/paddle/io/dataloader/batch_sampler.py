@@ -70,7 +70,7 @@ class BatchSampler(Sampler[Sequence[int]]):
 
             >>> np.random.seed(2023)
             >>> # init with dataset
-            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -226,7 +226,7 @@ class DistributedBatchSampler(BatchSampler):
             >>> from paddle.io import Dataset, DistributedBatchSampler
 
             >>> # init with dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -386,7 +386,7 @@ class DistributedBatchSampler(BatchSampler):
                 >>> from paddle.io import Dataset, DistributedBatchSampler
 
                 >>> # init with dataset
-                >>> class RandomDataset(Dataset):
+                >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...
