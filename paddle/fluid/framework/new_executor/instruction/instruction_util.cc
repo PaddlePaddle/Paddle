@@ -60,13 +60,9 @@ std::vector<int> GetValueIds(pir::Value value,
   return ids;
 }
 
-bool IsPir(pir::Operation* op){
-  return true;
-}
+bool IsPir(pir::Operation* op) { return true; }
 
-bool IsPir(framework::OperatorBase* op){
-  return false;
-}
+bool IsPir(framework::OperatorBase* op) { return false; }
 
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
