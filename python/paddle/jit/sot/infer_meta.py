@@ -31,6 +31,7 @@ from paddle.utils import flatten, is_sequence
 from .utils import Cache, Singleton, map_if_extend, meta_str
 
 DynamicSymbolT = TypeVar("DynamicSymbolT")
+SOT_INFER_META_INNER_VAR_PREFIX = "___SOT_INFER_META_INNER_VAR"
 
 
 class SymbolicInt(metaclass=Singleton):
@@ -159,6 +160,9 @@ class MetaInfo:
             value.type,
             value.place,
         )
+
+    def is_inner_var(self):
+        return self.name.startswith(SOT_INFER_META_INNER_VAR_PREFIX)
 
     def is_dynamic_shape(self):
         """

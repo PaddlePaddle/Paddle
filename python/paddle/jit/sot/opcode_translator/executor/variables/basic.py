@@ -572,13 +572,9 @@ class TensorVariable(VariableBase):
             "stop_gradient",
             "place",
         ]:
-            if name == "name" and self.meta.name.startswith(
-                "infer_meta_variable_tmp"
-            ):
-                raise BreakGraphError(f"{self.meta.name} is a middle tensor.")
-            if name == "place":
+            if name in ["name", "place"] and self.meta.is_inner_var():
                 raise BreakGraphError(
-                    "Don't support 'Tensor.place' interface in static graph mode"
+                    f"{self.meta.name} is a middle tensor. get {name} property."
                 )
             return VariableFactory.from_value(
                 getattr(self.meta, name),

@@ -627,6 +627,7 @@ def monkey_patch_value():
         """
         pass
 
+    @fake_interface_only
     def register_hook(self):
         """
         Value don't have 'register_hook' interface in static graph mode
