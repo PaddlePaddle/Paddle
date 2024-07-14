@@ -387,7 +387,7 @@ class Precision(Metric):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> class Data(paddle.io.Dataset):
+            >>> class Data(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.n = 1024
@@ -528,7 +528,7 @@ class Recall(Metric):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> class Data(paddle.io.Dataset):
+            >>> class Data(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.n = 1024
@@ -677,7 +677,7 @@ class Auc(Metric):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> class Data(paddle.io.Dataset):
+            >>> class Data(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.n = 1024

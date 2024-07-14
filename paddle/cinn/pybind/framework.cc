@@ -19,7 +19,6 @@
 
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cinn_value.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
@@ -35,24 +34,9 @@ namespace py = pybind11;
 using namespace cinn::hlir::framework;  // NOLINT
 void BindFramework(pybind11::module *m) {
   py::class_<Operator>(*m, "Operator")
-      .def("get_op_attrs",
-           [](const std::string &key) {
-             return Operator::GetAttrs<StrategyFunction>(key);
-           })
-      .def("get_op_shape_attrs", [](const std::string &key) {
-        return Operator::GetAttrs<InferShapeFunction>(key);
+      .def("get_op_attrs", [](const std::string &key) {
+        return Operator::GetAttrs<StrategyFunction>(key);
       });
-
-  py::class_<OpValueType<InferShapeFunction>>(*m, "OpValueType1")
-      .def("infer_shape",
-           [](OpValueType<InferShapeFunction> &self,
-              const std::string &key,
-              const std::vector<std::vector<int>> &input_shapes,
-              const AttrMapType &attrs) {
-             const Operator *op_ptr = Operator::Get(key);
-             auto shapes = self[op_ptr](input_shapes, attrs);
-             return shapes;
-           });
 
   py::class_<NodeAttr>(*m, "NodeAttr")
       .def(py::init<>())
