@@ -18,7 +18,6 @@ import typing
 from typing import (
     TYPE_CHECKING,
     Callable,
-    Protocol,
     Sequence,
     overload,
 )
@@ -28,24 +27,13 @@ from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack
-
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
-    class _Func(Protocol):
-        @overload
-        def __call__(self, arg: Tensor, /) -> Tensor:
-            ...
-
-        @overload
-        def __call__(self, *args: Tensor) -> Tensor:
-            ...
-
 
 @overload
 def vjp(
-    func: Callable[[Tensor], Tensor],
+    func: Callable[..., Tensor],
     xs: Tensor,
     v: TensorOrTensors | None = None,
 ) -> tuple[Tensor, Tensor]:
@@ -54,16 +42,16 @@ def vjp(
 
 @overload
 def vjp(
-    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    func: Callable[..., tuple[Tensor, ...]],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[tuple[Tensor, ...], Tensor]:
     ...
 
 
 @overload
 def vjp(
-    func: Callable[[Tensor], Tensor],
+    func: Callable[..., Tensor],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
 ) -> tuple[Tensor, tuple[Tensor, ...]]:
@@ -72,10 +60,10 @@ def vjp(
 
 @overload
 def vjp(
-    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    func: Callable[..., tuple[Tensor, ...]],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, tuple[Tensor, ...]]:
+) -> tuple[tuple[Tensor, ...], tuple[Tensor, ...]]:
     ...
 
 
@@ -139,7 +127,7 @@ def vjp(func, xs, v=None):
 
 @overload
 def jvp(
-    func: Callable[[Tensor], Tensor],
+    func: Callable[..., Tensor],
     xs: Tensor,
     v: TensorOrTensors | None = None,
 ) -> tuple[Tensor, Tensor]:
@@ -148,16 +136,16 @@ def jvp(
 
 @overload
 def jvp(
-    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    func: Callable[..., tuple[Tensor, ...]],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[tuple[Tensor, ...], Tensor]:
     ...
 
 
 @overload
 def jvp(
-    func: Callable[[Tensor], Tensor],
+    func: Callable[..., Tensor],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
 ) -> tuple[Tensor, tuple[Tensor, ...]]:
@@ -166,10 +154,10 @@ def jvp(
 
 @overload
 def jvp(
-    func: Callable[[Unpack[tuple[Tensor, ...]]], Tensor],
+    func: Callable[..., tuple[Tensor, ...]],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, tuple[Tensor, ...]]:
+) -> tuple[tuple[Tensor, ...], tuple[Tensor, ...]]:
     ...
 
 
@@ -336,7 +324,10 @@ class Jacobian:
     """
 
     def __init__(
-        self, func: _Func, xs: TensorOrTensors, is_batched: bool = False
+        self,
+        func: Callable[..., TensorOrTensors],
+        xs: TensorOrTensors,
+        is_batched: bool = False,
     ) -> None:
         if not is_batched:
             self._jacobian = _JacobianNoBatch(func, xs)
@@ -403,7 +394,10 @@ class Hessian:
     symbolic: Jacobian
 
     def __init__(
-        self, func: _Func, xs: TensorOrTensors, is_batched: bool = False
+        self,
+        func: Callable[..., TensorOrTensors],
+        xs: TensorOrTensors,
+        is_batched: bool = False,
     ) -> None:
         def _jac_func(*xs):
             jac = Jacobian(func, xs, is_batched=is_batched)
