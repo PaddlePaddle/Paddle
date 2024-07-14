@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, Protocol, Sequence, overload
 
-# TODO: define random api
 import paddle
 from paddle import base
 from paddle.base import core
