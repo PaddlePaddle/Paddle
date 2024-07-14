@@ -15,12 +15,7 @@
 from __future__ import annotations
 
 import typing
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Sequence,
-    overload,
-)
+from typing import TYPE_CHECKING, Callable, Sequence, Tuple, TypeVar, overload
 
 import paddle
 from paddle.base import framework
@@ -30,40 +25,24 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
+    _OutputT = TypeVar("_OutputT", Tensor, Tuple[Tensor, ...])
+
 
 @overload
 def vjp(
-    func: Callable[..., Tensor],
+    func: Callable[..., _OutputT],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[_OutputT, Tensor]:
     ...
 
 
 @overload
 def vjp(
-    func: Callable[..., tuple[Tensor, ...]],
-    xs: Tensor,
-    v: TensorOrTensors | None = None,
-) -> tuple[tuple[Tensor, ...], Tensor]:
-    ...
-
-
-@overload
-def vjp(
-    func: Callable[..., Tensor],
+    func: Callable[..., _OutputT],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, tuple[Tensor, ...]]:
-    ...
-
-
-@overload
-def vjp(
-    func: Callable[..., tuple[Tensor, ...]],
-    xs: Sequence[Tensor],
-    v: TensorOrTensors | None = None,
-) -> tuple[tuple[Tensor, ...], tuple[Tensor, ...]]:
+) -> tuple[_OutputT, tuple[Tensor, ...]]:
     ...
 
 
@@ -127,37 +106,19 @@ def vjp(func, xs, v=None):
 
 @overload
 def jvp(
-    func: Callable[..., Tensor],
+    func: Callable[..., _OutputT],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[_OutputT, Tensor]:
     ...
 
 
 @overload
 def jvp(
-    func: Callable[..., tuple[Tensor, ...]],
-    xs: Tensor,
-    v: TensorOrTensors | None = None,
-) -> tuple[tuple[Tensor, ...], Tensor]:
-    ...
-
-
-@overload
-def jvp(
-    func: Callable[..., Tensor],
+    func: Callable[..., _OutputT],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[Tensor, tuple[Tensor, ...]]:
-    ...
-
-
-@overload
-def jvp(
-    func: Callable[..., tuple[Tensor, ...]],
-    xs: Sequence[Tensor],
-    v: TensorOrTensors | None = None,
-) -> tuple[tuple[Tensor, ...], tuple[Tensor, ...]]:
+) -> tuple[_OutputT, tuple[Tensor, ...]]:
     ...
 
 
