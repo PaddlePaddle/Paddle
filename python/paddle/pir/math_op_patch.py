@@ -627,6 +627,14 @@ def monkey_patch_value():
         """
         pass
 
+    def register_hook(self):
+        """
+        Value don't have 'register_hook' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        pass
+
     import paddle
 
     value_methods = [
@@ -652,6 +660,7 @@ def monkey_patch_value():
         ('indices', indices),
         ('values', values),
         ("numpy", numpy),
+        ("register_hook", register_hook),
         # For basic operators
         (
             '__add__',
