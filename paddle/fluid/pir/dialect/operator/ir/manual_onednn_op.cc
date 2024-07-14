@@ -350,14 +350,6 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-bool ExpandOp::InferSymbolicShape(
-    pir::InferSymbolicShapeContext* infer_context) {
-  VLOG(4) << "Infer symbolic shape for op: ExpandOp";
-  PADDLE_THROW(phi::errors::Unimplemented(
-      " ExpandOp's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 }  // namespace dialect
 }  // namespace onednn
 }  // namespace paddle
