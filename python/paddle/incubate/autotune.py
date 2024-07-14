@@ -95,7 +95,7 @@ def set_config(config: _ConfigKernel | str | None = None) -> None:
             ...         "enable": True,
             ...     }
             >>> }
-            >>> paddle.incubate.autotune.set_config(config)
+            >>> paddle.incubate.autotune.set_config(config) # type: ignore[arg-type]
 
             >>> # config is the path of json file.
             >>> config_json = json.dumps(config)
