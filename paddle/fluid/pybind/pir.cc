@@ -2614,11 +2614,18 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                } else if (actual.empty()) {
                  return true;
                }
+
+               const auto print_log_error = [&]() {
+                 for (size_t j = 0; j < actual.size(); ++j) {
+                   LOG(ERROR)
+                       << "expect[" << j << "]: " << expect.at(j) << ", actual["
+                       << j << "]: " << actual.at(j) << " .";
+                 }
+               };
+
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
-                   LOG(ERROR)
-                       << "expect[" << i << "]: " << expect.at(i) << " actual["
-                       << i << "]: " << actual.at(i) << " .";
+                   print_log_error();
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2628,7 +2635,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                  if (actual.at(i) != expect.at(i)) {
                    LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
                               << " is not equal to actual[" << i
-                              << "]: " << actual.at(i) << " .";
+                              << "]: " << actual.at(i)
+                              << " . The detailed infermation is as follows:";
+                   print_log_error();
                    return false;
                  }
                }
