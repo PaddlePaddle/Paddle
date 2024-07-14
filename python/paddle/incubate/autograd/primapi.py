@@ -27,15 +27,15 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.framework import Block
 
-    _T_TensorOrTensors = TypeVar("_T_TensorOrTensors", Tensor, Sequence[Tensor])
+    _TensorOrTensorsT = TypeVar("_TensorOrTensorsT", Tensor, Sequence[Tensor])
 
 
 @framework.static_only
 def forward_grad(
-    outputs: _T_TensorOrTensors,
-    inputs: _T_TensorOrTensors,
-    grad_inputs: _T_TensorOrTensors | None = None,
-) -> _T_TensorOrTensors:
+    outputs: _TensorOrTensorsT,
+    inputs: _TensorOrTensorsT,
+    grad_inputs: _TensorOrTensorsT | None = None,
+) -> _TensorOrTensorsT:
     """Forward mode of automatic differentiation.
 
     Note:
@@ -127,10 +127,10 @@ def forward_grad(
 
 @framework.static_only
 def grad(
-    outputs: _T_TensorOrTensors,
-    inputs: _T_TensorOrTensors,
-    grad_outputs: _T_TensorOrTensors | None = None,
-) -> _T_TensorOrTensors:
+    outputs: _TensorOrTensorsT,
+    inputs: _TensorOrTensorsT,
+    grad_outputs: _TensorOrTensorsT | None = None,
+) -> _TensorOrTensorsT:
     """Reverse mode of automatic differentiation.
 
     Note:
@@ -252,8 +252,8 @@ def grad(
 @framework.static_only
 def to_prim(
     blocks: Block | Sequence[Block],
-    blacklist: set | frozenset = frozenset(),
-    whitelist: set | frozenset = frozenset(),
+    blacklist: set[str] | frozenset[str] = frozenset(),
+    whitelist: set[str] | frozenset[str] = frozenset(),
     start_idx: int = -1,
     backward_length: int = -1,
 ) -> None:
