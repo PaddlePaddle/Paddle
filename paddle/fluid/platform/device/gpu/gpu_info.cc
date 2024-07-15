@@ -28,9 +28,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
