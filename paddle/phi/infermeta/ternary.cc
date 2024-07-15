@@ -1142,9 +1142,66 @@ void LerpInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto w_dims = weight.dims();
-  DDim out_dims;
-  out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  DDim l_dims, s_dims;
+  if (x_dims.size() > y_dims.size()) {
+    l_dims = x_dims;
+    s_dims = y_dims;
+  } else {
+    l_dims = y_dims;
+    s_dims = x_dims;
+  }
+  std::vector<int64_t> shapes = common::vectorize<int64_t>(l_dims);
+  for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
+    int64_t s = s_dims[i];
+    int64_t l = l_dims[j];
+    if (s != l) {
+      if (l == 1) {
+        shapes[j] = s;
+      } else if (s == 1 || s == -1) {
+        shapes[j] = l;
+      } else if (l == -1) {
+        shapes[j] = s;
+      } else {
+        PADDLE_THROW(errors::InvalidArgument(
+            "The shape of tensor a %s:%d must match shape of tensor b "
+            "%s:%d.",
+            s_dims.to_str(),
+            i,
+            l_dims.to_str(),
+            j));
+      }
+    }
+  }
+  if (shapes.size() > w_dims.size()) {
+    l_dims = common::make_ddim(shapes);
+    s_dims = w_dims;
+  } else {
+    l_dims = w_dims;
+    s_dims = common::make_ddim(shapes);
+  }
+  std::vector<int64_t> shapes_out = common::vectorize<int64_t>(l_dims);
+  for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
+    int64_t s = s_dims[i];
+    int64_t l = l_dims[j];
+    if (s != l) {
+      if (l == 1) {
+        shapes[j] = s;
+      } else if (s == 1 || s == -1) {
+        shapes[j] = l;
+      } else if (l == -1) {
+        shapes[j] = s;
+      } else {
+        PADDLE_THROW(errors::InvalidArgument(
+            "The shape of tensor a %s:%d must match shape of tensor b "
+            "%s:%d.",
+            s_dims.to_str(),
+            i,
+            l_dims.to_str(),
+            j));
+      }
+    }
+  }
+  DDim out_dims = common::make_ddim(shapes_out);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);

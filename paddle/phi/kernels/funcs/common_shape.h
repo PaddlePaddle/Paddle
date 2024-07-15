@@ -217,11 +217,7 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
     if (s != l) {
       if (l == 1) {
         shapes[j] = s;
-      } else if (s == 1 || s == -1) {
-        shapes[j] = l;
-      } else if (l == -1) {
-        shapes[j] = s;
-      } else {
+      } else if (s != 1) {
         PADDLE_THROW(errors::InvalidArgument(
             "The shape of tensor a %s:%d must match shape of tensor b "
             "%s:%d.",
