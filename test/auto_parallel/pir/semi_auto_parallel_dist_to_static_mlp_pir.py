@@ -61,6 +61,7 @@ class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
         self._ckpt_path = os.getenv("ckpt_path")
+        self._amp = eval(os.getenv("amp"))
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
@@ -81,17 +82,20 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dy2static(self, layer, opt, dist_loader):
         # create loss
         loss_fn = nn.MSELoss()
-        layer, opt = paddle.amp.decorate(
-            models=layer,
-            optimizers=opt,
-            level='O2',
-            master_weight=False,
-            master_grad=False,
-        )
+        if self._amp:
+            layer, opt = paddle.amp.decorate(
+                models=layer,
+                optimizers=opt,
+                level='O2',
+                master_weight=False,
+                master_grad=False,
+            )
         # static training
         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
         loss_list = []
-        with paddle.amp.auto_cast(level='O2', dtype='float16'):
+        with paddle.amp.auto_cast(
+            level='O2', dtype='float16', enable=self._amp
+        ):
             dist_model.train()
 
         if self._in_pir_mode:
@@ -122,13 +126,14 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dynamic(self, layer, opt, dist_loader, is_recompute=False):
         # create loss
         loss_fn = nn.MSELoss()
-        layer, opt = paddle.amp.decorate(
-            models=layer,
-            optimizers=opt,
-            level='O2',
-            master_weight=False,
-            master_grad=False,
-        )
+        if self._amp:
+            layer, opt = paddle.amp.decorate(
+                models=layer,
+                optimizers=opt,
+                level='O2',
+                master_weight=False,
+                master_grad=False,
+            )
         loss_list = []
         for epoch in range(5):
             for batch_id, data in enumerate(dist_loader()):
@@ -139,7 +144,10 @@ class TestSimpleNetForSemiAutoParallel:
                     image, label = data
                 if is_recompute:
                     image.stop_gradient = False
-                with paddle.amp.auto_cast(level='O2', dtype='float16'):
+
+                with paddle.amp.auto_cast(
+                    level='O2', dtype='float16', enable=self._amp
+                ):
                     out = layer(image)
                     loss = loss_fn(out, label)
                 loss_list.append(loss.numpy())
@@ -174,7 +182,6 @@ class TestSimpleNetForSemiAutoParallel:
         )
 
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
-        print('loss', dy_losses, dy2static_losses)
         np.testing.assert_array_equal(dy_losses, dy2static_losses)
 
     def test_dp_demo_net(self):

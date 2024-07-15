@@ -660,53 +660,58 @@ class Engine:
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
-                with static.program_guard(dist_program, startup_program):
-                    level = 'O2'
-                    dtype = 'float16'
-                    master_grad = False
-                    init_loss_scaling = 1024
-                    self._optimizer = (
-                        paddle.static.amp.decorator.OptimizerWithMixedPrecision(
-                            optimizer=self._optimizer,
-                            amp_lists=None,
-                            level=level,
-                            dtype=dtype,
-                            init_loss_scaling=1.0,
-                            incr_every_n_steps=None,
-                            decr_every_n_nan_or_inf=None,
-                            incr_ratio=None,
-                            decr_ratio=None,
-                            use_dynamic_loss_scaling=True,
-                            use_amp_guard=None,
-                            use_master_grad=master_grad,
-                            use_promote=None,
+                if self._strategy.amp.enable:
+                    with static.program_guard(dist_program, startup_program):
+                        amp_lists = paddle.static.amp.decorator.AutoMixedPrecisionLists(
+                            custom_white_list=self._strategy.amp.custom_white_list,
+                            custom_black_list=self._strategy.amp.custom_black_list,
+                            dtype=self._strategy.amp.dtype,
                         )
+                        self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
+                            optimizer=self._optimizer,
+                            amp_lists=amp_lists,
+                            level=self._strategy.amp.level,
+                            dtype=self._strategy.amp.dtype,
+                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                            incr_ratio=self._strategy.amp.incr_ratio,
+                            decr_ratio=self._strategy.amp.decr_ratio,
+                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                            use_amp_guard=self._strategy.amp.use_fp16_guard,
+                            use_master_grad=self._strategy.amp.use_dynamic_loss_scaling,
+                            use_promote=self._strategy.amp.use_dynamic_loss_scaling,
+                        )
+                        # bfloat16 needs no scaler
+                        scaler = paddle.amp.GradScaler(
+                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                            incr_ratio=self._strategy.amp.incr_ratio,
+                            decr_ratio=self._strategy.amp.decr_ratio,
+                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                            enable=self._strategy.amp.enable
+                            and self._strategy.amp.dtype != 'bfloat16',
+                        )
+
+                        scaled = scaler.scale(loss)
+                        scaler.minimize(self._optimizer, scaled)
+                else:
+                    params_grads = paddle.autograd.ir_backward.append_backward(
+                        loss
                     )
-                    scaler = paddle.amp.GradScaler(
-                        init_loss_scaling=init_loss_scaling
+                    self._optimizer._apply_optimize(
+                        loss, startup_program, params_grads=params_grads
                     )
-
-                    scaled = scaler.scale(loss)
-                    scaler.minimize(self._optimizer, scaled)
-
-                    print(startup_program)
-                    print('dist_program', dist_program, flush=1)
-
-                    # re-run apply_mix2dist_pass to dist accumulator.
-                    apply_mix2dist_pass(dist_program)
-
-                    # params_grads = paddle.autograd.ir_backward.append_backward(
-                    #     loss
-                    # )
-                    # self._optimizer._apply_optimize(
-                    #     loss, startup_program, params_grads=params_grads
-                    # )
-
                     # self._optimizer.minimize(loss, startup_program=startup_program)
+
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
                 )
+
+        # re-run apply_mix2dist_pass to dist accumulator.
+        apply_mix2dist_pass(dist_program)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
