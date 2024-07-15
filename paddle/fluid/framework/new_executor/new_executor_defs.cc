@@ -306,12 +306,12 @@ const platform::DeviceContext& Instruction::DeviceContext() const {
   return dev_ctx_;
 }
 
-const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
-    const {
+const std::vector<std::pair<const Variable*, Variable*>>&
+Instruction::InplaceInfo() const {
   return vec_inplace_in_to_out_;
 }
 
-void Instruction::AddInplace(Variable* in, Variable* out) {
+void Instruction::AddInplace(const Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
 
