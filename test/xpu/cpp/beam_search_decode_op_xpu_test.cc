@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-using CPUPlace = paddle::platform::CPUPlace;
-using XPUPlace = paddle::platform::XPUPlace;
+using CPUPlace = phi::CPUPlace;
+using XPUPlace = phi::XPUPlace;
 using LoD = paddle::framework::LoD;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
@@ -40,7 +40,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                         LoDTensorArray* scores) {
   PADDLE_ENFORCE_EQ(level_0.back(),
                     level_1.size() - 1,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "source level is used to describe candidate set"
                         ", so it's element should less than levle_1 length. "
                         "And the value of source"
@@ -48,7 +48,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                         level_1.size() - 1));
   PADDLE_ENFORCE_EQ(level_1.back(),
                     data.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "the lowest level is used to describe data"
                         ", so it's last element should be data length %d. ",
                         data.size()));
@@ -79,9 +79,9 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   tensor_id.set_lod(lod);
 
   int64_t* id_ptr = tensor_id.mutable_data<int64_t>(xpu_place);
-  paddle::memory::Copy(paddle::platform::XPUPlace(XPU_PlaceNo),
+  paddle::memory::Copy(phi::XPUPlace(XPU_PlaceNo),
                        id_ptr,
-                       paddle::platform::CPUPlace(),
+                       phi::CPUPlace(),
                        id_cpu_ptr,
                        tensor_id_cpu.numel() * sizeof(int64_t));
 
@@ -123,9 +123,9 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
 
   T* score_ptr = tensor_score.mutable_data<T>(xpu_place);
 
-  paddle::memory::Copy(paddle::platform::XPUPlace(XPU_PlaceNo),
+  paddle::memory::Copy(phi::XPUPlace(XPU_PlaceNo),
                        score_ptr,
-                       paddle::platform::CPUPlace(),
+                       phi::CPUPlace(),
                        score_cpu_ptr,
                        tensor_score_cpu.numel() * sizeof(T));
 

@@ -113,7 +113,7 @@ bool CUDAMallocAsyncAllocation::CanBeFreed(bool synchronize) {
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    const platform::CUDAPlace& place,
+    const phi::GPUPlace& place,
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),
@@ -154,7 +154,7 @@ void CUDAMallocAsyncAllocator::TryFree(CUDAMallocAsyncAllocation* allocation) {
   }
 }
 
-uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const platform::Place& place) {
+uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const phi::Place& place) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     VLOG(7) << "Memory release forbidden in CUDA Graph Captruing";
     return 0;
@@ -208,7 +208,7 @@ phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
       &ptr, size, place_.device, default_stream_);
   if (LIKELY(result == gpuSuccess)) {
     auto* allocation = new CUDAMallocAsyncAllocation(
-        ptr, size, platform::Place(place_), default_stream_);
+        ptr, size, phi::Place(place_), default_stream_);
 
     // If capturing, associate allocation with the current graph.
     if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {

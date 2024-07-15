@@ -63,7 +63,7 @@ std::vector<int> GetValueIds(pir::Value value,
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::string& execution_stream,
     const int stream_priority) {
   auto& op_attributes = op->attributes();
@@ -143,7 +143,7 @@ platform::DeviceContext* ParseDeviceContext(
   return origin_dev_ctx;
 }
 
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -396,7 +396,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+  paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
@@ -404,6 +404,108 @@ bool GetCondData(const phi::DenseTensor& cond) {
       "WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
+}
+
+// NOTE(chenxi67): Here, we only perform inplace processing for variables whose
+// type is NOT TensorArray. It has already been processed in the previous
+// step(HandleForInplaceVarOp).
+void HandleForInplaceOp(pir::Operation* op,
+                        const ValueExecutionInfo* value_exe_info,
+                        InstructionBase* instr) {
+  if (op->num_results() < 1) return;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    pir::Value value = op->result(i);
+    if (!IsInvalid(value)) {
+      VLOG(8) << "Number " << i << " result of " << op_name
+              << " is not invalid, so skip build a variable.";
+      continue;
+    }
+    if (IsNeedVarInplace(op, value, op_name)) {
+      continue;
+    }
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+      pir::Value inplace_value =
+          op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
+      std::string input_var_name = value_exe_info->GetVarName(inplace_value);
+      std::string output_var_name = value_exe_info->GetVarName(value);
+      PADDLE_ENFORCE_NE(input_var_name,
+                        "",
+                        phi::errors::InvalidArgument(
+                            "The input var name of inplace op is empty."));
+      PADDLE_ENFORCE_NE(output_var_name,
+                        "",
+                        phi::errors::InvalidArgument(
+                            "The output var name of inplace op is empty."));
+      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+              << " (var: " << input_var_name << ")";
+      instr->AddInplace(value_exe_info->GetVarByValue(inplace_value),
+                        value_exe_info->GetVarByValue(value));
+    } else if (yaml_parser.HasView(value_name)) {
+      const std::string& view_name = yaml_parser.ViewName(value_name);
+      pir::Value view_value =
+          op->operand_source(yaml_parser.InputName2Id().at(view_name));
+      // const std::string& var_name = value_2_var_name->at(view_value);
+      std::string input_var_name = value_exe_info->GetVarName(view_value);
+      std::string output_var_name = value_exe_info->GetVarName(value);
+
+      PADDLE_ENFORCE_NE(input_var_name,
+                        "",
+                        platform::errors::InvalidArgument(
+                            "The input var name of view op is empty."));
+      PADDLE_ENFORCE_NE(output_var_name,
+                        "",
+                        platform::errors::InvalidArgument(
+                            "The output var name of view op is empty."));
+      VLOG(4) << "view: " << value_name << " -> " << view_name
+              << " (var: " << input_var_name << ")";
+      instr->AddInplace(value_exe_info->GetVarByValue(view_value),
+                        value_exe_info->GetVarByValue(value));
+    }
+  }
+}
+
+void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
+  if (src_var->IsType<phi::DenseTensor>()) {
+    auto& src_tensor = src_var->Get<phi::DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    tmp_dst_tensor->ShareBufferWith(src_tensor);
+    return;
+  } else if (src_var->IsType<phi::SelectedRows>()) {
+    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
+    auto* dst_t = tmp_dst_slr->mutable_value();
+    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto& src_t = src_slr.value();
+    dst_t->ShareBufferWith(src_t);
+    return;
+  } else if (src_var->IsType<VariableRefArray>()) {
+    auto src_var_array = src_var->Get<VariableRefArray>();
+    auto* dst_var_array = dst_var->GetMutable<VariableRefArray>();
+    for (size_t i = 0; i < src_var_array.size(); ++i) {
+      Variable* copy_var = const_cast<Variable*>(dst_var_array->at(i));
+      ShareVarBuffer(src_var_array.at(i), copy_var);
+    }
+    return;
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType "
+        "or SelectedRowsType or VariableRefArray"));
+  }
+  return;
 }
 
 }  // namespace paddle::framework

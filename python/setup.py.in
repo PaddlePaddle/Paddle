@@ -759,7 +759,7 @@ if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
 
-if '${WITH_GPU}' == 'ON':
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     if len('${FLASHATTN_LIBRARIES}') > 1:
         package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
         shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
@@ -1193,7 +1193,15 @@ def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
     print('-'*2, 'End Generate stub file tensor.pyi ... ')
 
 # generate stub file `tensor.pyi`
-generate_tensor_stub('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
+if os.getenv("SKIP_STUB_GEN", '').lower() not in [
+    'y',
+    'yes',
+    't',
+    'true',
+    'on',
+    '1',
+]:
+    generate_tensor_stub('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
 
 
 with redirect_stdout():

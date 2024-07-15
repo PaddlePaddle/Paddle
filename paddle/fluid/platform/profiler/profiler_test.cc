@@ -97,7 +97,6 @@ TEST(ProfilerTest, TestCudaTracer) {
 }
 
 TEST(ProfilerTest, TestHostTracerForMem) {
-  using paddle::platform::CPUPlace;
   using paddle::platform::EnableHostEventRecorder;
   using paddle::platform::MemTraceEventNode;
   using paddle::platform::Profiler;
@@ -108,6 +107,7 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   using paddle::platform::RecordMemEvent;
   using paddle::platform::TracerEventType;
   using paddle::platform::TracerMemEventType;
+  using phi::CPUPlace;
   ProfilerOptions options;
   options.trace_level = 1;
   options.trace_switch = 3;

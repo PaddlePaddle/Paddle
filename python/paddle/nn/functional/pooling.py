@@ -1844,7 +1844,7 @@ def adaptive_max_pool1d(
     pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, pool_size, [1, 1], [0, 0], False, True, False
         )
@@ -1944,7 +1944,7 @@ def adaptive_max_pool2d(
             output_size[0] = in_h
         if output_size[1] is None:
             output_size[1] = in_w
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, output_size, [1, 1], [0, 0], False, True, False
         )
@@ -2041,7 +2041,7 @@ def adaptive_max_pool3d(
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
             x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
@@ -2187,7 +2187,7 @@ def fractional_max_pool2d(
         if output_size[1] is None:
             output_size[1] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.fractional_max_pool2d(
             x, output_size, kernel_size, float(random_u), return_mask
         )
@@ -2344,7 +2344,7 @@ def fractional_max_pool3d(
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.fractional_max_pool3d(
             x,
             output_size,

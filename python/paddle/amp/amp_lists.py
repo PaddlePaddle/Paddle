@@ -14,6 +14,9 @@
 
 # The set of ops that support fp16 and bf16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16 or bf16.
+
+from __future__ import annotations
+
 WHITE_LIST = {
     'conv2d',
     'einsum',
@@ -102,7 +105,7 @@ BF16_BLACK_LIST = FP16_BLACK_LIST
 
 
 # At OD level, ops in WHITE_LIST will use FP16/BF16 and the others will use FP32.
-def white_list():
+def white_list() -> dict[str, dict[str, set[str]]]:
     white_list = {
         "float16": {
             "OD": FP16_WHITE_LIST,
@@ -118,7 +121,7 @@ def white_list():
     return white_list
 
 
-def black_list():
+def black_list() -> dict[str, dict[str, set[str]]]:
     black_list = {
         "float16": {
             "OD": set(),

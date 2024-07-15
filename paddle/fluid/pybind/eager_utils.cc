@@ -107,7 +107,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
     case phi::DataType::FLOAT8_E5M2:
       return pybind11::detail::npy_api::NPY_BYTE_;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return 0;
@@ -628,20 +628,20 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
   return result;
 }
 
-platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
-  platform::Place place;
+phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
+  phi::Place place;
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
-    place = ::pybind11::handle(obj).cast<platform::Place>();
+    place = ::pybind11::handle(obj).cast<phi::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CUDAPlace>();
+    place = ::pybind11::handle(obj).cast<phi::GPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CPUPlace>();
+    place = ::pybind11::handle(obj).cast<phi::CPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_xpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::XPUPlace>();
+    place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
+    place = ::pybind11::handle(obj).cast<phi::GPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_customplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<platform::CustomPlace>();
+    place = ::pybind11::handle(obj).cast<phi::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -1036,7 +1036,7 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
   return result;
 }
 
-PyObject* ToPyObject(const platform::Place& value) {
+PyObject* ToPyObject(const phi::Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
@@ -2128,9 +2128,8 @@ PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
   }
   Py_INCREF(obj);
   PyObject* result = PyObject_CallFunction(hook, "O", obj);
-  PADDLE_ENFORCE(result,
-                 paddle::platform::errors::Fatal(
-                     "Call static_op_arg_pre_cast_hook failed."));
+  PADDLE_ENFORCE(
+      result, phi::errors::Fatal("Call static_op_arg_pre_cast_hook failed."));
   Py_DECREF(obj);
   return result;
 }
@@ -2339,6 +2338,9 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
   VLOG(4) << "type_name: " << type_name;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
+    if (len == 0) {
+      return std::vector<phi::Scalar>({});
+    }
     PyObject* item = nullptr;
     item = PyList_GetItem(obj, 0);
     if (PyObject_CheckFloat(item)) {
@@ -2363,6 +2365,13 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
       }
       return value;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidType(
+          "%s(): argument (position %d) must be "
+          "a list of int, float, complex, or bool, but got %s",
+          op_type,
+          arg_pos + 1,
+          ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
@@ -2372,9 +2381,6 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-
-  // Fake a ScalarArray
-  return std::vector<phi::Scalar>({phi::Scalar(1.0)});
 }
 
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
@@ -2519,9 +2525,8 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
         "Hook function of Tensor raises an unknown exception."));
   }
 
-  PADDLE_ENFORCE_NOT_NULL(res,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      res, phi::errors::External(pybind11::detail::error_string().c_str()));
   if (res == Py_None) {
     return var;
   }
@@ -2587,14 +2592,12 @@ std::shared_ptr<egr::PyObjectHolderBase> PackHook::operator()(
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
-  PADDLE_ENFORCE_NOT_NULL(args,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      args, phi::errors::External(pybind11::detail::error_string().c_str()));
   PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(ret,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      ret, phi::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
   return std::make_shared<PyObjectHolder>(ret);
@@ -2605,15 +2608,17 @@ void* PackHook::operator()(void* py_tensor) {
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
-  PADDLE_ENFORCE_NOT_NULL(args,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      args, phi::errors::External(pybind11::detail::error_string().c_str()));
   Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(ret,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  if (ret == Py_None) {
+    Py_XDECREF(args);
+    return Py_None;
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      ret, phi::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
   return reinterpret_cast<void*>(ret);
@@ -2632,16 +2637,14 @@ paddle::Tensor UnPackHook::operator()(
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
-  PADDLE_ENFORCE_NOT_NULL(args,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      args, phi::errors::External(pybind11::detail::error_string().c_str()));
   PyObject* py_packed_value = reinterpret_cast<PyObject*>(packed_value->get());
   Py_INCREF(py_packed_value);
   PyTuple_SET_ITEM(args, 0, py_packed_value);
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(ret,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      ret, phi::errors::External(pybind11::detail::error_string().c_str()));
   // NOTE(deepllz): tupledealloc will cause the reference count of the objects
   // in it to be decremented by one, so no need to call
   // Py_XDECREF(py_packed_value)
@@ -2650,7 +2653,7 @@ paddle::Tensor UnPackHook::operator()(
 
   PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "paddle.autograd.saved_tensors_hooks only one pair "
                         "of hooks is allowed at a time."));
 
@@ -2664,21 +2667,23 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
-  PADDLE_ENFORCE_NOT_NULL(args,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      args, phi::errors::External(pybind11::detail::error_string().c_str()));
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(ret,
-                          paddle::platform::errors::External(
-                              pybind11::detail::error_string().c_str()));
+  if (ret == Py_None) {
+    Py_XDECREF(args);
+    return Py_None;
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      ret, phi::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
   PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "paddle.autograd.saved_tensors_hooks only one pair "
                         "of hooks is allowed at a time."));
 

@@ -20,14 +20,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, DeviceContextWithCUDAGraph) {
-  using paddle::platform::CUDAPlace;
   using paddle::platform::DeviceContext;
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::Place;
+  using phi::DeviceContextPool;
   using phi::GPUContext;
+  using phi::GPUPlace;
+  using phi::Place;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  Place place = CUDAPlace(0);
+  Place place = GPUPlace(0);
   auto* dev_ctx = pool.Get(place);
 
   paddle::platform::BeginCUDAGraphCapture(

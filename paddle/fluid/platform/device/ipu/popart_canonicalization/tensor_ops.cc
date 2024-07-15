@@ -27,7 +27,7 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
   if (op_inputs.find("ShapeTensor") != op_inputs.end() &&
       !op->Input("ShapeTensor").empty()) {
     PADDLE_THROW(
-        platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
+        phi::errors::Unimplemented("op fill_constant with ShapeTensor"));
   }
   auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
@@ -62,7 +62,7 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
       break;
     default:
       PADDLE_THROW(
-          platform::errors::Unimplemented("fill_constant dtype: %d", dtype_));
+          phi::errors::Unimplemented("fill_constant dtype: %d", dtype_));
   }
   return CreateConst(graph,
                      node,
@@ -419,7 +419,7 @@ Node *slice_handler(Graph *graph, Node *node) {
         (inputs.find(tensor_names[i] + "Tensor") != inputs.end() &&
          !inputs.at(tensor_names[i] + "Tensor").empty());
     if (is_tensor) {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Do not support starts, ends and strides as tensors."));
     } else {
       if (i == 2 && !op->HasAttr("strides")) {
@@ -471,7 +471,7 @@ Node *expand_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   if (!op->Input("expand_times_tensor").empty()) {
     PADDLE_THROW(
-        platform::errors::Unimplemented("Expand op with expand_times_tensor"));
+        phi::errors::Unimplemented("Expand op with expand_times_tensor"));
   }
 
   Node *expand_times = nullptr;
@@ -546,7 +546,7 @@ Node *assign_value_handler(Graph *graph, Node *node) {
       values = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr(value_name));
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type(code %d) for AssignValue operator, only "
           "supports bool, int32, float32 and int64.",
           dtype));
@@ -598,7 +598,7 @@ Node *fill_any_like_handler(Graph *graph, Node *node) {
       break;
     default:
       PADDLE_THROW(
-          platform::errors::Unimplemented("fill_any_like dtype: %d", dtype));
+          phi::errors::Unimplemented("fill_any_like dtype: %d", dtype));
   }
   return CreateConst(graph,
                      node,
@@ -617,8 +617,8 @@ Node *one_hot_handler(Graph *graph, Node *node) {
   auto allow_out_of_range =
       PADDLE_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
   if (allow_out_of_range) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Do not support allow_out_of_range=True"));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Do not support allow_out_of_range=True"));
   } else {
     auto depth_tensor = CreateConst(graph,
                                     node,
@@ -651,8 +651,8 @@ Node *one_hot_v2_handler(Graph *graph, Node *node) {
   auto allow_out_of_range =
       PADDLE_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
   if (allow_out_of_range) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Do not support allow_out_of_range=True"));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Do not support allow_out_of_range=True"));
   } else {
     auto depth_tensor = CreateConst(graph,
                                     node,
@@ -919,7 +919,7 @@ Node *expand_as_v2_handler(Graph *graph, Node *node) {
   auto op_inputs = op->Inputs();
   // PopART Expand Op only support the constant tensor as the input `shape`.
   if (op_inputs.find("target_tensor") != op_inputs.end()) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Do not support input tensor `target_tensor`. Please use the attribute "
         "`target_shape`."));
   }
@@ -933,7 +933,7 @@ Node *expand_as_v2_handler(Graph *graph, Node *node) {
     if (input_shape[input_shape_index] !=
             int64_t(shape_value[target_shape_index]) &&
         input_shape[input_shape_index] != int64_t(1)) {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "For input and `shape`, corresponding dimensions must have the same "
           "value or input dim = 1."));
     }
@@ -963,11 +963,11 @@ Node *expand_v2_handler(Graph *graph, Node *node) {
   // PopART Expand Op only support the constant tensor as the input `shape`.
   if (op->Input("Shape").size()) {
     PADDLE_THROW(
-        platform::errors::Unimplemented("Do not support input tensor `Shape`. "
-                                        "Please use the attribute `shape`."));
+        phi::errors::Unimplemented("Do not support input tensor `Shape`. "
+                                   "Please use the attribute `shape`."));
   }
   if (op->Input("expand_shapes_tensor").size()) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Do not support input tensor `expand_shapes_tensor`. Please use the "
         "attribute `shape`."));
   }
@@ -980,7 +980,7 @@ Node *expand_v2_handler(Graph *graph, Node *node) {
     if (input_shape[input_shape_index] !=
             int64_t(shape_value[target_shape_index]) &&
         input_shape[input_shape_index] != int64_t(1)) {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "For input and `shape`, corresponding dimensions must have the same "
           "value or input dim = 1."));
     }
@@ -1204,7 +1204,7 @@ Node *tile_handler(Graph *graph, Node *node) {
        !inputs.at("repeat_times_tensor").empty());
   if (is_repeat_tensors) {
     PADDLE_THROW(
-        platform::errors::Unimplemented("Do not support repeats as tensors."));
+        phi::errors::Unimplemented("Do not support repeats as tensors."));
   }
   auto repeat_times =
       PADDLE_GET_CONST(std::vector<int>, op->GetAttr("repeat_times"));

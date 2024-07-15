@@ -83,7 +83,7 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj,
     ssize_t arg_pos,
     const phi::distributed::ProcessMesh* mesh = nullptr);
-platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
+phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos);
@@ -143,7 +143,7 @@ PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
-PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const phi::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value);

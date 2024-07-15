@@ -37,9 +37,9 @@ from ....utils import (
 from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
 from ..dispatcher import Dispatcher
 from ..guard import (
-    StringifyExpression,
+    StringifiedExpression,
     check_guard,
-    object_equal_stringify_guard,
+    object_equal_stringified_guard,
     union_free_vars,
 )
 from ..tracker import (
@@ -126,7 +126,7 @@ class FunctionVariable(CallableVariable):
         self.tracker = GetAttrTracker(class_var, name)
         return method_var
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
 
 class UserDefinedFunctionVariable(FunctionVariable):
@@ -254,7 +254,7 @@ class PaddleApiVariable(FunctionVariable):
             "name": self.value.__name__,
         }
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
 
 class TensorFunctionVariable(FunctionVariable):
@@ -424,15 +424,15 @@ class LayerVariable(CallableVariable):
         return fn_var(*(self, *args), **kwargs)
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"id({{}}) == {id(self.get_py_value())}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            StringifyExpression(
+            StringifiedExpression(
                 f"{{}}.training == {self.get_py_value().training}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
@@ -481,11 +481,11 @@ class ContainerLayerVariable(LayerVariable):
         else:
             return super().get_iter()
 
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.value, PD_SEQ_CONTAINERS):
             frame_value_tracer = self.tracker.trace_value_from_frame()
 
-            len_guard = StringifyExpression(
+            len_guard = StringifiedExpression(
                 f"len({{}}) == {len(self.value)}",
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
@@ -496,11 +496,11 @@ class ContainerLayerVariable(LayerVariable):
                 layer_variable = VariableFactory.from_value(
                     layer, self.graph, GetItemTracker(self, idx)
                 )
-                guards.extend(layer_variable.make_stringify_guard())
+                guards.extend(layer_variable.make_stringified_guard())
 
             return guards
         else:
-            return super().make_stringify_guard()
+            return super().make_stringified_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -537,14 +537,14 @@ class PaddleLayerVariable(LayerVariable):
         weak_ref = not isinstance(self.tracker, CreateLayerTracker)
         return self.graph.call_layer(self, weak_ref, *args, **kwargs)
 
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, CreateLayerTracker):
             return reduce(
                 operator.add,
-                [var.make_stringify_guard() for var in self.tracker.inputs],
+                [var.make_stringified_guard() for var in self.tracker.inputs],
             )
         else:
-            return super().make_stringify_guard()
+            return super().make_stringified_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -754,7 +754,7 @@ class ClassVariable(CallableVariable):
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

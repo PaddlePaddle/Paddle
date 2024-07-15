@@ -1120,7 +1120,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// stream to the thread, and this behavior may be changed in the future.
   ///
   void EnableGpuMultiStream();
-  void PartiallyRelease();
 
   ///
   /// \brief Print the summary of config.

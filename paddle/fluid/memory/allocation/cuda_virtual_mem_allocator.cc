@@ -31,8 +31,7 @@
 
 namespace paddle::memory::allocation {
 
-CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
-    const platform::CUDAPlace& place)
+CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
     : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
 
@@ -223,7 +222,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_mem_alloced_offset_ += size;
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, platform::Place(place_));  // NOLINT
+      reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
 }
 
 }  // namespace paddle::memory::allocation
