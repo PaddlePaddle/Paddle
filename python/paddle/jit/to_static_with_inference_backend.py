@@ -1,11 +1,49 @@
-import textwrap
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import inspect
 import os
 import sys
+import textwrap
 from pathlib import Path
-from paddle.static import InputSpec
-from paddle.nn import Layer
+
 import paddle
+from paddle.inference import Config, PrecisionType, create_predictor
+from paddle.nn import Layer
+from paddle.static import InputSpec
+
+
+def get_inference_precision(precision_str):
+    if precision_str == "float32":
+        return PrecisionType.Float32
+    elif precision_str == "float16":
+        return PrecisionType.Half
+    elif precision_str == "bfloat16":
+        return PrecisionType.Bfloat16
+    else:
+        raise AssertionError(f"unsupported precision {precision_str}")
+
+
+def register_triton_custom_ops(model_dir):
+    for root, dirs, files in os.walk(model_dir):
+        for file in files:
+            if file.endswith("_package.so"):
+                so_full_path = os.path.join(root, file)
+                paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                    so_full_path
+                )
+
 
 def paddle_inference_decorator(function=None, **kwargs):
     used_as_at_decorator = False
@@ -89,7 +127,9 @@ def paddle_inference_decorator(function=None, **kwargs):
                     )(self.layer, *args)
                 )
 
-        def internel_decorator(*args, **kwargs):
+        # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.jit.to_static(backend='inference', )
+        # he is actually invoke this internel function.
+        def innermost_decorator(*args, **kwargs):
             def get_tensor(run_time_args, arg_name):
                 if isinstance(run_time_args, paddle.Tensor):
                     return [run_time_args]
@@ -182,7 +222,7 @@ def paddle_inference_decorator(function=None, **kwargs):
                 or not cache_static_model
                 or re_do_d2s
             ):
-
+                # we need do jit.to_static and jit.save.
                 def get_d2s_spec(run_time_args, name):
                     if isinstance(run_time_args, paddle.Tensor):
                         return InputSpec.from_tensor(run_time_args, name=name)
@@ -285,18 +325,11 @@ def paddle_inference_decorator(function=None, **kwargs):
                 sys.stdout.flush()
             else:
                 # we need register some triton ops.
-                for root, dirs, files in os.walk(save_model_dir):
-                    for file in files:
-                        if file.endswith("_package.so"):
-                            so_full_path = os.path.join(root, file)
-                            paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
-                                so_full_path
-                            )
+                register_triton_custom_ops(save_model_dir)
 
             # create predictor
             model_file = save_model_dir + "/infer.pdmodel"
             params_file = save_model_dir + "/infer.pdiparams"
-            from paddle.inference import Config, PrecisionType, create_predictor
 
             config = Config(model_file, params_file)
             config.enable_memory_optim()
@@ -308,25 +341,13 @@ def paddle_inference_decorator(function=None, **kwargs):
                 config.enable_cinn()
             config.enable_new_ir(enable_new_ir)
 
-            def get_infer_precision(precision_str):
-                if precision_str == "float32":
-                    return PrecisionType.Float32
-                elif precision_str == "float16":
-                    return PrecisionType.Half
-                elif precision_str == "bfloat16":
-                    return PrecisionType.Bfloat16
-                else:
-                    raise AssertionError(
-                        f"unsupported precision {precision_str}"
-                    )
-
             device_num = paddle.device.get_device()
             if 'gpu' in device_num:
                 gpu_id = int(device_num.split(':')[1])
                 config.enable_use_gpu(
                     memory_pool_init_size_mb,
                     gpu_id,
-                    get_infer_precision(precision_mode),
+                    get_inference_precision(precision_mode),
                 )
 
             if with_trt:
@@ -361,7 +382,9 @@ def paddle_inference_decorator(function=None, **kwargs):
                         workspace_size=1 << 30,
                         max_batch_size=1,
                         min_subgraph_size=3,
-                        precision_mode=get_infer_precision(trt_precision_mode),
+                        precision_mode=get_inference_precision(
+                            trt_precision_mode
+                        ),
                         use_static=trt_use_static,
                         use_calib_mode=False,
                     )
@@ -377,7 +400,7 @@ def paddle_inference_decorator(function=None, **kwargs):
             results = predictors[0].run(remove_non_input_tensor_lists)
             return results if len(results) > 1 else results[0]
 
-        return internel_decorator
+        return innermost_decorator
 
     if function is not None:
         if isinstance(function, Layer):
