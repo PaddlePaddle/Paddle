@@ -165,9 +165,12 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         num_micro_batches = self.get_attr("num_micro_batches")
         num_model_chunks = self.get_attr("vpp_degree")
 
+        assert num_model_chunks % pp_degree == 0
+
+        # TODO(luchang): Fix the graident explosion issue when  num_model_chunks(accumulate steps) > pp_degree
         assert (
-            pp_degree <= num_micro_batches
-        ), "Num of micro batches should larger than or equal to pp degree."
+            num_model_chunks <= pp_degree
+        ), "Zero bubble pipeline now only supports accumulate steps <= pp degree. It will cause gradient expolitation when num_model_chunks > pp degree."
 
         program_runtimes = self.get_attr("program_runtimes")
 
@@ -230,6 +233,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         num_model_chunks = self.get_attr("vpp_degree")
+        memory_limit_times = self.get_attr("memory_limit_times")
 
         self._split_matmul_grad_ops_to_matmul(program, dist_context)
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
@@ -246,10 +250,19 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
                     pp_group.append(process_mesh.process_ids[pp_idx])
                 break
 
-        self._estimate_program_mem_usagess(
-            types, sub_program_list, dist_context, pp_group
-        )
-        self._get_all_device_base_memory(pp_group)
+        if memory_limit_times > 0:
+            self._estimate_program_mem_usagess(
+                types, sub_program_list, dist_context, pp_group
+            )
+            self._get_all_device_base_memory(pp_group)
+        else:
+            self.program_mem_usages = [
+                {type: 0 for type in types} for _ in pp_group
+            ]
+            self.program_max_mem_usages = [
+                {type: 0 for type in types} for _ in pp_group
+            ]
+            self.base_memory = [0 for _ in range(len(pp_group))]
 
         return types, sub_program_list
 
