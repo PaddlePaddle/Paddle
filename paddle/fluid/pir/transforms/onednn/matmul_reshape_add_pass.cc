@@ -49,11 +49,25 @@ class MatmulReshapeElementwiseAddFusePattern
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &full_int_array1 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name(),
+               {{"value", pat.Attr("value")},
+                {"dtype", pat.Attr("dtype")},
+                {"place", pat.Attr("place")}});
+    const auto &reshape1 = pat.Op(paddle::dialect::ReshapeOp::name());
+    reshape1({&pat.Tensor("x"), &full_int_array1()},
+             {&pat.Tensor("reshape_x"), &pat.Tensor("reshape_x_xshape")});
+
+    // const auto &full_int_array2 =
+    //     pat.Op(paddle::dialect::FullIntArrayOp::name());
+    // const auto &reshape2 = pat.Op(paddle::dialect::ReshapeOp::name());
+    // reshape2({&pat.Tensor("w"), &full_int_array2()},
+    //          {&pat.Tensor("reshape_w"), &pat.Tensor("reshape_w_xshape")});
 
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
-    pat.Tensor("matmul_out") = matmul(pat.Tensor("x"), pat.Tensor("w"));
+    pat.Tensor("matmul_out") = matmul(pat.Tensor("reshape_x"), pat.Tensor("w"));
 
     const auto &full_int_array3 =
         pat.Op(paddle::dialect::FullIntArrayOp::name());
@@ -75,8 +89,14 @@ class MatmulReshapeElementwiseAddFusePattern
       }
 
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_x"));
       auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
+      auto origin_x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+
+      if (origin_x_dims.size() < 2) {
+        return false;
+      }
+
       if (w_dims.size() != 2 || x_dims.size() < 2) {
         return false;
       }
@@ -102,9 +122,18 @@ class MatmulReshapeElementwiseAddFusePattern
     const auto &in_num_col_dims_attr =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          // in mul op, after reshape input x, w,
-          // the x and w dims must be 2
-          return static_cast<int>(x_dims.size()) - 1;
+          auto reshape_x_dims = match_ctx.Attr<std::vector<int64_t>>("value");
+          int target = reshape_x_dims[0];
+          int value = 1;
+          int index = 0;
+          for (auto v : x_dims) {
+            value *= v;
+            if (value == target) {
+              return static_cast<int>(index) + 1;
+            }
+            index++;
+          }
+          return static_cast<int>(reshape_x_dims.size()) - 1;
         });
 
     const auto &fc_op = res.Op(fused_matmul_name_,
@@ -113,14 +142,15 @@ class MatmulReshapeElementwiseAddFusePattern
                                    {"activation_type", res.StrAttr("")},
                                    {"padding_weights", res.BoolAttr(false)},
                                }});
+
     fc_op({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
           {&res.Tensor("add_out")});
   }
 };
 
-class MatmulReshapeElementwiseAddFusePass : public pir::PatternRewritePass {
+class MatmulReshapeAddFusePass : public pir::PatternRewritePass {
  public:
-  MatmulReshapeElementwiseAddFusePass()
+  MatmulReshapeAddFusePass()
       : pir::PatternRewritePass("matmul_reshape_add_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
@@ -147,9 +177,8 @@ namespace pir {
 
 std::unique_ptr<Pass> CreateMatmulReshapeAddPass() {
   // pd_op.matmul + reshape + pd_op.add -> onednn_op.fused_matmul
-  return std::make_unique<MatmulReshapeElementwiseAddFusePass>();
+  return std::make_unique<MatmulReshapeAddFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_reshape_add_fuse_pass,
-                 MatmulReshapeElementwiseAddFusePass);
+REGISTER_IR_PASS(matmul_reshape_add_fuse_pass, MatmulReshapeAddFusePass);
