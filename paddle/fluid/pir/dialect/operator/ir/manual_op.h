@@ -556,10 +556,10 @@ class TEST_API ExpandOp
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value x_,                     // NOLINT
                     const std::vector<int64_t> &shape = {});
-  TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                             pir::OperationArgument &argument,  // NOLINT
-                             pir::Value x_,                     // NOLINT
-                             pir::Value shape_                  // NOLINT
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,                     // NOLINT
+                    pir::Value shape_                  // NOLINT
   );
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
