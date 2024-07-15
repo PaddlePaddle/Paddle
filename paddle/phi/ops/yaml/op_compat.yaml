@@ -3220,6 +3220,7 @@
     out : Out
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+  manual_signature : [seed]
 
 - op : segment_pool
   backward : segment_pool_grad
