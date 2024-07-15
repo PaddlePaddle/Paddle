@@ -537,7 +537,13 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         with base.dygraph.guard():
             paddle.seed(123)
-            paddle.framework.random._manual_program_seed(123)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(123)
+                paddle.framework.random._manual_program_seed(123)
+            else:
+                paddle.framework.random._manual_program_seed(123)
             a = paddle.to_tensor(value)
             a.stop_gradient = False
 
@@ -555,7 +561,13 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         with base.dygraph.guard():
             paddle.seed(123)
-            paddle.framework.random._manual_program_seed(123)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(123)
+                paddle.framework.random._manual_program_seed(123)
+            else:
+                paddle.framework.random._manual_program_seed(123)
             a = paddle.to_tensor(value)
             a.stop_gradient = False
 
@@ -570,7 +582,13 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 class TestDoubleGradResNet(TestCase):
     def setUp(self):
         paddle.seed(123)
-        paddle.framework.random._manual_program_seed(123)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(123)
+            paddle.framework.random._manual_program_seed(123)
+        else:
+            paddle.framework.random._manual_program_seed(123)
         self.data = np.random.rand(1, 3, 224, 224).astype(np.float32)
 
     @dygraph_guard

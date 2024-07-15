@@ -142,7 +142,7 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
   }
   auto op_with_kernel = static_cast<framework::OperatorWithKernel*>(op_ptr);
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
@@ -180,15 +180,15 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.operator_base_ = op;
 
   const phi::Place& place = dev_ctx->GetPlace();
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     new_op_func_node.type_ = OpFuncType::kCpuSync;
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     // MemcpyD2H in gpu is synchronous, see
     // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
     // for more detail.
     new_op_func_node.type_ =
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     // Memcpy in xpu is synchronous
     new_op_func_node.type_ = (op_type == kMemcpyD2H || op_type == kMemcpyH2D)
                                  ? OpFuncType::kGpuSync
@@ -225,7 +225,7 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
 
   // NOTE(winter-wang): in custom device, D2H kernel is asynchronous.
   // need to explicit synchronization.
-  if ((platform::is_custom_place(place)) && op_type == kMemcpyD2H) {
+  if ((phi::is_custom_place(place)) && op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
 
@@ -375,8 +375,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
-                                             const platform::Place& src_place,
-                                             const platform::Place& dst_place,
+                                             const phi::Place& src_place,
+                                             const phi::Place& dst_place,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
@@ -407,7 +407,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 3. Create memcpy_d2h_op or memcpy_h2d_op
   std::string op_type;
   AttributeMap attr_map;
-  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place),
+  PADDLE_ENFORCE_EQ(phi::is_same_place(src_place, dst_place),
                     false,
                     platform::errors::PreconditionNotMet(
                         "Required src_place shall be different with dst_place, "
@@ -415,17 +415,17 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                         src_place));
   if (IsSupportedHeterPlace(dst_place)) {
     op_type = kMemcpyH2D;
-    int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
-                         : platform::is_ipu_place(dst_place)    ? 3
-                         : platform::is_xpu_place(dst_place)    ? 2
-                         : platform::is_custom_place(dst_place) ? 6
-                                                                : -1;
+    int dst_place_type = phi::is_gpu_place(dst_place)      ? 0
+                         : phi::is_ipu_place(dst_place)    ? 3
+                         : phi::is_xpu_place(dst_place)    ? 2
+                         : phi::is_custom_place(dst_place) ? 6
+                                                           : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else if (IsSupportedHeterPlace(src_place)) {
     op_type = kMemcpyD2H;
-    int dst_place_type = platform::is_cpu_place(dst_place)           ? 0
-                         : platform::is_cuda_pinned_place(dst_place) ? 1
-                                                                     : -1;
+    int dst_place_type = phi::is_cpu_place(dst_place)           ? 0
+                         : phi::is_cuda_pinned_place(dst_place) ? 1
+                                                                : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -446,7 +446,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 }
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
-                        const platform::Place& place,
+                        const phi::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableValueMap* outs_map_temp,
                         VariableScope* var_scope,
@@ -591,7 +591,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                    !(def_backend == phi::Backend::ONEDNN &&
                      tensor_backend == phi::Backend::CPU)) ||
                   tensor_in->place().GetType() == AllocationType::GPUPINNED ||
-                  (platform::is_xpu_place(expected_kernel_key.place_) &&
+                  (phi::is_xpu_place(expected_kernel_key.place_) &&
                    def_backend == tensor_backend)) {
                 expected_kernel_key_for_argument_def =
                     std::make_unique<phi::KernelKey>(
@@ -742,7 +742,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
-                                 const platform::Place& place,
+                                 const phi::Place& place,
                                  const VariableNameMap& out_names,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,

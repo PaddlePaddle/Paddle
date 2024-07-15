@@ -33,8 +33,8 @@ inline int getElementSize(nvinfer1::DataType type) {
     case nvinfer1::DataType::kINT8:
       return 1;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "getElementSize only supports [FLOAT|HALF|INT8]"));
+      PADDLE_THROW(
+          phi::errors::Fatal("getElementSize only supports [FLOAT|HALF|INT8]"));
   }
 }
 
@@ -47,8 +47,8 @@ inline cudaDataType_t convertTrtType(nvinfer1::DataType type) {
     case nvinfer1::DataType::kINT8:
       return CUDA_R_8I;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "getElementSize only supports [FLOAT|HALF|INT8]"));
+      PADDLE_THROW(
+          phi::errors::Fatal("getElementSize only supports [FLOAT|HALF|INT8]"));
   }
 }
 
@@ -152,9 +152,9 @@ void SpmmPluginDynamic::cusparseLtContext::init(
       compute_type = CUSPARSE_COMPUTE_32I;
       break;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "cusparLtContext only supports data type"
-          "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]"));
+      PADDLE_THROW(
+          phi::errors::Fatal("cusparLtContext only supports data type"
+                             "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]"));
   }
   paddle::platform::dynload::cusparseLtDenseDescriptorInit(
       &handle, &matA, m, k, k, alignment, type, CUSPARSE_ORDER_ROW);
@@ -398,7 +398,7 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   has_bias_ = (bias.count != 0);
   if (has_bias_) {
     if (bias.count != out_dim) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "The dimension of bias should be equal to output dimension"));
     }
     if (precision_ == nvinfer1::DataType::kHALF) {
@@ -604,7 +604,7 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
 
       return ret;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("nbDims should be 4 or 5"));
+      PADDLE_THROW(phi::errors::Fatal("nbDims should be 4 or 5"));
     }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
@@ -846,7 +846,7 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                                       1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Unsupported type error, expected [kHALF,kFLOAT], but received %d",
           static_cast<int>(precision_)));
     }
@@ -955,7 +955,7 @@ inline nvinfer1::DataType fieldTypeToDataType(
     case nvinfer1::PluginFieldType::kINT8:
       return nvinfer1::DataType::kINT8;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "No corresponding datatype for plugin field type"));
   }
 }
@@ -1015,7 +1015,7 @@ nvinfer1::IPluginV2* SpmmPluginDynamicCreator::createPlugin(
       } else if (field_name.compare("activation_id") == 0) {
         activation_id = static_cast<const int*>(fc->fields[i].data)[0];
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal("Unsupport plugin field"));
+        PADDLE_THROW(phi::errors::Fatal("Unsupport plugin field"));
       }
     }
 

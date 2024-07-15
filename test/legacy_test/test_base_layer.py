@@ -21,7 +21,7 @@ import paddle
 from paddle import base
 from paddle.base.framework import EagerParamBase
 
-sys.path.append("../../dygraph_to_static")
+sys.path.append("../dygraph_to_static")
 from dygraph_to_static_utils import enable_to_static_guard
 
 
@@ -348,34 +348,30 @@ class TestLayerTo(unittest.TestCase):
         self.linear.add_sublayer("1", sublayer)
 
     def func_test_to_api(self):
+        if paddle.framework.use_pir_api():
+            dtype_float64 = paddle.base.core.DataType.FLOAT64
+        else:
+            dtype_float64 = paddle.base.core.VarDesc.VarType.FP64
         self.linear.to(dtype='double')
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
+        self.assertEqual(self.linear.weight.dtype, dtype_float64)
+        self.assertEqual(self.linear.buf_name.dtype, dtype_float64)
         np.testing.assert_allclose(
             self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
         )
         self.assertEqual(
             self.linear.weight._grad_ivar().dtype,
-            paddle.base.core.VarDesc.VarType.FP64,
+            dtype_float64,
         )
 
         self.linear.to()
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
+        self.assertEqual(self.linear.weight.dtype, dtype_float64)
+        self.assertEqual(self.linear.buf_name.dtype, dtype_float64)
         np.testing.assert_allclose(
             self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
         )
         self.assertEqual(
             self.linear.weight._grad_ivar().dtype,
-            paddle.base.core.VarDesc.VarType.FP64,
+            dtype_float64,
         )
         for p in self.linear.parameters():
             self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
@@ -424,67 +420,61 @@ class TestLayerTo(unittest.TestCase):
         self.assertRaises(AssertionError, self.linear.to, blocking=1)
 
     def func_test_to_api_paddle_dtype(self):
+        if paddle.framework.use_pir_api():
+            dtype_float64 = paddle.base.core.DataType.FLOAT64
+        else:
+            dtype_float64 = paddle.base.core.VarDesc.VarType.FP64
+
         self.linear.to(dtype=paddle.float64)
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
+        self.assertEqual(self.linear.weight.dtype, dtype_float64)
+        self.assertEqual(self.linear.buf_name.dtype, dtype_float64)
         np.testing.assert_allclose(
             self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
         )
         self.assertEqual(
             self.linear.weight._grad_ivar().dtype,
-            paddle.base.core.VarDesc.VarType.FP64,
+            dtype_float64,
         )
 
         self.linear.to()
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
+        self.assertEqual(self.linear.weight.dtype, dtype_float64)
+        self.assertEqual(self.linear.buf_name.dtype, dtype_float64)
         np.testing.assert_allclose(
             self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
         )
         self.assertEqual(
             self.linear.weight._grad_ivar().dtype,
-            paddle.base.core.VarDesc.VarType.FP64,
+            dtype_float64,
         )
         for p in self.linear.parameters():
             self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
 
     def func_test_to_api_numpy_dtype(self):
+        if paddle.framework.use_pir_api():
+            dtype_float64 = paddle.base.core.DataType.FLOAT64
+        else:
+            dtype_float64 = paddle.base.core.VarDesc.VarType.FP64
+
         self.linear.to(dtype=np.float64)
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
+        self.assertEqual(self.linear.weight.dtype, dtype_float64)
+        self.assertEqual(self.linear.buf_name.dtype, dtype_float64)
         np.testing.assert_allclose(
             self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
         )
         self.assertEqual(
             self.linear.weight._grad_ivar().dtype,
-            paddle.base.core.VarDesc.VarType.FP64,
+            dtype_float64,
         )
 
         self.linear.to()
-        self.assertEqual(
-            self.linear.weight.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(
-            self.linear.buf_name.dtype, paddle.base.core.VarDesc.VarType.FP64
-        )
+        self.assertEqual(self.linear.weight.dtype, dtype_float64)
+        self.assertEqual(self.linear.buf_name.dtype, dtype_float64)
         np.testing.assert_allclose(
             self.linear.weight.grad.numpy(), self.new_grad, rtol=1e-05
         )
         self.assertEqual(
             self.linear.weight._grad_ivar().dtype,
-            paddle.base.core.VarDesc.VarType.FP64,
+            dtype_float64,
         )
         for p in self.linear.parameters():
             self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))

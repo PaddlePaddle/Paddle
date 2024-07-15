@@ -184,6 +184,10 @@ def unbind_net(x):
     return paddle.unbind(x)
 
 
+def log_loss_net(inputs, labels):
+    return paddle.nn.functional.log_loss(inputs, labels)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -707,7 +711,7 @@ class TestPrimThree(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=self.tol)
 
 
-class TestPrimLerp(TestPrimThree):
+class TestPrimLerp1(TestPrimThree):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [10, 1, 10, 5, 5]
@@ -728,7 +732,7 @@ class TestPrimLerp(TestPrimThree):
         self.tol = 1e-5
 
 
-class TestPrimLer1(TestPrimThree):
+class TestPrimLerp2(TestPrimThree):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [10, 10, 5, 5]
@@ -749,7 +753,7 @@ class TestPrimLer1(TestPrimThree):
         self.tol = 1e-6
 
 
-class TestPrimLer2(TestPrimThree):
+class TestPrimLerp3(TestPrimThree):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [10, 5, 10, 1, 5]
@@ -766,6 +770,40 @@ class TestPrimLer2(TestPrimThree):
         self.z = np.random.random(self.shape_z).astype(self.dtype_z)
         self.net = lerp_net
         self.necessary_ops = "pd_op.lerp"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimLogLoss1(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [400, 1]
+        self.y_shape = [400, 1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype_x)
+        self.y = np.random.randint(0, 2, self.y_shape).astype(self.dtype_y)
+        self.net = log_loss_net
+        self.necessary_ops = "pd_op.log_loss"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimLogLoss2(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [400, 1]
+        self.y_shape = [400, 1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, 1]
+        self.init_y_shape = [None, 1]
+        self.x = np.random.random(self.x_shape).astype(self.dtype_x)
+        self.y = np.random.randint(0, 2, self.y_shape).astype(self.dtype_y)
+        self.net = log_loss_net
+        self.necessary_ops = "pd_op.log_loss"
         self.enable_cinn = False
         self.tol = 1e-5
 

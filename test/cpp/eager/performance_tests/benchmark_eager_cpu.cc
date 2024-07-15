@@ -41,7 +41,7 @@ TEST(Benchmark, EagerScaleCPU) {
   eager_test::InitEnv(phi::CPUPlace());
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
+    phi::DDim ddim = common::make_ddim({2, 4, 4, 4});
     paddle::Tensor tensor =
         eager_test::CreateTensorWithValue(ddim,
                                           phi::CPUPlace(),
@@ -71,7 +71,7 @@ TEST(Benchmark, EagerScaleCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -81,7 +81,7 @@ TEST(Benchmark, EagerMatmulCPU) {
   eager_test::InitEnv(phi::CPUPlace());
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddimX = common::make_ddim({2, 2});
+    phi::DDim ddimX = common::make_ddim({2, 2});
     paddle::Tensor X = eager_test::CreateTensorWithValue(ddimX,
                                                          phi::CPUPlace(),
                                                          phi::DataType::FLOAT32,
@@ -90,7 +90,7 @@ TEST(Benchmark, EagerMatmulCPU) {
                                                          true);
     RetainGradForTensor(X);
 
-    paddle::framework::DDim ddimY = common::make_ddim({2, 2});
+    phi::DDim ddimY = common::make_ddim({2, 2});
     paddle::Tensor Y = eager_test::CreateTensorWithValue(ddimY,
                                                          phi::CPUPlace(),
                                                          phi::DataType::FLOAT32,
@@ -118,7 +118,7 @@ TEST(Benchmark, EagerMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -131,7 +131,7 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddimX = common::make_ddim({2, 2});
+    phi::DDim ddimX = common::make_ddim({2, 2});
     paddle::Tensor X = eager_test::CreateTensorWithValue(ddimX,
                                                          phi::CPUPlace(),
                                                          phi::DataType::FLOAT32,
@@ -140,7 +140,7 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
                                                          true);
     RetainGradForTensor(X);
 
-    paddle::framework::DDim ddimY = common::make_ddim({2, 2});
+    phi::DDim ddimY = common::make_ddim({2, 2});
     paddle::Tensor Y = eager_test::CreateTensorWithValue(ddimY,
                                                          phi::CPUPlace(),
                                                          phi::DataType::FLOAT32,
@@ -168,7 +168,7 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -181,7 +181,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddimX = common::make_ddim({MLP_M, MLP_N});
+    phi::DDim ddimX = common::make_ddim({MLP_M, MLP_N});
     paddle::Tensor X = eager_test::CreateTensorWithValue(ddimX,
                                                          phi::CPUPlace(),
                                                          phi::DataType::FLOAT32,
@@ -193,7 +193,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
     std::vector<paddle::Tensor> Ws;
     std::vector<paddle::Tensor> Bs;
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
-      paddle::framework::DDim ddimW = common::make_ddim({MLP_N, MLP_K});
+      phi::DDim ddimW = common::make_ddim({MLP_N, MLP_K});
       paddle::Tensor W =
           eager_test::CreateTensorWithValue(ddimW,
                                             phi::CPUPlace(),
@@ -203,7 +203,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
                                             true);
       RetainGradForTensor(W);
 
-      paddle::framework::DDim ddimB = common::make_ddim({MLP_K});
+      phi::DDim ddimB = common::make_ddim({MLP_K});
       paddle::Tensor B =
           eager_test::CreateTensorWithValue(ddimB,
                                             phi::CPUPlace(),
@@ -236,7 +236,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

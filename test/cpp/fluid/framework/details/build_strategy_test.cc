@@ -68,8 +68,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static std::vector<platform::Place> CreatePlaces(size_t num, bool use_cuda) {
-  std::vector<platform::Place> result;
+static std::vector<phi::Place> CreatePlaces(size_t num, bool use_cuda) {
+  std::vector<phi::Place> result;
   result.reserve(num);
   for (size_t i = 0; i < num; ++i) {
     if (use_cuda) {

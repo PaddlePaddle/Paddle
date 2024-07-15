@@ -77,7 +77,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
 #ifdef PADDLE_WITH_DNNL
 int GetNumCachedObjects() {
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
   phi::CPUPlace place;
   auto onednn_dev_ctx = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
   return onednn_dev_ctx->GetCachedObjectsNumber();  // NOLINT
@@ -141,21 +141,19 @@ void validate_cache_onednn(int cache_capacity = 1) {
   // Compare results
   // First and last value should be equal e.g. before using cache (empty) and
   // after releasing executor
-  PADDLE_ENFORCE_EQ(
-      cache_filling[0],
-      cache_filling[cache_filling.size() - 1],
-      platform::errors::Fatal("Cache size before execution and after "
-                              "releasing Executor do not match"));
+  PADDLE_ENFORCE_EQ(cache_filling[0],
+                    cache_filling[cache_filling.size() - 1],
+                    phi::errors::Fatal("Cache size before execution and after "
+                                       "releasing Executor do not match"));
 
   // Iterate to check if cache is not increasing
   // over exceeding cache capacity
   if (cache_capacity != 0) {
     for (int i = cache_capacity + 1; i < num_samples + 1; ++i) {
-      PADDLE_ENFORCE_EQ(
-          cache_filling[cache_capacity],
-          cache_filling[i],
-          platform::errors::Fatal("Cache capacity should not increase "
-                                  "after full capacity is used"));
+      PADDLE_ENFORCE_EQ(cache_filling[cache_capacity],
+                        cache_filling[i],
+                        phi::errors::Fatal("Cache capacity should not increase "
+                                           "after full capacity is used"));
     }
   }
 }

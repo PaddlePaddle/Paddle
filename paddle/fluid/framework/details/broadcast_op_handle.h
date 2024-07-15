@@ -58,7 +58,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
+                    const std::vector<phi::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
@@ -75,7 +75,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_XPU_BKCL)
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
+                    const std::vector<phi::Place> &places,
                     const platform::BKCLContextMap *bkcl_ctxs)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
@@ -91,7 +91,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 #endif
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places)
+                    const std::vector<phi::Place> &places)
       : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 
   TEST_API std::string Name() const override;
@@ -108,7 +108,7 @@ struct BroadcastOpHandle : public OpHandleBase {
                        const std::vector<Scope *> &var_scopes);
 
   std::vector<Scope *> local_scopes_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
 #elif defined(PADDLE_WITH_XPU_BKCL)

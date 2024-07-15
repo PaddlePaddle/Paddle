@@ -37,15 +37,15 @@ namespace paddle {
 namespace platform {
 
 DeviceType Place2DeviceType(const phi::Place& place) {
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return platform::DeviceType::CPU;
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     return platform::DeviceType::CUDA;
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     return platform::DeviceType::XPU;
-  } else if (platform::is_ipu_place(place)) {
+  } else if (phi::is_ipu_place(place)) {
     return platform::DeviceType::IPU;
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     return platform::DeviceType::CUSTOM_DEVICE;
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
@@ -220,7 +220,7 @@ void EmplaceDeviceContexts(
           "WITH_CUSTOM_DEVICE "
           "option."));
 #endif
-    } else if (platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       EmplaceDeviceContext<CUDAPinnedDeviceContext>(
           place_to_device_context,
@@ -232,7 +232,7 @@ void EmplaceDeviceContexts(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
-    } else if (platform::is_ipu_place(place)) {
+    } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
       EmplaceDeviceContext<IPUDeviceContext>(
           place_to_device_context,
