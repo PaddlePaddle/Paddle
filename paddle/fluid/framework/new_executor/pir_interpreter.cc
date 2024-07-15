@@ -63,6 +63,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
@@ -71,6 +72,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -81,10 +83,12 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+#include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
+COMMON_DECLARE_bool(enable_collect_shape);
 COMMON_DECLARE_int32(low_precision_op_list);
 
 #define CREATE_INSTR(instr_name)                                   \
@@ -864,6 +868,14 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectInputInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
+      } else if (op.isa<paddle::dialect::TensorRTEngineOp>()) {
+#ifdef PADDLE_WITH_TENSORRT
+        CREATE_INSTR(TensorRTEngineInstruction);
+#else
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Program has TensorRTEngineOp and must compile Paddle use "
+            "-DWITH_TENSORRT=ON"));
+#endif
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -910,7 +922,8 @@ void PirInterpreter::BuildInstruction() {
               op_idx++, place_, &op, *(value_exe_info_.get())));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd_kernel and cinn dialect."));
+          "Now only support pd_kernel, onednn_kernel, custom_kernel, trt_op "
+          "and cinn dialect."));
     }
   }
 }
@@ -1871,6 +1884,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             << " runs on " << platform::GetCurrentThreadName() << "\n"
             << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+
+    if (FLAGS_enable_collect_shape) {
+      CollectShapeManager::Instance().CollectShapeInfo(
+          instr_node, value_exe_info_.get(), scope_);
+    }
 
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_input_hookfuncs_) {
