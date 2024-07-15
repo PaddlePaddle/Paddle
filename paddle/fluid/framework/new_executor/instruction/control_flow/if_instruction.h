@@ -31,7 +31,7 @@ class ValueExecutionInfo;
 class IfInstruction : public InstructionBase {
  public:
   IfInstruction(size_t id,
-                const platform::Place& place,
+                const phi::Place& place,
                 ::pir::Operation* op,
                 ValueExecutionInfo* value_exe_info,
                 interpreter::ExecutionConfig execution_config);
@@ -70,6 +70,11 @@ class IfInstruction : public InstructionBase {
   std::vector<std::string> true_skip_gc_names_;
 
   std::vector<std::string> false_skip_gc_names_;
+
+  // NOTE(zhangbo): The fake_false_branch indicates that the false branch is an
+  // artificially constructed block, which will be directly skipped during the
+  // execution phase.
+  bool has_fake_false_branch_{false};
 };
 
 }  // namespace framework

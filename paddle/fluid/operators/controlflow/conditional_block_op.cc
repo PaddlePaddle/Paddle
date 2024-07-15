@@ -96,10 +96,9 @@ class ConditionalBlockOp : public ConditionalOp {
 
       LOG_FIRST_N(INFO, 1)
           << "[ControlFlow][ConditionalBlock] New Executor is Running.";
-      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+      if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
         VLOG(10) << "[interpreterCore cache]" << core_.get();
-        VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
-                                                      dev_place);
+        VLOG_IF(10, core_) << phi::is_same_place(core_->GetPlace(), dev_place);
 
         framework::interpreter::ExecutionConfig execution_config;
         if (HasAttr("used_for_inference") && Attr<bool>("used_for_inference")) {
@@ -110,7 +109,8 @@ class ConditionalBlockOp : public ConditionalOp {
         execution_config.skip_gc_vars =
             std::set<std::string>(skip_vars.begin(), skip_vars.end());
         // add for performance in gpugraph transformer mode
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         execution_config.used_for_inference = true;
 #endif
         core_.reset(new InterpreterCore(
@@ -197,10 +197,9 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       LOG_FIRST_N(INFO, 1)
           << "[ControlFlow][ConditionalGradBlock] New Executor is Running.";
-      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+      if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
         VLOG(10) << "[interpreterCore cache]" << core_.get();
-        VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
-                                                      dev_place);
+        VLOG_IF(10, core_) << phi::is_same_place(core_->GetPlace(), dev_place);
 
         framework::interpreter::ExecutionConfig execution_config;
         execution_config.create_local_scope = false;

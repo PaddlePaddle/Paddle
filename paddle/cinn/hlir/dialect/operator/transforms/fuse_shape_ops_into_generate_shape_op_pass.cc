@@ -63,18 +63,24 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(input_value);
         }
       };
-  const auto& IsDimTensorOrListDimExpr = ::common::Overloaded{
+  const auto& MayContainDimData = ::common::Overloaded{
       [](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
         return dim_expr.data().has_value();
       },
       [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
         return true;
+      },
+      [](const symbol::RankedTensorArrayShapeOrDataDimExprs& dim_expr) {
+        return false;
+      },
+      [](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+        return false;
       }};
   // For TensorListShapeOrDataDimExprs case, we should recursivly visit its
   // each dim_expr, which is automatically in next step.
   const auto& NeedTrackUpstream = [&](pir::Value value) -> bool {
     const auto& sym_shape = ShapeOrDataDimExprs4Value(value);
-    return std::visit(IsDimTensorOrListDimExpr, sym_shape.variant());
+    return std::visit(MayContainDimData, sym_shape.variant());
   };
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {

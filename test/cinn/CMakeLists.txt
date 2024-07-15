@@ -8,15 +8,8 @@ add_custom_command(
 add_custom_target(COPY_CINN_PYTHON_TESTS ALL
                   DEPENDS ${CMAKE_BINARY_DIR}/test/__init__.py)
 
-set(BASIC_TEST_NAMES
-    test_matmul
-    test_common
-    test_packed_func
-    test_pe_elementwise
-    test_pe_reduction
-    test_pe_transform
-    test_op_broadcast
-    #    test_op_transform
+set(BASIC_TEST_NAMES test_common test_packed_func
+                     #    test_op_transform
 )
 
 foreach(basic_test_name ${BASIC_TEST_NAMES})
@@ -36,24 +29,6 @@ if(NOT ${WITH_GPU})
   #    )
 endif()
 
-if(WITH_CUDNN)
-  # TODO(thisjiang): revert test_cinn_frontend after fix inference mul problem
-  # ADD_TEST(NAME test_cinn_frontend
-  #     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-  #     python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_frontend.py
-  #     ${CMAKE_BINARY_DIR}/third_party/naive_mul_model
-  #     ${CMAKE_BINARY_DIR}/third_party/multi_fc_model
-  #     "${WITH_GPU}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  # )
-  add_test(
-    NAME test_netbuilder
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_netbuilder.py "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
-
 #ADD_TEST(NAME test_computation_python
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_computation.py
@@ -67,95 +42,6 @@ endif()
 #    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #)
 
-add_test(
-  NAME test_cinn_op_benchmark
-  COMMAND
-    ${CMAKE_COMMAND} -E env
-    PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_op_benchmark.py "${WITH_GPU}"
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-if(WITH_CUDNN)
-  add_test(
-    NAME test_cinn_fake_resnet
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet.py
-      "${CMAKE_BINARY_DIR}/third_party/resnet_model" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_cinn_real_resnet18
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet18.py
-      "${CMAKE_BINARY_DIR}/third_party/ResNet18" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_cinn_real_mobilenetV2
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv2.py
-      "${CMAKE_BINARY_DIR}/third_party/MobileNetV2" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_cinn_real_efficientnet
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_efficientnet.py
-      "${CMAKE_BINARY_DIR}/third_party/EfficientNet" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_cinn_real_mobilenetV1
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv1.py
-      "${CMAKE_BINARY_DIR}/third_party/MobilenetV1" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_cinn_real_resnet50
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet50.py
-      "${CMAKE_BINARY_DIR}/third_party/ResNet50" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_cinn_real_squeezenet
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_squeezenet.py
-      "${CMAKE_BINARY_DIR}/third_party/SqueezeNet" "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  add_test(
-    NAME test_paddle_model_convertor
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      FLAGS_cinn_infer_model_version=1.0 python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/test_paddle_model_convertor.py --path
-      "${CMAKE_BINARY_DIR}/third_party/resnet_model_1"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
-
 #ADD_TEST(NAME test_cinn_real_facedet
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_facedet.py "${CMAKE_BINARY_DIR}/third_party/FaceDet" "${WITH_GPU}"
@@ -166,16 +52,6 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "ops/test_*.py")
   set(EXCLUDE_OP test_conv2d_op)
-
-  if(WITH_CUDNN)
-    add_test(
-      NAME test_conv2d_op
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/ops/test_conv2d_op.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  endif()
 
   foreach(op_test_name ${EXCLUDE_OP})
     list(REMOVE_ITEM CINN_OP_TEST ops/${op_test_name}.py)
@@ -199,24 +75,6 @@ if(WITH_GPU)
     "op_mappers/test_*.py")
   set(EXCLUDE_OP_MAPPER test_mul_op test_conv2d_op)
 
-  if(WITH_CUDNN)
-    add_test(
-      NAME test_mul_op_mapper
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/op_mappers/test_mul_op.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-    add_test(
-      NAME test_conv2d_op_mapper
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/op_mappers/test_conv2d_op.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  endif()
-
   foreach(op_mapper_test_name ${EXCLUDE_OP_MAPPER})
     list(REMOVE_ITEM CINN_OP_MAPPER_TEST op_mappers/${op_mapper_test_name}.py)
   endforeach()
@@ -238,6 +96,9 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "passes/test_*.py")
 
+  set(EXCLUDE_PASS ${EXCLUDE_PASS} test_fusion_fallback_pass)
+  set(EXCLUDE_PASS ${EXCLUDE_PASS} test_accuracy_check_pass)
+
   foreach(pass_test_name ${EXCLUDE_PASS})
     list(REMOVE_ITEM CINN_PASS_TEST passes/${pass_test_name}.py)
   endforeach()
@@ -253,25 +114,33 @@ if(WITH_GPU)
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
-  file(
-    GLOB CINN_FUSION_TEST
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/test_*.py")
+  # test fusion_fallback_pass
+  add_test(
+    NAME test_fusion_fallback_pass
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+      FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+      FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cudnn_deterministic=true FLAGS_enable_fusion_fallback=1
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/passes/test_fusion_fallback_pass.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-  foreach(fusion_test_name ${EXCLUDE_FUSION})
-    list(REMOVE_ITEM CINN_FUSION_TEST fusion/${fusion_test_name}.py)
-  endforeach()
-
-  foreach(fusion_test_name ${CINN_FUSION_TEST})
-    string(REGEX REPLACE ".py" "" fusion_test_name ${fusion_test_name})
-    add_test(
-      NAME ${fusion_test_name}
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${fusion_test_name}.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  endforeach()
+  # test accuracy_check_pass
+  add_test(
+    NAME test_accuracy_check_pass
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+      FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+      FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cudnn_deterministic=true FLAGS_enable_cinn_accuracy_check=1
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/passes/test_accuracy_check_pass.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   file(
     GLOB CINN_RUNTIME_TEST

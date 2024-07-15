@@ -24,7 +24,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"
-#include "paddle/cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/lang/packed_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
@@ -61,10 +61,6 @@ class CompilationInfoDumper {
   static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
                                       const int gidx,
                                       const int device_id);
-  static void DumpInstructionByGroupIndex(
-      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-      const int gidx,
-      const int device_id);
 
  private:
   void DumpLoweredFunc();
@@ -110,7 +106,7 @@ class Compiler final {
   void Build(const ir::Module& module,
              const std::string& code = "",
              const bool end = true);
-  void AppendCX86(const ir::Module& module);
+  void AppendCX86(const ir::Module& module, const bool end = true);
 
   void ExportObject(const std::string& path);
 
@@ -127,11 +123,17 @@ class Compiler final {
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
  private:
-  void CompileCudaModule(const ir::Module& module,
-                         const std::string& code = "",
-                         bool add_module = true);
+  // do not register device symbol until end=true for build fucntion
+  void RegisterDeviceModuleSymbol();
 
-  void CompileX86Module(const ir::Module& module, bool add_module = true);
+  void RegisterCudaModuleSymbol();
+
+  void CompileCudaModule(const ir::Module& module,
+                         const std::string& code = "");
+
+  void CompileHipModule(const ir::Module& module, const std::string& code = "");
+
+  void CompileX86Module(const ir::Module& module);
 
   explicit Compiler(const Target& target)
       : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}
@@ -143,6 +145,9 @@ class Compiler final {
   std::unique_ptr<ExecutionEngine> engine_;
 
   std::vector<void*> fn_ptr_;
+  // only heterogeneous systems need to record device func and module
+  std::vector<std::string> device_fn_name_;
+  std::string device_fn_code_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
 #endif

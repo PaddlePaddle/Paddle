@@ -23,7 +23,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
+from paddle.pir_utils import IrGuard, test_with_pir_api
 
 
 class TestConcatOp(OpTest):
@@ -312,6 +312,15 @@ def create_test_AxisTensor(parent):
                     (self.x0, self.x1, self.x2), axis=self.actual_axis
                 )
             }
+
+        def test_check_output(self):
+            if self.dtype == np.uint16:
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(
+                    place, check_pir=True, check_symbol_infer=False
+                )
+            else:
+                self.check_output(check_pir=True, check_symbol_infer=False)
 
         def test_check_grad(self):
             if (
@@ -963,6 +972,19 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
 
             self.assertRaises(TypeError, test_input_same_dtype)
 
+    def test_empty_inputs_dygraph(self):
+        paddle.disable_static()
+        with self.assertRaisesRegex(ValueError, "but got empty list"):
+            paddle.concat([])
+
+    def test_empty_inputs_static(self):
+        with IrGuard(), paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            with self.assertRaisesRegex(ValueError, "but got empty list"):
+                paddle.concat([], axis=0)
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

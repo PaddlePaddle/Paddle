@@ -22,11 +22,9 @@
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
-#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -367,7 +365,8 @@ std::vector<FusibleOp> TransformReduceLoopRange(
                                        fake_reduce_iter_idx)
             : downstream_output_tensor->shape;
     ir::Tensor result = ir::Tensor(
-        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
+        downstream_load_tensor->name + "_loopalign_" +
+            std::to_string(GetTensorCounter()),
         downstream_load_tensor->type(),
         shape,
         is_trivial_downstream
@@ -507,6 +506,7 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
   VLOG(4) << "DebugPrint Op Origin: ";
+  VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
   ir::Expr trivial_compute_body =

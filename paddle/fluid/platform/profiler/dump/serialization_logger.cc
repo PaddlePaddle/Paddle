@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
 
@@ -377,5 +376,4 @@ SerializationLogger::~SerializationLogger() {  // NOLINT
   output_file_stream_.close();
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

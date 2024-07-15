@@ -61,7 +61,7 @@ class SToRReshardFunction(ReshardFunction):
         out_dims_mapping = list(in_dist_attr.dims_mapping)
         out_dims_mapping[split_axis] = -1
         out_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-            mesh, out_dims_mapping, {}
+            mesh, out_dims_mapping, in_dist_attr.partial_status
         )
         out_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
             out_type, out_dist_attr
@@ -69,6 +69,18 @@ class SToRReshardFunction(ReshardFunction):
         return out_type
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
+        if src_dist_attr.process_mesh.size == 1:
+            dst_value = paddle._C_ops.share_data_(src_value)
+            share_data_op = dst_value.get_defining_op()
+            # set dist type and dist attr
+            dst_value.set_type(dst_type)
+            share_data_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    src_dist_attr.process_mesh, [src_dist_attr], [dst_dist_attr]
+                )
+            )
+            return dst_value
+
         def get_split_axis_with_dims_mapping(dims_mapping):
             split_axis = {}
             for idx, v in enumerate(dims_mapping):

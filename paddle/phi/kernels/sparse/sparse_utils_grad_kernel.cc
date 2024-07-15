@@ -31,7 +31,7 @@ void CooToDenseGradKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& out_grad,
                           SparseCooTensor* x_grad) {
-  MaskCooKernel<T, Context>(dev_ctx, out_grad, x, x_grad);
+  MaskAsCooKernel<T, Context>(dev_ctx, out_grad, x, x_grad);
 }
 
 }  // namespace phi::sparse

@@ -42,7 +42,7 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
  public:
   SparseAllReduceOpHandle(ir::Node *node,
                           const std::vector<Scope *> &local_scopes,
-                          const std::vector<platform::Place> &places,
+                          const std::vector<phi::Place> &places,
                           const platform::NCCLCommunicator *ctxs,
                           bool is_encoded = false,
                           int nranks = -1);

@@ -108,9 +108,8 @@ void HostMemoryStatUpdate(const std::string& stat_type,
   StatRegistry::GetInstance()->Update("Host" + stat_type, dev_id, increment);
 }
 
-void LogDeviceMemoryStats(const platform::Place& place,
-                          const std::string& op_name) {
-  if (FLAGS_log_memory_stats && platform::is_gpu_place(place)) {
+void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name) {
+  if (FLAGS_log_memory_stats && phi::is_gpu_place(place)) {
     VLOG(0) << "After launching op_name: " << op_name << ", "
             << "memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatCurrentValue(

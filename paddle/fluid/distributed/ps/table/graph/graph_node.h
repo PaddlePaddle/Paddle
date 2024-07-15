@@ -134,9 +134,9 @@ class FeatureNode : public Node {
   }
 
   virtual int get_feature_ids(std::vector<uint64_t> *res) const {
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
-                                "get_feature_ids res should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        res,
+        phi::errors::InvalidArgument("get_feature_ids res should not be null"));
     errno = 0;
     for (auto &feature_item : feature) {
       const uint64_t *feas = (const uint64_t *)(feature_item.c_str());
@@ -152,15 +152,15 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
-                                "get_feature_ids res should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        res,
+        phi::errors::InvalidArgument("get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
     if (slot_idx < static_cast<int>(this->feature.size())) {
@@ -178,7 +178,7 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
@@ -202,7 +202,7 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }
@@ -330,9 +330,9 @@ class FloatFeatureNode : public FeatureNode {
   }
 
   virtual int get_feature_ids(std::vector<uint64_t> *res) const {
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
-                                "get_feature_ids res should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        res,
+        phi::errors::InvalidArgument("get_feature_ids res should not be null"));
     errno = 0;
     for (int slot_idx = 0; slot_idx < float_feature_start_idx; slot_idx++) {
       auto &feature_item = this->feature[slot_idx];
@@ -350,15 +350,15 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
-                                "get_feature_ids res should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        res,
+        phi::errors::InvalidArgument("get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
     if (slot_idx < static_cast<int>(float_feature_start_idx)) {
@@ -376,7 +376,7 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
@@ -400,7 +400,7 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }
@@ -426,7 +426,7 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }

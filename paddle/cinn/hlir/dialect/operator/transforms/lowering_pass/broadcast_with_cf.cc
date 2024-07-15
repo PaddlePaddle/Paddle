@@ -442,9 +442,11 @@ std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
     const cinn::common::BroadcastLeaf& leaves) {
   VLOG(6) << "before constructed. broadcast-leaf: \n"
           << ToTxtString(cinn::common::BroadcastTree(leaves));
+  int num_of_leaves = 0;
   auto broadcast_tree = std::make_shared<cinn::common::BroadcastTree>(
-      cinn::common::ConstructBroadcastTree(
-          cinn::common::BroadcastLeaf(leaves)));
+      cinn::common::ConstructBroadcastTree(cinn::common::BroadcastLeaf(leaves),
+                                           &num_of_leaves));
+  VLOG(4) << "num of broadcast tree leaves:" << num_of_leaves;
   VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree);
   return broadcast_tree;
 }
@@ -511,15 +513,11 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
                                                  rewriter,
                                                  rewriter.block(),
                                                  &group_map);
-  // 2. simply every condition block
-  auto* program = group->ops().front()->GetParentProgram();
-  VLOG(6) << "Before simply condition block: " << *program;
 
-  SimplyConditionBlock(rewriter, &group_map);
-  VLOG(6) << "After simply condition block: " << *program;
-
-  // 3. compile condition block to jit_kernel_op
+  // 2. compile condition block to jit_kernel_op
   CompileGroupToJitKernelOp(rewriter, &group_map);
+
+  auto* program = group->ops().front()->GetParentProgram();
   VLOG(6) << "compile condition block to jit_kernel_op: " << *program;
 
   return cond_op;

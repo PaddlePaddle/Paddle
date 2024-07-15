@@ -169,7 +169,7 @@ class WhileOp : public framework::OperatorBase {
     }
 
     LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
-    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+    if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
       framework::Scope placeholder;  // Don't care if it's valid, just for
                                      // initialize InterpreterCore
       framework::interpreter::ExecutionConfig execution_config;
@@ -181,7 +181,8 @@ class WhileOp : public framework::OperatorBase {
       execution_config.skip_gc_vars =
           std::set<std::string>(skip_vars.begin(), skip_vars.end());
 // add for performance in gpugraph transformer mode
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
       execution_config.used_for_inference = true;
 #endif
 
@@ -361,7 +362,7 @@ class WhileGradOp : public framework::OperatorBase {
 
     LOG_FIRST_N(INFO, 1)
         << "[ControlFlow][WhileGradOp] New Executor is Running.";
-    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+    if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
       std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
       framework::Scope placeholder;  // Don't care if it's valid, just for
                                      // initialize InterpreterCore

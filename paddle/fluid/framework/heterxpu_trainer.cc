@@ -50,7 +50,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
 #ifdef PADDLE_WITH_CUDA
-    platform::CUDAPlace place = platform::CUDAPlace(num);
+    phi::GPUPlace place = phi::GPUPlace(num);
     platform::CUDADeviceGuard guard(place.device);
     cudaStream_t stream;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
@@ -62,7 +62,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
     events_.push_back(event);
 #endif
 #ifdef PADDLE_WITH_XPU
-    platform::XPUPlace place = platform::XPUPlace(num);
+    phi::XPUPlace place = phi::XPUPlace(num);
     places_.push_back(place);
 #endif
   }
@@ -103,7 +103,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc& trainer_desc,
   RegisterServiceHandler();
   // for (int i = 0; i < trainer_desc.worker_places_size(); ++i) {
   //   int num = trainer_desc.worker_places(i);
-  //   platform::CUDAPlace place = platform::CUDAPlace(num);
+  //   phi::GPUPlace place = phi::GPUPlace(num);
   //   platform::CUDADeviceGuard guard(place.device);
   //   cudaStream_t stream;
   //   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
@@ -125,7 +125,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 
 #ifdef PADDLE_WITH_XPU
   auto dev_id = place.device;
-  platform::XPUDeviceGuard guard(dev_id);
+  phi::backends::xpu::XPUDeviceGuard guard(dev_id);
 #endif
 
   auto& block = program.Block(0);
@@ -169,15 +169,15 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 template <typename T>
 void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
                                   phi::DenseTensor* root_tensor,
-                                  const paddle::platform::Place& thread_place,
+                                  const phi::Place& thread_place,
                                   cudaStream_t stream) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
+  if (phi::is_cpu_place(root_tensor->place())) {
     memory::Copy(thread_place,
                  thread_ptr,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  root_ptr,
                  sizeof(T) * root_tensor->numel(),
                  stream);
@@ -196,14 +196,14 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
 template <typename T>
 void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
                                   phi::DenseTensor* root_tensor,
-                                  const paddle::platform::Place& thread_place) {
+                                  const phi::Place& thread_place) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
+  if (phi::is_cpu_place(root_tensor->place())) {
     memory::Copy(thread_place,
                  thread_ptr,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  root_ptr,
                  sizeof(T) * root_tensor->numel());
   } else {
@@ -219,7 +219,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
 void HeterXpuTrainer::DumpWork(int tid) {}
 
 void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                     const platform::Place& place) {
+                                     const phi::Place& place) {
   CacheProgram(main_program);
   place_ = place;
   auto& profiler = paddle::ps::CostProfiler::instance();
@@ -348,7 +348,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     }                                                                          \
   } while (0)
       _ForEachDataType_(MergeCallback);
-      if (!platform::is_cpu_place(thread_tensor->place())) {
+      if (!phi::is_cpu_place(thread_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
         auto dev_id = thread_tensor->place().device;
         platform::CUDADeviceGuard guard(dev_id);
@@ -361,9 +361,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
         auto dev_id = place.device;
-        platform::XPUDeviceGuard guard(dev_id);
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
+        phi::backends::xpu::XPUDeviceGuard guard(dev_id);
+        phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
@@ -385,7 +384,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     auto* merge_var = response->add_vars();
     heter_ptr_->SerializeToReq(
         need_merge_var_names_[i], root_scope_, merge_var);
-    if (!platform::is_cpu_place(root_tensor->place())) {
+    if (!phi::is_cpu_place(root_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto dev_id = root_tensor->place().device;
       platform::CUDADeviceGuard guard(dev_id);
@@ -398,9 +397,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
       auto dev_id = place.device;
-      platform::XPUDeviceGuard guard(dev_id);
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
+      phi::backends::xpu::XPUDeviceGuard guard(dev_id);
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
@@ -425,10 +423,10 @@ template <typename T>
 void HeterXpuTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                        phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopy(*root_tensor, phi::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopy(*tensor, phi::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
@@ -516,7 +514,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   }
 #ifdef PADDLE_WITH_CUDA
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(context->event_, dev_ctx->stream()));
   // cudaEventSynchronize(context->event_);

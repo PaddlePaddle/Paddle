@@ -142,7 +142,7 @@ __global__ void PushCopy(
   }
 }
 
-void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
+void BoxWrapper::CopyForPull(const phi::Place& place,
                              uint64_t** gpu_keys,
                              const std::vector<float*>& values,
                              void* total_values_gpu,
@@ -152,7 +152,7 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
                              const int expand_embed_dim,
                              const int64_t total_length) {
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
@@ -229,14 +229,14 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
 #undef EMBEDX_CASE
 }
 
-void BoxWrapper::CopyKeys(const paddle::platform::Place& place,
+void BoxWrapper::CopyKeys(const phi::Place& place,
                           uint64_t** origin_keys,
                           uint64_t* total_keys,
                           const int64_t* gpu_len,
                           int slot_num,
                           int total_len) {
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(CopyKeysKernel,
@@ -257,7 +257,7 @@ void BoxWrapper::CopyKeys(const paddle::platform::Place& place,
 #endif
 }
 
-void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
+void BoxWrapper::CopyForPush(const phi::Place& place,
                              const std::vector<const float*>& grad_values,
                              void* total_grad_values_gpu,
                              const std::vector<int64_t>& slot_lengths,
@@ -266,7 +266,7 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
                              const int64_t total_length,
                              const int batch_size) {
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
   for (int i = 1; i < slot_lengths_lod.size(); i++) {

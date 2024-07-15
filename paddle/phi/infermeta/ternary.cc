@@ -149,6 +149,60 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void AffineChannelInferMeta(const MetaTensor& x,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const std::string& data_layout_in,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& scale_dims = scale.dims();
+  const auto& b_dims = bias.dims();
+  const phi::DataLayout data_layout =
+      common::StringToDataLayout(data_layout_in);
+
+  const int64_t C =
+      (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
+                                             : x_dims[x_dims.size() - 1]);
+
+  PADDLE_ENFORCE_EQ(scale_dims.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Scale) must be 1,"
+                        "But received the dimensions of Input(Scale) is [%d] ",
+                        scale_dims.size()));
+  PADDLE_ENFORCE_EQ(b_dims.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Bias) must be 1,"
+                        "But received the dimensions of Input(Bias) is [%d] ",
+                        scale_dims.size()));
+  if (config.is_runtime || scale_dims[0] > 0) {
+    PADDLE_ENFORCE_EQ(
+        scale_dims[0],
+        C,
+        phi::errors::InvalidArgument(
+            "The first dimension value of Input(Scale) must be [%d],"
+            "But received [%d].",
+            C,
+            scale_dims[0]));
+  }
+  if (config.is_runtime || b_dims[0] > 0) {
+    PADDLE_ENFORCE_EQ(
+        b_dims[0],
+        C,
+        phi::errors::InvalidArgument(
+            "The first dimension value of Input(Bias) must be [%d],"
+            "But received [%d].",
+            C,
+            b_dims[0]));
+  }
+
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void AssignPosInferMeta(const MetaTensor& x,
                         const MetaTensor& cum_count,
                         const MetaTensor& eff_num_len,
@@ -408,28 +462,27 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
-  PADDLE_ENFORCE_EQ(out_dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "flash_attn receive input with dim "
-                        "[batch_size, seq_len, num_heads, head_dim]"));
-  out_dims[3] = v.dims()[3];
+  if (out_dims.size() == 4) {
+    out_dims[3] = v.dims()[3];
+  }
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
-  auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
-  int batch_size = q.dims()[0];
-  int num_heads = q.dims()[2];
-  int seqlen_q_rounded = round_multiple(q.dims()[1]);
-  int seqlen_k_rounded = round_multiple(k.dims()[1]);
-  if (softmax) {
-    softmax->set_dtype(q.dtype());
-    softmax->set_dims(
-        {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
-  }
-  if (softmax_lse) {
-    softmax_lse->set_dtype(q.dtype());
-    softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+  softmax->set_dtype(q.dtype());
+  softmax_lse->set_dtype(q.dtype());
+  if (out_dims.size() == 4) {
+    auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
+    int batch_size = q.dims()[0];
+    int num_heads = q.dims()[2];
+    int seqlen_q_rounded = round_multiple(q.dims()[1]);
+    int seqlen_k_rounded = round_multiple(k.dims()[1]);
+    if (softmax) {
+      softmax->set_dims(
+          {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
+    }
+    if (softmax_lse) {
+      softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+    }
   }
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
@@ -460,6 +513,60 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
   }
+}
+
+void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& softmax_lse,
+                                    MetaTensor* reduced_scores) {
+  PADDLE_ENFORCE(q.dims().size() == 4,
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q with dim "
+                     "[batch_size, seq_len, num_heads, head_dim]"));
+
+  PADDLE_ENFORCE(k.dims().size() == 4,
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input k with dim "
+                     "[batch_size, seq_len, num_heads, head_dim]"));
+
+  PADDLE_ENFORCE(
+      softmax_lse.dims().size() == 3,
+      phi::errors::InvalidArgument(
+          "calc_reduced_attn_scores must receive input softmax_lse with dim "
+          "[batch_size, num_heads, seq_len_q]"));
+
+  PADDLE_ENFORCE(q.dims()[0] == k.dims()[0],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and k "
+                     "with consistent batch_size!"));
+
+  PADDLE_ENFORCE(q.dims()[0] == softmax_lse.dims()[0],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with consistent batch_size!"));
+
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  PADDLE_ENFORCE(round_multiple(q.dims()[1], 128) == softmax_lse.dims()[2],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with corresponding seq_len!"));
+
+  PADDLE_ENFORCE(q.dims()[2] == softmax_lse.dims()[1],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with consistent num_heads!"));
+
+  PADDLE_ENFORCE(q.dims()[3] == k.dims()[3],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and k "
+                     "with consistent head_dim!"));
+
+  int batch_size = q.dims()[0];
+  int num_heads = q.dims()[2];
+  int seqlen_k = k.dims()[1];
+
+  reduced_scores->set_dtype(phi::DataType::FLOAT32);
+  reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
 }
 
 void ArangeTensorInferMeta(const MetaTensor& start,
@@ -540,7 +647,7 @@ void InstanceNormInferMeta(const MetaTensor& x,
             "of scale is [%d]",
             scale_dim,
             scale_dim.size()));
-    bool check = !((!config.is_runtime) && (common::product(scale_dim) <= 0));
+    bool check = config.is_runtime || contain_unknown_dim(scale_dim);
     if (check) {
       PADDLE_ENFORCE_EQ(scale_dim[0],
                         C,
@@ -562,7 +669,7 @@ void InstanceNormInferMeta(const MetaTensor& x,
             "of bias is [%d]",
             bias_dim,
             bias_dim.size()));
-    bool check = !((!config.is_runtime) && (common::product(bias_dim) <= 0));
+    bool check = config.is_runtime || !contain_unknown_dim(bias_dim);
     if (check) {
       PADDLE_ENFORCE_EQ(bias_dim[0],
                         C,
@@ -1872,35 +1979,6 @@ void SequenceConvInferMeta(const MetaTensor& x,
   out->set_dims(in_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
-}
-
-void SparseMomentumInferMeta(const MetaTensor& param,
-                             const MetaTensor& learning_rate,
-                             const MetaTensor& velocity,
-                             MetaTensor* param_out,
-                             MetaTensor* velocity_out,
-                             MetaTensor* master_param_out) {
-  auto lr_dims = common::product(learning_rate.dims());
-  PADDLE_ENFORCE_EQ(lr_dims == 1,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Learning_rate should be a scalar. But Received "
-                        "LearningRate's dim [%s]",
-                        lr_dims));
-  auto param_dim = param.dims();
-  PADDLE_ENFORCE_EQ(
-      param_dim,
-      velocity.dims(),
-      phi::errors::InvalidArgument(
-          "Param and Velocity of SparseMomentumOp should have the same "
-          "dimension. But received Param's dim [%s] and Velocity [%s].",
-          param_dim,
-          velocity.dims()));
-  param_out->set_dims(param_dim);
-  velocity_out->set_dims(param_dim);
-  if (master_param_out != nullptr) {
-    master_param_out->set_dims(param_dim);
-  }
 }
 
 void SpectralNormInferMeta(const MetaTensor& weight,
