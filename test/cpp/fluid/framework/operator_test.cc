@@ -35,8 +35,7 @@ class OpWithoutKernelTest : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
