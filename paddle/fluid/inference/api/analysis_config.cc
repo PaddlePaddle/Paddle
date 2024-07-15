@@ -89,7 +89,7 @@ AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
 
 AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
                                const std::string &params_file_or_model_prefix) {
-  if (is_directory(prog_file_or_model_dir)) {
+  if (paddle::inference::IsDirectory(prog_file_or_model_dir)) {
     if (FLAGS_enable_pir_api) {
       prog_file_ =
           prog_file_or_model_dir + "/" + params_file_or_model_prefix + ".json";
@@ -105,7 +105,7 @@ AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
   }
 
   PADDLE_ENFORCE_EQ(
-      IsFileExists(prog_file),
+      paddle::inference::IsFileExists(prog_file),
       true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
@@ -117,7 +117,7 @@ AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
 void AnalysisConfig::SetModel(
     const std::string &prog_file_path_or_model_dir_path,
     const std::string &params_file_path_or_model_prefix) {
-  if (is_directory(prog_file_path_or_model_dir_path)) {
+  if (paddle::inference::IsDirectory(prog_file_path_or_model_dir_path)) {
     if (FLAGS_enable_pir_api) {
       prog_file_ = prog_file_path_or_model_dir_path + "/" +
                    params_file_path_or_model_prefix + ".json";
