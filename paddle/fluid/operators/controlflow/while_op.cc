@@ -169,7 +169,7 @@ class WhileOp : public framework::OperatorBase {
     }
 
     LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
-    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+    if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
       framework::Scope placeholder;  // Don't care if it's valid, just for
                                      // initialize InterpreterCore
       framework::interpreter::ExecutionConfig execution_config;
@@ -362,7 +362,7 @@ class WhileGradOp : public framework::OperatorBase {
 
     LOG_FIRST_N(INFO, 1)
         << "[ControlFlow][WhileGradOp] New Executor is Running.";
-    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+    if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
       std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
       framework::Scope placeholder;  // Don't care if it's valid, just for
                                      // initialize InterpreterCore

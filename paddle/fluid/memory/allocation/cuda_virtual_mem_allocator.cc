@@ -222,7 +222,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_mem_alloced_offset_ += size;
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, platform::Place(place_));  // NOLINT
+      reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
 }
 
 }  // namespace paddle::memory::allocation

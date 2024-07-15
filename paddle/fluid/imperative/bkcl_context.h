@@ -28,7 +28,7 @@ namespace imperative {
 class BKCLParallelContext : public ParallelContext {
  public:
   explicit BKCLParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
+                               const phi::Place& place)
       : ParallelContext(strategy, place) {}
 
   ~BKCLParallelContext() override = default;
