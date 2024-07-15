@@ -22,14 +22,17 @@ namespace dynload {
 
 using ::musa::dnn::BatchMatMul;
 using ::musa::dnn::BatchNorm;
+using ::musa::dnn::Binary;
 using ::musa::dnn::Convolution;
 using ::musa::dnn::Handle;
 using ::musa::dnn::MatMul;
 using ::musa::dnn::MemoryHandler;
 using ::musa::dnn::Pooling;
+using ::musa::dnn::ScaledDotProductAttention;
 using ::musa::dnn::Softmax;
 using ::musa::dnn::Tensor;
-using ::musa::dnn::ScaledDotProductAttention;
+using ::musa::dnn::Unary;
+
 extern bool HasCUDNN();
 
 void mudnnCreate(Handle** handle, int device);

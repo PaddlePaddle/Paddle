@@ -47,6 +47,51 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                                      \
   }
 
+#define DEFINE_MUSA_ACTIVATION_KERNEL(name, mode, alpha, beta)               \
+  template <typename T, typename Context>                                    \
+  void name##Kernel(                                                         \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {      \
+    dev_ctx.template Alloc<T>(out);                                          \
+    phi::backends::gpu::ScopedUnaryDescriptor un_desc;                       \
+    un_desc.desc_.SetMode(mode);                                             \
+    un_desc.desc_.SetAlpha(alpha);                                           \
+    un_desc.desc_.SetBeta(beta);                                             \
+    backends::gpu::ScopedTensorDescriptor x_scoped_desc;                     \
+    backends::gpu::ScopedTensorDescriptor out_scoped_desc;                   \
+    auto musa_x = x_scoped_desc.descriptor_with_stride<T>(                   \
+        x, GPUDNNDataLayout::kNCHW, common::vectorize<int>(x.dims()));       \
+    auto musa_out = out_scoped_desc.descriptor_with_stride<T>(               \
+        *out, GPUDNNDataLayout::kNCHW, common::vectorize<int>(out->dims())); \
+    auto handle = dev_ctx.cudnn_handle();                                    \
+    un_desc.desc_.Run(*handle, musa_out, musa_x);                            \
+  }
+
+#define DEFINE_MUSA_ACTIVATION_KERNEL_NO_DOUBLE(name, mode, alpha, beta)      \
+  template <typename T, typename Context>                                     \
+  void name##Kernel(                                                          \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {       \
+    if (UNLIKELY(x.dtype() == DataType::FLOAT64)) {                           \
+      auto __summary__ = phi::ErrorSummary(#name " does not support double"); \
+      auto __message__ =                                                      \
+          ::paddle::string::Sprintf("", __summary__.error_message());         \
+      __THROW_ERROR_INTERNAL__(                                               \
+          phi::ErrorSummary(__summary__.code(), std::move(__message__)));     \
+    }                                                                         \
+    dev_ctx.template Alloc<T>(out);                                           \
+    phi::backends::gpu::ScopedUnaryDescriptor un_desc;                        \
+    un_desc.desc_.SetMode(mode);                                              \
+    un_desc.desc_.SetAlpha(alpha);                                            \
+    un_desc.desc_.SetBeta(beta);                                              \
+    backends::gpu::ScopedTensorDescriptor x_scoped_desc;                      \
+    backends::gpu::ScopedTensorDescriptor out_scoped_desc;                    \
+    auto musa_x = x_scoped_desc.descriptor_with_stride<T>(                    \
+        x, GPUDNNDataLayout::kNCHW, common::vectorize<int>(x.dims()));        \
+    auto musa_out = out_scoped_desc.descriptor_with_stride<T>(                \
+        *out, GPUDNNDataLayout::kNCHW, common::vectorize<int>(out->dims()));  \
+    auto handle = dev_ctx.cudnn_handle();                                     \
+    un_desc.desc_.Run(*handle, musa_out, musa_x);                             \
+  }
+
 #define DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(name,           \
                                                            functor_class)  \
   template <typename T, typename Context>                                  \
@@ -87,11 +132,18 @@ void ActivationGPUImpl(const Context& dev_ctx,
     ActivationGPUImpl<T, Context, funcs::functor_class<T>>( \
         dev_ctx, x, out, functor);                          \
   }
-
+#ifdef __MUSACC__
+DEFINE_MUSA_ACTIVATION_KERNEL(Cos, ::musa::dnn::Unary::Mode::COS, 0.0, 0.0)
+#else
 DEFINE_GPU_ACTIVATION_KERNEL(Cos, CudaCosFunctor)
+#endif
 // DEFINE_GPU_ACTIVATION_KERNEL(Tan, CudaTanFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Acos, CudaAcosFunctor)
+#ifdef __MUSACC__
+DEFINE_MUSA_ACTIVATION_KERNEL(Sin, ::musa::dnn::Unary::Mode::SIN, 0.0, 0.0)
+#else
 DEFINE_GPU_ACTIVATION_KERNEL(Sin, CudaSinFunctor)
+#endif
 DEFINE_GPU_ACTIVATION_KERNEL(Asin, CudaAsinFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Atan, CudaAtanFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sinh, CudaSinhFunctor)
@@ -102,11 +154,24 @@ DEFINE_GPU_ACTIVATION_KERNEL(Atanh, CudaAtanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
+#ifdef __MUSACC__
+DEFINE_MUSA_ACTIVATION_KERNEL(Silu, ::musa::dnn::Unary::Mode::SILU, 0.0, 0.0)
+#else
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
+#endif
 DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
+
+#ifdef __MUSACC__
+DEFINE_MUSA_ACTIVATION_KERNEL(Rsqrt, ::musa::dnn::Unary::Mode::RSQRT, 0.0, 0.0)
+DEFINE_MUSA_ACTIVATION_KERNEL_NO_DOUBLE(Sqrt,
+                                        ::musa::dnn::Unary::Mode::SQRT,
+                                        0.0,
+                                        0.0)
+#else
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
+#endif
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
@@ -218,6 +283,15 @@ PD_REGISTER_KERNEL(relu,
                      phi::dtype::float16,         \
                      phi::dtype::bfloat16) {}
 
+#define PD_REGISTER_ACTIVATION_KERNEL_NO_DOUBLE(name, func) \
+  PD_REGISTER_KERNEL(name,                                  \
+                     GPU,                                   \
+                     ALL_LAYOUT,                            \
+                     phi::func,                             \
+                     float,                                 \
+                     phi::dtype::float16,                   \
+                     phi::dtype::bfloat16) {}
+
 #define PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(name, func) \
   PD_REGISTER_KERNEL(name,                                     \
                      GPU,                                      \
@@ -230,8 +304,8 @@ PD_REGISTER_KERNEL(relu,
                      phi::dtype::complex<float>,               \
                      phi::dtype::complex<double>) {}
 
-PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sin, SinKernel)
-PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cos, CosKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
+PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)
 // PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tan, TanKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(acos, AcosKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(asin, AsinKernel)
@@ -254,7 +328,7 @@ PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 // PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(stanh, StanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
+PD_REGISTER_ACTIVATION_KERNEL_NO_DOUBLE(rsqrt, RsqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(softplus, SoftplusKernel)
 
 PD_REGISTER_KERNEL(exp,
@@ -296,7 +370,7 @@ PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
-PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)

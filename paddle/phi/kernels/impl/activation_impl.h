@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
 namespace phi {
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 #define ToString(x) #x
 
@@ -70,6 +72,7 @@ void PowKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+#ifndef __MUSACC__
   auto x_flatten = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
   auto out_flatten = phi::EigenVector<T>::Flatten(
@@ -79,6 +82,28 @@ void PowKernel(const Context& dev_ctx,
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = factor.to<float>();
   functor(*place, x_flatten, out_flatten);
+#else
+  if (UNLIKELY(x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
+               x.dtype() == DataType::FLOAT64)) {
+    auto __summary__ =
+        phi::ErrorSummary("pow does not support int/double/int64_t");
+    auto __message__ =
+        ::paddle::string::Sprintf("", __summary__.error_message());
+    __THROW_ERROR_INTERNAL__(
+        phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+  }
+  phi::backends::gpu::ScopedUnaryDescriptor un_desc;
+  backends::gpu::ScopedTensorDescriptor x_scoped_desc;
+  backends::gpu::ScopedTensorDescriptor out_scoped_desc;
+  auto musa_x = x_scoped_desc.descriptor_with_stride<T>(
+      x, GPUDNNDataLayout::kNCHW, common::vectorize<int>(x.dims()));
+  auto musa_out = out_scoped_desc.descriptor_with_stride<T>(
+      *out, GPUDNNDataLayout::kNCHW, common::vectorize<int>(out->dims()));
+  un_desc.desc_.SetAlpha(factor.to<double>());
+  un_desc.desc_.SetMode(::musa::dnn::Unary::Mode::POW);
+  auto handle = dev_ctx.cudnn_handle();
+  un_desc.desc_.Run(*handle, musa_out, musa_x);
+#endif
 }
 
 }  // namespace phi

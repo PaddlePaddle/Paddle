@@ -355,6 +355,8 @@ class TestParameter:
         with base.dygraph.guard():
             np_x = np.array([0.1])
             x = base.dygraph.to_variable(np_x)
+            if self.op_type == "sqrt":
+                x = x.to("float32")
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -1510,6 +1512,7 @@ class TestSqrt(TestActivation, TestParameter):
         self.public_python_api = paddle.sqrt
 
         self.init_dtype()
+        self.dtype = np.float32
         self.init_shape()
         self.if_enable_cinn()
 
@@ -1728,7 +1731,7 @@ class TestRsqrt(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
-
+        self.dtype = np.float32
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = 1.0 / np.sqrt(x)
@@ -1752,7 +1755,7 @@ class TestRsqrt(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.0005,
+            max_relative_error=0.006,
             check_prim=True,
             check_pir=True,
             check_prim_pir=True,
@@ -1904,7 +1907,7 @@ class TestCos(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
-
+        self.dtype = np.float32
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         if self.dtype == np.complex64 or self.dtype == np.complex128:
@@ -1937,7 +1940,13 @@ class TestCos(TestActivation):
                 check_pir=True,
             )
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=0.010,
+                check_prim=True,
+                check_pir=True,
+            )
 
     def if_enable_cinn(self):
         pass

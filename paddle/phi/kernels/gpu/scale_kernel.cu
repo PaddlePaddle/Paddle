@@ -11,6 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <cstdint>
+#include <type_traits>
 
 #include "paddle/phi/kernels/scale_kernel.h"
 
@@ -18,8 +20,12 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
+#include "paddle/phi/kernels/impl/fill_kernel_impl.h"
 
 namespace phi {
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename DataT, typename ParamT>
 struct ScaleFunctor {
@@ -41,6 +47,7 @@ struct ScaleFunctor {
   }
 };
 
+//use ScopedUnaryDescriptor twice (add and mul) will be slower than original implementation!
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -48,24 +55,67 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  std::vector<const DenseTensor*> inputs;
-  std::vector<DenseTensor*> outputs;
-  inputs.emplace_back(&x);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  if (x.numel() <= 0 || (!x.IsInitialized())) {
+  if(bias!=0.0f && scale.to<int64_t>()!=1){
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    std::vector<const DenseTensor*> inputs;
+    std::vector<DenseTensor*> outputs;
+    inputs.emplace_back(&x);
+    outputs.emplace_back(out);
+    dev_ctx.template Alloc<T>(out);
+    if (x.numel() <= 0 || (!x.IsInitialized())) {
+      return;
+    }
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx,
+        inputs,
+        &outputs,
+        ScaleFunctor<T, MT>(
+            scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
     return;
   }
-  phi::funcs::ElementwiseKernel<T>(
-      dev_ctx,
-      inputs,
-      &outputs,
-      ScaleFunctor<T, MT>(
-          scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
+  dev_ctx.template Alloc<T>(out);
+  backends::gpu::ScopedTensorDescriptor x_scoped_desc;
+  backends::gpu::ScopedTensorDescriptor out_scoped_desc;
+  auto musa_x=x_scoped_desc.descriptor_with_stride<T>(x, GPUDNNDataLayout::kNCHW, common::vectorize<int>(x.dims()));
+  auto musa_out=out_scoped_desc.descriptor_with_stride<T>(*out, GPUDNNDataLayout::kNCHW, common::vectorize<int>(out->dims()));
+  auto handle = dev_ctx.cudnn_handle();
+  phi::backends::gpu::ScopedUnaryDescriptor un_desc;
+  if(bias==0.0f){
+    if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t> || std::is_same_v<T, int16_t> || std::is_same_v<T, int>|| std::is_same_v<T, int64_t>) {
+      un_desc.desc_.SetAlpha(scale.to<int64_t>());
+    }else if constexpr(std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, phi::dtype::float16> || std::is_same_v<T, phi::dtype::bfloat16>){
+      un_desc.desc_.SetAlpha(scale.to<double>());
+    }else{
+      auto __summary__ = phi::ErrorSummary("does not support");
+      auto __message__ = ::paddle::string::Sprintf(
+          "",
+          __summary__.error_message());
+      __THROW_ERROR_INTERNAL__(
+          phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+    }
+    un_desc.desc_.SetMode(::musa::dnn::Unary::Mode::MUL);
+    un_desc.desc_.Run(*handle,musa_out,musa_x);
+  }else if(scale.to<int64_t>()==1){
+    if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t> || std::is_same_v<T, int16_t> || std::is_same_v<T, int>|| std::is_same_v<T, int64_t>) {
+      un_desc.desc_.SetAlpha(static_cast<int64_t>(bias));
+    }else if constexpr(std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, phi::dtype::float16> || std::is_same_v<T, phi::dtype::bfloat16>){
+      un_desc.desc_.SetAlpha(static_cast<double>(bias));
+    }else{
+      auto __summary__ = phi::ErrorSummary("does not support");
+      auto __message__ = ::paddle::string::Sprintf(
+          "",
+          __summary__.error_message());
+      __THROW_ERROR_INTERNAL__(
+          phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+    }
+    un_desc.desc_.SetMode(::musa::dnn::Unary::Mode::ADD);
+    un_desc.desc_.Run(*handle,musa_out,musa_x);
+  }
+  return;
 }
 
 }  // namespace phi
+
 
 PD_REGISTER_KERNEL(scale,
                    GPU,
@@ -82,4 +132,5 @@ PD_REGISTER_KERNEL(scale,
                    int,
                    int64_t,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>
+                   ) {}

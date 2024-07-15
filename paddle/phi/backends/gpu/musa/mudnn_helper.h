@@ -92,6 +92,27 @@ class CudnnDataType<phi::dtype::bfloat16> {
 };
 
 template <>
+class CudnnDataType<unsigned char> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::UINT8;
+};
+
+
+
+template <>
+class CudnnDataType<signed char> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT8;
+};
+
+template <>
+class CudnnDataType<short> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT16;
+};
+
+
+template <>
 class CudnnDataType<phi::dtype::float16> {
  public:
   static const dynload::Tensor::Type type = dynload::Tensor::Type::HALF;
@@ -106,6 +127,19 @@ class CudnnDataType<phi::dtype::float16> {
     static ScalingParamType v = 0.0;
     return &v;
   }
+};
+
+
+template <>
+class CudnnDataType<int> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT32;
+};
+
+template <>
+class CudnnDataType<int64_t> {
+ public:
+  static const dynload::Tensor::Type type = dynload::Tensor::Type::INT64;
 };
 
 template <>
@@ -381,6 +415,26 @@ class ScaledDotProductAttention{
   DISABLE_COPY_AND_ASSIGN(ScaledDotProductAttention);
 };
 
+class ScopedUnaryDescriptor{
+  public:
+  ScopedUnaryDescriptor(){}
+  ~ScopedUnaryDescriptor() PADDLE_MAY_THROW{}
+  dynload::Unary desc_;
+ private:
+  DISABLE_COPY_AND_ASSIGN(ScopedUnaryDescriptor);
+};
+
+
+class ScopedBinaryDescriptor{
+  public:
+  ScopedBinaryDescriptor(){}
+  ~ScopedBinaryDescriptor() PADDLE_MAY_THROW{}
+  dynload::Binary desc_;
+ private:
+  DISABLE_COPY_AND_ASSIGN(ScopedBinaryDescriptor);
+};
+
+
 static void Coalesce1ToLastDims(std::vector<int>& tensor_dims) {
   const int ndims = tensor_dims.size();
   if (ndims < 3) return;
@@ -404,6 +458,35 @@ static dynload::MemoryHandler InternalMemAlloc(size_t s) {
   }
   return dynload::MemoryHandler(data, InternalMemFree);
 }
+
+  template <>
+  inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<float>>(const phi::DenseTensor& tensor,
+                                     const DataLayout& order,
+                                     const std::vector<int>& dims,
+                                     const int groups) {
+    auto __summary__ = phi::ErrorSummary("does not support");
+    auto __message__ = ::paddle::string::Sprintf(
+        "",
+        __summary__.error_message());
+    __THROW_ERROR_INTERNAL__(
+        phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+    return desc_;
+  }
+
+
+  template <>
+  inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<double>>(const phi::DenseTensor& tensor,
+                                     const DataLayout& order,
+                                     const std::vector<int>& dims,
+                                     const int groups) {
+    auto __summary__ = phi::ErrorSummary("does not support");
+    auto __message__ = ::paddle::string::Sprintf(
+        "",
+        __summary__.error_message());
+    __THROW_ERROR_INTERNAL__(
+        phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+    return desc_;
+  }
 
 }  // namespace gpu
 }  // namespace backends
