@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -46,7 +46,7 @@ function build_image(){
     declare -a BUILD_ARGS
     BUILD_ARGS+=("--build-arg" "PYTHON_VERSION=$PYTHON_VERSION")
     echo ">>> python version: $PYTHON_VERSION"
-    
+
     if [ "$HTTP_PROXY" ]; then
         BUILD_ARGS+=("--build-arg" "http_proxy=$HTTP_PROXY")
         echo ">>> using http proxy: $HTTP_PROXY"
@@ -81,7 +81,7 @@ function build_image(){
         echo ">>> with pip index: $WITH_PIP_INDEX"
         BUILD_ARGS+=("--build-arg" pip_index="$WITH_PIP_INDEX")
     fi
-        
+
     echo ">>> build docker image: $BUILD_IMAGE"
     # shellcheck disable=2086
     docker build \

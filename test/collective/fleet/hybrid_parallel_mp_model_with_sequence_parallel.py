@@ -135,6 +135,7 @@ class SimpleSPNet(paddle.nn.Layer):
         x = self.embedding(x)
 
         x = paddle.transpose(x, perm=[1, 0, 2])
+        x = x.contiguous()
         x = spu.ScatterOp.apply(x)
 
         x = self.linear1(x)
@@ -396,7 +397,7 @@ class TestDistSPSyncModelTraining(TestDistSPSyncTraining):
         fleet.init(is_collective=True, strategy=strategy)
 
 
-class TestDistSPTraining(unittest.TestCase):
+class TestDistSPTrainingBase(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -408,7 +409,7 @@ class TestDistSPTraining(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
-    def train_batch(self, batch, model, optimizer, is_mp):
+    def train_batch(self, batch, model, optimizer):
         output = model(batch)
         loss = output.mean()
         loss.backward()  # do backward
@@ -433,7 +434,7 @@ class TestDistSPTraining(unittest.TestCase):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        model_a = SimpleSPNet(
+        sp_model = SimpleSPNet(
             vocab_size,
             hidden_size,
             inner_size,
@@ -442,23 +443,23 @@ class TestDistSPTraining(unittest.TestCase):
             np_fc2,
             mp_id,
         )
-        optimizer_a = self.build_optimizer(model_a)
-        model_a = fleet.distributed_model(model_a)
-        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+        sp_optimizer = self.build_optimizer(sp_model)
+        sp_model = fleet.distributed_model(sp_model)
+        sp_optimizer = fleet.distributed_optimizer(sp_optimizer)
 
-        model_b = SimpleDPNet(
+        dp_model = SimpleDPNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
         )
-        optimizer_b = self.build_optimizer(model_b)
+        dp_optimizer = self.build_optimizer(dp_model)
 
-        return model_a, optimizer_a, model_b, optimizer_b
+        return sp_model, sp_optimizer, dp_model, dp_optimizer
 
-    def test_mp_model(self):
+    def test_sp_accuracy(self):
         (
-            model_a,
-            optimizer_a,
-            model_b,
-            optimizer_b,
+            sp_model,
+            sp_optimizer,
+            dp_model,
+            dp_optimizer,
         ) = self.build_model_optimizer()
 
         for _ in range(5):
@@ -471,15 +472,15 @@ class TestDistSPTraining(unittest.TestCase):
                 ),
             )
             batch = paddle.to_tensor(np_data)
-            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
-            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
+            sp_loss = self.train_batch(batch, sp_model, sp_optimizer)
+            dp_loss = self.train_batch(batch, dp_model, dp_optimizer)
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-5, atol=1e-5
+                sp_loss.numpy(), dp_loss.numpy(), rtol=1e-5, atol=1e-5
             )
 
 
-class TestDistSPTraining2(TestDistSPTraining):
+class TestDistSPTrainingWithConfigs(TestDistSPTrainingBase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -495,42 +496,8 @@ class TestDistSPTraining2(TestDistSPTraining):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
-    def build_model_optimizer(self):
-        hcg = fleet.get_hybrid_communicate_group()
-        word_size = hcg.get_model_parallel_world_size()
-        mp_id = hcg.get_model_parallel_rank()
-        dp_id = hcg.get_data_parallel_rank()
-        rank_id = dist.get_rank()
-        set_random_seed(1024, dp_id, rank_id)
 
-        np_fc1 = np.random.random_sample((hidden_size, inner_size))
-        np_fc2 = np.random.random_sample((inner_size, hidden_size))
-
-        model_a = SimpleSPNet(
-            vocab_size,
-            hidden_size,
-            inner_size,
-            output_size,
-            np_fc1,
-            np_fc2,
-            mp_id,
-        )
-        model_a = MixPrecisionLayer(model_a)
-        optimizer_a = self.build_optimizer(model_a)
-        optimizer_a = MixPrecisionOptimizer(optimizer_a)
-
-        model_a = fleet.distributed_model(model_a)
-        optimizer_a = fleet.distributed_optimizer(optimizer_a)
-
-        model_b = SimpleDPNet(
-            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
-        )
-        optimizer_b = self.build_optimizer(model_b)
-
-        return model_a, optimizer_a, model_b, optimizer_b
-
-
-class TestDistSPTraining3(TestDistSPTraining):
+class TestDistSPTrainingAmpWithConfigs(TestDistSPTrainingBase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -542,6 +509,7 @@ class TestDistSPTraining3(TestDistSPTraining):
             "mp_configs": {
                 "mp_async_allreduce": True,
                 "mp_fused_linear_param_grad_add": True,
+                "recompute_allgather": True,
             },
         }
         fleet.init(is_collective=True, strategy=strategy)
@@ -557,7 +525,7 @@ class TestDistSPTraining3(TestDistSPTraining):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        model_a = SimpleSPNet(
+        sp_model = SimpleSPNet(
             vocab_size,
             hidden_size,
             inner_size,
@@ -566,17 +534,19 @@ class TestDistSPTraining3(TestDistSPTraining):
             np_fc2,
             mp_id,
         )
-        optimizer_a = self.build_optimizer(model_a)
+        sp_model = MixPrecisionLayer(sp_model)
+        sp_optimizer = self.build_optimizer(sp_model)
+        sp_optimizer = MixPrecisionOptimizer(sp_optimizer)
 
-        model_a = fleet.distributed_model(model_a)
-        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+        sp_model = fleet.distributed_model(sp_model)
+        sp_optimizer = fleet.distributed_optimizer(sp_optimizer)
 
-        model_b = SimpleDPNet(
+        dp_model = SimpleDPNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
         )
-        optimizer_b = self.build_optimizer(model_b)
+        dp_optimizer = self.build_optimizer(dp_model)
 
-        return model_a, optimizer_a, model_b, optimizer_b
+        return sp_model, sp_optimizer, dp_model, dp_optimizer
 
 
 class SimpleSPNetWithoutBias(paddle.nn.Layer):
@@ -645,6 +615,7 @@ class SimpleSPNetWithoutBias(paddle.nn.Layer):
         x = self.embedding(x)
 
         x = paddle.transpose(x, perm=[1, 0, 2])
+        x = x.contiguous()
         x = spu.ScatterOp.apply(x)
 
         x = self.linear1(x)

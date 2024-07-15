@@ -14,12 +14,8 @@
 
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/index_select_op.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class RepeatInterleaveOp : public framework::OperatorWithKernel {
  public:
@@ -160,8 +156,7 @@ class RepeatInterleaveGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
                                     "X");
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

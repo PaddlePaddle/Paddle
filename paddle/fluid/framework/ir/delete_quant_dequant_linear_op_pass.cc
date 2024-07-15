@@ -21,9 +21,7 @@
 #include <vector>
 #include "paddle/fluid/framework/ir/quantize_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                        \
@@ -141,11 +139,10 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     const phi::DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())
             ->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "Input scale tensor's place should be CPU."));
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
     if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
@@ -195,9 +192,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_quant_dequant_linear_op_pass,
               paddle::framework::ir::DeleteQuantDequantLinearOpPass);

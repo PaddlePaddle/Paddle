@@ -47,14 +47,18 @@ BufferedReader::BufferedReader(
       thread_pool_(1),
       place_(place),
       buffer_size_(buffer_size),
-      pin_memory_(pin_memory) {
+      pin_memory_(pin_memory),
+      position_(),
+      cpu_buffer_(),
+      cuda_buffer_(),
+      xpu_buffer_(),
+      custom_device_buffer_() {
   VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU && !pin_memory) {
     int dev_idx = place_.device;  // NOLINT
     compute_stream_ =
-        ((phi::GPUContext *)(platform::DeviceContextPool::Instance().Get(
-             place_)))
+        ((phi::GPUContext *)(phi::DeviceContextPool::Instance().Get(place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
@@ -68,8 +72,7 @@ BufferedReader::BufferedReader(
   if (place_.GetType() == phi::AllocationType::XPU) {
     int dev_idx = place_.device;
     compute_stream_ =
-        ((phi::XPUContext *)(platform::DeviceContextPool::Instance().Get(
-             place_)))
+        ((phi::XPUContext *)(phi::DeviceContextPool::Instance().Get(place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
@@ -81,9 +84,10 @@ BufferedReader::BufferedReader(
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (place_.GetType() == phi::AllocationType::CUSTOM) {
-    auto stream = ((platform::CustomDeviceContext
-                        *)(platform::DeviceContextPool::Instance().Get(place_)))
-                      ->stream();
+    auto stream =
+        ((platform::CustomDeviceContext *)(phi::DeviceContextPool::Instance()
+                                               .Get(place_)))
+            ->stream();
     custom_device_compute_stream_ =
         std::make_shared<phi::stream::Stream>(place_, stream);
 
@@ -142,7 +146,7 @@ void BufferedReader::ReadAsync(size_t i) {
         //   - If src Tensor on CPU memory, we copy it to CUDAPinned memory
         //   - IF src Tensor on CUDAPinned memory, we use it directly
         //   - IF src Tensor on CUDA memory, we use it directly
-        platform::CUDAPinnedPlace cuda_pinned_place;
+        phi::GPUPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event(
@@ -219,7 +223,7 @@ void BufferedReader::ReadAsync(size_t i) {
             phi::memory_utils::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
-            platform::CUDAPinnedPlace cuda_pinned_place;
+            phi::GPUPinnedPlace cuda_pinned_place;
             phi::DenseTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
@@ -266,7 +270,7 @@ void BufferedReader::ReadAsync(size_t i) {
         xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::XPUDeviceGuard guard(place_.device);
+      phi::backends::xpu::XPUDeviceGuard guard(place_.device);
       int r = xpu_event_record(events_[i].get(), compute_stream_);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());

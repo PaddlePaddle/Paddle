@@ -107,8 +107,8 @@ std::unique_ptr<pir::Block> Region::TakeBack() {
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
-  for (auto iter = blocks_.begin(); iter != blocks_.end(); ++iter) {
-    (*iter)->SetParent(this);
+  for (auto &block : blocks_) {
+    block->SetParent(this);
   }
 }
 

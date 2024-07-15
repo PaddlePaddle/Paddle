@@ -116,7 +116,7 @@ def monkey_patch_variable():
         try:
             dtype = var.dtype
         except:
-            raise ValueError("Cannot get data type from %s", var.name)
+            raise ValueError(f"Cannot get data type from {var.name}")
         return dtype
 
     def current_block(var):
@@ -352,7 +352,7 @@ def monkey_patch_variable():
                 >>> import paddle
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> with base.dygraph.guard():
                 ...     original_variable = paddle.to_tensor(x)
                 ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))

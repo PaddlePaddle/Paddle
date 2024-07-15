@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
@@ -100,12 +101,20 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
     // if target is nvgpu, add stream.
-    if (target == cinn::common::DefaultNVGPUTarget()) {
-      ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
-
-      host_args.push_back(kernel_stream);
-      arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
-    }
+    target.arch.Match(
+        [&](common::NVGPUArch) {
+          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+          host_args.push_back(kernel_stream);
+          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {},
+        [&](common::HygonDCUArchHIP) {
+          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+          host_args.push_back(kernel_stream);
+          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+        });
     auto call_extern_api = ir::Call::Make(Void(),
                                           custom_call_api,
                                           host_args,
@@ -893,6 +902,8 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<double>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<bool>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<std::string>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<symbol::DimExpr>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<cinn::dialect::SymbolBinding>)
 #undef EXPAND_MEMSET_TYPE_UNSUPPORT
   };
 
@@ -970,10 +981,6 @@ bool RegisterCustomCallArgsFunc() {
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForTriangularSolve);
   CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_nvgpu",
-      cinn::common::DefaultNVGPUTarget(),
-      CustomCallArgsForAssertTrue);
-  CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cuda_memset",
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForMemset);
@@ -1018,11 +1025,6 @@ bool RegisterCustomCallArgsFunc() {
       CustomCallArgsForCholesky);
 
 #endif
-
-  CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_host",
-      cinn::common::DefaultHostTarget(),
-      CustomCallArgsForAssertTrue);
 
   return true;
 }

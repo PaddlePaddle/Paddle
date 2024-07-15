@@ -1825,22 +1825,25 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
   float threshold;
+  float value;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     auto th = static_cast<T>(threshold);  // NOLINT
-    out.device(d) = (x > th).template cast<T>() * x;
+    out.device(d) = (x > th).template cast<T>() * x +
+                    (x <= th).template cast<T>() * static_cast<T>(value);
   }
 };
 
 template <typename T>
 struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   float threshold;
+  float value;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   template <typename Device,
@@ -2946,9 +2949,23 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"deciamls", &decimals}};
+  }
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.round();
+    if (decimals == 0) {
+      out.device(d) = x.round();
+    } else if (decimals > 0) {
+      auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
+      out.device(d) = (x * ten_pow_deciamls).round() / ten_pow_deciamls;
+    } else {
+      auto ten_pow_deciamls = static_cast<T>(std::pow(10, -decimals));
+      out.device(d) = (x / ten_pow_deciamls).round() * ten_pow_deciamls;
+    }
   }
 };
 
@@ -3234,7 +3251,7 @@ struct CudaReluFunctor : public BaseActivationFunctor<T> {
 
   // relu(x) = max(x, 0)
   __device__ __forceinline__ T operator()(const T x) const {
-    return x > zero ? x : zero;
+    return x < zero ? zero : x;
   }
 };
 
@@ -4230,16 +4247,16 @@ struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaThresholdedReluFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
   float threshold;
+  float value;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
-  // thresholded_relu(x) = x > threshold ? x : 0
+  // thresholded_relu(x, threshold, value) = x > threshold ? x : value
   __device__ __forceinline__ T operator()(const T x) const {
-    return x > static_cast<T>(threshold) ? x : zero;
+    return x > static_cast<T>(threshold) ? x : static_cast<T>(value);
   }
 };
 
@@ -4247,9 +4264,10 @@ template <typename T>
 struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float threshold;
+  float value;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   // dx = x > threshold ? dout : 0
@@ -5157,11 +5175,26 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  int decimals;
 
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"deciamls", &decimals}};
+  }
   // round(x) = round(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(round(x));
+
+    if (decimals == 0) {
+      return static_cast<T>(round(x));
+    } else if (decimals > 0) {
+      float ten_pow_deciamls = powf(10., decimals);
+      return static_cast<T>(round(x * static_cast<MPType>(ten_pow_deciamls)) /
+                            ten_pow_deciamls);
+    } else {
+      float ten_pow_deciamls = powf(10., -decimals);
+      return static_cast<T>(round(x / static_cast<MPType>(ten_pow_deciamls)) *
+                            ten_pow_deciamls);
+    }
   }
 };
 

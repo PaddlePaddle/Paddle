@@ -110,7 +110,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Round, CudaRoundFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Floor, CudaFloorFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Ceil, CudaCeilFunctor)
 
@@ -123,9 +122,6 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
-                                     CudaThresholdedReluFunctor,
-                                     threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
@@ -148,6 +144,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      slope,
                                      offset)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Selu, CudaSeluFunctor, scale, alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
+                                     CudaThresholdedReluFunctor,
+                                     threshold,
+                                     value)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -186,6 +186,19 @@ void Relu6Kernel(const Context& dev_ctx,
   ActivationGPUImpl<T, Context, funcs::CudaRelu6Functor<T>>(
       dev_ctx, x, out, functor);
 }
+
+template <typename T, typename Context>
+void RoundKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const int decimals,
+                 DenseTensor* out) {
+  funcs::CudaRoundFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = decimals;
+  ActivationGPUImpl<T, Context, funcs::CudaRoundFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP

@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -341,7 +340,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     }
     std::priority_queue<std::pair<double, char>,
                         std::vector<std::pair<double, char>>,
-                        std::greater<std::pair<double, char>>>
+                        std::greater<>>
         cost_queue;
 
     for (auto axis_name : align_axis) {
@@ -363,10 +362,8 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           if (IsDimSharded(tensor_dist_attr, shard_dim)) {
             continue;
           }
-          int64_t num = std::accumulate(tensor_shape.begin(),
-                                        tensor_shape.end(),
-                                        1,
-                                        std::multiplies<int64_t>());
+          int64_t num = std::accumulate(
+              tensor_shape.begin(), tensor_shape.end(), 1, std::multiplies<>());
           if (num == static_cast<int64_t>(0)) {
             continue;
           }
@@ -375,7 +372,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           cost += std::accumulate(local_shape.begin(),
                                   local_shape.end(),
                                   1,
-                                  std::multiplies<int64_t>()) *
+                                  std::multiplies<>()) *
                   process_mess.dim_size(mesh_dim);
         }
       }
@@ -605,5 +602,4 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   return grad_out;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

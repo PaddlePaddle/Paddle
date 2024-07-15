@@ -22,8 +22,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
@@ -351,10 +350,21 @@ void CustomKernelInstruction::BuildCustomContext(
 
 CustomKernelInstruction::CustomKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
-    : InstructionBase(id, place), value_exec_info_(value_exec_info) {
+    : InstructionBase(id, place),
+      input_name2id_map_(),
+      vec_input_name2id_map_(),
+      input_shapes_(),
+      vec_input_shapes_(),
+      custom_attrs_(),
+      input_dtypes_(),
+      vec_input_dtypes_(),
+      input_ptrs_(),
+      vec_input_ptrs_(),
+      cache_out_ptrs_(),
+      value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -400,6 +410,18 @@ CustomKernelInstruction::CustomKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+  for (auto const& pair : op_inplace_map) {
+    pir::Value input_value =
+        op->operand_source(yaml_info_parser.InputName2Id().at(pair.first));
+    pir::Value output_value =
+        op->result(yaml_info_parser.OutputName2Id().at(pair.second));
+    if (IsInvalid(output_value) && IsInvalid(input_value)) {
+      this->AddInplace(value_exec_info_.GetVarByValue(input_value),
+                       value_exec_info_.GetVarByValue(output_value));
+    }
+  }
+
   InitInputsOutputsIds(op, value_exec_info_);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -443,6 +465,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
     auto out_meta = phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
     out_meta->dims = phi::make_ddim(output_shapes[i]);
     out_meta->dtype = output_dtypes[i];
+    out_meta->strides = out_meta->calc_strides(out_meta->dims);
   }
 }
 
@@ -494,9 +517,10 @@ void CustomKernelInstruction::Run() {
                     vec_input_name2id_map_,
                     custom_attrs_);
   UpdateOutputMeta(output_shapes, output_dtypes);
-
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
+  }
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

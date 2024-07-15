@@ -65,7 +65,7 @@ class HeterParallelContext : public ParallelContext {
  private:
   ParallelStrategy inter_strategy_;
   ParallelStrategy node_strategy_;
-  platform::Place node_place_;
+  phi::Place node_place_;
   std::shared_ptr<imperative::ParallelContext> node_parallel_ctx_{nullptr};
   std::shared_ptr<imperative::ParallelContext> inter_parallel_ctx_{nullptr};
 };

@@ -487,8 +487,7 @@ def _add_feed_fetch_ops(
                 )
             else:
                 warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % name
+                    f"The variable {name} is not found in program. It is not declared or is pruned."
                 )
 
     if use_fetch_v2:
@@ -606,12 +605,8 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
-            return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, Value):
-            return str(var)
         elif isinstance(var, Value):
             return str(var)
         else:
@@ -944,7 +939,8 @@ class _ExecutorCache:
         )
 
     def _get_program_and_executor(self, cached_data):
-        program = cached_data.program
+        # do type promotion if necessary
+        program = process_type_promotion(cached_data.program)
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -1123,6 +1119,9 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        _add_pir_fetch_ops(
+            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+        )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1143,10 +1142,6 @@ class _ExecutorCache:
         fetch_var_name = cached_data.fetch_var_name
         place = cached_data.place
         scope = cached_data.scope
-
-        _add_pir_fetch_ops(
-            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-        )
 
         default_job = core.Job("default")
         type_to_program = {"default": program}
@@ -1173,6 +1168,8 @@ class _ExecutorCache:
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
                 decomp.decompose_dist_program(program)
+        if in_cinn_mode():
+            apply_cinn_pass(program)
         return program, new_exe, data_op_infos
 
 
@@ -1417,8 +1414,7 @@ class Executor:
             if feed_name not in feed_target_names:
                 feed.pop(feed_name)
                 warnings.warn(
-                    "The value %s is not found in program. It is not declared or is pruned."
-                    % feed_name
+                    f"The value {feed_name} is not found in program. It is not declared or is pruned."
                 )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
@@ -1458,8 +1454,7 @@ class Executor:
                 _fetch_list.append(item)
             else:
                 raise TypeError(
-                    "The item in fetch_list should be str, variable or optimize_op, but received %s.",
-                    type(item),
+                    f"The item in fetch_list should be str, variable or optimize_op, but received {type(item)}.",
                 )
 
         for index, item in enumerate(fetch_list):
@@ -1575,8 +1570,7 @@ class Executor:
                 if not global_block.has_var(feed_name):
                     feed.pop(feed_name)
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % feed_name
+                        f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                     )
 
         elif isinstance(feed, (list, tuple)):
@@ -1585,8 +1579,7 @@ class Executor:
                     if not global_block.has_var(feed_name):
                         each.pop(feed_name)
                         warnings.warn(
-                            "The variable %s is not found in program. It is not declared or is pruned."
-                            % feed_name
+                            f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                         )
         return feed
 
@@ -1799,8 +1792,6 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
-            # do type promotion if necessary
-            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
@@ -1944,8 +1935,7 @@ class Executor:
                 feed = feed[0]
             if not isinstance(feed, dict):
                 raise TypeError(
-                    "feed requires dict as its Parameter. But you passed in %s"
-                    % (type(feed))
+                    f"feed requires dict as its Parameter. But you passed in {type(feed)}"
                 )
             feed = self._update_feed(program, feed)
 
@@ -2036,7 +2026,7 @@ class Executor:
                     and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
-                    raise ValueError('Need feed data for variable %s' % varname)
+                    raise ValueError(f'Need feed data for variable {varname}')
 
         acp._auto_checkpoint(self, program)
 
@@ -2093,8 +2083,7 @@ class Executor:
             feed = feed[0]
         if not isinstance(feed, dict):
             raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
+                f"feed requires dict as its Parameter. But you passed in {type(feed)}"
             )
 
         (
@@ -2121,12 +2110,10 @@ class Executor:
 
             lr_scheduler = program.lr_scheduler
             lr_value = lr_scheduler()
-            lr_var = program.lr_var
+            lr_var = program.get_parameter_value_by_name(program.lr_name)
 
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(
-                global_scope(), lr_scheduler._var_name
-            )
+            tensor = core.get_variable_tensor(global_scope(), program.lr_name)
             # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
             cpu_tensor = _as_lodtensor(data, core.CPUPlace())
             if core.is_cuda_graph_capturing():
@@ -2975,8 +2962,7 @@ class Executor:
                     )
                 else:
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % name
+                        f"The variable {name} is not found in program. It is not declared or is pruned."
                     )
 
         return tmp_program
@@ -3142,7 +3128,7 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = []
+                >>> filelist = [] # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.infer_from_dataset(program=paddle.static.default_main_program(),
@@ -3264,7 +3250,7 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = []
+                >>> filelist = [] # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.train_from_dataset(program=paddle.static.default_main_program(),

@@ -10,7 +10,6 @@ set(srcs
     bind.cc
     optim.cc
     pe.cc
-    frontend.cc
     framework.cc
     utils.cc
     schedule.cc)

@@ -31,6 +31,29 @@ namespace operators {
 class QuantizeLinearOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "QuantizeLinear");
+    OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "QuantizeLinear");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ZeroPoint"), "Input", "ZeroPoint", "QuantizeLinear");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "QuantizeLinear");
+    ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
+    int quant_axis = ctx->Attrs().Get<int>("quant_axis");
+    if (ctx->HasOutput("OutScale")) {
+      if (quant_axis < 0) {
+        ctx->SetOutputDim("OutScale", {1});
+      } else {
+        ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[quant_axis]});
+      }
+    }
+    if (ctx->HasOutput("OutState")) {
+      ctx->SetOutputDim("OutState", {1});
+    }
+    if (ctx->HasOutput("OutAccum")) {
+      ctx->SetOutputDim("OutAccum", {1});
+    }
+    ctx->ShareLoD("X", /*->*/ "Y");
+  }
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -69,6 +92,8 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0);
     AddAttr<int>("bit_length", "(int, default 8)").SetDefault(8);
+    AddAttr<int>("qmin", "(int, default -128)").SetDefault(-128);
+    AddAttr<int>("qmax", "(int, default 127)").SetDefault(127);
     AddAttr<int>(
         "round_type",
         "(int, default 0) The round type of fp32 to int."
@@ -103,25 +128,16 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(quantize_linear,
-                            QuantizeLinearInferShapeFunctor,
-                            PD_INFER_META(phi::QuantizeLinearInferMeta));
-
-DECLARE_INFER_SHAPE_FUNCTOR(dequantize_linear,
-                            DeQuantizeLinearInferShapeFunctor,
-                            PD_INFER_META(phi::QuantizeLinearInferMeta));
 REGISTER_OPERATOR(
     quantize_linear,
     ops::QuantizeLinearOp,
     ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    QuantizeLinearInferShapeFunctor);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
     dequantize_linear,
     ops::QuantizeLinearOp,
     ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    DeQuantizeLinearInferShapeFunctor);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

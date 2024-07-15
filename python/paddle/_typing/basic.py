@@ -13,40 +13,60 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
-from typing_extensions import TypeAlias
+import numpy.typing as npt
+from typing_extensions import Never, TypeAlias
+
+from .backport import EllipsisType
 
 if TYPE_CHECKING:
-    from paddle import Tensor
+    from paddle import ParamAttr, Tensor
+    from paddle.nn.initializer import Initializer
+    from paddle.regularizer import WeightDecayRegularizer
+
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
-
-_T = TypeVar("_T", bound=Numberic)
-_SeqLevel1: TypeAlias = Sequence[_T]
-_SeqLevel2: TypeAlias = Sequence[Sequence[_T]]
-_SeqLevel3: TypeAlias = Sequence[Sequence[Sequence[_T]]]
-_SeqLevel4: TypeAlias = Sequence[Sequence[Sequence[Sequence[_T]]]]
-_SeqLevel5: TypeAlias = Sequence[Sequence[Sequence[Sequence[Sequence[_T]]]]]
-_SeqLevel6: TypeAlias = Sequence[
-    Sequence[Sequence[Sequence[Sequence[Sequence[_T]]]]]
+TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numberic]
+_TensorIndexItem: TypeAlias = Union[
+    None, bool, int, slice, "Tensor", EllipsisType
+]
+TensorIndex: TypeAlias = Union[
+    _TensorIndexItem,
+    Tuple[_TensorIndexItem, ...],
+    List[_TensorIndexItem],
 ]
 
-IntSequence: TypeAlias = _SeqLevel1[int]
 
-NumbericSequence: TypeAlias = _SeqLevel1[Numberic]
+_T = TypeVar("_T")
 
-NestedSequence: TypeAlias = Union[
-    _T,
-    _SeqLevel1[_T],
-    _SeqLevel2[_T],
-    _SeqLevel3[_T],
-    _SeqLevel4[_T],
-    _SeqLevel5[_T],
-    _SeqLevel6[_T],
+NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
+NestedList = Union[_T, List["NestedList[_T]"]]
+NestedStructure = Union[
+    _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
 ]
-
+IntSequence = Sequence[int]
+NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
-
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
+
+ParamAttrLike: TypeAlias = Union[
+    "ParamAttr", "Initializer", "WeightDecayRegularizer", str, bool
+]
+
+
+def unreached() -> Never:
+    """Mark a code path as unreachable.
+    Refer to https://typing.readthedocs.io/en/latest/source/unreachable.html#marking-code-as-unreachable
+    """
+    raise RuntimeError("Unreachable code path")

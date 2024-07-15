@@ -74,7 +74,7 @@ __global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
 template <typename T>
 __global__ void ClipAndQuantKernel(const T *in,
                                    const T *scale,
-                                   const int bin_cnt,
+                                   const int qmax,
                                    const int round_type,
                                    const int n,
                                    T *out) {
@@ -85,83 +85,36 @@ __global__ void ClipAndQuantKernel(const T *in,
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
   ComputeDataType inv_s = phi::funcs::inverse(s);
-  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+  ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
-      x = bin_cnt_t * inv_s * x;
-      x = phi::funcs::roundWithTiesToEven(x);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = qmax_t * inv_s * x;
+      if (qmax_t == static_cast<ComputeDataType>(448)) {
+        x = float8_e4m3fn(x);
+      } else if (qmax_t == static_cast<ComputeDataType>(57344)) {
+        x = float8_e5m2(x);
+      } else {
+        x = roundWithTiesToEven(x);
+      }
+      ComputeDataType max_bound = qmax_t;
+      ComputeDataType min_bound = -qmax_t - static_cast<ComputeDataType>(1);
+      if (qmax_t == static_cast<ComputeDataType>(448) ||
+          qmax_t == static_cast<ComputeDataType>(57344)) {
+        min_bound = -qmax_t;
+      }
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out[i] = static_cast<T>(x);
     } else {
       ComputeDataType v = x > s ? s : x;
       v = v < -s ? -s : v;
-      v = bin_cnt_t * inv_s * v;
+      v = qmax_t * inv_s * v;
       out[i] = static_cast<T>(round(v));
     }
   }
 }
-
-template <typename T>
-__global__ void ClipAndQuantDequantKernel(const T *in,
-                                          const T *scale,
-                                          const int bin_cnt,
-                                          const int round_type,
-                                          const int n,
-                                          T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
-  int tid = threadIdx.x;
-
-  using ComputeDataType = typename QuantizeDataType<T>::type;
-
-  ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
-  ComputeDataType inv_s = phi::funcs::inverse(s);
-  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
-
-  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
-    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
-    if (round_type == 0) {
-      x = bin_cnt_t * inv_s * x;
-      x = phi::funcs::roundWithTiesToEven(x);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
-      x = x > max_bound ? max_bound : x;
-      x = x < min_bound ? min_bound : x;
-      out[i] = static_cast<T>((x * s) / bin_cnt_t);
-    } else {
-      x = x > s ? s : x;
-      x = x < -s ? -s : x;
-      x = bin_cnt_t * inv_s * x;
-      x = round(x);
-      out[i] = static_cast<T>((x * s) / bin_cnt_t);
-    }
-  }
-}
-
-template <typename T>
-struct ClipAndFakeQuantDequantFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  const int round_type,
-                  phi::DenseTensor *out) {
-    int num = in.numel();
-    int block = 1024;
-    int grid = (block - 1 + num) / block;
-
-    const T *in_data = in.data<T>();
-    const T *scale_data = scale.data<T>();
-    T *out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    ClipAndQuantDequantKernel<T><<<grid, block, 0, ctx.stream()>>>(
-        in_data, scale_data, bin_cnt, round_type, num, out_data);
-  }
-};
 
 }  // namespace operators
 }  // namespace paddle

@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void ValuesCooGradKernel(const Context& dev_ctx UNUSED,
@@ -32,11 +31,10 @@ void CooToDenseGradKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& out_grad,
                           SparseCooTensor* x_grad) {
-  MaskCooKernel<T, Context>(dev_ctx, out_grad, x, x_grad);
+  MaskAsCooKernel<T, Context>(dev_ctx, out_grad, x, x_grad);
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(values_coo_grad,
                    CPU,

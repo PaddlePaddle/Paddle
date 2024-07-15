@@ -18,9 +18,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
+ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const phi::Place& p)
     : place_(p) {
-  if (platform::is_gpu_place(place_)) {
+  if (phi::is_gpu_place(place_)) {
     buddy_allocator_ = std::make_unique<memory::detail::BuddyAllocator>(
         std::unique_ptr<memory::detail::SystemAllocator>(
             new memory::detail::GPUAllocator(place_.device)),
@@ -43,8 +43,7 @@ std::shared_ptr<ThreadLocalAllocatorImpl> ThreadLocalCUDAAllocatorPool::Get(
           "The position of device should be less than the size of devices."));
   std::call_once(*init_flags_[pos], [this, pos, gpu_id] {
     platform::SetDeviceId(devices_[pos]);
-    allocators_[pos].reset(
-        new ThreadLocalAllocatorImpl(platform::CUDAPlace(gpu_id)));
+    allocators_[pos].reset(new ThreadLocalAllocatorImpl(phi::GPUPlace(gpu_id)));
   });
   return allocators_[pos];
 }

@@ -48,13 +48,15 @@ class NaiveExecutor {
   using PirHookFunc =
       std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const phi::Place& place) : place_(place) {}
 
   ~NaiveExecutor();
 
   // Create child scope.
   // Create variables.
   void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
+
+  void Prepare(Scope* scope);
 
   void PrepareInterpreterCore(
       Scope* scope,
@@ -102,7 +104,7 @@ class NaiveExecutor {
   void CreateOps(const ProgramDesc& desc, int block_id);
 
  private:
-  const platform::Place place_;
+  const phi::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_{nullptr};

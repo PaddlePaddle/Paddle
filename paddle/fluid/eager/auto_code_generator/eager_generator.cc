@@ -33,8 +33,7 @@
 
 #define NUM_CREATED_DUP_INPUTS 4
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // To handle append_op at python-level
 std::unordered_map<std::string, std::vector<std::string>>
@@ -126,11 +125,6 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["cast"]["out_dtype"] = 5;
   operators_with_attrs["cast"]["in_dtype"] = 5;
 
-  // Handle "transfer_dtype"
-  operators_with_attrs["transfer_dtype"] = {};
-  operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
-  operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
-
   // Handle "c_split"
   operators_with_attrs["c_split"] = {};
   operators_with_attrs["c_split"]["nranks"] = 1;
@@ -139,6 +133,11 @@ static void PrepareAttrMapForOps() {
 /* --- Helper Objects --- */
 class ForwardGenerationInfo {
  public:
+  ForwardGenerationInfo()
+      : fwd_inputs_name_pos_map_(),
+        fwd_outputs_name_pos_map_(),
+        in_vars_(),
+        out_vars_() {}
   const std::string& GetOpType() const { return op_type_; }
   void SetOpType(const std::string& op_type) { op_type_ = op_type; }
 
@@ -730,7 +729,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_outs->count(grad_output_name) > 0,
-                  paddle::platform::errors::Fatal(
+                  phi::errors::Fatal(
                       "Unable to find gradient output name in grad_outs."));
               // grad_outs
               grad_outs->erase(grad_output_name);
@@ -768,7 +767,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_ins->count(grad_input_name) > 0,
-                  paddle::platform::errors::Fatal(
+                  phi::errors::Fatal(
                       "Unable to find gradient input name in grad_ins."));
               // grad_ins
               grad_ins->erase(grad_input_name);
@@ -1686,7 +1685,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       PADDLE_ENFORCE_NE(
           forward_inplace_map[output_name],
           "",
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Inplace op %s has no input corresponding to output %s.",
               op_type,
               output_name));
@@ -1957,12 +1956,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
-              "  paddle::Tensor& %s = *%s;\n";
+              "  paddle::Tensor& %s = *%s;\n"
+              "  (void)%s; // To avoid error: unused variable\n";
           out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                    output_name,
                                                    output_var_args_name,
                                                    output_varname,
-                                                   output_var_args_name);
+                                                   output_var_args_name,
+                                                   output_varname);
         }
       } else {
         if (!forward_inplace_map.empty() &&
@@ -2387,7 +2388,7 @@ static std::string GenerateSingleOpBase(
       */
       if (!fwd_inputs_name_pos_map.count(fwd_name)) {
         PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
-                       paddle::platform::errors::Fatal(
+                       phi::errors::Fatal(
                            "fwd_name not found in fwd_inputs_name_pos_map nor "
                            "fwd_outputs_name_pos_map"));
 
@@ -2599,7 +2600,7 @@ static std::string GenerateSingleOpBase(
       num_appended_outputs++;
     } else {
       PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
-                     paddle::platform::errors::Fatal(
+                     phi::errors::Fatal(
                          "fwd_name not found in fwd_inputs_name_pos_map nor "
                          "fwd_outputs_name_pos_map"));
     }
@@ -3310,8 +3311,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   GenerateNodeHFile(node_h_path, grad_node_h_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {

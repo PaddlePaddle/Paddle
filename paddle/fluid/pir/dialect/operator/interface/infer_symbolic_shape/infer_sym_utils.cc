@@ -70,7 +70,7 @@ bool ReduceInferDim(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(x);
   std::vector<symbol::DimExpr> input_shapes;
   if (x_shape_or_data.data() == std::nullopt ||
-      x_shape_or_data.data()->size() == 0) {
+      x_shape_or_data.data()->empty()) {
     input_shapes = x_shape_or_data.shape();
   } else {
     input_shapes = *x_shape_or_data.data();
@@ -97,6 +97,18 @@ bool ReduceInferDim(pir::Operation *op,
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
+}
+
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_dim_exprs) {
+  const auto InsertZeros =
+      [](const std::vector<symbol::DimExpr> &dims) -> decltype(auto) {
+    auto out_dims = dims;
+    out_dims.insert(out_dims.begin(), 0);
+    return out_dims;
+  };
+  const auto &x_dims = x_dim_exprs.shape();
+  return symbol::TensorShapeOrDataDimExprs(InsertZeros(x_dims));
 }
 
 void BuildCstrEqForTensorListAlongAxis(

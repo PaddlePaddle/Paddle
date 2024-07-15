@@ -31,8 +31,7 @@ limitations under the License. */
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 COMMON_DECLARE_bool(enable_ins_parser_file);
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 DLManager& global_dlmanager_pool() {
   static DLManager manager;
@@ -264,7 +263,7 @@ void DataFeed::AssignFeedVar(const Scope& scope) {
 }
 
 void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
-  if (platform::is_cpu_place(this->place_)) {
+  if (phi::is_cpu_place(this->place_)) {
     memcpy(dst, src, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
@@ -349,7 +348,22 @@ int PrivateQueueDataFeed<T>::Next() {
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
 
 template <typename T>
-InMemoryDataFeed<T>::InMemoryDataFeed() {
+InMemoryDataFeed<T>::InMemoryDataFeed()
+    : batch_float_feasigns_(),
+      batch_uint64_feasigns_(),
+      offset_(),
+      visit_(),
+      thread_id_(0),
+      thread_num_(0),
+      parse_ins_id_(false),
+      parse_uid_(false),
+      parse_content_(false),
+      parse_logkey_(false),
+      enable_pv_merge_(false),
+      input_pv_channel_(nullptr),
+      output_pv_channel_(nullptr),
+      consume_pv_channel_(nullptr),
+      batch_offsets_() {
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
   this->fp_ = nullptr;
@@ -999,7 +1013,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
     VLOG(4) << "total_instance: " << total_instance;
-    // platform::CPUPlace()
+    // phi::CPUPlace()
     VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
@@ -1660,7 +1674,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
           "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
           filename.c_str()));
 
-  struct stat sb;
+  struct stat sb = {};
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
@@ -2129,8 +2143,10 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetConfig(data_feed_desc);
+#if defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.SetConfig(data_feed_desc);
+  }
 #endif
   if (gpu_graph_mode_) {  // NOLINT
     train_mode_ = true;
@@ -2139,15 +2155,15 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   }
 }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::InitGraphResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
 #endif
 }
 
 void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocTrainResource(thread_id_);
 #endif
 }
@@ -2704,7 +2720,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
   }
   this->finish_start_ = true;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
+  CHECK(phi::is_gpu_place(this->place_));
   for (int i = 0; i < pack_thread_num_ + 1; i++) {
     auto pack = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
     pack_vec_.push_back(pack);
@@ -2740,10 +2756,12 @@ bool SlotRecordInMemoryDataFeed::Start() {
     }));
   }
 #endif
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetFeedVec(feed_vec_);
-  // adapt for dense feature
-  gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+    // adapt for dense feature
+    gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
+  }
 #endif
   return true;
 }
@@ -2793,7 +2811,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
   } else {
     VLOG(3) << "datafeed in gpu graph mode";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
     this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
 #endif
   }
@@ -2804,28 +2822,34 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
 }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::DoWalkandSage() {
-  gpu_graph_data_generator_.DoWalkandSage();
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.DoWalkandSage();
+  }
 }
 #endif
 
 void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
                                               size_t dump_rate) {
   VLOG(3) << "INTO SlotRecordInMemoryDataFeed::DumpWalkPath";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    std::string path =
+        string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+    gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+  }
 #endif
 }
 
 void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
   VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpSampleNeighbors(path);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    std::string path =
+        string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+    gpu_graph_data_generator_.DumpSampleNeighbors(path);
+  }
 #endif
 }
 
@@ -2871,7 +2895,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(this->place_));
+      phi::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
     if (scope_feed_vec_.size() > 0) {
       if (scope_feed_vec_.begin()->second[j] == nullptr) {
@@ -3008,7 +3032,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
       lod.resize(1);
       lod[0].resize(offset_cols_size);
       phi::MixVector<size_t> mixv_lod(&lod[0]);
-      memcpy(mixv_lod.MutableData(platform::CPUPlace()),
+      memcpy(mixv_lod.MutableData(phi::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }
@@ -3038,7 +3062,7 @@ MiniBatchGpuPack* SlotRecordInMemoryDataFeed::get_pack(
   }
 }
 
-MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+MiniBatchGpuPack::MiniBatchGpuPack(const phi::Place& place,
                                    const std::vector<UsedSlotInfo>& infos,
                                    phi::StreamId stream_id) {
   place_ = place;
@@ -3075,7 +3099,7 @@ MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
 
 MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
-void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
+void MiniBatchGpuPack::reset(const phi::Place& place) {
   place_ = place;
   stream_holder_.reset(new phi::CUDAStream(place));
   stream_ = stream_holder_->raw_stream();
@@ -3252,5 +3276,4 @@ void MiniBatchGpuPack::transfer_to_gpu() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

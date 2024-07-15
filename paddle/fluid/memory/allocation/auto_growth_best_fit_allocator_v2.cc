@@ -27,14 +27,12 @@
 PD_DECLARE_bool(free_idle_chunk);
 PD_DECLARE_bool(free_when_no_cache_hit);
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
     const std::shared_ptr<Allocator> &underlying_allocator,
     size_t alignment,
-    platform::CUDAPlace place,
+    phi::GPUPlace place,
     size_t chunk_size,
     bool allow_free_idle_chunk,
     int extra_padding_size)
@@ -164,7 +162,5 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
   return new BlockAllocation(block_it);
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
 #endif

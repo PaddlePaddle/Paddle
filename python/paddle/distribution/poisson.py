@@ -11,11 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class Poisson(distribution.Distribution):
@@ -72,21 +79,20 @@ class Poisson(distribution.Distribution):
              [0.06825157  , 1.53426421  ]])
     """
 
-    def __init__(self, rate):
+    rate: Tensor
+    dtype: _DTypeLiteral
+
+    def __init__(self, rate: float | Tensor) -> None:
         self.dtype = paddle.get_default_dtype()
         self.rate = self._to_tensor(rate)
 
-        if not self._check_constraint(self.rate):
-            raise ValueError(
-                'Every element of input parameter `rate` should be nonnegative.'
-            )
         if self.rate.shape == []:
             batch_shape = (1,)
         else:
             batch_shape = self.rate.shape
         super().__init__(batch_shape)
 
-    def _to_tensor(self, rate):
+    def _to_tensor(self, rate: float | Tensor) -> Tensor:
         """Convert the input parameters into tensors.
 
         Returns:
@@ -96,22 +102,11 @@ class Poisson(distribution.Distribution):
         if isinstance(rate, (float, int)):
             rate = paddle.to_tensor([rate], dtype=self.dtype)
         else:
-            self.dtype = rate.dtype
+            self.dtype = convert_dtype(rate.dtype)
         return rate
 
-    def _check_constraint(self, value):
-        """Check the constraint for input parameters
-
-        Args:
-            value (Tensor)
-
-        Returns:
-            bool: pass or not.
-        """
-        return (value >= 0).all()
-
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of poisson distribution.
 
         Returns:
@@ -120,7 +115,7 @@ class Poisson(distribution.Distribution):
         return self.rate
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of poisson distribution.
 
         Returns:
@@ -128,7 +123,7 @@ class Poisson(distribution.Distribution):
         """
         return self.rate
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate poisson samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:
@@ -148,7 +143,7 @@ class Poisson(distribution.Distribution):
         with paddle.no_grad():
             return paddle.poisson(output_rate)
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         The entropy is
@@ -177,7 +172,7 @@ class Poisson(distribution.Distribution):
         )
         return paddle.multiply(proposed, mask)
 
-    def _enumerate_bounded_support(self, rate):
+    def _enumerate_bounded_support(self, rate: float | Tensor) -> Tensor:
         """Generate a bounded approximation of the support. Approximately view Poisson r.v. as a
         Normal r.v. with mu = rate and sigma = sqrt(rate). Then by 30-sigma rule, generate a bounded
         approximation of the support.
@@ -188,18 +183,37 @@ class Poisson(distribution.Distribution):
         Returns:
             Tensor: the bounded approximation of the support
         """
-        s_max = (
-            paddle.sqrt(paddle.max(rate))
-            if paddle.greater_equal(
-                paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+        if paddle.framework.in_dynamic_mode():
+            s_max = (
+                paddle.sqrt(paddle.max(rate))
+                if paddle.greater_equal(
+                    paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+                )
+                else paddle.ones_like(rate, dtype=self.dtype)
             )
-            else paddle.ones_like(rate, dtype=self.dtype)
-        )
-        upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
-        values = paddle.arange(0, upper, dtype=self.dtype)
-        return values
+            upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+            values = paddle.arange(0, upper, dtype=self.dtype)
+            return values
+        else:
 
-    def log_prob(self, value):
+            def true_func():
+                return paddle.sqrt(paddle.max(rate))
+
+            def false_func():
+                return paddle.to_tensor(1.0, dtype=self.dtype)
+
+            s_max = paddle.static.nn.cond(
+                paddle.greater_equal(
+                    paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+                ),
+                true_func,
+                false_func,
+            )
+            upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+            values = paddle.arange(0, upper, dtype=self.dtype)
+            return values
+
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function.
 
         Args:
@@ -209,10 +223,6 @@ class Poisson(distribution.Distribution):
           Tensor: log probability. The data type is the same as `rate`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be nonnegative.'
-            )
         eps = paddle.finfo(self.rate.dtype).eps
         return paddle.nan_to_num(
             (
@@ -223,7 +233,7 @@ class Poisson(distribution.Distribution):
             neginf=-eps,
         )
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
 
         Args:
@@ -234,7 +244,7 @@ class Poisson(distribution.Distribution):
         """
         return paddle.exp(self.log_prob(value))
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Poisson) -> Tensor:
         r"""The KL-divergence between two poisson distributions with the same `batch_shape`.
 
         The probability density function (pdf) is

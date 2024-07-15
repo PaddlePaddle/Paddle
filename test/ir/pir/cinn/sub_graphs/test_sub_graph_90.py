@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
-from paddle.base import core
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -56,55 +53,22 @@ class LayerCase(paddle.nn.Layer):
         return outs
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
         self.inputs = (paddle.rand(shape=[12], dtype=paddle.float32),)
-        self.net = LayerCase()
+        self.net = LayerCase
+        self.with_train = False
 
-    def eval(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        net.eval()
-        outs = net(*self.inputs)
-        return outs
-
-    def check_with_flag(self, cache_size):
-        st_out = self.eval(self.net, to_static=True)
-        cinn_out = self.eval(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
-
-        # Check cache size
-        np.testing.assert_equal(
-            core.pir.cinn_compilation_cache_size(), cache_size
-        )
-
-    def test_ast_prim_cinn(self):
-        # NOTE(Aurelius84): Deny relu to split fused subgraph.
-        paddle.set_flags(
-            {
-                "FLAGS_deny_cinn_ops": "relu",
-                "FLAGS_prim_forward_blacklist": "pd_op.relu",
-            }
-        )
-        self.check_with_flag(cache_size=3)
-
-    def test_ast_prim_cinn_disable_cache(self):
-        core.pir.clear_cinn_compilation_cache()
-        # NOTE(Aurelius84): Deny relu to split fused subgraph.
+    def set_flags(self):
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
         paddle.set_flags(
             {
                 "FLAGS_deny_cinn_ops": "relu",
@@ -112,8 +76,6 @@ class TestLayer(unittest.TestCase):
                 "FLAGS_enable_cinn_compile_cache": False,
             }
         )
-        # if disable cinn_compile_caceh, each subgraph will be considered as unqiue.
-        self.check_with_flag(cache_size=9)
 
 
 if __name__ == '__main__':

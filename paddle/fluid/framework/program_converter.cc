@@ -131,7 +131,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   op->SetAttr("int64_values", std::vector<int64_t>());
 
   phi::DataType dtype = phi::DataType::FLOAT32;
-  if (values.size()) {
+  if (!values.empty()) {
     dtype = values.at(0).dtype();
   }
 
@@ -158,8 +158,7 @@ void ConvertAssignValueOp(OpDesc* op) {
 
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
-      program,
-      paddle::platform::errors::InvalidArgument("program should not be null"));
+      program, phi::errors::InvalidArgument("program should not be null"));
 
   VLOG(3) << "Setting Program Version and OpVersionMap to Legacy "
              "settings(a.k.a 2.4.2)";
@@ -253,7 +252,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("bool_values")) {
     std::vector<int> bool_values =
         PADDLE_GET_CONST(std::vector<int>, op->GetAttr("bool_values", false));
-    if (bool_values.size()) {
+    if (!bool_values.empty()) {
       values = WrapAsScalars(bool_values);
     }
     op->RemoveAttr("bool_values");
@@ -261,7 +260,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("fp32_values")) {
     std::vector<float> fp32_values =
         PADDLE_GET_CONST(std::vector<float>, op->GetAttr("fp32_values", false));
-    if (fp32_values.size()) {
+    if (!fp32_values.empty()) {
       values = WrapAsScalars(fp32_values);
     }
     op->RemoveAttr("fp32_values");
@@ -269,7 +268,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("int32_values")) {
     std::vector<int> int32_values =
         PADDLE_GET_CONST(std::vector<int>, op->GetAttr("int32_values", false));
-    if (int32_values.size()) {
+    if (!int32_values.empty()) {
       values = WrapAsScalars(int32_values);
     }
     op->RemoveAttr("int32_values");
@@ -277,7 +276,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("int64_values")) {
     std::vector<int64_t> int64_values = PADDLE_GET_CONST(
         std::vector<int64_t>, op->GetAttr("int64_values", false));
-    if (int64_values.size()) {
+    if (!int64_values.empty()) {
       values = WrapAsScalars(int64_values);
     }
     op->RemoveAttr("int64_values");
@@ -287,8 +286,7 @@ void ConvertAssignValueOp(OpDesc* op) {
 
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
-      program,
-      paddle::platform::errors::InvalidArgument("program should not be null"));
+      program, phi::errors::InvalidArgument("program should not be null"));
 
   auto legacy_op_results = DetectLegacyOps(program);
   bool is_legacy_program = legacy_op_results.first;

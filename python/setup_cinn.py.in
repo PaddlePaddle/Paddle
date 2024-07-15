@@ -142,6 +142,9 @@ if '${WITH_ONEDNN}' == 'ON':
     cinnlibs.append('${ONEDNN_SHARED_LIB}')
 
 cinnlibs.append('${PHI_LIB}')
+cinnlibs.append('${PHI_CORE_LIB}')
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
+    cinnlibs.append('${PHI_GPU_LIB}')
 cinnlibs.append('${IR_LIB}')
 cinnlibs.append('${COMMON_LIB}')
 
@@ -220,10 +223,10 @@ if platform.system() == 'Linux' and platform.machine() == 'x86_64':
             cuda_major_version = version.split('.')[0]
         except Exception as e:
             raise ValueError("CUDA not found")
-        
+
         install_requires.append(PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|"))
-        
-        
+
+
 
 with redirect_stdout():
     setup(

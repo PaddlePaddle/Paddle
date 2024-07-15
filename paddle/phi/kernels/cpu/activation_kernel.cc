@@ -93,7 +93,6 @@ DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Round, RoundFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Negative, NegativeFunctor)
@@ -106,9 +105,6 @@ DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, ExpFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, Expm1Functor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
-                                     ThresholdedReluFunctor,
-                                     threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
@@ -122,6 +118,10 @@ DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      HardSigmoidFunctor,
                                      slope,
                                      offset)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
+                                     ThresholdedReluFunctor,
+                                     threshold,
+                                     value)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -160,6 +160,19 @@ void Relu6Kernel(const Context& dev_ctx,
   ActivationImpl<T, T, Context, funcs::Relu6Functor<T>>(
       dev_ctx, x, out, functor);
 }
+
+template <typename T, typename Context>
+void RoundKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const int decimals,
+                 DenseTensor* out) {
+  funcs::RoundFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = decimals;
+  ActivationImpl<T, T, Context, funcs::RoundFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
+
 }  // namespace phi
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
 

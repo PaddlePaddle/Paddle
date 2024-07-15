@@ -49,10 +49,29 @@ PD_DEFINE_string(cinn_nvcc_cmd_path,
                                "/usr/local/cuda/bin"),
                  "Setting nvcc default path!");
 
+PD_DEFINE_string(cinn_kernel_execution_label,
+                 StringFromEnv("FLAGS_cinn_kernel_execution_label",
+                               "CINN KERNEL EXECUTE"),
+                 "Label used to measure kernel execution time");
+
+PD_DEFINE_string(cinn_tile_config_filename_label,
+                 StringFromEnv("FLAGS_cinn_tile_config_filename_label",
+                               "./tile_file/"),
+                 "Label used to name file of tile config database");
+
+PD_DEFINE_string(
+    tile_config_policy,
+    StringFromEnv("FLAGS_tile_config_policy", "default"),
+    "Which config does the compiler use, optimal, custom or default");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
                 "How much thread the parallel compile used.");
+
+PD_DEFINE_bool(cinn_measure_kernel_time,
+               BoolFromEnv("FLAGS_cinn_measure_kernel_time", false),
+               "Whether to enable schedule config search mode.");
 
 PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
@@ -63,24 +82,16 @@ PD_DEFINE_bool(general_fusion_merge_pass,
                "Whether to use general fusion_merge pass.");
 
 PD_DEFINE_bool(cinn_new_group_scheduler,
-               BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
+               BoolFromEnv("FLAGS_cinn_new_group_scheduler", true),
                "Whether to use new group scheduler.");
 
 PD_DEFINE_bool(cinn_bucket_compile,
-               BoolFromEnv("FLAGS_cinn_bucket_compile", false),
+               BoolFromEnv("FLAGS_cinn_bucket_compile", true),
                "Whether to enable bucket compile for dynamic shape.");
 
 PD_DEFINE_bool(group_schedule_tiling_first,
-               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", true),
                "Whether to enable new group scheduler tiling first strategy.");
-
-PD_DEFINE_bool(support_reduce_stride_read,
-               BoolFromEnv("FLAGS_support_reduce_stride_read", false),
-               "Whether to enable stride read in reduced dim.");
-
-PD_DEFINE_bool(support_trivial_stride_read,
-               BoolFromEnv("FLAGS_support_trivial_stride_read", false),
-               "Whether to enable stride read in trivial dim.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
@@ -207,6 +218,11 @@ PD_DEFINE_string(
     StringFromEnv("FLAGS_cinn_dump_group_instruction", ""),
     "Specify the path for dump instruction by group, which is used for debug.");
 
+// Todo(CZ): support kernel name check for multiple kernel code gen.
+PD_DEFINE_string(cinn_debug_custom_code_path,
+                 StringFromEnv("FLAGS_cinn_debug_custom_code_path", ""),
+                 "Specify custom code path for cinn.");
+
 PD_DEFINE_string(cinn_pass_visualize_dir,
                  StringFromEnv("FLAGS_cinn_pass_visualize_dir", ""),
                  "Specify the directory path of pass visualize file of graph, "
@@ -267,6 +283,9 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+PD_DEFINE_bool(cinn_check_tensor_buffer_map,
+               BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
+               "Whether to check tensor buffer mapping in cinn ir.");
 
 namespace cinn {
 namespace runtime {
@@ -361,6 +380,16 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
   PADDLE_THROW(phi::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
       "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support HygonDCU, please try to "
+      "recompile with -DWITH_ROCM."));
 #endif
 }
 

@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
@@ -51,7 +52,6 @@ using pir::Builder;
 using pir::CombineOp;
 using pir::Operation;
 using pir::Program;
-using pir::Region;
 using pir::StackCreateOp;
 using pir::TuplePopOp;
 using pir::TuplePushOp;
@@ -237,13 +237,13 @@ Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
 void BuildPipeForBlock(Block* block) {
   PADDLE_ENFORCE_NOT_NULL(
       block,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The block used to hook local value can't be nullptr"));
   auto& builder = *(ApiBuilder::Instance().GetBuilder());
   Program* program = block->parent_program();
   PADDLE_ENFORCE_NOT_NULL(
       program,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The block used to hook local value must belong to a program"));
 
   auto original_position = builder.insertion_point();
@@ -270,23 +270,22 @@ void BuildPipeForBlock(Block* block) {
 
 }  // namespace
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
   PADDLE_ENFORCE_NOT_NULL(
       if_op,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The if_op used to construct PyIfOp can't be nullptr"));
 }
 
 void PyIfOp::UpdateOutput() {
   PADDLE_ENFORCE_NOT_NULL(
       operation_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The if_op in PyIfOp used to update output can't be nullptr"));
   auto block = parent();
   PADDLE_ENFORCE_NOT_NULL(block,
-                          paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The parent block of if_op which used to update "
                               "output can't be nullptr"));
   Block::Iterator iter = **this;
@@ -301,19 +300,19 @@ void PyIfOp::UpdateOutput() {
 PyWhileOp::PyWhileOp(WhileOp while_op) : WhileOp(while_op) {
   PADDLE_ENFORCE_NOT_NULL(
       operation_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The while_op used to construct PyWhileOp can't be nullptr"));
 }
 
 std::vector<Value> PyWhileOp::OptimizeUpdate() {
   PADDLE_ENFORCE_NOT_NULL(operation_,
-                          paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The while_op in PyWhileOp used to remove unused "
                               "loop vars can't be nullptr"));
   auto parent_block = parent();
   PADDLE_ENFORCE_NOT_NULL(
       parent_block,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The parent block of while_op which used to remove "
           "unused loop vars can't be nullptr"));
 
@@ -327,6 +326,36 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));
   }
+  for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
+       ++operand_index, ++arg_index) {
+    if (!body_block.arg(arg_index).type().isa<pir::DenseTensorType>()) {
+      continue;
+    }
+
+    auto l_type =
+        body_block.arg(arg_index).type().dyn_cast<pir::DenseTensorType>();
+    auto r_type = yield_op.operand_source(operand_index)
+                      .type()
+                      .dyn_cast<pir::DenseTensorType>();
+    if (l_type.dims().size() == r_type.dims().size() &&
+        l_type.dims() != r_type.dims()) {
+      VLOG(4) << "while op input " << operand_index
+              << " has dynamic shape, origin shape is: " << l_type.dims()
+              << "new shape is: " << r_type.dims();
+      auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
+      auto new_type = pir::DenseTensorType::get(operation_->ir_context(),
+                                                l_type.dtype(),
+                                                dim,
+                                                l_type.data_layout(),
+                                                l_type.lod(),
+                                                l_type.offset());
+      body_block.arg(arg_index).set_type(new_type);
+      yield_op.operand_source(operand_index).set_type(new_type);
+      result(arg_index).set_type(new_type);
+      VLOG(4) << "change shape as: " << new_type.dims();
+    }
+  }
+
   for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index) {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
@@ -382,5 +411,4 @@ void BindControlFlowApi(py::module* m) {
   BindTuplePopOp(m);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

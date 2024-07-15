@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -34,7 +35,7 @@ COMMON_DECLARE_int32(cse_max_count);
 
 namespace {
 
-// TODO(SigureMo): Consider use trait to check whether the operation is
+// TODO(SigureMo): Consider use interface to check whether the operation is
 // commutative.
 static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
     kCommutativeOps = {
@@ -72,8 +73,11 @@ bool IsDenseTensorOrVectorOfDenseTensorType(const pir::Value& value) {
 }
 
 template <typename T>
-std::vector<T> SortElementsAtIndices(const std::vector<T>& vec,
-                                     const std::vector<size_t>& indices) {
+std::vector<T> SortElementsAtIndices(
+    const std::vector<T>& vec,
+    const std::vector<size_t>& indices,
+    std::function<bool(const T&, const T&)> cmp_fn =
+        [](const T& lhs, const T& rhs) { return lhs < rhs; }) {
   std::vector<T> selected_elements;
   for (auto& idx : indices) {
     PADDLE_ENFORCE_LT(
@@ -83,7 +87,7 @@ std::vector<T> SortElementsAtIndices(const std::vector<T>& vec,
             "The index %d is out of vector size %d.", idx, vec.size()));
     selected_elements.push_back(vec[idx]);
   }
-  std::sort(selected_elements.begin(), selected_elements.end());
+  std::sort(selected_elements.begin(), selected_elements.end(), cmp_fn);
   std::vector<T> sorted_vec;
   for (size_t i = 0; i < vec.size(); ++i) {
     if (std::find(indices.begin(), indices.end(), i) != indices.end()) {
@@ -140,54 +144,66 @@ bool IsTerminateOp(pir::Operation* op) {
 bool IsTerminateValue(const pir::Value& value) {
   return !value.defining_op() || IsTerminateOp(value.defining_op());
 }
-struct ExpressionTable {
+
+struct Expression {
  public:
-  ExpressionTable() = default;
-  void RegisiterOp(pir::Operation* op) {
-    auto op_hash = CalcOperationHash(op);
-    auto op_can_be_safe_to_replace = CalcOperationCanBeSafeToReplace(op);
-    VLOG(7) << "[RegisiterOp] op " << op->name() << " [" << op << "]"
-            << "\n  hash: " << op_hash
-            << "\n  can_be_safe_to_replace: " << std::boolalpha
-            << op_can_be_safe_to_replace;
-    registered_ops_info_[reinterpret_cast<void*>(op)] = {
-        op_hash, op_can_be_safe_to_replace};
-  }
+  Expression(
+      pir::Operation* op,
+      std::unordered_map<void*, std::pair<size_t, bool>>* op_info_registry)
+      : op_(op), op_info_registry_(op_info_registry) {}
 
-  size_t GetOperationHash(pir::Operation* op) {
-    PADDLE_ENFORCE_EQ(
-        registered_ops_info_.count(reinterpret_cast<void*>(op)),
-        1,
-        common::errors::PreconditionNotMet(
-            "The operation %s is not registered in the table.", op->name()));
-    return registered_ops_info_[reinterpret_cast<void*>(op)].first;
-  }
+  pir::Operation* op() const { return op_; }
 
-  bool GetOperationCanBeSafeToReplace(pir::Operation* op) {
-    PADDLE_ENFORCE_EQ(
-        registered_ops_info_.count(reinterpret_cast<void*>(op)),
-        1,
-        common::errors::PreconditionNotMet(
-            "The operation %s is not registered in the table.", op->name()));
-    return registered_ops_info_[reinterpret_cast<void*>(op)].second;
-  }
+  size_t hash() const { return GetOperationHash(op_); }
 
-  void Insert(pir::Operation* op) { common_exprs_[GetOperationHash(op)] = op; }
-
-  std::optional<pir::Operation*> Lookup(pir::Operation* op) {
-    VLOG(7) << "[Lookup] op [" << op << "] " << op->name() << " start";
-    size_t hash = GetOperationHash(op);
-    if (!common_exprs_.count(hash)) {
-      return std::nullopt;
+  bool equal_to(const Expression& other) const {
+    if (hash() != other.hash()) {
+      // NOTE(SigureMo): This is a default behavior of std::unordered_set on
+      // Linux. But it is not guaranteed by the standard. On Windows, it always
+      // calls equal_to even if hash is different. So we need to check hash
+      // first to avoid expensive equal_to call.
+      return false;
     }
-    VLOG(7) << "[Lookup] op [" << op << "] " << op->name()
-            << " found common subexpression: " << common_exprs_[hash]->name();
-    return common_exprs_[hash];
+    bool is_equal = CheckOperationEqual(op_, other.op());
+    if (!is_equal) {
+      VLOG(7) << "Hash collision detected. lhs: " << op_->name() << " [" << op_
+              << "] hash: " << GetOperationHash(op_)
+              << " vs rhs: " << other.op()->name() << " [" << other.op()
+              << "] hash: " << GetOperationHash(other.op());
+    }
+    return is_equal;
+  }
+
+  bool CanBeSafeToReplace() const {
+    return GetOperationCanBeSafeToReplace(op_);
+  }
+
+  std::pair<size_t, bool> CalcOpInfo() {
+    return {CalcOperationHash(op_), CalcOperationCanBeSafeToReplace(op_)};
+  }
+
+ private:
+  size_t GetOperationHash(pir::Operation* op) const {
+    PADDLE_ENFORCE_EQ(
+        op_info_registry_->count(reinterpret_cast<void*>(op)),
+        1,
+        common::errors::PreconditionNotMet(
+            "The operation %s is not registered in the table.", op->name()));
+    return op_info_registry_->at(reinterpret_cast<void*>(op)).first;
+  }
+
+  bool GetOperationCanBeSafeToReplace(pir::Operation* op) const {
+    PADDLE_ENFORCE_EQ(
+        op_info_registry_->count(reinterpret_cast<void*>(op)),
+        1,
+        common::errors::PreconditionNotMet(
+            "The operation %s is not registered in the table.", op->name()));
+    return op_info_registry_->at(reinterpret_cast<void*>(op)).second;
   }
 
   size_t CalcOperationHash(pir::Operation* op) {
     PADDLE_ENFORCE_EQ(
-        registered_ops_info_.count(reinterpret_cast<void*>(op)),
+        op_info_registry_->count(reinterpret_cast<void*>(op)),
         0,
         common::errors::PreconditionNotMet(
             "The operation %s is already registered in the table, don't call "
@@ -223,7 +239,7 @@ struct ExpressionTable {
     return hash;
   }
 
-  size_t CalcValueHash(const pir::Value& value) {
+  size_t CalcValueHash(const pir::Value& value) const {
     // hash(value) = hash(defining_op) ^ value_result_idx
     if (!IsTerminateValue(value)) {
       return pir::detail::hash_combine(GetOperationHash(value.defining_op()),
@@ -233,7 +249,7 @@ struct ExpressionTable {
     return reinterpret_cast<size_t>(value.impl());
   }
 
-  size_t GetOpResultId(const pir::Value& value) {
+  size_t GetOpResultId(const pir::Value& value) const {
     size_t value_id = 0;
     for (auto& result : value.defining_op()->results()) {
       if (value == result) {
@@ -246,7 +262,7 @@ struct ExpressionTable {
 
   bool CalcOperationCanBeSafeToReplace(pir::Operation* op) {
     PADDLE_ENFORCE_EQ(
-        registered_ops_info_.count(reinterpret_cast<void*>(op)),
+        op_info_registry_->count(reinterpret_cast<void*>(op)),
         0,
         common::errors::PreconditionNotMet(
             "The operation %s is already registered in the table, don't call "
@@ -301,9 +317,163 @@ struct ExpressionTable {
     return true;
   }
 
+  bool CheckOperationEqual(pir::Operation* lhs, pir::Operation* rhs) const {
+    VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+            << " vs rhs [" << rhs << "] " << rhs->name();
+    if (lhs == rhs) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name() << " equal";
+      return true;
+    }
+    if (lhs->num_regions() > 0 || rhs->num_regions() > 0) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name()
+              << " has region, which is not supported";
+      return false;
+    }
+    if (lhs->name() != rhs->name()) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name() << " name not equal";
+      return false;
+    }
+    for (auto attr_name : lhs->info().GetAttributesName()) {
+      if (lhs->attribute(attr_name) != rhs->attribute(attr_name)) {
+        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+                << " vs rhs [" << rhs << "] " << rhs->name()
+                << " attribute not equal: " << attr_name;
+        return false;
+      }
+    }
+    if (lhs->num_operands() != rhs->num_operands()) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name()
+              << " num_operands not equal";
+      return false;
+    }
+
+    auto lhs_operands = lhs->operands_source();
+    auto rhs_operands = rhs->operands_source();
+    if (kCommutativeOps.count(lhs->name())) {
+      for (auto& commutative_indices : kCommutativeOps[lhs->name()]) {
+        const auto ValueCompare = [&](const pir::Value& lhs,
+                                      const pir::Value& rhs) -> bool {
+          return CalcValueHash(lhs) < CalcValueHash(rhs);
+        };
+        lhs_operands = SortElementsAtIndices<pir::Value>(
+            lhs_operands, commutative_indices, ValueCompare);
+        rhs_operands = SortElementsAtIndices<pir::Value>(
+            rhs_operands, commutative_indices, ValueCompare);
+      }
+    }
+    for (size_t i = 0; i < lhs_operands.size(); ++i) {
+      if (!CheckValueEqual(lhs_operands[i], rhs_operands[i])) {
+        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+                << " vs rhs [" << rhs << "] " << rhs->name() << " operand " << i
+                << " not equal";
+        return false;
+      }
+    }
+
+    if (lhs->num_results() != rhs->num_results()) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name()
+              << " num_results not equal";
+      return false;
+    }
+    for (size_t i = 0; i < lhs->num_results(); ++i) {
+      if (lhs->result_type(i) != rhs->result_type(i)) {
+        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+                << " vs rhs [" << rhs << "] " << rhs->name() << " result type "
+                << i << " not equal";
+        return false;
+      }
+    }
+    VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+            << " vs rhs [" << rhs << "] " << rhs->name() << " equal";
+    return true;
+  }
+
+  bool CheckValueEqual(const pir::Value& lhs, const pir::Value& rhs) const {
+    if (IsTerminateValue(lhs) != IsTerminateValue(rhs)) {
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate type";
+      return false;
+    }
+    // Compare two terminate values
+    if (IsTerminateValue(lhs) && IsTerminateValue(rhs)) {
+      if (lhs != rhs) {
+        VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate "
+                   "value";
+        return false;
+      }
+      return true;
+    }
+    // Compare two non-terminate values
+    if (!CheckOperationEqual(lhs.defining_op(), rhs.defining_op())) {
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different defining op";
+      return false;
+    }
+    if (lhs.type() != rhs.type()) {
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different type";
+      return false;
+    }
+    if (GetOpResultId(lhs) != GetOpResultId(rhs)) {
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different result id";
+      return false;
+    }
+    return true;
+  }
+
+  pir::Operation* op_;
+  std::unordered_map<void*, std::pair<size_t, bool>>*
+      op_info_registry_;  // owned by ExpressionTable
+};
+
+struct ExpressionHash {
+  size_t operator()(const Expression& expr) const { return expr.hash(); }
+};
+
+struct ExpressionEqual {
+  bool operator()(const Expression& lhs, const Expression& rhs) const {
+    return lhs.equal_to(rhs);
+  }
+};
+
+struct ExpressionTable {
+ public:
+  ExpressionTable() = default;
+  void RegisiterExpression(Expression expr) {
+    auto op_info = expr.CalcOpInfo();
+    VLOG(7) << "[RegisiterExpression] op " << expr.op()->name() << " ["
+            << expr.op() << "]"
+            << "\n  hash: " << op_info.first
+            << "\n  can_be_safe_to_replace: " << std::boolalpha
+            << op_info.second;
+    op_info_registry_[reinterpret_cast<void*>(expr.op())] = op_info;
+  }
+
+  Expression CreateExpression(pir::Operation* op) {
+    return Expression(op, &op_info_registry_);
+  }
+
+  void Insert(Expression expr) { common_exprs_.insert(expr); }
+
+  std::optional<Expression> Lookup(Expression expr) {
+    VLOG(7) << "[Lookup] op [" << expr.op() << "] " << expr.op()->name()
+            << " start";
+    auto found_expr_iter = common_exprs_.find(expr);
+    if (found_expr_iter == common_exprs_.end()) {
+      return std::nullopt;
+    }
+    VLOG(7) << "[Lookup] op [" << expr.op() << "] " << expr.op()->name()
+            << " found common subexpression: " << found_expr_iter->op()->name();
+    return *found_expr_iter;
+  }
+
+  void Rehash(size_t size) { common_exprs_.rehash(size); }
+
  private:
-  std::unordered_map<size_t, pir::Operation*> common_exprs_;
-  std::unordered_map<void*, std::pair<size_t, bool>> registered_ops_info_;
+  std::unordered_set<Expression, ExpressionHash, ExpressionEqual> common_exprs_;
+  std::unordered_map<void*, std::pair<size_t, bool>> op_info_registry_;
 };
 
 struct CSEAnalyzer {
@@ -316,21 +486,24 @@ struct CSEAnalyzer {
       return;
     }
 
-    expression_table->RegisiterOp(op);
-    auto maybe_same_expression = expression_table->Lookup(op);
-    if (expression_table->GetOperationCanBeSafeToReplace(op)) {
-      if (!maybe_same_expression.has_value()) {
-        expression_table->Insert(op);
-      } else {
-        VLOG(7) << "Found common subexpression: " << op->name();
-        to_erase_ops_.push_back(
-            std::make_pair(op, maybe_same_expression.value()));
-      }
-    }
     // Handle sub blocks
     for (auto& region : *op) {
       for (auto& block : region) {
         SimplifyBlock(&block, expression_table);
+      }
+    }
+
+    // Handle the operation
+    auto expr = expression_table->CreateExpression(op);
+    expression_table->RegisiterExpression(expr);
+    auto maybe_same_expression = expression_table->Lookup(expr);
+    if (expr.CanBeSafeToReplace()) {
+      if (!maybe_same_expression.has_value()) {
+        expression_table->Insert(expr);
+      } else {
+        VLOG(7) << "Found common subexpression: " << op->name();
+        to_erase_ops_.push_back(
+            std::make_pair(expr.op(), maybe_same_expression.value().op()));
       }
     }
   }
@@ -339,6 +512,8 @@ struct CSEAnalyzer {
                      ExpressionTable* parent_expression_table) {
     // Make a clone to inherit the expressions from parent block
     ExpressionTable expression_table = *parent_expression_table;
+    expression_table.Rehash(block->num_ops());
+
     for (auto& op : *block) {
       SimplifyOperation(&op, &expression_table);
     }

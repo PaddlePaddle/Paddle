@@ -13,7 +13,3 @@
 // limitations under the License.
 
 #include "paddle/fluid/prim/api/all.h"
-
-namespace paddle {
-namespace prim {}  // namespace prim
-}  // namespace paddle

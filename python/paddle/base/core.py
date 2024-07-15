@@ -50,7 +50,7 @@ except ImportError as e:
             f"""NOTE: You may need to run \"set PATH={executable_path};%PATH%\"
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"{executable_path}\" with your own
-        directory. The original error is: \n {str(e)}"""
+        directory. The original error is: \n {e}"""
         )
     else:
         raise ImportError(
@@ -78,7 +78,7 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from /proc/cpuinfo.\n'
-                'The original error is: %s\n' % str(e)
+                f'The original error is: {e}\n'
             )
         return has_avx
     elif sysstr == 'darwin':
@@ -89,7 +89,7 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
-                'The original error is: %s\n' % str(e)
+                f'The original error is: {e}\n'
             )
         if not has_avx:
             import subprocess
@@ -173,11 +173,11 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Failed getting the AVX flag on Windows.\n'
-                'The original error is: %s\n' % str(e)
+                f'The original error is: {e}\n'
             )
         return (retval & (1 << avx_bit)) > 0
     else:
-        sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
+        sys.stderr.write(f'Do not get AVX flag on {sysstr}\n')
         return False
 
 
@@ -298,7 +298,6 @@ try:
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_use_default_grad_op_desc_maker_ops,
-        _is_compiled_with_gpu_graph,
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
         _is_program_version_supported,
@@ -308,7 +307,6 @@ try:
         _RecordEvent,
         _Scope,
         _set_amp_op_list,
-        _set_cached_executor_build_strategy,
         _set_current_stream,
         _set_eager_deletion_mode,
         _set_fuse_parameter_group_size,
@@ -362,9 +360,6 @@ try:
             _set_process_signal_handler,
             _throw_error_if_process_failed,
         )
-
-    # CINN
-    from .libpaddle import is_run_with_cinn  # noqa: F401
 
 except Exception as e:
     if has_paddle_dy_lib:
@@ -506,7 +501,11 @@ def _test_use_sync(value):
 
 
 # ops in forward_blacklist will not be replaced by composite ops.
-prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
+prim_config = {
+    "forward_blacklist": set(),
+    "composite_ops_record": set(),
+    "backward_blacklist": set(),
+}
 
 
 def _get_batch_norm_none_var(op):
@@ -588,6 +587,7 @@ def _reset_prim_forward_blacklist():
 def _set_prim_backward_blacklist(*args):
     ops = set(args)
     for item in ops:
+        prim_config["backward_blacklist"].add(item)
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
@@ -671,3 +671,15 @@ def _check_and_set_prim_vjp_skip_default_ops():
 
 
 _check_and_set_prim_vjp_skip_default_ops()
+
+
+def _check_prim_vjp_ops():
+    ops_org = os.getenv("FLAGS_prim_backward_blacklist", "")
+    if ops_org:
+        ops = []
+        for item in ops_org.split(";"):
+            ops.append(item.strip())
+        _set_prim_backward_blacklist(*ops)
+
+
+_check_prim_vjp_ops()

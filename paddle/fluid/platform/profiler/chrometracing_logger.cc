@@ -25,8 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
 
@@ -47,13 +46,15 @@ void ChromeTracingLogger::OpenFile() {
   }
 }
 
-ChromeTracingLogger::ChromeTracingLogger(const std::string& filename) {
+ChromeTracingLogger::ChromeTracingLogger(const std::string& filename)
+    : start_time_(0) {
   filename_ = filename.empty() ? DefaultFileName() : filename;
   OpenFile();
   StartLog();
 }
 
-ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr) {
+ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr)
+    : start_time_(0) {
   std::string filename(filename_cstr);
   filename_ = filename.empty() ? DefaultFileName() : filename;
   OpenFile();
@@ -836,5 +837,4 @@ void ChromeTracingLogger::EndLog() {
   )JSON");
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

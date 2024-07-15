@@ -573,11 +573,12 @@ void FusionGRUKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type"))
           : "float32";
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
+  std::vector<std::string> mkldnn_data_type_list = {
+      "float32", "int8", "bfloat16"};
   PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
+      std::find(mkldnn_data_type_list.begin(),
+                mkldnn_data_type_list.end(),
+                mkldnn_data_type) != mkldnn_data_type_list.end(),
       true,
       phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
                                    "int8, bfloat16], but found %s.",

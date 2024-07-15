@@ -20,8 +20,6 @@
 
 #include <math.h>
 #include <vector>
-
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
@@ -60,6 +58,44 @@ void cumsum_grad(const Tensor& x,
 }
 
 template <typename T>
+void cumprod_grad(const Tensor& x,
+                  const Tensor& out,
+                  const Tensor& out_grad,
+                  int dim,
+                  bool exclusive,
+                  bool reverse,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
+    auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
+    // determine the index of first zero
+    auto zero_mask_cumsum_exclusive =
+        cumsum<T>(zero_mask, dim, false, true, reverse);
+    auto zero_mask_cumsum = scale<T>(zero_mask_cumsum_exclusive, 2) + zero_mask;
+    auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
+    auto first_zero_mask =
+        cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
+    // compute the grad for position with value not equal to 0
+    auto common_dx = cumsum<T>(out * out_grad, dim, false, exclusive, !reverse);
+    // fill the positions of 0 with 1.
+    auto replace_one = (1 - zero_mask) * x + zero_mask;
+    // fill the first positions of 0 with 1.
+    auto replace_first_one = (1 - first_zero_mask) * x + first_zero_mask;
+    // recompute the grad of the first position with 0
+    auto cumprod_recompute =
+        cumprod<T>(replace_first_one, dim, exclusive, reverse);
+    auto zeros_dx = cumsum<T>(
+        cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
+    auto x_grad_res =
+        ((1 - first_zero_mask) * common_dx + first_zero_mask * zeros_dx) /
+        replace_one;
+    set_output<T>(x_grad_res, x_grad);
+  }
+}
+
+template <typename T>
 void divide_grad(const Tensor& x,
                  const Tensor& y,
                  const Tensor& out,
@@ -70,29 +106,39 @@ void divide_grad(const Tensor& x,
   if (dy) {
     // dy = -(x/y^2) * dout
     auto dy_res = -(x / (y * y)) * out_grad;
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          sum<T>(dy_res, common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto dy_tmp = reduce_as<T>(dy_res, y);
       set_output<T>(dy_tmp, dy);
     } else {
-      set_output<T>(dy_res, dy);
+      if (out_grad.dims() != y.dims()) {
+        phi::DDim reduce_dim =
+            get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        auto dy_reduce_res =
+            sum<T>(dy_res, common::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      } else {
+        set_output<T>(dy_res, dy);
+      }
     }
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
-    auto one_tensor = full<T>(common::vectorize(y.dims()), 1.0, y.dtype());
+    Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
     auto dx_res = one_tensor / y * out_grad;
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          sum<T>(dx_res, common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto dx_tmp = reduce_as<T>(dx_res, x);
       set_output<T>(dx_tmp, dx);
     } else {
-      set_output<T>(dx_res, dx);
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto dx_reduce_res =
+            sum<T>(dx_res, common::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      } else {
+        set_output<T>(dx_res, dx);
+      }
     }
   }  // indicate we will compute dx
 }
@@ -116,41 +162,82 @@ void sum_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+
   int64_t axis_size = axis.size();
-  int64_t x_dim_size = x_dim.size();
+  int64_t x_dim_size = x.dims().size();
+  auto x_grad_tmp = Tensor();
   reduce_all = false;
   if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
     reduce_all = true;
   } else {
     reduce_all = false;
   }
-  auto x_grad_tmp = Tensor();
-  if (x_dim_size == 1) {
-    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
-  } else {
-    if (!keepdim) {
-      auto axis_ = std::vector<int64_t>();
-      if (reduce_all) {
-        for (int64_t i = 0; i < x_dim_size; i++) {
-          axis_.push_back(i);
-        }
-      } else {
-        axis_ = axis.GetData();
-        for (int64_t i = 0; i < axis_size; i++) {
-          if (axis[i] < 0) {
-            axis_[i] = axis[i] + x_dim_size;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor x_shape = shape<T>(x);
+    if (x_dim_size == 1) {
+      x_grad_tmp = backend::expand<T>(out_grad, x_shape);
+    } else {
+      if (!keepdim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
           }
         }
+        Tensor out_grad_shape = shape<T>(out_grad);
+        size_t total_shape_size = out_grad.shape().size() + axis_.size();
+        std::vector<Tensor> result_shape;
+        size_t j = 0, k = 0;
+        Tensor ones = full<T>({1}, 1, x_shape.dtype());
+        for (size_t i = 0; i < total_shape_size; i++) {
+          if (j < axis_.size() && axis_[j] == int64_t(i)) {
+            result_shape.push_back(ones);
+            j++;
+          } else {
+            result_shape.push_back(get_slice<T>(out_grad_shape, int64_t(k)));
+            k++;
+          }
+        }
+        auto out_grad_ = backend::reshape<T>(out_grad, concat<T>(result_shape));
+        x_grad_tmp = backend::expand<T>(out_grad_, x_shape);
+      } else {
+        x_grad_tmp = backend::expand<T>(out_grad, x_shape);
       }
-      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
-      x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
-    } else {
+    }
+  } else {
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    if (x_dim_size == 1) {
       x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+    } else {
+      if (!keepdim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
+          }
+        }
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+        x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+      } else {
+        x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+      }
     }
   }
-
   set_output<T>(x_grad_tmp, x_grad);
 }
 
@@ -286,32 +373,28 @@ void reduce_as_grad(const Tensor& x,
   std::vector<int64_t> axis = common::vectorize<int64_t>(
       get_reduce_dims_from_out(x.dims(), target.dims()));
   int64_t axis_size = axis.size();
-  int64_t x_dim_size = x_dim.size();
-  bool reduce_all = false;
-  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
-    reduce_all = true;
-  } else {
-    reduce_all = false;
+  if (axis_size == 0) {
+    by_pass<T>(out_grad, x_grad);
+    return;
   }
+  int64_t x_dim_size = x_dim.size();
+
   auto x_grad_tmp = Tensor();
   if (x_dim_size == 1) {
     x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
   } else {
     auto axis_ = std::vector<int64_t>();
-    if (reduce_all) {
-      for (int64_t i = 0; i < x_dim_size; i++) {
-        axis_.push_back(i);
-      }
-    } else {
-      for (int64_t i = 0; i < axis_size; i++) {
-        axis_.push_back(axis[i]);
-        if (axis[i] < 0) {
-          axis_[i] += x_dim_size;
-        }
+    for (int64_t i = 0; i < axis_size; i++) {
+      axis_.push_back(axis[i]);
+      if (axis[i] < 0) {
+        axis_[i] += x_dim_size;
       }
     }
-    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    Tensor out_grad_ = out_grad;
+    if (out_grad.shape().size() != x.shape().size()) {
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+      out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    }
     x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
   }
 
@@ -434,13 +517,33 @@ void concat_grad(const std::vector<Tensor>& x,
     axis_value = axis_value + rank;
   }
   axis_value = axis_value > 0 ? axis_value : 0;
-  std::vector<int> sections;
+
   int x_num = x.size();
-  for (int i = 0; i < x_num; ++i) {
-    sections.push_back(x[i].dims()[axis_value]);
+  std::vector<Tensor> x_grad_tmp;
+  bool has_dynamic = false;
+  for (size_t i = 0; i < x.size(); i++) {
+    if (has_dynamic_shape(x[i].shape())) {
+      has_dynamic = true;
+      break;
+    }
   }
-  std::vector<Tensor> x_grad_tmp =
-      split<T>(out_grad, IntArray(sections), axis_value);
+  if (has_dynamic) {
+    std::vector<Tensor> sections;
+    for (int i = 0; i < x_num; i++) {
+      sections.push_back(get_slice<T>(shape<T>(x[i]), int64_t(axis_value)));
+    }
+    Tensor sections_tensor = concat<T>(sections);
+    x_grad_tmp =
+        backend::split<T>(out_grad,
+                          sections_tensor,
+                          full<T>({1}, axis_value, sections_tensor.dtype()));
+  } else {
+    std::vector<int> sections;
+    for (int i = 0; i < x_num; ++i) {
+      sections.push_back(x[i].dims()[axis_value]);
+    }
+    x_grad_tmp = split<T>(out_grad, IntArray(sections), axis_value);
+  }
   for (int i = 0; i < x_num; ++i) {
     if (x_grad[i]) {
       set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
@@ -474,27 +577,37 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto dy_tmp = reduce_as<T>(out_grad, y);
       set_output<T>(dy_tmp, dy);
-
     } else {
-      by_pass<T>(out_grad, dy);
+      if (out_grad.dims() != y.dims()) {
+        phi::DDim reduce_dim =
+            get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        auto dy_reduce_res =
+            out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+
+      } else {
+        by_pass<T>(out_grad, dy);
+      }
     }
   }
   if (dx) {
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto dx_tmp = reduce_as<T>(out_grad, x);
       set_output<T>(dx_tmp, dx);
     } else {
-      by_pass<T>(out_grad, dx);
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto dx_reduce_res =
+            out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      } else {
+        by_pass<T>(out_grad, dx);
+      }
     }
   }
 }
@@ -508,26 +621,36 @@ void subtract_grad(const Tensor& x,
                    Tensor* dy) {
   if (dy) {
     auto scale_out_grad = scale<T>(out_grad, -1.0, 0.0, true);
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          scale_out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto dy_tmp = reduce_as<T>(scale_out_grad, y);
       set_output<T>(dy_tmp, dy);
     } else {
-      by_pass<T>(scale_out_grad, dy);
+      if (out_grad.dims() != y.dims()) {
+        phi::DDim reduce_dim =
+            get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        auto dy_reduce_res =
+            scale_out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      } else {
+        by_pass<T>(scale_out_grad, dy);
+      }
     }
   }
   if (dx) {
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto dx_tmp = reduce_as<T>(out_grad, x);
       set_output<T>(dx_tmp, dx);
     } else {
-      by_pass<T>(out_grad, dx);
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto dx_reduce_res =
+            out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      } else {
+        by_pass<T>(out_grad, dx);
+      }
     }
   }
 }
@@ -541,30 +664,42 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = out_grad * y;
-    if (x_grad_unreduce.dims() != x.dims()) {
-      auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
-      auto x_grad_reduced = x_grad_unreduce.sum(
-          common::vectorize(axes), x_grad_unreduce.dtype(), false);
-      if (x_grad_reduced.dims().size() != x.dims().size()) {
-        x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
-      }
+    if (has_dynamic_shape(x.shape()) ||
+        has_dynamic_shape(x_grad_unreduce.shape())) {
+      auto x_grad_reduced = reduce_as<T>(x_grad_unreduce, x);
       set_output<T>(x_grad_reduced, x_grad);
     } else {
-      set_output<T>(x_grad_unreduce, x_grad);
+      if (x_grad_unreduce.dims() != x.dims()) {
+        auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
+        auto x_grad_reduced = x_grad_unreduce.sum(
+            common::vectorize(axes), x_grad_unreduce.dtype(), false);
+        if (x_grad_reduced.dims().size() != x.dims().size()) {
+          x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
+        }
+        set_output<T>(x_grad_reduced, x_grad);
+      } else {
+        set_output<T>(x_grad_unreduce, x_grad);
+      }
     }
   }
   if (y_grad) {
     auto y_grad_unreduce = out_grad * x;
-    if (y_grad_unreduce.dims() != y.dims()) {
-      auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
-      auto y_grad_reduced = y_grad_unreduce.sum(
-          common::vectorize(axes), y_grad_unreduce.dtype(), false);
-      if (y_grad_reduced.dims().size() != y.dims().size()) {
-        y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
-      }
+    if (has_dynamic_shape(y.shape()) ||
+        has_dynamic_shape(y_grad_unreduce.shape())) {
+      auto y_grad_reduced = reduce_as<T>(y_grad_unreduce, y);
       set_output<T>(y_grad_reduced, y_grad);
     } else {
-      set_output<T>(y_grad_unreduce, y_grad);
+      if (y_grad_unreduce.dims() != y.dims()) {
+        auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
+        auto y_grad_reduced = y_grad_unreduce.sum(
+            common::vectorize(axes), y_grad_unreduce.dtype(), false);
+        if (y_grad_reduced.dims().size() != y.dims().size()) {
+          y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
+        }
+        set_output<T>(y_grad_reduced, y_grad);
+      } else {
+        set_output<T>(y_grad_unreduce, y_grad);
+      }
     }
   }
 }
@@ -580,31 +715,43 @@ void elementwise_pow_grad(const Tensor& x,
     auto lnx = log<T>(x);
     auto x_pow_y = elementwise_pow<T>(x, y);
     auto dy_res = lnx * x_pow_y * out_grad;
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-      set_output<T>(dy_tmp, dy);
+    if (has_dynamic_shape(out_grad.shape()) || has_dynamic_shape(y.shape())) {
+      auto dy_reduce_res = reduce_as<T>(dy_res, y);
+      set_output<T>(dy_reduce_res, dy);
     } else {
-      set_output<T>(dy_res, dy);
+      if (out_grad.dims() != y.dims()) {
+        phi::DDim reduce_dim =
+            get_reduce_dims_from_out(out_grad.dims(), y.dims());
+        auto dy_reduce_res =
+            dy_res.sum(common::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      } else {
+        set_output<T>(dy_res, dy);
+      }
     }
   }  // indicate we will compute dy
   if (dx) {
     // dx = y * x^(y-1)
-    auto tmp_z = y - 1.0;
-    auto x_pow_z = elementwise_pow<T>(x, tmp_z);
-    auto dx_res = y * x_pow_z * out_grad;
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-      set_output<T>(dx_tmp, dx);
-
+    if (has_dynamic_shape(out_grad.shape()) || has_dynamic_shape(x.shape())) {
+      Tensor one_tensor = full_scalar<T>(1.0, y.dtype());
+      Tensor x_pow_z = elementwise_pow<T>(x, y - one_tensor);
+      Tensor dx_res = y * x_pow_z * out_grad;
+      auto dx_reduce_res = reduce_as<T>(dx_res, x);
+      set_output<T>(dx_reduce_res, dx);
     } else {
-      set_output<T>(dx_res, dx);
+      auto tmp_z = y - 1.0;
+      auto x_pow_z = elementwise_pow<T>(x, tmp_z);
+      auto dx_res = y * x_pow_z * out_grad;
+      if (out_grad.dims() != x.dims()) {
+        auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto dx_reduce_res =
+            dx_res.sum(common::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      } else {
+        set_output<T>(dx_res, dx);
+      }
     }
   }  // indicate we will compute dx
 }
@@ -615,9 +762,16 @@ void pow_grad(const Tensor& x,
               const Scalar& y,
               Tensor* x_grad) {
   if (x_grad) {
-    auto y_value = y.to<float>();
-    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
-    set_output<T>(dx_res, x_grad);
+    if (has_dynamic_shape(x.shape())) {
+      Tensor y_tensor = backend::full_with_tensor<T>(shape<T>(x), y, x.dtype());
+      Tensor one_tensor = full_scalar<T>(1.0, x.dtype());
+      auto dx_res = y_tensor * elementwise_pow<T>(x, y - one_tensor) * out_grad;
+      set_output<T>(dx_res, x_grad);
+    } else {
+      auto y_value = y.to<float>();
+      auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+      set_output<T>(dx_res, x_grad);
+    }
   }
 }
 
@@ -843,6 +997,14 @@ void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void square_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp = 2 * x * out_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     if (out.dtype() == phi::DataType::FLOAT16 ||
@@ -861,7 +1023,8 @@ template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     // This calculation is important for resnet.
-    auto x_grad_tmp = (0.5 / out) * out_grad;
+    auto factor = full_scalar<T>(0.5, out.dtype());
+    auto x_grad_tmp = (factor / out) * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -870,7 +1033,8 @@ template <typename T>
 void rsqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     // This calculation is important for resnet.
-    auto x_grad_tmp = -0.5 * out * out * out * out_grad;
+    auto factor = full_scalar<T>(-0.5, out.dtype());
+    auto x_grad_tmp = factor * out * out * out * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -891,7 +1055,8 @@ void silu_grad(const Tensor& x,
       auto res = out_grad_cast * sigmoid<T>(x_cast) * (1.0 + x_cast - out_cast);
       set_output<T>(cast<T>(res, org_dtype), x_grad);
     } else {
-      auto res = out_grad * sigmoid<T>(x) * (1.0 + x - out);
+      auto one = full_scalar<T>(1.0, x.dtype());
+      auto res = out_grad * sigmoid<T>(x) * (one + x - out);
       set_output<T>(res, x_grad);
     }
   }
@@ -919,7 +1084,8 @@ void softmax_grad(const Tensor& out,
         set_output<T>(tmp_x_grad, x_grad);
       }
     } else {
-      set_output<T>(out_grad * 0.0, x_grad);
+      Tensor zeros = full_scalar<T>(0.0, out.dtype());
+      set_output<T>(out_grad * zeros, x_grad);
     }
   }
 }
@@ -1094,14 +1260,67 @@ void maximum_grad(const Tensor& x,
 }
 
 template <typename T>
+void masked_select_grad(const Tensor& x,
+                        const Tensor& mask,
+                        const Tensor& out_grad,
+                        Tensor* x_grad) {
+  if (x_grad) {
+    auto promoted_x = x;
+    auto promoted_out_grad = out_grad;
+    if (is_half_dtype(x.dtype())) {
+      promoted_x = cast<T>(x, DataType::FLOAT32);
+      promoted_out_grad = cast<T>(out_grad, DataType::FLOAT32);
+    }
+
+    auto x_num = 1;
+    for (size_t i = 0; i < promoted_x.shape().size(); i++) {
+      x_num *= promoted_x.shape()[i];
+    }
+
+    auto grad_num = 1;
+    for (size_t i = 0; i < promoted_out_grad.shape().size(); i++) {
+      grad_num *= promoted_out_grad.shape()[i];
+    }
+
+    auto end = full<T>({1}, x_num, x.dtype());
+    auto start = full<T>({1}, 0, x.dtype());
+    auto step = full<T>({1}, 1, x.dtype());
+    auto x_arange =
+        backend::arange_with_tensor<T>(start, end, step, promoted_x.dtype());
+
+    auto x_arange_reshape = reshape<T>(x_arange, promoted_x.shape());
+
+    auto x_index = masked_select<T>(x_arange_reshape, mask);
+
+    auto index_num = x_index.shape()[0];
+
+    auto grad_reshape =
+        cast<T>(reshape<T>(promoted_out_grad, {grad_num}), promoted_x.dtype());
+
+    auto grad_trans = grad_reshape;
+    if (grad_num > index_num) {
+      grad_trans = slice<T>(grad_reshape, {0}, {0}, {index_num}, {1}, {});
+    } else if (grad_num < index_num) {
+      auto pad_zeros = full<T>({index_num - grad_num}, 0, promoted_x.dtype());
+      grad_trans = concat<T>({grad_reshape, pad_zeros}, 0);
+    }
+
+    auto input_tensor = full<T>({x_num}, 0, promoted_x.dtype());
+    auto index_tensor = cast<T>(x_index, DataType::INT64);
+    auto update_tensor = grad_trans;
+    auto x_output =
+        scatter<T>(input_tensor, index_tensor, update_tensor, false);
+    auto res = cast<T>(reshape<T>(x_output, promoted_x.shape()), x.dtype());
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
 void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto condition = greater_than<T>(
-        out, full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
-    auto res =
-        where<T>(condition,
-                 out_grad,
-                 full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
+    Tensor zeros = full_scalar<T>(0.0, out.dtype());
+    auto mask = greater_than<T>(out, zeros);
+    auto res = cast<T>(mask, out.dtype()) * out_grad;
     set_output<T>(res, x_grad);
   }
 }
@@ -1389,13 +1608,20 @@ void slice_grad(const Tensor& input,
       paddings.push_back(offsets[i]);
       paddings.push_back((in_dims[i] - out_dims[i]) - offsets[i]);
     }
+    Tensor reshape_out_grad;
+    if (out_grad.shape().size() == 0) {
+      reshape_out_grad = full<T>({1}, 1, input.dtype());
+    } else {
+      reshape_out_grad = out_grad;
+    }
+
     if (decrease_size > 0 &&
         (decrease_size != static_cast<size_t>(in_dims.size()))) {
       auto out_tmp =
-          pad<T>(reshape<T>(out_grad, origin_out_shape), paddings, 0.0);
+          pad<T>(reshape<T>(reshape_out_grad, origin_out_shape), paddings, 0.0);
       set_output<T>(out_tmp, input_grad);
     } else {
-      auto out_tmp = pad<T>(out_grad, paddings, 0.0);
+      auto out_tmp = pad<T>(reshape_out_grad, paddings, 0.0);
       set_output<T>(out_tmp, input_grad);
     }
   }
@@ -1454,7 +1680,8 @@ void leaky_relu_grad(const Tensor& out,
 template <typename T>
 void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    set_output<T>(out_grad * (out * (1 - out)), x_grad);
+    auto one_tensor = full_scalar<T>(1.0, out.dtype());
+    set_output<T>(out_grad * (out * (one_tensor - out)), x_grad);
   }
 }
 
@@ -1678,11 +1905,13 @@ void prod_grad(const Tensor& x,
     } else {
       reduce_all = false;
     }
-    auto x_grad_tmp = Tensor();
-    auto out_tmp = Tensor();
+    auto out_grad_tmp = Tensor();
+    auto x_reshape = Tensor();
+    std::vector<int64_t> unchange_axis, change_axis, transpose_shape,
+        cumprod_shape;
+    std::vector<int> transpose_dim, origin_position;
     if (x_dim_size == 1) {
-      x_grad_tmp = out_grad.expand(IntArray(x_dim));
-      out_tmp = out.expand(IntArray(x_dim));
+      out_grad_tmp = out_grad.expand(IntArray(x_dim));
     } else {
       if (!keep_dim) {
         auto axis_ = std::vector<int64_t>();
@@ -1700,16 +1929,69 @@ void prod_grad(const Tensor& x,
         }
         auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
         auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
-        x_grad_tmp = out_grad_.expand(IntArray(x_dim));
-        auto out_ = reshape<T>(out, out_grad_shape);
-        out_tmp = out_.expand(IntArray(x_dim));
+        out_grad_tmp = out_grad_.expand(IntArray(x_dim));
       } else {
-        x_grad_tmp = out_grad.expand(IntArray(x_dim));
-        out_tmp = out.expand(IntArray(x_dim));
+        out_grad_tmp = out_grad.expand(IntArray(x_dim));
       }
     }
-    auto x_grad_res = x_grad_tmp * out_tmp * (1 / x);
-    set_output<T>(x_grad_res, x_grad);
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      int64_t numel = 1;
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+        numel *= x_dim[i];
+      }
+      cumprod_shape.push_back(numel);
+      x_reshape = reshape<T>(x, cumprod_shape);
+      auto left_cumprod = cumprod<T>(x_reshape, -1, true, false);
+      auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
+      auto x_grad_tmp = left_cumprod * right_cumprod;
+      auto x_grad_tmp2 = reshape<T>(x_grad_tmp, x.shape());
+      auto x_grad_res = x_grad_tmp2 * out_grad_tmp;
+      set_output<T>(x_grad_res, x_grad);
+    } else {
+      int64_t unchange_size = x_dim_size - axis_size;
+      int64_t unchange_index = 0;
+      for (int64_t i = 0; i < axis_size; i++) {
+        if (axis[i] < 0) {
+          axis_.push_back(axis[i] + x_dim_size);
+        } else {
+          axis_.push_back(axis[i]);
+        }
+      }
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        auto it = find(axis_.begin(), axis_.end(), i);
+        if (it != axis_.end()) {
+          int64_t index = it - axis_.begin();
+          origin_position.push_back(static_cast<int>(unchange_size + index));
+        } else {
+          unchange_axis.push_back(i);
+          origin_position.push_back(static_cast<int>(unchange_index));
+          unchange_index += 1;
+        }
+      }
+      int64_t numel = 1;
+      for (int64_t i = 0; i < unchange_size; i++) {
+        transpose_shape.push_back(x_dim[unchange_axis[i]]);
+        cumprod_shape.push_back(x_dim[unchange_axis[i]]);
+        transpose_dim.push_back(static_cast<int>(unchange_axis[i]));
+      }
+      for (int64_t i = 0; i < axis_size; i++) {
+        transpose_shape.push_back(x_dim[axis_[i]]);
+        transpose_dim.push_back(static_cast<int>(axis_[i]));
+        numel *= x_dim[axis_[i]];
+      }
+      cumprod_shape.push_back(numel);
+      auto x_transpose = transpose<T>(x, transpose_dim);
+      x_reshape = reshape<T>(x_transpose, cumprod_shape);
+      auto left_cumprod = cumprod<T>(x_reshape, -1, true, false);
+      auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
+      auto x_grad_tmp = left_cumprod * right_cumprod;
+      auto x_grad_reshape = reshape<T>(x_grad_tmp, transpose_shape);
+      auto x_grad_tmp2 = transpose<T>(x_grad_reshape, origin_position);
+      auto x_grad_res = x_grad_tmp2 * out_grad_tmp;
+      set_output<T>(x_grad_res, x_grad);
+    }
   }
 }
 
@@ -1963,7 +2245,8 @@ void swiglu_grad(const Tensor& x,
     Tensor tmp = sig * xs[0];
     Tensor x0_grad = dz * xs[1] * sig * (one_tensor + xs[0] - tmp);
     Tensor x1_grad = dz * tmp;
-    x_grad = concat<T>({x0_grad, x1_grad}, x_shape.size() - 1);
+    int64_t c_axis = x_shape.size() - 1;
+    x_grad = concat<T>({x0_grad, x1_grad}, c_axis);
   }
   set_output<T>(x_grad, dx);
 }

@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/framework/ir/pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -106,9 +104,7 @@ void AddReaderDependencyPass::ApplyImpl(Graph *graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(add_reader_dependency_pass,
               paddle::framework::ir::AddReaderDependencyPass);

@@ -18,8 +18,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 TEST(BENCHMARK, LargeScaleKV) {
   typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
@@ -46,5 +45,4 @@ TEST(BENCHMARK, LargeScaleKV) {
   ASSERT_FLOAT_EQ(value_data[3], 0.3);
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

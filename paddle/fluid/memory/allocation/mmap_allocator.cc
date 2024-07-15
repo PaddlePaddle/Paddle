@@ -174,7 +174,7 @@ void MemoryMapAllocation::close() {
   closed_ = true;
 }
 
-MemoryMapAllocation::~MemoryMapAllocation() { close(); }
+MemoryMapAllocation::~MemoryMapAllocation() { close(); }  // NOLINT
 
 void RefcountedMemoryMapAllocation::incref() {
   CountInfo *info = static_cast<CountInfo *>(map_ptr_);

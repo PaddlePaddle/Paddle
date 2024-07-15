@@ -61,7 +61,7 @@ class ResourcePool : public std::enable_shared_from_this<ResourcePool<T>> {
     if (instances_.empty()) {
       obj = creator_();
       PADDLE_ENFORCE_NOT_NULL(obj,
-                              platform::errors::PermissionDenied(
+                              phi::errors::PermissionDenied(
                                   "The creator should not return nullptr."));
       VLOG(10) << "Create new instance " << TypePtrName();
     } else {

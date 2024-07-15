@@ -149,10 +149,19 @@ PD_REGISTER_KERNEL(dequantize_linear_deprecated,
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
-PD_REGISTER_KERNEL(quantize_linear_deprecated,
+PD_REGISTER_KERNEL(quantize_linear_deprecated_train,
                    GPU,
                    ALL_LAYOUT,
-                   phi::QuantizeLinearDeprecatedKernel,
+                   phi::QuantizeLinearDeprecatedTrainKernel,
+                   float,
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(quantize_linear_deprecated_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::QuantizeLinearDeprecatedInferKernel,
                    float,
                    phi::dtype::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

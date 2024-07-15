@@ -29,9 +29,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
@@ -50,7 +48,7 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   void* ptr;
   auto result = platform::RecordedGpuMalloc(&ptr, size, place_.device);
   if (LIKELY(result == gpuSuccess)) {
-    return new Allocation(ptr, size, platform::Place(place_));
+    return new Allocation(ptr, size, phi::Place(place_));
   }
 
   size_t avail, total, actual_avail, actual_total;
@@ -86,6 +84,4 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
       err_msg));
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

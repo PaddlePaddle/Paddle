@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void BatchNormCooGradKernel(const Context& dev_ctx,
@@ -76,8 +75,7 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
                                        bias_grad);
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    CPU,

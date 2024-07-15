@@ -18,13 +18,12 @@
 
 from __future__ import annotations
 
+import opcode
 import random
 import sys
 import types
 from functools import cached_property
 from typing import TYPE_CHECKING
-
-import opcode
 
 import paddle
 from paddle.jit.utils import OrderedSet

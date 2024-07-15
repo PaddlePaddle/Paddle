@@ -30,10 +30,14 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers,
     int batch_size,
     std::string engine_name,
+<<<<<<< HEAD
     const platform::Place place)
 <<<<<<< HEAD
     : batch_size_(batch_size), engine_name_(std::move(engine_name)) {
 =======
+=======
+    const phi::Place place)
+>>>>>>> 8b808f1ca1f3b066d25661279d07b83806836d58
     : batch_size_(batch_size),
       data_buffers_(),
       data_tensors_(),
@@ -47,10 +51,10 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     int num_ele = data_size / sizeof(int16_t);
     framework::DDim data_shape = common::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
-    data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
         static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
         data_size);
+    data_tensors_.push_back(temp_tensor);
   }
 }
 

@@ -19,18 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct PrelnResidualBias : public PatternBase {
   PrelnResidualBias(PDPattern *pattern,
@@ -127,7 +120,8 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
           {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 void setIntermediateOut(OpDesc *desc,
                         const std::string &out_name,
@@ -300,9 +294,7 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(preln_residual_bias_fuse_pass,
               paddle::framework::ir::PrelnResidualBiasFusePass);

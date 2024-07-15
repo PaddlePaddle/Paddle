@@ -39,9 +39,15 @@ class CudaMem {
   CudaMem() = default;
 
   void* mutable_data(size_t bytes) {
-    CHECK_GT(bytes, 0) << "Cannot allocate empty memory!";
+    PADDLE_ENFORCE_GT(
+        bytes,
+        0,
+        phi::errors::InvalidArgument("Cannot allocate empty memory!"));
     if (ptr) {
-      CHECK_EQ(bytes, bytes_) << "Try allocate memory twice!";
+      PADDLE_ENFORCE_EQ(
+          bytes,
+          bytes_,
+          phi::errors::InvalidArgument("Try allocate memory twice!"));
       return ptr;
     }
     CUDA_CALL(cudaMalloc(&ptr, bytes));
@@ -67,12 +73,14 @@ class CudaMem {
   void MemcpyFromHost(const void* src,
                       size_t bytes,
                       cudaStream_t stream = nullptr) {
-    CHECK_LE(bytes, bytes_) << "Too many data need copy";
+    PADDLE_ENFORCE_LE(
+        bytes, bytes_, phi::errors::InvalidArgument("Too many data need copy"));
     CUDA_CALL(cudaMemcpyAsync(ptr, src, bytes, cudaMemcpyHostToDevice, stream));
   }
 
   void MemcpyToHost(void* dst, size_t bytes, cudaStream_t stream = nullptr) {
-    CHECK_LE(bytes, bytes_) << "Too many data need copy";
+    PADDLE_ENFORCE_LE(
+        bytes, bytes_, phi::errors::InvalidArgument("Too many data need copy"));
     CUDA_CALL(cudaMemcpyAsync(dst, ptr, bytes, cudaMemcpyDeviceToHost, stream));
   }
 

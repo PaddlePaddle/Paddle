@@ -32,8 +32,7 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 void OperationFactory::RegisterManualOpCreator() {
   RegisterOperationCreator(
@@ -300,6 +299,8 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
       return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
     } else if (obj.type() == typeid(float)) {
       return IrAttributeCreator<float>()(std::any_cast<float>(obj));
+    } else if (obj.type() == typeid(double)) {
+      return IrAttributeCreator<double>()(std::any_cast<double>(obj));
     } else if (obj.type() == typeid(std::string)) {
       return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
     } else if (obj.type() == typeid(const char*)) {
@@ -413,5 +414,4 @@ pir::Operation* CreateOperation(const OpCall& op_call,
   return op;
 }
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr

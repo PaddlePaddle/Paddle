@@ -25,8 +25,7 @@
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/jit/function_schema.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 Layer::Layer(std::shared_ptr<VariableMap> params_map,
              std::shared_ptr<VariableMap> attrs_map,
@@ -106,5 +105,4 @@ std::shared_ptr<Layer> Layer::Clone(void* stream) {
   return x;
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

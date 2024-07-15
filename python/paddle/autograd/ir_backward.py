@@ -19,7 +19,6 @@ import warnings
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
-    ALLOW_NO_GRAD_OPS,
     State,
     ValueDict,
     ValueSet,
@@ -45,6 +44,7 @@ from paddle.autograd.backward_utils import (
     return_map_value_list,
     some_in_set,
     update_no_grad_set_by_stopgradient,
+    warning_once,
     while_prune_check,
 )
 from paddle.base.libpaddle.pir import (
@@ -857,7 +857,11 @@ def append_backward_ops(
                 )
 
             else:
-                if op.num_operands() == 0 and op.num_results() != 0:
+                if (
+                    op.num_operands() == 0
+                    and op.num_results() != 0
+                    or op.name() == "pd_op.full_like"
+                ):
                     for value in op.results():
                         if len(state.value_to_valuegrad[value]) > 1:
                             append_add_n(
@@ -870,9 +874,14 @@ def append_backward_ops(
                         else:
                             state.op_to_opgrad[op] = []
                 else:
+                    all_results_stop_gradient = True
+                    for value in op.results():
+                        if not value.stop_gradient:
+                            all_results_stop_gradient = False
                     if (
                         not is_builtin_op(op)
-                        and op.name() not in ALLOW_NO_GRAD_OPS
+                        and not paddle.core.is_forward_only(op)
+                        and not all_results_stop_gradient
                     ):
                         raise ValueError(
                             f"op '{op.name()}' has no grad op, consider enable prim to decompose it."
@@ -906,7 +915,7 @@ def prepare_backward_prune_set(inputs, outputs):
                 for item in get_real_op_inputs(used_op):
                     outputs_fwd_set.add(item)
         else:
-            logging.warning("input provided by inputs has no use")
+            warning_once("input provided by inputs has no use")
 
     inputs_fwd_set = ValueSet()
     for output in outputs:
@@ -1206,12 +1215,12 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             parameter_list,
             'parameter_list',
             (list, tuple, set),
-            'paddle.autograd.ir_backwardappend_backward',
+            'paddle.autograd.ir_backward.append_backward',
         )
         for i, param in enumerate(parameter_list):
             check_type(
                 param,
-                'parameter_list[%s]' % i,
+                f'parameter_list[{i}]',
                 paddle.pir.Value,
                 'base.backward.append_backward',
             )

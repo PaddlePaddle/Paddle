@@ -87,11 +87,14 @@ class SameStatusReshardFunction(ReshardFunction):
                         dst_mesh, [], [dst_dist_attr]
                     )
                 )
-                recv_value.update_dist_attr(dst_dist_attr)
+                recv_value.set_type(dst_type)
                 is_send = False
                 break
 
         if is_send:
-            return None
+            # fake var will be removed in remove_other_rank_op_pass.
+            fake_var = paddle._C_ops.reshard_v2(src_value, dst_dist_attr)
+            fake_var.set_type(dst_type)
+            return fake_var
         else:
             return recv_value

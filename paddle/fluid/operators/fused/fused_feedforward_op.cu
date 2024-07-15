@@ -518,14 +518,14 @@ void FusedFeedForwardGradKernel(
     bool add_residual,
     int ring_id,
     DenseTensor* x_grad,
-    DenseTensor* ln1_scale_grad,
-    DenseTensor* ln1_bias_grad,
-    DenseTensor* ln2_scale_grad,
-    DenseTensor* ln2_bias_grad,
     DenseTensor* linear1_weight_grad,
     DenseTensor* linear1_bias_grad,
     DenseTensor* linear2_weight_grad,
-    DenseTensor* linear2_bias_grad) {
+    DenseTensor* linear2_bias_grad,
+    DenseTensor* ln1_scale_grad,
+    DenseTensor* ln1_bias_grad,
+    DenseTensor* ln2_scale_grad,
+    DenseTensor* ln2_bias_grad) {
   using U = phi::funcs::LayerNormParamType<T>;
 
   auto* ln1_out_ptr = pre_layer_norm ? ln1_out.get_ptr() : nullptr;
@@ -672,9 +672,9 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(8).SetDataType(phi::DataType::FLOAT32);
   }
 }

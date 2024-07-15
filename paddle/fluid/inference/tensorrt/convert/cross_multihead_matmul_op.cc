@@ -83,10 +83,21 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::Weights weight_q{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(weight_q_data),
                                static_cast<int32_t>(weight_q_t->numel())};
+    nvinfer1::ITensor* input_q_shape_tensor = Shape(input_q);
+#if IS_TRT_VERSION_GE(8600)
+    auto* fc_q_weight_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, nvinfer1::Dims3(1, n_q, hidden_in_q), weight_q);
+    auto* fc_q_layer =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             MatrixMultiply,
+                             *input_q,
+                             nvinfer1::MatrixOperation::kNONE,
+                             *fc_q_weight_layer->getOutput(0),
+                             nvinfer1::MatrixOperation::kTRANSPOSE);
+#else
     nvinfer1::Weights bias_q{};
     // add shuffle for FullyConnected layer
     std::vector<nvinfer1::ITensor*> reshape_before_fc_q_shape_tensor;
-    nvinfer1::ITensor* input_q_shape_tensor = Shape(input_q);
     for (int i = 0; i < 5; i++) {
       reshape_before_fc_q_shape_tensor.push_back(Add1DConstantLayer(1));
     }
@@ -109,6 +120,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
                                       n_q,
                                       weight_q,
                                       bias_q);
+#endif
     fc_q_layer->setName(
         ("multihead_matmul_fc_q(Output: " + output_name + ")").c_str());
 
@@ -184,11 +196,22 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::Weights weight_kv{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_kv_data),
                                 static_cast<int32_t>(weight_kv_t->numel())};
-    nvinfer1::Weights bias_kv{};
 
+    nvinfer1::ITensor* input_shape_tensor = Shape(input_kv);
+#if IS_TRT_VERSION_GE(8600)
+    auto* fc_weight_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, nvinfer1::Dims3(1, n, hidden_in), weight_kv);
+    auto* fc_layer =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             MatrixMultiply,
+                             *input_q,
+                             nvinfer1::MatrixOperation::kNONE,
+                             *fc_weight_layer->getOutput(0),
+                             nvinfer1::MatrixOperation::kTRANSPOSE);
+#else
+    nvinfer1::Weights bias_kv{};
     // add shuffle for FullyConnected layer
     std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
-    nvinfer1::ITensor* input_shape_tensor = Shape(input_kv);
     for (int i = 0; i < 5; i++) {
       reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
     }
@@ -211,6 +234,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
                                     n,
                                     weight_kv,
                                     bias_kv);
+#endif
     fc_layer->setName(
         ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
@@ -234,16 +258,13 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     auto creator = GetPluginRegistry()->getPluginCreator("fMHCA", "1");
     assert(creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
-    nvinfer1::PluginFieldCollection* plugin_collection =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collection) +
-                   fields.size() *
-                       sizeof(nvinfer1::PluginField)));  // remember to free
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+        new nvinfer1::PluginFieldCollection);
 
     plugin_collection->nbFields = static_cast<int>(fields.size());
     plugin_collection->fields = fields.data();
-    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection);
-    free(plugin_collection);
+    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection.get());
+    plugin_collection.reset();
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(reshape_after_fc_q_layer->getOutput(0));
     plugin_inputs.emplace_back(reshape_after_fc_layer->getOutput(0));

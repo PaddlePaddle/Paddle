@@ -26,4 +26,21 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxGradKernel(const Context& dev_ctx,
                                                        int quant_axis,
                                                        DenseTensor* dx);
 
+template <typename T, typename Context>
+void FakeQuantizeDequantizeAbsMaxGradKernel(const Context& dev_ctx,
+                                            const DenseTensor& dout,
+                                            int bit_length,
+                                            int round_type,
+                                            DenseTensor* dx);
+
+template <typename T, typename Context>
+void FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& dout,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    DenseTensor* dx);
+
 }  // namespace phi

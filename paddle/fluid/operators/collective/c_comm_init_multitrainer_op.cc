@@ -17,7 +17,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_RCCL)
 #include <rccl.h>
 #endif
-#include <stdint.h>
+#include <cstdint>
 
 #include <ostream>
 #include <string>

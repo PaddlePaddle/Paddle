@@ -19,13 +19,13 @@
 namespace phi {
 namespace dynload {
 
-extern std::once_flag cutlass_dso_flag;
+std::once_flag cutlass_gemm_dso_flag;
 void* cutlass_gemm_epilogue_dso_handle;
 
 void* GetCutlassGemmEpilogueHandle() {
   std::string dso_name = "libCutlassGemmEpilogue.so";
 
-  std::call_once(cutlass_dso_flag, [&]() {
+  std::call_once(cutlass_gemm_dso_flag, [&]() {
 #if !defined(_WIN32)
     int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
 #else

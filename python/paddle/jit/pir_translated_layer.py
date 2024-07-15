@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -53,18 +55,22 @@ def _generate_unique_var_name(prefix):
     return unique_name.generate(prefix)
 
 
-def _get_pir_persistable_var_names(program):
+from paddle.static.pir_io import get_pir_parameters
+
+
+def _get_pir_parameters_var_names(program):
     persistable_vars = []
     persistable_names = []
     rename_new_old_dict = {}
-    for block in program.blocks:
-        for var in block.all_parameters():
-            if var.persistable:
-                persistable_vars.append(var)
-                origin_name = var.name
-                var.name = _generate_unique_var_name(var.name)
-                rename_new_old_dict[var.name] = origin_name
-                persistable_names.append(var.name)
+    param, opt = get_pir_parameters(program)
+    vars = param + opt
+    for var in vars:
+        persistable_vars.append(var)
+        origin_name = var.name
+        var.name = _generate_unique_var_name(var.name)
+        rename_new_old_dict[var.name] = origin_name
+        persistable_names.append(var.name)
+
     return (
         persistable_vars,
         persistable_names,
@@ -79,8 +85,8 @@ class _PirProgramHolder:
         # input, output, persistable,
         self._input_vars = []
         self._output_vars = []
-        self._persistable_vars = []
-        self._persistable_names = []
+        self._parameter_vars = []
+        self._parameter_names = []
 
         self.support_train = trainable
         # append suffix var name dict
@@ -91,17 +97,16 @@ class _PirProgramHolder:
 
     def _preprocess(self):
         (
-            self._persistable_vars,
-            self._persistable_names,
+            self._parameter_vars,
+            self._parameter_names,
             self._suffix_varname_dict,
-        ) = _get_pir_persistable_var_names(self._infer_program)
-
+        ) = _get_pir_parameters_var_names(self._infer_program)
         block = self._infer_program.global_block()
         for op in block.ops:
             if op.name() == 'pd_op.data':
                 self._input_vars.append(op.result(0))
             elif op.name() == 'pd_op.feed':
-                var_name = op.attr("name")
+                var_name = op.attr()["name"]
                 org_value = op.result(0)
                 with block:
                     value = paddle._pir_ops.data(
@@ -111,7 +116,7 @@ class _PirProgramHolder:
                     )
                     org_value.replace_all_uses_with(value)
                     value.get_defining_op().move_before(op)
-                    block.remove_op(op)
+                block.remove_op(op)
             if op.name() == 'pd_op.fetch':
                 self._output_vars.append(op.operand_source(0))
                 with block:
@@ -135,11 +140,11 @@ class _PirProgramHolder:
 
     @property
     def persistable_names(self):
-        return self._persistable_names
+        return self._parameter_names
 
     @property
     def persistable_vars(self):
-        return self._persistable_vars
+        return self._parameter_vars
 
 
 # [ PirTranslatedLayer : Run program in dygraph mode ]
@@ -173,10 +178,11 @@ class _PirProgramHolder:
 # which need get var info from program desc
 
 
-def _load_pir_persistable_vars(model_path, program_holder, params_filename):
+def _load_pir_parameter_vars(model_path, program_holder, params_filename):
     # construct var dict
     load_var_dict = {}
     load_var_list = []
+    other_var_dict = {}
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
     persistable_var_name = program_holder.persistable_names
@@ -193,6 +199,12 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
                 name=var.name,
                 persistable=True,
             )
+
+            new_var.stop_gradient = var.stop_gradient
+            load_var_dict[name] = new_var
+            load_var_list.append(new_var)
+            load_densetensor_list.append(new_var.get_tensor())
+
         else:
             new_var = core.eager.Tensor(
                 dtype=datatype_to_vartype[var.dtype],
@@ -202,16 +214,11 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
                 place=framework._current_expected_place(),
                 persistable=False,
             )
-
-        new_var.stop_gradient = var.stop_gradient
-        load_var_dict[name] = new_var
-        load_var_list.append(new_var)
-        load_densetensor_list.append(new_var.get_tensor())
+            other_var_dict[name] = new_var
 
     # load all vars
     assert params_filename is not None, "params_filename should not be None."
     var_file_path = os.path.join(model_path, params_filename)
-
     if os.path.exists(var_file_path):
         core.load_combine_func(
             var_file_path,
@@ -222,10 +229,10 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
         )
     else:
         raise ValueError(
-            "The file %s does not exist. Please check the model path."
-            % var_file_path
+            f"The file {var_file_path} does not exist. Please check the model path."
         )
 
+    load_var_dict.update(other_var_dict)
     return load_var_dict
 
 
@@ -285,7 +292,7 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
         # When saving XX, there is only '*.pdmodel'
         return {}
     else:
-        var_dict = _load_pir_persistable_vars(
+        var_dict = _load_pir_parameter_vars(
             model_path, programs['forward'], params_filename
         )
         model_name = params_filename[: -len(INFER_PARAMS_SUFFIX)]
@@ -305,7 +312,7 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
                 continue
 
             var_dict.update(
-                _load_pir_persistable_vars(
+                _load_pir_parameter_vars(
                     model_path, programs[func_name], file_name
                 )
             )
@@ -321,8 +328,7 @@ def _run_dygraph(instance, input, program_holder):
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
-                "The type of input in PirTranslatedLayer must be numpy array or Variable(Tensor), but received %s."
-                % type(value)
+                f"The type of input in PirTranslatedLayer must be numpy array or Variable(Tensor), but received {type(value)}."
             )
         # NOTE: In order to unify the API, firstly convert the input to Tensor
         if isinstance(value, np.ndarray):
@@ -354,8 +360,7 @@ def _run_dygraph(instance, input, program_holder):
             persistable_tensors.append(instance._buffers[dy_var_name])
         else:
             raise ValueError(
-                "The persistable variable %s does not exist in current PirTranslatedLayer."
-                % var_name
+                f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
             )
 
     from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
@@ -371,7 +376,6 @@ def _run_dygraph(instance, input, program_holder):
         parameters,
     )
     instance.layer = layer
-
     if instance._is_test:
         layer.training = False
     else:
@@ -385,9 +389,42 @@ def _run_dygraph(instance, input, program_holder):
     return instance.layer(input_tensors)
 
 
-def _run_static_graph(program_holder, trace_program):
-    paddle.base.framework.switch_main_program(trace_program)
-    return program_holder.output_vars
+def _run_static_graph(inputs, program_holder, src_program):
+    '''
+    This function is used when the pirTranslatedLayer is
+    applied for dy_to_static conversion.
+    '''
+    dst_program = paddle.static.default_main_program()
+    value_map = paddle.pir.IrMapping()
+    # Establish a mapping relationship between existing parameters
+    # and corresponding parameters in the program to be copied
+    len_dst_op = len(dst_program.global_block().ops)
+    for dst_op in dst_program.global_block().ops:
+        if dst_op.name() == "builtin.parameter":
+            for src_op in src_program.global_block().ops[:len_dst_op]:
+                if (
+                    src_op.name() == dst_op.name()
+                    and src_op.result(0).name == dst_op.result(0).name
+                ):
+                    for i in range(src_op.num_results()):
+                        value_map.add(src_op.result(i), dst_op.result(i))
+    # Establish a mapping relationship between truly inputs
+    # and corresponding inputs in the program to be copied
+    src_inputs = program_holder.input_vars
+    if len(src_inputs) != len(inputs):
+        raise ValueError(
+            f"The number of input is invalid, expected {len(src_inputs)}, but received {len(inputs)}."
+        )
+    for src_input, input_ in zip(src_inputs, inputs):
+        value_map.add(src_input, input_)
+
+    # find the insert point for copy
+    current_insert_point = paddle.pir.get_current_insertion_point()
+    current_block = current_insert_point.block()
+    src_program.copy_to_block(value_map, current_block)
+
+    output = [value_map.look_up(v) for v in program_holder.output_vars]
+    return output[0] if len(output) == 1 else output
 
 
 def _collect_current_and_parent_var(program, block_idx):
@@ -438,7 +475,7 @@ class PirTranslatedLayer(layers.Layer):
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -507,7 +544,11 @@ class PirTranslatedLayer(layers.Layer):
 
     """
 
-    def __init__(self, programs, persistable_vars):
+    def __init__(
+        self,
+        programs: dict[str, paddle.static.Program],
+        persistable_vars: dict[str, paddle.Tensor],
+    ):
         super().__init__()
 
         if not isinstance(programs, dict):
@@ -554,7 +595,7 @@ class PirTranslatedLayer(layers.Layer):
         # 0. dir and filename check
         model_path = os.path.normpath(model_path)
         if not os.path.isdir(model_path):
-            raise ValueError("There is no directory named '%s'" % model_path)
+            raise ValueError(f"There is no directory named '{model_path}'")
         model_filename = None
         params_filename = None
         if configs is not None:
@@ -601,7 +642,7 @@ class PirTranslatedLayer(layers.Layer):
                 return _run_dygraph(self, input, program_holder)
             else:
                 return _run_static_graph(
-                    program_holder, program_holder.infer_program
+                    input, program_holder, program_holder.infer_program
                 )
 
         __i_m_p_l__.__name__ = method_name
@@ -615,12 +656,104 @@ class PirTranslatedLayer(layers.Layer):
         self._is_test = True
         self.training = False
 
+    def program(self, method_name='forward'):
+        """
+        Gets translated program of specified method.
+
+        Args:
+            - method_name (string): method name corresponding to the program
+                to be obtained. Default: 'forward'.
+
+        Returns:
+            Program
+
+        Examples:
+            .. code-block:: python
+
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+                >>> import numpy as np
+                >>> import paddle
+                >>> from paddle import nn
+                >>> import paddle.optimizer as opt
+
+                >>> BATCH_SIZE = 16
+                >>> BATCH_NUM = 4
+                >>> EPOCH_NUM = 4
+
+                >>> IMAGE_SIZE = 784
+                >>> CLASS_NUM = 10
+
+                >>> # define a random dataset
+                >>> class RandomDataset(paddle.io.Dataset):
+                ...     def __init__(self, num_samples):
+                ...         self.num_samples = num_samples
+                ...
+                ...     def __getitem__(self, idx):
+                ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         return image, label
+                ...
+                ...     def __len__(self):
+                ...         return self.num_samples
+                ...
+                >>> class LinearNet(nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                ...
+                ...     @paddle.jit.to_static
+                ...     def forward(self, x):
+                ...         return self._linear(x)
+                ...
+                >>> def train(layer, loader, loss_fn, opt):
+                ...     for epoch_id in range(EPOCH_NUM):
+                ...         for batch_id, (image, label) in enumerate(loader()):
+                ...             out = layer(image)
+                ...             loss = loss_fn(out, label)
+                ...             loss.backward()
+                ...             opt.step()
+                ...             opt.clear_grad()
+                ...             print("Epoch {} batch {}: loss = {}".format(
+                ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+                ...
+                >>> # create network
+                >>> layer = LinearNet()
+                >>> loss_fn = nn.CrossEntropyLoss()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+                >>> # create data loader
+                >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                >>> loader = paddle.io.DataLoader(dataset,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2
+                ... )
+                >>> # train
+                >>> train(layer, loader, loss_fn, adam)
+
+                >>> # save
+                >>> model_path = "linear.example.model"
+                >>> paddle.jit.save(layer, model_path)
+
+                >>> # load
+                >>> translated_layer = paddle.jit.load(model_path)
+
+                >>> # get program
+                >>> program = translated_layer.program()
+        """
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. get inference program desc
+        program = program_holder.infer_program
+
+        return program
+
     def _get_program_holder(self, method_name='forward'):
         program_holder = self._program_holder_dict.get(method_name, None)
         if program_holder is None:
             raise ValueError(
-                "The method `%s` does not exist in loaded PirTranslatedLayer."
-                % method_name
+                f"The method `{method_name}` does not exist in loaded PirTranslatedLayer."
             )
         return program_holder
 

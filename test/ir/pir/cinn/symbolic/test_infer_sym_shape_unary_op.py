@@ -24,10 +24,14 @@ from test_infer_sym_shape_utils import (
 
 import paddle
 import paddle.nn.functional as F
+from paddle.framework import core
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
 from utils import apply_to_static
+
+# NOTE(SigureMo): Disable the CSE optimization to avoid op number change.
+paddle.set_flags({"FLAGS_enable_cse_in_dy2st": False})
 
 
 class ArgMaxMinNet(paddle.nn.Layer):
@@ -807,6 +811,8 @@ class UnbindOpInferSymbolicShapeTest(TestBase):
         ]
 
     def test_eval_symbolic(self):
+        core._set_prim_forward_blacklist("pd_op.unbind")
+
         net = UnbindNet()
 
         for i in range(len(self.cases)):

@@ -14,10 +14,12 @@
 
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/cache_grad_op_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
@@ -126,37 +128,15 @@ void DebugPrintOpInfo(pir::Operation* op,
   std::ostringstream print_stream;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
+    if (!res || !res.type()) {
+      continue;
+    }
+
     print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
     if (infer_context != nullptr) {
-      auto shape_data = infer_context->GetShapeOrDataForValue(res);
-      if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
-      print_stream << "shape: [";
-
-      for (size_t i = 0; i < shape_data.shape().size(); ++i) {
-        if (i != shape_data.shape().size() - 1) {
-          print_stream << symbol::ToString(shape_data.shape()[i]) << ",";
-        } else {
-          print_stream << symbol::ToString(shape_data.shape()[i]);
-        }
-      }
-
-      print_stream << "], data: [";
-      if (shape_data.data().has_value()) {
-        for (size_t i = 0; i < shape_data.data().value().size(); ++i) {
-          if (i != shape_data.data().value().size() - 1) {
-            print_stream << symbol::ToString(shape_data.data().value()[i])
-                         << ",";
-          } else {
-            print_stream << symbol::ToString(shape_data.data().value()[i]);
-          }
-        }
-      } else {
-        print_stream << "nullopt";
-      }
-
-      print_stream << "]";
+      print_stream << infer_context->GetShapeOrDataForValue(res);
     }
     print_stream << " }\n";
   }
@@ -170,6 +150,10 @@ void CheckInferSymWithInferMeta(
     pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
+    if (!res || !res.type()) {
+      continue;
+    }
+
     std::ostringstream print_stream;
 
     // InferMeta funcs of some Ops are not corrrect now, we don't check them.
@@ -185,12 +169,12 @@ void CheckInferSymWithInferMeta(
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
         std::ostringstream print_stream;
         print_stream << "Warning : Check InferSymbolicShape for " << op->name()
-                     << " (op_" << op->id() << ") "
+                     << " [id:" << op->id() << "] "
                      << " carefully! rank of infer_meta_shape is ["
                      << infer_meta_shape.size()
                      << "], but rank of infer_sym_shape is ["
                      << infer_sym_shape.size() << "].";
-        VLOG(vlog_level) << print_stream.str();
+        LOG(ERROR) << print_stream.str();
         continue;
       }
 
@@ -202,11 +186,11 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
-                << " (op_" << op->id() << ") "
+                << " [id:" << op->id() << "] "
                 << " carefully! "
                 << "shape[" << i
                 << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
             continue;
           }
 
@@ -214,12 +198,12 @@ void CheckInferSymWithInferMeta(
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << " (op_" << op->id() << ") "
+                         << op->name() << " [id:" << op->id() << "] "
                          << " carefully! "
                          << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
           }
         }
       }
@@ -261,78 +245,129 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
-symbol::TensorShapeOrDataDimExprs CreateShapeOrDataByDDim(
-    const pir::DDim& dims) {
-  std::vector<symbol::DimExpr> dim_exprs;
-  for (int i = 0; i < dims.size(); ++i) {
-    dim_exprs.emplace_back(dims.at(i));
+void InferSymExprForOp(Operation* op,
+                       InferSymbolicShapeContext* infer_context,
+                       const InferSymbolicShapeCacheKey& op_infer_cache_key) {
+  auto infer_symbolic_shape_interface =
+      op->dyn_cast<pir::InferSymbolicShapeInterface>();
+  if (infer_symbolic_shape_interface) {
+    PrintOpInfo(op);
+    PADDLE_ENFORCE_EQ(
+        infer_symbolic_shape_interface.InferSymbolicShape(infer_context),
+        true,
+        common::errors::Fatal("InferSymbolicShape for %s failed.", op->name()));
+
+    if (op->num_results() > 0) {
+      // TODO(lanxianghit): deal with the ops which have more than 1
+      // ACTUAL results
+      pir::shape::SetShapeAttrForOp(
+          op, infer_context->GetShapeOrDataForValue(op->result(0)));
+    }
+  } else {
+    LOG(WARNING) << op->name() << " DOES NOT have InferSymbolicShapeInterface!";
+    const bool all_outs_static_dims = [&] {
+      bool all_static_dims = true;
+      for (uint32_t i = 0; i < op->num_results(); ++i) {
+        if (IsStaticShape(op->result(i))) {
+          continue;
+        } else {
+          all_static_dims = false;
+          break;
+        }
+      }
+      return all_static_dims;
+    }();
+
+    if (all_outs_static_dims) {
+      for (uint32_t i = 0; i < op->num_results(); ++i) {
+        infer_context->SetSymbolForValueByStaticShape(op->result(i));
+      }
+    } else {
+      if (infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
+              .has_value()) {
+        std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
+            infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
+                .value();
+        CHECK(cached_result_shape_or_data.size() == op->num_results());
+        for (uint32_t i = 0; i < op->num_results(); ++i) {
+          infer_context->SetShapeOrDataForValue(op->result(i),
+                                                cached_result_shape_or_data[i]);
+        }
+      } else {
+        // risk set
+        LOG(WARNING) << "Not found symbolic shape cache for " << op->name()
+                     << "[id:" << op->id() << "]";
+        for (uint32_t i = 0; i < op->num_results(); ++i) {
+          infer_context->SetSymbolForValueByStaticShape(op->result(i));
+        }
+      }
+    }
   }
-  return symbol::TensorShapeOrDataDimExprs{dim_exprs};
+}
+
+void CacheForwardOpSymbolicShape(
+    Operation* op,
+    InferSymbolicShapeContext* infer_context,
+    const InferSymbolicShapeCacheKey& op_infer_cache_key) {
+  std::vector<symbol::ShapeOrDataDimExprs> result_shape_or_data;
+  const auto& CheckInferSymbolicShapeCacheConsistency =
+      [&](const InferSymbolicShapeCacheValue& infer_result,
+          const InferSymbolicShapeCacheValue& cache_result) {
+        if (infer_result.size() != cache_result.size()) {
+          LOG(WARNING) << "cached shape is not consistent with real shape";
+        } else {
+          for (uint32_t i = 0; i < cache_result.size(); ++i) {
+            if (infer_result[i] != cache_result[i]) {
+              LOG(WARNING) << "cached shape is not consistent with real shape";
+              VLOG(3) << "InferSymbolicShapeCacheKey is: "
+                      << op_infer_cache_key;
+              VLOG(3) << "cached shape is: " << cache_result[i];
+              VLOG(3) << "real shape is: " << infer_result[i];
+            }
+          }
+        }
+      };
+  for (const auto& result : op->results()) {
+    result_shape_or_data.emplace_back(
+        infer_context->GetShapeOrDataForValue(result));
+  }
+  if (infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
+          .has_value()) {
+    std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
+        infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key).value();
+    // TODO(Hongqing-work): delete check and only set cache for op without
+    // InferSymbolicShapeInterface after fixing all warnings.
+    CheckInferSymbolicShapeCacheConsistency(result_shape_or_data,
+                                            cached_result_shape_or_data);
+  } else {
+    infer_context->SetOpInferSymbolicShapeCache(op_infer_cache_key,
+                                                result_shape_or_data);
+  }
+}
+
+void CacheBackwardOpSymbolicShape(Operation* op,
+                                  InferSymbolicShapeContext* infer_context) {
+  auto cache_grad_op_symbolic_shape_interface =
+      op->dyn_cast<pir::CacheGradOpSymbolicShapeInterface>();
+  if (cache_grad_op_symbolic_shape_interface) {
+    VLOG(3) << "CacheBackwardOpSymbolicShape for: " << op->name();
+    cache_grad_op_symbolic_shape_interface.CacheGradOpSymbolicShape(
+        infer_context);
+  }
 }
 
 void InferSymExprForBlock(const Block& block,
                           InferSymbolicShapeContext* infer_context) {
   for (auto& op : block) {
-    auto infer_symbolic_shape_interface =
-        op.dyn_cast<pir::InferSymbolicShapeInterface>();
-    if (infer_symbolic_shape_interface) {
-      PrintOpInfo(&op);
-      PADDLE_ENFORCE_EQ(
-          infer_symbolic_shape_interface.InferSymbolicShape(infer_context),
-          true,
-          "InferSymbolicShape for %s failed.",
-          op.name());
-
-      if (op.num_results() > 0) {
-        // TODO(lanxianghit): deal with the ops which have more than 1
-        // ACTUAL results
-        pir::shape::SetShapeAttrForOp(
-            &op, infer_context->GetShapeOrDataForValue(op.result(0)));
-      }
-    } else {
-      const bool all_outs_static_dims = [&] {
-        bool all_static_dims = true;
-        for (uint32_t i = 0; i < op.num_results(); ++i) {
-          if (IsStaticShape(op.result(i))) {
-            continue;
-          } else {
-            all_static_dims = false;
-            break;
-          }
-        }
-        return all_static_dims;
-      }();
-
-      if (all_outs_static_dims) {
-        for (uint32_t i = 0; i < op.num_results(); ++i) {
-          const Type& value_type = op.result(i).type();
-          if (value_type.isa<DenseTensorType>()) {
-            infer_context->SetShapeOrDataForValue(
-                op.result(i),
-                CreateShapeOrDataByDDim(
-                    value_type.dyn_cast<DenseTensorType>().dims()));
-            continue;
-          }
-          if (value_type.isa<VectorType>()) {
-            const std::vector<Type>& vec_data =
-                value_type.dyn_cast<VectorType>().data();
-            symbol::TensorListShapeOrDataDimExprs shape_data_list;
-            for (unsigned i = 0; i < vec_data.size(); ++i) {
-              CHECK(vec_data[i].isa<DenseTensorType>());
-              const DenseTensorType& type_info =
-                  vec_data[i].dyn_cast<DenseTensorType>();
-              shape_data_list.emplace_back(
-                  CreateShapeOrDataByDDim(type_info.dims()));
-            }
-            infer_context->SetShapeOrDataForValue(op.result(i),
-                                                  shape_data_list);
-          }
-        }
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
-      }
+    std::vector<symbol::ShapeOrDataDimExprs> input_shape_or_data;
+    for (auto& input : op.operands_source()) {
+      input_shape_or_data.emplace_back(
+          infer_context->GetShapeOrDataForValue(input));
     }
+    InferSymbolicShapeCacheKey op_infer_cache_key(op, input_shape_or_data);
+    InferSymExprForOp(&op, infer_context, op_infer_cache_key);
+    CacheForwardOpSymbolicShape(&op, infer_context, op_infer_cache_key);
+    CacheBackwardOpSymbolicShape(&op, infer_context);
     DebugPrintOpInfo(&op, infer_context);
     CheckInferSymWithInferMeta(&op, infer_context);
   }
@@ -341,13 +376,29 @@ void InferSymExprForBlock(const Block& block,
 void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
+  auto* infer_context = shape_analysis.MutInferSymbolicShapeContext();
+
+  // hold the kwargs symbol shape info to avoid be cleared when call init.
+  const std::unordered_map<pir::Value, symbol::ShapeOrDataDimExprs>
+      symbol_shape_map = [&] {
+        std::unordered_map<pir::Value, symbol::ShapeOrDataDimExprs>
+            symbol_shape_map;
+        for (const auto& [_, value] : module_op.block().kwargs()) {
+          if (infer_context->HasShapeOrDataForValue(value)) {
+            symbol_shape_map.emplace(
+                value, infer_context->GetShapeOrDataForValue(value));
+          }
+        }
+        return symbol_shape_map;
+      }();
+
   shape_analysis.Init();
-  auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (auto& block : module_op->region(i)) {
-      InferSymExprForBlock(block, infer_context);
-    }
+  // init the kwarg symbol shape info
+  for (const auto& kv : symbol_shape_map) {
+    infer_context->SetShapeOrDataForValue(kv.first, kv.second);
   }
+
+  InferSymExprForBlock(module_op.block(), infer_context);
 }
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
@@ -383,11 +434,11 @@ void AddShapeOptimizationPass(
     pir::Program& program) {                          // NOLINT
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
 
 }  // namespace pir::shape
 
-REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);
+// REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);

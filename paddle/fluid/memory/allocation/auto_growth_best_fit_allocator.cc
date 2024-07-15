@@ -42,9 +42,7 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
 PADDLE_DEFINE_EXPORTED_READONLY_bool(print_allocator_trace_info,
                                      false,
                                      "print trace memory info");
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
@@ -226,6 +224,4 @@ void AutoGrowthBestFitAllocator::Trace() const {
           << " curr_chunks_num:" << chunks_.size();
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

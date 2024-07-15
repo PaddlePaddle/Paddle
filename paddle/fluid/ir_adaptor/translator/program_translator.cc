@@ -41,8 +41,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
@@ -364,7 +363,7 @@ void ProgramTranslator::TranslateIfOperation(
   // NOTE(zhangbo): If program has if_grad_op and if_grad_op sub_block use some
   // value defined in if_op, we should insert tuple_push_op into if_op sub_block
   // and tuple_pop_op into if_grad_op sub_block.
-  if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+  if (!for_bwd && !push_pop_var_names_[op].empty()) {
     pir::Operation* create_stack_op = pir::Operation::Create(
         {},
         {},
@@ -389,7 +388,7 @@ void ProgramTranslator::TranslateIfOperation(
     auto* true_block_context = translation_ctx->CreateInnerContext();
 
     // insert tuple_pop op to if_grad
-    if (for_bwd && push_pop_var_names_[op].size() != 0) {
+    if (for_bwd && !push_pop_var_names_[op].empty()) {
       pir::Operation* tuple_pop_op = pir::Operation::Create(
           {cond_to_stack_value_[cond_grad_to_cond_[op]][1]},
           {},
@@ -410,7 +409,7 @@ void ProgramTranslator::TranslateIfOperation(
                    &true_region.front());
 
     // insert tuple_push op to true block before yield op
-    if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+    if (!for_bwd && !push_pop_var_names_[op].empty()) {
       std::vector<pir::Value> local_values;
       local_values.push_back(cond_to_stack_value_[op][0]);
       for (auto& var_name : push_pop_var_names_[op]) {
@@ -465,6 +464,8 @@ void ProgramTranslator::TranslateIfOperation(
     }
     false_region.front().push_back(
         pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
+    if_op->set_attribute("fake_false_branch",
+                         pir::BoolAttribute::get(ctx_, true));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -824,5 +825,4 @@ ProgramTranslator::VarDesc2Value() {
   return var_desc_2_value;
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

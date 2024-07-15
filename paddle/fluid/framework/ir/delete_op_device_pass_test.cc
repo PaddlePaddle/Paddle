@@ -16,9 +16,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(delete_op_device_pass, relu) {
   ProgramDesc program;
@@ -44,8 +42,6 @@ TEST(delete_op_device_pass, relu) {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(delete_op_device_pass);

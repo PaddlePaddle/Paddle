@@ -19,18 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 //  input_x  input_y, input_x and input_y are both (n,h*w,c)
 //    |        |
 //  elementwise_add (n,h*w,c)
@@ -79,7 +72,8 @@ void ElementwiseAddTransposePattern::operator()(PDNode *x, PDNode *y) {
                             ->AsOutput();
   transpose->LinksFrom({reshape_out}).LinksTo({transpose_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
     ir::Graph *graph) const {
@@ -196,9 +190,7 @@ void ElementwiseAddTransposeFusePass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(elementwiseadd_transpose_pass,
               paddle::framework::ir::ElementwiseAddTransposeFusePass);

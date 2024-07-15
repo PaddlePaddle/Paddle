@@ -128,7 +128,7 @@ template <>
 size_t HashTensor<float16>(const phi::DenseTensor& in) {
   phi::DenseTensor dst_tensor;
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   dst_tensor.Resize(in.dims());
   dst_tensor.set_type(phi::DataType::FLOAT32);
   dst_tensor.set_layout(in.layout());
@@ -164,7 +164,7 @@ void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
   };
 
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   // Convert to fp16
   phi::DenseTensor weight_fp16;
   CastToFp16(&weight_fp32, &weight_fp16);
