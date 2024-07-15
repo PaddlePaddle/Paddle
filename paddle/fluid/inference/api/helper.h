@@ -34,7 +34,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/utils/string/printf.h"
 

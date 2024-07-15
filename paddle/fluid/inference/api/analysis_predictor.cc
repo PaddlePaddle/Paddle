@@ -57,7 +57,6 @@
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"

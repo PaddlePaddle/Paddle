@@ -31,9 +31,9 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/common/place.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
