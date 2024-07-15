@@ -24,7 +24,7 @@
 #define CHECK_AND_CONVERT_PD_TENSOR                              \
   PADDLE_ENFORCE_NOT_NULL(                                       \
       pd_tensor,                                                 \
-      paddle::platform::errors::InvalidArgument(                 \
+      phi::errors::InvalidArgument(                              \
           "The pointer of paddle tensor shouldn't be nullptr")); \
   auto& tensor = pd_tensor->tensor
 
@@ -60,10 +60,10 @@ REPEAT_ALL_DATA_TYPE(PD_TENSOR_MUTABLE_DATA_IMPL)
       __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size) {    \
     CHECK_AND_CONVERT_PD_TENSOR;                                               \
     PADDLE_ENFORCE_NOT_NULL(place,                                             \
-                            paddle::platform::errors::InvalidArgument(         \
+                            phi::errors::InvalidArgument(                      \
                                 "The pointer of place shouldn't be nullptr")); \
     PADDLE_ENFORCE_NOT_NULL(size,                                              \
-                            paddle::platform::errors::InvalidArgument(         \
+                            phi::errors::InvalidArgument(                      \
                                 "The pointer of size shouldn't be nullptr"));  \
     paddle_infer::PlaceType cxx_place_type;                                    \
     int cxx_size;                                                              \

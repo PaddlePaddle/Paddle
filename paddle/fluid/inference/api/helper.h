@@ -73,7 +73,7 @@ inline PaddleDType ConvertToPaddleDType(
   } else if (type == paddle::framework::proto::VarType::UINT8) {
     return PaddleDType::UINT8;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "The paddle dtype convert function only supports FLOAT32, INT64, INT32 "
         "and UINT8 now. But "
         "we get %d here.",
