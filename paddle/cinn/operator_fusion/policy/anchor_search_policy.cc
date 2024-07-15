@@ -31,7 +31,7 @@ std::optional<AnchorTransformRoute> SearchAnchorTransformRecursively(
     const std::unordered_set<pir::Operation*>& ops) {
   VLOG(4) << "[SearchAnchorTransformRecursively] Curent Route:\n"
           << DebugStrOfAnchorTransformRoute(*cur_route);
-  auto transforms = PossibleTransform(begin);
+  auto transforms = PossibleTransform(begin, ops);
   for (auto anchor_transform : transforms) {
     auto info = GetTransformInfo(anchor_transform);
     auto dst_value = info.DstValue();
