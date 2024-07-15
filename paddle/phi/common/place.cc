@@ -21,15 +21,6 @@ limitations under the License. */
 #include "paddle/common/exception.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-#include "paddle/common/flags.h"
-PHI_DEFINE_EXPORTED_bool(
-    benchmark,
-    false,
-    "Doing memory benchmark. It will make deleting scope synchronized, "
-    "and add some memory usage logs."
-    "Default cuda is asynchronous device, set to True will"
-    "force op run in synchronous mode.");
-
 namespace phi {
 
 const char *AllocationTypeStr(AllocationType type) {
