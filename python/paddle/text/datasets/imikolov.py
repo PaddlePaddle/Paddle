@@ -11,15 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import collections
 import tarfile
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    _ImikolovDataType = Literal["NGRAM", "SEQ"]
+    _ImikolovDataSetMode = Literal["train", "test"]
 __all__ = []
 
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
@@ -31,8 +38,8 @@ class Imikolov(Dataset):
     Implementation of imikolov dataset.
 
     Args:
-        data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
+        data_file(str|None): path to data tar file, can be set None if
+            :attr:`download` is True. Default None.
         data_type(str): 'NGRAM' or 'SEQ'. Default 'NGRAM'.
         window_size(int): sliding window size for 'NGRAM' data. Default -1.
         mode(str): 'train' 'test' mode. Default 'train'.
@@ -81,14 +88,22 @@ class Imikolov(Dataset):
 
     """
 
+    data_file: str | None
+    data_type: _ImikolovDataType
+    window_size: int
+    mode: _ImikolovDataSetMode
+    min_word_freq: int
+    download: bool
+    word_idx: dict[str, int]
+
     def __init__(
         self,
-        data_file=None,
-        data_type='NGRAM',
-        window_size=-1,
-        mode='train',
-        min_word_freq=50,
-        download=True,
+        data_file: str | None = None,
+        data_type: _ImikolovDataType = 'NGRAM',
+        window_size: int = -1,
+        mode: _ImikolovDataSetMode = 'train',
+        min_word_freq: int = 50,
+        download: bool = True,
     ):
         assert data_type.upper() in [
             'NGRAM',
@@ -132,7 +147,7 @@ class Imikolov(Dataset):
 
         return word_freq
 
-    def _build_work_dict(self, cutoff):
+    def _build_work_dict(self, cutoff: int) -> dict[str, int]:
         train_filename = './simple-examples/data/ptb.train.txt'
         test_filename = './simple-examples/data/ptb.valid.txt'
         with tarfile.open(self.data_file) as tf:
@@ -154,7 +169,7 @@ class Imikolov(Dataset):
 
         return word_idx
 
-    def _load_anno(self):
+    def _load_anno(self) -> None:
         self.data = []
         with tarfile.open(self.data_file) as tf:
             filename = f'./simple-examples/data/ptb.{self.mode}.txt'
@@ -180,8 +195,8 @@ class Imikolov(Dataset):
                 else:
                     raise AssertionError('Unknow data type')
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[npt.NDArray[np.int_]]:
         return tuple([np.array(d) for d in self.data[idx]])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
