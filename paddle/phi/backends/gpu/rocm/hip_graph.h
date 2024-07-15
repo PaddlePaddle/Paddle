@@ -37,8 +37,6 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
-#ifdef PADDLE_WITH_HIP
-
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -241,8 +239,7 @@ class CUDAGraph {
 
   void Reset();
 
-  void AddPostResetCallback(
-      std::function<void(paddle::optional<const CUDAGraph &>)> callback) {
+  void AddPostResetCallback(std::function<void()> callback) {
     std::lock_guard<std::mutex> guard(mtx_);
     cudagraph_post_reset_callbacks_.push_back(std::move(callback));
   }
@@ -263,7 +260,7 @@ class CUDAGraph {
   static void EndSegmentCapture();
 
   static void AddPostResetCallbackDuringCapturing(
-      std::function<void(paddle::optional<const CUDAGraph &>)> callback) {
+      std::function<void()> callback) {
     capturing_graph_->AddPostResetCallback(std::move(callback));
   }
 
@@ -332,8 +329,7 @@ class CUDAGraph {
   // Holds callbacks that are triggered after the CUDA graph is reset. These
   // callbacks are used for operations that need to be performed following the
   // reset of a CUDA graph.
-  std::vector<std::function<void(paddle::optional<const CUDAGraph &>)>>
-      cudagraph_post_reset_callbacks_;
+  std::vector<std::function<void()>> cudagraph_post_reset_callbacks_;
 
   // Contains callbacks that are invoked after the CUDA graph has been captured.
   // These callbacks are crucial for managing memory allocations related to the
@@ -395,5 +391,3 @@ class CUDAGraphCaptureModeGuard {
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
-
-#endif

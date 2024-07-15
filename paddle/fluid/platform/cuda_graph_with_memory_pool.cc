@@ -143,11 +143,10 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
               << " wait for cuda graph dev_ctx: " << dev_ctx;
     }
   }
-  AddPostResetCallbackIfCapturingCUDAGraph(
-      [=](paddle::optional<const CUDAGraph&> graph) {
-        memory::allocation::AllocatorFacade::Instance()
-            .RemoveMemoryPoolOfCUDAGraph(pool_id);
-      });
+  AddPostResetCallbackIfCapturingCUDAGraph([pool_id] {
+    memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
+        pool_id);
+  });
 }
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
