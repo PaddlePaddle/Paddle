@@ -145,30 +145,30 @@ NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 
 FUNCTION_SET_DEVICE_TEMPLATE = """{}
     SetPythonStack();
-    if (paddle::platform::is_gpu_place(place)) {{
+    if (phi::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
 #else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     }}
-    if (paddle::platform::is_custom_place(place)) {{
+    if (phi::is_custom_place(place)) {{
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DeviceManager::SetDevice(place);
       VLOG(4) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
 #else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
     }}
-    if (paddle::platform::is_xpu_place(place)) {{
+    if (phi::is_xpu_place(place)) {{
 #if defined(PADDLE_WITH_XPU)
       phi::backends::xpu::SetXPUDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::xpu::GetXPUCurrentDeviceId() << " from " << (int)place.device;
 #else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     }}
@@ -205,11 +205,11 @@ static PyMethodDef EagerFinalStateMethods[] = {{
 
 void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {{
-    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+    PADDLE_THROW(phi::errors::Fatal ("Add functions to core.eager.ops failed!"));
   }}
 
   if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {{
-    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+    PADDLE_THROW(phi::errors::Fatal ("Add functions to core.eager.ops failed!"));
   }}
 }}
 

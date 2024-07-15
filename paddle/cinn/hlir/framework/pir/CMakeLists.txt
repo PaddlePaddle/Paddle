@@ -2,7 +2,6 @@ core_gather_headers()
 gather_srcs(
   cinnapi_src
   SRCS
-  group.cc
   utils.cc
   op_lowering_group.cc
   op_lowering_impl.cc

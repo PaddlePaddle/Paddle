@@ -201,8 +201,7 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
                                                     size_t place_id) const {
   auto p = places_[place_id];
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-  op_handle->SetDeviceContext(p,
-                              platform::DeviceContextPool::Instance().Get(p));
+  op_handle->SetDeviceContext(p, phi::DeviceContextPool::Instance().Get(p));
 
   for (ir::Node *input : node->inputs) {
     details::VarHandle *var =
@@ -230,7 +229,7 @@ void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
     size_t loss_scale,
     proto::VarType::Type dtype) const {
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
+    auto *dev_ctx = phi::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new details::ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
         loss_scale,

@@ -135,7 +135,7 @@ static py::array_t<T> CastNumpyArray(const py::object &array) {
   } else if (py::isinstance<py::array_t<std::complex<double>>>(array)) {
     return CastNumpyType<T>(array.cast<py::array_t<std::complex<double>>>());
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Value type error. The assign numpy value allows integer, float, "
         "double, complex64, complex128, and bool, "
         "but received %s.",
@@ -348,24 +348,24 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
                         "The offset exceeds the size of tensor."));
 
   T b = static_cast<T>(0);
-  if (platform::is_cpu_place(self.place()) ||
-      platform::is_cuda_pinned_place(self.place())) {
+  if (phi::is_cpu_place(self.place()) ||
+      phi::is_cuda_pinned_place(self.place())) {
     b = self.data<T>()[offset];
-  } else if (platform::is_xpu_place(self.place())) {
+  } else if (phi::is_xpu_place(self.place())) {
 #ifdef PADDLE_WITH_XPU
     const T *a = self.data<T>();
     auto p = self.place();
     paddle::memory::Copy(phi::CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
-  } else if (platform::is_gpu_place(self.place()) ||
-             platform::is_cuda_pinned_place(self.place())) {
+  } else if (phi::is_gpu_place(self.place()) ||
+             phi::is_cuda_pinned_place(self.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
     auto p = self.place();
     paddle::memory::Copy(
         phi::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
 #endif
-  } else if (platform::is_custom_place(self.place())) {
+  } else if (phi::is_custom_place(self.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     const T *a = self.data<T>();
     auto p = self.place();
@@ -386,23 +386,23 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
                         "The offset exceeds the size of tensor."));
   VLOG(10) << "TensorSetElement, place: " << self->place()
            << ", offset: " << offset << ", element: " << elem;
-  if (platform::is_cpu_place(self->place())) {
+  if (phi::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
-  } else if (platform::is_xpu_place(self->place())) {
+  } else if (phi::is_xpu_place(self->place())) {
 #ifdef PADDLE_WITH_XPU
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, phi::CPUPlace(), &elem, sizeof(T));
 #endif
-  } else if (platform::is_gpu_place(self->place()) ||
-             platform::is_cuda_pinned_place(self->place())) {
+  } else if (phi::is_gpu_place(self->place()) ||
+             phi::is_cuda_pinned_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(
         p, a + offset, phi::CPUPlace(), &elem, sizeof(T), nullptr);
 #endif
-  } else if (platform::is_custom_place(self->place())) {
+  } else if (phi::is_custom_place(self->place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
@@ -425,7 +425,7 @@ void SetTensorFromPyArrayT(
   }
   self->Resize(common::make_ddim(dims));
 
-  if (paddle::platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
@@ -434,7 +434,7 @@ void SetTensorFromPyArrayT(
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
     }
-  } else if (paddle::platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     // NOTE(wangxi): When copying data to the accelerator card,
     // we need set_device(dev_id) first.
@@ -451,7 +451,7 @@ void SetTensorFromPyArrayT(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
-  } else if (paddle::platform::is_ipu_place(place)) {
+  } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
@@ -472,7 +472,7 @@ void SetTensorFromPyArrayT(
         "Cannot use IPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
 #endif
-  } else if (paddle::platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     phi::Place tmp_place = place;
     phi::DeviceGuard guard(tmp_place);
@@ -492,7 +492,7 @@ void SetTensorFromPyArrayT(
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (paddle::platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
       // NOTE(wangxi): When copying data to the accelerator card,
       // we need set_device(dev_id) first.
       platform::CUDADeviceGuard guard(place.device);
@@ -505,7 +505,7 @@ void SetTensorFromPyArrayT(
           dst, array.data(), array.nbytes(), cudaMemcpyHostToDevice);
 #endif
 
-    } else if (paddle::platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
     } else {
@@ -592,7 +592,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
   }
   self->Resize(common::make_ddim(dims));
   auto itemsize = array.itemsize();
-  if (paddle::platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     auto dst = self->mutable_data(place);
     if (array.dtype().kind() == 'S') {
       for (int i = 0; i < self->numel(); ++i) {
@@ -814,17 +814,17 @@ inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
   phi::DenseTensor *output = new phi::DenseTensor();
   output->Resize(ddim);
   auto place = self.place();
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     output->mutable_data(place, self.dtype());
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     output->mutable_data(place, self.dtype());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cuda_pinned_place(place)) {
       output->mutable_data(place, self.dtype());
-    } else if ((platform::is_gpu_place(place))) {
+    } else if ((phi::is_gpu_place(place))) {
       output->mutable_data(place, self.dtype());
     }
 #endif
@@ -972,7 +972,7 @@ inline phi::DenseTensor *_pySliceTensor(const phi::DenseTensor &self,
 
 inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
                                        py::object obj) {
-  if (platform::is_gpu_place(self.place())) {
+  if (phi::is_gpu_place(self.place())) {
     std::unique_ptr<phi::DenseTensor> holder;
     phi::DenseTensor src;
     framework::TensorCopySync(self, phi::CPUPlace(), &src);
@@ -991,9 +991,9 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   if (!tensor.IsInitialized()) {
     return py::array();
   }
-  bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
-  bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
-  bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
+  bool is_gpu_tensor = phi::is_gpu_place(tensor.place());
+  bool is_xpu_tensor = phi::is_xpu_place(tensor.place());
+  bool is_custom_device_tensor = phi::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   size_t sizeof_dtype = phi::SizeOf(tensor.type());
 

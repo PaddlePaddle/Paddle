@@ -21,7 +21,7 @@ limitations under the License. */
 
 TEST(Device, DeviceContextWithCUDAGraph) {
   using paddle::platform::DeviceContext;
-  using paddle::platform::DeviceContextPool;
+  using phi::DeviceContextPool;
   using phi::GPUContext;
   using phi::GPUPlace;
   using phi::Place;

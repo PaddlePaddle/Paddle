@@ -114,13 +114,12 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
           }
         }
       } else if (LIKELY(t.is_dist_tensor())) {
+        PADDLE_ENFORCE(tensor->is_dist_tensor(),
+                       phi::errors::Fatal("A DistTensor can only do gradient "
+                                          "merge with another DistTensor."));
         PADDLE_ENFORCE(
-            tensor->is_dist_tensor(),
-            paddle::platform::errors::Fatal("A DistTensor can only do gradient "
-                                            "merge with another DistTensor."));
-        PADDLE_ENFORCE(!t.is_custom_device(),
-                       paddle::platform::errors::Fatal(
-                           "DistTensor doesn't support custom device."));
+            !t.is_custom_device(),
+            phi::errors::Fatal("DistTensor doesn't support custom device."));
         auto t_dist =
             std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl());
         paddle::Tensor t_values(
@@ -156,12 +155,12 @@ GradNodeAccumulation::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API Grad: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
-                 paddle::platform::errors::Fatal(
+                 phi::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
                      "However received: %d slot.",
                      grads.size()));
   PADDLE_ENFORCE(grads[0].size() == 1,
-                 paddle::platform::errors::Fatal(
+                 phi::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
                      "However received: %d in slot %d .",
                      grads[0].size(),

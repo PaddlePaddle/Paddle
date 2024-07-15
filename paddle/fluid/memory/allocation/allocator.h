@@ -144,7 +144,7 @@ static T&& FillValue(T&& allocation) {
 #if defined(PADDLE_WITH_CUDA)
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      bool need_sync = !platform::is_cpu_place(allocation->place());
+      bool need_sync = !phi::is_cpu_place(allocation->place());
       if (need_sync) {
         PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
@@ -152,7 +152,7 @@ static T&& FillValue(T&& allocation) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
-        if (platform::is_gpu_place(allocation->place())) {
+        if (phi::is_gpu_place(allocation->place())) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
         } else {
