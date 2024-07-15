@@ -205,6 +205,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -940,6 +941,23 @@ void BindVjp(pybind11::module *m) {
             for (size_t j = 0; j < inputs[idx].size(); ++j) {
               if (vjp_res[grad_index][j]) {
                 // The grad_type must equal to forward type.
+                if (auto fwd_type =
+                        inputs[idx][j]
+                            .type()
+                            .dyn_cast<dialect::DistTypeInterface>()) {
+                  if (auto bwd_type =
+                          vjp_res[grad_index][j]
+                              .type()
+                              .dyn_cast<dialect::DistTypeInterface>()) {
+                    auto fwd_attr = fwd_type.tensor_dist_attr();
+                    auto bwd_attr = bwd_type.tensor_dist_attr();
+                    if (fwd_attr.process_mesh_attr() ==
+                            bwd_attr.process_mesh_attr() &&
+                        fwd_attr.dims_mapping() == bwd_attr.dims_mapping()) {
+                      continue;
+                    }
+                  }
+                }
                 vjp_res[grad_index][j].set_type(inputs[idx][j].type());
               }
             }
