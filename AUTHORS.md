@@ -31,6 +31,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | helinwang | He-Lin Wang |
 | heliqi | Li-Qi He |
 | houj04 | HOU Jue |
+| [runzhech](https://github.com/runzhech) | Runzhe Chen |
 | HulekJakub | Jakub Hulek |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
