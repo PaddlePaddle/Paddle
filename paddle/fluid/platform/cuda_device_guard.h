@@ -56,7 +56,7 @@ class CUDADeviceGuard {
     }
   }
 
-  void SetDevice(const CUDAPlace& place) {
+  void SetDevice(const phi::GPUPlace& place) {
     int dev_id = place.device;
     SetDeviceIndex(dev_id);
   }
