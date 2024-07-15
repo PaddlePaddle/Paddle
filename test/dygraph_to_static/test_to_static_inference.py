@@ -18,6 +18,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -41,6 +42,7 @@ class TestLayer(paddle.nn.Layer):
 
 class TestToStaticInfenrenceModel(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
@@ -56,6 +58,7 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
 
 class TestToStaticInfenrenceFunc(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
