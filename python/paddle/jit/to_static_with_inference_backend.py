@@ -45,9 +45,50 @@ def register_triton_custom_ops(model_dir):
                 )
 
 
+# get paddle.Tensor for paddle inference use.
+def get_tensor(run_time_args, arg_name):
+    if isinstance(run_time_args, paddle.Tensor):
+        return [run_time_args]
+    elif isinstance(run_time_args, list):
+        this_input_tensor_lists = []
+        for ele in run_time_args:
+            assert isinstance(
+                ele, paddle.Tensor
+            ), f"the elements in {arg_name} must be paddle.Tensor"
+            this_input_tensor_lists.append(ele)
+        return this_input_tensor_lists
+    elif run_time_args is None:
+        return [None]
+    else:
+        raise AssertionError(
+            f'''we only support adding @paddle.jit.to_static(backend='inference', ) in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
+            but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
+        )
+
+
+# get paddle.Tensor's input_spec for doing dynamic to static.
+def get_d2s_spec(run_time_args, name):
+    if isinstance(run_time_args, paddle.Tensor):
+        return InputSpec.from_tensor(run_time_args, name=name)
+    elif isinstance(run_time_args, list):
+        this_input_spec = []
+        suffix = 0
+        for ele in run_time_args:
+            assert isinstance(ele, paddle.Tensor)
+            this_input_spec.append(
+                InputSpec.from_tensor(ele, name=name + "_" + str(suffix))
+            )
+            suffix += 1
+        return this_input_spec
+    elif run_time_args is None:
+        # we need to add a None input_spec!
+        return None
+
+
 class InferenceEngine:
     def __init__(self, func, used_as_at_decorator, **kwargs):
         super().__init__()
+        self.used_as_at_decorator = used_as_at_decorator
 
         self.predictor = None
         signature = inspect.signature(func)
@@ -117,7 +158,133 @@ class InferenceEngine:
         self.d2s_input_shapes = d2s_input_shapes
         self.d2s_input_names = d2s_input_names
 
-    # why we need input_tensor_lists, this is for TensorRT dynamic shape
+    def check_and_update_d2s_input_shapes(self, input_tensor_lists):
+        d2s_input_shapes = self.d2s_input_shapes
+        # initiate the d2s_input_shapes.
+        if len(d2s_input_shapes) == 0:
+            for tensor in input_tensor_lists:
+                if tensor is None:
+                    d2s_input_shapes.append([])
+                else:
+                    d2s_input_shapes.append(tensor.shape)
+
+        self.re_do_d2s = False
+        # check whether the shape is changed
+        for i in range(len(d2s_input_shapes)):
+            if input_tensor_lists[i] is None:
+                continue
+            # The rank of this tensor has changed
+            if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
+                self.re_do_d2s = True
+                d2s_input_shapes[i] = input_tensor_lists[i]
+                print("rank is changed, we need re do d2s.")
+                continue
+            for j in range(len(d2s_input_shapes[i])):
+                if (
+                    d2s_input_shapes[i][j] != -1
+                    and d2s_input_shapes[i][j] != input_tensor_lists[i].shape[j]
+                ):
+                    self.re_do_d2s = True
+                    d2s_input_shapes[i][j] = -1
+                    print("shape is changed, we need re do d2s.")
+            sys.stdout.flush()
+        # update the d2s_input_shapes, because of dynamic shape
+        self.d2s_input_shapes = d2s_input_shapes
+
+    def to_static_model(self, func, input_tensor_lists, *args, **kwargs):
+        class WrappedLayer(paddle.nn.Layer):
+            def __init__(self, layer):
+                super().__init__()
+                self.fn = func
+                self.layer = layer
+
+            def forward(self, args):
+                return (
+                    paddle.jit.dy2static.program_translator.convert_to_static(
+                        self.fn
+                    )(self.layer, *args)
+                )
+
+        arg_names = self.arg_names
+        arg_defaults = self.arg_defaults
+
+        # we need do ds2.
+        input_specs = []
+        # first we handle Positional Arguments
+        for i in range(len(args)):
+            if i == 0 and self.used_as_at_decorator:
+                assert isinstance(args[i], paddle.nn.Layer)
+            else:
+                input_specs.append(get_d2s_spec(args[i], name=arg_names[i]))
+        position_arguments_num = len(args)
+        # second we handle Keyword Arguments
+        for i in range(position_arguments_num, len(arg_names)):
+            if arg_names[i] in kwargs.keys():
+                this_input = kwargs[arg_names[i]]
+                input_specs.append(get_d2s_spec(this_input, name=arg_names[i]))
+            else:
+                this_input = arg_defaults[i]
+                if this_input is not None:
+                    raise ValueError(
+                        f"{arg_names[i]}'s default value must be None."
+                    )
+                input_specs.append(None)
+
+        # update the input_spec's shape for doing d2s
+        d2s_shapes_id = 0
+        # initial the self.d2s_input_names!
+        if len(self.d2s_input_names) == 0:
+            self.d2s_input_names.extend([None] * len(input_tensor_lists))
+        for i in range(len(input_specs)):
+            if type(input_specs[i]) == list:
+                for j in range(len(input_specs[i])):
+                    input_specs[i][j].shape = self.d2s_input_shapes[
+                        d2s_shapes_id
+                    ]
+                    self.d2s_input_names[d2s_shapes_id] = input_specs[i][j].name
+                    d2s_shapes_id += 1
+            elif type(input_specs[i]) == paddle.static.InputSpec:
+                input_specs[i].shape = self.d2s_input_shapes[d2s_shapes_id]
+                self.d2s_input_names[d2s_shapes_id] = input_specs[i].name
+                d2s_shapes_id += 1
+            elif input_specs[i] is None:
+                if self.used_as_at_decorator:
+                    self.d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
+                else:
+                    self.d2s_input_names[d2s_shapes_id] = arg_names[i]
+                d2s_shapes_id += 1
+
+        os.environ["TRITON_KERNEL_CACHE_DIR"] = self.save_model_dir
+
+        print("we are doing d2s!!")
+        print("input_specs: ", input_specs)
+        sys.stdout.flush()
+
+        to_d2s_thing = func
+        if self.used_as_at_decorator:
+            to_d2s_thing = WrappedLayer(args[0])
+            input_specs = [input_specs]
+
+        model = paddle.jit.to_static(
+            to_d2s_thing,
+            input_spec=input_specs,
+            full_graph=True,
+        )
+        paddle.jit.save(model, self.save_path, skip_prune_program=True)
+
+        # save d2s_shapes
+        assert len(self.d2s_input_names) == len(self.d2s_input_shapes)
+        with open(self.d2s_input_info_path, "w") as f:
+            for i in range(len(self.d2s_input_names)):
+                line = self.d2s_input_names[i] + ":"
+                line += (
+                    ",".join([str(s) for s in self.d2s_input_shapes[i]]) + "\n"
+                )
+                f.write(line)
+        print("d2s are done!!")
+        sys.stdout.flush()
+
+    # why we need input_tensor_lists? this is for TensorRT max/min/opt shape.
     def create_predictor(self, input_tensor_lists):
         # create predictor
         model_file = self.save_model_dir + "/infer.pdmodel"
@@ -201,45 +368,12 @@ def paddle_inference_decorator(function=None, **kwargs):
 
         infer_engine = InferenceEngine(func, used_as_at_decorator, **kwargs)
 
-        class WrappedLayer(paddle.nn.Layer):
-            def __init__(self, layer):
-                super().__init__()
-                self.fn = func
-                self.layer = layer
-
-            def forward(self, args):
-                return (
-                    paddle.jit.dy2static.program_translator.convert_to_static(
-                        self.fn
-                    )(self.layer, *args)
-                )
-
         # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.jit.to_static(backend='inference', )
         # he is actually invoke this internel function.
         def innermost_decorator(*args, **kwargs):
-            def get_tensor(run_time_args, arg_name):
-                if isinstance(run_time_args, paddle.Tensor):
-                    return [run_time_args]
-                elif isinstance(run_time_args, list):
-                    this_input_tensor_lists = []
-                    for ele in run_time_args:
-                        assert isinstance(
-                            ele, paddle.Tensor
-                        ), f"the elements in {arg_name} must be paddle.Tensor"
-                        this_input_tensor_lists.append(ele)
-                    return this_input_tensor_lists
-                elif run_time_args is None:
-                    return [None]
-                else:
-                    raise AssertionError(
-                        f'''we only support adding @paddle.jit.to_static(backend='inference', ) in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
-                        but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
-                    )
-
             input_tensor_lists = []
             collected_names = []
             arg_names = infer_engine.arg_names
-            d2s_input_shapes = infer_engine.d2s_input_shapes
             arg_defaults = infer_engine.arg_defaults
             d2s_input_names = infer_engine.d2s_input_names
 
@@ -271,41 +405,17 @@ def paddle_inference_decorator(function=None, **kwargs):
                     f"some arguments are not specified when you invoke your function, you must specify your all arguments, below arguments are not specified: {unspecified_names}"
                 )
 
-            # initiate the d2s_input_shapes.
-            if len(d2s_input_shapes) == 0:
-                for tensor in input_tensor_lists:
-                    if tensor is None:
-                        d2s_input_shapes.append([])
-                    else:
-                        d2s_input_shapes.append(tensor.shape)
-
-            re_do_d2s = False
-            # check whether the shape is changed
-            for i in range(len(d2s_input_shapes)):
-                if input_tensor_lists[i] is None:
-                    continue
-                # The rank of this tensor has changed
-                if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
-                    re_do_d2s = True
-                    d2s_input_shapes[i] = input_tensor_lists[i]
-                    print("rank is changed, we need re do d2s.")
-                    continue
-                for j in range(len(d2s_input_shapes[i])):
-                    if (
-                        d2s_input_shapes[i][j] != -1
-                        and d2s_input_shapes[i][j]
-                        != input_tensor_lists[i].shape[j]
-                    ):
-                        re_do_d2s = True
-                        d2s_input_shapes[i][j] = -1
-                        print("shape is changed, we need re do d2s.")
-                sys.stdout.flush()
+            # this function will update infer_engine.re_do_d2s.
+            infer_engine.check_and_update_d2s_input_shapes(input_tensor_lists)
 
             remove_non_input_tensor_lists = [
                 ele for ele in input_tensor_lists if ele is not None
             ]
 
-            if infer_engine.predictor is not None and not re_do_d2s:
+            if (
+                infer_engine.predictor is not None
+                and not infer_engine.re_do_d2s
+            ):
                 results = infer_engine.predictor.run(
                     remove_non_input_tensor_lists
                 )
@@ -315,116 +425,11 @@ def paddle_inference_decorator(function=None, **kwargs):
             if (
                 not os.path.exists(infer_engine.save_path + ".pdmodel")
                 or not infer_engine.cache_static_model
-                or re_do_d2s
+                or infer_engine.re_do_d2s
             ):
-
-                def get_d2s_spec(run_time_args, name):
-                    if isinstance(run_time_args, paddle.Tensor):
-                        return InputSpec.from_tensor(run_time_args, name=name)
-                    elif isinstance(run_time_args, list):
-                        this_input_spec = []
-                        suffix = 0
-                        for ele in run_time_args:
-                            assert isinstance(ele, paddle.Tensor)
-                            this_input_spec.append(
-                                InputSpec.from_tensor(
-                                    ele, name=name + "_" + str(suffix)
-                                )
-                            )
-                            suffix += 1
-                        return this_input_spec
-                    elif run_time_args is None:
-                        # we need to add a None input_spec!
-                        return None
-
-                # we need do ds2.
-                input_specs = []
-                # first we handle Positional Arguments
-                for i in range(len(args)):
-                    if i == 0 and used_as_at_decorator:
-                        assert isinstance(args[i], paddle.nn.Layer)
-                    else:
-                        input_specs.append(
-                            get_d2s_spec(args[i], name=arg_names[i])
-                        )
-                # second we handle Keyword Arguments
-                for i in range(position_arguments_num, len(arg_names)):
-                    if arg_names[i] in kwargs.keys():
-                        this_input = kwargs[arg_names[i]]
-                        input_specs.append(
-                            get_d2s_spec(this_input, name=arg_names[i])
-                        )
-                    else:
-                        this_input = arg_defaults[i]
-                        if this_input is not None:
-                            raise ValueError(
-                                f"{arg_names[i]}'s default value must be None."
-                            )
-                        input_specs.append(None)
-
-                # update the input_spec's shape for doing d2s
-                d2s_shapes_id = 0
-                # initial the d2s_input_names!
-                if len(d2s_input_names) == 0:
-                    d2s_input_names.extend([None] * len(input_tensor_lists))
-                for i in range(len(input_specs)):
-                    if type(input_specs[i]) == list:
-                        for j in range(len(input_specs[i])):
-                            input_specs[i][j].shape = d2s_input_shapes[
-                                d2s_shapes_id
-                            ]
-                            d2s_input_names[d2s_shapes_id] = input_specs[i][
-                                j
-                            ].name
-                            d2s_shapes_id += 1
-                    elif type(input_specs[i]) == paddle.static.InputSpec:
-                        input_specs[i].shape = d2s_input_shapes[d2s_shapes_id]
-                        d2s_input_names[d2s_shapes_id] = input_specs[i].name
-                        d2s_shapes_id += 1
-                    elif input_specs[i] is None:
-                        if used_as_at_decorator:
-                            d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
-                        else:
-                            d2s_input_names[d2s_shapes_id] = arg_names[i]
-                        d2s_shapes_id += 1
-
-                infer_engine.d2s_input_names = d2s_input_names
-                infer_engine.d2s_input_shapes = d2s_input_shapes
-
-                os.environ[
-                    "TRITON_KERNEL_CACHE_DIR"
-                ] = infer_engine.save_model_dir
-
-                print("we are doing d2s!!")
-                print("input_specs: ", input_specs)
-                sys.stdout.flush()
-
-                to_d2s_thing = func
-                if used_as_at_decorator:
-                    to_d2s_thing = WrappedLayer(args[0])
-                    input_specs = [input_specs]
-
-                model = paddle.jit.to_static(
-                    to_d2s_thing,
-                    input_spec=input_specs,
-                    full_graph=True,
+                infer_engine.to_static_model(
+                    func, input_tensor_lists, *args, **kwargs
                 )
-                paddle.jit.save(
-                    model, infer_engine.save_path, skip_prune_program=True
-                )
-
-                # save d2s_shapes
-                assert len(d2s_input_names) == len(d2s_input_shapes)
-                with open(infer_engine.d2s_input_info_path, "w") as f:
-                    for i in range(len(d2s_input_names)):
-                        line = d2s_input_names[i] + ":"
-                        line += (
-                            ",".join([str(s) for s in d2s_input_shapes[i]])
-                            + "\n"
-                        )
-                        f.write(line)
-                print("d2s are done!!")
-                sys.stdout.flush()
             else:
                 # we need register some triton ops.
                 register_triton_custom_ops(infer_engine.save_model_dir)

@@ -25,7 +25,6 @@ import warnings
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
-from pathlib import Path
 from types import ModuleType
 from typing import (
     TYPE_CHECKING,
@@ -69,7 +68,7 @@ from paddle.utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
 )
-from .to_static_with_inference_backend import paddle_inference_decorator
+
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
 from .dy2static.program_translator import (
@@ -80,6 +79,7 @@ from .dy2static.program_translator import (
     unwrap_decorators,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
+from .to_static_with_inference_backend import paddle_inference_decorator
 from .translated_layer import (
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_INFO_SUFFIX,
@@ -210,6 +210,7 @@ def to_static(
     **kwargs: Unpack[_ToStaticOptions],
 ) -> _ToStaticDecorator:
     ...
+
 
 def to_static(
     function=None,
