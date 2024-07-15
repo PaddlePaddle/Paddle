@@ -11,14 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import tarfile
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    _Wmt14DataSetMode = Literal["train", "test", "gen"]
 __all__ = []
 
 URL_DEV_TEST = (
@@ -45,12 +51,12 @@ class WMT14(Dataset):
     http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz .
 
     Args:
-        data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
-        mode(str): 'train', 'test' or 'gen'. Default 'train'
+        data_file(str|None): path to data tar file, can be set None if
+            :attr:`download` is True. Default None.
+        mode(str): 'train', 'test' or 'gen'. Default 'train'.
         dict_size(int): word dictionary size. Default -1.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
         Dataset: Instance of WMT14 dataset
@@ -95,9 +101,21 @@ class WMT14(Dataset):
 
     """
 
+    mode: _Wmt14DataSetMode
+    data_file: str | None
+    dict_size: int
+    out_dict: dict[str, int]
+    src_ids: list[npt.NDArray[np.int_]]
+    trg_ids: list[npt.NDArray[np.int_]]
+    trg_ids_next: list[npt.NDArray[np.int_]]
+
     def __init__(
-        self, data_file=None, mode='train', dict_size=-1, download=True
-    ):
+        self,
+        data_file: str | None = None,
+        mode: _Wmt14DataSetMode = 'train',
+        dict_size: int = -1,
+        download: bool = True,
+    ) -> None:
         assert mode.lower() in [
             'train',
             'test',
@@ -119,8 +137,8 @@ class WMT14(Dataset):
         self.dict_size = dict_size
         self._load_data()
 
-    def _load_data(self):
-        def __to_dict(fd, size):
+    def _load_data(self) -> None:
+        def __to_dict(fd, size: int) -> dict:
             out_dict = {}
             for line_count, line in enumerate(fd):
                 if line_count < size:
@@ -181,17 +199,25 @@ class WMT14(Dataset):
                     self.trg_ids.append(trg_ids)
                     self.trg_ids_next.append(trg_ids_next)
 
-    def __getitem__(self, idx):
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
+        npt.NDArray[np.int_],
+        npt.NDArray[np.int_],
+        npt.NDArray[np.int_],
+    ]:
         return (
             np.array(self.src_ids[idx]),
             np.array(self.trg_ids[idx]),
             np.array(self.trg_ids_next[idx]),
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.src_ids)
 
-    def get_dict(self, reverse=False):
+    def get_dict(
+        self, reverse: bool = False
+    ) -> tuple[dict[str, int], dict[int, str]]:
         """
         Get the source and target dictionary.
 
