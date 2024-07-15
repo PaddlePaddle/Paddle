@@ -21,46 +21,42 @@ using paddle::dialect::details::CreateShapeOrDataForXShape;
 
 bool AllOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
   return details::ReduceInferDim(op,
                                  infer_context,
-                                 details::GetVectorAttr(op, "axis"), /*axis*/
-                                 GetBoolAttr(op, "keepdim"),         /*keepdim*/
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
                                  axis.size() == 0 /*reduce_all*/);
-
-  return true;
 }
 
 bool AmaxOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
   return details::ReduceInferDim(op,
                                  infer_context,
-                                 details::GetVectorAttr(op, "axis"), /*axis*/
-                                 GetBoolAttr(op, "keepdim"),         /*keepdim*/
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
                                  axis.size() == 0 /*reduce_all*/);
-
-  return true;
 }
 
 bool AminOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
   return details::ReduceInferDim(op,
                                  infer_context,
-                                 details::GetVectorAttr(op, "axis"), /*axis*/
-                                 GetBoolAttr(op, "keepdim"),         /*keepdim*/
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
                                  axis.size() == 0 /*reduce_all*/);
-
-  return true;
 }
 
 bool AnyOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
   return details::ReduceInferDim(op,
                                  infer_context,
-                                 details::GetVectorAttr(op, "axis"), /*axis*/
-                                 GetBoolAttr(op, "keepdim"),         /*keepdim*/
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
                                  axis.size() == 0 /*reduce_all*/);
-
-  return true;
 }
 
 bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
