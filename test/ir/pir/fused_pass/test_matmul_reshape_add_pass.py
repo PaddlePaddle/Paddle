@@ -57,7 +57,7 @@ class TestMatmulAddFusePattern(PassTest):
                 matmul_out = paddle.matmul(reshape_x, reshape_y)
                 out = paddle.add(paddle.reshape(matmul_out, [5, 5]), residual)
                 out = paddle.assign(out)
-                self.pass_attr_list = [{'matmul_reshape_add_pass': {}}]
+                self.pass_attr_list = [{'matmul_reshape_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -116,7 +116,7 @@ class TestMatmulAddFusePattern2(PassTest):
                     paddle.reshape(matmul_out, [5, 5, 5, 5]), residual
                 )
                 out = paddle.assign(out)
-                self.pass_attr_list = [{'matmul_reshape_add_pass': {}}]
+                self.pass_attr_list = [{'matmul_reshape_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),

@@ -121,7 +121,7 @@ class MatmulReshapeElementwiseAddFusePattern
 class MatmulReshapeElementwiseAddFusePass : public pir::PatternRewritePass {
  public:
   MatmulReshapeElementwiseAddFusePass()
-      : pir::PatternRewritePass("matmul_reshape_add_pass", 3) {}
+      : pir::PatternRewritePass("matmul_reshape_add_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -151,4 +151,5 @@ std::unique_ptr<Pass> CreateMatmulReshapeAddPass() {
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_reshape_add_pass, MatmulReshapeElementwiseAddFusePass);
+REGISTER_IR_PASS(matmul_reshape_add_fuse_pass,
+                 MatmulReshapeElementwiseAddFusePass);
