@@ -115,6 +115,12 @@ class Conll05st(Dataset):
     verb_dict_file: str | None
     target_dict_file: str | None
     emb_file: str | None
+    word_dict: dict[str, int]
+    predicate_dict: dict[str, int]
+    label_dict: dict[str, int]
+    sentences: list
+    predicates: list
+    labels: list
 
     def __init__(
         self,
