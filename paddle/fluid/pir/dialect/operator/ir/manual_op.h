@@ -34,11 +34,12 @@
 
 namespace paddle {
 namespace dialect {
-class AddN_Op : public pir::Op<AddN_Op,
-                               paddle::dialect::OpYamlInfoInterface,
-                               paddle::dialect::InferMetaInterface,
-                               paddle::dialect::InferSymbolicShapeInterface,
-                               paddle::dialect::InplaceTrait> {
+class TEST_API AddN_Op
+    : public pir::Op<AddN_Op,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::InferSymbolicShapeInterface,
+                     paddle::dialect::InplaceTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n_"; }
@@ -113,7 +114,7 @@ class FusedGemmEpilogueOp
       pir::AttributeMap *p_attributes);
 };
 
-class FusedGemmEpilogueGradOp
+class TEST_API FusedGemmEpilogueGradOp
     : public pir::Op<FusedGemmEpilogueGradOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface> {
@@ -146,7 +147,7 @@ class FusedGemmEpilogueGradOp
       pir::AttributeMap *p_attributes);
 };
 
-class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
+class TEST_API SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.split_grad"; }
@@ -172,10 +173,11 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
       pir::AttributeMap *p_attributes);
 };
 
-class CreateArrayOp : public pir::Op<CreateArrayOp,
-                                     OpYamlInfoInterface,
-                                     InferMetaInterface,
-                                     paddle::dialect::ForwardOnlyTrait> {
+class TEST_API CreateArrayOp
+    : public pir::Op<CreateArrayOp,
+                     OpYamlInfoInterface,
+                     InferMetaInterface,
+                     paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.create_array"; }
@@ -193,10 +195,11 @@ class CreateArrayOp : public pir::Op<CreateArrayOp,
       pir::AttributeMap *p_attributes);
 };
 
-class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
-                                         OpYamlInfoInterface,
-                                         InferMetaInterface,
-                                         paddle::dialect::ForwardOnlyTrait> {
+class TEST_API CreateArrayLikeOp
+    : public pir::Op<CreateArrayLikeOp,
+                     OpYamlInfoInterface,
+                     InferMetaInterface,
+                     paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.create_array_like"; }
@@ -216,10 +219,11 @@ class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
       pir::AttributeMap *p_attributes);
 };
 
-class ArrayLengthOp : public pir::Op<ArrayLengthOp,
-                                     OpYamlInfoInterface,
-                                     InferMetaInterface,
-                                     paddle::dialect::ForwardOnlyTrait> {
+class TEST_API ArrayLengthOp
+    : public pir::Op<ArrayLengthOp,
+                     OpYamlInfoInterface,
+                     InferMetaInterface,
+                     paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_length"; }
@@ -238,11 +242,11 @@ class ArrayLengthOp : public pir::Op<ArrayLengthOp,
       pir::AttributeMap *p_attributes);
 };
 
-class ArrayReadOp : public pir::Op<ArrayReadOp,
-                                   OpYamlInfoInterface,
-                                   paddle::dialect::VjpInterface,
-                                   InferMetaInterface,
-                                   paddle::dialect::ForwardOnlyTrait> {
+class TEST_API ArrayReadOp : public pir::Op<ArrayReadOp,
+                                            OpYamlInfoInterface,
+                                            paddle::dialect::VjpInterface,
+                                            InferMetaInterface,
+                                            paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_read"; }
@@ -273,13 +277,14 @@ class ArrayReadOp : public pir::Op<ArrayReadOp,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class FetchOp : public pir::Op<FetchOp,
-                               paddle::dialect::InferMetaInterface,
-                               paddle::dialect::InferSymbolicShapeInterface,
-                               paddle::dialect::OpYamlInfoInterface,
-                               paddle::dialect::GetKernelTypeForVarInterface,
-                               pir::SideEffectTrait,
-                               pir::ImmutableLayoutTrait> {
+class TEST_API FetchOp
+    : public pir::Op<FetchOp,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::InferSymbolicShapeInterface,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface,
+                     pir::SideEffectTrait,
+                     pir::ImmutableLayoutTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.fetch"; }
@@ -315,12 +320,13 @@ class FetchOp : public pir::Op<FetchOp,
   pir::Value out() { return result(0); }
 };
 
-class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
-                                     OpYamlInfoInterface,
-                                     paddle::dialect::VjpInterface,
-                                     InferMetaInterface,
-                                     InplaceTrait,
-                                     paddle::dialect::ForwardOnlyTrait> {
+class TEST_API ArrayWrite_Op
+    : public pir::Op<ArrayWrite_Op,
+                     OpYamlInfoInterface,
+                     paddle::dialect::VjpInterface,
+                     InferMetaInterface,
+                     InplaceTrait,
+                     paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_write_"; }
@@ -349,10 +355,10 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
-                                       OpYamlInfoInterface,
-                                       paddle::dialect::VjpInterface,
-                                       InferMetaInterface> {
+class TEST_API ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
+                                                OpYamlInfoInterface,
+                                                paddle::dialect::VjpInterface,
+                                                InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_to_tensor"; }
@@ -380,7 +386,7 @@ class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class TensorToArrayOp
+class TEST_API TensorToArrayOp
     : public pir::Op<TensorToArrayOp, OpYamlInfoInterface, InferMetaInterface> {
  public:
   using Op::Op;
@@ -404,7 +410,7 @@ class TensorToArrayOp
       pir::AttributeMap *p_attributes);
 };
 
-class SliceArrayOp
+class TEST_API SliceArrayOp
     : public pir::Op<SliceArrayOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -439,7 +445,7 @@ class SliceArrayOp
       pir::AttributeMap *p_attributes);
 };
 
-class SliceArrayDenseOp
+class TEST_API SliceArrayDenseOp
     : public pir::Op<SliceArrayDenseOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -472,7 +478,7 @@ class SliceArrayDenseOp
       pir::AttributeMap *p_attributes);
 };
 
-class AssignArrayOp
+class TEST_API AssignArrayOp
     : public pir::Op<AssignArrayOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -504,7 +510,7 @@ class AssignArrayOp
       pir::AttributeMap *p_attributes);
 };
 
-class AssignArray_Op
+class TEST_API AssignArray_Op
     : public pir::Op<AssignArray_Op,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -533,12 +539,13 @@ class AssignArray_Op
       pir::AttributeMap *p_attributes);
 };
 
-class ExpandOp : public pir::Op<ExpandOp,
-                                paddle::dialect::OpYamlInfoInterface,
-                                paddle::dialect::InferMetaInterface,
-                                paddle::dialect::InferSymbolicShapeInterface,
-                                paddle::dialect::VjpInterface,
-                                paddle::dialect::GetKernelTypeForVarInterface> {
+class TEST_API ExpandOp
+    : public pir::Op<ExpandOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::InferSymbolicShapeInterface,
+                     paddle::dialect::VjpInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.expand"; }
@@ -585,7 +592,7 @@ class ExpandOp : public pir::Op<ExpandOp,
   void CacheGradOpSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class IncrementOp
+class TEST_API IncrementOp
     : public pir::Op<IncrementOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -631,7 +638,7 @@ class IncrementOp
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class Increment_Op
+class TEST_API Increment_Op
     : public pir::Op<Increment_Op,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -678,7 +685,7 @@ class Increment_Op
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class AssignOut_Op
+class TEST_API AssignOut_Op
     : public pir::Op<AssignOut_Op,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -723,7 +730,7 @@ class AssignOut_Op
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class MemcpyD2hMultiIoOp
+class TEST_API MemcpyD2hMultiIoOp
     : public pir::Op<MemcpyD2hMultiIoOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
@@ -790,12 +797,13 @@ class IR_API ShapeBroadcastOp
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class ArrayPopOp : public pir::Op<ArrayPopOp,
-                                  paddle::dialect::OpYamlInfoInterface,
-                                  paddle::dialect::InferMetaInterface,
-                                  paddle::dialect::GetKernelTypeForVarInterface,
-                                  InplaceTrait,
-                                  paddle::dialect::ForwardOnlyTrait> {
+class TEST_API ArrayPopOp
+    : public pir::Op<ArrayPopOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface,
+                     InplaceTrait,
+                     paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_pop"; }
