@@ -105,7 +105,7 @@ AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
   }
 
   PADDLE_ENFORCE_EQ(
-      paddle::inference::IsFileExists(prog_file),
+      paddle::inference::IsFileExists(prog_file_),
       true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
