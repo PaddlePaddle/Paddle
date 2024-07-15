@@ -445,11 +445,9 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
-  bool use_pir = config_.use_pir_;
-  bool use_new_executor = config_.use_new_executor_;
   if (load_pir_model_) {
     PADDLE_ENFORCE_EQ(
-        FLAGS_enable_pir_api || (use_pir && use_new_executor),
+        FLAGS_enable_pir_api || (config_.use_pir_ && config_.use_new_executor_),
         true,
         platform::errors::InvalidArgument(
             "Models with a .json suffix can only run in PIR mode. Please set "

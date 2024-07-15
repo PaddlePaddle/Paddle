@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sys/stat.h>
-
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -89,16 +87,6 @@ AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
   Update();
 }
 
-bool is_directory(const std::string &path) {
-  struct stat info;
-  if (stat(path.c_str(), &info) != 0) {
-    return false;
-  } else if (info.st_mode & S_IFDIR) {
-    return true;
-  }
-  return false;
-}
-
 AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
                                const std::string &params_file_or_model_prefix) {
   if (is_directory(prog_file_or_model_dir)) {
@@ -116,9 +104,8 @@ AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
     params_file_ = params_file_or_model_prefix;
   }
 
-  std::ifstream fin(prog_file_, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin.is_open()),
+      IsFileExists(prog_file),
       true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
