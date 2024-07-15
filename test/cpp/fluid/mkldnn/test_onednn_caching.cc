@@ -38,7 +38,7 @@ class CacheTester {
  public:
   CacheTester() {
     // Clear oneDNN cache
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = phi::DeviceContextPool::Instance();
     phi::CPUPlace place;
     onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
     onednn_dev_ctx_->ResetBlobMap(nullptr);
@@ -54,9 +54,9 @@ class CacheTester {
 };
 
 template <typename T>
-void RunOperator(const platform::Place &place,
+void RunOperator(const phi::Place &place,
                  const std::string &op_type,
-                 const framework::DDim &dims,
+                 const phi::DDim &dims,
                  const std::string &first_input) {
   framework::Scope scope;
 
@@ -107,7 +107,7 @@ void RunOperator(const platform::Place &place,
     y_ptr[i] = static_cast<T>(0);
   }
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   auto op = num_inputs[op_type] > 1
                 ? framework::OpRegistry::CreateOp(
@@ -127,27 +127,27 @@ void RunOperator(const platform::Place &place,
 }
 
 TEST(test_conv2d_reuse_cache, cpu_place) {
-  framework::DDim dims({1, 16, 32, 64});
+  phi::DDim dims({1, 16, 32, 64});
   phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
-  PADDLE_ENFORCE_EQ(ct.Analyze(9),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Invalid number of cached oneDNN objects"));
+  PADDLE_ENFORCE_EQ(
+      ct.Analyze(9),
+      true,
+      phi::errors::InvalidArgument("Invalid number of cached oneDNN objects"));
 }
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
-  framework::DDim dims({1, 16, 32, 64});
+  phi::DDim dims({1, 16, 32, 64});
   phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");
-  PADDLE_ENFORCE_EQ(ct.Analyze(18),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Invalid number of cached oneDNN objects"));
+  PADDLE_ENFORCE_EQ(
+      ct.Analyze(18),
+      true,
+      phi::errors::InvalidArgument("Invalid number of cached oneDNN objects"));
 }
 
 }  // namespace operators

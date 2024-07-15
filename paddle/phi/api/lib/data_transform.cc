@@ -35,8 +35,7 @@ limitations under the License. */
 
 PHI_DECLARE_bool(use_stride_kernel);
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
@@ -303,6 +302,7 @@ phi::DenseTensor CheckAndTrans2NewContiguousTensor(
 std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
     const std::vector<phi::DenseTensor>& tensor) {
   std::vector<phi::DenseTensor> out;
+  out.reserve(tensor.size());
   for (auto& t : tensor) {
     out.emplace_back(CheckAndTrans2NewContiguousTensor(t));
   }
@@ -379,6 +379,13 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
                               transform_flag) &&
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
+      if (NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor.meta().is_contiguous()) &&
+          dense_tensor.initialized()) {
+        phi::DenseTensor out = dense_tensor;
+        out = Trans2Contiguous(out);
+        return std::make_shared<phi::DenseTensor>(std::move(out));
+      }
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
@@ -423,8 +430,17 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
          !(dense_tensor &&
            NeedTransform2Contiguous(is_stride_kernel,
                                     dense_tensor->meta().is_contiguous())))) {
-      pt_tensors->emplace_back(
-          *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
+      if (NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor->meta().is_contiguous()) &&
+          tensor_in->initialized()) {
+        phi::DenseTensor out =
+            *(static_cast<phi::DenseTensor*>(tensor_in.get()));
+        out = Trans2Contiguous(out);
+        pt_tensors->emplace_back(out);
+      } else {
+        pt_tensors->emplace_back(
+            *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
+      }
     } else {
       pt_tensors->emplace_back(
           TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
@@ -463,6 +479,15 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
                               transform_flag))) &&
         !NeedTransform2Contiguous(
             false, selected_rows.value().meta().is_contiguous())) {
+      if (NeedTransform2Contiguous(
+              false, selected_rows.value().meta().is_contiguous()) &&
+          selected_rows.initialized()) {
+        auto out_new = std::make_shared<phi::SelectedRows>(
+            selected_rows.rows(), selected_rows.height());
+        auto dense_out = Trans2Contiguous(selected_rows.value());
+        *out_new->mutable_value() = dense_out;
+        return out_new;
+      }
       return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
     }
 
@@ -683,8 +708,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                    tensor_dist_attr)) {
-      auto argument_name = (arg_name == "" ? "tensor" : arg_name);
-      auto tensor_name = (tensor.name() == "" ? "None" : tensor.name());
+      auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
+      auto tensor_name = (tensor.name().empty() ? "None" : tensor.name());
       VLOG(4) << "Reshard input: " << argument_name << "(" << tensor_name
               << ") " << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(
@@ -724,9 +749,9 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
       if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
         auto argument_name =
-            (arg_name == "" ? "tensor" : arg_name) + "_" + std::to_string(i);
+            (arg_name.empty() ? "tensor" : arg_name) + "_" + std::to_string(i);
         auto tensor_name =
-            (tensors[i].name() == "" ? "None" : tensors[i].name());
+            (tensors[i].name().empty() ? "None" : tensors[i].name());
         VLOG(4) << "Reshard input: " << argument_name << "(" << tensor_name
                 << ") " << ReshardDebugInfo(*dist_tensor, dist_attr);
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
@@ -888,9 +913,9 @@ void ReshardKernelOutputToApiOutput(
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
     if (ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
-      auto argument_name = (arg_name == "" ? "tensor" : arg_name);
+      auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
       auto tensor_name =
-          (dst_tensor->name() == "" ? "None" : src_tensor->name());
+          (dst_tensor->name().empty() ? "None" : src_tensor->name());
       VLOG(4) << "Reshard output(bwd): " << argument_name << "(" << tensor_name
               << ") "
               << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
@@ -949,6 +974,15 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
                               transform_flag) &&
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
+      if (NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor.meta().is_contiguous()) &&
+          dense_tensor.initialized()) {
+        auto dist_out = std::make_shared<phi::distributed::DistTensor>(
+            dist_tensor->dims(), dist_tensor->dist_attr());
+        auto* out = dist_out->unsafe_mutable_value();
+        *out = Trans2Contiguous(dense_tensor);
+        return dist_out;
+      }
       return input;
     }
     // TODO(chenweihang): The global meta in DistTensor is not changed,
@@ -972,7 +1006,7 @@ PrepareDataForDistTensor(
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
   std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
-  for (auto tensor_in : input) {
+  for (const auto& tensor_in : input) {
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
@@ -988,8 +1022,17 @@ PrepareDataForDistTensor(
                                 transform_flag) &&
            !NeedTransform2Contiguous(is_stride_kernel,
                                      dense_tensor.meta().is_contiguous()))) {
-        out.push_back(
-            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
+        if (NeedTransform2Contiguous(is_stride_kernel,
+                                     dense_tensor.meta().is_contiguous()) &&
+            dense_tensor.initialized()) {
+          phi::DenseTensor trans_in_tensor = Trans2Contiguous(dense_tensor);
+          out.push_back(std::make_shared<phi::distributed::DistTensor>(
+              std::make_shared<phi::DenseTensor>(trans_in_tensor),
+              dist_tensor->dist_attr()));
+        } else {
+          out.push_back(std::static_pointer_cast<phi::distributed::DistTensor>(
+              tensor_in));
+        }
       } else {
         phi::DenseTensor trans_in_tensor = TransformData(
             dense_tensor, target_args_def, transform_flag, is_stride_kernel);
@@ -1043,5 +1086,4 @@ PrepareDataForDistTensor(
   return paddle::none;
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

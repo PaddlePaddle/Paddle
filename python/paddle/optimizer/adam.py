@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
 from collections import defaultdict
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops, pir
@@ -30,9 +33,24 @@ from ..base.framework import (
 )
 from .optimizer import Optimizer
 
-__all__ = []
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
 
-GRAD_TYPES = [int(paddle.float32), int(paddle.float16), int(paddle.bfloat16)]
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
+
+    class _AdamParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float | Tensor]
+        lazy_mode: NotRequired[bool]
+
+
+__all__ = []
 
 
 class Adam(Optimizer):
@@ -71,20 +89,20 @@ class Adam(Optimizer):
         epsilon (float|Tensor, optional): A small float value for numerical stability.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 1e-08.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
@@ -97,7 +115,7 @@ class Adam(Optimizer):
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
@@ -111,8 +129,10 @@ class Adam(Optimizer):
             >>> inp = paddle.rand([10,10], dtype="float32")
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters())
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -129,11 +149,13 @@ class Adam(Optimizer):
             >>> loss = paddle.mean(out)
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-            ...         parameters=linear.parameters(),
-            ...         beta1=beta1,
-            ...         beta2=beta2,
-            ...         weight_decay=0.01)
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     beta1=beta1,
+            ...     beta2=beta2,
+            ...     weight_decay=0.01
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
@@ -147,7 +169,7 @@ class Adam(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -156,12 +178,15 @@ class Adam(Optimizer):
             ...         'beta1': 0.8
             ...     }],
             ...     weight_decay=0.01,
-            ...     beta1=0.9)
+            ...     beta1=0.9
+            ... )
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
 
     """
+
+    type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _beta1_pow_acc_str = "beta1_pow_acc"
@@ -169,18 +194,20 @@ class Adam(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-8,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        lazy_mode=False,
-        multi_precision=False,
-        use_multi_tensor=False,
-        name=None,
-    ):
+        learning_rate: float | LRScheduler = 0.001,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float | Tensor = 1e-8,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdamParameterConfig] | None
+        ) = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        lazy_mode: bool = False,
+        multi_precision: bool = False,
+        use_multi_tensor: bool = False,
+        name: str | None = None,
+    ) -> None:
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -244,9 +271,11 @@ class Adam(Optimizer):
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.9
-            if isinstance(self._beta1, (Variable, Value))
-            else self._beta1,
+            fill_value=(
+                0.9
+                if isinstance(self._beta1, (Variable, Value))
+                else self._beta1
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -255,9 +284,11 @@ class Adam(Optimizer):
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.999
-            if isinstance(self._beta2, (Variable, Value))
-            else self._beta2,
+            fill_value=(
+                0.999
+                if isinstance(self._beta2, (Variable, Value))
+                else self._beta2
+            ),
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
             device='cpu',
@@ -410,7 +441,7 @@ class Adam(Optimizer):
 
     @imperative_base.no_grad
     @framework.non_static_only
-    def step(self):
+    def step(self) -> None:
         """
         Execute the optimizer and update parameters once.
 
@@ -570,13 +601,16 @@ class Adam(Optimizer):
                 params = [pair[0] for pair in parameters_and_grads]
                 grads_types = core.eager.get_grads_types(params)
                 for index, tp in enumerate(grads_types):
-                    if tp == GRAD_TYPES[0]:
+                    if tp == core.DataType.FLOAT32:
                         grad_dict['FP32_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
-                    elif tp == GRAD_TYPES[1] or tp == GRAD_TYPES[2]:
+                    elif (
+                        tp == core.DataType.FLOAT16
+                        or tp == core.DataType.BFLOAT16
+                    ):
                         grad_dict['FP16_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )

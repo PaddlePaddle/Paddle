@@ -15,10 +15,7 @@
 import unittest
 from dataclasses import dataclass
 
-from test_case_base import (
-    TestCaseBase,
-    run_in_both_default_and_pir,
-)
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.utils import strict_mode_guard
@@ -47,13 +44,11 @@ def return_dataclass_with_post_init(x):
 
 class TestDataclass(TestCaseBase):
     @strict_mode_guard(False)
-    @run_in_both_default_and_pir
     def test_dtype_reconstruct(self):
         x = paddle.to_tensor(1)
         self.assert_results(return_dataclass, x)
 
     @strict_mode_guard(False)
-    @run_in_both_default_and_pir
     def test_dtype_reconstruct_with_post_init(self):
         x = paddle.to_tensor(1)
         self.assert_results(return_dataclass_with_post_init, x)

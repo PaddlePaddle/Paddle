@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 /**
@@ -142,9 +144,8 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     }
     holder_ = std::move(holder);
   }
-
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 template <typename T>
@@ -180,8 +181,8 @@ void* DenseTensor::data() {
       holder_,
       phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 const void* DenseTensor::data() const {
@@ -190,8 +191,8 @@ const void* DenseTensor::data() const {
       holder_,
       phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
-  return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<const void*>(ptr);
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
@@ -270,6 +271,8 @@ DATA_MEMBER_FUNC_INSTANTIATION(uint32_t);
 DATA_MEMBER_FUNC_INSTANTIATION(int64_t);
 DATA_MEMBER_FUNC_INSTANTIATION(uint64_t);
 DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e4m3fn);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e5m2);
 DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16);
 DATA_MEMBER_FUNC_INSTANTIATION(float);
 DATA_MEMBER_FUNC_INSTANTIATION(double);

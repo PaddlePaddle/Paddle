@@ -19,13 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/detection/bbox_util.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
@@ -156,8 +155,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       phi::DenseTensor &proposals = tensor_pair.first;
       phi::DenseTensor &scores = tensor_pair.second;
 
-      AppendProposals(rpn_rois, 4 * num_proposals, proposals);
-      AppendProposals(rpn_roi_probs, num_proposals, scores);
+      phi::funcs::AppendProposals(rpn_rois, 4 * num_proposals, proposals);
+      phi::funcs::AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
       tmp_num.push_back(proposals.dims()[0]);  // NOLINT
@@ -223,12 +222,14 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor proposals;
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
-    BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
+    phi::funcs::BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
-    ClipTiledBoxes<T>(ctx, im_info_slice, proposals, &proposals, false);
+    phi::funcs::ClipTiledBoxes<T>(
+        ctx, im_info_slice, proposals, &proposals, false);
 
     phi::DenseTensor keep;
-    FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
+    phi::funcs::FilterBoxes<T>(
+        ctx, &proposals, min_size, im_info_slice, true, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
       phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
@@ -314,8 +315,7 @@ boxes.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

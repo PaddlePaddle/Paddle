@@ -98,7 +98,7 @@ class CastOp : public framework::OperatorWithKernel {
                           "The tensor of Input(X) is not initialized."));
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
-    if (platform::is_cuda_pinned_place(tensor_place)) {
+    if (tensor_place.GetType() == phi::AllocationType::GPUPINNED) {
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             ctx.device_context().GetPlace());
     }
@@ -137,15 +137,5 @@ REGISTER_OPERATOR(cast,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastCompositeGradOpMaker,
-                  ops::CastOpProtoMaker,
-                  CastInferShapeFunctor);
-
-// [ why register transfer_dtype_op alias with cast_op? ]
-// In case of InterpreterCore, if we reuse cast_op, we cannot distinguish
-// which cast_op is inserted by new executor when we do profiling.
-REGISTER_OPERATOR(transfer_dtype,
-                  ops::CastOp,
-                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpProtoMaker,
                   CastInferShapeFunctor);

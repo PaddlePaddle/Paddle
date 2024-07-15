@@ -20,6 +20,14 @@ import paddle
 from paddle.pir_utils import test_with_pir_api
 
 
+def get_ref_api():
+    return (
+        np.trapezoid
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0"
+        else np.trapz  # noqa: NPY201
+    )
+
+
 class TestTrapezoidAPI(unittest.TestCase):
     def set_args(self):
         self.y = np.array([[2, 4, 8], [3, 5, 9]]).astype('float32')
@@ -38,7 +46,7 @@ class TestTrapezoidAPI(unittest.TestCase):
             )
 
     def set_api(self):
-        self.ref_api = np.trapz
+        self.ref_api = get_ref_api()
         self.paddle_api = paddle.trapezoid
 
     def setUp(self):
@@ -155,7 +163,7 @@ class TestTrapezoidAxis1(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.random.random((3, 3, 4)).astype('float32')
         self.x = None
-        self.dx = 1
+        self.dx = 1.0
         self.axis = 1
 
 
@@ -227,7 +235,7 @@ class TestTrapezoidError(unittest.TestCase):
 class Testfp16Trapezoid(TestTrapezoidAPI):
     def set_api(self):
         self.paddle_api = paddle.trapezoid
-        self.ref_api = np.trapz
+        self.ref_api = get_ref_api()
 
     @test_with_pir_api
     def test_fp16_with_gpu(self):

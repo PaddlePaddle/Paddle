@@ -21,21 +21,17 @@
 #endif
 #include <algorithm>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
     Scope *scope,
     size_t scope_idx,
-    const platform::Place &place,
+    const phi::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars,
     GarbageCollector *gc)
     : OpHandleBase(node),
@@ -43,11 +39,12 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       scope_idx_(scope_idx),
       place_(place),
       var_infos_(vars.begin(), vars.end()),
-      gc_(gc) {
+      gc_(gc),
+      vars_() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(place.device);
 #ifdef PADDLE_WITH_HIP
@@ -212,6 +209,4 @@ std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
   return var_names;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

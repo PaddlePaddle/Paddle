@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -118,8 +120,8 @@ void* DenseTensor::mutable_data(const Place& place,
     holder_ = memory_utils::AllocShared(place, size);
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
@@ -149,8 +151,8 @@ void* DenseTensor::mutable_data(const Place& place,
     holder_ = memory_utils::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 /* @jim19930609: The following "mutable_data" only supports specific dtypes
@@ -212,6 +214,8 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e4m3fn)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e5m2)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>)

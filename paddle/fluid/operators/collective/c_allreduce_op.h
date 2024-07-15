@@ -16,13 +16,13 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
@@ -148,7 +148,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
@@ -174,26 +174,26 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      distributed::AllreduceOptions opts;
+      phi::distributed::ProcessGroup* pg = map->get(rid);
+      phi::distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
-          opts.reduce_op = distributed::ReduceOp::SUM;
+          opts.reduce_op = phi::distributed::ReduceOp::SUM;
           break;
 
         case kRedMax:
-          opts.reduce_op = distributed::ReduceOp::MAX;
+          opts.reduce_op = phi::distributed::ReduceOp::MAX;
           break;
 
         case kRedMin:
-          opts.reduce_op = distributed::ReduceOp::MIN;
+          opts.reduce_op = phi::distributed::ReduceOp::MIN;
           break;
 
         case kRedProd:
-          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          opts.reduce_op = phi::distributed::ReduceOp::PRODUCT;
           break;
 
         default:
@@ -237,10 +237,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
       VLOG(3) << "old BKCLCommContext has rid " << rid;
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
-                   ->x_context()
-                   ->xpu_stream;
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 
     BKCLOp bkcl_red_type = BKCL_ADD;
@@ -295,7 +293,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
@@ -322,26 +320,26 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      distributed::AllreduceOptions opts;
+      phi::distributed::ProcessGroup* pg = map->get(rid);
+      phi::distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
-          opts.reduce_op = distributed::ReduceOp::SUM;
+          opts.reduce_op = phi::distributed::ReduceOp::SUM;
           break;
 
         case kRedMax:
-          opts.reduce_op = distributed::ReduceOp::MAX;
+          opts.reduce_op = phi::distributed::ReduceOp::MAX;
           break;
 
         case kRedMin:
-          opts.reduce_op = distributed::ReduceOp::MIN;
+          opts.reduce_op = phi::distributed::ReduceOp::MIN;
           break;
 
         case kRedProd:
-          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          opts.reduce_op = phi::distributed::ReduceOp::PRODUCT;
           break;
 
         default:
@@ -386,7 +384,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should not use global ctx for calc stream.
-      // auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      // auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
       stream = ctx.cuda_device_context().stream();
     }

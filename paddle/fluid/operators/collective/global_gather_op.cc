@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_gather_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class GlobalGatherOp : public framework::OperatorWithKernel {
  public:
@@ -44,7 +43,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
         phi::errors::InvalidArgument("The input tensor's dimension must be 2. "
                                      "But received input's dimension = %d.",
                                      ndim_input));
-    framework::DDim out_dims = common::make_ddim({-1, -1});
+    phi::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
 
@@ -100,8 +99,7 @@ class GlobalGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

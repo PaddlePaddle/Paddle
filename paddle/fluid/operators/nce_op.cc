@@ -117,7 +117,7 @@ class NCEOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 
@@ -282,7 +282,7 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 

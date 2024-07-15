@@ -62,7 +62,7 @@ class CGenBKCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     int rank = Attr<int>("rank");
     int ring_id = Attr<int>("ring_id");
 

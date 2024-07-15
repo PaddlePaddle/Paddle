@@ -38,7 +38,7 @@ namespace egr {
 
 static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
   if (!pre.initialized() && post.initialized()) {
-    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "The tensor in before and after hook are not consistent"));
   }
   if (pre.initialized() && post.initialized()) {
@@ -47,14 +47,14 @@ static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
     PADDLE_ENFORCE_EQ(
         pre.dtype(),
         post.dtype(),
-        paddle::platform::errors::PermissionDenied(
+        phi::errors::PermissionDenied(
             "The dtype of tensor before(%s) and after(%s) hook are not "
             "consistent",
             phi::DataTypeToString(pre.dtype()),
             phi::DataTypeToString(post.dtype())));
     PADDLE_ENFORCE_EQ(pre.place(),
                       post.place(),
-                      paddle::platform::errors::PermissionDenied(
+                      phi::errors::PermissionDenied(
                           "The place of tensor before(%s) and after(%s) "
                           "hook are not consistent",
                           pre.place().DebugString(),
@@ -62,7 +62,8 @@ static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
   }
 }
 
-GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
+GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+    : bwd_out_meta_(), bwd_in_meta_(), gradient_hooks_() {
   VLOG(7) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
@@ -90,7 +91,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   PADDLE_ENFORCE_LE(
       slot_rank,
       (bwd_in_meta_.size() - 1),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_in_meta_ size, since "
           "bwd_in_meta_ is designed to hold as same num as backward "
           "inputs."));
@@ -148,7 +149,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   PADDLE_ENFORCE_NE(
       dense_tensor->meta().dtype,
       phi::DataType::UNDEFINED,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Attempting to copy DenseTensorMeta with phi::DataType::UNDEFINED,"
           "which is illegal."));
 
@@ -168,7 +169,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
   PADDLE_ENFORCE_LE(
       slot_rank,
       (bwd_in_meta_.size() - 1),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_in_meta_ size, since "
           "bwd_in_meta_ is designed to hold as same num as backward "
           "inputs."));
@@ -184,7 +185,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
     auto* fwd_out_meta =
         egr::EagerUtils::nullable_autograd_meta(fwd_out_tensor);
     PADDLE_ENFORCE_NOT_NULL(fwd_out_meta,
-                            paddle::platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "Bwd_in_meta should only be called while "
                                 "autograd_meta is not null. If you got this "
                                 "error, it indicates bugs in framework."));
@@ -213,12 +214,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
 
-      PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor->meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_out_tensor.place());
 
@@ -241,12 +241,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                               fwd_out_tensor.impl().get())
                               ->value();
 
-      PADDLE_ENFORCE_NE(
-          dense_tensor.meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor.meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_out_tensor.place());
 
@@ -268,7 +267,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
   PADDLE_ENFORCE_LE(
       slot_rank,
       (bwd_in_meta_.size() - 1),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_in_meta_ size, since "
           "bwd_in_meta_ is designed to hold as same num as backward "
           "inputs."));
@@ -284,7 +283,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
     auto* fwd_out_meta =
         egr::EagerUtils::nullable_autograd_meta(fwd_out_tensor);
     PADDLE_ENFORCE_NOT_NULL(fwd_out_meta,
-                            paddle::platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "Bwd_in_meta should only be called while "
                                 "autograd_meta is not null. If you got this "
                                 "error, it indicates bugs in framework."));
@@ -313,12 +312,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
 
-      PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor->meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_out_tensor.place());
 
@@ -341,12 +339,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
                               fwd_out_tensor.impl().get())
                               ->value();
 
-      PADDLE_ENFORCE_NE(
-          dense_tensor.meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor.meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_out_tensor.place());
 
@@ -367,7 +364,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
   PADDLE_ENFORCE_LE(
       (slot_rank + 1),
       bwd_out_meta_.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_out_meta_ size, "
           "since bwd_out_meta_ is designed to hold as same num as "
           "backward outputs."));
@@ -403,24 +400,22 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       // Only Copy Meta
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_in.impl().get());
-      PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor->meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_in.place());
     } else if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
       const phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get());
       const phi::DenseTensor& dense_tensor = dist_tensor->value();
-      PADDLE_ENFORCE_NE(
-          dense_tensor.meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor.meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
       // Set DistAttr
@@ -435,6 +430,30 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetDistAttr(dist_attr);
       meta.SetDistTensorGlobalDims(dist_tensor->dims());
       SetIsRunAutoParallel(true);
+    } else if (phi::SparseCsrTensor::classof(fwd_in.impl().get())) {
+      phi::SparseCsrTensor* sparse_tensor =
+          static_cast<phi::SparseCsrTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(dense_tensor.dtype(),
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
+    } else if (phi::SparseCooTensor::classof(fwd_in.impl().get())) {
+      phi::SparseCooTensor* sparse_tensor =
+          static_cast<phi::SparseCooTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(dense_tensor.dtype(),
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
@@ -458,7 +477,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
   PADDLE_ENFORCE_LE(
       (slot_rank + 1),
       bwd_out_meta_.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_out_meta_ size, "
           "since bwd_out_meta_ is designed to hold as same num as "
           "backward outputs."));
@@ -494,12 +513,11 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       // Only Copy Meta
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_in.impl().get());
-      PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor->meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_in.place());
     } else if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
@@ -514,12 +532,11 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       auto dense_tensor =
           static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get())
               ->value();
-      PADDLE_ENFORCE_NE(
-          dense_tensor.meta().dtype,
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
+      PADDLE_ENFORCE_NE(dense_tensor.meta().dtype,
+                        phi::DataType::UNDEFINED,
+                        phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                           "with phi::DataType::UNDEFINED,"
+                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
     }
@@ -535,7 +552,7 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
   PADDLE_ENFORCE_LE(
       slot_rank,
       (bwd_out_meta_.size() - 1),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_out_meta_ size, "
           "since bwd_out_meta_ is designed to hold as same num as "
           "backward outputs."));
@@ -572,12 +589,12 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
       if (phi::DenseTensor::classof(fwd_in_tensor.impl().get())) {
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
-        PADDLE_ENFORCE_NE(dense_tensor->dtype(),
-                          phi::DataType::UNDEFINED,
-                          paddle::platform::errors::Fatal(
-                              "Attempting to copy DenseTensorMeta "
-                              "with phi::DataType::UNDEFINED,"
-                              "which is illegal."));
+        PADDLE_ENFORCE_NE(
+            dense_tensor->dtype(),
+            phi::DataType::UNDEFINED,
+            phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                               "with phi::DataType::UNDEFINED,"
+                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor->meta());
         meta.SetPlace(fwd_in_tensor.place());
       } else if (phi::distributed::DistTensor::classof(
@@ -592,12 +609,12 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
         auto dense_tensor = static_cast<phi::distributed::DistTensor*>(
                                 fwd_in_tensor.impl().get())
                                 ->value();
-        PADDLE_ENFORCE_NE(dense_tensor.dtype(),
-                          phi::DataType::UNDEFINED,
-                          paddle::platform::errors::Fatal(
-                              "Attempting to copy DenseTensorMeta "
-                              "with phi::DataType::UNDEFINED,"
-                              "which is illegal."));
+        PADDLE_ENFORCE_NE(
+            dense_tensor.dtype(),
+            phi::DataType::UNDEFINED,
+            phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                               "with phi::DataType::UNDEFINED,"
+                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor.meta());
         meta.SetPlace(fwd_in_tensor.place());
       }
@@ -615,7 +632,7 @@ void GradNodeBase::SetGradOutMeta(
   PADDLE_ENFORCE_LE(
       slot_rank,
       (bwd_out_meta_.size() - 1),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Slot Rank should less equal than bwd_out_meta_ size, "
           "since bwd_out_meta_ is designed to hold as same num as "
           "backward outputs."));
@@ -653,12 +670,12 @@ void GradNodeBase::SetGradOutMeta(
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
-        PADDLE_ENFORCE_NE(dense_tensor->dtype(),
-                          phi::DataType::UNDEFINED,
-                          paddle::platform::errors::Fatal(
-                              "Attempting to copy DenseTensorMeta "
-                              "with phi::DataType::UNDEFINED,"
-                              "which is illegal."));
+        PADDLE_ENFORCE_NE(
+            dense_tensor->dtype(),
+            phi::DataType::UNDEFINED,
+            phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                               "with phi::DataType::UNDEFINED,"
+                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor->meta());
         meta.SetPlace(fwd_in_tensor.place());
       } else if (phi::distributed::DistTensor::classof(
@@ -674,12 +691,12 @@ void GradNodeBase::SetGradOutMeta(
         auto dense_tensor = static_cast<phi::distributed::DistTensor*>(
                                 fwd_in_tensor.impl().get())
                                 ->value();
-        PADDLE_ENFORCE_NE(dense_tensor.dtype(),
-                          phi::DataType::UNDEFINED,
-                          paddle::platform::errors::Fatal(
-                              "Attempting to copy DenseTensorMeta "
-                              "with phi::DataType::UNDEFINED,"
-                              "which is illegal."));
+        PADDLE_ENFORCE_NE(
+            dense_tensor.dtype(),
+            phi::DataType::UNDEFINED,
+            phi::errors::Fatal("Attempting to copy DenseTensorMeta "
+                               "with phi::DataType::UNDEFINED,"
+                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor.meta());
         meta.SetPlace(fwd_in_tensor.place());
       }
@@ -693,7 +710,7 @@ void GradNodeBase::SetGradOutMeta(
 
 void GradNodeBase::SetDefaultGradInOutMeta() {
   PADDLE_ENFORCE((bwd_out_meta_.size() == 1) && (bwd_in_meta_.size() == 1),
-                 paddle::platform::errors::PreconditionNotMet(
+                 phi::errors::PreconditionNotMet(
                      "We can only support 1 input and 1 output in default grad "
                      "meta setter, other size of inputs and outputs should "
                      "create with Setter and Getters"));
@@ -722,12 +739,12 @@ GradNodeBase::ApplyGradientHooks(
     auto hook = std::get<2>(hook_pair.second);
 
     PADDLE_ENFORCE(slot_id < tensors.size(),
-                   paddle::platform::errors::Fatal(
+                   phi::errors::Fatal(
                        "Slot_id from registered hook should be smaller than "
                        "slot size of grad_tensors"));
 
     PADDLE_ENFORCE(rank < tensors[slot_id].size(),
-                   paddle::platform::errors::Fatal(
+                   phi::errors::Fatal(
                        "rank of slot %d from registered hook should be smaller "
                        "than rank size of grad_tensors",
                        slot_id));
@@ -768,10 +785,9 @@ void GradNodeBase::HandleComplexGradToRealGrad(
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
       if (bwd_out_meta_[slot_id].size() == 0) continue;
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
-
       PADDLE_ENFORCE(
           slot_meta.HasTensorMeta() > 0,
-          paddle::platform::errors::Fatal(
+          phi::errors::Fatal(
               "We require TensorMeta in GradInputMeta() to obtain forward data "
               "types."
               "However, no TensorMeta is detected in bwd_out_meta_."));

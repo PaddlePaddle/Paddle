@@ -14,10 +14,12 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -35,9 +37,9 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
@@ -170,12 +172,14 @@ struct SliceOpInferSymbolicShapeInterfaceModel
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     const auto index =
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
-    const auto output_value =
-        (op->operand(0).type().dyn_cast<pir::VectorType>())[index]
-            .dyn_cast<pir::Value>();
-
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), infer_context->GetShapeOrDataForValue(output_value));
+    const auto& input_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
+        input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    const symbol::TensorShapeOrDataDimExprs& output_shape =
+        data_shape_list[index];
+    infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
 
     return true;
   }
@@ -188,20 +192,14 @@ struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-    const auto& shape_data_list =
+    const symbol::TensorListShapeOrDataDimExprs& shape_data_list =
         infer_context->GetShapeOrDataForValue(op->operand_source(0))
             .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
     for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
-      PADDLE_ENFORCE_EQ(
-          shape_data_list[rst_idx].data().has_value(),
-          false,
-          paddle::platform::errors::InvalidArgument(
-              "Currently InferSymbolicShape of SplitOp only support "
-              "input without value."));
       infer_context->SetShapeOrDataForValue(
           op->result(rst_idx),
-          symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
+          symbol::ShapeOrDataDimExprs{shape_data_list.at(rst_idx)});
     }
     return true;
   }
@@ -235,6 +233,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       LayoutTransformationInterface,
+                       LayoutTransformationInterface::Model<pir::CombineOp>>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
   info.AttachInterface(
@@ -377,12 +378,20 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
 
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.cc"  // NOLINT
+      >();
+
 #ifdef PADDLE_WITH_DNNL
   RegisterOps<
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
       >();
 #endif
+
+  RegisterOps<TensorRTEngineOp>();
+
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -416,7 +425,7 @@ pir::Attribute OperatorDialect::ParseAttribute(
 }
 
 pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
-  if (op->isa<IfOp>() || op->isa<WhileOp>()) {
+  if (op->isa<IfOp>() || op->isa<WhileOp>() || op->isa<PyLayerOp>()) {
     return PrintOperationImpl;
   }
   return nullptr;
@@ -429,7 +438,9 @@ class IdManager {
     return instance;
   }
 
-  ~IdManager() {
+  IdManager() : ids_() {}
+
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -453,7 +464,9 @@ class AttributeManager {
     return instance;
   }
 
-  ~AttributeManager() {
+  AttributeManager() : char_pointers_(), pointers_size_() {}
+
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];
@@ -634,7 +647,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         fwd_inputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Custom op: %s inputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_inputs_name.size(),
@@ -642,7 +655,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         fwd_outputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Custom op: %s outputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_outputs_name.size(),
@@ -651,7 +664,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         out_grads.size(),
         fwd_outputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Custom op: %s outputs grad size should be %d, but now is %d.",
             pir_op_name,
             fwd_outputs_name.size(),
@@ -700,13 +713,13 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
               std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
           return std::make_pair(2, index);
         } else {
-          PADDLE_THROW(paddle::platform::errors::NotFound(
+          PADDLE_THROW(phi::errors::NotFound(
               "Can't find the grad op input:%s, please check your register "
               "grad op whether has correct input name",
               grad_op_input_name));
         }
       } else {
-        PADDLE_THROW(paddle::platform::errors::NotFound(
+        PADDLE_THROW(phi::errors::NotFound(
             "Can't find the grad op input:%s, please check your register grad "
             "op whether has correct input name",
             grad_op_input_name));
@@ -715,8 +728,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     // Construct custom grad op inputs
     int input_index = 0;
     int vec_input_index = 0;
-    for (size_t i = 0; i < bwd_inputs_name.size(); ++i) {
-      const auto& bwd_input_name = bwd_inputs_name.at(i);
+    for (const auto& bwd_input_name : bwd_inputs_name) {
       const auto input_location = GetInputLocation(bwd_input_name);
       std::vector<pir::Value> input_values;
       if (input_location.first == 0) {
@@ -771,8 +783,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     }
     argument.AddInputs(argument_inputs);
     // Construct custom grad op attr
-    for (size_t i = 0; i < fwd_attrs_name.size(); ++i) {
-      const auto& fwd_attr = fwd_attrs_name.at(i);
+    for (const auto& fwd_attr : fwd_attrs_name) {
       std::vector<std::string> attr_name_and_type =
           paddle::ParseAttrStr(fwd_attr);
       auto fwd_attr_name = attr_name_and_type[0];
@@ -800,8 +811,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     size_t all_values_num = 0;
     // output name -> value num (that output should hold)
     std::unordered_map<std::string, size_t> output_name2value_num;
-    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
-      const auto& bwd_output_name = bwd_outputs_name.at(i);
+    for (const auto& bwd_output_name : bwd_outputs_name) {
       const auto& bwd_input =
           paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
 
@@ -842,8 +852,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             output_dtypes.size()));
     // Construct custom grad op outputs
     size_t value_index = 0;
-    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
-      const auto& bwd_output_name = bwd_outputs_name.at(i);
+    for (const auto& bwd_output_name : bwd_outputs_name) {
       auto value_num = output_name2value_num[bwd_output_name];
       if (value_num == 0) {
         // Optional value condition
@@ -923,9 +932,9 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       size_t input_index =
           std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
       for (size_t i = 0; i < input_index; ++i) {
-        for (size_t j = 0; j < bwd_outputs_name.size(); j++) {
+        for (const auto& bwd_output_name : bwd_outputs_name) {
           const auto& fwd_input_name_tmp = paddle::framework::detail::NoGrad(
-              bwd_outputs_name[j], is_double_grad_op);
+              bwd_output_name, is_double_grad_op);
           if (fwd_input_name_tmp == fwd_inputs_name[i]) {
             // find forward input that need calculate gradient
             gradient_vec_index++;
@@ -947,7 +956,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         PADDLE_ENFORCE_NE(
             fwd_inputs_name_iter,
             fwd_inputs_name.end(),
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Custom op: %s output %s is a Vec output. It should have the "
                 "forward input that need calculate gradients.",
                 pir_op_name,
@@ -1048,8 +1057,8 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
-}  // namespace dialect
-}  // namespace paddle
+
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)

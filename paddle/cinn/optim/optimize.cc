@@ -28,6 +28,7 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
+#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
@@ -58,16 +59,33 @@ Expr Optimize(Expr e,
 
   VectorizeLoops(&copied, target);
   VLOG(4) << "After Optimize VectorizeLoops:" << copied;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (copied.as_lowered_func()) {
-    ir::SetCudaAxisInfo(&copied);
-  }
-  if (remove_gpu_for_loops) {
-    RemoveGpuForloopsAxis(&copied);
-  }
-  CudaSyncThreadsDropIfThenElse(&copied);
-  // CudaTransBufferWithDynamicShape(&copied);
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
+#endif
+      });
 
   SimplifyBlocks(&copied);
   VLOG(4) << "After SimplifyBlocks:" << copied;

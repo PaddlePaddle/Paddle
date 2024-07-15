@@ -19,13 +19,31 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
 namespace paddle {
 namespace pybind {
+template <typename PlaceType>
+void LoadCombine(const std::string &file_path,
+                 const std::vector<std::string> &names,
+                 std::vector<phi::DenseTensor *> *out,
+                 bool load_as_fp16,
+                 const PlaceType place) {
+  pir::LoadCombineFunction(file_path, names, out, load_as_fp16, place);
+}
 
+template <typename PlaceType>
+void Load(const std::string &file_path,
+          int64_t seek,
+          const std::vector<int64_t> &shape,
+          bool load_as_fp16,
+          phi::DenseTensor *out,
+          const PlaceType place) {
+  pir::LoadFunction(file_path, seek, shape, load_as_fp16, out, place);
+}
 void BindIO(pybind11::module *m) {
   m->def("save_lod_tensor",
          [](const phi::DenseTensor &tensor, const std::string &str_file_name) {
@@ -128,9 +146,20 @@ void BindIO(pybind11::module *m) {
 
   m->def("save_combine_func", &pir::SaveCombineFunction);
 
-  m->def("load_func", &pir::LoadFunction);
-
-  m->def("load_combine_func", &pir::LoadCombineFunction);
+  m->def("load_func", &Load<phi::CPUPlace>);
+  m->def("load_func", &Load<phi::CustomPlace>);
+  m->def("load_func", &Load<phi::XPUPlace>);
+  m->def("load_func", &Load<phi::GPUPinnedPlace>);
+  m->def("load_func", &Load<phi::GPUPlace>);
+  m->def("load_func", &Load<phi::IPUPlace>);
+  m->def("load_func", &Load<phi::Place>);
+  m->def("load_combine_func", &LoadCombine<phi::CPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::CustomPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::XPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::GPUPinnedPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::GPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::IPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::Place>);
 
   m->def("serialize_pir_program",
          &pir::WriteModule,

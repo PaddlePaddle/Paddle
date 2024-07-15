@@ -45,11 +45,19 @@ namespace paddle {
 namespace framework {
 
 IfInstruction::IfInstruction(size_t id,
-                             const platform::Place& place,
+                             const phi::Place& place,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place),
+      op_(op),
+      cond_name_("if_instruction"),
+      cond_var_(nullptr),
+      output_vars_(),
+      true_branch_inter_(nullptr),
+      false_branch_inter_(nullptr),
+      true_skip_gc_names_(),
+      false_skip_gc_names_() {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
       phi::errors::PreconditionNotMet("Cond instruction only support if op"));
@@ -96,6 +104,7 @@ IfInstruction::IfInstruction(size_t id,
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
+  bool is_last_op = true;
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
@@ -107,6 +116,10 @@ IfInstruction::IfInstruction(size_t id,
               i,
               "if op"));
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
+    }
+    if (value.use_count() > 0) {
+      VLOG(0) << "value " << i << " use conutn != 0";
+      is_last_op = false;
     }
   }
   InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
@@ -143,11 +156,6 @@ IfInstruction::IfInstruction(size_t id,
                                           execution_config);
 
   std::set<std::string> true_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&true_branch_block)) {
-    true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
-  }
   // NOTE(zhangbo): According to the concept of control flow, child scopes
   // should not control the lifecycle of parent scope variables.
   for (auto value : true_outside_inputs) {
@@ -170,11 +178,6 @@ IfInstruction::IfInstruction(size_t id,
                          value_exec_info->NewChild(false_scope),
                          execution_config);
   std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&false_branch_block)) {
-    false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
-  }
   for (auto value : false_outside_inputs) {
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
@@ -186,15 +189,20 @@ IfInstruction::IfInstruction(size_t id,
   false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
 
   VLOG(6) << "finish process false branch interpreter";
+
+  if (op_->HasAttribute("fake_false_branch") &&
+      op_->attributes()
+          .at("fake_false_branch")
+          .dyn_cast<pir::BoolAttribute>()
+          .data() &&
+      is_last_op) {
+    has_fake_false_branch_ = true;
+  }
 }
 
 IfInstruction::~IfInstruction() {
-  if (true_branch_inter_ != nullptr) {
-    delete true_branch_inter_;
-  }
-  if (false_branch_inter_ != nullptr) {
-    delete false_branch_inter_;
-  }
+  delete true_branch_inter_;
+  delete false_branch_inter_;
 }
 
 void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
@@ -211,20 +219,20 @@ void IfInstruction::Run() {
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {
     auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
-    if (paddle::platform::is_cpu_place(cond_tensor.place())) {
+    if (phi::is_cpu_place(cond_tensor.place())) {
       cond = cond_tensor.data<bool>()[0];
     } else {
-      // when platform::is_gpu_place(cond.place()) or
-      // platform::is_xpu_place(cond.place()) is true
+      // when phi::is_gpu_place(cond.place()) or
+      // phi::is_xpu_place(cond.place()) is true
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       DeviceContext().Wait();
       phi::DenseTensor cpu_cond;
       paddle::framework::TensorCopySync(
-          cond_tensor, platform::CPUPlace(), &cpu_cond);
+          cond_tensor, phi::CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "This version of PaddlePaddle does NOT support GPU/XPU but got "
           "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
           "WITH_XPU option."));
@@ -245,9 +253,8 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(
-        true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
   } else {
+    if (has_fake_false_branch_) return;
 #ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
@@ -255,8 +262,6 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(
-        false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
   }
   // copy output
 }

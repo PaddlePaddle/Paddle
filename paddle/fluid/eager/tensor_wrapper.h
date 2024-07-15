@@ -86,7 +86,7 @@ class TensorWrapper {
             dist_tensor->value().meta());
         intermidiate_tensor_.set_impl(no_buffer_dist_tensor);
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
+        PADDLE_THROW(phi::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
       }
     } else {
@@ -152,16 +152,36 @@ class TensorWrapper {
 #ifndef PADDLE_NO_PYTHON
     if (packed_value_ && unpack_hook_) {
       auto tensor_unpacked = (*unpack_hook_)(packed_value_);
-      auto src_dense_tensor =
-          static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
+      phi::DenseTensor* src_dense_tensor = nullptr;
+      if (tensor_unpacked.is_dense_tensor()) {
+        VLOG(6) << "tensor_unpacked is DenseTensor";
+        src_dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
+      } else if (tensor_unpacked.is_dist_tensor()) {
+        VLOG(6) << "tensor_unpacked is DistTensor";
+        src_dense_tensor = static_cast<phi::distributed::DistTensor*>(
+                               tensor_unpacked.impl().get())
+                               ->unsafe_mutable_value();
+      } else {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unrecognized tensor_unpacked type "
+                               "for egr::TensorWrapper::recover"));
+      }
+
       if (intermidiate_tensor_.is_dense_tensor()) {
+        VLOG(6) << "intermidiate_tensor_ is DenseTensor";
         static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
             ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
       } else if (intermidiate_tensor_.is_dist_tensor()) {
+        VLOG(6) << "intermidiate_tensor_ is DistTensor";
         static_cast<phi::distributed::DistTensor*>(
             intermidiate_tensor_.impl().get())
             ->unsafe_mutable_value()
             ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+      } else {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unrecognized intermidiate_tensor_ type for "
+                               "egr::TensorWrapper::recover"));
       }
     } else {
 #endif
@@ -226,7 +246,7 @@ class TensorWrapper {
       PADDLE_ENFORCE_EQ(
           tensor_version,
           wrapper_version_snapshot,
-          paddle::platform::errors::PermissionDenied(
+          phi::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
               "Its version is %d but the expected version is %d. "

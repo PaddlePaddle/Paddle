@@ -58,19 +58,23 @@ function(inference_download_and_uncompress_without_verify INSTALL_DIR URL
   string(REGEX MATCH "[^/\\]+$" DOWNLOAD_NAME ${FILENAME})
   set(EXTERNAL_PROJECT_NAME "extern_download_${FILENAME_EX}")
   set(UNPACK_DIR "${INSTALL_DIR}/src/${EXTERNAL_PROJECT_NAME}")
-  ExternalProject_Add(
-    ${EXTERNAL_PROJECT_NAME}
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX ${INSTALL_DIR}
-    URL ${URL}/${FILENAME}
-    DOWNLOAD_DIR ${INSTALL_DIR}
-    DOWNLOAD_NO_EXTRACT 1
-    DOWNLOAD_NO_PROGRESS 1
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ${CMAKE_COMMAND} -E chdir ${INSTALL_DIR} ${CMAKE_COMMAND} -E
-                  tar xzf ${DOWNLOAD_NAME}
-    UPDATE_COMMAND ""
-    INSTALL_COMMAND "")
+  get_property(TARGET_EXIST GLOBAL PROPERTY ${EXTERNAL_PROJECT_NAME})
+  if(NOT "${TARGET_EXIST}" STREQUAL EXIST)
+    ExternalProject_Add(
+      ${EXTERNAL_PROJECT_NAME}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      PREFIX ${INSTALL_DIR}
+      URL ${URL}/${FILENAME}
+      DOWNLOAD_DIR ${INSTALL_DIR}
+      DOWNLOAD_NO_EXTRACT 1
+      DOWNLOAD_NO_PROGRESS 1
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ${CMAKE_COMMAND} -E chdir ${INSTALL_DIR} ${CMAKE_COMMAND} -E
+                    tar xzf ${DOWNLOAD_NAME}
+      UPDATE_COMMAND ""
+      INSTALL_COMMAND "")
+    set_property(GLOBAL PROPERTY ${EXTERNAL_PROJECT_NAME} "EXIST")
+  endif()
 endfunction()
 
 function(inference_base_test_build TARGET)
@@ -105,7 +109,7 @@ function(inference_base_test_build TARGET)
     target_link_libraries(${TARGET} ${PYTHON_LIBRARIES})
   endif()
   if(WITH_SHARED_PHI)
-    target_link_libraries(${TARGET} $<TARGET_LINKER_FILE:phi>)
+    target_link_libraries(${TARGET} phi)
     add_dependencies(${TARGET} phi)
   endif()
   if(WITH_CINN)
@@ -164,10 +168,23 @@ endfunction()
 set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec")
 set(WORD2VEC_MODEL_DIR "${WORD2VEC_INSTALL_DIR}/word2vec.inference.model")
 
+if(NOT EXISTS ${WORD2VEC_INSTALL_DIR}/word2vec.inference.model.tar.gz)
+  inference_download_and_uncompress_without_verify(
+    ${WORD2VEC_INSTALL_DIR} ${INFERENCE_URL} "word2vec.inference.model.tar.gz")
+endif()
+
 set(IMG_CLS_RESNET_INSTALL_DIR
     "${INFERENCE_DEMO_INSTALL_DIR}/image_classification_resnet")
 set(IMG_CLS_RESNET_MODEL_DIR
     "${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model")
+
+if(NOT EXISTS
+   ${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model.tgz
+)
+  inference_download_and_uncompress_without_verify(
+    ${IMG_CLS_RESNET_INSTALL_DIR} ${INFERENCE_URL}
+    "image_classification_resnet.inference.model.tgz")
+endif()
 
 if(WITH_ONNXRUNTIME)
   set(MOBILENETV2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/MobileNetV2")

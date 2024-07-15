@@ -25,7 +25,7 @@ import paddle.optimizer as opt
 from paddle import base, nn
 from paddle.base import framework
 from paddle.framework import in_pir_mode
-from paddle.framework.io_utils import set_value
+from paddle.framework.io_utils import get_value, is_pir_fetch_var, set_value
 from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir_utils import test_with_pir_api
@@ -174,10 +174,7 @@ class TestSaveLoadAny(unittest.TestCase):
             scope = base.global_scope()
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
-                if (
-                    in_pir_mode()
-                    and var.get_defining_op().name() == "pd_op.fetch"
-                ):
+                if is_pir_fetch_var(var):
                     continue
                 ten = scope.find_var(var.name).get_tensor()
                 if ten is not None:
@@ -236,10 +233,7 @@ class TestSaveLoadAny(unittest.TestCase):
             base_map = {}
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
+                    if is_pir_fetch_var(var):
                         continue
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
@@ -254,10 +248,7 @@ class TestSaveLoadAny(unittest.TestCase):
             paddle.static.load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
+                    if is_pir_fetch_var(var):
                         continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
@@ -267,14 +258,10 @@ class TestSaveLoadAny(unittest.TestCase):
             # legacy paddle.base.save, paddle.load
             paddle.static.save(prog, path)
             self.set_zero(prog, place)
-            # paddle.static.load(prog, path)
             self.replace_static_load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
+                    if is_pir_fetch_var(var):
                         continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
@@ -285,19 +272,21 @@ class TestSaveLoadAny(unittest.TestCase):
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
+                    if is_pir_fetch_var(var):
                         continue
                     tensor = base.global_scope().find_var(var.name).get_tensor()
                     paddle.save(
                         tensor,
                         os.path.join(self.temp_dir.name, path_vars, var.name),
                     )
+
+            # Pir value currently does not have .set_value() and .get_value()
+            # Instead, use new functions to replace them
+            with self.assertRaises(TypeError):
+                get_value(var, 'base.global_scope()')
+            # Pir get_value() currently does not raise ValueError
+            # Maybe fix it later
             if not in_pir_mode():
-                with self.assertRaises(TypeError):
-                    var.get_value('base.global_scope()')
                 with self.assertRaises(ValueError):
                     x.get_value()
             with self.assertRaises(TypeError):
@@ -313,10 +302,7 @@ class TestSaveLoadAny(unittest.TestCase):
             self.set_zero(prog, place)
             for var in prog.list_vars():
                 if var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
+                    if is_pir_fetch_var(var):
                         continue
                     tensor = paddle.load(
                         os.path.join(self.temp_dir.name, path_vars, var.name),
@@ -381,6 +367,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     print(load_dict_np[k])
                 np.testing.assert_array_equal(v.numpy(), load_dict_np[k])
 
+    @test_with_pir_api
     def test_single_pickle_var_dygraph(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -411,6 +398,7 @@ class TestSaveLoadAny(unittest.TestCase):
         np.testing.assert_array_equal(tensor.numpy(), np_static)
         np.testing.assert_array_equal(tensor.numpy(), np.array(lod_static))
 
+    @test_with_pir_api
     def test_single_pickle_var_static(self):
         # enable static graph mode
         paddle.enable_static()
@@ -431,7 +419,7 @@ class TestSaveLoadAny(unittest.TestCase):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [IMAGE_SIZE, 128]:
-                    tensor = var.get_value()
+                    tensor = get_value(var)
                     break
             scope = base.global_scope()
         origin_tensor = np.array(tensor)
@@ -444,11 +432,11 @@ class TestSaveLoadAny(unittest.TestCase):
         lod_static = paddle.load(path)
         np_static = paddle.load(path, return_numpy=True)
         # set_tensor(np.ndarray)
-        var.set_value(np_static, scope)
+        set_value(var, np_static, scope)
         np.testing.assert_array_equal(origin_tensor, np.array(tensor))
         # set_tensor(LoDTensor)
         self.set_zero(prog, place, scope)
-        var.set_value(lod_static, scope)
+        set_value(var, lod_static, scope)
         np.testing.assert_array_equal(origin_tensor, np.array(tensor))
         # enable dygraph mode
         paddle.disable_static()
@@ -457,7 +445,7 @@ class TestSaveLoadAny(unittest.TestCase):
         np.testing.assert_array_equal(np.array(tensor), np_dygraph)
         np.testing.assert_array_equal(np.array(tensor), var_dygraph.numpy())
 
-    def test_dygraph_save_static_load(self):
+    def test_dygraph_save_static_load_pir(self):
         inps = np.random.randn(1, IMAGE_SIZE).astype('float32')
         path = os.path.join(
             self.temp_dir.name,
@@ -469,28 +457,36 @@ class TestSaveLoadAny(unittest.TestCase):
             state_dict_dy = layer.state_dict()
             paddle.save(state_dict_dy, path)
         paddle.enable_static()
-        with new_program_scope():
-            layer = LinearNet()
-            data = paddle.static.data(
-                name='x_static_save', shape=(None, IMAGE_SIZE), dtype='float32'
-            )
-            y_static = layer(data)
-            program = paddle.static.default_main_program()
-            place = (
-                base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
-            state_dict = paddle.load(path, keep_name_table=True)
-            program.set_state_dict(state_dict)
-            state_dict_param = program.state_dict("param")
-            for name, tensor in state_dict_dy.items():
-                np.testing.assert_array_equal(
-                    tensor.numpy(), np.array(state_dict_param[tensor.name])
+        with paddle.pir_utils.IrGuard():
+            with new_program_scope():
+                layer = LinearNet()
+                data = paddle.static.data(
+                    name='x_static_save',
+                    shape=(None, IMAGE_SIZE),
+                    dtype='float32',
                 )
+                y_static = layer(data)
+                program = paddle.static.default_main_program()
+                place = (
+                    base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else base.CUDAPlace(0)
+                )
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe.run(paddle.static.default_startup_program())
+                state_dict = paddle.load(path, keep_name_table=True)
+                paddle.pir.core.set_state_dict(
+                    program, state_dict, paddle.static.global_scope()
+                )
+                state_dict_param = program.state_dict(
+                    "param", paddle.static.global_scope()
+                )
+                for name, tensor in state_dict_dy.items():
+                    np.testing.assert_array_equal(
+                        tensor.numpy(), np.array(state_dict_param[tensor.name])
+                    )
 
+    @test_with_pir_api
     def test_save_load_complex_object_dygraph_save(self):
         paddle.disable_static()
         layer = paddle.nn.Linear(3, 4)
@@ -667,6 +663,7 @@ class TestSaveLoadAny(unittest.TestCase):
 
         np.testing.assert_array_equal(load_array4[0], obj4[0])
 
+    @test_with_pir_api
     def test_save_load_complex_object_static_save(self):
         paddle.enable_static()
         with new_program_scope():
@@ -686,7 +683,7 @@ class TestSaveLoadAny(unittest.TestCase):
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
 
-            state_dict = prog.state_dict()
+            state_dict = prog.state_dict('all', base.global_scope())
             keys = list(state_dict.keys())
             obj1 = [
                 state_dict[keys[0]],
@@ -942,50 +939,6 @@ class TestSaveLoadToMemory(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.framework.io_utils._open_file_buffer('temp', 'b')
 
-    def test_static_save_to_memory(self):
-        paddle.enable_static()
-        with new_program_scope():
-            # create network
-            x = paddle.static.data(
-                name="x", shape=[None, IMAGE_SIZE], dtype='float32'
-            )
-            z = paddle.static.nn.fc(x, 10, bias_attr=False)
-            z = paddle.static.nn.fc(z, 128, bias_attr=False)
-            loss = paddle.mean(z)
-            place = (
-                base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
-            prog = paddle.static.default_main_program()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-
-            state_dict = prog.state_dict()
-            keys = list(state_dict.keys())
-            tensor = state_dict[keys[0]]
-
-            byio = BytesIO()
-            byio2 = BytesIO()
-            paddle.save(prog, byio2)
-            paddle.save(tensor, byio)
-            paddle.save(state_dict, byio)
-            byio.seek(0)
-            byio2.seek(0)
-
-            prog_load = paddle.load(byio2)
-            self.assertTrue(
-                prog.desc.serialize_to_string()
-                == prog_load.desc.serialize_to_string()
-            )
-
-            tensor_load = paddle.load(byio, return_numpy=True)
-            np.testing.assert_array_equal(tensor_load, np.array(tensor))
-
-            state_dict_load = paddle.load(byio, return_numpy=True)
-            for k, v in state_dict.items():
-                np.testing.assert_array_equal(np.array(v), state_dict_load[k])
-
 
 class TestSaveLoad(unittest.TestCase):
     def setUp(self):
@@ -1025,7 +978,9 @@ class TestSaveLoad(unittest.TestCase):
             )
             np.testing.assert_array_equal(value.numpy(), load_value)
 
+    @test_with_pir_api
     def test_save_load(self):
+        paddle.disable_static()
         layer, opt = self.build_and_train_model()
 
         # save
@@ -1169,37 +1124,43 @@ class TestAsyncSaveLoad(unittest.TestCase):
 
 
 class TestSaveLoadProgram(unittest.TestCase):
-    def test_save_load_program(self):
+    def test_save_load_program_pir(self):
         paddle.enable_static()
-        temp_dir = tempfile.TemporaryDirectory()
+        with paddle.pir_utils.IrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            with new_program_scope():
+                layer = LinearNet()
+                data = paddle.static.data(
+                    name='x_static_save',
+                    shape=(None, IMAGE_SIZE),
+                    dtype='float32',
+                )
+                y_static = layer(data)
+                main_program = paddle.static.default_main_program()
+                startup_program = paddle.static.default_startup_program()
+                path1 = os.path.join(
+                    temp_dir.name,
+                    "test_paddle_save_load_program/main_program.json",
+                )
+                path2 = os.path.join(
+                    temp_dir.name,
+                    "test_paddle_save_load_program/startup_program.json",
+                )
+                paddle.save(main_program, path1)
+                paddle.save(startup_program, path2)
 
-        with new_program_scope():
-            layer = LinearNet()
-            data = paddle.static.data(
-                name='x_static_save', shape=(None, IMAGE_SIZE), dtype='float32'
-            )
-            y_static = layer(data)
-            main_program = paddle.static.default_main_program()
-            startup_program = paddle.static.default_startup_program()
-            origin_main = main_program.desc.serialize_to_string()
-            origin_startup = startup_program.desc.serialize_to_string()
-            path1 = os.path.join(
-                temp_dir.name,
-                "test_paddle_save_load_program/main_program.pdmodel",
-            )
-            path2 = os.path.join(
-                temp_dir.name,
-                "test_paddle_save_load_program/startup_program.pdmodel",
-            )
-            paddle.save(main_program, path1)
-            paddle.save(startup_program, path2)
-
-        with new_program_scope():
-            load_main = paddle.load(path1).desc.serialize_to_string()
-            load_startup = paddle.load(path2).desc.serialize_to_string()
-            self.assertTrue(origin_main == load_main)
-            self.assertTrue(origin_startup == load_startup)
-        temp_dir.cleanup()
+            with new_program_scope():
+                load_main = paddle.load(path1)
+                load_startup = paddle.load(path2)
+                self.assertTrue(
+                    len(main_program.global_block().ops)
+                    == len(load_main.global_block().ops)
+                )
+                self.assertTrue(
+                    len(startup_program.global_block().ops)
+                    == len(load_startup.global_block().ops)
+                )
+            temp_dir.cleanup()
 
 
 class TestSaveLoadLayer(unittest.TestCase):

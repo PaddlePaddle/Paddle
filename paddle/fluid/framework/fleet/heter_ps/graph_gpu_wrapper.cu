@@ -269,7 +269,7 @@ void GraphGpuWrapper::init_type_keys(
     for (size_t j = 0; j < thread_num; j++) {
       auto stream = get_local_stream(j);
       int gpuid = device_id_mapping[j];
-      auto place = platform::CUDAPlace(gpuid);
+      auto place = phi::GPUPlace(gpuid);
       platform::CUDADeviceGuard guard(gpuid);
       keys[f_idx][j] = memory::AllocShared(
           place,
@@ -359,7 +359,7 @@ void GraphGpuWrapper::init_metapath_total_keys() {
   for (size_t j = 0; j < thread_num; j++) {
     auto stream = get_local_stream(j);
     int gpuid = device_id_mapping[j];
-    auto place = platform::CUDAPlace(gpuid);
+    auto place = phi::GPUPlace(gpuid);
     platform::CUDADeviceGuard guard(gpuid);
     d_node_iter_graph_metapath_keys_[j] = memory::AllocShared(
         place,
@@ -642,7 +642,7 @@ void GraphGpuWrapper::shuffle_start_nodes_for_training() {
     for (size_t j = 0; j < d_node_iter_graph_all_type_keys_[i].size(); j++) {
       auto stream = get_local_stream(j);
       int gpuid = device_id_mapping[j];
-      auto place = platform::CUDAPlace(gpuid);
+      auto place = phi::GPUPlace(gpuid);
       platform::CUDADeviceGuard guard(gpuid);
       paddle::memory::ThrustAllocator<cudaStream_t> allocator(place, stream);
       const auto &exec_policy = thrust::cuda::par(allocator).on(stream);
@@ -1047,7 +1047,7 @@ void GraphGpuWrapper::seek_keys_rank(int gpu_id,
                                      int len,
                                      uint32_t *d_out_ranks) {
   platform::CUDADeviceGuard guard(gpu_id);
-  platform::CUDAPlace place = platform::CUDAPlace(gpu_id);
+  phi::GPUPlace place = phi::GPUPlace(gpu_id);
   auto stream = get_local_stream(gpu_id);
 
   if (FLAGS_graph_edges_split_mode == "fennel") {
@@ -1147,9 +1147,9 @@ int GraphGpuWrapper::get_feature_info_of_nodes(
     std::shared_ptr<phi::Allocation> &slot_list,
     bool sage_mode) {
   platform::CUDADeviceGuard guard(gpu_id);
-  PADDLE_ENFORCE_NOT_NULL(graph_table,
-                          paddle::platform::errors::InvalidArgument(
-                              "graph_table should not be null"));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph_table,
+      phi::errors::InvalidArgument("graph_table should not be null"));
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->get_feature_info_of_nodes(gpu_id,
                                   d_nodes,
@@ -1171,9 +1171,9 @@ int GraphGpuWrapper::get_float_feature_info_of_nodes(
     std::shared_ptr<phi::Allocation> &slot_list,
     bool sage_mode) {
   platform::CUDADeviceGuard guard(gpu_id);
-  PADDLE_ENFORCE_NOT_NULL(graph_table,
-                          paddle::platform::errors::InvalidArgument(
-                              "graph_table should not be null"));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph_table,
+      phi::errors::InvalidArgument("graph_table should not be null"));
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->get_float_feature_info_of_nodes(gpu_id,
                                         d_nodes,
@@ -1193,9 +1193,9 @@ int GraphGpuWrapper::get_feature_of_nodes(int gpu_id,
                                           int *d_slot_feature_num_map,
                                           int fea_num_per_node) {
   platform::CUDADeviceGuard guard(gpu_id);
-  PADDLE_ENFORCE_NOT_NULL(graph_table,
-                          paddle::platform::errors::InvalidArgument(
-                              "graph_table should not be null"));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph_table,
+      phi::errors::InvalidArgument("graph_table should not be null"));
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->get_feature_of_nodes(gpu_id,
                              d_walk,
@@ -1280,11 +1280,11 @@ NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id,
                                                  int idx,
                                                  int start,
                                                  int query_size) {
-  PADDLE_ENFORCE_EQ(FLAGS_gpugraph_load_node_list_into_hbm,
-                    true,
-                    paddle::platform::errors::PreconditionNotMet(
-                        "when use query_node_list should set "
-                        "gpugraph_load_node_list_into_hbm true"));
+  PADDLE_ENFORCE_EQ(
+      FLAGS_gpugraph_load_node_list_into_hbm,
+      true,
+      phi::errors::PreconditionNotMet("when use query_node_list should set "
+                                      "gpugraph_load_node_list_into_hbm true"));
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->query_node_list(gpu_id, idx, start, query_size);
 }

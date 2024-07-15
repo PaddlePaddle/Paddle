@@ -32,7 +32,7 @@ class ArrayOp : public framework::OperatorBase {
 
  protected:
   size_t GetOffset(const framework::Scope &scope,
-                   const platform::Place &place) const {
+                   const phi::Place &place) const {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE_NOT_NULL(i, phi::errors::NotFound("Input(I) is not found."));
     auto &i_tensor = i->Get<phi::DenseTensor>();
@@ -45,16 +45,16 @@ class ArrayOp : public framework::OperatorBase {
                                      i_tensor.dims()));
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
     size_t offset;
-    if (platform::is_gpu_place(i_tensor.place()) ||
-        platform::is_xpu_place(i_tensor.place()) ||
-        platform::is_custom_place(i_tensor.place())) {
+    if (i_tensor.place().GetType() == phi::AllocationType::GPU ||
+        i_tensor.place().GetType() == phi::AllocationType::XPU ||
+        i_tensor.place().GetType() == phi::AllocationType::CUSTOM) {
       // FIXME: Avoid copy from GPU to CPU
       phi::DenseTensor t;
-      framework::TensorCopy(i_tensor, platform::CPUPlace(), dev_ctx, &t);
+      phi::Copy(dev_ctx, i_tensor, phi::CPUPlace(), false, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());
     } else {

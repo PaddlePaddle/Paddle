@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import contextlib
 import inspect
@@ -19,11 +20,22 @@ import pickle
 import socket
 import time
 import warnings
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Literal,
+    Sequence,
+    Union,
+    overload,
+)
 
 import numpy as np
+from typing_extensions import TypeAlias
 
 import paddle
 import paddle.distributed as dist
+import paddle.optimizer
 from paddle import base
 from paddle.autograd import no_grad
 from paddle.base import core
@@ -44,6 +56,23 @@ from paddle.static import InputSpec as Input
 
 from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
+
+    from .callbacks import Callback
+    from .model_summary import ModelSummary
+
+    _InputBatch: TypeAlias = Union[
+        Tensor,
+        npt.NDArray[Any],
+        list[Tensor],
+        list[npt.NDArray[Any]],
+    ]
+
 
 __all__ = []
 
@@ -1161,7 +1190,16 @@ class Model:
             ...
     """
 
-    def __init__(self, network, inputs=None, labels=None):
+    mode: Literal["train", "eval", "test"]
+    network: paddle.nn.Layer
+    stop_training: bool
+
+    def __init__(
+        self,
+        network: paddle.nn.Layer,
+        inputs: Input | Sequence[Input] | dict[str, Input] | None = None,
+        labels: Input | Sequence[Input] | None = None,
+    ) -> None:
         self.mode = 'train'
         self.network = network
         self._inputs = None
@@ -1191,7 +1229,12 @@ class Model:
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train_batch(self, inputs, labels=None, update=True):
+    def train_batch(
+        self,
+        inputs: _InputBatch,
+        labels: _InputBatch | None = None,
+        update: bool = True,
+    ) -> list[float] | tuple[list[npt.NDArray[Any]], list[float]]:
         """
 
         Run one training step on one batch of data. And using `update` indicates
@@ -1248,7 +1291,9 @@ class Model:
         return loss
 
     @no_grad()
-    def eval_batch(self, inputs, labels=None):
+    def eval_batch(
+        self, inputs: _InputBatch, labels: _InputBatch | None = None
+    ) -> list[float] | tuple[list[npt.NDArray[Any]], list[float]]:
         """
 
         Run one evaluating step on a batch of data.
@@ -1304,7 +1349,7 @@ class Model:
         return loss
 
     @no_grad()
-    def predict_batch(self, inputs):
+    def predict_batch(self, inputs: _InputBatch) -> list[npt.NDArray[Any]]:
         """
 
         Run one predicting step on a batch of data.
@@ -1353,7 +1398,7 @@ class Model:
             self._update_inputs()
         return loss
 
-    def save(self, path, training=True):
+    def save(self, path: str, training: bool = True) -> None:
         """
 
         This function saves parameters, optimizer information or model and
@@ -1384,6 +1429,7 @@ class Model:
 
             .. code-block:: python
 
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.nn as nn
                 >>> import paddle.vision.transforms as T
@@ -1420,7 +1466,12 @@ class Model:
             else:
                 self._adapter.save(path)
 
-    def load(self, path, skip_mismatch=False, reset_optimizer=False):
+    def load(
+        self,
+        path: str,
+        skip_mismatch: bool = False,
+        reset_optimizer: bool = False,
+    ) -> None:
         """
 
         Load from files storing the model states and optimizer states. The file
@@ -1533,7 +1584,7 @@ class Model:
         else:
             return self._adapter.load(matched_param_state, optim_state)
 
-    def parameters(self, *args, **kwargs):
+    def parameters(self, *args: Any, **kwargs: Any) -> list[Tensor]:
         """
 
         Returns a list of parameters of the model.
@@ -1668,8 +1719,14 @@ class Model:
             self._adapter._amp_configs[key] = amp_configs[key]
 
     def prepare(
-        self, optimizer=None, loss=None, metrics=None, amp_configs=None
-    ):
+        self,
+        optimizer: paddle.optimizer.Optimizer | None = None,
+        loss: (
+            paddle.nn.Layer | Callable[[Tensor, Tensor], Tensor] | None
+        ) = None,
+        metrics: Metric | list[Metric] | None = None,
+        amp_configs: str | dict[str, Any] | None = None,
+    ) -> None:
         """
 
         Configures the model before running.
@@ -1749,22 +1806,22 @@ class Model:
 
     def fit(
         self,
-        train_data=None,
-        eval_data=None,
-        batch_size=1,
-        epochs=1,
-        eval_freq=1,
-        log_freq=10,
-        save_dir=None,
-        save_freq=1,
-        verbose=2,
-        drop_last=False,
-        shuffle=True,
-        num_workers=0,
-        callbacks=None,
-        accumulate_grad_batches=1,
-        num_iters=None,
-    ):
+        train_data: Dataset | DataLoader | None = None,
+        eval_data: Dataset | DataLoader | None = None,
+        batch_size: int | list[int] = 1,
+        epochs: int = 1,
+        eval_freq: int = 1,
+        log_freq: int = 10,
+        save_dir: str | None = None,
+        save_freq: int = 1,
+        verbose: int = 2,
+        drop_last: bool = False,
+        shuffle: bool = True,
+        num_workers: int = 0,
+        callbacks: Sequence[Callback] | Callback | None = None,
+        accumulate_grad_batches: int = 1,
+        num_iters: int | None = None,
+    ) -> None:
         """
 
         Trains the model for a fixed number of epochs. If `eval_data` is set,
@@ -1803,7 +1860,7 @@ class Model:
                 subprocess used and loading data in main process.
                 When train_data and eval_data are both the instance of
                 Dataloader, this parameter will be ignored. Default: 0.
-            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+            callbacks (Sequence[Callback]|Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, :ref:`api_paddle_callbacks_ProgBarLogger` and
                 :ref:`api_paddle_callbacks_ModelCheckpoint` are automatically inserted. Default: None.
             accumulate_grad_batches (int, optional): The number of batches to accumulate gradient
@@ -1998,14 +2055,14 @@ class Model:
 
     def evaluate(
         self,
-        eval_data,
-        batch_size=1,
-        log_freq=10,
-        verbose=2,
-        num_workers=0,
-        callbacks=None,
-        num_iters=None,
-    ):
+        eval_data: Dataset | DataLoader,
+        batch_size: int = 1,
+        log_freq: int = 10,
+        verbose: int = 2,
+        num_workers: int = 0,
+        callbacks: Sequence[Callback] | Callback | None = None,
+        num_iters: int | None = None,
+    ) -> dict[str, float | npt.NDArray[Any]]:
         """
         Evaluate the loss and metrics of the model on input dataset.
 
@@ -2024,7 +2081,7 @@ class Model:
                 0 for no subprocess used and loading data in main process. When
                 train_data and eval_data are both the instance of Dataloader,
                 this parameter will be ignored. Default: 0.
-            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+            callbacks (Sequence[Callback]|Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
             num_iters (int|None, optional): The number of iterations to evaluate the model.
@@ -2107,6 +2164,42 @@ class Model:
 
         return eval_result
 
+    @overload
+    def predict(
+        self,
+        test_data: Dataset | DataLoader,
+        batch_size: int = ...,
+        num_workers: int = ...,
+        stack_outputs: Literal[True] = ...,
+        verbose: int = ...,
+        callbacks: Sequence[Callback] | Callback | None = ...,
+    ) -> list[npt.NDArray[Any]]:
+        ...
+
+    @overload
+    def predict(
+        self,
+        test_data: Dataset | DataLoader,
+        batch_size: int = ...,
+        num_workers: int = ...,
+        stack_outputs: Literal[False] = ...,
+        verbose: int = ...,
+        callbacks: Sequence[Callback] | Callback | None = ...,
+    ) -> list[tuple[npt.NDArray[Any], ...]]:
+        ...
+
+    @overload
+    def predict(
+        self,
+        test_data: Dataset | DataLoader,
+        batch_size: int = ...,
+        num_workers: int = ...,
+        stack_outputs: bool = ...,
+        verbose: int = ...,
+        callbacks: Sequence[Callback] | Callback | None = ...,
+    ) -> list[npt.NDArray[Any] | tuple[npt.NDArray[Any], ...]]:
+        ...
+
     def predict(
         self,
         test_data,
@@ -2136,7 +2229,7 @@ class Model:
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
             verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per batch. Default: 1.
-            callbacks(Callback, optional): A Callback instance, Default: None.
+            callbacks(Sequence[Callback]|Callback|None, optional): A Callback instance, Default: None.
 
         Returns:
             list: output of models.
@@ -2222,7 +2315,7 @@ class Model:
         cbks.on_end('predict', logs)
         return outputs
 
-    def _save_inference_model(self, path):
+    def _save_inference_model(self, path: str) -> None:
         """
         Save inference model can be used in static or dynamic mode.
 
@@ -2242,8 +2335,7 @@ class Model:
                     )
                 if self._is_shape_inferred:
                     warnings.warn(
-                        "'inputs' was not specified when Model initialization, so the input shape to be saved will be the shape derived from the user's actual inputs. The input shape to be saved is %s. For saving correct input shapes, please provide 'inputs' for Model initialization."
-                        % self._input_info[0]
+                        f"'inputs' was not specified when Model initialization, so the input shape to be saved will be the shape derived from the user's actual inputs. The input shape to be saved is {self._input_info[0]}. For saving correct input shapes, please provide 'inputs' for Model initialization."
                     )
 
                 paddle.jit.save(layer, path, input_spec=self._inputs)
@@ -2373,7 +2465,13 @@ class Model:
             return logs, outputs
         return logs
 
-    def summary(self, input_size=None, dtype=None):
+    def summary(
+        self,
+        input_size: (
+            tuple[int, ...] | Input | list[tuple[int, ...] | Input] | None
+        ) = None,
+        dtype: _DTypeLiteral | None = None,
+    ) -> ModelSummary:
         """Prints a string summary of the network.
 
         Args:

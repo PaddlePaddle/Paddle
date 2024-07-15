@@ -16,12 +16,27 @@
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/framework/details/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 
 namespace paddle {
+class Tensor;
 namespace primitive {
+template <typename T>
+static Tensor get_slice(const Tensor& x, int64_t idx) {
+  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
+}
+
+template <typename T>
+static Tensor get_slice_vec(const Tensor& x,
+                            int64_t start_idx,
+                            int64_t end_idx) {
+  return slice<T>(x, {0}, {start_idx}, {end_idx}, {1}, {});
+}
 
 template <typename T>
 void set_output(const Tensor& x_tmp, Tensor* x);
@@ -130,10 +145,38 @@ static std::vector<int64_t> process_dims(const Tensor& origin,
 }
 
 // These method don't need to be specified
+// These method only handle the static shape case
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
-  std::vector<int64_t> result;
+  bool has_dynamic_shape = false;
+  for (int i = 0; i < dout_dims.size(); i++) {
+    if (dout_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      platform::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [dout_dims] have the dynamic shape."));
+
+  for (int i = 0; i < in_dims.size(); i++) {
+    if (in_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      platform::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [in_dims] have the dynamic shape."));
+
   int bat = dout_dims.size() - in_dims.size();
+  std::vector<int64_t> result;
   for (int i = 0; i < bat; ++i) {
     result.push_back(i);
   }
@@ -161,7 +204,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
 
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
                                  const phi::DDim& y_dims) {
-  auto out_dims = paddle::operators::details::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
 
@@ -180,12 +223,27 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   }
 }
 
-static bool has_dynamic_shape(const std::vector<int64_t>& vec) {
-  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
-    return true;
-  } else {
-    return false;
+static bool has_dynamic_shape(const std::vector<int64_t>& shape) {
+  return std::find(shape.begin(), shape.end(), -1) != shape.end();
+}
+
+static bool has_dynamic_shape(const std::vector<int64_t>& shape,
+                              const std::vector<int64_t>& axis) {
+  bool flag = false;
+  const int64_t rank = shape.size();
+  for (int64_t idx : axis) {
+    if (idx < 0) idx += rank;
+    PADDLE_ENFORCE_LT(
+        idx,
+        rank,
+        ::common::errors::PreconditionNotMet(
+            "Required idx < shape.size(), but received %d.", idx));
+    if (shape[idx] == -1) {
+      flag = true;
+      break;
+    }
   }
+  return flag;
 }
 
 }  // namespace primitive

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.communication.reduce import ReduceOp
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction, is_partial, is_replicated
@@ -43,12 +42,12 @@ class PToRReshardFunction(ReshardFunction):
         src_mesh = src_dist_attr.process_mesh
         src_reduce_type = src_dist_attr.partial_status[0]
         reduce_mean = False
-        if src_reduce_type == ReduceOp.AVG:
-            src_reduce_type = ReduceOp.SUM
+        if src_reduce_type == paddle.base.core.ReduceType.kRedAvg:
+            src_reduce_type = paddle.base.core.ReduceType.kRedSum
             reduce_mean = True
 
-        group = new_process_group(src_mesh.process_ids)
-        reduced_value = paddle._pir_ops.c_allreduce_sum_(
+        group = new_process_group(sorted(src_mesh.process_ids))
+        reduced_value = paddle._C_ops.c_allreduce_sum(
             src_value, group.id, True, False
         )
 
@@ -95,20 +94,14 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
         tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
             src_value.type(), tmp_dist_attr
         )
-        out_value = same_status_func.reshard(
+        src_value = same_status_func.reshard(
             src_dist_attr, tmp_dist_attr, src_value, tmp_dst_type
         )
 
-        if out_value is None:
-            return None
-
-        curr_global_rank = paddle.distributed.get_rank()
-        if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
-            p_to_r_func = PToRReshardFunction()
-            assert p_to_r_func.is_suitable(
-                tmp_dist_attr, dst_dist_attr
-            ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
-            return p_to_r_func.reshard(
-                tmp_dist_attr, dst_dist_attr, out_value, dst_type
-            )
-        return None
+        p_to_r_func = PToRReshardFunction()
+        assert p_to_r_func.is_suitable(
+            tmp_dist_attr, dst_dist_attr
+        ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+        return p_to_r_func.reshard(
+            tmp_dist_attr, dst_dist_attr, src_value, dst_type
+        )

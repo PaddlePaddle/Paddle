@@ -18,11 +18,9 @@
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
-#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -56,7 +54,7 @@ std::vector<ir::Expr> VarVec2ExprVec(const std::vector<ir::Var>& in) {
 std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
                                             const ir::Tensor& tensor) {
   VLOG(4) << "GetEachTensorLoadExpr: " << tensor;
-  std::set<Expr> load_exprs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
+  std::vector<Expr> load_exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
       body, [&tensor](const Expr* expr) {
         return expr->As<ir::Load>() && expr->As<ir::Load>()->is_addr_tensor() &&
                expr->As<ir::Load>()->tensor.as_tensor_ref()->name ==
@@ -65,7 +63,7 @@ std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
   for (auto& t : load_exprs) {
     VLOG(4) << "GetEachTensorLoadExpr Found: " << t << " " << t.ptr();
   }
-  return std::vector(load_exprs.begin(), load_exprs.end());
+  return load_exprs;
 }
 
 MappingTargetExprToDestExprMutator::MappingTargetExprToDestExprMutator(
@@ -83,6 +81,16 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Load* load, Expr* op) {
     IRMutator::Visit(load, op);
   }
 }
+
+void MappingTargetExprToDestExprMutator::Visit(const ir::For* for_node,
+                                               Expr* op) {
+  if (for_node == source_.ptr()) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(for_node, op);
+  }
+}
+
 void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
                                                Expr* op) {
   if (store == source_.ptr()) {
@@ -91,6 +99,7 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
     IRMutator::Visit(store, op);
   }
 }
+
 void MappingTargetExprToDestExprMutator::Visit(const ir::Reduce* reduce,
                                                Expr* op) {
   if (reduce == source_.ptr()) {
@@ -196,7 +205,7 @@ ExprSetFinder ExprSetFinder::operator*(ExprSetFinder x) const {
     std::vector<ir::Expr> res;
     for (const auto& r : rs) {
       const auto& x_res = x.f_(r);
-      res.insert(res.begin(), x_res.begin(), x_res.end());
+      res.insert(res.end(), x_res.begin(), x_res.end());
     }
     return res;
   };
@@ -246,6 +255,15 @@ ExprSetFinder ScheduleBlockRealizeNotRoot = FilterMaker(
     },
     "ScheduleBlockRealizeNotRoot");
 
+ExprSetFinder ScheduleBlockRealizeIsRoot = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("root") != std::string::npos);
+    },
+    "ScheduleBlockRealizeIsRoot");
+
 ExprSetFinder ScheduleBlockRealizeIsNotInit = FilterMaker(
     [](const ir::Expr& e) -> bool {
       return (e.As<ir::ScheduleBlockRealize>() &&
@@ -277,6 +295,12 @@ ExprSetFinder ChildScheduleBlockRealizes =
         "ChildScheduleBlockRealizes") *
     ScheduleBlockRealizeNotRoot;
 
+ExprSetFinder ChildRootScheduleBlockRealizes =
+    Collector(
+        [](const ir::Expr* e) { return e->As<ir::ScheduleBlockRealize>(); },
+        "ChildScheduleBlockRealizes") *
+    ScheduleBlockRealizeIsRoot;
+
 ExprSetFinder IsForIterVar(const ir::Var& var) {
   return FilterMaker(
       [var = var](const ir::Expr& e) -> bool {
@@ -304,7 +328,7 @@ ExprSetFinder ChildTensorLoads = Collector(
 
 ExprSetFinder ChildTensorStores = Collector(
     [](const ir::Expr* e) {
-      return e->As<ir::Load>() && e->As<ir::Store>()->is_addr_tensor();
+      return e->As<ir::Store>() && e->As<ir::Store>()->is_addr_tensor();
     },
     "ChildTensorStores");
 
@@ -324,8 +348,10 @@ ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [&](const auto& child) -> ExprSet {
     ExprSetFinder find_child =
         Collector([child](const ir::Expr* e) { return *e == child; });
-    const auto& father_collector = Collector(
-        [&](const ir::Expr* current) { return !find_child(*current).empty(); });
+    const auto& father_collector = Collector([&](const ir::Expr* current) {
+      auto res = (*current != child) && !find_child(*current).empty();
+      return res;
+    });
     return father_collector(root);
   };
   return ExprSetFinder(f, "FindFather");
@@ -373,6 +399,35 @@ ExprTransformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
   return ExprTransformer(f);
 }
 
+ExprTransformer UnsqueezeForTransformer(
+    const ExprSetFinderUtils::ExprSetFinder& followed_finder,
+    const ir::Var& to_append_var) {
+  const auto& suqueeze_for_func = [&](const ir::Expr& e) -> ir::Expr {
+    auto copied_e = ir::ir_utils::IRCopy(e);
+    ir::Expr followed_expr = followed_finder.GetSingle(copied_e);
+    // (ExprSetFinderUtils::ChildFors *
+    // ExprSetFinderUtils::IsForIterVar(following_for_iter_var)).GetSingle(copied_e);
+    VLOG(6) << "UnsqueezeForTransformer: for insert after " << followed_expr;
+    if (followed_expr.As<ir::For>()) {
+      followed_expr.As<ir::For>()->body = ir::Block::Make({WrapForTransformer(
+          to_append_var)(followed_expr.As<ir::For>()->body)});
+    } else if (followed_expr.As<ir::ScheduleBlockRealize>()) {
+      const auto& schedule_block = followed_expr.As<ir::ScheduleBlockRealize>()
+                                       ->schedule_block.As<ir::ScheduleBlock>();
+      schedule_block->body =
+          WrapForTransformer(to_append_var)(schedule_block->body);
+    } else {
+      PADDLE_THROW(
+          "UnsqueezeForTransformer: only support insert after a (For / "
+          "ScheduleBlockRealizer): %s",
+          followed_expr);
+    }
+    VLOG(6) << "UnsqueezeForTransformer: After changed: " << copied_e;
+    return copied_e;
+  };
+  return ExprTransformer(suqueeze_for_func);
+}
+
 ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
                                             const ir::Expr& dst_load) {
   const auto& f = [&](const ir::Expr& e) -> ir::Expr {
@@ -416,6 +471,14 @@ ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
         e,
         target_vars,
         std::vector<ir::Expr>(dest_vars.begin(), dest_vars.end()));
+  };
+  return ExprTransformer(f);
+}
+
+ExprTransformer ReplaceVarTransformer(const std::vector<ir::Var>& target_vars,
+                                      const std::vector<ir::Expr>& dest_expr) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    return ComposeUtils::CopyedReplaceExpr(e, target_vars, dest_expr);
   };
   return ExprTransformer(f);
 }

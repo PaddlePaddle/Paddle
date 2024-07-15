@@ -27,9 +27,13 @@ struct DataRecord {
   size_t num_samples;  // total number of samples
   size_t batch_iter{0};
   size_t batch_size{1};
-  DataRecord() = default;
+  DataRecord() : link_step_data_all(), lod(), rnn_link_data(), num_samples(0) {}
   explicit DataRecord(const std::string &path, int batch_size = 1)
-      : batch_size(batch_size) {
+      : link_step_data_all(),
+        lod(),
+        rnn_link_data(),
+        num_samples(0),
+        batch_size(batch_size) {
     Load(path);
   }
   DataRecord NextBatch() {
@@ -139,20 +143,20 @@ TEST(Analyzer_rnn2, profile) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    PADDLE_ENFORCE_GT(outputs.size(),
-                      0,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        outputs.size(),
+        0,
+        phi::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_GT(output.size(),
-                      0,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        output.size(),
+        0,
+        phi::errors::Fatal("The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size,
-                      0,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        size,
+        0,
+        phi::errors::Fatal("The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);

@@ -28,25 +28,58 @@ from testsuite import create_op
 from utils import static_guard
 
 import paddle
+import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
-    if data_layout == "NHWC":
-        x = np.transpose(x, (0, 3, 1, 2))  # NHWC => NCHW
-    N, C, H, W = x.shape
-    G = groups
-    x = x.reshape((N * G, -1))
-    mean = np.mean(x, axis=1, keepdims=True)
-    var = np.var(x, axis=1, keepdims=True)
-    output = (x - mean) / np.sqrt(var + epsilon)
-    output = output.reshape((N, C, H, W)) * scale.reshape(
-        (-1, 1, 1)
-    ) + bias.reshape((-1, 1, 1))
-    if data_layout == "NHWC":
-        output = np.transpose(output, (0, 2, 3, 1))  # NCHW => NHWC
-    return output, mean.reshape((N, G)), var.reshape((N, G))
+    dim = x.ndim
+    if dim == 3:
+        if data_layout == "NHWC":
+            x = np.transpose(x, (0, 2, 1))  # NLC => NCL
+        N, C, L = x.shape
+        G = groups
+        x = x.reshape((N * G, -1))
+        mean = np.mean(x, axis=1, keepdims=True)
+        var = np.var(x, axis=1, keepdims=True)
+        output = (x - mean) / np.sqrt(var + epsilon)
+        output = output.reshape((N, C, L)) * scale.reshape(
+            (-1, 1)
+        ) + bias.reshape((-1, 1))
+        if data_layout == "NHWC":
+            output = np.transpose(output, (0, 2, 1))  # NCL => NLC
+        return output, mean.reshape((N, G)), var.reshape((N, G))
+    elif dim == 4:
+        if data_layout == "NHWC":
+            x = np.transpose(x, (0, 3, 1, 2))  # NHWC => NCHW
+        N, C, H, W = x.shape
+        G = groups
+        x = x.reshape((N * G, -1))
+        mean = np.mean(x, axis=1, keepdims=True)
+        var = np.var(x, axis=1, keepdims=True)
+        output = (x - mean) / np.sqrt(var + epsilon)
+        output = output.reshape((N, C, H, W)) * scale.reshape(
+            (-1, 1, 1)
+        ) + bias.reshape((-1, 1, 1))
+        if data_layout == "NHWC":
+            output = np.transpose(output, (0, 2, 3, 1))  # NCHW => NHWC
+        return output, mean.reshape((N, G)), var.reshape((N, G))
+    else:
+        if data_layout == "NHWC":
+            x = np.transpose(x, (0, 4, 1, 2, 3))  # NDHWC => NCDHW
+        N, C, D, H, W = x.shape
+        G = groups
+        x = x.reshape((N * G, -1))
+        mean = np.mean(x, axis=1, keepdims=True)
+        var = np.var(x, axis=1, keepdims=True)
+        output = (x - mean) / np.sqrt(var + epsilon)
+        output = output.reshape((N, C, D, H, W)) * scale.reshape(
+            (-1, 1, 1, 1)
+        ) + bias.reshape((-1, 1, 1, 1))
+        if data_layout == "NHWC":
+            output = np.transpose(output, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
+        return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
 class TestGroupNormOpError(unittest.TestCase):
@@ -93,11 +126,15 @@ class TestGroupNormOp(OpTest):
         self.shape = (2, 100, 3, 5)
         self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
+        self.channel_last = False
         self.init_test_case()
 
+        self.data_format = 'NHWC' if self.channel_last else 'NCHW'
         input = np.random.random(self.shape).astype(self.dtype)
-        if self.data_format == "NHWC":
-            input = np.transpose(input, (0, 2, 3, 1))
+        if self.channel_last:
+            shape = list(self.shape)
+            shape.insert(len(shape), shape.pop(1))
+            input = input.reshape(shape)
         scale = np.random.random([self.shape[1]]).astype(self.dtype)
         bias = np.random.random([self.shape[1]]).astype(self.dtype)
         output, mean, var = group_norm_naive(
@@ -172,7 +209,7 @@ class TestGroupNormOp(OpTest):
             gpu_grads,
             inputs_to_check,
             0.005,
-            "Gradient Check On %s" % str(place),
+            f"Gradient Check On {place}",
         )
 
     def test_check_grad(self):
@@ -267,11 +304,15 @@ class TestGroupNormBF16Op(OpTest):
         self.shape = (2, 100, 3, 5)
         self.attrs = {'epsilon': 1e-5, 'groups': 10, 'data_layout': "NCHW"}
         self.compare_between_place = False
+        self.channel_last = False
         self.init_test_case()
 
+        self.data_format = 'NHWC' if self.channel_last else 'NCHW'
         input = np.random.random(self.shape).astype(np.float32)
-        if self.data_format == "NHWC":
-            input = np.transpose(input, (0, 2, 3, 1))
+        if self.channel_last:
+            shape = list(self.shape)
+            shape.insert(len(shape), shape.pop(1))
+            input = input.reshape(shape)
         scale = np.random.random([self.shape[1]]).astype(np.float32)
         bias = np.random.random([self.shape[1]]).astype(np.float32)
         output, mean, var = group_norm_naive(
@@ -318,7 +359,7 @@ class TestGroupNormBF16Op(OpTest):
         self.rev_comp_atol = 1e-2
         self.rev_comp_rtol = 1e-2
         # prim bf16 has diff in windows
-        if sys.platform == "win32" or self.data_format == "NHWC":
+        if sys.platform == "win32" or self.channel_last:
             self.rev_comp_atol = 5e-2
             self.rev_comp_rtol = 5e-2
         place = core.CUDAPlace(0)
@@ -339,14 +380,58 @@ class TestGroupNormOp1(TestGroupNormOp):
         self.attrs['groups'] = 1
 
 
+class TestGroupNormOp1_with_NCL(TestGroupNormOp):
+    def init_test_case(self):
+        self.shape = (2, 100, 3)
+        self.data_format = "NCHW"
+        self.attrs['groups'] = 1
+
+
+class TestGroupNormOp1_with_NCDHW(TestGroupNormOp):
+    def init_test_case(self):
+        self.shape = (2, 100, 3, 2, 2)
+        self.data_format = "NCDHW"
+        self.attrs['groups'] = 1
+
+
 class TestGroupNormFP16Op1(TestGroupNormFP16OP):
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.dtype = np.float16
 
 
+class TestGroupNormFP16Op1_with_NCL(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.shape = (2, 100, 3)
+        self.data_format = "NCL"
+        self.attrs['groups'] = 1
+        self.dtype = np.float16
+
+
+class TestGroupNormFP16Op1_with_NCDHW(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.shape = (2, 100, 3, 2, 2)
+        self.data_format = "NCDHW"
+        self.attrs['groups'] = 1
+        self.dtype = np.float16
+
+
 class TestGroupNormBF16Op1(TestGroupNormBF16Op):
     def init_test_case(self):
+        self.attrs['groups'] = 1
+
+
+class TestGroupNormBF16Op1_with_NCL(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.shape = (2, 100, 3)
+        self.data_format = "NCL"
+        self.attrs['groups'] = 1
+
+
+class TestGroupNormBF16Op1_with_NCDHW(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.shape = (2, 100, 3, 2, 2)
+        self.data_format = "NCDHW"
         self.attrs['groups'] = 1
 
 
@@ -400,12 +485,30 @@ class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 2
         self.data_format = "NHWC"
+        self.channel_last = True
+
+
+class TestGroupNormOp1_With_NLC(TestGroupNormOp):
+    def init_test_case(self):
+        self.shape = (2, 100, 3)
+        self.attrs['groups'] = 2
+        self.data_format = "NLC"
+        self.channel_last = True
+
+
+class TestGroupNormOp1_With_NDHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.shape = (2, 100, 3, 2, 2)
+        self.attrs['groups'] = 2
+        self.data_format = "NDHWC"
+        self.channel_last = True
 
 
 class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.data_format = "NHWC"
+        self.channel_last = True
 
 
 class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
@@ -416,6 +519,7 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.attrs['epsilon'] = 0.5
         self.shape = (1, 100, 4, 4)
         self.dtype = np.float16
+        self.channel_last = True
 
     def test_check_output(self):
         rtol = 2e-3
@@ -429,6 +533,45 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
             inplace_atol=inplace_atol,
             check_pir=True,
         )
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        check_prim_grad = False
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
+            max_relative_error=0.03,
+        )
+
+
+class TestGroupNormFP16Op_With_NLC(TestGroupNormFP16Op_With_NHWC):
+    def init_test_case(self):
+        self.no_need_check_inplace = True
+        self.attrs['groups'] = 2
+        self.data_format = "NLC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 10)
+        self.dtype = np.float16
+        self.channel_last = True
+
+
+class TestGroupNormFP16Op_With_NDHWC(TestGroupNormFP16Op_With_NHWC):
+    def init_test_case(self):
+        self.no_need_check_inplace = True
+        self.attrs['groups'] = 10
+        self.data_format = "NDHWC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 4, 3, 2)
+        self.dtype = np.float16
+        self.channel_last = True
 
 
 class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
@@ -449,20 +592,14 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         }
         self.compare_between_place = False
         self.init_test_case()
+        self.data_format = 'NCHW' if self.data_format[1] == 'C' else 'NHWC'
         input = (
-            np.sin(
-                np.arange(
-                    self.shape[0]
-                    * self.shape[1]
-                    * self.shape[2]
-                    * self.shape[3]
-                )
-            )
+            np.sin(np.arange(np.prod(self.shape)))
             .reshape(self.shape)
             .astype(np.float32)
         )
-        scale = np.ones(self.shape[3]).astype(np.float32)
-        bias = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        scale = np.ones(self.shape[-1]).astype(np.float32)
+        bias = np.sin(np.arange(self.shape[-1])).astype(np.float32)
         output, mean, var = group_norm_naive(
             input,
             scale,
@@ -490,11 +627,46 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         )
 
 
+class TestGroupNormBF16Op_With_NLC(TestGroupNormBF16Op_With_NHWC):
+    def init_test_case(self):
+        self.shape = (1, 3, 512)
+        self.data_format = "NLC"
+
+
+class TestGroupNormBF16Op_With_NDHWC(TestGroupNormBF16Op_With_NHWC):
+    def init_test_case(self):
+        self.shape = (1, 3, 2, 2, 512)
+        self.data_format = "NDHWC"
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        check_prim_grad = False
+
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
+        # prim bf16 has diff in windows
+        if sys.platform == "win32" or self.channel_last:
+            self.rev_comp_atol = 5e-2
+            self.rev_comp_rtol = 5e-2
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
+            max_relative_error=0.03,
+        )
+
+
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
+        self.channel_last = True
 
 
 class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
@@ -502,12 +674,14 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
         self.attrs['groups'] = 4
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
+        self.channel_last = True
 
 
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
+        self.channel_last = True
 
 
 @skip_check_grad_ci(
@@ -520,6 +694,7 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
         self.attrs['groups'] = 8
         self.data_format = "NHWC"
         self.compare_between_place = True
+        self.channel_last = True
 
 
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
@@ -569,6 +744,134 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
             )
             np.testing.assert_allclose(results[0], expect_res1[0], rtol=1e-05)
             np.testing.assert_allclose(results[1], expect_res2[0], rtol=1e-05)
+
+
+class TestGroupNormFunctionalAPI_With_NLC(unittest.TestCase):
+    def test_case1(self):
+        places = [paddle.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static(place)
+            data1_np = np.random.random((2, 3, 4)).astype("float64")
+            data2_np = np.random.random((2, 4, 3)).astype("float64")
+            data1 = paddle.to_tensor(data1_np)
+            data2 = paddle.to_tensor(data2_np)
+            scale = paddle.to_tensor([1, 1, 1, 1], dtype="float64")
+            bias = paddle.to_tensor([0, 0, 0, 0], dtype="float64")
+            out1 = F.group_norm(
+                data1, num_groups=2, weight=scale, bias=bias, data_format="NLC"
+            )
+            out2 = F.group_norm(
+                data2, num_groups=2, weight=scale, bias=bias, data_format="NCL"
+            )
+
+            expect_res1 = group_norm_naive(
+                data1_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NHWC",
+            )
+            expect_res2 = group_norm_naive(
+                data2_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NCHW",
+            )
+            np.testing.assert_allclose(out1.numpy(), expect_res1[0], rtol=1e-05)
+            np.testing.assert_allclose(out2.numpy(), expect_res2[0], rtol=1e-05)
+
+
+class TestGroupNormFunctionalAPI_With_NHWC(unittest.TestCase):
+    def test_case1(self):
+        places = [paddle.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static(place)
+            data1_np = np.random.random((2, 3, 2, 4)).astype("float64")
+            data2_np = np.random.random((2, 4, 3, 2)).astype("float64")
+            data1 = paddle.to_tensor(data1_np)
+            data2 = paddle.to_tensor(data2_np)
+            scale = paddle.to_tensor([1, 1, 1, 1], dtype="float64")
+            bias = paddle.to_tensor([0, 0, 0, 0], dtype="float64")
+            out1 = F.group_norm(
+                data1, num_groups=2, weight=scale, bias=bias, data_format="NHWC"
+            )
+            out2 = F.group_norm(
+                data2, num_groups=2, weight=scale, bias=bias, data_format="NCHW"
+            )
+
+            expect_res1 = group_norm_naive(
+                data1_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NHWC",
+            )
+            expect_res2 = group_norm_naive(
+                data2_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NCHW",
+            )
+            np.testing.assert_allclose(out1.numpy(), expect_res1[0], rtol=1e-05)
+            np.testing.assert_allclose(out2.numpy(), expect_res2[0], rtol=1e-05)
+
+
+class TestGroupNormFunctionalAPI_With_NDHWC(unittest.TestCase):
+    def test_case1(self):
+        places = [paddle.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static(place)
+            data1_np = np.random.random((2, 3, 2, 2, 4)).astype("float64")
+            data2_np = np.random.random((2, 4, 3, 2, 2)).astype("float64")
+            data1 = paddle.to_tensor(data1_np)
+            data2 = paddle.to_tensor(data2_np)
+            scale = paddle.to_tensor([1, 1, 1, 1], dtype="float64")
+            bias = paddle.to_tensor([0, 0, 0, 0], dtype="float64")
+            out1 = F.group_norm(
+                data1,
+                num_groups=2,
+                weight=scale,
+                bias=bias,
+                data_format="NDHWC",
+            )
+            out2 = F.group_norm(
+                data2,
+                num_groups=2,
+                weight=scale,
+                bias=bias,
+                data_format="NCDHW",
+            )
+
+            expect_res1 = group_norm_naive(
+                data1_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NHWC",
+            )
+            expect_res2 = group_norm_naive(
+                data2_np,
+                scale,
+                bias,
+                epsilon=1e-5,
+                groups=2,
+                data_layout="NCHW",
+            )
+            np.testing.assert_allclose(out1.numpy(), expect_res1[0], rtol=1e-05)
+            np.testing.assert_allclose(out2.numpy(), expect_res2[0], rtol=1e-05)
 
 
 class TestGroupNormException(unittest.TestCase):
@@ -1445,7 +1748,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit fwd',
             )
 
             # TODO: fix the diff between cpu and gpu grad is large in original op
@@ -1459,7 +1762,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit rev',
             )
 
     def test_jit_comp_with_cinn(self):
@@ -1517,7 +1820,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn fwd',
             )
             # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
@@ -1529,7 +1832,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn rev',
             )
             i += 1
 

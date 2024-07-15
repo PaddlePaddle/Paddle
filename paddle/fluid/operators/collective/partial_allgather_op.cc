@@ -38,7 +38,7 @@ class PartialAllGatherOp : public framework::OperatorWithKernel {
             rank,
             nranks));
 
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dim);
   }
 };

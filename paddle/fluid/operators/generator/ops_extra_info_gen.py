@@ -142,7 +142,7 @@ def main():
     parser.add_argument(
         '--op_compat_yaml_path',
         help='path to api compat yaml file',
-        default='paddle/phi/api/yaml/op_compat.yaml',
+        default='paddle/phi/ops/yaml/op_compat.yaml',
     )
 
     parser.add_argument(

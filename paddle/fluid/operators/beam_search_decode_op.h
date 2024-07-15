@@ -35,12 +35,11 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
-      if (platform::is_gpu_place(step_ids_origin_[0].place())) {
+    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
         tensor_on_gpu_ = true;
       }
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
@@ -49,7 +48,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_id, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 
@@ -57,12 +56,12 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
-      if (platform::is_gpu_place(step_scores_origin_[0].place())) {
+    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+      if (step_scores_origin_[0].place().GetType() ==
+          phi::AllocationType::GPU) {
         tensor_on_gpu_ = true;
       }
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
@@ -71,8 +70,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(
-              step_score, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_score, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 
@@ -113,58 +111,6 @@ struct BeamSearchDecodeFunctor {
   LoDTensorArray step_scores_ = LoDTensorArray();
   phi::DenseTensor* id_tensor_;
   phi::DenseTensor* score_tensor_;
-};
-
-template <typename T, typename DeviceContext>
-class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const LoDTensorArray* ids = context.Input<LoDTensorArray>("Ids");
-    const LoDTensorArray* scores = context.Input<LoDTensorArray>("Scores");
-    const size_t step_num = ids->size();
-    PADDLE_ENFORCE_GT(
-        step_num,
-        0UL,
-        phi::errors::InvalidArgument(
-            "beam search steps, which is the"
-            "size of Input(Ids) LoDTensorArray. beam search steps should "
-            "be larger than 0, but received %d. ",
-            step_num));
-    const size_t source_num = ids->at(0).lod().at(0).size() - 1;
-    PADDLE_ENFORCE_GT(
-        source_num,
-        0UL,
-        phi::errors::InvalidArgument(
-            "source_num is the sequence number of the"
-            "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
-            "The number of source_num should be larger than"
-            "0, but received %d. ",
-            source_num));
-
-    for (size_t i = 0; i < step_num; ++i) {
-      PADDLE_ENFORCE_EQ(
-          ids->at(i).lod().size(),
-          2UL,
-          phi::errors::InvalidArgument(
-              "For the i step in beam search steps,"
-              "the size of Input(Ids)[i].lod() should larger than 2,"
-              "but received %d. ",
-              ids->at(i).lod().size()));
-    }
-
-    size_t beam_size = context.Attr<int>("beam_size");
-    int end_id = context.Attr<int>("end_id");
-
-    // prepare output
-    phi::DenseTensor* sentenceIds =
-        context.Output<phi::DenseTensor>("SentenceIds");
-    phi::DenseTensor* sentenceScores =
-        context.Output<phi::DenseTensor>("SentenceScores");
-
-    BeamSearchDecodeFunctor bs(
-        *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
-    bs.apply_mix<T>();
-  }
 };
 
 }  // namespace operators

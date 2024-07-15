@@ -13,15 +13,13 @@
 # limitations under the License.
 
 import sys
-import warnings
 
 from . import core, framework
 from .framework import cpu_places, cuda_places, xpu_places
 
 __all__ = []
 
-ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
-BuildStrategy = core.ParallelExecutor.BuildStrategy
+BuildStrategy = core.CompiledProgram.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 DeviceType = core.DeviceType
@@ -31,14 +29,6 @@ def _place_obj(place):
     p = core.Place()
     p.set_place(place)
     return p
-
-
-def _is_pserver_mode(main_program):
-    main = main_program if main_program else framework.default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
 
 
 def _has_backward_op(graph):
@@ -145,8 +135,7 @@ class CompiledProgram:
             self._program = program_or_graph
         else:
             raise TypeError(
-                "The type of program_to_graph parameter is wrong, expected Graph or Program, but received %s"
-                % type(program_or_graph)
+                f"The type of program_to_graph parameter is wrong, expected Graph or Program, but received {type(program_or_graph)}"
             )
 
         self._scope = None
@@ -157,7 +146,6 @@ class CompiledProgram:
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
-        self._exec_strategy = None
 
     def _with_inference_optimize(self, config):
         """Add inference optimize
@@ -206,33 +194,6 @@ class CompiledProgram:
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
-
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy._use_device = use_device
-
-        if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy._use_device == DeviceType.CUDA:
-                # Experiments on se-resnext shows that too many threads hurt
-                # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(places) * 4
-            elif self._exec_strategy._use_device == DeviceType.XPU:
-                # Currently only single thread is supported in Kunlun XPU.
-                self._exec_strategy.num_threads = 1
-            else:
-                self._exec_strategy.num_threads = len(places) * 2
-
-        if (
-            "FLAGS_use_cinn" in core.globals()
-            and core.globals()["FLAGS_use_cinn"]
-            and self._exec_strategy.num_threads != 1
-        ):
-            warnings.warn(
-                "At present, when CINN is turned on, each process can "
-                "only contain one thread, so reset the number of threads to 1 here."
-            )
-            self._exec_strategy.num_threads = 1
 
         # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
@@ -258,13 +219,7 @@ class CompiledProgram:
                 self._program._hierarchical_allreduce_inter_nranks
             )
 
-        if self._build_strategy.sync_batch_norm:
-            self._build_strategy.enable_sequential_execution = True
-
         if self._program is not None and self._program._enable_dgc:
-            assert (
-                self._exec_strategy._use_device == DeviceType.CUDA
-            ), "DGC only used under CUDA environment."
             assert (
                 self._build_strategy.num_trainers * len(places) > 1
             ), "DGC is not available for single card training."
@@ -304,13 +259,12 @@ class CompiledProgram:
             raise RuntimeError(
                 "CUDA Graph is not allowed to capture when running the first batch."
             )
-        return core.ParallelExecutor(
+        return core.CompiledProgram(
             places,
             self._persistable_vars,
             '',
             self._scope,
             self._local_scopes,
-            self._exec_strategy,
             self._build_strategy,
             self._graph,
         )
@@ -514,8 +468,7 @@ class IpuDynamicPatcher:
         def patch_getter(self, item):
             if not isinstance(item, CacheKey):
                 raise ValueError(
-                    'type(item) should be CacheKey, but received %s'
-                    % type(item).__name__
+                    f'type(item) should be CacheKey, but received {type(item).__name__}'
                 )
             item_id = hash(item)
             self._recent_key = item_id
@@ -1094,8 +1047,7 @@ class IpuCompiledProgram:
 
         if not isinstance(program, framework.Program):
             raise TypeError(
-                "The type of program is wrong, expected Program, but got %s"
-                % type(program)
+                f"The type of program is wrong, expected Program, but got {type(program)}"
             )
 
         self._program = program

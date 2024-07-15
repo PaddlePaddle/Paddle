@@ -23,7 +23,7 @@ using cinn::dialect::ir::details::OpLoweringGroup;
 using cinn::dialect::ir::details::OpLoweringGroupPtr;
 
 bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = common::Overloaded{
       [](std::int64_t dim_expr) { return false; },
       [](const std::string& dim_expr) { return false; },
       [](const symbol::Negative<symbol::DimExpr>& dim_expr) { return true; },
@@ -62,7 +62,7 @@ void VisitEachDimExprFromTensorShapeOrData(
 template <typename DoEachT>
 void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
                       const DoEachT& DoEach) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = common::Overloaded{
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
       },
@@ -72,6 +72,17 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
              tensor_list) {
           VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
         }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, TensorArray should not be handled in backend."));
+        for (const symbol::DimExpr& dim_expr : tensor_array.GetShapeHint()) {
+          DoEach(dim_expr);
+        }
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+        return;
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }
@@ -207,10 +218,6 @@ CreateGroupShapeOrDataExprs(
 
   // process the result values of each op.
   for (auto* op : group->ops()) {
-    // TODO(Hongqing-work): delete this after the shape analysis reconstruct is
-    // done.
-    InferSymbolicShapeForOperation(
-        op, local_shape_analysis.GetInferSymbolicShapeContext());
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
       if (result && !value2shape.count(result)) {

@@ -36,7 +36,7 @@ class WriteToArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<phi::DenseTensor>();
@@ -51,8 +51,7 @@ class WriteToArrayOp : public ArrayOp {
     auto *out_tensor = &out->at(offset);
     out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
       paddle::framework::TensorCopy(x_tensor, place, dev_ctx, out_tensor);
@@ -146,7 +145,7 @@ class ReadFromArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         x, phi::errors::NotFound("Input(X) of ReadFromArrayOp is not found."));
@@ -158,8 +157,7 @@ class ReadFromArrayOp : public ArrayOp {
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<phi::DenseTensor>();
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());

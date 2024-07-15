@@ -24,7 +24,6 @@ from dygraph_to_static_utils import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base.framework import use_pir_api
 from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -466,9 +465,7 @@ class TestForLoopMeetDict(Dy2StTestBase):
             ],
         )
         temp_dir = tempfile.TemporaryDirectory()
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(model, temp_dir.name)
+        paddle.jit.save(model, temp_dir.name)
         temp_dir.cleanup()
 
 

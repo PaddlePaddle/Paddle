@@ -507,6 +507,11 @@ class FusedCommBuffer:
         else:
             param._copy_gradient_from(tmp_var)
 
+        # record address for the following `acc_steps - 1` steps.
+        self._grads_to_addr[param.name] = get_grad_address(
+            param, self.use_main_grad
+        )
+
     def _reset_params_checked_in(self):
         self._task = None
         self._init_step_dict()
@@ -522,13 +527,16 @@ class FusedCommBuffer:
     def add_grad(self, param, use_comm=True):
         assert param.name in self._params_step_dict
 
-        if not self._release_grads:
+        if not self._release_grads or self._params_step_dict[param.name] > 0:
             current_ptr = get_grad_address(param, self.use_main_grad)
             if self._grads_to_addr[param.name] != current_ptr:
                 error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
                 logger.error(error_message)
                 raise ValueError(error_message)
         else:
+            # When release_grads is enabled, fusing of gradients only happen
+            # in the 0-th gradient accumulation step, and remain unchanged for
+            # the following `acc_steps - 1` steps.
             self._copy_grad_to_buffer(param)
 
         self._params_step_dict[param.name] += 1
@@ -548,15 +556,26 @@ class FusedCommBuffer:
         grad_view.assign_slice_grad(slice_param)
 
     @imperative_base.no_grad
-    def sync_params(self):
+    def sync_params(self, sync=True, param2task={}):
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         full_buffer = self.param_storage
         group = self._comm_group
         shard_size = full_buffer._numel() // group.nranks
+
         begin = shard_size * group.rank
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
-        group.process_group.all_gather(slice_buffer, full_buffer).wait()
+
+        if sync:
+            # default sync_op is False, so we need to wait here.
+            # this will call distributed_py.cc in paddle. In distributed_py.cc, there defines two all gather function, their parameters are different.
+            group.process_group.all_gather(slice_buffer, full_buffer).wait()
+        else:
+            # default sync_op is False, so we don't need to to set sync_op = false here.
+            task = group.process_group.all_gather(slice_buffer, full_buffer)
+            for param in self.params:
+                assert param.name not in param2task
+                param2task[param.name] = task
 
     @property
     def params(self):
@@ -622,15 +641,6 @@ class FusedCommBuffer:
         if self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
-
-        self._reset_params_checked_in()
-
-    @imperative_base.no_grad
-    def scale_and_split_grads(self):
-        assert self._task is not None, "Task is not initialized. "
-        self._task.wait()
-        scale_factor = 1.0 / self._comm_group.nranks
-        self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
 

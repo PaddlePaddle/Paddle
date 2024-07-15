@@ -27,6 +27,7 @@ from paddle.base import core, global_scope
 from paddle.base.framework import Parameter, Variable, static_only
 from paddle.base.log_helper import get_logger
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.framework import in_pir_mode
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -180,9 +181,7 @@ def _load_program_scope(main=None, startup=None, scope=None):
 @static_only
 def _legacy_static_save(param_dict, model_path, protocol=2):
     def get_tensor(var):
-        if isinstance(var, core.eager.Tensor):
-            return np.array(var)
-        elif isinstance(var, core.LoDTensor):
+        if isinstance(var, (paddle.Tensor, core.LoDTensor)):
             return np.array(var)
         return var
 
@@ -323,3 +322,36 @@ def set_value(var, value, scope=None):
         place = core.CUDAPlace(p.gpu_device_id())
 
     t.set(value, place)
+
+
+def get_value(var, scope=None):
+    """
+    Get the value of variable or value in given scope.
+
+    Args:
+        scope(Scope, optional) : If `scope` is None, it will be set to global scope
+            obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
+            Default: None
+
+    Returns:
+        Tensor, the value in given scope.
+
+    """
+    if scope is not None and not isinstance(scope, core._Scope):
+        raise TypeError(
+            f"`scope` should be None or `paddle.static.Scope` type, but received {type(scope)}."
+        )
+
+    if scope is None:
+        scope = global_scope()
+    var_temp = scope.find_var(var.name)
+    if var_temp is None:
+        raise ValueError(f"Can not find Variable '{var.name}' in the Scope.")
+    t = var_temp.get_tensor()
+    return t
+
+
+def is_pir_fetch_var(value):
+    if in_pir_mode() and value.get_defining_op().name() == "pd_op.fetch":
+        return True
+    return False

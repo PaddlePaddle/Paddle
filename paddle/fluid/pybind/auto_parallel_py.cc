@@ -264,8 +264,8 @@ void BindAutoParallel(py::module *m) {
                    &ProcessMesh::dim_size))
           .def("empty", &ProcessMesh::empty)
           .def("contains", &ProcessMesh::contains)
-          .def(py::self == py::self)
-          .def(py::self != py::self)
+          .def(py::self == py::self)  // NOLINT
+          .def(py::self != py::self)  // NOLINT
           .def("__copy__",
                [](const ProcessMesh &self) { return ProcessMesh(self); })
           .def(
@@ -298,8 +298,8 @@ void BindAutoParallel(py::module *m) {
       .def_property_readonly("machine_id", &Device::machine_id)
       .def_property_readonly("type", &Device::type)
       .def_property("capability", &Device::capability, &Device::set_capability)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
+      .def(py::self == py::self)  // NOLINT
+      .def(py::self != py::self)  // NOLINT
       .def("__str__", &Device::to_string);
 
   py::class_<LinkCapability>(*m, "LinkCapability")
@@ -317,8 +317,8 @@ void BindAutoParallel(py::module *m) {
       .def_property_readonly("target_id", &Link::target_id)
       .def_property_readonly("type", &Link::type)
       .def_property("capability", &Link::capability, &Link::set_capability)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
+      .def(py::self == py::self)  // NOLINT
+      .def(py::self != py::self)  // NOLINT
       .def("__str__", &Link::to_string);
 
   py::class_<Machine>(*m, "Machine")
@@ -362,8 +362,8 @@ void BindAutoParallel(py::module *m) {
       .def("dim_size",
            static_cast<int64_t (DeviceMesh::*)(const std::string &) const>(
                &DeviceMesh::dim_size))
-      .def(py::self == py::self)
-      .def(py::self != py::self)
+      .def(py::self == py::self)  // NOLINT
+      .def(py::self != py::self)  // NOLINT
       .def("__copy__",
            [](const TensorDistAttr &self) { return TensorDistAttr(self); })
       .def(
@@ -435,8 +435,8 @@ void BindAutoParallel(py::module *m) {
           .def("is_partial", &phi::distributed::Placement::is_partial)
           .def("__hash__", &phi::distributed::Placement::hash)
           .def("__str__", &phi::distributed::Placement::to_string)
-          .def(py::self == py::self)
-          .def(py::self != py::self);
+          .def(py::self == py::self)   // NOLINT
+          .def(py::self != py::self);  // NOLINT
 
   auto Shard = py::class_<phi::distributed::Shard,
                           std::shared_ptr<phi::distributed::Shard>>(
@@ -464,8 +464,8 @@ void BindAutoParallel(py::module *m) {
                    .def("get_dim", &phi::distributed::Shard::get_dim)
                    .def("__hash__", &phi::distributed::Shard::hash)
                    .def("__str__", &phi::distributed::Shard::to_string)
-                   .def(py::self == py::self)
-                   .def(py::self != py::self);
+                   .def(py::self == py::self)   // NOLINT
+                   .def(py::self != py::self);  // NOLINT
 
   auto Replicate = py::class_<phi::distributed::Replicate,
                               std::shared_ptr<phi::distributed::Replicate>>(
@@ -487,12 +487,13 @@ void BindAutoParallel(py::module *m) {
                        .def(py::init<>())
                        .def("__hash__", &phi::distributed::Replicate::hash)
                        .def("__str__", &phi::distributed::Replicate::to_string)
-                       .def(py::self == py::self)
-                       .def(py::self != py::self);
+                       .def(py::self == py::self)   // NOLINT
+                       .def(py::self != py::self);  // NOLINT
 
-  auto Partial = py::class_<phi::distributed::Partial,
-                            std::shared_ptr<phi::distributed::Partial>>(
-                     *m, "Partial", Placement, R"DOC(
+  auto Partial =
+      py::class_<phi::distributed::Partial,
+                 std::shared_ptr<phi::distributed::Partial>>(
+          *m, "Partial", Placement, R"DOC(
                  The `Partial` describes `Tensor` across multiple devices, this type of tensor has the same shape but only a fraction of the value, which can be further reduce (e.g. sum/min/max) to obtain dist_tensor, often used as an intermediate representation.
 
                  Parameters:
@@ -510,12 +511,13 @@ void BindAutoParallel(py::module *m) {
                          >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
 
                  )DOC")
-                     .def(py::init<phi::ReduceType>(),
-                          py::arg("reduce_type") = phi::ReduceType::kRedSum)
-                     .def("__hash__", &phi::distributed::Partial::hash)
-                     .def("__str__", &phi::distributed::Partial::to_string)
-                     .def(py::self == py::self)
-                     .def(py::self != py::self);
+          .def(py::init<phi::ReduceType>(),
+               py::arg("reduce_type") = phi::ReduceType::kRedSum)
+          .def("reduce_type", &phi::distributed::Partial::get_reduce_type)
+          .def("__hash__", &phi::distributed::Partial::hash)
+          .def("__str__", &phi::distributed::Partial::to_string)
+          .def(py::self == py::self)   // NOLINT
+          .def(py::self != py::self);  // NOLINT
 
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
   g_placement_replicated_pytype =
@@ -565,8 +567,8 @@ void BindAutoParallel(py::module *m) {
              return py::bytes(self.serialize_to_string());
            })
       .def("parse_from_string", &TensorDistAttr::parse_from_string)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
+      .def(py::self == py::self)  // NOLINT
+      .def(py::self != py::self)  // NOLINT
       .def("__copy__",
            [](const TensorDistAttr &self) { return TensorDistAttr(self); })
       .def(
@@ -719,8 +721,8 @@ void BindAutoParallel(py::module *m) {
              return py::bytes(self.serialize_to_string());
            })
       .def("parse_from_string", &OperatorDistAttr::parse_from_string)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
+      .def(py::self == py::self)  // NOLINT
+      .def(py::self != py::self)  // NOLINT
       .def("__copy__",
            [](const OperatorDistAttr &self) { return OperatorDistAttr(self); })
       .def(

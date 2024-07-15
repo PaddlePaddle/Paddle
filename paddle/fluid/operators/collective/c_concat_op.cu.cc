@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
@@ -67,7 +67,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     phi::DenseTensor temp_out;
-    framework::DDim temp_out_dims = x->dims();
+    phi::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.mutable_data<T>(temp_out_dims, place);
 
@@ -151,7 +151,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       offset += rows_per_tensor;
     }
 
-    math::ConcatFunctor<phi::GPUContext, T> functor;
+    phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
     out->mutable_data<T>(out_dims, place);
     auto& dev_ctx2 = ctx.template device_context<phi::GPUContext>();
     functor(dev_ctx2, inputs, axis, out);

@@ -28,8 +28,11 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers,
     int batch_size,
     std::string engine_name,
-    const platform::Place place)
-    : batch_size_(batch_size), engine_name_(engine_name) {
+    const phi::Place place)
+    : batch_size_(batch_size),
+      data_buffers_(),
+      data_tensors_(),
+      engine_name_(engine_name) {
   VLOG(4) << "Init a new calibrator: " << engine_name_;
   for (const auto& it : buffers) {
     phi::DenseTensor temp_tensor;
@@ -38,10 +41,10 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     int num_ele = data_size / sizeof(int16_t);
     framework::DDim data_shape = common::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
-    data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
         static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
         data_size);
+    data_tensors_.push_back(temp_tensor);
   }
 }
 
@@ -50,6 +53,8 @@ TRTInt8Calibrator::TRTInt8Calibrator(const std::string& calib_data)
       calib_running_(false),
       data_is_set_(false),
       done_(true),
+      data_buffers_(),
+      data_tensors_(),
       calibration_table_(calib_data) {}
 
 void TRTInt8Calibrator::waitAndSetDone() {

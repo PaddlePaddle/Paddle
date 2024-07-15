@@ -23,14 +23,10 @@
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-
+#include "paddle/common/enforce.h"
 struct cinn_buffer_t;
 
 namespace cinn {
-
-namespace poly {
-struct StageMap;
-}  // namespace poly
 
 namespace ir {
 
@@ -97,12 +93,18 @@ struct CINNValuePack : public Shared<_CINNValuePack_> {
   bool empty() const { return (*operator->()).empty(); }
 
   CINNValue& back() {
-    CHECK_GT((*operator->()).size(), 0);
+    PADDLE_ENFORCE_GT((*operator->()).size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of the array should greater than 0."));
     return (*operator->())[size() - 1];
   }
 
   const CINNValue& back() const {
-    CHECK_GT((*operator->()).size(), 0);
+    PADDLE_ENFORCE_GT((*operator->()).size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of the array should greater than 0."));
     return (*operator->())[size() - 1];
   }
 
@@ -151,7 +153,6 @@ class CINNValue : public cinn_pod_value_t {
   explicit CINNValue(const ir::Var& value);
   explicit CINNValue(const ir::Expr& value);
   explicit CINNValue(const CINNValuePack& value);
-  explicit CINNValue(const poly::StageMap& value);
 
   bool defined() const { return type_code_ != kNull; }
 
@@ -171,13 +172,11 @@ class CINNValue : public cinn_pod_value_t {
   operator ir::Var() const;
   operator ir::Expr() const;
   operator CINNValuePack() const;
-  operator poly::StageMap() const;
   // @}
 
   bool is_string() const;
   bool is_var() const;
   bool is_expr() const;
-  bool is_stagemap() const;
   bool is_tensor() const;
 
   //! Assign operators
@@ -197,7 +196,6 @@ class CINNValue : public cinn_pod_value_t {
   CINNValue& operator=(void* value);
   CINNValue& operator=(const CINNValuePack& value);
   CINNValue& operator=(const char* value);
-  CINNValue& operator=(const poly::StageMap& value);
   // @}
 
   //  //! Set the value.

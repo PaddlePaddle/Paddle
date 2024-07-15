@@ -26,10 +26,11 @@ import numpy as np
 import paddle
 from paddle import profiler
 from paddle.base.framework import _current_expected_place, _set_expected_place
+from paddle.pir.core import datatype_to_vartype
 from paddle.profiler.timer import benchmark
 from paddle.profiler.utils import in_profiler_mode
 
-from ...framework import core, in_dynamic_mode
+from ...framework import core, in_dynamic_mode, in_pir_mode
 from ..multiprocess_utils import (
     MP_STATUS_CHECK_INTERVAL,
     CleanupFuncRegistrar,
@@ -188,10 +189,16 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _init_thread(self):
         self._var_names = [v.name for v in self._feed_list]
         self._shapes = [v.shape for v in self._feed_list]
-        self._dtypes = [v.dtype for v in self._feed_list]
-        self._need_check_feed = [
-            v.desc.need_check_feed() for v in self._feed_list
-        ]
+        if in_pir_mode():
+            self._need_check_feed = [False for v in self._feed_list]
+            self._dtypes = [
+                datatype_to_vartype[v.dtype] for v in self._feed_list
+            ]
+        else:
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
+            self._dtypes = [v.dtype for v in self._feed_list]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(),
@@ -486,10 +493,16 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def _init_thread(self):
         self._var_names = [v.name for v in self._feed_list]
         self._shapes = [v.shape for v in self._feed_list]
-        self._dtypes = [v.dtype for v in self._feed_list]
-        self._need_check_feed = [
-            v.desc.need_check_feed() for v in self._feed_list
-        ]
+        if in_pir_mode():
+            self._need_check_feed = [False for v in self._feed_list]
+            self._dtypes = [
+                datatype_to_vartype[v.dtype] for v in self._feed_list
+            ]
+        else:
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
+            self._dtypes = [v.dtype for v in self._feed_list]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._outstanding_capacity, len(self._places) > 1

@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class GlobalScatterOp : public framework::OperatorWithKernel {
  public:
@@ -47,7 +46,7 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
                                      "But received input's dimension = %d.",
                                      ndim_input));
 
-    framework::DDim out_dims = common::make_ddim({-1, -1});
+    phi::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
 
@@ -104,8 +103,7 @@ class GlobalScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

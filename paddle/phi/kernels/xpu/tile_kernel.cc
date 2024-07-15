@@ -103,7 +103,7 @@ void TileKernel(const Context& dev_ctx,
 
   std::vector<int64_t> temp(repeat_times.size(), 1);
   if (rank == 0 || repeat_times == temp) {
-    out->Resize(x.dims());
+    out->Resize(out_dims);
     dev_ctx.template Alloc<T>(out);
     int64_t count = x.numel() * sizeof(T);
     int r = xpu::copy(dev_ctx.x_context(),
@@ -143,4 +143,5 @@ PD_REGISTER_KERNEL(tile,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

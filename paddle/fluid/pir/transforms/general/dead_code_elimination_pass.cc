@@ -75,6 +75,7 @@ class DeadCodeEliminationPass : public pir::Pass {
         deleted_vars->push_back(constant_tensor_op.tensor_name());
       }
       op->Erase();
+      VLOG(4) << "erase op: " << op->name();
       (*num_erasers)++;
     }
 

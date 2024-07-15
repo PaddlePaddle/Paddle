@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -345,5 +344,4 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   return {{x_dst.dist_attr(), w_dst.dist_attr(), out_grad_dst.dist_attr()},
           {w_grad.dist_attr()}};
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

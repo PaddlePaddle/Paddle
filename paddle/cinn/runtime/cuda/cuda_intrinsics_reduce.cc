@@ -19,7 +19,6 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
-#include "paddle/cinn/runtime/custom_function.h"
 
 using cinn::common::bfloat16;
 using cinn::common::float16;
@@ -127,6 +126,26 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
   EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
 
 #undef REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL
+
+#define REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE) \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                   \
+      cinn_discrete_reduce_##REDUCE_TYPE##_internal_shm, target)        \
+      .SetRetType<DTYPE>()                                              \
+      .AddInputType<DTYPE>()                                            \
+      .AddInputType<cinn_buffer_t *>()                                  \
+      .End();
+
+  EXPAND_REDUCE_INT32_REGISTER_MARCO(
+      REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MARCO(
+      REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
+
+#undef REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL
 
 #define REGISTER_BLOCK_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_block_reduce_##REDUCE_TYPE, target) \

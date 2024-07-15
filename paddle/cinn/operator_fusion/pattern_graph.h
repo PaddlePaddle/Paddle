@@ -129,6 +129,7 @@ struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
       for (PatternNodePtr<Phrase> j : graph_->all_pattern_nodes()) {
         if (i == j) continue;
         const auto& pair = std::make_pair(i, j);
+        VLOG(4) << "Testing Matched Node Pair: (" << i << ", " << j << ")";
         if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
           visited_node_pair.insert(pair);
           VLOG(4) << "Find Matched Node Pair: (" << i << ", " << j << ")";
@@ -241,8 +242,9 @@ struct MergeTrivialPatternOperation {
 struct LiftToHorizontalFusionPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    node->set_stmt_pattern(
-        HorizontalFusionPattern<Phrase>({node->stmt_pattern()}));
+    node->set_stmt_pattern(HorizontalFusionPattern<Phrase>(
+        {typename HorizontalFusionPattern<Phrase>::PaddingStmtPattern(
+            node->stmt_pattern(), {})}));
   }
 };
 
@@ -251,6 +253,7 @@ struct HorizontalFusionOperation {
   void operator()(PatternGraph<Phrase>* graph,
                   const PatternNodePtr<Phrase>& i,
                   const PatternNodePtr<Phrase>& j) {
+    VLOG(4) << "Start HorizontalFusionOperation";
     PADDLE_ENFORCE_EQ(
         GetPatternName(i->stmt_pattern()),
         HorizontalFusionPattern<Phrase>::name(),
@@ -265,9 +268,13 @@ struct HorizontalFusionOperation {
             "The pattern of the second node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(j->stmt_pattern())));
-    graph->MergeNode(i, j, MergePattern<Phrase>);
+    auto merged_node = graph->MergeNode(i, j, MergePattern<Phrase>);
+    VLOG(4) << "MergeHorizontalPattern: \ni " << i->DebugStr() << "\nj "
+            << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
+    VLOG(4) << "After HorizontalFusionOperation, Graph is"
+            << graph->GraphInfo();
   }
 };
 
@@ -322,29 +329,148 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
-struct HorizontalFusionConstrain {
-  template <typename T>
+/*
+ * We must limit the output + input + shape_info number and make sure
+ * the number is smaller than 512.
+ */
+template <typename T>
+struct InputOutputMaximumConstrain {
+  const int MAX_INPUT_OUTPUT_NUMBER = 480;  // cuda only support 512
+  std::vector<pir::Value> GetInputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetInputsValue(ops), GetOutputsValue(ops));
+  }
+  std::vector<pir::Value> GetOutputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetOutputsValue(ops), GetInputsValue(ops));
+  }
+  std::vector<pir::Operation*> GetAllOps(const PatternNodePtr<T>& lhs,
+                                         const PatternNodePtr<T>& rhs) {
+    return UniqueVectorBySet(
+        ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
+                     GetOpsInPattern(rhs->stmt_pattern())));
+  }
   bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& first,
-                  const PatternNodePtr<T>& second) {
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, first)) {
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    const auto& all_ops = GetAllOps(lhs, rhs);
+    int input_number = GetInputValuesExceptMiddle(all_ops).size();
+    int output_number = GetOutputValuesExceptMiddle(all_ops).size();
+    return input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
+  }
+};
+
+template <typename T>
+struct HorizontalCheckMiddleOutputVar {
+  bool DontHaveMiddleVariable(const PatternGraph<T>& graph,
+                              const PatternNodePtr<T>& lhs,
+                              const PatternNodePtr<T>& rhs) {
+    for (const auto& i : lhs->downstream()) {
+      if (i == rhs) return false;
+    }
+    for (const auto& i : lhs->upstream()) {
+      if (i == rhs) return false;
+    }
+    return true;
+  }
+
+  std::vector<ValueDim> SqueezedValueDim(const LoopValueDims& vdims) {
+    return FilterVector(vdims, [](const ValueDim& v) {
+      return !v.empty() && GetDimExprsFromValue(v.v_)[v.idx_] != 1;
+    });
+  }
+
+  bool IdenticalDep(const PatternGraph<T>& graph,
+                    const LoopValueDims& lhs_dims,
+                    const LoopValueDims& rhs_dims) {
+    PolicyPtr<T> p = graph.policy_manager().find_policy("RelativeJudgePolicy");
+    if (!p) {
+      PADDLE_THROW("Don't find ShardableAxesRRFusePolicy polices");
+    }
+    RelativeJudgePolicy<T>* sp =
+        reinterpret_cast<RelativeJudgePolicy<T>*>(p.get());
+    auto get_axes_from_valuedim = [&](const ValueDim& vdim) {
+      return (sp->GetAxesInfoManager()).GetAxes(vdim.v_).axis_names[vdim.idx_];
+    };
+    VLOG(4) << "origin lhs_dims.size() = " << lhs_dims.size();
+    VLOG(4) << "origin rhs_dims.size() = " << rhs_dims.size();
+    std::vector<ValueDim> lhs_squeeze_value_dim = SqueezedValueDim(lhs_dims);
+    std::vector<ValueDim> rhs_squeeze_value_dim = SqueezedValueDim(rhs_dims);
+
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "lhs_squeeze_value_dim is : ";
+      for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
+        VLOG(4) << "    " << i << " = " << lhs_squeeze_value_dim[i].DebugStr();
+        VLOG(4) << "    "
+                << "shardable axes: "
+                << get_axes_from_valuedim(lhs_squeeze_value_dim[i]);
+      }
+      VLOG(4) << "lhs_squeeze_value_dim is : ";
+      if (VLOG_IS_ON(4)) {
+        for (int i = 0; i < rhs_squeeze_value_dim.size(); ++i) {
+          VLOG(4) << "    " << i << " = "
+                  << rhs_squeeze_value_dim[i].DebugStr();
+          VLOG(4) << "    "
+                  << "shardable axes: "
+                  << get_axes_from_valuedim(rhs_squeeze_value_dim[i]);
+        }
+      }
+    }
+
+    // compare non_one value dims of
+    PADDLE_ENFORCE_EQ(lhs_squeeze_value_dim.size(),
+                      rhs_squeeze_value_dim.size(),
+                      "lhs squeezed dims is not equal to rhs squeezed dims");
+    for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
+      if (get_axes_from_valuedim(lhs_squeeze_value_dim[i]) !=
+          get_axes_from_valuedim(rhs_squeeze_value_dim[i]))
+        return false;
+    }
+    return true;
+  }
+  bool IdenticalDepAll(const PatternGraph<T>& graph,
+                       const LoopValueDims& rhs_dims,
+                       const std::vector<LoopValueDims> lhs_dims_vec) {
+    std::function<bool(const LoopValueDims)> is_identical_dep =
+        [&](const LoopValueDims out) {
+          return IdenticalDep(graph, rhs_dims, out);
+        };
+    return All(MapVector(lhs_dims_vec, is_identical_dep));
+  }
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
+    if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
+    const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
+    const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
+    bool identical_dep = true;
+    for (const auto& right_dims : right_dims_vec) {
+      identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
+    }
+    return identical_dep;
+  }
+};
+
+template <typename T>
+struct HorizontalFusionConstrain {
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, lhs)) {
       return false;
     }
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, second)) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, rhs)) {
       return false;
     }
-    const auto& first_dim = first->sink_op()
-                                ->result(0)
-                                .type()
-                                .template dyn_cast<pir::DenseTensorType>()
-                                .dims();
-    const auto& second_dim = second->sink_op()
-                                 ->result(0)
-                                 .type()
-                                 .template dyn_cast<pir::DenseTensorType>()
-                                 .dims();
-    return graph.topo_manager().CanFuse(first, second) &&
-           first_dim == second_dim;
+    const auto& lhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
+    const auto& rhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
+
+    return graph.topo_manager().CanFuse(lhs, rhs) &&
+           IsLoopFrameworkEqual(lhs_pattern.padding_patterns_.back().pattern,
+                                rhs_pattern.padding_patterns_.back().pattern);
   }
 };
 
@@ -379,19 +505,53 @@ struct DownstreamSmallerThan {
   }
 };
 
-template <typename A, typename B>
-struct And {
+template <typename... Args>
+struct And {};
+
+template <typename A>
+struct And<A> {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return A()(graph, node) && B()(graph, node);
+    return A()(graph, node);
+  }
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    return A()(graph, lhs, rhs);
   }
 };
 
-template <typename A, typename B>
-struct Or {
+template <typename A, typename... Args>
+struct And<A, Args...> {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return A()(graph, node) || B()(graph, node);
+    return A()(graph, node) && And<Args...>()(graph, node);
+  }
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    return A()(graph, lhs, rhs) && And<Args...>()(graph, lhs, rhs);
+  }
+};
+
+template <typename... Args>
+struct Or {};
+
+template <typename A>
+struct Or<A> {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return A()(graph, node);
+  }
+};
+
+template <typename A, typename... Args>
+struct Or<A, Args...> {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return A()(graph, node) || Or<Args...>()(graph, node);
   }
 };
 

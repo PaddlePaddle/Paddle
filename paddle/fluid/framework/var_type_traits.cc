@@ -26,7 +26,7 @@
 #endif
 #include <cudnn.h>
 
-#include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#include "paddle/phi/kernels/funcs/cudnn_rnn_cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 #endif
 #ifdef PADDLE_WITH_HIP
@@ -34,7 +34,7 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
-#include "paddle/fluid/operators/miopen_rnn_cache.h"
+#include "paddle/phi/kernels/funcs/miopen_rnn_cache.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -42,7 +42,6 @@
 #endif
 
 #include "paddle/fluid/framework/raw_tensor.h"
-#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 
 namespace paddle {
 namespace framework {

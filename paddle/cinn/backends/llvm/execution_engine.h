@@ -73,9 +73,6 @@ class ExecutionEngine {
   static std::unique_ptr<ExecutionEngine> Create(
       const ExecutionOptions &config);
 
-  static std::unique_ptr<ExecutionEngine> Create(
-      const ExecutionOptions &config, RuntimeSymbols &&module_symbols);
-
   void *Lookup(absl::string_view name);
 
   template <typename CodeGenT = CodeGenLLVM>
@@ -86,19 +83,23 @@ class ExecutionEngine {
   bool AddModule(std::unique_ptr<llvm::Module> module,
                  std::unique_ptr<llvm::LLVMContext> context);
 
- protected:
-  explicit ExecutionEngine(bool enable_object_cache,
-                           RuntimeSymbols &&module_symbols)
-      : cache_(std::make_unique<NaiveObjectCache>()),
-        module_symbols_(std::move(module_symbols)) {}
+  void RegisterModuleRuntimeSymbols(RuntimeSymbols &&module_symbols);
 
-  void RegisterRuntimeSymbols();
+  bool AddSelfModule();
+
+ protected:
+  explicit ExecutionEngine(bool enable_object_cache)
+      : cache_(std::make_unique<NaiveObjectCache>()),
+        ctx(std::make_unique<llvm::LLVMContext>()),
+        b(std::make_unique<llvm::IRBuilder<>>(*ctx)) {}
+
+  void RegisterGlobalRuntimeSymbols();
 
   bool SetupTargetTriple(llvm::Module *module);
 
   // This may not be a compatible implementation.
   friend std::unique_ptr<ExecutionEngine> std::make_unique<ExecutionEngine>(
-      bool &&, cinn::backends::RuntimeSymbols &&);
+      bool &&);
 
  private:
   mutable std::mutex mu_;
@@ -106,6 +107,10 @@ class ExecutionEngine {
   std::unique_ptr<llvm::orc::LLJIT> jit_;
   std::unique_ptr<NaiveObjectCache> cache_;
   RuntimeSymbols module_symbols_;
+
+  std::unique_ptr<llvm::LLVMContext> ctx;
+  std::unique_ptr<llvm::Module> m;
+  std::unique_ptr<llvm::IRBuilder<>> b;
 };
 
 }  // namespace cinn::backends

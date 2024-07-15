@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 HostPythonNode::~HostPythonNode() {
   // delete all runtime or device nodes and recursive delete children
@@ -135,7 +134,8 @@ ProfilerResult::ProfilerResult(
     const std::map<uint32_t, gpuDeviceProp> device_property_map)
     : tree_(tree.release()),
       extra_info_(extra_info),
-      device_property_map_(device_property_map) {
+      device_property_map_(device_property_map),
+      span_indx_(0) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto& nodetree : nodetrees) {
@@ -147,7 +147,7 @@ ProfilerResult::ProfilerResult(
 
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
                                const ExtraInfo& extra_info)
-    : tree_(tree.release()), extra_info_(extra_info) {
+    : tree_(tree.release()), extra_info_(extra_info), span_indx_(0) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto& nodetree : nodetrees) {
@@ -191,5 +191,4 @@ std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename) {
   return result;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

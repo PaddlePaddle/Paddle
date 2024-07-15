@@ -14,17 +14,17 @@
 
 #include "paddle/cinn/backends/compiler.h"
 
+#include <sys/stat.h>
 #include <fstream>
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
-#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
@@ -37,6 +37,37 @@ PD_DECLARE_string(cinn_dump_group_lowered_func);
 PD_DECLARE_string(cinn_dump_group_source_code);
 PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
+PD_DECLARE_string(cinn_debug_custom_code_path);
+
+namespace {
+
+bool MakeDirectory(const std::string& dirname, mode_t mode) {
+  struct stat st;
+  std::string path;
+  for (int i = 0; i < dirname.size(); ++i) {
+    path.push_back(dirname[i]);
+    if (!(dirname[i] == '/' || i + 1 == dirname.size())) {
+      continue;
+    }
+    if (stat(path.c_str(), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        continue;
+      } else {
+        LOG(WARNING) << path << " is not a directory, please check your path.";
+        return false;
+      }
+    } else {
+      if (mkdir(path.c_str(), mode) == 0) {
+        continue;
+      } else {
+        LOG(WARNING) << "Make directory fail: " << path;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+}  // namespace
 
 namespace cinn {
 namespace backends {
@@ -79,20 +110,6 @@ void CompilationInfoDumper::DumpPtxCodeByGroupIndex(
   }
   Dump(
       FLAGS_cinn_dump_group_ptx, gidx, device_id, "source_ptx.ptx", source_ptx);
-}
-
-void CompilationInfoDumper::DumpInstructionByGroupIndex(
-    const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-    const int gidx,
-    const int device_id) {
-  if (FLAGS_cinn_dump_group_instruction.empty() || instr.get() == nullptr) {
-    return;
-  }
-  Dump(FLAGS_cinn_dump_group_instruction,
-       gidx,
-       device_id,
-       "instruction.txt",
-       instr->DumpInstruction());
 }
 
 void CompilationInfoDumper::DumpLoweredFunc() {
@@ -149,25 +166,6 @@ void CompilationInfoDumper::DumpPtxCode() {
   }
 }
 
-void CompilationInfoDumper::DumpInstruction() {
-  if (FLAGS_cinn_dump_group_instruction.empty()) {
-    return;
-  }
-  for (int idx = 0; idx < info_.RuntimeInstructions().size(); ++idx) {
-    std::string dump_str;
-    if (info_.RuntimeInstruction(idx).get() != nullptr) {
-      dump_str = info_.RuntimeInstruction(idx)->DumpInstruction();
-    } else {
-      dump_str = "[No instruction generated]\n\n" + info_.Message(idx);
-    }
-    Dump(FLAGS_cinn_dump_group_instruction,
-         idx,
-         device_id_,
-         "instruction.txt",
-         dump_str);
-  }
-}
-
 void CompilationInfoDumper::Dump(const std::string& base_path,
                                  const int idx,
                                  const int device_id,
@@ -175,8 +173,8 @@ void CompilationInfoDumper::Dump(const std::string& base_path,
                                  const std::string& content) {
   auto dump_path = utils::StringFormat(
       "%s/device_%d/fusion_group_%d", base_path.c_str(), device_id, idx);
-  if (!hlir::framework::MakeDirectory(
-          dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+  if (!MakeDirectory(dump_path,
+                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
     LOG(WARNING) << "Failed to make directory: \"" << dump_path
                  << "\", the instruction for this group will not dump.";
   } else {
@@ -229,24 +227,41 @@ void SourceCodePrint::write(const std::string& source_code) {
   }
 }
 
-void Compiler::Build(const Module& module, const std::string& code) {
-  auto PatternMatch =
-      adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) { CompileX86Module(module); },
-                 [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::NVGPUArch) { CompileCudaModule(module, code); }};
-  return std::visit(PatternMatch, target_.arch.variant());
+void Compiler::Build(const Module& module,
+                     const std::string& code,
+                     const bool end) {
+  auto PatternMatch = adt::match{
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { CompileX86Module(module); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) { CompileCudaModule(module, code); },
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); }};
+  std::visit(PatternMatch, target_.arch.variant());
+  if (end) {
+    RegisterDeviceModuleSymbol();
+    engine_->AddSelfModule();
+  }
+}
+
+void Compiler::AppendCX86(const Module& module, const bool end) {
+  VLOG(3) << "Start Compiler::BuildCX86" << module;
+  CompileX86Module(module);
+  if (end) {
+    RegisterDeviceModuleSymbol();
+    engine_->AddSelfModule();
+  }
+  VLOG(3) << "Over Compiler::BuildCX86";
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  return target_.arch.Visit(adt::match{
+  return target_.arch.Match(
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) -> std::string {
 #ifdef CINN_WITH_CUDA
         auto _host_module_device_module_ =
-            SplitCudaAndHostModule(module);  // NOLINT
+            SplitDeviceAndHostModule(module);  // NOLINT
         auto& host_module = std::get<0>(_host_module_device_module_);
         auto& device_module = std::get<1>(_host_module_device_module_);
         CodeGenCUDA_Dev codegen(target_);
@@ -255,68 +270,121 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
-      }});
+      },
+      [&](common::HygonDCUArchHIP) -> std::string {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
+      });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Visit(adt::match{
+  target_.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) { CompileCudaModule(module); },
-  });
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module); });
 }
 
-void Compiler::CompileCudaModule(const Module& module,
-                                 const std::string& code) {
-#ifdef CINN_WITH_CUDA
-  auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
-  auto& host_module = std::get<0>(_host_module_device_module_);
-  auto& device_module = std::get<1>(_host_module_device_module_);
-  VLOG(3) << "[CUDA] host module:\n" << host_module;
+namespace {
+std::string GetFileContent(const std::string& path) {
+  std::ifstream file(path);
 
-  VLOG(3) << "[CUDA] device module:\n" << device_module;
-  std::string source_code;
-  if (code.empty()) {
-    CodeGenCUDA_Dev codegen(target_);
-    source_code = codegen.Compile(device_module);
-  } else {
-    source_code = code;
+  if (!file.is_open()) {
+    std::cerr << "Unable to open file: " << path << std::endl;
+    return "";
   }
-  CHECK(!source_code.empty())
-      << "Compile CUDA C code failed from device module:\n"
-      << device_module;
-  VLOG(3) << "[CUDA] C:\n" << source_code;
-  SourceCodePrint::GetInstance()->write(source_code);
-  using runtime::cuda::CUDAModule;
 
+  std::ostringstream ss;
+  ss << file.rdbuf();
+  std::string content = ss.str();
+
+  file.close();
+  return content;
+}
+}  // namespace
+
+void Compiler::RegisterDeviceModuleSymbol() {
+  auto PatternMatch =
+      adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                 [&](common::X86Arch) { return; },
+                 [&](common::ARMArch) { return; },
+                 [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
+                 [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED; }};
+  return std::visit(PatternMatch, target_.arch.variant());
+}
+
+void Compiler::RegisterCudaModuleSymbol() {
+#ifdef CINN_WITH_CUDA
   nvrtc::Compiler compiler;
+  std::string source_code =
+      CodeGenCUDA_Dev::GetSourceHeader() + device_fn_code_;
   auto ptx = compiler(source_code);
   CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
                       << source_code;
+  using runtime::cuda::CUDAModule;
   cuda_module_.reset(new CUDAModule(ptx,
                                     compiler.compile_to_cubin()
                                         ? CUDAModule::Kind::CUBIN
                                         : CUDAModule::Kind::PTX));
 
   RuntimeSymbols symbols;
-  for (auto& fn : device_module.functions()) {
-    std::string kernel_fn_name = fn->name;
-    auto fn_kernel = cuda_module_->GetFunction(0, kernel_fn_name);
-    CHECK(fn_kernel);
-
+  for (const auto& kernel_fn_name : device_fn_name_) {
+    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
+    CHECK(fn_kernel) << "Fail to get CUfunction kernel_fn_name";
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
-
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));
   }
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
+}
 
-  engine_ = ExecutionEngine::Create(ExecutionOptions(), std::move(symbols));
+void Compiler::CompileCudaModule(const Module& module,
+                                 const std::string& code) {
+#ifdef CINN_WITH_CUDA
+  auto _host_module_device_module_ =
+      SplitDeviceAndHostModule(module);  // NOLINT
+  auto& host_module = std::get<0>(_host_module_device_module_);
+  auto& device_module = std::get<1>(_host_module_device_module_);
+  VLOG(3) << "[CUDA] host module:\n" << host_module;
+
+  VLOG(3) << "[CUDA] device module:\n" << device_module;
+  std::string source_code;
+
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
+  } else if (code.empty()) {
+    CodeGenCUDA_Dev codegen(target_);
+    source_code = codegen.Compile(device_module);
+  } else {
+    source_code = code;
+  }
+
+  CHECK(!source_code.empty())
+      << "Compile CUDA C code failed from device module:\n"
+      << device_module;
+  VLOG(3) << "[CUDA] C:\n" << source_code;
+  SourceCodePrint::GetInstance()->write(source_code);
+  device_fn_code_ += source_code;
+
+  for (auto& fn : device_module.functions()) {
+    std::string kernel_fn_name = fn->name;
+    device_fn_name_.emplace_back(kernel_fn_name);
+  }
   engine_->Link<CodeGenCUDA_Host>(host_module);
 
 #else
   CINN_NOT_IMPLEMENTED
 #endif
+}
+
+void Compiler::CompileHipModule(const Module& module, const std::string& code) {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
 }
 
 void Compiler::CompileX86Module(const Module& module) {

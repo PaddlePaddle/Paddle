@@ -281,6 +281,21 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
                           "Exhaustive search times for cuDNN convolution, "
                           "default is -1, not exhaustive search");
 
+#ifdef PADDLE_WITH_HIP
+/**
+ * MIOPEN related FLAG
+ * Name: FLAGS_batch_norm_use_miopen
+ * Since Version:
+ * Value Range:
+ * Example:
+ * Note: Use MIOpen batch norm instead of native
+ */
+PHI_DEFINE_EXPORTED_bool(batch_norm_use_miopen,
+                         false,
+                         "Whether use MIOpen batch norm or not, "
+                         "default is false, not use miopen bn");
+#endif
+
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_batchnorm_spatial_persistent
@@ -1116,6 +1131,28 @@ PHI_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
                          "Enable CUDAMallocAsyncAllocator");
 
 /*
+ * CUDAMallocAsyncAllocator related FLAG
+ * Name: FLAGS_cuda_malloc_async_pool_memory_throttle_ratio
+ * Since Version: 3.0
+ * Value Range:  double, [0.0, 1.0], default=0.8
+ * Note:memory_throttle_ratio provides a threshold that determines when to
+ * initiate synchronization operations to deallocate memory. This mechanism
+ * helps in ensuring that the system does not exceed its memory capacity while
+ * also attempting to minimize performance degradation caused by frequent memory
+ * synchronization.
+ *
+ * Please see Note [cuda_malloc_async_pool_memory_throttle_ratio]
+ */
+PHI_DEFINE_EXPORTED_double(
+    cuda_malloc_async_pool_memory_throttle_ratio,
+    0.8,
+    "memory_throttle_ratio provides a threshold that determines when to "
+    "initiate synchronization operations to deallocate memory. "
+    "This mechanism helps in ensuring that the system does not exceed its "
+    "memory capacity while also attempting to minimize performance degradation "
+    "caused by frequent memory synchronization.");
+
+/*
  * CUDA Graph / Allocator related FLAG
  * Name: FLAGS_auto_free_cudagraph_allocations_on_launch
  * Since Version: 2.7
@@ -1271,13 +1308,32 @@ PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
 /**
  * CINN accuracy check related FLAG
  * Name: FLAGS_enable_cinn_accuracy_check
- * Since Version: 2.7.0
+ * Since Version: 3.0 beta
  * Value Range: bool, default=false
- * Example:
  */
 PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
                          false,
                          "Whether enable accuracy check in cinn.");
+
+/**
+ * CINN fuse parallel matmul pass related FLAG
+ * Name: FLAGS_enable_fuse_parallel_matmul_pass
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
+                         true,
+                         "Whether enable fuse_parallel_matmul_pass in cinn.");
+
+/**
+ * CINN fallback fusion ops FLAG
+ * Name: FLAGS_enable_fusion_fallback
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
+                         false,
+                         "Whether enable fallback fusion ops in cinn.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1415,11 +1471,11 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, executor will use new IR
+ * Note: If True, executor will use PIR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 /**
  * Using PIR by translating legacy program to pir program
@@ -1433,11 +1489,20 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
                          true,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
                            "",
                            "the logging directory to save pir py code");
+
+PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
+                         true,
+                         "whether truncate the logging files under directory "
+                         "FLAGS_logging_pir_py_code_dir");
+
+PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
+                         false,
+                         "whether dump symbolic dims into pir py code.");
 
 /**
  * Using PIR API in Python
@@ -1445,9 +1510,9 @@ PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, New IR API will be used in Python
+ * Note: If True, PIR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable PIR API in Python");
 
 /**
  * Using PIR in executor FLAG
@@ -1455,20 +1520,20 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, executor will use new IR and run in beta version by for trace
+ * Note: If True, executor will use PIR and run in beta version by for trace
  * version.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
                          false,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 /**
- * Apply inplace pass to new IR FLAG
+ * Apply inplace pass to PIR FLAG
  * Name: pir_apply_inplace_pass
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If True, will apply inplace pass to new IR.
+ * Note: If True, will apply inplace pass to PIR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
@@ -1518,9 +1583,14 @@ PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 PHI_DEFINE_EXPORTED_bool(pir_debug,
                          false,
                          "Whether print more pir debug info.");
-PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
-                         false,
-                         "Whether to skip decomposing op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_skip_dynamic,
+    true,
+    "Whether to skip decomposing vjp op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_enable_dynamic,
+    false,
+    "Whether to enable decomposing composite op with dynamic shape.");
 PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
                          "Whether to check the decomposed program, to ensure "
@@ -1581,17 +1651,28 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                           "This is useful for debugging.");
 
 /**
- * Apply shape optimization pass to new IR FLAG
+ * Apply shape optimization pass to PIR FLAG
  * Name: pir_apply_shape_optimization_pass
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, will apply shape_optimization pass to new IR.
+ * Note: If True, will apply shape_optimization pass to PIR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
+
+PHI_DEFINE_EXPORTED_int64(
+    pir_broadcast_tree_limit,
+    32,
+    "Maximum number of broadcast nodes allowed in a tree");
+
+PHI_DEFINE_EXPORTED_string(
+    nvidia_package_dir,  // NOLINT
+    "",
+    "Specify root dir path for nvidia site-package, such as "
+    "python3.9/site-packages/nvidia");
 
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
@@ -1650,6 +1731,47 @@ PHI_DEFINE_EXPORTED_bool(
     "the symbolic inference accuracy by comparing the the value "
     "shape between dynamic shape and static shape.");
 
+/**
+ * Name: manually_trans_conv_filter
+ * Since Version: 3.0.0 Beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(
+    manually_trans_conv_filter,
+    false,
+    "Whether to manually transpose the filter of conv2d. This pass can "
+    "accelerate the performance of conv2d since it transpose filter ahead");
+
+/**
+ * Apply CSE optimize pass in Dy2St
+ * Name: enable_cse_in_dy2st
+ * Since Version: 3.0.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If True, will apply CSE optimize pass in Dy2St.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
+                         true,
+                         "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Max count of eliminate redundant computation in CSE, for debug usage
+ * Name: cse_max_count
+ * Since Version: 3.0.0
+ * Value Range: int32, default=-1
+ * Example:
+ * Note: If -1, will not limit the max count of eliminate redundant computation.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    cse_max_count,
+    -1,
+    "Max count of eliminate redundant computation in CSE, for debug usage");
+
+PHI_DEFINE_EXPORTED_bool(
+    use_xqa_optim,
+    false,
+    "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
@@ -1657,6 +1779,18 @@ PHI_DEFINE_EXPORTED_string(
     "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
+
+/**
+ * Apply global search in blaslt FLAG
+ * Name: enable_blaslt_global_search
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply global search in blaslt.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_blaslt_global_search,
+                         false,
+                         "Whether to use global search in blaslt.");
 
 PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                            "",
@@ -1674,3 +1808,48 @@ PHI_DEFINE_EXPORTED_string(cusolver_dir,  // NOLINT
 PHI_DEFINE_EXPORTED_string(cusparse_dir,  // NOLINT
                            "",
                            "Specify path for loading libcusparse.so.*.");
+PHI_DEFINE_EXPORTED_string(
+    win_cuda_bin_dir,  // NOLINT
+    "",
+    "Specify path for loading *.dll about cuda on windows");
+
+/**
+ * Collect shapes of value for TensorRTEngine
+ * Name: enable_collect_shape
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will collect shapes of value when run executor.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_collect_shape,
+                         false,
+                         "Collect shapes of value for TensorRTEngine");
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp32,
+                           1e-6,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_fp32,
+                           1e-6,
+                           "It controls the rtol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp16,
+                           1e-3,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_fp16,
+                           1e-3,
+                           "It controls the rtol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol_bf16,
+                           1e-3,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_bf16,
+                           1e-3,
+                           "It controls the rtol of accuracy_check op");

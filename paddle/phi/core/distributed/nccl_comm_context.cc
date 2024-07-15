@@ -24,8 +24,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -34,7 +33,7 @@ NCCLCommContext::NCCLCommContext(int rank,
                                  int size,
                                  ncclUniqueId nccl_id,
                                  int nccl_comm_init_option)
-    : CommContext(rank, size) {
+    : CommContext(rank, size), nccl_version_(0), nccl_comm_(nullptr) {
   if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
@@ -251,5 +250,4 @@ void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
 }
 #endif
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

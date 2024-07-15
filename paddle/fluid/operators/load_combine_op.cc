@@ -76,8 +76,7 @@ that were saved using the SaveCombine operator.
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+namespace ops = paddle::operators;  // NOLINT
 
 REGISTER_OPERATOR(load_combine,
                   ops::LoadCombineOp,

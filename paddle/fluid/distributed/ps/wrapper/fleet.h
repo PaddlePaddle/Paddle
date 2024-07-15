@@ -114,7 +114,7 @@ class FleetWrapper {
       const uint64_t table_id,
       int fea_dim,
       uint64_t padding_id,
-      platform::Place place,
+      phi::Place place,
       bool is_training,
       std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
       std::vector<phi::DenseTensor*>* outputs);      // NOLINT
@@ -186,7 +186,7 @@ class FleetWrapper {
       bool scale_sparse,
       const std::string& accessor,
       const std::string& click_name,
-      platform::Place place,
+      phi::Place place,
       const std::vector<std::string>& input_names,
       std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
       std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
@@ -194,7 +194,7 @@ class FleetWrapper {
   void PushSparseFromTensorAsync(const uint64_t table_id,
                                  int fea_dim,
                                  uint64_t padding_id,
-                                 platform::Place place,
+                                 phi::Place place,
                                  std::vector<const phi::DenseTensor*>* inputs,
                                  std::vector<int>& slots,  // NOLINT
                                  const phi::DenseTensor* shows,
@@ -313,6 +313,7 @@ class FleetWrapper {
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
   void Revert();
   void CheckSavePrePatchDone();
+  void SetDate(const uint64_t table_id, const std::string& date);
 
   //********* for fl-coordinator
   void InitFlWorker(const std::vector<std::string>& host_list,

@@ -119,6 +119,9 @@ PyObject* new_tensor_with_impl(paddle::Tensor* tensor) {
     new (&(v->tensor)) paddle::Tensor();
     v->tensor.set_impl(tensor->impl());
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    egr::EagerUtils::autograd_meta(&v->tensor)
+        ->SetStopGradient(
+            egr::EagerUtils::autograd_meta(tensor)->StopGradient());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
@@ -134,14 +137,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get _backward_function failed."));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Get _backward_function failed."));
   }
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
   if (!ctx) {
-    PADDLE_THROW(paddle::platform::errors::External(
-        pybind11::detail::error_string().c_str()));
+    PADDLE_THROW(
+        phi::errors::External(pybind11::detail::error_string().c_str()));
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
@@ -312,8 +315,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   // call forward
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
   if (!forward_fn) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get forward function failed."));
+    PADDLE_THROW(phi::errors::InvalidArgument("Get forward function failed."));
   }
   bool trace_backward = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
@@ -457,7 +459,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&
                             egr::EagerUtils::IsLeafTensor(*inplace_tensor),
                         false,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Leaf Var (%s) that doesn't stop gradient "
                             "can't use inplace strategy.",
                             inplace_tensor->name()));
@@ -616,6 +618,11 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else if (o == Py_None) {
+          PyTuple_SET_ITEM(tmp_list,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -633,6 +640,11 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else if (o == Py_None) {
+          PyTuple_SET_ITEM(tmp_tuple,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -640,6 +652,11 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
         }
       }
       PyTuple_SET_ITEM(packed_value, i, tmp_tuple);
+    } else if (obj == Py_None) {
+      PyTuple_SET_ITEM(packed_value,
+                       i,
+                       reinterpret_cast<PyObject*>(
+                           (*pack_hook)(reinterpret_cast<void*>(obj))));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -775,7 +792,7 @@ void BindEagerPyLayer(PyObject* module) {
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
-      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
+      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
 #if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
 #endif

@@ -47,7 +47,7 @@ namespace paddle {
 namespace onednn {
 namespace dialect {
 
-const char* ExpandOp::attributes_name[1] = {"mkldnn_data_type"};
+const char* ExpandOp::attributes_name[1] = {"mkldnn_data_type"};  // NOLINT
 
 OpInfoTuple ExpandOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -270,7 +270,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   PADDLE_ENFORCE_EQ(input_values.size(),
                     2,
                     phi::errors::InvalidArgument(
@@ -348,14 +348,6 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
   VLOG(4) << "Get KernelType for Var of op: ExpandOp";
 
   return expected_kernel_dtype;
-}
-
-bool ExpandOp::InferSymbolicShape(
-    pir::InferSymbolicShapeContext* infer_context) {
-  VLOG(4) << "Infer symbolic shape for op: ExpandOp";
-  PADDLE_THROW(phi::errors::Unimplemented(
-      " ExpandOp's InferSymbolicShape interface is NOT implemented now."));
-  return true;
 }
 
 }  // namespace dialect

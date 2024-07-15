@@ -3,9 +3,9 @@ set(PD_PROGRAM_TRANSLATOR_BINARY_DIR
     "${PADDLE_BINARY_DIR}/paddle/fluid/ir_adaptor/translator/")
 
 set(op_gen_file ${PD_PROGRAM_TRANSLATOR_SOURCE_DIR}/op_compat_gen.py)
-set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
+set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
 set(sparse_op_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml
+    ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml
 )
 set(op_compat_source_file ${PD_PROGRAM_TRANSLATOR_SOURCE_DIR}/op_compat_info.cc)
 set(op_compat_templat_file

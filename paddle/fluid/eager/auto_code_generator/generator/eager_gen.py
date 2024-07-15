@@ -85,11 +85,50 @@ prim_white_list = [
 type_promote_white_list = {
     "add": ["x", "y"],
     "subtract": ["x", "y"],
+    "divide": ["x", "y"],
+    "floor_divide": ["x", "y"],
+    "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
+    "equal": ["x", "y"],
+    "not_equal": ["x", "y"],
+    "less_than": ["x", "y"],
+    "less_equal": ["x", "y"],
+    "greater_than": ["x", "y"],
+    "greater_equal": ["x", "y"],
+    "logical_and": ["x", "y"],
+    "logical_or": ["x", "y"],
+    "logical_xor": ["x", "y"],
+    "fmax": ["x", "y"],
+    "fmin": ["x", "y"],
+    "maximum": ["x", "y"],
+    "minimum": ["x", "y"],
+    "remainder": ["x", "y"],
+    "huber_loss": ["input", "label"],
+    "nextafter": ["x", "y"],
+    "atan2": ["x", "y"],
+}
+
+type_promote_inplace_white_list = {
+    "add_": ["x", "y"],
+    "subtract_": ["x", "y"],
+    "divide_": ["x", "y"],
+    "floor_divide_": ["x", "y"],
+    "where_": ["x", "y"],
+    "equal_": ["x", "y"],
+    "not_equal_": ["x", "y"],
+    "less_than_": ["x", "y"],
+    "less_equal_": ["x", "y"],
+    "greater_than_": ["x", "y"],
+    "greater_equal_": ["x", "y"],
+    "logical_and_": ["x", "y"],
+    "logical_or_": ["x", "y"],
+    "logical_xor_": ["x", "y"],
+    "remainder_": ["x", "y"],
 }
 
 # dict of special api that forward api's output will affect backward api's output
 # backward api's output usually affected by backward api's input
+
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
@@ -116,6 +155,26 @@ strided_op_list = {
     "unsqueeze",
     "view_shape",
     "view_dtype",
+}
+
+strided_op_need_flags_check_list = {
+    "as_complex_",
+    "as_real_",
+    "as_strided_",
+    "real_",
+    "imag_",
+    "diagonal_",
+    "flatten_infer_",
+    "slice_",
+    "squeeze_infer_",
+    "strided_slice_",
+    "strided_slice_raw_",
+    "tensor_unfold_",
+    "transpose_",
+    "unbind_",
+    "unsqueeze_infer_",
+    "view_shape_",
+    "view_dtype_",
 }
 
 
@@ -263,6 +322,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -329,10 +389,17 @@ BEFORE_LOG_PRINT_TEMPLATE = """
   }}
 """
 
+STRIDED_FLAGS_CHECK_TEMPLATE = """
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(phi::errors::Fatal(\"FLAGS_use_stride_kernel is closed. Inplace strided API should not be called!\"));
+  }
+"""
+
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -474,6 +541,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(use_stride_kernel);
 {}
 {}
 """
@@ -537,13 +605,13 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
   }}
 """
 
-TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype())) {{
+TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({op_func_name}, {x}.dtype(), {y}.dtype())) {{
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
     {op_name}
     auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype());
 
-    auto new_{x} = egr::PromoteCast("{x}", {x}, promotion_type);
+    {x_cast}
     auto new_{y} = egr::PromoteCast("{y}", {y}, promotion_type);
 
     {return_value}
@@ -1511,6 +1579,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     type_promote_inputs_call_list[pos] = f"new_{name}"
                 else:
                     type_promote_inputs_call_list[pos] = f"{name}"
+            elif forward_api_name in type_promote_inplace_white_list:
+                if name in type_promote_inplace_white_list[forward_api_name]:
+                    if (
+                        is_inplaced
+                        and forward_inplace_map
+                        and name in forward_inplace_map
+                    ):
+                        type_promote_inputs_call_list[pos] = f"{name}"
+                    else:
+                        type_promote_inputs_call_list[pos] = f"new_{name}"
+                else:
+                    type_promote_inputs_call_list[pos] = f"{name}"
             if IsPlainTensorType(ttype):
                 if is_optional:
                     if (
@@ -1601,6 +1681,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
             amp_inputs_call_list[pos] = name
+            type_promote_inputs_call_list[pos] = name
             if default_val is not None:
                 inputs_args_declaration_list[
                     pos
@@ -1846,6 +1927,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Forward type promotion logic
         if forward_api_name in type_promote_white_list:
             # only support two inputs
+            op_func_name = f"\"{forward_api_name}\""
             x = type_promote_white_list[forward_api_name][0]
             y = type_promote_white_list[forward_api_name][1]
             type_promote_inputs_call_args_str = ", ".join(
@@ -1853,9 +1935,35 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
+            x_cast = f"auto new_{x} = egr::PromoteCast(\"{x}\", {x}, promotion_type);"
+
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_func_name=op_func_name,
                 x=x,
                 y=y,
+                x_cast=x_cast,
+                op_name=kernel_trans2_op_name_str,
+                return_value=type_promote_call_list,
+            )
+        elif forward_api_name in type_promote_inplace_white_list:
+            # only support two inputs
+            op_func_name = f"\"{forward_api_name}\""
+            x = type_promote_inplace_white_list[forward_api_name][0]
+            y = type_promote_inplace_white_list[forward_api_name][1]
+            type_promote_inputs_call_args_str = ", ".join(
+                type_promote_inputs_call_list
+            )
+            type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
+
+            x_cast = (
+                f"{x} = egr::PromoteCastInplace(\"{x}\", {x}, promotion_type);"
+            )
+
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_func_name=op_func_name,
+                x=x,
+                y=y,
+                x_cast=x_cast,
                 op_name=kernel_trans2_op_name_str,
                 return_value=type_promote_call_list,
             )
@@ -1891,6 +1999,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
+        strided_flags_check = ""
+        if is_inplaced and (
+            forward_api_name in strided_op_need_flags_check_list
+        ):
+            strided_flags_check = STRIDED_FLAGS_CHECK_TEMPLATE
         # Generate forward_definition_str and forward_declaration_str
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
@@ -1901,6 +2014,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_ad_function_name,
                     inputs_args_definition_str,
                     forward_api_name,
+                    strided_flags_check,
                     dygraph_event_str,
                     amp_logic_str,
                     type_promotion_logic_str,
@@ -1924,6 +2038,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_ad_function_name,
                 inputs_args_definition_str,
                 forward_api_name,
+                strided_flags_check,
                 dygraph_event_str,
                 amp_logic_str,
                 type_promotion_logic_str,
@@ -3038,11 +3153,11 @@ if __name__ == "__main__":
     forward_declaration_str = ""
     forward_definition_str = ""
 
-    # merge legacy_ops.yaml and ops.yaml, legacy_backward.yaml and backward.yaml
+    # merge dygraph_ops.yaml and ops.yaml, dygraph_backward.yaml and backward.yaml
     all_ops = []
     all_bw = []
     for api_yaml_path in api_yaml_paths:
-        if api_yaml_path.endswith("legacy_ops.yaml") or api_yaml_path.endswith(
+        if api_yaml_path.endswith("dygraph_ops.yaml") or api_yaml_path.endswith(
             "/ops.yaml"
         ):
             with open(api_yaml_path, 'r') as f:
@@ -3050,7 +3165,7 @@ if __name__ == "__main__":
 
     for bw_yaml_path in backward_yaml_paths:
         if bw_yaml_path.endswith(
-            "legacy_backward.yaml"
+            "dygraph_backward.yaml"
         ) or bw_yaml_path.endswith("/backward.yaml"):
             with open(bw_yaml_path, 'r') as f:
                 all_bw += yaml.safe_load(f)
@@ -3064,7 +3179,7 @@ if __name__ == "__main__":
         else:
             backward_yaml_path = None
 
-        if api_yaml_path.endswith('/legacy_ops.yaml'):
+        if api_yaml_path.endswith('/dygraph_ops.yaml'):
             continue
         if api_yaml_path.endswith('/ops.yaml'):
             generator = DygraphForwardAndNodesGenerator(

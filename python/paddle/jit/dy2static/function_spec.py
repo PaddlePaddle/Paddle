@@ -25,6 +25,7 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.distributed.auto_parallel.placement_type import (
     to_placements,
 )
+from paddle.jit.pir_translated_layer import PirTranslatedLayer
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
 
@@ -58,7 +59,8 @@ class FunctionSpec:
         # parse *args
         self.varargs_name = parse_varargs_name(function)
         if self.varargs_name is not None and isinstance(
-            getattr(function, '__self__', None), TranslatedLayer
+            getattr(function, '__self__', None),
+            (TranslatedLayer, PirTranslatedLayer),
         ):
             self._arg_names += function.__self__._input_args_names
 
@@ -177,7 +179,7 @@ class FunctionSpec:
                 if isinstance(var_spec, paddle.static.InputSpec):
                     stop_gradient = getattr(var_spec, 'stop_gradient', False)
                     feed_value = paddle.static.input.data(
-                        name=var_spec.name or "feed_%s" % i,
+                        name=var_spec.name or f"feed_{i}",
                         shape=var_spec.shape,
                         dtype=convert_dtype(var_spec.dtype),
                     )
@@ -230,7 +232,7 @@ class FunctionSpec:
                 stop_gradient = getattr(var_spec, 'stop_gradient', False)
                 feed_layer = block.create_var(
                     # TODO(Aurelius84): consider a more elegant way to name this
-                    name=var_spec.name or "feed_%s" % i,
+                    name=var_spec.name or f"feed_{i}",
                     shape=var_spec.shape,
                     dtype=var_spec.dtype,
                     is_data=True,
@@ -401,7 +403,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                     paddle.base.framework.Variable,
                 ),
             ):
-                input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{str(index)}"
+                input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{index}"
                 index += 1
             args_with_spec.append(input_var)
     args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)

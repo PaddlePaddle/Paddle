@@ -16,9 +16,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
@@ -26,7 +24,7 @@ void AddVarToScope(Scope* param_scope,
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   cpu_ctx->Alloc<float>(tensor);
 }
 
@@ -315,8 +313,6 @@ TEST(ApplyCastPass, basic) {
                         cast_num_in_graph));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(delete_cast_op_pass);

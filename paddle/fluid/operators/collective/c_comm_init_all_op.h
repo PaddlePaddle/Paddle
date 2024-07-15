@@ -57,9 +57,9 @@ class CCommInitAllKernel : public framework::OpKernel<T> {
     }
 
     if (devices.size() > 1) {
-      std::vector<platform::Place> place_list_;
+      std::vector<phi::Place> place_list_;
       for (size_t i = 0; i < devices.size(); ++i) {
-        auto p = platform::XPUPlace(devices[i]);
+        auto p = phi::XPUPlace(devices[i]);
         place_list_.push_back(p);
       }
 

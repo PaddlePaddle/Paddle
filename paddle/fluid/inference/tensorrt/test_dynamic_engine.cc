@@ -29,28 +29,29 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 
 using float16 = phi::dtype::float16;
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
+ public:
+  TensorRTDynamicShapeValueEngineTest() : engine_(nullptr), ctx_(nullptr) {}
+
  protected:
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -121,7 +122,11 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
       platform::errors::InvalidArgument("TRT shuffle layer building failed."));
   engine_->DeclareOutput(layer, 0, "y");
   engine_->FreezeNetwork();
+#if IS_TRT_VERSION_GE(8600)
+  ASSERT_EQ(engine_->engine()->getNbIOTensors(), 3);
+#else
   ASSERT_EQ(engine_->engine()->getNbBindings(), 3);
+#endif
 
   std::vector<float> x_v(8 * 32);
   for (int i = 0; i < 8 * 32; i++) {
@@ -147,9 +152,10 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   buffers[2] = reinterpret_cast<void *>(y_gpu_data);
 #if IS_TRT_VERSION_GE(8500)
   for (size_t i = 0; i < buffers.size(); i++) {
-    auto name = engine_->engine()->getBindingName(i);
-    if (engine_->engine()->isShapeBinding(i) &&
-        engine_->engine()->bindingIsInput(i)) {
+    auto name = engine_->engine()->getIOTensorName(i);
+    if (engine_->engine()->isShapeInferenceIO(name) &&
+        engine_->engine()->getTensorIOMode(name) ==
+            nvinfer1::TensorIOMode::kINPUT) {
       engine_->context()->setTensorAddress(name, shape_v.data());
     } else {
       engine_->context()->setTensorAddress(name, buffers[i]);
@@ -165,7 +171,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   ASSERT_EQ(y_cpu[0], 0);
   ASSERT_EQ(y_cpu[1], 1);
 #if IS_TRT_VERSION_GE(8500)
-  const char *name1 = engine_->engine()->getBindingName(2);
+  const char *name1 = engine_->engine()->getIOTensorName(2);
   auto dims = engine_->context()->getTensorShape(name1);
 #else
   auto dims = engine_->context()->getBindingDimensions(2);
@@ -179,22 +185,23 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 
 class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
+  TensorRTDynamicEngineTest() : engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -337,22 +344,24 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
 
 class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
+  TensorRTDynamicTestFusedTokenPrune()
+      : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -441,7 +450,11 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   }
   engine_->FreezeNetwork();
 
+#if IS_TRT_VERSION_GE(8600)
+  ASSERT_EQ(engine_->engine()->getNbIOTensors(), 6);
+#else
   ASSERT_EQ(engine_->engine()->getNbBindings(), 6);
+#endif
   LOG(INFO) << "create input";
   std::vector<float> attn_v(16);
   for (int j = 0; j < 4; ++j) {
@@ -534,22 +547,24 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 
 class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
  protected:
+  TensorRTDynamicTestFusedTokenPruneHalf()
+      : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -637,7 +652,11 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   }
   engine_->FreezeNetwork();
 
+#if IS_TRT_VERSION_GE(8600)
+  ASSERT_EQ(engine_->engine()->getNbIOTensors(), 6);
+#else
   ASSERT_EQ(engine_->engine()->getNbBindings(), 6);
+#endif
   LOG(INFO) << "create input";
   std::vector<float16> attn_v(16);
   for (int j = 0; j < 4; ++j) {
@@ -731,21 +750,21 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -1028,6 +1047,4 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
 }
 */
 #endif
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

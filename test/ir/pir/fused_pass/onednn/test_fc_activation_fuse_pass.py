@@ -87,7 +87,7 @@ class TestFcActivationFusePattern(PassTest):
                         elif act_op == "mish":
                             out = paddle.nn.functional.mish(add_out)
                         # currently the relu case will be fused by
-                        # fc_fuse_pass, so skip it here
+                        # matmul_add_act_fuse_pass, so skip it here
                         elif act_op == "relu6" or act_op == "relu":
                             out = paddle.nn.functional.relu6(add_out)
                         elif act_op == "sigmoid":
@@ -101,7 +101,7 @@ class TestFcActivationFusePattern(PassTest):
 
                         out = paddle.assign(out)
                         self.pass_attr_list = [
-                            {'fc_fuse_pass': {}},
+                            {'matmul_add_act_fuse_pass': {}},
                             {'fc_onednn_enable_pass': {}},
                             {'fc_activation_fuse_pass': {}},
                         ]
@@ -167,7 +167,7 @@ class TestFcGeluTanhFusePattern(PassTest):
                 out = paddle.nn.functional.gelu(fc_out, approximate=True)
                 out = paddle.assign(out)
                 self.pass_attr_list = [
-                    {'fc_fuse_pass': {}},
+                    {'matmul_add_act_fuse_pass': {}},
                     {'fc_onednn_enable_pass': {}},
                     {'fc_activation_fuse_pass': {}},
                 ]
@@ -224,7 +224,7 @@ class TestFcClipFusePattern(PassTest):
                 out = paddle.clip(fc_out)
                 out = paddle.assign(out)
                 self.pass_attr_list = [
-                    {'fc_fuse_pass': {}},
+                    {'matmul_add_act_fuse_pass': {}},
                     {'fc_onednn_enable_pass': {}},
                     {'fc_activation_fuse_pass': {}},
                 ]

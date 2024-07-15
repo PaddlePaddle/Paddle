@@ -20,9 +20,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                         \
@@ -72,11 +70,10 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
             "Scope in DeleteQuantDequantOpPass should not be null."));
     const phi::DenseTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "Input scale tensor's place should be CPU."));
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float input_scale = input_scale_data[0];
 
@@ -107,9 +104,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_quant_dequant_op_pass,
               paddle::framework::ir::DeleteQuantDequantOpPass);

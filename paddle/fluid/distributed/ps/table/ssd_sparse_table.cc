@@ -44,6 +44,8 @@ int32_t SSDSparseTable::Initialize() {
 
 int32_t SSDSparseTable::InitializeShard() { return 0; }
 
+void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
+
 int32_t SSDSparseTable::Pull(TableContext& context) {
   CHECK(context.value_type == Sparse);
   if (context.use_ptr) {
@@ -191,7 +193,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
     std::vector<std::future<int>> tasks;
     RocksDBItem* cur_ctx = context.switch_item();
     cur_ctx->reset();
-    FixedFeatureValue* ret = NULL;
+    FixedFeatureValue* ret = nullptr;
     auto& local_shard = _local_shards[shard_id];
     float data_buffer[value_size];  // NOLINT
     float* data_buffer_ptr = data_buffer;
@@ -246,7 +248,11 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                               sizeof(uint64_t));
                 ret = &feature_value;
               }
+
+              _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
               _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
               int pull_data_idx = cur_ctx->batch_index[idx];
               pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
             }
@@ -258,7 +264,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       } else {
         ret = itr.value_ptr();
         // int pull_data_idx = keys[i].second;
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
@@ -307,7 +316,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
               shard_id, reinterpret_cast<char*>(&cur_key), sizeof(uint64_t));
           ret = &feature_value;
         }
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         int pull_data_idx = cur_ctx->batch_index[idx];
         pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
       }
@@ -576,6 +588,15 @@ int64_t SSDSparseTable::LocalSize() {
 
 int32_t SSDSparseTable::Save(const std::string& path,
                              const std::string& param) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  // gpu graph mode
+  if (_use_gpu_graph) {
+    auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
+    if (save_filtered_slots != nullptr && (save_filtered_slots->size()) > 0) {
+      return Save_v2(path, param);
+    }
+  }
+#endif
   std::lock_guard<std::mutex> guard(_table_mutex);
 #ifdef PADDLE_WITH_HETERPS
   int save_param = atoi(param.c_str());
@@ -592,13 +613,9 @@ int32_t SSDSparseTable::Save(const std::string& path,
 #endif
 }
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
 int32_t SSDSparseTable::Save_v2(const std::string& path,
                                 const std::string& param) {
-  auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
-  if (save_filtered_slots && (save_filtered_slots->size()) <= 0) {
-    return Save(path, param);
-  }
   std::lock_guard<std::mutex> guard(_table_mutex);
 #ifdef PADDLE_WITH_HETERPS
   int save_param = atoi(param.c_str());
@@ -647,7 +664,7 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -821,7 +838,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1112,7 +1129,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   _afs_client.remove(paddle::string::format_string(
       "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1563,7 +1580,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1865,7 +1882,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   _afs_client.remove(paddle::string::format_string(
       "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -2509,17 +2526,19 @@ int32_t SSDSparseTable::Load(const std::string& path,
   }
 
   int load_param = atoi(param.c_str());
-  size_t expect_shard_num = _sparse_table_shard_num;
-  if (file_list.size() != expect_shard_num) {
-    LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
-                 << " not equal to expect_shard_num:" << expect_shard_num;
-    return -1;
-  }
   if (file_list.empty()) {
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
+  _value_accessor->SetDayId(_day_id);
+  VLOG(1) << " Load Set Dayid:" << _day_id;
   if (load_param > 3) {
+    size_t expect_shard_num = _sparse_table_shard_num;
+    if (file_list.size() != expect_shard_num) {
+      LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
+                   << " not equal to expect_shard_num:" << expect_shard_num;
+      return -1;
+    }
     size_t file_start_idx = _shard_idx * _avg_local_shard_num;
     return LoadWithString(file_start_idx,
                           file_start_idx + _real_local_shard_num,
@@ -2598,11 +2617,11 @@ int32_t SSDSparseTable::LoadWithString(
     ssd_values.clear();
     tmp_key.clear();
     std::string line_data;
-    char* end = NULL;
+    char* end = nullptr;
     int local_shard_id = i % _avg_local_shard_num;
     auto& shard = _local_shards[local_shard_id];
-    float data_buffer[FLAGS_pserver_load_batch_size *
-                      feature_value_size];  // NOLINT
+    float data_buffer[FLAGS_pserver_load_batch_size *  // NOLINT
+                      feature_value_size];
     float* data_buffer_ptr = data_buffer;
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;
@@ -2833,7 +2852,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                     abort();
                   }
                   last_k = k;
+#ifdef PADDLE_WITH_PSLIB
                   _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   rocksdb::Status status = sst_writer.Put(
                       rocksdb::Slice(reinterpret_cast<char*>(&k),
                                      sizeof(uint64_t)),
@@ -2849,7 +2870,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                   }
                 } else {
                   auto& feature_value = shard[k];
+#ifdef PADDLE_WITH_PSLIB
                   _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   feature_value.resize(dim);
                   memcpy(const_cast<float*>(feature_value.data()),
                          convert_value,

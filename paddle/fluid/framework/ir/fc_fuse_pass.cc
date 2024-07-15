@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 FCFusePass::FCFusePass() {
   AddOpCompat(OpCompat("mul"))
@@ -212,8 +210,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
                  w_w * sizeof(float));
         }
         w_tensor->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
-        auto* weight_data_new =
-            w_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* weight_data_new = w_tensor->mutable_data<float>(phi::CPUPlace());
         for (int i = 0; i < w_h; i++) {
           memcpy(weight_data_new + i * (w_w + 4),
                  weight_data_tmp + i * w_w,
@@ -301,9 +298,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
   return found_fc_count;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass)
     .RequirePassAttr("use_gpu");

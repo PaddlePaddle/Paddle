@@ -83,7 +83,9 @@ std::string Flatten::to_string() {
   return ret_str + ")";
 }
 
-Split::Split() : DimTrans(DimTrans::Type::SPLIT) { input_dim_trans_ = nullptr; }
+Split::Split() : DimTrans(DimTrans::Type::SPLIT), split_id_(0) {
+  input_dim_trans_ = nullptr;
+}
 
 Split::Split(const std::shared_ptr<DimTrans> dim,
              const std::vector<int64_t>& shape,

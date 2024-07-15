@@ -29,12 +29,11 @@ namespace allocation {
 
 class AutoGrowthBestFitAllocator : public Allocator {
  public:
-  AutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator,
-      size_t alignment,
-      size_t chunk_size = 0,
-      bool allow_free_idle_chunk = true,
-      int extra_padding_size = 0);
+  AutoGrowthBestFitAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                             size_t alignment,
+                             size_t chunk_size = 0,
+                             bool allow_free_idle_chunk = true,
+                             int extra_padding_size = 0);
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -44,7 +43,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override;
 
   // Release the memory block which is not used in pool.
-  uint64_t ReleaseImpl(const platform::Place &place) override {
+  uint64_t ReleaseImpl(const phi::Place &place) override {
     return FreeIdleChunks();
   }
 

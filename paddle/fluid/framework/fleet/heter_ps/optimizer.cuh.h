@@ -113,6 +113,7 @@ class SparseAdagradOptimizer {
                   ptr[gpu_accessor_.common_feature_value.ClickIndex()]) {
         ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] =
             gpu_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
+        ptr[gpu_accessor_.common_feature_value.EmbedxG2SumIndex()] = 0;
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;

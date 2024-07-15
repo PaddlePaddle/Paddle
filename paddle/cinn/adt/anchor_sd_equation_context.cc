@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::adt::config {
 
@@ -27,7 +28,14 @@ void GenerateScheduleMeshEquationsImpl(const List<ScheduleDim>& sched_dims,
                                        const List<Iterator>& input_iterators,
                                        const List<Iterator>& output_iterators,
                                        Equations* equations) {
-  CHECK_EQ(input_iterators->size(), output_iterators->size());
+  PADDLE_ENFORCE_EQ(
+      input_iterators->size() == output_iterators->size(),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of input iterators and output iterators should be equal, "
+          "but got input iterators size = %d, output iterators size = %d.",
+          input_iterators->size(),
+          output_iterators->size()));
   for (std::size_t i = 0; i < output_iterators->size(); ++i) {
     Equal(input_iterators->at(i), output_iterators->at(i), equations);
   }
@@ -42,7 +50,14 @@ void GenerateScheduleMeshEquationsImpl(
   List<Iterator> middle_iterators =
       MakeIterators(GetOutputRank(middle_sched_mesh));
   List<DimExpr> middle_dims = GetOutputDimValues(middle_sched_mesh);
-  CHECK_EQ(shape.value()->size(), output_iterators->size());
+  PADDLE_ENFORCE_EQ(
+      shape.value()->size() == output_iterators->size(),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of shape and output iterators should be equal, but got "
+          "shape size = %d, output iterators size = %d.",
+          shape.value()->size(),
+          output_iterators->size()));
   List<DimExpr> output_dims = GetOutputDimValues(ScheduleMesh{sched_reshape});
   const auto& middle_index = MakeDot(middle_iterators, middle_dims, equations);
   const auto& output_index = MakeDot(output_iterators, output_dims, equations);
@@ -58,7 +73,14 @@ void GenerateScheduleMeshEquationsImpl(
     const List<Iterator>& output_iterators,
     Equations* equations) {
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
-  CHECK_EQ(GetOutputRank(sched_mesh), output_iterators->size());
+  PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == output_iterators->size(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The size of output iterators should be equal to the "
+                        "rank of the schedule mesh, but got output iterators "
+                        "size = %d, rank of the schedule mesh = %d.",
+                        output_iterators->size(),
+                        GetOutputRank(sched_mesh)));
   List<Iterator> middle_iterators = MakeIterators(output_iterators->size());
   for (std::size_t i = 0; i < perm.value()->size(); ++i) {
     Equal(middle_iterators->at(perm.value()->at(i)),
@@ -75,7 +97,14 @@ void GenerateScheduleMeshEquationsImpl(
     const List<Iterator>& output_iterators,
     Equations* equations) {
   const auto& [sched_mesh, _] = sched_padding.tuple();
-  CHECK_EQ(GetOutputRank(sched_mesh), output_iterators->size());
+  PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == output_iterators->size(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The size of output iterators should be equal to the "
+                        "rank of the schedule mesh, but got output iterators "
+                        "size = %d, rank of the schedule mesh = %d.",
+                        output_iterators->size(),
+                        GetOutputRank(sched_mesh)));
   List<Iterator> middle_iterators = MakeIterators(output_iterators->size());
   for (std::size_t i = 0; i < output_iterators->size(); ++i) {
     Equal(middle_iterators->at(i), output_iterators->at(i), equations);

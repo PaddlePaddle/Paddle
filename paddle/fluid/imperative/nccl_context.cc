@@ -33,14 +33,11 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 void NCCLParallelContext::BcastNCCLId(
@@ -134,7 +131,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place_),
+      phi::is_gpu_place(place_),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
@@ -178,7 +175,7 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
                         compute_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream =
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
@@ -208,7 +205,7 @@ void NCCLParallelContext::WaitComm(int ring_id) {
                         comm_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream =
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
@@ -226,11 +223,10 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 
 void NCCLParallelContext::SynchronizeCompute() {
   auto *compute_dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
+      phi::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }
 
 #endif
 
-}  //  namespace imperative
-}  //  namespace paddle
+}  // namespace paddle::imperative

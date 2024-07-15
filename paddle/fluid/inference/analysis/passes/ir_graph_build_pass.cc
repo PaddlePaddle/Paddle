@@ -22,12 +22,12 @@
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 extern void ReadBinaryFile(const std::string &filename, std::string *contents);
 
-namespace analysis {
+}  // namespace paddle::inference
+namespace paddle::inference::analysis {
 
 void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope_valid()) {
@@ -41,8 +41,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   // The load program should run on the same device with the inference program,
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
-  platform::Place place;
-  place = platform::CPUPlace();
+  phi::Place place;
+  place = phi::CPUPlace();
 
   if (argument->model_dir_valid()) {
     auto program =
@@ -106,9 +106,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &path,
-    framework::Scope *scope,
-    const platform::Place &place) {
+    const std::string &path, framework::Scope *scope, const phi::Place &place) {
   framework::Executor exe(place);
   return Load(&exe, scope, path);
 }
@@ -117,7 +115,7 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path,
     const std::string &params_path,
     framework::Scope *scope,
-    const platform::Place &place,
+    const phi::Place &place,
     bool model_from_memory,
     bool skip_load_params) {
   framework::Executor exe(place);
@@ -130,6 +128,4 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
 
 std::string IrGraphBuildPass::repr() const { return "ir_graph_build_pass"; }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

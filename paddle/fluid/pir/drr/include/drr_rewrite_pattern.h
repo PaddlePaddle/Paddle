@@ -39,12 +39,11 @@ class ResultPatternGraph;
 
 class DrrRewritePattern : public pir::RewritePattern {
  public:
-  DrrRewritePattern(
-      const std::string& pattern_name,
-      const DrrPatternContext& drr_context,
-      pir::IrContext* context,
-      pir::PatternBenefit benefit,
-      const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner);
+  DrrRewritePattern(const std::string& pattern_name,
+                    const DrrPatternContext& drr_context,
+                    pir::IrContext* context,
+                    pir::PatternBenefit benefit,
+                    std::shared_ptr<const DrrPatternBase> drr_pattern_owner);
 
   bool MatchAndRewrite(
       pir::Operation* op,

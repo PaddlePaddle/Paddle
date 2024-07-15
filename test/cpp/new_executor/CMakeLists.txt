@@ -41,7 +41,7 @@ if(WITH_GPU
   # all operators used in the program
 
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
-  set(OP_DEPS phi common concat_and_split cross_entropy)
+  set(OP_DEPS phi common cross_entropy)
   cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
 
   # add_dependencies(standalone_executor_test download_program)

@@ -185,6 +185,10 @@ struct IsListLhsBeforeListRhsStruct {
   static bool Call(const Op<DimExpr>& lhs, const Op<DimExpr>& rhs) {
     const auto& [lhs_operands] = lhs;
     const auto& [rhs_operands] = rhs;
+    if (lhs_operands->empty() || rhs_operands->empty()) {
+      // 处理错误情况或抛出异常
+      throw std::runtime_error("Operands are uninitialized.");
+    }
     if (lhs_operands->size() < rhs_operands->size()) {
       return true;
     }
@@ -551,6 +555,82 @@ struct FoldOperandTrait<Add> {
   }
 };
 
+template <>
+struct FoldOperandTrait<Max> {
+  using const_value_type = std::int64_t;
+
+  static bool IsConstPattern(const DimExpr& dim_expr) {
+    if (dim_expr.Has<std::int64_t>()) {
+      return true;
+    }
+    if (dim_expr.Has<Negative<DimExpr>>()) {
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
+      return operand.Has<std::int64_t>();
+    }
+    return false;
+  }
+
+  static const_value_type MakeUnit() { return INT64_MIN; }
+  static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    *value = std::max(*value, GetInteger(expr));
+  }
+  static bool IsUnit(const const_value_type& value) {
+    return value == INT64_MIN;
+  }
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == INT64_MIN;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    (*ret)->emplace_back(value);
+  }
+
+  static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    return false;
+  }
+};
+
+template <>
+struct FoldOperandTrait<Min> {
+  using const_value_type = std::int64_t;
+
+  static bool IsConstPattern(const DimExpr& dim_expr) {
+    if (dim_expr.Has<std::int64_t>()) {
+      return true;
+    }
+    if (dim_expr.Has<Negative<DimExpr>>()) {
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
+      return operand.Has<std::int64_t>();
+    }
+    return false;
+  }
+
+  static const_value_type MakeUnit() { return INT64_MAX; }
+  static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    *value = std::min(*value, GetInteger(expr));
+  }
+  static bool IsUnit(const const_value_type& value) {
+    return value == INT64_MAX;
+  }
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == INT64_MAX;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    (*ret)->emplace_back(value);
+  }
+
+  static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    return false;
+  }
+};
+
 using ConstRational = std::pair<std::int64_t, std::int64_t>;
 
 ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
@@ -671,7 +751,7 @@ struct FoldOperandTrait<Broadcast> {
       PADDLE_ENFORCE_EQ(
           *value,
           expr_value,
-          phi::errors::InvalidArgument("The value (%d) should be equel to expr "
+          phi::errors::InvalidArgument("The value (%d) should be equal to expr "
                                        "(%d) when they are both not 1.",
                                        *value,
                                        expr_value));
@@ -807,7 +887,7 @@ struct FoldRedundantSymbolicBroadcast {
                 ret.value().value,
                 int64_value,
                 phi::errors::InvalidArgument(
-                    "The value of return (%d) should be equel to expr (%d) of "
+                    "The value of return (%d) should be equal to expr (%d) of "
                     "operands at index (%d) when they are both > 1.",
                     ret.value().value,
                     int64_value,
@@ -873,6 +953,68 @@ struct FoldRedundantBroadcast {
     return std::nullopt;
   }
 };
+
+/*
+ * Simplify Example:
+ * Broadcast(dim_expr0, Mul(dim_expr0, dim_expr1)) => Mul(dim_expr0, dim_expr1)
+ */
+struct SimplifyBroadcast {
+  using dim_expr_type = Broadcast<DimExpr>;
+
+  DimExpr Rewrite(const DimExpr& expr) {
+    auto [operands] = expr.Get<Broadcast<DimExpr>>();
+    while (operands->size() > 1) {
+      int pos_erasable = SearchErasable(operands);
+      if (pos_erasable < 0) break;
+      operands->erase(operands->begin() + pos_erasable);
+    }
+    if (operands->size() == 1) {
+      return operands->at(0);
+    } else {
+      return Broadcast<DimExpr>{operands};
+    }
+  }
+
+  bool IsLhsGreatThanRhs(const DimExpr& lhs, const DimExpr& rhs) {
+    auto LhsOperandsVisitor = common::Overloaded{
+        [&](const Mul<DimExpr>& mul) {
+          bool lhs_great_than_rhs = false;
+          for (const auto& expr : *mul.operands) {
+            if (expr == rhs)
+              lhs_great_than_rhs = true;
+            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+              return false;
+          }
+          return lhs_great_than_rhs;
+        },
+        [&](const Add<DimExpr>& add) {
+          bool lhs_great_than_rhs = false;
+          for (const auto& expr : *add.operands) {
+            if (expr == rhs)
+              lhs_great_than_rhs = true;
+            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+              return false;
+          }
+          return lhs_great_than_rhs;
+        },
+        [&](const auto& lhs) { return false; }};
+    return std::visit(LhsOperandsVisitor, lhs.variant());
+  }
+
+  int SearchErasable(const List<DimExpr>& operands) {
+    for (std::size_t i = 0; i < operands->size() - 1; ++i) {
+      for (std::size_t j = i + 1; j < operands->size(); ++j) {
+        if (IsLhsGreatThanRhs(operands->at(i), operands->at(j))) {
+          return j;
+        } else if (IsLhsGreatThanRhs(operands->at(j), operands->at(i))) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+};
+
 template <typename PassT>
 void DoPass(bool* rewrited, DimExpr* expr) {
   const auto old_expr = *expr;
@@ -903,11 +1045,14 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldUnitConstant<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Add>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Mul>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Add>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
     DoPass<FoldRedundantBroadcast>(&keep_rewrite, &ret);
     DoPass<FoldRedundantSymbolicBroadcast>(&keep_rewrite, &ret);
+    DoPass<SimplifyBroadcast>(&keep_rewrite, &ret);
   }
   return ret;
 }
@@ -1063,7 +1208,7 @@ DimExpr SubstituteDimExpr(
 namespace symbol {
 
 IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
-  return std::visit(Overloaded{
+  return std::visit(common::Overloaded{
                         [&](std::int64_t) { return 0; },
                         [&](const std::string&) { return 1; },
                         [&](const Negative<DimExpr>&) { return 2; },
@@ -1087,7 +1232,7 @@ IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
                                        : PriorityComparisonStatus::LOWER;
   }
 
-  auto CompareForEqualPriority = Overloaded{
+  auto CompareForEqualPriority = common::Overloaded{
       [](const std::string& lhs, const std::string& rhs) {
         if (lhs.size() != rhs.size()) {
           return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
@@ -1130,7 +1275,7 @@ void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
 std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
   std::unordered_set<std::string> symbols;
   // clang-format off
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [&](std::int64_t dim_expr) { return; },
       [&](const std::string& dim_expr) { symbols.insert(dim_expr); },
       [&](const Negative<DimExpr>& dim_expr) {

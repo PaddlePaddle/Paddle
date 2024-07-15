@@ -553,7 +553,7 @@ class SingleProcessMultiThread(GradAllReduce):
             return
         # fuse allreduce
         if self.fuse_allreduce > 0:
-            print("begin used fuse_allreduce param count = %s" % (param_cnt))
+            print(f"begin used fuse_allreduce param count = {param_cnt}")
             # use fuse allreduce
             self._insert_fuse_allreduce_ops()
         else:
@@ -592,7 +592,7 @@ class SingleProcessMultiThread(GradAllReduce):
             scale = 1.0 / self.nranks / self.gpu_nums
         else:
             scale = 1.0 / self.gpu_nums
-        print("begin _insert_scale_loss_grad_ops scale = %s" % (scale))
+        print(f"begin _insert_scale_loss_grad_ops scale = {scale}")
         block = self.main_program.global_block()
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_loss_grad_op(op):
@@ -722,7 +722,7 @@ class SingleProcessMultiThread(GradAllReduce):
 class MultiThread(GradAllReduce):
     ''' '''
 
-    def __init__(self, nrings=1, trans_mode="all_reduce"):
+    def __init__(self, nrings=1, trans_mode="fuse_all_reduce"):
         GradAllReduce.__init__(self, nrings)
         self.mode = "box"
         self.trans_mode = trans_mode

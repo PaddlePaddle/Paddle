@@ -21,14 +21,35 @@
 namespace phi {
 
 template <typename T, typename Context>
+void QuantizeLinearKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const paddle::optional<DenseTensor>& scale,
+                          const DenseTensor& zero_point,
+                          const paddle::optional<DenseTensor>& in_accum,
+                          const paddle::optional<DenseTensor>& in_state,
+                          int quant_axis,
+                          int bit_length,
+                          int qmin,
+                          int qmax,
+                          int round_type,
+                          bool is_test,
+                          bool only_observer,
+                          DenseTensor* out,
+                          DenseTensor* out_state,
+                          DenseTensor* out_accum,
+                          DenseTensor* out_scale);
+
+template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const DenseTensor& scale,
+                            const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& zero_point,
                             const paddle::optional<DenseTensor>& in_accum,
                             const paddle::optional<DenseTensor>& in_state,
                             int quant_axis,
                             int bit_length,
+                            int qmin,
+                            int qmax,
                             int round_type,
                             bool is_test,
                             bool only_observer,

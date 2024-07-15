@@ -83,8 +83,7 @@ def _is_non_distributed_check_(func):
             and cls._role_maker._is_non_distributed() is True
         ):
             logger.warning(
-                "%s() function doesn't work when use non_distributed fleet."
-                % (func.__name__)
+                f"{func.__name__}() function doesn't work when use non_distributed fleet."
             )
             return
 
@@ -1293,6 +1292,30 @@ class Fleet:
         self._runtime_handle._save_dense_params(
             executor, dirname, scope, program, var_names
         )
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def set_date(self, table_id, day_id):
+        """
+        set_date for gpups table
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
+
+                >>> fleet.set_date(0, "20250101")
+
+        """
+        self._runtime_handle._set_date(table_id, day_id)
 
     @is_non_distributed_check
     @inited_runtime_handler

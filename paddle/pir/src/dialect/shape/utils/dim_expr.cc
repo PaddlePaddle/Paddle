@@ -145,7 +145,7 @@ std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
 }  // namespace
 
 std::string ToString(const DimExpr& dim_expr) {
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [](std::int64_t dim_expr) { return std::to_string(dim_expr); },
       [](const std::string& dim_expr) { return dim_expr; },
       [](const Negative<DimExpr>& dim_expr) {

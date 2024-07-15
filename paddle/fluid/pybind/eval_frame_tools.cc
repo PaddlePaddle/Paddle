@@ -39,7 +39,7 @@ class TreeNode {
 
 void TreeNode::clear() {
   for (auto& i : children) {
-    if (i != nullptr) delete i;
+    delete i;
   }
 }
 

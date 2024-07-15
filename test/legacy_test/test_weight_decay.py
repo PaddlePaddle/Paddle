@@ -94,12 +94,11 @@ class TestWeightDecay(unittest.TestCase):
                 main_prog, feed=feeder.feed(data), fetch_list=[loss.name]
             )
 
-            print("loss              %s" % (np.average(out)))
             loss_set.append(np.average(out))
 
         return loss_set
 
-    def run_parallel_exe(
+    def run_standalone_exe(
         self,
         place,
         feed_list,
@@ -163,7 +162,7 @@ class TestWeightDecay(unittest.TestCase):
                 paddle.assign(updated_p, output=params[0])
 
             if use_parallel_exe:
-                loss = self.run_parallel_exe(
+                loss = self.run_standalone_exe(
                     place, [data, label], loss=avg_cost, use_reduce=use_reduce
                 )
             else:

@@ -21,8 +21,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 std::shared_ptr<paddle::framework::Variable>
 ParameterConvertInterface::ParameterToVariable(pir::Parameter *parameter) {
   if (parameter->type().isa<DenseTensorType>()) {
@@ -42,8 +41,7 @@ ParameterConvertInterface::ParameterToVariable(pir::Parameter *parameter) {
         parameter->type().dyn_cast<DenseTensorType>().offset());
     tensor->set_meta(meta);
     paddle::platform::DeviceContext *dev_ctx =
-        paddle::platform::DeviceContextPool::Instance().Get(
-            paddle::platform::CPUPlace());
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     dev_ctx->Alloc(tensor,
                    TransToPhiDataType(
                        parameter->type().dyn_cast<DenseTensorType>().dtype()));
@@ -79,7 +77,6 @@ std::unique_ptr<pir::Parameter> ParameterConvertInterface::VariableToParameter(
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ParameterConvertInterface)

@@ -33,10 +33,7 @@
     }                                                                        \
   } while (0)
 
-namespace paddle {
-namespace platform {
-
-namespace details {
+namespace paddle::platform::details {
 std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   std::unordered_map<uint32_t, uint64_t> mapping;
   std::unordered_map<uint64_t, ThreadId> ids = GetAllThreadIds();
@@ -45,7 +42,8 @@ std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   }
   return mapping;
 }
-}  // namespace details
+}  // namespace paddle::platform::details
+namespace paddle::platform {
 
 CudaTracer::CudaTracer() = default;
 
@@ -53,7 +51,7 @@ void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
       true,
-      platform::errors::PreconditionNotMet("Tracer must be UNINITED"));
+      phi::errors::PreconditionNotMet("Tracer must be UNINITED"));
   EnableCuptiActivity();
   state_ = TracerState::READY;
 }
@@ -62,26 +60,24 @@ void CudaTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY,
       true,
-      platform::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
+      phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
   ConsumeBuffers();
   tracing_start_ns_ = PosixInNsec();
   state_ = TracerState::STARTED;
 }
 
 void CudaTracer::StopTracing() {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STARTED,
-      platform::errors::PreconditionNotMet("Tracer must be STARTED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STARTED,
+                    phi::errors::PreconditionNotMet("Tracer must be STARTED"));
   DisableCuptiActivity();
   state_ = TracerState::STOPED;
 }
 
 void CudaTracer::CollectTraceData(TraceEventCollector* collector) {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STOPED,
-      platform::errors::PreconditionNotMet("Tracer must be STOPED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STOPED,
+                    phi::errors::PreconditionNotMet("Tracer must be STOPED"));
   ProcessCuptiActivity(collector);
 }
 
@@ -194,5 +190,4 @@ void CudaTracer::ReleaseBuffer(uint8_t* buffer) {
   paddle::framework::AlignedFree(buffer);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

@@ -95,12 +95,12 @@ class HeterWrapper {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void DeSerializeToTensor(Scope* scope,
                            const VariableMessage& req_var,
-                           platform::Place place,
+                           phi::Place place,
                            gpuStream_t stream);
 #endif
   void DeSerializeToTensor(Scope* scope,
                            const VariableMessage& req_var,
-                           platform::Place place);
+                           phi::Place place);
   // HeterWrapper singleton
   static std::shared_ptr<HeterWrapper> GetInstance() {
     if (NULL == s_instance_) {

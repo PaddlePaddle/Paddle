@@ -44,6 +44,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             self.op_type = "elementwise_sub"
             self.use_xpu = True
             self.dtype = self.in_type
+
             self.init_shape()
             self.init_input_output()
 

@@ -20,14 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
  */
-static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+static phi::DDim RowMatrixFromVector(const phi::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
@@ -96,7 +95,7 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     if (context->Attrs().Get<bool>("is_test") == false) {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
-    framework::DDim mean_dim =
+    phi::DDim mean_dim =
         common::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
     bool pre_layer_norm = context->Attrs().Get<bool>("pre_layer_norm");
     if (pre_layer_norm) {
@@ -430,8 +429,7 @@ class FusedFeedForwardOpDoubleGradMaker
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {}
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_feedforward,

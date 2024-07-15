@@ -88,8 +88,8 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    framework::DDim x_dims = x->dims();
-    framework::DDim out_dims(x_dims);
+    phi::DDim x_dims = x->dims();
+    phi::DDim out_dims(x_dims);
     PADDLE_ENFORCE_EQ(
         x_dims[0] % nranks,
         0,

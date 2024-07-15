@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, version
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
+import paddle
+from paddle import _C_ops
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.device.cuda import get_device_capability
@@ -21,10 +26,21 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
 )
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import DTypeLike
+
+    _Algo: TypeAlias = Literal[
+        'weight_only_int8', 'weight_only_int4', 'llm.int8'
+    ]
+    _GroupSize: TypeAlias = Literal[-1, 64, 128]
+
 
 def _get_arch_info():
     # Get SMVersion from device.
-    cuda_version = version.cuda()
+    cuda_version = paddle.version.cuda()
     if cuda_version is not None and cuda_version != 'False':
         major, minor = get_device_capability()
         arch = int(major * 10 + minor)
@@ -35,7 +51,12 @@ def _get_arch_info():
         )
 
 
-def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
+def weight_quantize(
+    x: Tensor,
+    algo: _Algo = "weight_only_int8",
+    arch: int | None = None,
+    group_size: _GroupSize = -1,
+) -> tuple[Tensor, Tensor]:
     """
     Quantization function for weight_only and llm.int8's weight.
 
@@ -68,8 +89,13 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
+        arch == 70
+        or arch == 75
+        or arch == 80
+        or arch == 86
+        or arch == 89
+        or arch == 90
+    ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
 
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
@@ -92,8 +118,12 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
 
 
 def weight_dequantize(
-    x, scale, algo="weight_only_int8", out_dtype='float16', group_size=-1
-):
+    x: Tensor,
+    scale: Tensor,
+    algo: _Algo = "weight_only_int8",
+    out_dtype: DTypeLike = "float16",
+    group_size: _GroupSize = -1,
+) -> Tensor:
     """
     Dequantization function for weight_only and llm.int8's weight.
 
@@ -148,14 +178,14 @@ def weight_dequantize(
 
 
 def weight_only_linear(
-    x,
-    weight,
-    bias=None,
-    weight_scale=None,
-    weight_dtype="int8",
-    arch=None,
-    group_size=-1,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    weight_scale: Tensor | None = None,
+    weight_dtype: DTypeLike = "int8",
+    arch: int | None = None,
+    group_size: _GroupSize = -1,
+) -> Tensor:
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
     This method requires CUDA version >= 11.2.
@@ -192,8 +222,13 @@ def weight_only_linear(
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
+        arch == 70
+        or arch == 75
+        or arch == 80
+        or arch == 86
+        or arch == 89
+        or arch == 90
+    ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
     ), f"Currently weight_quantize only support group size of -1, 64 or 128. but got {group_size} "
@@ -236,12 +271,12 @@ def weight_only_linear(
 
 
 def llm_int8_linear(
-    x,
-    weight,
-    bias=None,
-    weight_scale=None,
-    threshold=6.0,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    weight_scale: Tensor | None = None,
+    threshold: float = 6.0,
+) -> Tensor:
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
     This method requires CUDA version >= 11.2.
@@ -301,7 +336,7 @@ def llm_int8_linear(
         return out
 
 
-def apply_per_channel_scale(x, scales):
+def apply_per_channel_scale(x: Tensor, scales: Tensor) -> Tensor:
     """
     Apply pre-quant per channel scale on activations
 

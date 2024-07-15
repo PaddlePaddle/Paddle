@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include "glog/logging.h"
-
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
@@ -63,6 +63,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.unsqueeze", "reshape"},
     {"pd_op.split_with_num", "split"},
     {"pd_op.expand", "broadcast_to"},
+    {"pd_op.where", "select"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
@@ -135,6 +136,8 @@ class OpTransInfo {
                                                     "dropout",
                                                     "pool2d",
                                                     "pool2d_grad",
+                                                    "pool3d",
+                                                    "pool3d_grad"
                                                     "split",
                                                     "matmul",
                                                     "matmul_grad",
@@ -322,12 +325,13 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(ScaleOp),
     PD_OP_NAME(Pool2dOp),
     PD_OP_NAME(IscloseOp),
-    PD_OP_NAME(SliceOp),
+    // PD_OP_NAME(SliceOp),
     PD_OP_NAME(ConcatOp),
     PD_OP_NAME(SplitOp),
     PD_OP_NAME(SplitWithNumOp),
     PD_OP_NAME(AddNOp),
     PD_OP_NAME(UniformOp),
+    PD_OP_NAME(GatherOp),
 };
 #undef PD_OP_NAME
 
@@ -488,10 +492,24 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName ||
-        item.first == ::pir::kOutputDimExprs ||
-        item.first == ::pir::kSymbolBindings) {
+    if (item.first == ::pir::kStopGradientAttrName) {
       continue;
+    } else if (item.first == ::pir::kSymbolBindings) {
+      auto symbol_bindings =
+          cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings(
+              item.second);
+      PADDLE_ENFORCE(symbol_bindings.has_value(),
+                     ::common::errors::PreconditionNotMet(
+                         "Required success to execute convert attribute to "
+                         "symbol bindings."));
+      dst_attrs[::pir::kSymbolBindings] = symbol_bindings.value();
+    } else if (item.first == ::pir::kOutputDimExprs) {
+      auto dim_exprs = cinn::dialect::ConvertAttributeToDimExprs(item.second);
+      PADDLE_ENFORCE(
+          dim_exprs.has_value(),
+          ::common::errors::PreconditionNotMet(
+              "Required success to execute convert attribute to dim exprs."));
+      dst_attrs[::pir::kOutputDimExprs] = dim_exprs.value();
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
           item.second.dyn_cast<paddle::dialect::PlaceAttribute>().data() ==

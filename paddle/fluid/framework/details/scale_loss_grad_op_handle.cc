@@ -23,13 +23,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
                                              size_t num_dev,
                                              Scope *scope,
-                                             platform::Place place,
+                                             phi::Place place,
                                              platform::DeviceContext *dev_ctx,
                                              proto::VarType::Type dtype)
     : OpHandleBase(node),
@@ -45,13 +43,13 @@ ScaleLossGradOpHandle::~ScaleLossGradOpHandle() = default;
 struct ScaleLossGradFunctor {
   float coeff_;
   phi::DenseTensor *out_;
-  platform::Place place_;
+  phi::Place place_;
   proto::VarType::Type out_dtype_;
   platform::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff,
                        phi::DenseTensor *out,
-                       platform::Place place,
+                       phi::Place place,
                        proto::VarType::Type dtype,
                        platform::DeviceContext *ctx)
       : coeff_(coeff), out_(out), place_(place), out_dtype_(dtype), ctx_(ctx) {}
@@ -59,14 +57,14 @@ struct ScaleLossGradFunctor {
   template <typename OutT>
   void apply() const {
     auto *out_data = out_->mutable_data<OutT>(place_);
-    if (platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       *out_data = static_cast<OutT>(coeff_);
-    } else if (platform::is_xpu_place(place_)) {
+    } else if (phi::is_xpu_place(place_)) {
 #if defined(PADDLE_WITH_XPU)
       OutT cast_coeff = static_cast<OutT>(coeff_);
       memory::Copy(place_,
                    out_data,
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    &cast_coeff,
                    SizeOfType(out_dtype_));
       VLOG(10) << place_ << "RUN Scale loss grad op";
@@ -81,7 +79,7 @@ struct ScaleLossGradFunctor {
       auto stream = static_cast<phi::GPUContext *>(ctx_)->stream();
       memory::Copy(place_,
                    out_data,
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    &cast_coeff,
                    SizeOfType(out_dtype_),
                    stream);
@@ -126,6 +124,4 @@ void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
 }
 
 std::string ScaleLossGradOpHandle::Name() const { return "ScaleLossGrad"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
