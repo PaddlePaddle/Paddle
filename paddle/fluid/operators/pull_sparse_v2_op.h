@@ -25,6 +25,48 @@
 namespace paddle {
 namespace operators {
 
+template <typename T>
+void PullSparseFunctor(const framework::ExecutionContext& ctx) {
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
+  uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
+  uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
+  auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
+  // note: GetInstance() is not thread-safe
+  // we assume FleetWrapper has been already initialized
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+  fleet_ptr->PullSparseToTensorSync(
+      table_id, fea_dim, padding_id, ctx.GetPlace(), &inputs, &outputs);
+}
+
+template <typename T>
+void PushSparseFunctor(const framework::ExecutionContext& ctx) {
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto grads = ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
+  uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
+  std::string accessor = ctx.Attr<std::string>("AccessorClass");
+  bool scale_sparse = ctx.Attr<bool>("ScaleSparseGrad");
+  uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
+  const std::string& label_name = ctx.Attr<std::string>("CtrLabelName");
+  const framework::Scope& scope = ctx.scope();
+  auto input_names = ctx.Attr<std::vector<std::string>>("InputNames");
+  auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
+  // note: GetInstance() is not thread-safe
+  // we assume FleetWrapper has been already initialized
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+  fleet_ptr->PushSparseFromTensorWithLabelAsync(scope,
+                                                table_id,
+                                                fea_dim,
+                                                padding_id,
+                                                scale_sparse,
+                                                accessor,
+                                                label_name,
+                                                ctx.GetPlace(),
+                                                input_names,
+                                                &inputs,
+                                                &grads);
+}
+
 template <typename T, typename DeviceContext>
 class PullSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
