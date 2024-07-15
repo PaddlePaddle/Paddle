@@ -34,42 +34,10 @@
 
 namespace paddle {
 namespace dialect {
-
-class AddNOp : public pir::Op<AddNOp,
-                              paddle::dialect::OpYamlInfoInterface,
-                              paddle::dialect::InferMetaInterface,
-                              paddle::dialect::VjpInterface,
-                              paddle::dialect::DecompInterface> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.add_n"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static OpInfoTuple GetOpInfo();
-  TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                             pir::OperationArgument &argument,  // NOLINT
-                             pir::Value inputs);
-
-  void VerifySig();
-  pir::Value inputs() { return operand_source(0); }
-  pir::Value out() { return result(0); }
-  static void InferMeta(phi::InferMetaContext *infer_meta);
-  static std::vector<pir::Type> InferMeta(
-      const std::vector<pir::Value> &input_values,
-      pir::AttributeMap *p_attributes);
-
-  static std::vector<std::vector<pir::Value>> Vjp(
-      pir::Operation *op,
-      const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::Value>> &outputs,
-      const std::vector<std::vector<pir::Value>> &out_grads,
-      const std::vector<std::vector<bool>> &stop_gradients);
-  static std::vector<std::vector<pir::Value>> Decomp(pir::Operation *op);
-};
-
 class AddN_Op : public pir::Op<AddN_Op,
                                paddle::dialect::OpYamlInfoInterface,
                                paddle::dialect::InferMetaInterface,
+                               paddle::dialect::InferSymbolicShapeInterface,
                                paddle::dialect::InplaceTrait> {
  public:
   using Op::Op;
@@ -89,6 +57,7 @@ class AddN_Op : public pir::Op<AddN_Op,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class AddNArrayOp : public pir::Op<AddNArrayOp,
@@ -816,7 +785,6 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)

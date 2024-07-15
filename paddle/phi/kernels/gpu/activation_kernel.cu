@@ -110,7 +110,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Round, CudaRoundFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Floor, CudaFloorFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Ceil, CudaCeilFunctor)
 
@@ -187,6 +186,19 @@ void Relu6Kernel(const Context& dev_ctx,
   ActivationGPUImpl<T, Context, funcs::CudaRelu6Functor<T>>(
       dev_ctx, x, out, functor);
 }
+
+template <typename T, typename Context>
+void RoundKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const int decimals,
+                 DenseTensor* out) {
+  funcs::CudaRoundFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = decimals;
+  ActivationGPUImpl<T, Context, funcs::CudaRoundFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP

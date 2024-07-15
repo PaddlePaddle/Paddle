@@ -24,10 +24,10 @@ def to_pascal_case(s):
 attr_types_map = {
     'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
     'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-    'Scalar(int)': ['pir::Int32Attribute', 'int'],
-    'Scalar(int64_t)': ['pir::Int64Attribute', 'int64_t'],
-    'Scalar(float)': ['pir::FloatAttribute', 'float'],
-    'Scalar(double)': ['pir::DoubleAttribute', 'double'],
+    'Scalar(int)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
+    'Scalar(int64_t)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
+    'Scalar(float)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
+    'Scalar(double)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
     'Scalar[]': [
         'pir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
         'const std::vector<Scalar>&',

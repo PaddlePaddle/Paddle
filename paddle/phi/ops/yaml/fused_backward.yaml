@@ -17,15 +17,16 @@
   support_dygraph_mode : true
 
 - backward_op : fused_dot_product_attention_grad
-  forward : fused_dot_product_attention (Tensor q, Tensor k, Tensor v, Tensor mask, float scaling_factor, float dropout_probability, bool is_training, bool is_causal_masking) -> Tensor(out), Tensor(softmax_out), Tensor(rng_state)
-  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_out, Tensor rng_state, Tensor mask, Tensor out_grad, float scaling_factor, float dropout_probability, bool is_causal_masking = false)
-  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  forward : fused_dot_product_attention (Tensor q, Tensor k, Tensor v, Tensor bias, Tensor cu_seqlen_q, Tensor cu_seqlen_kv, float scaling_factor, float dropout_probability, bool is_training, str mask_type_str, str bias_type_str) -> Tensor(out), Tensor(softmax_out), Tensor(rng_state)
+  args : (Tensor q, Tensor k, Tensor v, Tensor bias, Tensor cu_seqlen_q, Tensor cu_seqlen_kv, Tensor out, Tensor softmax_out, Tensor rng_state, Tensor out_grad, float scaling_factor, float dropout_probability, str mask_type_str = "none", str bias_type_str = "none")
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad), Tensor(bias_grad)
   infer_meta :
     func : FusedDotProductAttentionGradInferMeta
-    param: [q, k, v]
+    param: [q, k, v, bias]
   kernel :
     func : fused_dot_product_attention_grad
     data_type : q
+  optional : bias, cu_seqlen_q, cu_seqlen_kv
   support_dygraph_mode : true
 
 - backward_op : fused_dropout_add_grad
@@ -98,3 +99,31 @@
   kernel :
     func : max_pool2d_v2_grad
     param: [x, out, saved_idx, out_grad, kernel_size, strides, paddings, data_format, global_pooling, adaptive]
+
+- backward_op : resnet_unit_grad
+  forward: resnet_unit (Tensor x, Tensor filter_x, Tensor scale_x, Tensor bias_x, Tensor mean_x,
+    Tensor var_x, Tensor z, Tensor filter_z, Tensor scale_z, Tensor bias_z, Tensor
+    mean_z, Tensor var_z, int stride = 1, int stride_z = 1, int padding = 0, int dilation
+    = 1, int group = 1, float momentum = 0.9, float epsilon = 1e-5, str data_format
+    = "NHWC", bool fuse_add = false, bool has_shortcut = false, bool use_global_stats
+    = false, bool is_test = false, bool use_addto = false, str act_type = "relu") ->
+    Tensor (out), Tensor (bit_mask), Tensor (conv_x), Tensor (saved_mean_x),
+    Tensor (saved_invstd_x), Tensor (running_mean_x), Tensor (running_var_x), Tensor
+    (conv_z), Tensor (saved_mean_z), Tensor (saved_invstd_z), Tensor (running_mean_z),
+    Tensor (running_var_z)
+  args: (Tensor x, Tensor filter_x, Tensor conv_x, Tensor scale_x, Tensor bias_x, Tensor saved_mean_x,
+    Tensor saved_invstd_x, Tensor z, Tensor filter_z, Tensor conv_z, Tensor scale_z, Tensor bias_z, Tensor
+    saved_mean_z, Tensor saved_invstd_z, Tensor out, Tensor bit_mask, Tensor out_grad,
+    int stride = 1, int stride_z = 1, int padding = 0, int dilation
+    = 1, int group = 1, float momentum = 0.9, float epsilon = 1e-5, str data_format
+    = "NHWC", bool fuse_add = false, bool has_shortcut = false, bool use_global_stats
+    = false, bool is_test = false, bool use_addto = false, str act_type = "relu")
+  output: Tensor (x_grad), Tensor (filter_x_grad), Tensor (scale_x_grad), Tensor (bias_x_grad),
+    Tensor (z_grad), Tensor (filter_z_grad), Tensor (scale_z_grad), Tensor (bias_z_grad)
+  infer_meta:
+    func: ResnetUnitGradInferMeta
+  kernel:
+    func: resnet_unit_grad
+    data_type: x
+  optional: z, filter_z, conv_z, scale_z, bias_z, saved_mean_z, saved_invstd_z
+  support_dygraph_mode : true

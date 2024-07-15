@@ -63,10 +63,8 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
 // Get the tile size configuration for the given dimension lower bound
 // dynamically.
 int get_tile_size_config(int dimension_lower) {
-  if (dimension_lower < 128) {
-    return 32;
-  } else if (dimension_lower < 512) {
-    return 128;
+  if (dimension_lower < 256) {
+    return 64;
   } else if (dimension_lower < 1024) {
     return 256;
   } else if (dimension_lower < 2048) {
@@ -87,7 +85,7 @@ int get_tile_size_config(int dimension_lower) {
  * WeightedSamplingTrailObjectiveFunc. The search results are logged, including
  * the minimum score and the best candidate configuration found.
  */
-TEST(ConfigSearcher, TestReducePipeline) {
+TEST(ConfigSearcher, TestSRReducePipeline) {
   FLAGS_cinn_measure_kernel_time = true;
   FLAGS_enable_cinn_compile_cache = false;
   FLAGS_tile_config_policy = "search";
@@ -100,39 +98,39 @@ TEST(ConfigSearcher, TestReducePipeline) {
   constexpr int spatial_right_bound = 32;
   constexpr int reduce_left_bound = 32;
   constexpr int reduce_right_bound = 32;
-  constexpr bool is_spatial_dynamic = false;
-  constexpr bool is_reduce_dynamic = true;
+  constexpr bool is_spatial_dynamic = true;
+  constexpr bool is_reduce_dynamic = false;
   // now each has the same weight
   constexpr double s_w = 0.05;
   constexpr double r_w = 0.05;
   constexpr double sampling_prob = 1.0;
-  constexpr int kMaxSamplingTimes = 65536;
+  constexpr int kMaxSamplingTimes = 1000;
   constexpr int kRepeats = 80;
 
   // Define the initial grid size for the spatial and reduction dimensions
-  int spatial_tile_config = 0, reduce_tile_config = 0;
-  int spatial_tile_width = 0, reduce_tile_width = 0;
+  int s_bucket_increasing_width = 0, r_bucket_increasing_width = 0;
+  int s_bucket_width = 0, r_bucket_width = 0;
   // Define weight for each dimension
   double s_weight = (is_spatial_dynamic ? s_w : 1.0);
   double r_weight = (is_reduce_dynamic ? r_w : 1.0);
 
   for (int s_dimension_lower = spatial_left_bound;
        s_dimension_lower <= spatial_right_bound;
-       s_dimension_lower += spatial_tile_config) {
+       s_dimension_lower += s_bucket_increasing_width) {
     // adjust the tile size for the spatial dimension dymaically
-    spatial_tile_config = get_tile_size_config(s_dimension_lower);
-    spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
+    s_bucket_increasing_width = get_tile_size_config(s_dimension_lower);
+    s_bucket_width = (is_spatial_dynamic ? s_bucket_increasing_width : 1);
     for (int r_dimension_lower = reduce_left_bound;
          r_dimension_lower <= reduce_right_bound;
-         r_dimension_lower += reduce_tile_config) {
+         r_dimension_lower += r_bucket_increasing_width) {
       // adjust the tile size for the reduce dimension dymaically
-      reduce_tile_config = get_tile_size_config(r_dimension_lower);
-      reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
+      r_bucket_increasing_width = get_tile_size_config(r_dimension_lower);
+      r_bucket_width = (is_reduce_dynamic ? r_bucket_increasing_width : 1);
 
       std::vector<double> s_weights =
-          std::vector<double>(spatial_tile_width, s_weight);
+          std::vector<double>(s_bucket_width, s_weight);
       std::vector<double> r_weights =
-          std::vector<double>(reduce_tile_width, r_weight);
+          std::vector<double>(r_bucket_width, r_weight);
 
       // Step 1: Construct pir::Program.
       ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -147,21 +145,16 @@ TEST(ConfigSearcher, TestReducePipeline) {
         program = BuildReduceSumProgram(-1, -1);
       }
 
-      // Step 2: Switch schedule config manager mode.
-      auto& schedule_config_manager =
-          cinn::ir::ScheduleConfigManager::Instance();
-      schedule_config_manager.SetPolicy("custom");
-
-      // Step 3: Construct iter space and objective function.
+      // Step 2: Construct iter space and objective function.
       cinn::ir::BucketInfo bucket_info;
       bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
           s_dimension_lower,
-          s_dimension_lower + spatial_tile_width - 1,
+          s_dimension_lower + s_bucket_width - 1,
           "S",
           /* is_dynamic = */ is_spatial_dynamic});
       bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
           r_dimension_lower,
-          r_dimension_lower + reduce_tile_width - 1,
+          r_dimension_lower + r_bucket_width - 1,
           "R",
           /* is_dynamic = */ is_reduce_dynamic});
       std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
@@ -174,9 +167,9 @@ TEST(ConfigSearcher, TestReducePipeline) {
               kRepeats,
               std::vector<std::vector<double>>{s_weights, r_weights});
 
-      // Step 4: Construct config candidate range and constraints.
+      // Step 3: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 1}, {1, 1}, {1, 1}};  // {1, 8}, {1, 256}, {1, 256}
+          {1, 1}, {1, 1}, {1, 1}};  // {1, 32}, {1, 1024}, {1, 128}
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -206,15 +199,19 @@ TEST(ConfigSearcher, TestReducePipeline) {
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] % 8 == 0 || candidate[2] <= 4;
+            return candidate[2] == 1 || candidate[2] == 2 ||
+                   candidate[2] == 4 ||
+                   candidate[2] >= 8 && candidate[2] < 32 &&
+                       candidate[2] % 8 == 0 ||
+                   candidate[2] >= 32 && candidate[2] % 32 == 0;
           });
 
-      // Step 5: Construct searcher and search.
+      // Step 4: Construct searcher and search.
       cinn::ir::search::ScheduleConfigSearcher searcher(
           std::move(obj_func), candidate_range, constraints);
       auto search_res = searcher.Search();
 
-      // Step 6: Save the best candidate's config of each grid search to json
+      // Step 5: Save the best candidate's config of each grid search to json
       cinn::ir::FileTileConfigDatabase file_database;
       cinn::ir::ScheduleConfig::TileConfig tile_bestconfig;
       tile_bestconfig.warp_num = search_res.second[0];

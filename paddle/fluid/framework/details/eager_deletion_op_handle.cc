@@ -31,7 +31,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
     Scope *scope,
     size_t scope_idx,
-    const platform::Place &place,
+    const phi::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars,
     GarbageCollector *gc)
     : OpHandleBase(node),
@@ -42,9 +42,9 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       gc_(gc),
       vars_() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(place.device);
 #ifdef PADDLE_WITH_HIP

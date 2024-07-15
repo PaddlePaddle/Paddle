@@ -30,9 +30,9 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240626")
+  set(XPU_XHPC_BASE_DATE "20240704")
 endif()
-set(XPU_XCCL_BASE_VERSION "1.2.1.2")
+set(XPU_XCCL_BASE_VERSION "1.2.5")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20230602")
 endif()
@@ -43,7 +43,7 @@ set(XPU_XRE_BASE_URL
 )
 
 set(XPU_XCCL_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/${XPU_XCCL_BASE_VERSION}"
+    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/${XPU_XCCL_BASE_VERSION}.1"
 )
 
 if(NOT XPU_XFT_BASE_URL)
@@ -60,21 +60,28 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XRE5)
-  set(XPU_XRE_BASE_VERSION "5.0.3.1")
+  set(XPU_XRE_BASE_VERSION "5.0.11.1")
   set(XPU_XRE_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
+  )
+  set(XPU_XCCL_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xccl/release/${XPU_XCCL_BASE_VERSION}.2"
   )
 endif()
 
 if(WITH_XCCL_RDMA)
-  set(XPU_XCCL_PREFIX "xccl_rdma")
+  set(XPU_XCCL_PREFIX "xccl_rdma-")
 else()
-  set(XPU_XCCL_PREFIX "xccl_socket")
+  set(XPU_XCCL_PREFIX "xccl_socket-")
+  # NOTE(lijin23): socket has not been supported for XPU3, so the xccl output name was changed.
+  if(WITH_XPU_XRE5)
+    set(XPU_XCCL_PREFIX "xccl_")
+  endif()
 endif()
 
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-kylin_aarch64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}kylin_aarch64")
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
@@ -87,11 +94,11 @@ elseif(WITH_BDCENTOS)
   else()
     set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
   endif()
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 elseif(WITH_CENTOS)
   set(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 else()
   # Ubuntu as default
@@ -102,7 +109,7 @@ else()
     set(XPU_XRE_DIR_NAME "xre-ubuntu_1604_x86_64")
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
   endif()
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 endif()
 
@@ -167,7 +174,7 @@ ExternalProject_Add(
   PREFIX ${SNAPPY_PREFIX_DIR}
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
-    bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
+    bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh ${XPU_XRE_URL}
     ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}

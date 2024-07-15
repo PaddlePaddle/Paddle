@@ -16,8 +16,10 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/deserialize_utils.h"
 namespace pir {
 void ProgramReader::RecoverProgram(Json* program_json,
-                                   pir::Program* recover_program) {
+                                   pir::Program* recover_program,
+                                   pir::PatchBuilder* builder) {
   id_value_map[0] = pir::Value();
+  patch_builder = builder;
   ReadProgram(program_json, recover_program);
   VLOG(6) << "Finish json to program.";
   return;
@@ -108,6 +110,12 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   VLOG(6) << "Finish Read value " << value_id_ << ".";
 
   Json& attrs_json = op_json->at(ATTRS);
+  PADDLE_ENFORCE_EQ(
+      attrs_json.size(),
+      4,
+      common::errors::InvalidArgument(
+          "builtin ParameterOp has %d 's  attributes, which should be 4",
+          attrs_json.size()));
   pir::AttributeMap attributes;
   pir::IrContext* ctx = pir::IrContext::Instance();
   attributes.insert(
@@ -122,6 +130,12 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
+    PADDLE_ENFORCE_EQ(other_attrs_json.size(),
+                      3,
+                      common::errors::InvalidArgument(
+                          "builtin ParameterOp has %d 's  opresult attributes, "
+                          "which should be 3",
+                          other_attrs_json.size()));
     attributes.insert({"persistable",
                        GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(0))});
     attributes.insert({"stop_gradient",
@@ -143,7 +157,14 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 }
 
 pir::Operation* ProgramReader::ReadOp(Json* op_json) {
+  // deal with patches
   auto op_name = op_json->at(ID).template get<std::string>();
+  if (patch_builder->HasOpPatch(op_name)) {
+    VLOG(8) << op_name << " brefore: " << *op_json;
+    Json op_patch = patch_builder->GetJsonOpPatch(op_name);
+    patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
+    VLOG(8) << op_name << " has been patched: " << *op_json;
+  }
   if (op_name == PARAMETEROP) {
     return ReadParameterOp(op_json);
   }
@@ -225,12 +246,20 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
   pir::AttributeMap attributes;
   for (auto& attr_json : *attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
-    attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    if (attr_json.contains(ATTR_TYPE)) {
+      attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    } else {
+      VLOG(6) << "Attribute " << attr_name << " Deleted.";
+    }
   }
   VLOG(6) << "Finish Read pir::AttributeMap.";
   for (auto& attr_json : *opresult_attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
-    attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    if (attr_json.contains(ATTR_TYPE)) {
+      attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    } else {
+      VLOG(6) << "Attribute " << attr_name << " Deleted.";
+    }
   }
   VLOG(4) << "Finish Read Opresults_AttributeMap.";
   return attributes;

@@ -197,12 +197,15 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
   if (vec_flatten_axis_.size() > 0) {
     auto loops = sch->GetLoops(block_id);
     if (sp_loop > 1 && sp_thread > 1) {
+      // [S, R] => [S(-1), S(inner_loop), S(thread), R]
       sch->Split(loops[0], {-1, sp_loop, sp_thread});
       current_reduce_axis = 3;
     } else if (sp_loop > 1 || sp_thread > 1) {
+      // [S, R] => [S(-1), S(thread), R]
       sch->Split(loops[0], {-1, sp_loop > 1 ? sp_loop : sp_thread});
       current_reduce_axis = 2;
     } else {
+      // [S, R] => [S, R]
       current_reduce_axis = 1;
     }
   }
@@ -213,6 +216,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
   if (vec_reduce_axis_.size() > 0) {
     auto loops = sch->GetLoops(block_id);
     auto reduce_loop = loops[current_reduce_axis].As<ir::For>();
+    // [S..S, R] => [S..S, R(-1), R(thread)]
     sch->Split(loops[current_reduce_axis], {-1, rd_thread});
     VLOG(4) << "Before ReorderReduction on block: [" << block_id
             << "], loop nest:\n"
@@ -221,6 +225,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
     // TODO(lshpku): the Reorder is unneeded if the later FactorizeReduction
     // supports rf_axis=1.
     loops = sch->GetLoops(block_id);
+    // [S..S, R(-1), R(thread)] => [S..S, R(thread), R(-1)]
     sch->Reorder({loops[current_reduce_axis + 1], loops[current_reduce_axis]});
     VLOG(4) << "Before FactorizeReduction on block: [" << block_id
             << "], loop nest:\n"
@@ -243,12 +248,18 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
     sch->Bind(loops[0], "blockIdx.x");
     if (!vec_flatten_axis_.empty() && sp_thread > 1) {
       if (vec_reduce_axis_.empty()) {
+        // [S..S] => [S(blockIdx.x), optional(inner_loop), S(threadIdx.x)]
         sch->Bind(loops[current_reduce_axis - 1], rd_axis_type);
       } else {
+        // [S..S, R..R] =>
+        // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R..R]
         sch->Bind(loops[current_reduce_axis - 1], sp_axis_type);
       }
     }
     if (!vec_reduce_axis_.empty() && current_reduce_axis > 0) {
+      // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R..R] =>
+      // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R(threadIdx.x),
+      // R(inner_loop)]
       sch->Bind(loops[current_reduce_axis], rd_axis_type);
     }
   };
@@ -273,11 +284,13 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeDiscreteFlattenAxis(
     ir::IRSchedule* sch, const std::string& block_id) {
-  if (vec_spatial_axis_first_.size() >= 2) {
-    sch->Fuse(block_id, vec_spatial_axis_first_);
-  }
+  // Note: We need to fuse loops from bottom to top,
+  // because the loop index will be changed when the upper loops fused.
   if (vec_spatial_axis_last_.size() >= 2) {
     sch->Fuse(block_id, vec_spatial_axis_last_);
+  }
+  if (vec_spatial_axis_first_.size() >= 2) {
+    sch->Fuse(block_id, vec_spatial_axis_first_);
   }
 }
 
@@ -296,8 +309,7 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                           idx,
                           loops.size()));
   }
-  if (max_loop_idx < loops.size() && vec_reduce_axis_.size() >= 2 &&
-      !ir::IsReduceInitTensorName(block_id)) {
+  if (max_loop_idx < loops.size() && vec_reduce_axis_.size() >= 2) {
     sch->Fuse(block_id, vec_reduce_axis_);
   }
 }
@@ -306,9 +318,12 @@ void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
   if (loops.size() == 3) {
+    // [S, S', R] => [S, S'(-1), S'(32), R]
     auto split_loops = sch->Split(loops[1], std::vector<int>({-1, 32}));
+    // [S, S'(-1), S'(32), R] => [S, S'(32), R]
     sch->Fuse(block_id, std::vector<int>{0, 1});
   } else if (loops.size() == 2) {
+    // [S, R] => [S(-1), S(32), R]
     auto split_loops = sch->Split(loops[0], std::vector<int>({-1, 32}));
   }
 }
@@ -316,6 +331,7 @@ void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
+  // [S(-1), S(32), R] => [S(-1), S(32), R(16), R(-1)]
   sch->Split(loops[2], std::vector<int>{16, -1});
 
   loops = sch->GetLoops(block_id);
@@ -373,6 +389,8 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
                                           const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
 
+  // [S(-1), S(32), R(16), R(-1)] =>
+  // [S(blockIdx.x), S(threadIdx.x), R(threadIdx.y), R(inner_loop)]
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
     sch->Bind(loops[1], "threadIdx.x");

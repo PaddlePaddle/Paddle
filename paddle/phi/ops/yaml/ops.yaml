@@ -179,7 +179,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : allclose
-  args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
+  args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8, bool equal_nan=false)
   output : Tensor(out)
   infer_meta :
     func : AllValueCompareInferMeta
@@ -754,6 +754,16 @@
   kernel :
     func : c_sync_comm_stream
   inplace : (x -> out)
+
+- op : calc_reduced_attn_scores
+  args : (Tensor q, Tensor k, Tensor softmax_lse)
+  output : Tensor(reduced_scores)
+  infer_meta :
+    func : CalcReducedAttnScoresInferMeta
+    param : [q, k, softmax_lse]
+  kernel :
+    func : calc_reduced_attn_scores
+    data_type : q
 
 - op : cast
   args : (Tensor x, DataType dtype)
@@ -1653,6 +1663,7 @@
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
   backward : fake_quantize_dequantize_moving_average_abs_max_grad
+  inplace: (in_scale -> out_scale)
 
 - op : fake_quantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1663,6 +1674,7 @@
     func : fake_quantize_moving_average_abs_max
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
+  inplace: (in_scale -> out_scale)
 
 - op : fake_quantize_range_abs_max
   args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1673,6 +1685,7 @@
     func : fake_quantize_range_abs_max
     data_type : x
   optional : iter, out_scales
+  inplace: (in_scale -> out_scale)
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
@@ -1702,7 +1715,7 @@
   backward : fft_r2c_grad
 
 - op : fill
-  args : (Tensor x, Scalar value=0)
+  args : (Tensor x, Scalar(double) value=0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -1810,6 +1823,7 @@
   view : (x -> out)
   intermediate : xshape
   backward : flatten_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flip
   args : (Tensor x, int[] axis)
@@ -1910,7 +1924,7 @@
     data_type: param
 
 - op : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (IntArray shape, Scalar(double) value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : CreateInferMeta
@@ -1923,7 +1937,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_
-  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (Tensor output, IntArray shape, Scalar(double) value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   inplace : (output -> out)
   infer_meta :
@@ -1936,7 +1950,7 @@
     backend : place
 
 - op : full_batch_size_like
-  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
+  args : (Tensor input, int[] shape, DataType dtype, Scalar(double) value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : FullBatchSizeLikeInferMeta
@@ -2269,10 +2283,11 @@
   backward: hinge_loss_grad
 
 - op : histogram
-  args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
+  args : (Tensor input, Tensor weight, int64_t bins = 100, int min = 0, int max = 0, bool density = false)
   output : Tensor(out)
   infer_meta :
     func : HistogramInferMeta
+  optional : weight
   kernel :
     func : histogram
 
@@ -2981,7 +2996,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : max_pool2d_with_index
-  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false)
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : MaxPoolWithIndexInferMeta
@@ -2990,7 +3005,7 @@
   backward : max_pool2d_with_index_grad
 
 - op : max_pool3d_with_index
-  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false)
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : MaxPoolWithIndexInferMeta
@@ -3633,6 +3648,7 @@
     func : reduce_as
     data_type : x
   backward : reduce_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
@@ -3786,10 +3802,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : round
-  args : (Tensor x)
+  args : (Tensor x, int decimals = 0 )
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : round
   inplace : (x -> out)
@@ -4014,6 +4031,15 @@
   kernel :
     func : shard_index
 
+- op : share_data
+  args: (Tensor x)
+  output: Tensor (out)
+  infer_meta:
+    func: ShareDataInferMeta
+  kernel:
+    func: share_data {dense -> dense}
+          share_data_sr {selected_rows -> selected_rows}
+
 - op : shuffle_batch
   args : (Tensor x, Tensor seed, int startup_seed=0)
   output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
@@ -4190,6 +4216,7 @@
   output : Tensor[]{sections.size()}
   infer_meta :
     func : SplitInferMeta
+    spmd_rule : SplitInferSpmdDynamic
   kernel :
     func : split
   backward : split_grad
@@ -4233,6 +4260,7 @@
   output : Tensor(out)
   infer_meta :
     func : SquaredL2NormInferMeta
+    spmd_rule : SquaredL2NormInferSpmd
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad

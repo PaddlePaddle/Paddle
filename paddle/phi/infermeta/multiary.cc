@@ -912,9 +912,10 @@ void BatchNormInferMeta(const MetaTensor& x,
   }
 
   bool check = true;
+
   if (!scale || !bias ||
-      ((!config.is_runtime) && (common::product(scale.dims()) <= 0 ||
-                                common::product(bias.dims()) <= 0))) {
+      ((!config.is_runtime) && (contain_unknown_dim(scale.dims()) ||
+                                contain_unknown_dim(bias.dims()) || C == -1))) {
     check = false;
   }
 
@@ -2424,10 +2425,14 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   if (residual_out && !norm_weight && !norm_bias) {
     out->set_dtype(x.dtype());
   } else {
-    if (quant_scale <= 0.0f) {
-      out->set_dtype(x.dtype());
+    if (quant_scale > 0) {
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
-      out->set_dtype(phi::DataType::INT8);
+      out->set_dtype(x.dtype());
     }
   }
   out->set_layout(x.layout());
@@ -3454,6 +3459,44 @@ void InterpolateInferMeta(
                                  output,
                                  config);
   }
+}
+
+void LegacyInterpolateInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& out_size,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
+    const MetaTensor& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    MetaTensor* output,
+    MetaConfig config) {
+  const auto& dim_x = x.dims();
+  std::vector<float> scale_vec;
+  if (scale > 0) {
+    for (int i = 0; i < dim_x.size() - 2; i++) {
+      scale_vec.push_back(scale);
+    }
+  }
+  InterpolateInferMeta(x,
+                       out_size,
+                       size_tensor,
+                       scale_tensor,
+                       data_layout,
+                       out_d,
+                       out_h,
+                       out_w,
+                       scale_vec,
+                       interp_method,
+                       align_corners,
+                       align_mode,
+                       output,
+                       config);
 }
 
 void IndexPutInferMeta(const MetaTensor& x,
@@ -4947,7 +4990,7 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (common::product(x_dims) <= 0 || common::product(labels_dims) <= 0)) {
+      (contain_unknown_dim(x_dims) || contain_unknown_dim(labels_dims))) {
     check = false;
   }
 

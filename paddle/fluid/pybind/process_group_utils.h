@@ -170,6 +170,10 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
       ConcatDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
+    case phi::DataType::BFLOAT16:
+      ConcatDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
+          dev_ctx, t_list, p_out);
+      break;
     case phi::DataType::FLOAT32:
       ConcatDenseTensor<phi::XPUContext, float>()(dev_ctx, t_list, p_out);
       break;
@@ -241,6 +245,10 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
       SplitDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_in, p_list);
       break;
+    case phi::DataType::BFLOAT16:
+      SplitDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
+          dev_ctx, t_in, p_list);
+      break;
     case phi::DataType::FLOAT32:
       SplitDenseTensor<phi::XPUContext, float>()(dev_ctx, t_in, p_list);
       break;
@@ -267,7 +275,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl()).get();
 
   const auto &place = dev_ctx.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ConcatDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                               tensor_list,
@@ -278,7 +286,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
         "Paddle can't concat tensor since it's not support GPU, please "
         "recompile or reinstall Paddle with GPU support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     ConcatDenseTensorWithType(static_cast<const phi::XPUContext &>(dev_ctx),
                               tensor_list,
@@ -289,7 +297,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
         "Paddle can't concat tensor since it's not support XPU, please "
         "recompile or reinstall Paddle with XPU support."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     ConcatDenseTensorWithType(
         static_cast<const platform::CustomDeviceContext &>(dev_ctx),
@@ -302,7 +310,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
         "CUSTOM_DEVICE, please recompile or reinstall Paddle with "
         "CUSTOM_DEVICE support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     ConcatDenseTensorWithType(static_cast<const phi::CPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
@@ -324,7 +332,7 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
   }
 
   const auto &place = dev_ctx.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     SplitDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                              tensor,
@@ -335,7 +343,7 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
         "Paddle can't split tensor since it's not support GPU, please "
         "recompile or reinstall Paddle with GPU support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     SplitDenseTensorWithType(static_cast<const phi::XPUContext &>(dev_ctx),
                              tensor,
@@ -346,7 +354,7 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
         "Paddle can't split tensor since it's not compiled with XPU, "
         "please recompile or reinstall Paddle with XPU support."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     SplitDenseTensorWithType(
         static_cast<const platform::CustomDeviceContext &>(dev_ctx),
@@ -358,7 +366,7 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
         "Paddle can't split tensor since it's not compiled with CUSTOM_DEVICE, "
         "please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     SplitDenseTensorWithType(static_cast<const phi::CPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,

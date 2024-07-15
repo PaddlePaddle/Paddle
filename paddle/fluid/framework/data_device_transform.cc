@@ -17,7 +17,7 @@ namespace paddle {
 namespace framework {
 
 void TransDataDevice(const phi::DenseTensor &in,
-                     const platform::Place &dst_place,
+                     const phi::Place &dst_place,
                      phi::DenseTensor *out) {
   VLOG(3) << "DeviceTransform in, src_place " << in.place()
           << " dst_place: " << dst_place;
@@ -29,19 +29,16 @@ void TransDataDevice(const phi::DenseTensor &in,
                                     "supported between CPU and CUDA."));
 
   // NOTE(zhiqiu): Special case for CPU->NPU, avoid stream sync.
-  if (platform::is_cpu_place(in.place())) {
+  if (phi::is_cpu_place(in.place())) {
     paddle::framework::TensorCopy(
-        in,
-        dst_place,
-        *platform::DeviceContextPool::Instance().Get(dst_place),
-        out);
+        in, dst_place, *phi::DeviceContextPool::Instance().Get(dst_place), out);
     return;
   }
 
   // NOTE(yy): TransDataDevice should wait for computation of input.
-  if (!platform::is_cuda_pinned_place(in.place())) {
-    platform::DeviceContextPool::Instance().Get(in.place())->Wait();
-    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+  if (!phi::is_cuda_pinned_place(in.place())) {
+    phi::DeviceContextPool::Instance().Get(in.place())->Wait();
+    phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
   }
 
   // FIXME(zcd): TransDataDevice is used to transform data from GPU to CPU and

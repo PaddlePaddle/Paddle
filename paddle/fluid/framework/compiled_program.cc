@@ -55,7 +55,7 @@ static std::unordered_set<std::string> ReaderOpSet() {
 
 class CompiledProgramPrivate {
  public:
-  CompiledProgramPrivate(const std::vector<platform::Place> &places,
+  CompiledProgramPrivate(const std::vector<phi::Place> &places,
                          Scope *global_scope)
       : places_(places), global_scope_(global_scope) {}
 
@@ -74,15 +74,6 @@ class CompiledProgramPrivate {
   bool IsUseCUDA(DeviceType use_device);
 
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
-
-  inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
-
-  void ApplyFixOpRunOrderPass(ir::Graph *graph) {
-    if (build_strategy_.fix_op_run_order_) {
-      auto pass = ir::PassRegistry::Instance().Get("fix_op_run_order_pass");
-      pass->Apply(graph);
-    }
-  }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
@@ -323,7 +314,7 @@ class CompiledProgramPrivate {
 #endif
 
   BuildStrategy build_strategy_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
 
@@ -426,7 +417,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       continue;
     }
     std::unique_ptr<GarbageCollector> gc;
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
         gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place,
@@ -440,7 +431,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
       gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
@@ -449,7 +440,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
-    } else if (platform::is_ipu_place(place)) {
+    } else if (phi::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
       gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
@@ -458,7 +449,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
         gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
@@ -474,7 +465,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "CustomDevice,"
           "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
-    } else if (platform::is_cpu_place(place)) {
+    } else if (phi::is_cpu_place(place)) {
       gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created GarbageCollector at " << place;
     } else {
@@ -506,7 +497,7 @@ std::vector<Scope *> &CompiledProgram::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
-void InitP2P(const std::vector<platform::Place> &places) {
+void InitP2P(const std::vector<phi::Place> &places) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::call_once(p2p_init_flag, [&]() {
     int count = places.size();
@@ -514,9 +505,9 @@ void InitP2P(const std::vector<platform::Place> &places) {
 
     std::vector<int> devices;
     for (int i = 0; i < count; i++) {
-      if (!platform::is_gpu_place(places[i])) return;
+      if (!phi::is_gpu_place(places[i])) return;
 
-      platform::CUDAPlace device = places[i];
+      phi::GPUPlace device = places[i];
       devices.push_back(device.GetDeviceId());
     }
 
@@ -550,7 +541,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
 #endif
 }
 
-CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
+CompiledProgram::CompiledProgram(const std::vector<phi::Place> &places,
                                  const std::vector<std::string> &bcast_vars,
                                  const std::string &loss_var_name,
                                  Scope *scope,
@@ -593,7 +584,6 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
-  // PrepareForCUDAGraphCapture(graph);
   graph = member_->ApplyMemoryOptimizePass(graph);
 }
 
@@ -613,7 +603,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
       continue;
     }
     auto &dims = main_tensor.dims();
-    if (paddle::platform::is_gpu_place(main_tensor.place())) {
+    if (phi::is_gpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
@@ -658,12 +648,12 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
       } else {
         auto src_place = member_->places_[0];
         auto src_dev_ctx = static_cast<phi::GPUContext *>(
-            platform::DeviceContextPool::Instance().Get(src_place));
+            phi::DeviceContextPool::Instance().Get(src_place));
         auto sizeof_dtype = framework::SizeOfType(dtype) * numel;
         for (size_t i = 1; i < member_->places_.size(); ++i) {
           auto dst_place = member_->places_[i];
           auto dst_dev_ctx = static_cast<phi::GPUContext *>(
-              platform::DeviceContextPool::Instance().Get(dst_place));
+              phi::DeviceContextPool::Instance().Get(dst_place));
           src_dev_ctx->Wait();
           dst_dev_ctx->Wait();
           memory::Copy(dst_place,
@@ -677,7 +667,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
         }
       }
 #endif
-    } else if (paddle::platform::is_xpu_place(main_tensor.place())) {
+    } else if (phi::is_xpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_XPU_BKCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
@@ -729,7 +719,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
           platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
-      platform::CPUPlace cpu;
+      phi::CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
@@ -757,7 +747,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
 
 CompiledProgram::~CompiledProgram() {
   for (auto &p : member_->places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
+    phi::DeviceContextPool::Instance().Get(p)->Wait();
   }
   delete member_;
 }
@@ -900,7 +890,7 @@ void CompiledProgram::PrepareNCCLCommunicator(Scope *global_scope) {
     // same communicators.
     auto *nccl_ctxs = member_->nccl_ctxs_->GetSyncBatchNormCtx(
         global_scope, member_->places_);
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = phi::DeviceContextPool::Instance();
     for (auto &place : member_->places_) {
       auto *dev_ctx = static_cast<phi::GPUContext *>(pool.Get(place));
       auto &nccl_ctx = nccl_ctxs->at(place);
@@ -917,7 +907,7 @@ void CompiledProgram::PrepareNCCLCommunicator(Scope *global_scope) {
 
     auto *bkcl_ctxs = member_->bkcl_ctxs_->GetSyncBatchNormCtx(
         global_scope, member_->places_);
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = phi::DeviceContextPool::Instance();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
           pool.Get(member_->places_[dev_id]));

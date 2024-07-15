@@ -2325,7 +2325,7 @@ void PSGPUWrapper::DumpToMem() {
 #endif
 }
 
-void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
+void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
@@ -2335,7 +2335,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
              "PullSparse is not used.";
 }
 
-void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
+void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
@@ -2354,10 +2354,10 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   VLOG(3) << "PullSparse max_dim:" << max_mf_dim_
           << " pull_feature_value_size:" << pull_type_size_;
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GpuPs now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     int device_id = place.GetDeviceId();
     platform::CUDADeviceGuard guard(device_id);
@@ -2379,7 +2379,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
               << total_length << "] dedup mode";
 
       auto stream = dynamic_cast<phi::GPUContext*>(
-                        platform::DeviceContextPool::Instance().Get(place))
+                        phi::DeviceContextPool::Instance().Get(place))
                         ->stream();
 
       uint64_t* total_keys = dev.keys_tensor.mutable_data<uint64_t>(
@@ -2582,7 +2582,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     }
     pull_gpups_timer.Pause();
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
     VLOG(3) << "Begin Xpu Ps PullSparse";
     size_t total_length =
@@ -2656,7 +2656,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   VLOG(3) << "End PullSparse";
 }
 
-void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
+void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
                                   const int table_id,
                                   const std::vector<const uint64_t*>& keys,
                                   const std::vector<const float*>& grad_values,
@@ -2671,10 +2671,10 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
       GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     int device_id = place.GetDeviceId();
     platform::CUDADeviceGuard guard(device_id);
@@ -2686,7 +2686,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
               << "] dedup mode, device:" << device_id << ", index"
               << devid_2_index;
       auto stream = dynamic_cast<phi::GPUContext*>(
-                        platform::DeviceContextPool::Instance().Get(place))
+                        phi::DeviceContextPool::Instance().Get(place))
                         ->stream();
       uint64_t* total_keys = dev.keys_tensor.data<uint64_t>();
       int* slot_dims = dev.dims_tensor.data<int>();
@@ -2800,7 +2800,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     }
     push_gpups_timer.Pause();
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);

@@ -346,8 +346,12 @@ def _recompute_without_reentrant(
 
                 if holder_list[unpack_counter - 1]() is None:
                     return
-
-                if inner_x.is_contiguous():
+                if inner_x is None:
+                    storage[holder_list[unpack_counter - 1]()] = None
+                    return
+                if hasattr(inner_x, "main_grad"):
+                    storage[holder_list[unpack_counter - 1]()] = inner_x
+                else:
                     if inner_x.is_dist():
                         # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
                         # but other errors will be triggered during the current period, and can be modified after resolution
@@ -368,12 +372,8 @@ def _recompute_without_reentrant(
                             core.VarDesc.VarType.LOD_TENSOR,
                             inner_x.persistable,
                         )
-                    inner_x._share_buffer_to(tmp_tensor)
+                    inner_x._unsafe_share_buffer_to(tmp_tensor)
                     storage[holder_list[unpack_counter - 1]()] = tmp_tensor
-                else:
-                    storage[
-                        holder_list[unpack_counter - 1]()
-                    ] = inner_x.contiguous()
                 return
 
             def inner_unpack(inner_x):

@@ -41,8 +41,8 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Check your paddle version, current "
-                                          "version is not compiled with cuda"));
+        phi::errors::InvalidArgument("Check your paddle version, current "
+                                     "version is not compiled with cuda"));
 #endif
   } else {
     std::memcpy(dst, src, n);
@@ -50,9 +50,7 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
 }
 
 template <typename T>
-bool TestMain(const platform::Place &place,
-              const framework::DDim &dims,
-              bool inplace) {
+bool TestMain(const phi::Place &place, const phi::DDim &dims, bool inplace) {
   framework::Scope scope;
   auto *x = scope.Var("x")->GetMutable<phi::DenseTensor>();
   auto *y = scope.Var("y")->GetMutable<phi::DenseTensor>();
@@ -82,7 +80,7 @@ bool TestMain(const platform::Place &place,
   }
 
   auto bytes = sizeof(T) * numel;
-  bool is_gpu_place = platform::is_gpu_place(place);
+  bool is_gpu_place = phi::is_gpu_place(place);
   Memcpy(x_ptr, x_data.data(), bytes, is_gpu_place);
   Memcpy(y_ptr, y_data.data(), bytes, is_gpu_place);
   Memcpy(z_ptr, z_data.data(), bytes, is_gpu_place);
@@ -93,33 +91,33 @@ bool TestMain(const platform::Place &place,
                                             {{"Out", {out_name}}},
                                             {});
   op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  phi::DeviceContextPool::Instance().Get(place)->Wait();
 
   phi::DenseTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<phi::DenseTensor>();
-  PADDLE_ENFORCE_EQ(scope.kids().empty(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The scope can not have the child scopes,"
-                        "please check your code."));
+  PADDLE_ENFORCE_EQ(
+      scope.kids().empty(),
+      true,
+      phi::errors::InvalidArgument("The scope can not have the child scopes,"
+                                   "please check your code."));
   if (inplace) {
     PADDLE_ENFORCE_EQ(
         &out_tensor,
         x,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output tensor should be same as input x in inplace mode,"
             " but now is not same."));
   } else {
     PADDLE_ENFORCE_EQ(
         &out_tensor,
         z,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output tensor should be same as output z in normal mode,"
             " but now is not same."));
   }
 
   if (is_gpu_place) {
-    framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
+    framework::TensorCopySync(out_tensor, phi::CPUPlace(), &cpu_out);
   } else {
     cpu_out = out_tensor;
   }
@@ -130,27 +128,27 @@ bool TestMain(const platform::Place &place,
 }
 
 TEST(test_elementwise_add_inplace, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
+  phi::DDim dims({32, 64});
+  phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, dims, true));
 }
 
 TEST(test_elementwise_add_not_inplace, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
+  phi::DDim dims({32, 64});
+  phi::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_inplace, gpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CUDAPlace p(0);
+  phi::DDim dims({32, 64});
+  phi::GPUPlace p(0);
   ASSERT_TRUE(TestMain<float>(p, dims, true));
 }
 
 TEST(test_elementwise_add_not_inplace, gpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CUDAPlace p(0);
+  phi::DDim dims({32, 64});
+  phi::GPUPlace p(0);
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }
 #endif

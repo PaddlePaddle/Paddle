@@ -73,8 +73,7 @@ struct TestReduceOpHandle {
       }
       nccl_ctxs_ = std::make_unique<platform::NCCLContextMap>(gpu_list_);
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else {
       int count = 8;
@@ -108,8 +107,7 @@ struct TestReduceOpHandle {
       op_handle_.reset(new ReduceOpHandle(
           nodes.back().get(), local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -173,8 +171,7 @@ struct TestReduceOpHandle {
 
       PADDLE_ENFORCE_NOT_NULL(
           in_var,
-          platform::errors::NotFound("Variable %s is not found in scope.",
-                                     "input"));
+          phi::errors::NotFound("Variable %s is not found in scope.", "input"));
       auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -188,9 +185,9 @@ struct TestReduceOpHandle {
     }
 
     auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
-    PADDLE_ENFORCE_NOT_NULL(out_var,
-                            platform::errors::NotFound(
-                                "Variable %s is not found in scope.", "out"));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var,
+        phi::errors::NotFound("Variable %s is not found in scope.", "out"));
     auto out_selected_rows = out_var->GetMutable<phi::SelectedRows>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
@@ -211,7 +208,7 @@ struct TestReduceOpHandle {
 
     PADDLE_ENFORCE_EQ(out_select_rows.height(),
                       height,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The height of SelectedRows is not equal to "
                           "the expected, expect %d, but got %d.",
                           height,
@@ -220,7 +217,7 @@ struct TestReduceOpHandle {
       PADDLE_ENFORCE_EQ(
           out_select_rows.rows()[k],
           rows[k % rows.size()],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The item at position %d of rows of SelectedRows is not equal to "
               "the expected, expect %d, but got %d.",
               k,
@@ -249,8 +246,7 @@ struct TestReduceOpHandle {
       auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
       PADDLE_ENFORCE_NOT_NULL(
           in_var,
-          platform::errors::NotFound("Variable %s is not found in scope.",
-                                     "input"));
+          phi::errors::NotFound("Variable %s is not found in scope.", "input"));
       auto in_lod_tensor = in_var->GetMutable<phi::DenseTensor>();
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);
@@ -260,9 +256,9 @@ struct TestReduceOpHandle {
     }
 
     auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
-    PADDLE_ENFORCE_NOT_NULL(out_var,
-                            platform::errors::NotFound(
-                                "Variable %s is not found in scope.", "out"));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var,
+        phi::errors::NotFound("Variable %s is not found in scope.", "out"));
     auto out_lodtensor = out_var->GetMutable<phi::DenseTensor>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
