@@ -59,7 +59,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSoftmaxWithCrossEntropyGradOp::name(),
     CSplitOp::name(),
     PushDenseOp::name(),
-    SeedOp::name(),
     GetTensorFromSelectedRowsOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
