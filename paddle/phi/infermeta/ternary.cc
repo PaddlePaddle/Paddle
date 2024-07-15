@@ -1172,7 +1172,7 @@ void LerpInferMeta(const MetaTensor& x,
       }
     }
   }
-  if (shapes.size() > w_dims.size()) {
+  if (static_cast<int>(shapes.size()) > w_dims.size()) {
     l_dims = common::make_ddim(shapes);
     s_dims = w_dims;
   } else {
