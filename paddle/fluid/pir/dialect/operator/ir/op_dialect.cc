@@ -37,7 +37,6 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
-#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 
 namespace paddle::dialect {
 
@@ -389,9 +388,6 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
       >();
 #endif
-
-  RegisterOps<TensorRTEngineOp>();
-
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -1057,7 +1053,6 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
-
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
