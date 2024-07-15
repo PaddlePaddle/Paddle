@@ -182,7 +182,7 @@ class MultiDeviceFeedReader {
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
                 reader, p, 2, pin_memory_));
       } else {
-        if (platform::is_gpu_place(p)) {
+        if (phi::is_gpu_place(p)) {
           PADDLE_THROW(platform::errors::PermissionDenied(
               "Place cannot be CUDAPlace when use_double_buffer is False"));
         }
