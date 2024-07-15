@@ -27,6 +27,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Guo Sheng | Sheng Guo |
 | [grygielski](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Adam Grygielski |
 | Haichao-Zhang | Hai-Chao Zhang |
+| HarperCy | Sicheng Hao |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | heliqi | Li-Qi He |
