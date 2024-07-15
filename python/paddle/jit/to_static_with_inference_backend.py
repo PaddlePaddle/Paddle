@@ -284,6 +284,40 @@ class InferenceEngine:
         print("d2s are done!!")
         sys.stdout.flush()
 
+    def get_input_tensor_lists(self, *args, **kwargs):
+        collected_names = []
+        input_tensor_lists = []
+        arg_names = self.arg_names
+        arg_defaults = self.arg_defaults
+        for i in range(len(args)):
+            collected_names.append(arg_names[i])
+            if i == 0 and self.used_as_at_decorator:
+                continue
+            input_tensor_lists += get_tensor(args[i], arg_names[i])
+
+        position_arguments_num = len(args)
+        # some are invoked from keyword arguments.
+        for i in range(position_arguments_num, len(arg_names)):
+            if arg_names[i] in kwargs.keys():
+                this_input = kwargs[arg_names[i]]
+                input_tensor_lists += get_tensor(this_input, arg_names[i])
+                collected_names.append(arg_names[i])
+            else:
+                this_input = arg_defaults[i]
+                if this_input is not None:
+                    raise ValueError(
+                        f"{arg_names[i]}'s default value must be None."
+                    )
+                input_tensor_lists += [this_input]
+                collected_names.append(arg_names[i])
+
+        if collected_names != arg_names:
+            unspecified_names = str(set(arg_names) - set(collected_names))
+            raise ValueError(
+                f"some arguments are not specified when you invoke your function, you must specify your all arguments, below arguments are not specified: {unspecified_names}"
+            )
+        return input_tensor_lists
+
     # why we need input_tensor_lists? this is for TensorRT max/min/opt shape.
     def create_predictor(self, input_tensor_lists):
         # create predictor
@@ -371,39 +405,9 @@ def paddle_inference_decorator(function=None, **kwargs):
         # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.jit.to_static(backend='inference', )
         # he is actually invoke this internel function.
         def innermost_decorator(*args, **kwargs):
-            input_tensor_lists = []
-            collected_names = []
-            arg_names = infer_engine.arg_names
-            arg_defaults = infer_engine.arg_defaults
-            d2s_input_names = infer_engine.d2s_input_names
-
-            for i in range(len(args)):
-                collected_names.append(arg_names[i])
-                if i == 0 and used_as_at_decorator:
-                    continue
-                input_tensor_lists += get_tensor(args[i], arg_names[i])
-
-            position_arguments_num = len(args)
-            # some are invoked from keyword arguments.
-            for i in range(position_arguments_num, len(arg_names)):
-                if arg_names[i] in kwargs.keys():
-                    this_input = kwargs[arg_names[i]]
-                    input_tensor_lists += get_tensor(this_input, arg_names[i])
-                    collected_names.append(arg_names[i])
-                else:
-                    this_input = arg_defaults[i]
-                    if this_input is not None:
-                        raise ValueError(
-                            f"{arg_names[i]}'s default value must be None."
-                        )
-                    input_tensor_lists += [this_input]
-                    collected_names.append(arg_names[i])
-
-            if collected_names != arg_names:
-                unspecified_names = str(set(arg_names) - set(collected_names))
-                raise ValueError(
-                    f"some arguments are not specified when you invoke your function, you must specify your all arguments, below arguments are not specified: {unspecified_names}"
-                )
+            input_tensor_lists = infer_engine.get_input_tensor_lists(
+                *args, **kwargs
+            )
 
             # this function will update infer_engine.re_do_d2s.
             infer_engine.check_and_update_d2s_input_shapes(input_tensor_lists)
