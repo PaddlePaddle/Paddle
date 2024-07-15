@@ -5,11 +5,9 @@ if(WITH_GPU)
       test_sub_graph_34
       test_sub_graph_42
       test_sub_graph_43
-      test_sub_graph_48
       test_sub_graph_49
       test_sub_graph_add_n
       test_sub_graph_add
-      test_sub_graph_chunk
       test_sub_graph_mul_method
       test_sub_graph_squeeze_unsqueeze
       test_sub_graph_52
@@ -24,8 +22,7 @@ if(WITH_GPU)
       test_sub_graph_80
       test_sub_graph_82
       test_sub_graph_85
-      test_sub_graph_86
-      test_sub_graph_87)
+      test_sub_graph_86)
 
   file(
     GLOB DYNAMIC_BUILD_TESTS

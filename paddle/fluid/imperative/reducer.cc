@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/string/string_helper.h"
@@ -39,17 +39,17 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
           ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
           : dense_contents_.GetMutable<phi::DenseTensor>();
 
-  if (platform::is_gpu_place(tensor->place())) {
+  if (phi::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
-  } else if (platform::is_cpu_place(tensor->place())) {
+  } else if (phi::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
 #ifdef PADDLE_WITH_HIP
     if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Unsupport BF16 in DataParallel for now"));
+      PADDLE_THROW(
+          phi::errors::Fatal("Unsupport BF16 in DataParallel for now"));
     }
     framework::VisitDataTypeForHIP(
         dtype_,
@@ -60,7 +60,7 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
         DivNRanksForAllReduce<phi::CPUContext>(tensor, nranks, context));
 #endif
     VLOG(4) << "after div 2" << *tensor;
-  } else if (platform::is_xpu_place(tensor->place())) {
+  } else if (phi::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
     PADDLE_THROW(
         platform::errors::Unimplemented("DivNRanks is not supported on XPU / "
@@ -226,7 +226,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {  // NOLINT
+  if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
                           dense_tensors_,
@@ -237,7 +237,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
     ConcatTensorsWithType(
         static_cast<const platform::XPUDeviceContext &>(context),
@@ -249,7 +249,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     ConcatTensorsWithType(static_cast<const phi::CPUContext &>(context),
                           dense_tensors_,
                           &dense_contents_,
@@ -262,7 +262,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {  // NOLINT
+  if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
                          &dense_contents_,
@@ -273,7 +273,7 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
     SplitTensorsWithType(
         static_cast<const platform::XPUDeviceContext &>(context),
@@ -285,7 +285,7 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
                          &dense_contents_,
                          &dense_tensors_,
@@ -754,9 +754,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       }
 
 #ifdef PADDLE_WITH_XPU_BKCL
-      if (platform::is_xpu_place(group_tensor.place())) {
+      if (phi::is_xpu_place(group_tensor.place())) {
         auto dev_ctx = static_cast<platform::XPUDeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(place_));
+            phi::DeviceContextPool::Instance().Get(place_));
         if (HasGrad(var_index)) {
           auto var_base = vars_[var_index]->GradVarBase();
           auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -773,7 +773,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         }
       }
 #else
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
       if (HasGrad(var_index)) {
         auto var_base = vars_[var_index]->GradVarBase();
         auto tensor = var_base->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -924,7 +924,7 @@ void Reducer::ProcessUnusedDenseVars() {
   // avoid conflicts with communication.
   VLOG(3) << "Local used vars : "
           << string::join_strings(local_used_vars_, ',');
-  const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+  const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
   // H2D is to allreduce the local_used_vars_
   auto *global_used_tensor = global_used_vars_.GetMutable<phi::DenseTensor>();
   framework::TensorFromVector<int>(
@@ -976,7 +976,7 @@ void Reducer::ProcessUnusedDenseVars() {
       // 4. set grad tensor
       auto *dest_grad_tensor =
           grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
-      const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
       paddle::framework::TensorCopy(
           src_tensor, place_, *dev_ctx, dest_grad_tensor);
       dest_grad_tensor->Resize(dest_dims);

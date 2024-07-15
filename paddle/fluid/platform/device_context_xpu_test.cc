@@ -20,7 +20,7 @@ limitations under the License. */
 TEST(Device, Init) {
   using paddle::platform::DeviceContext;
   using paddle::platform::XPUDeviceContext;
-  using paddle::platform::XPUPlace;
+  using phi::XPUPlace;
 
   int count = paddle::platform::GetXPUDeviceCount();
   for (int i = 0; i < count; i++) {
@@ -32,11 +32,11 @@ TEST(Device, Init) {
 }
 
 TEST(Device, DeviceContextPool) {
-  using paddle::platform::CPUPlace;
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::Place;
   using paddle::platform::XPUDeviceContext;
-  using paddle::platform::XPUPlace;
+  using phi::CPUPlace;
+  using phi::DeviceContextPool;
+  using phi::Place;
+  using phi::XPUPlace;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
   auto cpu_dev_ctx1 = pool.Get(CPUPlace());

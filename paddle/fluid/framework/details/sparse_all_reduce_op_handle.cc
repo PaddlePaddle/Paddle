@@ -35,7 +35,7 @@ namespace paddle::framework::details {
 SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const platform::NCCLCommunicator *ctxs,
     bool is_encoded,
     int nranks)
@@ -133,13 +133,13 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   }
 
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(ins[0]->place()),
+      phi::is_gpu_place(ins[0]->place()),
       true,
       platform::errors::InvalidArgument(
           "The place of input variable should be CUDAPlace, but got %s.",
           ins[0]->place()));
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(outs[0]->place()),
+      phi::is_gpu_place(outs[0]->place()),
       true,
       platform::errors::InvalidArgument(
           "The place of input variable should be CUDAPlace, but got %s.",

@@ -219,8 +219,8 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     std::unique_ptr<::paddle::framework::Scope> local_scope_ptr(
         new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    phi::CPUPlace cpu_place;
     auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
     auto message_name = request->message_name();
@@ -232,7 +232,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     auto* var = local_scope.FindVar("microbatch_id");
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
     auto* tensor = var->GetMutable<phi::DenseTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
@@ -249,7 +249,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       PADDLE_ENFORCE_EQ(
           (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(),
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "minibatch index should in current trainer"));
 
     } else {
@@ -390,7 +390,7 @@ class HeterService : public PsService {
     PADDLE_ENFORCE_NE(
         itr,
         handler_map_.end(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "HeterService::SendAndRecvVariable Get illegal message_name: %s "
             "which is not in HeterService::handler_map_",
             message_name));
@@ -439,7 +439,7 @@ class HeterService : public PsService {
         PADDLE_ENFORCE_NE(
             closure->cntl.Failed(),
             true,
-            platform::errors::Unimplemented(
+            phi::errors::Unimplemented(
                 "HeterClient::SendS2S meets brpc error, error message is %s",
                 closure->cntl.ErrorText()));
       }

@@ -146,20 +146,20 @@ void BindIO(pybind11::module *m) {
 
   m->def("save_combine_func", &pir::SaveCombineFunction);
 
-  m->def("load_func", &Load<paddle::platform::CPUPlace>);
-  m->def("load_func", &Load<paddle::platform::CustomPlace>);
-  m->def("load_func", &Load<paddle::platform::XPUPlace>);
-  m->def("load_func", &Load<paddle::platform::CUDAPinnedPlace>);
-  m->def("load_func", &Load<paddle::platform::CUDAPlace>);
-  m->def("load_func", &Load<paddle::platform::IPUPlace>);
-  m->def("load_func", &Load<paddle::platform::Place>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::CPUPlace>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::CustomPlace>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::XPUPlace>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::CUDAPinnedPlace>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::CUDAPlace>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::IPUPlace>);
-  m->def("load_combine_func", &LoadCombine<paddle::platform::Place>);
+  m->def("load_func", &Load<phi::CPUPlace>);
+  m->def("load_func", &Load<phi::CustomPlace>);
+  m->def("load_func", &Load<phi::XPUPlace>);
+  m->def("load_func", &Load<phi::GPUPinnedPlace>);
+  m->def("load_func", &Load<phi::GPUPlace>);
+  m->def("load_func", &Load<phi::IPUPlace>);
+  m->def("load_func", &Load<phi::Place>);
+  m->def("load_combine_func", &LoadCombine<phi::CPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::CustomPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::XPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::GPUPinnedPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::GPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::IPUPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::Place>);
 
   m->def("serialize_pir_program",
          &pir::WriteModule,

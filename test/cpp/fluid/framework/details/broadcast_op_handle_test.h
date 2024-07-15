@@ -91,8 +91,7 @@ struct TestBroadcastOpHandle {
       }
       bkcl_ctxs_.reset(new platform::BKCLContextMap(place_list_));
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -110,8 +109,7 @@ struct TestBroadcastOpHandle {
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(place_list_));
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else {
       int count = 8;
@@ -148,16 +146,14 @@ struct TestBroadcastOpHandle {
       op_handle_ = new BroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else if (use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new BroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, bkcl_ctxs_.get());
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
       op_handle_ = new BroadcastOpHandle(
@@ -214,9 +210,9 @@ struct TestBroadcastOpHandle {
                                    float val_scalar = 0.0) {
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
 
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            platform::errors::NotFound(
-                                "Variable %s is not found in scope.", varname));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        phi::errors::NotFound("Variable %s is not found in scope.", varname));
     auto lod_tensor = var->GetMutable<phi::DenseTensor>();
     std::vector<float> send_vector(static_cast<size_t>(common::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
@@ -240,9 +236,9 @@ struct TestBroadcastOpHandle {
     }
 
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            platform::errors::NotFound(
-                                "Variable %s is not found in scope.", varname));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        phi::errors::NotFound("Variable %s is not found in scope.", varname));
     auto selected_rows = var->GetMutable<phi::SelectedRows>();
     auto value = selected_rows->mutable_value();
     value->mutable_data<float>(kDims, place_list_[input_scope_idx]);
@@ -261,14 +257,14 @@ struct TestBroadcastOpHandle {
                          const std::vector<int64_t>& rows,
                          int height) {
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            platform::errors::NotFound(
-                                "Variable %s is not found in scope.", varname));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        phi::errors::NotFound("Variable %s is not found in scope.", varname));
     auto& selected_rows = var->Get<phi::SelectedRows>();
     auto rt = selected_rows.value();
     PADDLE_ENFORCE_EQ(selected_rows.height(),
                       height,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The height of SelectedRows is not equal to "
                           "the expected, expect %d, but got %ld.",
                           height,
@@ -278,7 +274,7 @@ struct TestBroadcastOpHandle {
       PADDLE_ENFORCE_EQ(
           selected_rows.rows()[k],
           rows[k],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The item at position %zu of rows of SelectedRows "
               "is not equal to the expected, expect %ld, but got %ld.",
               k,
@@ -302,17 +298,17 @@ struct TestBroadcastOpHandle {
                       framework::Scope* scope) {
     p::CPUPlace cpu_place;
     auto var = scope->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            platform::errors::NotFound(
-                                "Variable %s is not found in scope.", varname));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        phi::errors::NotFound("Variable %s is not found in scope.", varname));
     auto tensor = var->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(tensor.lod(),
-                      lod,
-                      platform::errors::InvalidArgument(
-                          "The LoD of tensor is not equal to "
-                          "the expected, expect %s, but got %s.",
-                          lod,
-                          tensor.lod()));
+    PADDLE_ENFORCE_EQ(
+        tensor.lod(),
+        lod,
+        phi::errors::InvalidArgument("The LoD of tensor is not equal to "
+                                     "the expected, expect %s, but got %s.",
+                                     lod,
+                                     tensor.lod()));
     phi::DenseTensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);

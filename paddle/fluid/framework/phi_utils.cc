@@ -63,7 +63,7 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       paddle::framework::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
+  phi::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == phi::Backend::ONEDNN) {
@@ -123,7 +123,7 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto place = phi::TransToPhiPlace(kernel_key.backend());
-  bool is_custom_place = platform::is_custom_place(place);
+  bool is_custom_place = phi::is_custom_place(place);
   if (is_custom_place ||
       phi::backends::custom_device::is_in_custom_black_list(op.Type())) {
     std::string info = is_custom_place ? "phi missing " : "phi in black list ";
@@ -250,7 +250,7 @@ void InitDefaultKernelSignatureMap() {
 }
 
 static void SetAllocationForUninitializedDenseTensor(
-    phi::DenseTensor* dense_tensor, const platform::Place& place) {
+    phi::DenseTensor* dense_tensor, const phi::Place& place) {
   int dtype_size = static_cast<int>(dense_tensor->dtype() == DataType::UNDEFINED
                                         ? 0
                                         : phi::SizeOf(dense_tensor->dtype()));
@@ -276,7 +276,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
                                           "the Scalar contains more than 1 "
                                           "value, it contains `%d` values.",
                                           tensor.numel()));
-    if (!platform::is_same_place(tensor.place(), expected_place)) {
+    if (!phi::is_same_place(tensor.place(), expected_place)) {
       phi::DenseTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return {tmp_tensor};
@@ -322,7 +322,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
       if (data_type == phi::DataType::INT64) {
         const auto& tensor = var->Get<phi::DenseTensor>();
         if (tensor.IsInitialized() &&
-            !platform::is_same_place(tensor.place(), expected_place)) {
+            !phi::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
@@ -332,7 +332,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
       } else if (data_type == phi::DataType::INT32) {
         const auto& tensor = var->Get<phi::DenseTensor>();
         if (tensor.IsInitialized() &&
-            !platform::is_same_place(tensor.place(), expected_place)) {
+            !phi::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());

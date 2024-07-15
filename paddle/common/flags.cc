@@ -281,6 +281,21 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
                           "Exhaustive search times for cuDNN convolution, "
                           "default is -1, not exhaustive search");
 
+#ifdef PADDLE_WITH_HIP
+/**
+ * MIOPEN related FLAG
+ * Name: FLAGS_batch_norm_use_miopen
+ * Since Version:
+ * Value Range:
+ * Example:
+ * Note: Use MIOpen batch norm instead of native
+ */
+PHI_DEFINE_EXPORTED_bool(batch_norm_use_miopen,
+                         false,
+                         "Whether use MIOpen batch norm or not, "
+                         "default is false, not use miopen bn");
+#endif
+
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_batchnorm_spatial_persistent
@@ -1116,6 +1131,28 @@ PHI_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
                          "Enable CUDAMallocAsyncAllocator");
 
 /*
+ * CUDAMallocAsyncAllocator related FLAG
+ * Name: FLAGS_cuda_malloc_async_pool_memory_throttle_ratio
+ * Since Version: 3.0
+ * Value Range:  double, [0.0, 1.0], default=0.8
+ * Note:memory_throttle_ratio provides a threshold that determines when to
+ * initiate synchronization operations to deallocate memory. This mechanism
+ * helps in ensuring that the system does not exceed its memory capacity while
+ * also attempting to minimize performance degradation caused by frequent memory
+ * synchronization.
+ *
+ * Please see Note [cuda_malloc_async_pool_memory_throttle_ratio]
+ */
+PHI_DEFINE_EXPORTED_double(
+    cuda_malloc_async_pool_memory_throttle_ratio,
+    0.8,
+    "memory_throttle_ratio provides a threshold that determines when to "
+    "initiate synchronization operations to deallocate memory. "
+    "This mechanism helps in ensuring that the system does not exceed its "
+    "memory capacity while also attempting to minimize performance degradation "
+    "caused by frequent memory synchronization.");
+
+/*
  * CUDA Graph / Allocator related FLAG
  * Name: FLAGS_auto_free_cudagraph_allocations_on_launch
  * Since Version: 2.7
@@ -1743,6 +1780,18 @@ PHI_DEFINE_EXPORTED_string(
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
 
+/**
+ * Apply global search in blaslt FLAG
+ * Name: enable_blaslt_global_search
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply global search in blaslt.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_blaslt_global_search,
+                         false,
+                         "Whether to use global search in blaslt.");
+
 PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                            "",
                            "Specify path for loading user-defined op library.");
@@ -1764,6 +1813,17 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify path for loading *.dll about cuda on windows");
 
+/**
+ * Collect shapes of value for TensorRTEngine
+ * Name: enable_collect_shape
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will collect shapes of value when run executor.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_collect_shape,
+                         false,
+                         "Collect shapes of value for TensorRTEngine");
 // Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
 PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp32,
                            1e-6,

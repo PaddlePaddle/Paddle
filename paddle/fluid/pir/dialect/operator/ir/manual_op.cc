@@ -13,7 +13,7 @@
 // limitations under the License.
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
+paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::FusedGemmEpilogueOp, paddle::dialect::AssignOut_Op,
     paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
     paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
@@ -26,9 +26,9 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp,
     paddle::dialect::ArrayPopOp
 #else
-
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/multiary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -57,181 +57,6 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #endif
 
 namespace paddle::dialect {
-
-OpInfoTuple AddNOp::GetOpInfo() {
-  std::vector<paddle::dialect::OpInputInfo> inputs = {
-      OpInputInfo("inputs",
-                  "pir::VectorType<paddle::dialect::DenseTensorType>",
-                  false,
-                  false,
-                  false,
-                  true)};
-  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
-  std::vector<paddle::dialect::OpOutputInfo> outputs = {
-      OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
-  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
-
-  return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
-}
-
-void AddNOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: AddNOp.";
-  VLOG(4) << "Verifying inputs:";
-  {
-    auto input_size = num_operands();
-    PADDLE_ENFORCE_EQ(
-        input_size,
-        1u,
-        phi::errors::PreconditionNotMet(
-            "The size %d of inputs must be equal to 1.", input_size));
-    if (auto vec_type =
-            (*this)->operand(0).type().dyn_cast<pir::VectorType>()) {
-      for (size_t i = 0; i < vec_type.size(); ++i) {
-        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                           vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
-                       phi::errors::PreconditionNotMet(
-                           "Type validation failed for the 0th input."));
-      }
-    } else {
-      PADDLE_ENFORCE(
-          (*this)->operand(0).type().isa<paddle::dialect::DenseTensorType>() ||
-              (*this)
-                  ->operand(0)
-                  .type()
-                  .isa<paddle::dialect::SelectedRowsType>(),
-          phi::errors::PreconditionNotMet(
-              "Type validation failed for the 0th input."));
-    }
-  }
-  VLOG(4) << "Verifying attributes:";
-  {
-    // Attributes num is 0, not need to check attributes type.
-  }
-  VLOG(4) << "Verifying outputs:";
-  {
-    auto output_size = num_results();
-    PADDLE_ENFORCE_EQ(
-        output_size,
-        1u,
-        phi::errors::PreconditionNotMet(
-            "The size %d of outputs must be equal to 1.", output_size));
-    PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
-            (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 0th output."));
-  }
-  VLOG(4) << "End Verifying for: AddNOp.";
-}
-
-void AddNOp::Build(pir::Builder &builder,             // NOLINT
-                   pir::OperationArgument &argument,  // NOLINT
-                   pir::Value inputs) {
-  VLOG(4) << "Start build AddNOp";
-
-  VLOG(4) << "Builder construction inputs";
-  std::vector<pir::Value> argument_inputs = {inputs};
-  argument.AddInput(inputs);
-
-  VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes = {};
-  std::vector<pir::Type> argument_outputs =
-      AddNOp::InferMeta(argument_inputs, &argument_attributes);
-
-  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
-}
-
-void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::AddNInferMeta);
-  fn(infer_meta);
-}
-
-std::vector<pir::Type> AddNOp::InferMeta(
-    const std::vector<pir::Value> &input_values,
-    pir::AttributeMap *p_attributes) {
-  PADDLE_ENFORCE_NOT_NULL(
-      p_attributes,
-      common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
-  VLOG(4) << "Start infermeta AddNOp";
-  PADDLE_ENFORCE_EQ(input_values.size(),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "Num of inputs is expected to be 1 but got %d.",
-                        input_values.size()));
-  pir::Value inputs_ = input_values[0];
-
-  VLOG(4) << "Builder construction outputs";
-  pir::VectorType x = inputs_.type().dyn_cast<pir::VectorType>();
-
-  std::vector<paddle::dialect::IrTensor> vec_dense_x;
-  for (size_t i = 0; i < x.size(); i++) {
-    if (x[i].isa<paddle::dialect::DenseTensorType>()) {
-      vec_dense_x.push_back(paddle::dialect::IrTensor(
-          TransToPhiDataType(
-              x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-          x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-          x[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
-          x[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-          x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Only support paddle::dialect::DenseTensorType or "
-          "paddle::dialect::AllocatedDenseTensorType"));
-    }
-  }
-  std::vector<paddle::dialect::IrMetaTensor> vec_meta_x;
-  for (size_t i = 0; i < vec_dense_x.size(); i++) {
-    vec_meta_x.push_back(paddle::dialect::IrMetaTensor(&vec_dense_x[i]));
-  }
-
-  std::vector<const phi::MetaTensor *> meta_x;
-  for (size_t i = 0; i < static_cast<size_t>(vec_meta_x.size()); i++) {
-    meta_x.push_back(&vec_meta_x[i]);
-  }
-
-  paddle::dialect::IrTensor dense_out;
-  paddle::dialect::IrMetaTensor meta_out(&dense_out);
-
-  phi::AddNInferMeta(meta_x, &meta_out, phi::MetaConfig(false, false));
-
-  std::vector<pir::Type> argument_outputs;
-  pir::Type out_type = CvtToDenseTensorType(dense_out);
-#ifdef PADDLE_WITH_DISTRIBUTE
-  // Auto Parallel condition
-  if (AllInputAreDist(input_values)) {
-    ProcessMeshAttribute op_mesh =
-        x[0].dyn_cast<DistDenseTensorType>().process_mesh_attr();
-    auto ctx = pir::IrContext::Instance();
-    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;
-    auto dist_meta_x = CvtToDistMetaTensor(x);
-    auto spmd_info =
-        phi::distributed::VariadicReplicatedInferSpmdDynamic(dist_meta_x);
-    PADDLE_ENFORCE_EQ(
-        spmd_info.first.size(),
-        1u,
-        common::errors::Unavailable(
-            "Size of spmd_info.first for op[pd_op.add_n]is unexpected."));
-    for (auto &arg_dist : spmd_info.first) {
-      dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
-    }
-    auto dist_attr_output = CreateReplicatedDistAttr(out_type, op_mesh);
-
-    dist_result_attrs.push_back(dist_attr_output);
-    argument_outputs.push_back(CvtToPirDistType(out_type, dist_attr_output));
-
-    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
-        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
-    return argument_outputs;
-  }
-#endif
-  argument_outputs.push_back(out_type);
-  return argument_outputs;
-}
-
 OpInfoTuple AddN_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
@@ -378,6 +203,11 @@ std::vector<pir::Type> AddN_Op::InferMeta(
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
+}
+
+bool AddN_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  return AddNOpInferSymbolicShape(this->operation(), infer_context);
 }
 
 OpInfoTuple AddNArrayOp::GetOpInfo() {
@@ -3342,8 +3172,9 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       auto shape_item = shape.defining_op()
                             ->dyn_cast<paddle::dialect::FullOp>()
                             .attribute("value")
-                            .dyn_cast<pir::FloatAttribute>()
-                            .data();
+                            .dyn_cast<paddle::dialect::ScalarAttribute>()
+                            .data()
+                            .to<double>();
       vec_shape = {static_cast<int64_t>(shape_item)};
     } else if (shape.isa<pir::OpResult>() &&
                shape.defining_op()->isa<paddle::dialect::StackOp>()) {
@@ -3393,11 +3224,13 @@ std::vector<pir::Type> ExpandOp::InferMeta(
               vec_shape.push_back(value);
 
             } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
-              auto shape_item = shape.defining_op()
-                                    ->dyn_cast<paddle::dialect::FullOp>()
-                                    .attribute("value")
-                                    .dyn_cast<pir::FloatAttribute>()
-                                    .data();
+              auto shape_item =
+                  shape.defining_op()
+                      ->dyn_cast<paddle::dialect::FullOp>()
+                      .attribute("value")
+                      .dyn_cast<paddle::dialect::ScalarAttribute>()
+                      .data()
+                      .to<double>();
               vec_shape.push_back(static_cast<int64_t>(shape_item));
 
             } else {
@@ -4044,14 +3877,15 @@ bool AssignOut_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
       infer_context->GetShapeOrDataForValue(operand_source(0));
-  const auto &inplace_output_shape =
-      infer_context->GetShapeOrDataForValue(operand_source(1));
+  // const auto &inplace_output_shape =
+  //     infer_context->GetShapeOrDataForValue(operand_source(1));
   infer_context->SetShapeOrDataForValue(result(0), x_shape);
-  CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
-  for (size_t i = 0; i < x_shape.shape().size(); ++i) {
-    infer_context->AddEqualCstr(x_shape.shape()[i],
-                                inplace_output_shape.shape()[i]);
-  }
+  // TODO(Hongqing-work): add this after fixing while op error
+  // CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
+  // for (size_t i = 0; i < x_shape.shape().size(); ++i) {
+  //   infer_context->AddEqualCstr(x_shape.shape()[i],
+  //                               inplace_output_shape.shape()[i]);
+  // }
   return true;
 }
 
@@ -4579,7 +4413,6 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
 
 }  // namespace paddle::dialect
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)

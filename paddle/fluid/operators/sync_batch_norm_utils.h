@@ -28,7 +28,9 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/common/layout.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -596,6 +598,25 @@ void SyncBatchNormGradFunctor(
                                     comm,
                                     stream));
     VLOG(3) << "Sync result using all reduce";
+  } else {
+    if (FLAGS_dynamic_static_unified_comm) {
+      auto comm_ctx =
+          static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
+      if (comm_ctx) {
+        comm = comm_ctx->GetNcclComm();
+        int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
+        // In-place operation
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllReduce(stats,
+                                        stats,
+                                        2 * C + 1,
+                                        static_cast<ncclDataType_t>(dtype),
+                                        ncclSum,
+                                        comm,
+                                        stream));
+        VLOG(3) << "Sync result using all reduce";
+      }
+    }
   }
 #endif
 

@@ -40,9 +40,7 @@ class ContextManager {
   }
 
   std::shared_future<std::unique_ptr<platform::DeviceContext>> Get(
-      const std::string& type,
-      const platform::Place& place,
-      int stream_priority) {
+      const std::string& type, const phi::Place& place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     VLOG(6) << "Get dev_ctx for " << type << " - " << place;
 
@@ -68,7 +66,7 @@ class ContextManager {
 class StreamAnalyzer {
  public:
   using DeviceContext = platform::DeviceContext;
-  using Place = platform::Place;
+  using Place = phi::Place;
 
   explicit StreamAnalyzer(const Place& place) : place_(place) {
     event_info_ = std::make_shared<
@@ -130,7 +128,7 @@ class StreamAnalyzer {
 class PirStreamAnalyzer {
  public:
   using DeviceContext = platform::DeviceContext;
-  using Place = platform::Place;
+  using Place = phi::Place;
 
   explicit PirStreamAnalyzer(const Place& place) : place_(place) {
     event_info_ = std::make_shared<

@@ -38,7 +38,7 @@ namespace framework {
 
 PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
@@ -160,7 +160,10 @@ PhiKernelInstruction::PhiKernelInstruction(
 
   kernel_context_.SetDeviceContext(dev_ctx);
   VLOG(6) << "finish process kernel context";
-
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, value_exec_info_, this);
+  }
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -181,6 +184,9 @@ void PhiKernelInstruction::Run() {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
+  }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";

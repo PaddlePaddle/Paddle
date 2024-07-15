@@ -20,32 +20,32 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 
 TEST(Device, Init) {
-  using paddle::platform::CUDAPlace;
   using paddle::platform::DeviceContext;
   using phi::GPUContext;
+  using phi::GPUPlace;
 
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
-    phi::GPUContext* device_context = new phi::GPUContext(CUDAPlace(i));
+    phi::GPUContext* device_context = new phi::GPUContext(GPUPlace(i));
     device_context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(CUDAPlace(i), device_context->stream())
+            .GetAllocator(GPUPlace(i), device_context->stream())
             .get());
     device_context->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     device_context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(CUDAPlace(i))
+            .GetZeroAllocator(GPUPlace(i))
             .get());
     device_context->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .GetZeroAllocator(phi::CPUPlace())
             .get());
     device_context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     device_context->PartialInitWithAllocator();
 
@@ -56,31 +56,31 @@ TEST(Device, Init) {
 }
 
 TEST(Device, GPUContext) {
-  using paddle::platform::CUDAPlace;
   using phi::GPUContext;
+  using phi::GPUPlace;
 
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
-    phi::GPUContext* device_context = new phi::GPUContext(CUDAPlace(i));
+    phi::GPUContext* device_context = new phi::GPUContext(GPUPlace(i));
     device_context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(CUDAPlace(i), device_context->stream())
+            .GetAllocator(GPUPlace(i), device_context->stream())
             .get());
     device_context->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     device_context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(CUDAPlace(i))
+            .GetZeroAllocator(GPUPlace(i))
             .get());
     device_context->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .GetZeroAllocator(phi::CPUPlace())
             .get());
     device_context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     device_context->PartialInitWithAllocator();
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
@@ -102,28 +102,28 @@ TEST(Device, GPUContext) {
 }
 
 TEST(Device, HostZeroAllocator) {
-  using paddle::platform::CUDAPlace;
+  using phi::GPUPlace;
 
-  auto device_context = std::make_unique<phi::GPUContext>(CUDAPlace(0));
+  auto device_context = std::make_unique<phi::GPUContext>(GPUPlace(0));
   device_context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(CUDAPlace(0), device_context->stream())
+          .GetAllocator(GPUPlace(0), device_context->stream())
           .get());
   device_context->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   device_context->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(CUDAPlace(0))
+          .GetZeroAllocator(GPUPlace(0))
           .get());
   device_context->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   device_context->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .GetAllocator(phi::GPUPinnedPlace())
           .get());
   device_context->PartialInitWithAllocator();
 
@@ -134,18 +134,18 @@ TEST(Device, HostZeroAllocator) {
   ASSERT_EQ(tensor.numel(), 0);
   ASSERT_EQ(tensor.dtype(), phi::DataType::FLOAT32);
 
-  phi::GPUContext gpu_context(CUDAPlace(0));
+  phi::GPUContext gpu_context(GPUPlace(0));
   gpu_context.SetHostZeroAllocator(&device_context->GetHostZeroAllocator());
   gpu_context.HostAlloc<float>(&tensor);
   ASSERT_EQ(tensor.place().GetType(), phi::AllocationType::CPU);
 }
 
 TEST(Device, DeviceContextPool) {
-  using paddle::platform::CPUPlace;
-  using paddle::platform::CUDAPlace;
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::Place;
+  using phi::CPUPlace;
+  using phi::DeviceContextPool;
   using phi::GPUContext;
+  using phi::GPUPlace;
+  using phi::Place;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
   auto cpu_dev_ctx1 = pool.Get(CPUPlace());
@@ -155,7 +155,7 @@ TEST(Device, DeviceContextPool) {
   std::vector<Place> gpu_places;
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; ++i) {
-    auto dev_ctx = pool.Get(CUDAPlace(i));
+    auto dev_ctx = pool.Get(GPUPlace(i));
     ASSERT_NE(dev_ctx, nullptr);
   }
 }

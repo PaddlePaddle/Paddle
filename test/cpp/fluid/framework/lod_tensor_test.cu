@@ -32,7 +32,7 @@ TEST(LoD, data) {
 
   auto& v = lod[0];
   phi::MixVector<size_t> mix_vector_v(&v);
-  paddle::platform::CUDAPlace gpu(0);
+  phi::GPUPlace gpu(0);
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(test,
                      dim3(1),
@@ -56,7 +56,7 @@ TEST(DenseTensor, LoDInGPU) {
   paddle::framework::InitDevices();
 
   phi::DenseTensor lod_tensor;
-  paddle::platform::CUDAPlace place(0);
+  phi::GPUPlace place(0);
 
   paddle::framework::LoD src_lod;
   src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});

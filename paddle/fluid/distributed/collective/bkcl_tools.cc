@@ -26,7 +26,7 @@ BKCLOp ToBKCLRedType(ReduceOp reduction) {
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Invalid bkcl reduction. Must be BKCL_MIN | BKCL_MAX | "
                         "BKCL_ADD"));
   return it->second;
