@@ -50,6 +50,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | llxxxll | Yong-Feng Liu |
 | luotao01 | Tao Luo |
 | lzhao4ever | Liang Zhao |
+| [RuohengMa](https://github.com/RuohengMa) | Ruoheng Ma |
 | mozga-intel | Mateusz Ozga |
 | NHZlX | Zhao-Long Xing |
 | Noplz | Yuan Gao |
