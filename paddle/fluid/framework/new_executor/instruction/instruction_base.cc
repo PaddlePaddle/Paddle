@@ -273,12 +273,12 @@ const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
 
 void InstructionBase::ClearEagerGCVars() { eager_gc_vars_.clear(); }
 
-const std::vector<std::pair<Variable*, Variable*>>&
+const std::vector<std::pair<const Variable*, Variable*>>&
 InstructionBase::InplaceInfo() const {
   return vec_inplace_in_to_out_;
 }
 
-void InstructionBase::AddInplace(Variable* in, Variable* out) {
+void InstructionBase::AddInplace(const Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
 
@@ -332,6 +332,17 @@ void InstructionBase::InitInputsOutputsIds(
               op_name));
       std::vector<int> outputs_id = GetValueIds(value, value_exec_info);
       outputs.emplace(value, outputs_id);
+    }
+  }
+
+  const auto value_2_var_name_map = value_exec_info.GetValue2VarName();
+  for (auto inplace_var_pair : this->InplaceInfo()) {
+    for (auto item : value_2_var_name_map) {
+      if (item.second == value_exec_info.GetVarName(inplace_var_pair.first)) {
+        std::vector<int> outputs_id = GetValueIds(item.first, value_exec_info);
+        outputs.emplace(item.first, outputs_id);
+        break;
+      }
     }
   }
   SetOutputs(outputs);

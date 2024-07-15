@@ -127,8 +127,8 @@ class InstructionBase {
   void AddEagerGCVar(Variable* var);
   void ClearEagerGCVars();
 
-  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
-  void AddInplace(Variable* in, Variable* out);
+  const std::vector<std::pair<const Variable*, Variable*>>& InplaceInfo() const;
+  void AddInplace(const Variable* in, Variable* out);
   void ClearInplace();
 
   std::map<int, int>& GetMutableInplaceBackMap() { return inplace_back_map_; }
@@ -207,7 +207,7 @@ class InstructionBase {
 
   std::vector<Variable*> eager_gc_vars_;
 
-  std::vector<std::pair<Variable*, Variable*>>
+  std::vector<std::pair<const Variable*, Variable*>>
       vec_inplace_in_to_out_;  // If not use share data, need this ?
 
   std::map<int, int> inplace_back_map_;

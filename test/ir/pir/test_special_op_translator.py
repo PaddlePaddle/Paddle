@@ -51,14 +51,9 @@ class TestCondWithInplace(unittest.TestCase):
                 running_variance = paddle.to_tensor([1], dtype="float32")
                 weight = paddle.to_tensor([2], dtype="float32")
                 bias = paddle.to_tensor([1], dtype="float32")
-                if x > y:
-                    y = paddle.nn.functional.batch_norm(
-                        x, running_mean, running_variance, weight, bias
-                    )
-                else:
-                    y = paddle.nn.functional.batch_norm(
-                        x, running_mean, running_variance, weight, bias
-                    )
+                y = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_variance, weight, bias
+                )
 
             legacy_program = paddle.jit.to_static(
                 cond_with_inplace,
@@ -80,24 +75,14 @@ class TestCondWithInplace(unittest.TestCase):
                 running_variance = paddle.to_tensor([1], dtype="float32")
                 weight = paddle.to_tensor([2], dtype="float32")
                 bias = paddle.to_tensor([1], dtype="float32")
-                if x > y:
-                    if y > z:
-                        z = paddle.nn.functional.batch_norm(
-                            z, running_mean, running_variance, weight, bias
-                        )
-                    else:
-                        y = paddle.nn.functional.batch_norm(
-                            x, running_mean, running_variance, weight, bias
-                        )
+                if y > z:
+                    z = paddle.nn.functional.batch_norm(
+                        z, running_mean, running_variance, weight, bias
+                    )
                 else:
-                    if y > z:
-                        z = paddle.nn.functional.batch_norm(
-                            z, running_mean, running_variance, weight, bias
-                        )
-                    else:
-                        y = paddle.nn.functional.batch_norm(
-                            x, running_mean, running_variance, weight, bias
-                        )
+                    y = paddle.nn.functional.batch_norm(
+                        x, running_mean, running_variance, weight, bias
+                    )
 
             legacy_program = paddle.jit.to_static(
                 cond_with_inplace,
