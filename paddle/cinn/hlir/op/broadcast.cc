@@ -17,7 +17,6 @@
 #include <iostream>
 
 #include "paddle/cinn/adt/op_equation_context.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -148,107 +147,6 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForBroadcast(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 2UL);
-  std::vector<int> out_shape;
-
-  int axis = -1;
-  for (auto &iter : attrs) {
-    if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
-      break;
-    }
-  }
-  VLOG(3) << "broadcast input shapes are : "
-          << utils::Join(inputs_shape[0], ", ") << "; "
-          << utils::Join(inputs_shape[1], ", ");
-  pe::GetBroadcastOutShape(inputs_shape[0], inputs_shape[1], &out_shape, axis);
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  return {out_shape};
-}
-
-std::vector<Type> InferDtypeForBroadcast(const std::vector<Type> &inputs_type,
-                                         const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
-void GenerateEquationsForBroadcast(cinn::adt::config::OpEquationContext *ctx) {
-  CHECK(ctx->GetInTensorsRanks().size() == 2)
-      << "The inputs is " << ctx->GetInTensorsRanks().size()
-      << "! Please check again.";
-  CHECK(ctx->GetOutTensorsRanks().size() == 1)
-      << "The output is " << ctx->GetOutTensorsRanks().size()
-      << "! Please check again.";
-  std::uint64_t out_tensor_ranks = ctx->GetOutTensorsRanks().at(0);
-  std::uint64_t in_tensor0_ranks = ctx->GetInTensorsRanks().at(0);
-  std::uint64_t in_tensor1_ranks = ctx->GetInTensorsRanks().at(1);
-  int offset0 = out_tensor_ranks - in_tensor0_ranks;
-  for (std::size_t i = 0; i < in_tensor0_ranks; ++i) {
-    ctx->Equal(ctx->GetInIteratorTuple(0)->at(i),
-               ctx->GetBroadcastedInputIterator(
-                   ctx->GetOutIteratorTuple(0)->at(i + offset0),
-                   ctx->GetInDimTuple(0)->at(i)));
-  }
-  int offset1 = out_tensor_ranks - in_tensor1_ranks;
-  for (std::size_t i = 0; i < in_tensor1_ranks; ++i) {
-    ctx->Equal(ctx->GetInIteratorTuple(1)->at(i),
-               ctx->GetBroadcastedInputIterator(
-                   ctx->GetOutIteratorTuple(0)->at(i + offset1),
-                   ctx->GetInDimTuple(1)->at(i)));
-  }
-}
-
-std::vector<Type> InferDtypeForBroadcastCmp(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  return {Bool()};
-}
-
-std::vector<std::vector<std::string>> InferLayoutForBroadcast(
-    const std::vector<std::vector<int>> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  int input_size = input_layouts.size();
-  CHECK(input_size == 2U || input_size == 3U)
-      << "The input's layouts size is not 2 or 3! Please check again.";
-  int axis = -1;
-  if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
-  }
-  std::vector<std::string> out_layouts = input_layouts;
-  if (input_layouts[0].empty() && input_layouts[1].empty()) {
-    return {{input_layouts[0]}, input_layouts};
-  } else if (input_layouts[0].empty() || input_layouts[1].empty()) {
-    int undef_idx = input_layouts[0] == "" ? 0 : 1;
-    int def_idx = 1 - undef_idx;
-    CHECK_GE(input_shapes[def_idx].size(), input_shapes[undef_idx].size());
-    auto ret = out_layouts[def_idx];
-    if (input_size == 2) {
-      return {{ret}, {ret, ret}};
-    } else {
-      return {{ret}, {ret, ret, ret}};
-    }
-  } else {
-    // e.g. NCHWxc + NCHW
-    ir::Layout layout0(input_layouts[0]);
-    ir::Layout layout1(input_layouts[1]);
-    int large_idx = layout0.ndims() >= layout1.ndims() ? 0 : 1;
-    auto ret = input_layouts[large_idx];
-    if (input_size == 2) {
-      return {{ret}, {ret, ret}};
-    } else {
-      return {{ret}, {ret, ret, ret}};
-    }
-  }
-}
-
 std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -341,86 +239,6 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForBroadcastTo(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1UL)
-      << "input_shape size should be one. Please Check.";
-  std::vector<int> broadcast_axes;
-  std::vector<int> out_shape;
-  CHECK(attrs.count("broadcast_axes"));
-  CHECK(attrs.count("out_shape"));
-  out_shape = absl::get<std::vector<int>>(attrs.at("out_shape"));
-  broadcast_axes = absl::get<std::vector<int>>(attrs.at("broadcast_axes"));
-
-  VLOG(3) << "broadcast input shape: " << utils::Join(inputs_shape[0], ", ");
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
-  if (inputs_shape[0].empty()) {
-    CHECK(broadcast_axes.size() == 1 && broadcast_axes[0] == 0)
-        << "broadcast_axes's size should be {1} when the input is 0D-Tensor";
-  } else {
-    CHECK_EQ(inputs_shape[0].size(), broadcast_axes.size())
-        << "broadcast_axes's size should be same with the input shape's size";
-  }
-  CHECK_GE(out_shape.size(), broadcast_axes.size())
-      << "broadcast_axes's size should be no more than out_shape's size";
-
-  return {out_shape};
-}
-
-void GenerateEquationsForBroadcastTo(
-    cinn::adt::config::OpEquationContext *ctx) {
-  CHECK(ctx->GetInTensorsRanks().size() == 1)
-      << "The inputs is " << ctx->GetInTensorsRanks().size()
-      << "! Please check again.";
-  CHECK(ctx->GetOutTensorsRanks().size() == 1)
-      << "The output is " << ctx->GetOutTensorsRanks().size()
-      << "! Please check again.";
-  std::size_t out_tensor_rank = ctx->GetOutTensorsRanks().at(0);
-  int start_axis = out_tensor_rank - ctx->GetInTensorsRanks().at(0);
-  for (std::size_t i = start_axis; i < out_tensor_rank; ++i) {
-    ctx->Equal(ctx->GetInIteratorTuple(0)->at(i - start_axis),
-               ctx->GetBroadcastedInputIterator(
-                   ctx->GetOutIteratorTuple(0)->at(i),
-                   ctx->GetInDimTuple(0)->at(i - start_axis)));
-  }
-}
-
-std::vector<std::vector<std::string>> InferLayoutForBroadcastTo(
-    const std::vector<std::vector<int>> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  CHECK(input_layouts.size() == 1U)
-      << "The input's layouts size is not 1! Please check again.";
-  std::vector<std::string> out_layouts = {""};
-  if (attrs.attr_store.count("out_layouts")) {
-    out_layouts =
-        absl::get<std::vector<std::string>>(attrs.attr_store.at("out_layouts"));
-  }
-  return {out_layouts, input_layouts};
-}
-
-std::vector<Type> InferDtypeForBroadcastGrad(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 3UL);
-  // Avoid no need buffer var, like elementwise_add_grad's input X and Y is no
-  // need buffer var, in this situation, the X and Y's type is default value
-  // FP32, not the real type, we should get the real type from dout.
-  std::vector<Type> out_type{inputs_type[0], inputs_type[0]};
-  return out_type;
-}
-
-std::vector<shape_t> InferShapeForBroadcastGrad(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 3UL);
-  std::vector<shape_t> out_shape{inputs_shape[1], inputs_shape[2]};
-
-  return out_shape;
-}
-
 std::shared_ptr<OpStrategy> StrategyForBroadcastGrad(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -469,46 +287,32 @@ StrategyForBinary(logical_right_shift, LogicalRightShift);
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(broadcast_ops) {
-#define CINN_REGISTER_BINARY(op__, op_strategy__)                              \
-  CINN_REGISTER_OP(op__)                                                       \
-      .describe(#op__ " function")                                             \
-      .set_num_inputs(1)                                                       \
-      .set_num_outputs(1)                                                      \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)          \
-      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
-          "CINNStrategySymbolic",                                              \
-          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)                \
-      .set_attr("infershape",                                                  \
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))        \
-      .set_attr("inferdtype",                                                  \
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))        \
-      .set_attr("generate_equations",                                          \
-                MakeOpFunction(cinn::hlir::op::GenerateEquationsForBroadcast)) \
-      .set_attr("inferlayout",                                                 \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcast))       \
-      .set_attr<cinn::hlir::framework::OpPatternKind>(                         \
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)       \
+#define CINN_REGISTER_BINARY(op__, op_strategy__)                        \
+  CINN_REGISTER_OP(op__)                                                 \
+      .describe(#op__ " function")                                       \
+      .set_num_inputs(1)                                                 \
+      .set_num_outputs(1)                                                \
+      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)    \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(        \
+          "CINNStrategySymbolic",                                        \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)          \
+      .set_attr<cinn::hlir::framework::OpPatternKind>(                   \
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast) \
       .set_support_level(4);
 
-#define CINN_REGISTER_BINARY_CMP(op__, op_strategy__)                      \
-  CINN_REGISTER_OP(op__)                                                   \
-      .describe(#op__ " function")                                         \
-      .set_num_inputs(1)                                                   \
-      .set_num_outputs(1)                                                  \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)      \
-      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
-          "CINNStrategySymbolic",                                          \
-          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
-      .set_attr("infershape",                                              \
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))    \
-      .set_attr("inferdtype",                                              \
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcastCmp)) \
-      .set_attr("inferlayout",                                             \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcast))   \
-      .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)   \
+#define CINN_REGISTER_BINARY_CMP(op__, op_strategy__)                    \
+  CINN_REGISTER_OP(op__)                                                 \
+      .describe(#op__ " function")                                       \
+      .set_num_inputs(1)                                                 \
+      .set_num_outputs(1)                                                \
+      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)    \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(        \
+          "CINNStrategySymbolic",                                        \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)          \
+      .set_attr<cinn::hlir::framework::OpPatternKind>(                   \
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast) \
       .set_support_level(4);
 
   CINN_REGISTER_BINARY(elementwise_add, Add);
@@ -551,34 +355,9 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForBroadcastToSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcastTo))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))
-      .set_attr("generate_equations",
-                MakeOpFunction(cinn::hlir::op::GenerateEquationsForBroadcastTo))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
       .set_support_level(4);
-
-  return true;
-}
-
-CINN_REGISTER_HELPER(broadcast_grad_ops) {
-  CINN_REGISTER_OP(elementwise_add_grad)
-      .describe("The gradient of elementwise_add operator.")
-      .set_num_inputs(3)
-      .set_num_outputs(2)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForBroadcastGrad)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcastGrad))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcastGrad));
 
   return true;
 }

@@ -40,7 +40,7 @@ extern std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameTensorMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 TEST(test_eager, eager_debug) {
@@ -64,7 +64,7 @@ TEST(test_create_node, eager_node) {
                    outs,
                    framework::AttributeMap{},
                    framework::AttributeMap{},
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    {});
 }
 TEST(test_var_helper, eager_var_helper) {
@@ -86,10 +86,10 @@ TEST(test_var_helper, eager_var_helper) {
   egr_tensor->MutableVar()
       ->GetMutable<phi::SelectedRows>()
       ->mutable_value()
-      ->mutable_data<float>(platform::CPUPlace());
+      ->mutable_data<float>(phi::CPUPlace());
   egr_tensor2->MutableVar()->GetMutable<framework::LoDRankTable>();
   VLOG(6) << "egr_tensor create with ";
-  ASSERT_TRUE(platform::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));
+  ASSERT_TRUE(phi::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));
   ASSERT_TRUE(GetDataType<egr::EagerVariable>(egr_tensor) ==
               framework::proto::VarType::FP32);
   GetCachedValue<egr::EagerVariable>(egr_tensor,

@@ -50,7 +50,7 @@ struct ReduceLoDTensor {
                           "The size of first tensor to be reduced is 0."));
 
     dst_tensor_.Resize(t0.dims());
-    T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
+    T *dst = dst_tensor_.mutable_data<T>(phi::CPUPlace());
 
     for (size_t i = 0; i < src_tensors_.size(); ++i) {
       auto &t = *src_tensors_[i];
@@ -114,9 +114,9 @@ struct ReduceBufferData {
 struct GatherLocalSelectedRowsFunctor {
   GatherLocalSelectedRowsFunctor(
       const std::vector<const phi::SelectedRows *> &src_selected_rows,
-      const std::vector<platform::Place> &in_places,
-      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-      const platform::Place &out_place,
+      const std::vector<phi::Place> &in_places,
+      const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes,
+      const phi::Place &out_place,
       phi::SelectedRows *dst_selected_rows)
       : dev_ctxes_(dev_ctxes),
         in_places_(in_places),
@@ -164,11 +164,11 @@ struct GatherLocalSelectedRowsFunctor {
   }
 
  private:
-  const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes_;
-  std::vector<platform::Place> in_places_;
+  const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes_;
+  std::vector<phi::Place> in_places_;
   std::vector<phi::DenseTensor> in_tensors_;
 
-  platform::Place out_place_;
+  phi::Place out_place_;
   phi::SelectedRows *dst_selected_rows_;
 };
 

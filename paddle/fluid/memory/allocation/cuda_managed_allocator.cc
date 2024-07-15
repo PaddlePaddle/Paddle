@@ -55,7 +55,7 @@ phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
                                             dev_id,
                                             /* malloc_managed_memory = */ true);
   if (LIKELY(result == gpuSuccess)) {
-    return new Allocation(ptr, size, platform::Place(place_));
+    return new Allocation(ptr, size, phi::Place(place_));
   }
 
   uint64_t limit_size = platform::RecordedGpuLimitSize(dev_id);

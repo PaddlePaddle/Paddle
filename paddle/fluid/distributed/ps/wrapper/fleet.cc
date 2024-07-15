@@ -324,7 +324,7 @@ void FleetWrapper::PullSparseToTensorSync(
     const uint64_t table_id,
     int fea_dim,
     uint64_t padding_id,
-    platform::Place place,
+    phi::Place place,
     bool is_training,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<phi::DenseTensor*>* outputs) {
@@ -412,7 +412,7 @@ void FleetWrapper::PullDenseVarsSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!platform::is_gpu_place(tensor->place())) {
+    if (!phi::is_gpu_place(tensor->place())) {
       float* w = tensor->data<float>();
       ::paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -426,13 +426,13 @@ void FleetWrapper::PushDenseParamSync(
     const Scope& scope,
     const uint64_t table_id,
     const std::vector<std::string>& var_names) {
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!platform::is_gpu_place(tensor->place())) {
+    if (!phi::is_gpu_place(tensor->place())) {
       float* g = tensor->mutable_data<float>(place);
       ::paddle::distributed::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -457,7 +457,7 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size) {
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -504,7 +504,7 @@ void FleetWrapper::PushSparseVarsAsync(
   PADDLE_ENFORCE_EQ(
       communicator->Check(table_id),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
   communicator->Send(varnames, scope);
 }
@@ -536,7 +536,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     bool scale_sparse,
     const std::string& accessor,
     const std::string& click_name,
-    platform::Place place,
+    phi::Place place,
     const std::vector<std::string>& input_names,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<const phi::DenseTensor*>* outputs) {
@@ -548,7 +548,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     const uint64_t table_id,
     int fea_dim,
     uint64_t padding_id,
-    platform::Place place,
+    phi::Place place,
     std::vector<const phi::DenseTensor*>* inputs,
     std::vector<int>& slots,
     const phi::DenseTensor* shows,
@@ -813,7 +813,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THROW(platform::errors::Fatal(
+    // PADDLE_THROW(phi::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);

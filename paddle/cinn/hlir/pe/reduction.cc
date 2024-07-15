@@ -25,7 +25,6 @@
 #include "paddle/cinn/hlir/pe/nn_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"

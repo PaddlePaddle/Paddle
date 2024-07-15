@@ -12,22 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 from paddle import _C_ops, in_dynamic_mode
 from paddle.nn.functional.pooling import _update_padding_nd
 from paddle.utils import convert_to_list
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        Size3,
+        Size6,
+    )
+    from paddle.nn.functional.common import _PaddingSizeMode
 
 __all__ = []
 
 
 def max_pool3d(
-    x,
-    kernel_size,
-    stride=None,
-    padding=0,
-    ceil_mode=False,
-    data_format="NDHWC",
-    name=None,
-):
+    x: Tensor,
+    kernel_size: Size3,
+    stride: Size3 | None = None,
+    padding: _PaddingSizeMode | Size3 | Size6 = 0,
+    ceil_mode: bool = False,
+    data_format: Literal['NDHWC'] = "NDHWC",
+    name: str | None = None,
+) -> Tensor:
     """
     Implements sparse max pooling 3d operation.
     See more details in :ref:`api_paddle_sparse_nn_MaxPool3D` .
@@ -53,7 +65,7 @@ def max_pool3d(
         data_format (string, optional): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`. Currently only support `"NDHWC"` .
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 

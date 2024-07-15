@@ -153,6 +153,10 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
     const ValueExecutionInfo& value_exec_info,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
+bool IsNeedVarInplace(pir::Operation* op,
+                      pir::Value value,
+                      std::string op_name);
+
 template <typename Context,
           typename InType,
           typename OutType,

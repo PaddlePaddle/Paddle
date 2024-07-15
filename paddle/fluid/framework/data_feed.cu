@@ -83,7 +83,7 @@ void cub_sort_pairs(const int gpu_id,
                     V *out_vals,
                     cudaStream_t stream,
                     std::shared_ptr<phi::Allocation> &d_buf,  // NOLINT
-                    const paddle::platform::Place &place) {
+                    const phi::Place &place) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceRadixSort::SortPairs(NULL,
                                              temp_storage_bytes,
@@ -126,7 +126,7 @@ void cub_runlength_encode(int N,
                           TNum *d_out_len,
                           cudaStream_t stream,
                           std::shared_ptr<phi::Allocation> &d_buf,  // NOLINT
-                          const paddle::platform::Place &place) {
+                          const phi::Place &place) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(NULL,
                                                 temp_storage_bytes,
@@ -162,7 +162,7 @@ void cub_exclusivesum(const int gpu_id,
                       K *out,
                       cudaStream_t stream,
                       std::shared_ptr<phi::Allocation> &d_buf,  // NOLINT
-                      const paddle::platform::Place &place) {
+                      const phi::Place &place) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
       NULL, temp_storage_bytes, in, out, N, stream));
@@ -222,7 +222,7 @@ int dedup_keys_and_fillidx(const int gpu_id,
                            int total_nodes_num,
                            uint64_t *d_merged_keys,  // input
                            uint32_t *d_restore_idx,  // inverse
-                           const paddle::platform::Place &place,
+                           const phi::Place &place,
                            cudaStream_t stream) {
   platform::CUDADeviceGuard guard(gpu_id);
   auto d_sorted_keys =
@@ -1579,7 +1579,7 @@ void FillOneStep(
     const GraphDataGeneratorConfig &conf,
     std::vector<std::shared_ptr<phi::Allocation>> *d_sampleidx2rows,
     int *cur_sampleidx2row,
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     cudaStream_t stream) {
   platform::CUDADeviceGuard guard(conf.gpuid);
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
@@ -2314,7 +2314,7 @@ uint64_t CopyUniqueNodes(
     int gpu_id,
     std::shared_ptr<HashTable<uint64_t, uint32_t>> table,
     uint64_t copy_unique_len,
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     const std::shared_ptr<phi::Allocation> &d_uniq_node_num_ptr,
     std::vector<uint64_t> *host_vec_ptr,    // output
     std::vector<uint32_t> *host_ranks_ptr,  // output
@@ -2393,7 +2393,7 @@ int InsertTable(int gpu_id,
                 std::shared_ptr<phi::Allocation> *d_uniq_node_num,
                 const GraphDataGeneratorConfig &conf,
                 uint64_t *copy_unique_len_ptr,
-                const paddle::platform::Place &place,
+                const phi::Place &place,
                 std::vector<uint64_t> *host_vec_ptr,                   // Output
                 std::vector<uint32_t> *host_ranks_ptr,                 // output
                 std::shared_ptr<HashTable<uint64_t, uint32_t>> table,  // Output
@@ -2473,7 +2473,7 @@ std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
     std::vector<uint64_t> *host_vec_ptr,                             // Output
     std::vector<uint32_t> *host_ranks_ptr,                           // output
     std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank_table,  // Output
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     cudaStream_t stream) {
   platform::CUDADeviceGuard guard(conf.gpuid);
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
@@ -2617,17 +2617,16 @@ std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
   return sample_results;
 }
 
-std::shared_ptr<phi::Allocation> FillReindexHashTable(
-    int64_t *input,
-    int num_input,
-    int64_t len_hashtable,
-    int64_t *keys,
-    int *values,
-    int *key_index,
-    int *final_nodes_len,
-    const paddle::platform::Place &place,
-    const int gpu_id,
-    cudaStream_t stream) {
+std::shared_ptr<phi::Allocation> FillReindexHashTable(int64_t *input,
+                                                      int num_input,
+                                                      int64_t len_hashtable,
+                                                      int64_t *keys,
+                                                      int *values,
+                                                      int *key_index,
+                                                      int *final_nodes_len,
+                                                      const phi::Place &place,
+                                                      const int gpu_id,
+                                                      cudaStream_t stream) {
   platform::CUDADeviceGuard guard(gpu_id);
   phi::BuildHashTable<int64_t>
       <<<GET_BLOCKS(num_input), CUDA_NUM_THREADS, 0, stream>>>(
@@ -2691,16 +2690,15 @@ std::shared_ptr<phi::Allocation> FillReindexHashTable(
   return unique_items;
 }
 
-std::shared_ptr<phi::Allocation> GetReindexResult(
-    int64_t *reindex_src_data,
-    int64_t *center_nodes,
-    int *final_nodes_len,
-    int reindex_table_size,
-    int node_len,
-    int64_t neighbor_len,
-    const paddle::platform::Place &place,
-    const int gpu_id,
-    cudaStream_t stream) {
+std::shared_ptr<phi::Allocation> GetReindexResult(int64_t *reindex_src_data,
+                                                  int64_t *center_nodes,
+                                                  int *final_nodes_len,
+                                                  int reindex_table_size,
+                                                  int node_len,
+                                                  int64_t neighbor_len,
+                                                  const phi::Place &place,
+                                                  const int gpu_id,
+                                                  cudaStream_t stream) {
   platform::CUDADeviceGuard guard(gpu_id);
   auto d_reindex_table_key =
       memory::AllocShared(place,
@@ -2789,7 +2787,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
     std::vector<uint64_t> *host_vec_ptr,                   // Output
     std::vector<uint32_t> *host_ranks_ptr,                 // output
     std::shared_ptr<HashTable<uint64_t, uint32_t>> table,  // Output
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     cudaStream_t stream) {
   VLOG(1) << conf.gpuid << " Get Unique Nodes";
   platform::CUDADeviceGuard guard(conf.gpuid);
@@ -2958,7 +2956,7 @@ std::shared_ptr<phi::Allocation> GetNodeDegree(
     uint64_t *node_ids,
     int len,
     const GraphDataGeneratorConfig &conf,
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     cudaStream_t stream) {
   platform::CUDADeviceGuard guard(conf.gpuid);
   auto node_degree =
@@ -2983,7 +2981,7 @@ std::shared_ptr<phi::Allocation> GetNodeDegree(
 
 int multi_node_sync_sample(int flag,
                            const ncclRedOp_t &op,
-                           const paddle::platform::Place &place,
+                           const phi::Place &place,
                            const int gpu_id,
                            phi::DenseTensor *multi_node_sync_stat_ptr) {
   if (flag < 0 && flag > 2) {
@@ -3012,7 +3010,7 @@ int multi_node_sync_sample(int flag,
 
 int get_multi_node_global_flag(int local_flag,
                                const ncclRedOp_t &op,
-                               const paddle::platform::Place &place,
+                               const phi::Place &place,
                                const int gpu_id,
                                cudaStream_t stream) {
   platform::CUDADeviceGuard guard(gpu_id);
@@ -3049,7 +3047,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
                 const GraphDataGeneratorConfig &conf,
                 bool *epoch_finish_ptr,
                 uint64_t *copy_unique_len_ptr,
-                const paddle::platform::Place &place,
+                const phi::Place &place,
                 const std::vector<int> &first_node_type,
                 std::unordered_map<int, size_t> *node_type_start_ptr,
                 std::set<int> *finish_node_type_ptr,
@@ -3539,7 +3537,7 @@ int FillWalkBufMultiPath(
     const GraphDataGeneratorConfig &conf,
     bool *epoch_finish_ptr,
     uint64_t *copy_unique_len_ptr,
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     const std::vector<int> &first_node_type,
     std::unordered_map<int, size_t> *node_type_start_ptr,
     uint64_t *walk,  // output
@@ -4247,7 +4245,7 @@ void GraphDataGenerator::clear_gpu_mem() {
 }
 
 int dynamic_adjust_total_row_for_infer(int local_reach_end,
-                                       const paddle::platform::Place &place,
+                                       const phi::Place &place,
                                        cudaStream_t stream) {
   auto send_buff =
       memory::Alloc(place,
@@ -4292,7 +4290,7 @@ bool FillInferBuf(
     std::vector<uint32_t> *host_ranks_ptr,  // output
     std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank_table,
     const std::shared_ptr<phi::Allocation> &d_uniq_node_num,
-    const paddle::platform::Place &place,
+    const phi::Place &place,
     cudaStream_t stream) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   auto &global_infer_node_type_start =
@@ -4481,13 +4479,13 @@ void GraphDataGenerator::AllocResource(
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   conf_.gpuid = gpu_graph_ptr->device_id_mapping[thread_id];
   conf_.thread_id = thread_id;
-  place_ = platform::CUDAPlace(conf_.gpuid);
+  place_ = phi::GPUPlace(conf_.gpuid);
   debug_gpu_memory_info(conf_.gpuid, "AllocResource start");
 
   platform::CUDADeviceGuard guard(conf_.gpuid);
   sample_stream_ = gpu_graph_ptr->get_local_stream(conf_.gpuid);
   train_stream_ = dynamic_cast<phi::GPUContext *>(
-                      platform::DeviceContextPool::Instance().Get(place_))
+                      phi::DeviceContextPool::Instance().Get(place_))
                       ->stream();
   if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
     if (conf_.gpu_graph_training) {

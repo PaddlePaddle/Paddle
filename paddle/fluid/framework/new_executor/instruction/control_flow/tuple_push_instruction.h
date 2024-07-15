@@ -27,7 +27,7 @@ class ValueExecutionInfo;
 class TuplePushInstruction : public InstructionBase {
  public:
   TuplePushInstruction(size_t id,
-                       const platform::Place& place,
+                       const phi::Place& place,
                        ::pir::Operation* op,
                        ValueExecutionInfo* value_exe_info);
 

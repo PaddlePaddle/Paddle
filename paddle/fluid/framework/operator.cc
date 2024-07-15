@@ -70,11 +70,11 @@ PHI_DECLARE_bool(enable_host_event_recorder_hook);
 namespace paddle {
 namespace framework {
 
-std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
-    std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
-    std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
-    std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
-    std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
+std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority = {
+    std::make_tuple(phi::GPUPlace(0), LibraryType::kCUDNN),
+    std::make_tuple(phi::GPUPlace(0), LibraryType::kPlain),
+    std::make_tuple(phi::CPUPlace(), LibraryType::kMKLDNN),
+    std::make_tuple(phi::CPUPlace(), LibraryType::kPlain),
 };
 
 static DDim GetDimsDebug(const Scope& scope,
@@ -156,7 +156,7 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const platform::Place& p) {
+  auto to_string = [](const phi::Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
@@ -784,10 +784,10 @@ const std::vector<Variable*>& RuntimeInferShapeContext::OutputVars(
   return it->second;
 }
 
-void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
@@ -797,7 +797,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto dev_id = place.device;
       platform::SetDeviceId(dev_id);
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (phi::is_xpu_place(place)) {
 #ifndef PADDLE_WITH_XPU
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
@@ -807,7 +807,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
 #endif
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
@@ -1240,7 +1240,7 @@ bool OpSupportGPU(const std::string& op_type) {
       kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
   for (auto& kernel : kernel_key_map) {
     has_phi_kernel = true;
-    if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
+    if (phi::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
       return true;
     }
   }
@@ -1249,7 +1249,7 @@ bool OpSupportGPU(const std::string& op_type) {
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kern_pair : it->second) {
-      if (platform::is_gpu_place(kern_pair.first.place_)) {
+      if (phi::is_gpu_place(kern_pair.first.place_)) {
         return true;
       }
     }
@@ -1360,12 +1360,11 @@ bool OperatorWithKernel::SupportGPU() const {
       return false;
     } else {
       auto& op_kernels = kernel_iter->second;
-      return std::any_of(
-          op_kernels.begin(),
-          op_kernels.end(),
-          [](OpKernelMap::const_reference kern_pair) {
-            return platform::is_gpu_place(kern_pair.first.place_);
-          });
+      return std::any_of(op_kernels.begin(),
+                         op_kernels.end(),
+                         [](OpKernelMap::const_reference kern_pair) {
+                           return phi::is_gpu_place(kern_pair.first.place_);
+                         });
     }
   }
 }
@@ -1388,16 +1387,15 @@ bool OperatorWithKernel::SupportXPU() const {
       return false;
     } else {
       auto& op_kernels = kernel_iter->second;
-      return std::any_of(
-          op_kernels.begin(),
-          op_kernels.end(),
-          [this](OpKernelMap::const_reference kern_pair) {
-            return platform::is_xpu_place(kern_pair.first.place_) &&
-                   paddle::platform::is_xpu_support_op(
-                       type_,
-                       framework::TransToPhiDataType(
-                           kern_pair.first.data_type_));
-          });
+      return std::any_of(op_kernels.begin(),
+                         op_kernels.end(),
+                         [this](OpKernelMap::const_reference kern_pair) {
+                           return phi::is_xpu_place(kern_pair.first.place_) &&
+                                  paddle::platform::is_xpu_support_op(
+                                      type_,
+                                      framework::TransToPhiDataType(
+                                          kern_pair.first.data_type_));
+                         });
     }
   }
 #else
@@ -1416,7 +1414,7 @@ bool OperatorWithKernel::SupportCustomDevice() const {
       std::any_of(phi_kernels.begin(),
                   phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return platform::is_custom_place(
+                    return phi::is_custom_place(
                         phi::TransToPhiPlace(kern_pair.first.backend()));
                   });
   if (has_phi_kernel) {
@@ -1427,12 +1425,11 @@ bool OperatorWithKernel::SupportCustomDevice() const {
       return false;
     } else {
       auto& op_kernels = kernel_iter->second;
-      return std::any_of(
-          op_kernels.begin(),
-          op_kernels.end(),
-          [this](OpKernelMap::const_reference kern_pair) {
-            return platform::is_custom_place(kern_pair.first.place_);
-          });
+      return std::any_of(op_kernels.begin(),
+                         op_kernels.end(),
+                         [this](OpKernelMap::const_reference kern_pair) {
+                           return phi::is_custom_place(kern_pair.first.place_);
+                         });
     }
   }
 #else
@@ -1466,7 +1463,7 @@ bool OperatorWithKernel::SupportsMKLDNN(const phi::DataType data_type) const {
           op_kernels.begin(),
           op_kernels.end(),
           [data_type](OpKernelMap::const_reference kern_pair) {
-            return platform::is_cpu_place(kern_pair.first.place_) &&
+            return phi::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::TransToProtoVarType(data_type);
@@ -1499,7 +1496,7 @@ bool OperatorWithKernel::SupportsCUDNN(const phi::DataType data_type) const {
           op_kernels.begin(),
           op_kernels.end(),
           [fluid_data_type](OpKernelMap::const_reference kern_pair) {
-            return platform::is_gpu_place(kern_pair.first.place_) &&
+            return phi::is_gpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ == LibraryType::kCUDNN &&
                    kern_pair.first.data_type_ == fluid_data_type;
           });
@@ -1525,15 +1522,14 @@ bool OperatorWithKernel::SupportsCPUBF16() const {
       return false;
     } else {
       auto& op_kernels = op_kernel_iter->second;
-      return std::any_of(
-          op_kernels.begin(),
-          op_kernels.end(),
-          [](OpKernelMap::const_reference kern_pair) {
-            return platform::is_cpu_place(kern_pair.first.place_) &&
-                   kern_pair.first.place_ == platform::CPUPlace() &&
-                   kern_pair.first.data_type_ ==
-                       proto::VarType::Type::VarType_Type_BF16;
-          });
+      return std::any_of(op_kernels.begin(),
+                         op_kernels.end(),
+                         [](OpKernelMap::const_reference kern_pair) {
+                           return phi::is_cpu_place(kern_pair.first.place_) &&
+                                  kern_pair.first.place_ == phi::CPUPlace() &&
+                                  kern_pair.first.data_type_ ==
+                                      proto::VarType::Type::VarType_Type_BF16;
+                         });
     }
   }
 }
@@ -1547,7 +1543,7 @@ bool OperatorWithKernel::SupportsKernelType(
   auto kernel_iter = kernels.find(kernel_type);
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-  if (paddle::platform::is_xpu_place(kernel_type.place_)) {
+  if (phi::is_xpu_place(kernel_type.place_)) {
     return kernel_iter != kernels.end() &&
            paddle::platform::is_xpu_support_op(
                type_, framework::TransToPhiDataType(kernel_type.data_type_));
@@ -1555,7 +1551,7 @@ bool OperatorWithKernel::SupportsKernelType(
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  if (paddle::platform::is_xpu_place(kernel_type.place_)) {
+  if (phi::is_xpu_place(kernel_type.place_)) {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
         paddle::platform::is_xpu_kp_support_op(
@@ -1604,8 +1600,7 @@ bool OperatorWithKernel::SupportsKernelType(
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          phi::DataType data_type) const {
   return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
-         platform::is_cpu_place(ctx.GetPlace()) &&
-         this->SupportsMKLDNN(data_type);
+         phi::is_cpu_place(ctx.GetPlace()) && this->SupportsMKLDNN(data_type);
 }
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -1616,7 +1611,7 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         phi::DataType data_type) const {
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
-                   paddle::platform::is_gpu_place(ctx.GetPlace());
+                   phi::is_gpu_place(ctx.GetPlace());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (use_cudnn) {
@@ -1651,7 +1646,7 @@ void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
-                                           const platform::Place& place,
+                                           const phi::Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
   this->Info().infer_shape_(&infer_shape_ctx);
@@ -1715,7 +1710,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place) const {
+                                 const phi::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
@@ -1753,9 +1748,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place,
+                                 const phi::Place& place,
                                  RuntimeContext* runtime_ctx) const {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
   phi::KernelKey phi_cpu_kernel_key;
   auto* dev_ctx = pool.Get(place);
@@ -1798,7 +1793,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
-      if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
+      if (phi::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
             paddle::platform::is_xpu_kp_support_op(
@@ -1862,7 +1857,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
-      } else if (platform::is_cpu_place(kernel_type_->place_) &&
+      } else if (phi::is_cpu_place(kernel_type_->place_) &&
                  kernel_type_->data_type_ ==
                      proto::VarType::Type::VarType_Type_BF16 &&
                  !this->SupportsCPUBF16() &&
@@ -1882,7 +1877,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // I can't understand it, it's really confusing.
 // But we still need to keep this to avoid errors.
 #ifdef PADDLE_WITH_XPU_KP
-      if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
+      if (phi::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
             paddle::platform::is_xpu_kp_support_op(
@@ -1926,18 +1921,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // contains the related heterogeneous kernel, use phi CPU kernel.
 #if defined(PADDLE_WITH_XPU)
     bool is_xpu_unsupport =
-        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+        phi::is_xpu_place(kernel_type_->place_) &&
         !paddle::platform::is_xpu_support_op(
             type_, framework::TransToPhiDataType(kernel_type_->data_type_));
 #endif
 #ifdef PADDLE_WITH_XPU_KP
     bool use_xpu_kp_kernel_rt =
-        paddle::platform::is_xpu_place(kernel_type_->place_) &&
-        FLAGS_run_kp_kernel &&
+        phi::is_xpu_place(kernel_type_->place_) && FLAGS_run_kp_kernel &&
         paddle::platform::is_xpu_kp_support_op(
             type_, framework::TransToPhiDataType(kernel_type_->data_type_));
     bool use_xpu_kp_kernel_debug =
-        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+        phi::is_xpu_place(kernel_type_->place_) &&
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
 #endif
@@ -1990,7 +1984,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
                                                         phi_cpu_kernel_key));
 
-        dev_ctx = pool.Get(platform::CPUPlace());
+        dev_ctx = pool.Get(phi::CPUPlace());
         if (phi_kernel_->IsValid()) {
           VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
@@ -2195,7 +2189,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
-  } else if (platform::is_cpu_place(expected_kernel_key.place_) &&
+  } else if (phi::is_cpu_place(expected_kernel_key.place_) &&
              expected_kernel_key.data_type_ ==
                  proto::VarType::Type::VarType_Type_BF16 &&
              !this->SupportsCPUBF16() &&
@@ -2213,7 +2207,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
-      expected_kernel_key.place_ = platform::CPUPlace();
+      expected_kernel_key.place_ = phi::CPUPlace();
     } else if (Attr<std::string>("op_device").find("gpu") !=
                std::string::npos) {
       auto device = Attr<std::string>("op_device");
@@ -2227,14 +2221,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // when the Op that does not have GPUKernel is assigned to GPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
-      expected_kernel_key.place_ = platform::CPUPlace();
+      expected_kernel_key.place_ = phi::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
         auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+      if (phi::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
@@ -2252,14 +2246,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // when the Op that does not have NPUKernel is assigned to NPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
-      expected_kernel_key.place_ = platform::CPUPlace();
+      expected_kernel_key.place_ = phi::CPUPlace();
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (SupportCustomDevice()) {
         auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+      if (phi::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
             << ") has no NPU implementation. It will be assigned to CPUPlace.";
@@ -2277,14 +2271,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // when the Op that does not have XPUKernel is assigned to XPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
-      expected_kernel_key.place_ = platform::CPUPlace();
+      expected_kernel_key.place_ = phi::CPUPlace();
 #ifdef PADDLE_WITH_XPU
       if (SupportXPU()) {
         auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+      if (phi::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
             << ") has no XPU implementation. It will be assigned to CPUPlace.";
@@ -2292,8 +2286,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     }
   }
 
-  if (platform::places_are_same_class(expected_kernel_key.place_,
-                                      ctx.GetPlace())) {
+  if (phi::places_are_same_class(expected_kernel_key.place_, ctx.GetPlace())) {
     expected_kernel_key.place_ = ctx.GetPlace();
   }
 
@@ -2361,7 +2354,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #endif
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-  if (platform::is_xpu_place(expected_kernel_key.place_) &&
+  if (phi::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(
            type_,
@@ -2369,13 +2362,13 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     VLOG(3) << "fluid missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
+    expected_kernel_key.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
+  if (phi::is_xpu_place(expected_kernel_key.place_)) {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
         paddle::platform::is_xpu_kp_support_op(
@@ -2401,7 +2394,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       if (kernel_iter == kernels.end()) {
         expected_kernel_key.library_type_ =
             cache_expected_kernel_key_library_type;
-        expected_kernel_key.place_ = platform::CPUPlace();
+        expected_kernel_key.place_ = phi::CPUPlace();
         kernel_iter = kernels.find(expected_kernel_key);
       } else {
         VLOG(3) << "fluid using XPU KP kernel: " << type_
@@ -2415,7 +2408,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       VLOG(3) << "fluid missing XPU kernel: " << type_
               << ", expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
-      expected_kernel_key.place_ = platform::CPUPlace();
+      expected_kernel_key.place_ = phi::CPUPlace();
       kernel_iter = kernels.find(expected_kernel_key);
     }
   }
@@ -2423,23 +2416,23 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
-      platform::is_ipu_place(expected_kernel_key.place_)) {
+      phi::is_ipu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing IPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
+    expected_kernel_key.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
-      platform::is_custom_place(expected_kernel_key.place_)) {
+      phi::is_custom_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing " << expected_kernel_key.place_.GetDeviceType()
             << " kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
+    expected_kernel_key.place_ = phi::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif

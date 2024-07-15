@@ -91,17 +91,10 @@ struct BuildStrategy {
   // all the backward ops are finished before running the optimization
   // ops. It might make the training speed of data parallelism faster.
   bool enable_backward_optimizer_op_deps_{true};
-  // TODO(dev-paddle): enable_sequential_execution depends on
-  // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
-  // will be removed in the near future.
-  bool enable_sequential_execution_{false};
   bool remove_unnecessary_lock_{true};
   // TODO(dev-paddle): cache_runtime_context may cause some models to hang up
   // while running.
   bool cache_runtime_context_{false};
-
-  // Fix the op run order.
-  bool fix_op_run_order_{false};
 
   // Lowering sub-graph into cinn ops.
   bool build_cinn_pass_{false};
@@ -216,7 +209,7 @@ struct BuildStrategy {
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
   ir::Graph *Apply(ir::Graph *graph,
-                   const std::vector<platform::Place> &places,
+                   const std::vector<phi::Place> &places,
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
@@ -251,13 +244,10 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "debug_graphviz_path_: " << strategy.debug_graphviz_path_ << std::endl;
   os << "enable_backward_optimizer_op_deps_: "
      << strategy.enable_backward_optimizer_op_deps_ << std::endl;
-  os << "enable_sequential_execution_: "
-     << strategy.enable_sequential_execution_ << std::endl;
   os << "remove_unnecessary_lock_: " << strategy.remove_unnecessary_lock_
      << std::endl;
   os << "cache_runtime_context_: " << strategy.cache_runtime_context_
      << std::endl;
-  os << "fix_op_run_order_: " << strategy.fix_op_run_order_ << std::endl;
   os << "fuse_bn_act_ops_: " << strategy.fuse_bn_act_ops_ << std::endl;
   os << "fuse_bn_add_act_ops_: " << strategy.fuse_bn_add_act_ops_ << std::endl;
   os << "fuse_elewise_add_act_ops_: " << strategy.fuse_elewise_add_act_ops_
