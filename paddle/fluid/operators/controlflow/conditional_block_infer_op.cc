@@ -83,7 +83,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
-      if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
+      if (!exec_ || !phi::is_same_place(exec_->GetPlace(), dev_place)) {
         auto &pdesc = *block->Program();
         exec_.reset(new framework::Executor(dev_place));
 #ifdef PADDLE_WITH_DNNL

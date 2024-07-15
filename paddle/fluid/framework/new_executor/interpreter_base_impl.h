@@ -126,7 +126,7 @@ class InterpreterBaseImpl {
 
 inline void SetDeviceId(const phi::Place& place) {
   // TODO(zhiqiu): reduce the cost
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
     PADDLE_THROW(platform::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
@@ -136,7 +136,7 @@ inline void SetDeviceId(const phi::Place& place) {
     auto dev_id = place.device;
     platform::SetDeviceId(dev_id);
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifndef PADDLE_WITH_XPU
     PADDLE_THROW(platform::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
@@ -146,7 +146,7 @@ inline void SetDeviceId(const phi::Place& place) {
     auto dev_id = place.device;
     platform::SetXPUDeviceId(dev_id);
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_THROW(platform::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "

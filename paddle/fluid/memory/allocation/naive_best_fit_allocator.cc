@@ -473,7 +473,7 @@ class BuddyAllocatorList {
 
 BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
   VLOG(10) << "GetBuddyAllocator place = " << place;
-  if (platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
     return BuddyAllocatorList::Instance(
                platform::PlaceHelper::GetDeviceType(place))
         ->Get(platform::PlaceHelper::GetDeviceId(place));

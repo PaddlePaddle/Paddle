@@ -2186,9 +2186,7 @@ class DistModel:
         for feed_item in list(args):
             if isinstance(feed_item, (list, tuple)):
                 feed_list += list(feed_item)
-            elif isinstance(feed_item, paddle.Tensor):
-                feed_list += [feed_item]
-            elif isinstance(feed_item, core.LoDTensor):
+            elif isinstance(feed_item, (paddle.Tensor, core.LoDTensor)):
                 feed_list += [feed_item]
             else:
                 raise TypeError(

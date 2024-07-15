@@ -141,8 +141,8 @@ TEST(Device, HostZeroAllocator) {
 }
 
 TEST(Device, DeviceContextPool) {
-  using paddle::platform::DeviceContextPool;
   using phi::CPUPlace;
+  using phi::DeviceContextPool;
   using phi::GPUContext;
   using phi::GPUPlace;
   using phi::Place;

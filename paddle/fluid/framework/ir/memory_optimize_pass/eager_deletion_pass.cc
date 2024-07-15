@@ -274,7 +274,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
     eager_deletion_op->SetDeviceContext(
         places[op->GetScopeIdx()],
-        platform::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
+        phi::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
   }
 
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;

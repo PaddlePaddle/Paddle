@@ -65,7 +65,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
   const auto& feed_item = CheckAndGetFeedItem(x, col);
   const auto& in_tensor = paddle::get<phi::DenseTensor>(feed_item);
   const auto& place = dev_ctx.GetPlace();
-  if (platform::is_same_place(in_tensor.place(), place)) {
+  if (phi::is_same_place(in_tensor.place(), place)) {
     out->ShareDataWith(in_tensor);
   } else {
     framework::TensorCopy(in_tensor, place, dev_ctx, out);
@@ -86,7 +86,7 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
   const auto& feed_item = CheckAndGetFeedItem(x, col);
   const auto& in_tensor = paddle::get<phi::SparseCooTensor>(feed_item);
   const auto& place = dev_ctx.GetPlace();
-  if (platform::is_same_place(in_tensor.place(), place)) {
+  if (phi::is_same_place(in_tensor.place(), place)) {
     *out = in_tensor;
   } else {
     phi::DenseTensor indices, values;
