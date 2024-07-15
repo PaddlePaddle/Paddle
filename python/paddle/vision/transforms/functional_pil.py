@@ -40,6 +40,7 @@ except:
         'hamming': Image.HAMMING,
     }
 
+
 __all__ = []
 
 
@@ -63,16 +64,16 @@ def to_tensor(pic, data_format='CHW'):
 
     # PIL Image
     if pic.mode == 'I':
-        img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.int32))
     elif pic.mode == 'I;16':
         # cast and reshape not support int16
-        img = paddle.to_tensor(np.asarray(pic, np.int32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.int32))
     elif pic.mode == 'F':
-        img = paddle.to_tensor(np.array(pic, np.float32, copy=False))
+        img = paddle.to_tensor(np.asarray(pic, np.float32))
     elif pic.mode == '1':
-        img = 255 * paddle.to_tensor(np.array(pic, np.uint8, copy=False))
+        img = 255 * paddle.to_tensor(np.asarray(pic, np.uint8))
     else:
-        img = paddle.to_tensor(np.array(pic, copy=False))
+        img = paddle.to_tensor(np.asarray(pic))
 
     if pic.mode == 'YCbCr':
         nchannel = 3

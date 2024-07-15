@@ -108,7 +108,7 @@ void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   }
 }
 
-PirInterpreter::PirInterpreter(const platform::Place& place,
+PirInterpreter::PirInterpreter(const phi::Place& place,
                                const std::vector<std::string>& fetch_var_names,
                                const ::pir::Block* ir_block,
                                framework::Scope* scope,
@@ -200,7 +200,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
 }
 
 PirInterpreter::PirInterpreter(
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::string>& fetch_var_names,
     const ::pir::Block* ir_block,
     framework::Scope* scope,
@@ -425,7 +425,7 @@ void PirInterpreter::PrepareForCUDAGraphCapture() {
       false,
       platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
                                          "before prepare."));
-  PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
+  PADDLE_ENFORCE_EQ(phi::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
                         "CUDA Graph is only supported on NVIDIA GPU device."));
@@ -1085,7 +1085,7 @@ void PirInterpreter::BuildInstructionDependences() {
 void PirInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
   if (instr_node->Name() == "pd_op.memcpy_d2h") {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
       platform::RecordEvent record(
@@ -1144,10 +1144,10 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       return;
     }
 
-    const platform::Place& place = allocation->place();
-    if (platform::is_gpu_place(place)) {
+    const phi::Place& place = allocation->place();
+    if (phi::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
-    } else if (platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
       // TODO(Ruibiao): Here should do something to make sure that the tensor
       // is not freed until the H2D copies done. However, simply launch a
       // CUDA runtime callback to the H2D stream may lead a high performance
@@ -1387,8 +1387,7 @@ void PirInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependency_count_->size(); ++i) {
     if ((*dependency_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
-      if (inst->Name() == "pd_op.memcpy_d2h" &&
-          platform::is_gpu_place(place_)) {
+      if (inst->Name() == "pd_op.memcpy_d2h" && phi::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {
             auto name = value_exe_info_->GetNameById(var_id);
@@ -1602,8 +1601,8 @@ void PirInterpreter::TraceRunImpl() {
   TraceRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done TraceRunInstructionList";
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(place_)) {
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  if (phi::is_custom_place(place_)) {
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 #endif
 }
@@ -1621,8 +1620,8 @@ void PirInterpreter::MultiThreadRunImpl() {
   MultiThreadRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done MultiThreadRunInstructionList";
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(place_)) {
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  if (phi::is_custom_place(place_)) {
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 #endif
 }

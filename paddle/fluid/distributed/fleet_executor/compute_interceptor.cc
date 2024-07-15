@@ -57,7 +57,7 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
                         microbatch_scopes_.size(),
                         scope_id));
   auto* scope = microbatch_scopes_[scope_id];
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   for (const auto& var_iter : msg.vars_list()) {
     const std::string& name = var_iter.name();
     auto& dev_ctx = *pool.Get(place_);
@@ -85,7 +85,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   InterceptorMessage ready_msg;
   ready_msg.set_message_type(DATA_WITH_VARS);
   ready_msg.set_scope_idx(cur_scope_id_);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   for (auto const& iter : node_->vars_to_dtype()) {
     VarList* vars = ready_msg.add_vars_list();
     const auto& var_name = iter.first;

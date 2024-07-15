@@ -232,7 +232,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
   AnalysisConfig config_;
   std::mutex clone_mutex_;
-  platform::Place place_;
+  phi::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
   int predictor_id_;

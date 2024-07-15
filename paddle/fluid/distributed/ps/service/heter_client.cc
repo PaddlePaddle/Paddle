@@ -31,11 +31,11 @@ int GetMicroId(const platform::DeviceContext& ctx,
   framework::Variable* var = scope->FindVar("microbatch_id");
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "the type of micro id should be LoDTensor."));
   auto micro_id = -1;
   auto* tensor = var->GetMutable<phi::DenseTensor>();
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     auto data = reinterpret_cast<const float*>(tensor->data());
     micro_id = static_cast<int>(data[0]);
   } else {
@@ -44,7 +44,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
     char* temp_ptr = temp.data();
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  temp_ptr,
                  tensor->place(),
                  tensor->data(),
@@ -134,7 +134,7 @@ void HeterClient::SendAndRecvAsync(
     PADDLE_ENFORCE_NE(
         closure->cntl.Failed(),
         true,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "HeterClient::SendAndRecv meets brpc error, error message is %s",
             closure->cntl.ErrorText()));
     VLOG(4) << "call heter_worker success";
@@ -226,7 +226,7 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
       PADDLE_ENFORCE_NE(
           closure->cntl.Failed(),
           true,
-          platform::errors::Unimplemented(
+          phi::errors::Unimplemented(
               "HeterClient::SendToSwitch meets brpc error, error message is %s",
               closure->cntl.ErrorText()));
     }
@@ -367,8 +367,8 @@ int HeterClient::Recv(const platform::DeviceContext& ctx,
   fut.wait();
   VLOG(4) << "RecvFromSwitch done";
   // save in worker
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
   auto& res_io_buffer = closure->cntl.response_attachment();
   VLOG(4) << "entering DeserializeFromMultiVarMsgAndIOBuf";

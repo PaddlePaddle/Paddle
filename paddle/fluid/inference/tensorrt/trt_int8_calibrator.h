@@ -40,7 +40,7 @@ class TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
   TRTInt8Calibrator(const std::unordered_map<std::string, size_t>& buffers,
                     int batch_size,
                     std::string engine_name,
-                    const platform::Place place);
+                    const phi::Place place);
 
   explicit TRTInt8Calibrator(const std::string& calibration_data);
   ~TRTInt8Calibrator() override;

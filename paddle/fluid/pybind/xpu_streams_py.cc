@@ -39,7 +39,7 @@ void BindXpuStream(py::module *m_ptr) {
     paddle::platform::SetXPUDeviceId(device_id);
     auto place = phi::XPUPlace(device_id);
     auto *dev_ctx = static_cast<phi::XPUContext *>(
-        paddle::platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->Wait();
     paddle::platform::SetXPUDeviceId(curr_device_id);
 #else

@@ -44,7 +44,7 @@ framework::proto::VarType::Type VarMessageToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "VarMessageToVarType:Unsupported type %d", type));
   }
 }
@@ -107,7 +107,7 @@ void SerializeLodTensor(framework::Variable* var,
     var_msg->add_dims(dim);
   }
   // IO Buffer
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
@@ -117,7 +117,7 @@ void SerializeLodTensor(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -154,7 +154,7 @@ void SerializeSelectedRows(framework::Variable* var,
     var_msg->add_dims(dim);
   }
   // IO Buffer
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
@@ -164,7 +164,7 @@ void SerializeSelectedRows(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -209,7 +209,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     auto* var = scope->FindVar(msg.varname());
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
     if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
@@ -246,11 +246,11 @@ void DeserializeLodTensor(framework::Variable* var,
       framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
 
   // IO Buffer
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);  // NOLINT
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     unsigned long data_len;  // NOLINT
     char* temp_ptr =
@@ -260,7 +260,7 @@ void DeserializeLodTensor(framework::Variable* var,
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  (void*)temp_ptr,  // NOLINT
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
@@ -290,11 +290,11 @@ void DeserializeSelectedRows(
       place,
       framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
   // IO Buffer
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);  // NOLINT
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
@@ -304,7 +304,7 @@ void DeserializeSelectedRows(
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  temp_ptr,
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);

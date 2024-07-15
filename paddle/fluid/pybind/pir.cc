@@ -2616,6 +2616,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                }
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
+                   LOG(ERROR)
+                       << "expect[" << i << "]: " << expect.at(i) << " actual["
+                       << i << "]: " << actual.at(i) << " .";
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2647,6 +2650,21 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
         return pir::ShapeAnalysisManager::Instance().Get(program);
       },
       return_value_policy::reference);
+  m->def("all_ops_defined_symbol_infer",
+         [](const pir::Program *program) -> bool {
+           // check that all ops have defined the InferSymbolicShapeInterface
+           bool flag = true;
+           for (pir::Operation &op : *(program->block())) {
+             pir::InferSymbolicShapeInterface infer_interface =
+                 op.dyn_cast<pir::InferSymbolicShapeInterface>();
+             if (!infer_interface) {
+               LOG(ERROR) << "The op: " << op.name()
+                          << " does not implement InferSymbolicShapeInterface.";
+               flag = false;
+             }
+           }
+           return flag;
+         });
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>
