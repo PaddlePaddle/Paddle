@@ -58,12 +58,6 @@ class MatmulReshapeElementwiseAddFusePattern
     reshape1({&pat.Tensor("x"), &full_int_array1()},
              {&pat.Tensor("reshape_x"), &pat.Tensor("reshape_x_xshape")});
 
-    // const auto &full_int_array2 =
-    //     pat.Op(paddle::dialect::FullIntArrayOp::name());
-    // const auto &reshape2 = pat.Op(paddle::dialect::ReshapeOp::name());
-    // reshape2({&pat.Tensor("w"), &full_int_array2()},
-    //          {&pat.Tensor("reshape_w"), &pat.Tensor("reshape_w_xshape")});
-
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
