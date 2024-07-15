@@ -279,15 +279,6 @@ def remove_unuseful_comm_op_pass(program):
                 op.erase()
 
 
-def remove_unuseful_data_op_pass(program):
-    for op in program.global_block().ops:
-        if op.name() == "pd_op.data" and 'loss_scaling' in op.str_attr("name"):
-            print('opxxx', op)
-            if op.result(0).use_empty():
-                print('erase')
-                op.erase()
-
-
 # In sequence_parallel, we need to transpose hidden_states
 # from [bs, seq, hidden] to [seq, bs, hidden] to perform
 # split and allgather at dim 0.

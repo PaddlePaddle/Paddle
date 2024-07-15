@@ -62,6 +62,10 @@ class TestSimpleNetForSemiAutoParallel:
         self._seed = eval(os.getenv("seed"))
         self._ckpt_path = os.getenv("ckpt_path")
         self._amp = eval(os.getenv("amp"))
+        self._master_weight = eval(os.getenv("use_master_weight"))
+        self._master_grad = eval(os.getenv("use_master_grad"))
+        self._amp_dtype = eval(os.getenv("amp_dtype"))
+        self._amp_level = eval(os.getenv("amp_level"))
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
@@ -86,17 +90,25 @@ class TestSimpleNetForSemiAutoParallel:
             layer, opt = paddle.amp.decorate(
                 models=layer,
                 optimizers=opt,
-                level='O2',
-                master_weight=False,
-                master_grad=False,
+                level=self._amp_level,
+                master_weight=self._master_weight,
+                master_grad=self._master_grad,
             )
+            strategy = dist.Strategy()
+            amp = strategy.amp
+            amp.enable = self._amp
+            amp.dtype = self._amp_dtype
+            amp.level = self._amp_level
+            amp.use_master_weight = self._master_weight
+            amp.use_master_weight = self._master_grad
+
         # static training
-        dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
+        dist_model = dist.to_static(
+            layer, dist_loader, loss_fn, opt, strategy=strategy
+        )
         loss_list = []
-        with paddle.amp.auto_cast(
-            level='O2', dtype='float16', enable=self._amp
-        ):
-            dist_model.train()
+
+        dist_model.train()
 
         if self._in_pir_mode:
             mode = "train"

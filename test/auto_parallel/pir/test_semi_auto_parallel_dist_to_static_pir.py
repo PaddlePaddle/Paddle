@@ -29,7 +29,14 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
     def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
             {"dtype": "float32", "seed": "2023"},
-            {"backend": ["gpu"], "amp": [True, False]},
+            {
+                "backend": ["gpu"],
+                "amp": [True, False],
+                "amp_dtype": ['float16', 'bfloat16'],
+                'amp_level': ['O1', 'O2'],
+                'use_master_weight': [True, False],
+                'use_master_grad': [True, False],
+            },
         )
         for envs in envs_list:
             # self._log_dir.name = "./log"

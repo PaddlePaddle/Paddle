@@ -61,7 +61,6 @@ from .pir_pass import (
     remove_other_rank_input_output_pass,
     remove_other_rank_op_pass,
     remove_unuseful_comm_op_pass,
-    remove_unuseful_data_op_pass,
 )
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
@@ -742,18 +741,16 @@ class Engine:
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
 
-        print('after reshard', dist_program, flush=1)
+        # print('after reshard', dist_program, flush=1)
 
         remove_other_rank_input_output_pass(dist_program)
-        print(
-            'after remove_other_rank_input_output_pass', dist_program, flush=1
-        )
+        # print(
+        #     'after remove_other_rank_input_output_pass', dist_program, flush=1
+        # )
 
         remove_other_rank_op_pass(dist_program)
 
-        remove_unuseful_data_op_pass(dist_program)
-
-        print('after remove_other_rank_op_pass', dist_program, flush=1)
+        # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
