@@ -2609,7 +2609,13 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                if (actual.size() != expect.size()) {
                  LOG(ERROR) << "expect size " << expect.size()
                             << " is not equal to actual size " << actual.size()
-                            << " .";
+                            << " . The detailed infermation is as follows:";
+                 for (size_t i = 0; i < expect.size(); ++i) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect[i];
+                 }
+                 for (size_t i = 0; i < actual.size(); ++i) {
+                   LOG(ERROR) << "actual[" << i << "]: " << actual[i];
+                 }
                  return false;
                } else if (actual.empty()) {
                  return true;
