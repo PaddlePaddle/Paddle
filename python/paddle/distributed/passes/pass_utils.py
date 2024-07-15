@@ -1307,7 +1307,7 @@ class PipelineMemoryEstimator:
         Get the skip_gc_vars for each type of program.
 
         The order of program_types is the same as the order in the pipeline's micro batch.
-        For example, in 1F1B pipeline, the order of program_types is ['forward', 'backward', 'optimizer'].
+        For example, in 1F1B pipeline, the order of program_types is ['forward', 'backward'].
         """
         self.program_types = program_types
 
@@ -1427,7 +1427,8 @@ class PipelineMemoryEstimator:
                     visited_vars[var_name] -= var_info[var_name]["size"]
 
         for var_name in visited_vars:
-            mem_usage -= visited_vars[var_name]
+            if var_name not in skip_gc_vars:
+                mem_usage -= visited_vars[var_name]
 
         return mem_usage, max_memory
 
