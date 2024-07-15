@@ -106,9 +106,12 @@ class InferenceEngine:
         )
         self.cache_static_model = kwargs.get("cache_static_model", False)
         self.save_model_dir = kwargs.get(
-            "save_model_dir", os.path.join(Path.home(), ".cache")
+            "save_model_dir",
+            os.path.join(
+                Path.home(), ".cache", "paddle", "to_static_inference_models"
+            ),
         )
-        self.save_model_dir += "/" + func.__name__
+        self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
         self.precision_mode = kwargs.get("precision_mode", "float32")
         self.switch_ir_optim = kwargs.get("switch_ir_optim", True)
         self.switch_ir_debug = kwargs.get("switch_ir_debug", False)
@@ -134,7 +137,7 @@ class InferenceEngine:
         py_script = py_script[py_script.find("def") :]
         if used_as_at_decorator:
             assert self.arg_names[0] == "self"
-        self.save_path = self.save_model_dir + "/infer"
+        self.save_path = os.path.join(self.save_model_dir, "infer")
         d2s_input_info_path = self.save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
         d2s_input_names = []
@@ -236,14 +239,14 @@ class InferenceEngine:
         if len(self.d2s_input_names) == 0:
             self.d2s_input_names.extend([None] * len(input_tensor_lists))
         for i in range(len(input_specs)):
-            if type(input_specs[i]) == list:
+            if isinstance(input_specs[i], list):
                 for j in range(len(input_specs[i])):
                     input_specs[i][j].shape = self.d2s_input_shapes[
                         d2s_shapes_id
                     ]
                     self.d2s_input_names[d2s_shapes_id] = input_specs[i][j].name
                     d2s_shapes_id += 1
-            elif type(input_specs[i]) == paddle.static.InputSpec:
+            elif isinstance(input_specs[i], paddle.static.InputSpec):
                 input_specs[i].shape = self.d2s_input_shapes[d2s_shapes_id]
                 self.d2s_input_names[d2s_shapes_id] = input_specs[i].name
                 d2s_shapes_id += 1
@@ -321,8 +324,8 @@ class InferenceEngine:
     # why we need input_tensor_lists? this is for TensorRT max/min/opt shape.
     def create_predictor(self, input_tensor_lists):
         # create predictor
-        model_file = self.save_model_dir + "/infer.pdmodel"
-        params_file = self.save_model_dir + "/infer.pdiparams"
+        model_file = os.path.join(self.save_model_dir, "infer.pdmodel")
+        params_file = os.path.join(self.save_model_dir, "infer.pdiparams")
 
         config = Config(model_file, params_file)
         config.enable_memory_optim()
@@ -348,7 +351,9 @@ class InferenceEngine:
             min_input_shape = {}
             max_input_shape = {}
             opt_input_shape = {}
-            shape_range_file = self.save_model_dir + "/trt_shape.txt"
+            shape_range_file = os.path.join(
+                self.save_model_dir, "trt_shape.txt"
+            )
             if self.collect_shape:
                 config.collect_shape_range_info(shape_range_file)
             elif os.path.exists(shape_range_file):

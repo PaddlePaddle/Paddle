@@ -176,7 +176,7 @@ class _ToStaticOptions(TypedDict):
     trt_precision_mode: NotRequired[str]
     trt_use_static: NotRequired[bool]
     collect_shape: NotRequired[bool]
-    delete_pass_lists: NotRequired[list]
+    delete_pass_lists: NotRequired[list[str]]
     enable_new_ir: NotRequired[bool]
     exp_enable_use_cutlass: NotRequired[bool]
 
