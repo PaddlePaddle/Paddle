@@ -203,7 +203,9 @@ class VariableCreator(metaclass=Singleton):
         # self.var_cache = {}
         # self.main_program = paddle.static.Program()
         # self.startup_program = paddle.static.Program()
-        self.var_name_generator = UniqueNameGenerator("infer_meta_variable_")
+        self.var_name_generator = UniqueNameGenerator(
+            SOT_INFER_META_INNER_VAR_PREFIX
+        )
 
     def gen_name(self, meta):
         name = f"{meta.dtype}_{meta.stop_gradient}"
