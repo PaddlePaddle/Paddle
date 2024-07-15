@@ -101,7 +101,7 @@ struct ReduceTreePattern {
   std::vector<ReduceTreePattern>& childs() { return childs_; }
   void InsertChild(const ReduceTreePattern& child) { childs_.push_back(child); }
   std::vector<ReducePattern> FlattenReducePattern() const {
-    std::vector<ReducePattern> result;
+    std::vector<ReducePattern> result{root_};
     for (const auto& child : childs_) {
       result = ConcatVector(result, child.FlattenReducePattern());
     }
