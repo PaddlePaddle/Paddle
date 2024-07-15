@@ -134,7 +134,8 @@ platform::DeviceContext* ParseDeviceContext(
       }
       return dev_ctx;
     }
-    if (FLAGS_dynamic_static_unified_comm) {
+    if ((op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0) &&
+        FLAGS_dynamic_static_unified_comm) {
       if (op_attributes.count("ring_id") != 0) {
         int ring_id =
             op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
