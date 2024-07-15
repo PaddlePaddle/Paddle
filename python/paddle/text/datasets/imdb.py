@@ -92,8 +92,6 @@ class Imdb(Dataset):
 
     data_file: str | None
     mode: _ImdbDataSetMode
-    cutoff: int
-    download: bool
     word_idx: dict[str, int]
     docs: list
     labels: list
@@ -104,7 +102,7 @@ class Imdb(Dataset):
         mode: _ImdbDataSetMode = 'train',
         cutoff: int = 150,
         download: bool = True,
-    ):
+    ) -> None:
         assert mode.lower() in [
             'train',
             'test',
