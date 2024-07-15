@@ -1185,11 +1185,11 @@ void LerpInferMeta(const MetaTensor& x,
     int64_t l = l_dims[j];
     if (s != l) {
       if (l == 1) {
-        shapes[j] = s;
+        shapes_out[j] = s;
       } else if (s == 1 || s == -1) {
-        shapes[j] = l;
+        shapes_out[j] = l;
       } else if (l == -1) {
-        shapes[j] = s;
+        shapes_out[j] = s;
       } else {
         PADDLE_THROW(errors::InvalidArgument(
             "The shape of tensor a %s:%d must match shape of tensor b "
