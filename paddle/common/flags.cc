@@ -1284,6 +1284,7 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          false,
                          "enable nccl debug mode to synchronize nccl comm");
 #endif
+
 PHI_DEFINE_EXPORTED_bool(
     benchmark,
     false,
@@ -1291,6 +1292,7 @@ PHI_DEFINE_EXPORTED_bool(
     "and add some memory usage logs."
     "Default cuda is asynchronous device, set to True will"
     "force op run in synchronous mode.");
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
