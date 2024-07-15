@@ -634,103 +634,180 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
   return res;
 }
 
+void InitBlockArgSymbolicShape(const pir::Value &origin_input,
+                               const pir::Value &block_arg,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &origin_input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(origin_input);
+  origin_input_shape_or_data.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        infer_context->SetSymbolForValueByStaticShape(block_arg);
+        const auto &origin_input_shape = impl.shape();
+        const auto &block_arg_shape =
+            infer_context->GetShapeOrDataForValue(block_arg).shape();
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, TensorList should not be handled in while args."));
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        const auto &input_shape_hint = impl.GetShapeHint();
+        std::vector<symbol::DimExpr> block_arg_shape_hint;
+        for (int i = 0; i < input_shape_hint.size(); ++i) {
+          block_arg_shape_hint.emplace_back(infer_context->GetNextSymName());
+        }
+        infer_context->SetShapeOrDataForValue(
+            block_arg,
+            symbol::ShapeOrDataDimExprs(
+                symbol::RankedTensorArrayShapeOrDataDimExprs(
+                    block_arg_shape_hint)));
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, Null value should not be handled in while args."));
+      });
+}
+
+void AddCstrForArgs(const pir::Value &origin_input,
+                    const pir::Value &yield_value,
+                    const pir::Value &block_arg,
+                    const int &arg_index,
+                    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &block_arg_shape_or_data =
+      infer_context->GetShapeOrDataForValue(block_arg);
+  block_arg_shape_or_data.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        const auto &block_arg_shape = impl.shape();
+        const auto &origin_input_shape =
+            infer_context->GetShapeOrDataForValue(origin_input).shape();
+        const auto &yield_value_shape =
+            infer_context->GetShapeOrDataForValue(yield_value).shape();
+        PADDLE_ENFORCE_EQ(block_arg_shape.size(),
+                          yield_value_shape.size(),
+                          phi::errors::InvalidArgument(
+                              "while op's input[%d] rank should equal to "
+                              "output[%d]'s rank, Now the rank of input is %d,"
+                              "the rank of output is %d.",
+                              arg_index,
+                              arg_index + 1,
+                              block_arg_shape.size(),
+                              yield_value_shape.size()));
+        const auto &original_input_shape =
+            infer_context->GetShapeOrDataForValue(origin_input).shape();
+        // GTOne
+        if (origin_input_shape.size() == block_arg_shape.size()) {
+          for (size_t j = 0; j < origin_input_shape.size(); ++j) {
+            if (infer_context->IsGreatThanOne(origin_input_shape[j])) {
+              infer_context->AddGreatThanOneCstr(block_arg_shape[j]);
+            }
+          }
+        }
+        // Equal
+        for (size_t j = 0; j < block_arg_shape.size(); ++j) {
+          if (block_arg_shape[j].isa<int64_t>()) {
+            continue;
+          }
+          if (block_arg_shape[j] ==
+              yield_value_shape[j]) {  // Dim isn't changed in while
+            infer_context->AddEqualCstr(original_input_shape[j],
+                                        block_arg_shape[j]);
+            continue;
+          }
+          if (original_input_shape.size() == yield_value_shape.size()) {
+            if (original_input_shape[j] == yield_value_shape[j]) {
+              infer_context->AddEqualCstr(original_input_shape[j],
+                                          block_arg_shape[j]);
+              continue;
+            }
+            symbol::DimExprBuilder builder;
+            if (yield_value_shape[j] ==
+                    builder.Broadcast(block_arg_shape[j],
+                                      original_input_shape[j]) ||
+                yield_value_shape[j] ==
+                    builder.Broadcast(original_input_shape[j],
+                                      block_arg_shape[j])) {
+              infer_context->AddEqualCstr(original_input_shape[j],
+                                          block_arg_shape[j]);
+              continue;
+            }
+          }
+        }
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, TensorList should not be handled in while args."));
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        // TensorArray no need to add constraints
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, Null value should not be handled in while args."));
+      });
+}
+
+void AddCstrForOutputs(const pir::Value &origin_input,
+                       const pir::Value &output,
+                       const pir::Value &block_arg,
+                       pir::InferSymbolicShapeContext *infer_context) {
+  const auto &origin_input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(origin_input);
+  origin_input_shape_or_data.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        const auto &origin_input_shape = impl.shape();
+        const auto &output_shape =
+            infer_context->GetShapeOrDataForValue(output).shape();
+        const auto &block_arg_shape =
+            infer_context->GetShapeOrDataForValue(block_arg).shape();
+        if (origin_input_shape.size() !=
+            block_arg_shape
+                .size()) {  // there is a trick, so the size may vary.
+          return;
+        }
+        for (size_t j = 0; j < output_shape.size(); j++) {
+          if (infer_context->IsEqual(output_shape[j], block_arg_shape[j])) {
+            infer_context->AddEqualCstr(output_shape[j], origin_input_shape[j]);
+          }
+        }
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, TensorList should not be handled in while args."));
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        // TensorArray no need to add constraints
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, Null value should not be handled in while args."));
+      });
+}
+
 bool WhileOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  for (auto &value : block_args()) {
-    std::vector<symbol::DimExpr> sym_dims;
-    const std::vector<int64_t> &dims =
-        common::vectorize(value.type().dyn_cast<pir::DenseTensorType>().dims());
-
-    for (auto dim : dims) {
-      symbol::DimExpr dim_expr;
-      if (dim == pir::ShapedTypeInterface::kDynamic) {
-        symbol::DimExpr symbolic_dim_expr(infer_context->GetNextSymName());
-        dim_expr = symbolic_dim_expr;
-      } else {
-        symbol::DimExpr numeric_dim_expr(dim);
-        dim_expr = numeric_dim_expr;
-      }
-      sym_dims.push_back(dim_expr);
-    }
-    symbol::ShapeOrDataDimExprs shape_data{
-        symbol::TensorShapeOrDataDimExprs(sym_dims)};
-    infer_context->SetShapeOrDataForValue(value, shape_data);
-  }
-
-  // add GreaterThanOne constraint
   const auto &body_args = block_args();
   PADDLE_ENFORCE_EQ(num_operands() - 1,
                     body_args.size(),
                     phi::errors::InvalidArgument(
                         "The num_operands-1 and body_args.size is not equal"));
   for (size_t i = 0; i < body_args.size(); ++i) {
-    const auto &input_i =
-        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
-    const auto &args_i =
-        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
-    if (input_i.size() !=
-        args_i.size()) {  // there is a trick, so the size may vary.
-      continue;
-    }
-    for (size_t j = 0; j < input_i.size(); ++j) {
-      if (infer_context->IsGreatThanOne(input_i[j])) {
-        infer_context->AddGreatThanOneCstr(args_i[j]);
-      }
-    }
+    InitBlockArgSymbolicShape(
+        operand_source(i + 1), body_args[i], infer_context);
   }
 
   pir::InferSymExprForBlock(body(), infer_context);
 
-  // add constraints for args
   for (size_t i = 0; i < body_args.size(); ++i) {
-    const auto &input_arg_shape =
-        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
-    const auto &yield_value_shape =
-        infer_context
-            ->GetShapeOrDataForValue(body().back().operand_source(i + 1))
-            .shape();
-    PADDLE_ENFORCE_EQ(input_arg_shape.size(),
-                      yield_value_shape.size(),
-                      phi::errors::InvalidArgument(
-                          "while op's input[%d] rank should equal to "
-                          "output[%d]'s rank, Now the rank of input is %d,"
-                          "the rank of output is %d.",
-                          i,
-                          i + 1,
-                          input_arg_shape.size(),
-                          yield_value_shape.size()));
-    const auto &original_input_shape =
-        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
-    for (size_t j = 0; j < input_arg_shape.size(); ++j) {
-      if (input_arg_shape[j].isa<int64_t>()) {
-        continue;
-      }
-      if (input_arg_shape[j] ==
-          yield_value_shape[j]) {  // Dim isn't changed in while
-        infer_context->AddEqualCstr(original_input_shape[j],
-                                    input_arg_shape[j]);
-        continue;
-      }
-      if (original_input_shape.size() == yield_value_shape.size()) {
-        if (original_input_shape[j] == yield_value_shape[j]) {
-          infer_context->AddEqualCstr(original_input_shape[j],
-                                      input_arg_shape[j]);
-          continue;
-        }
-        symbol::DimExprBuilder builder;
-        if (yield_value_shape[j] ==
-                builder.Broadcast(input_arg_shape[j],
-                                  original_input_shape[j]) ||
-            yield_value_shape[j] == builder.Broadcast(original_input_shape[j],
-                                                      input_arg_shape[j])) {
-          infer_context->AddEqualCstr(original_input_shape[j],
-                                      input_arg_shape[j]);
-          continue;
-        }
-      }
-    }
+    AddCstrForArgs(operand_source(i + 1),
+                   body().back().operand_source(i + 1),
+                   body_args[i],
+                   i,
+                   infer_context);
   }
 
+  // Set ShapeOrDataDimExpr for results
   const auto &last_op = body().back();
   for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
     infer_context->SetShapeOrDataForValue(
@@ -743,21 +820,8 @@ bool WhileOp::InferSymbolicShape(
                     phi::errors::InvalidArgument(
                         "The body_args.size and num_results is not equal"));
   for (size_t i = 0; i < num_results(); ++i) {
-    const auto &input_i =
-        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
-    const auto &output_i =
-        infer_context->GetShapeOrDataForValue(result(i)).shape();
-    const auto &args_i =
-        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
-    if (input_i.size() !=
-        args_i.size()) {  // there is a trick, so the size may vary.
-      continue;
-    }
-    for (size_t j = 0; j < output_i.size(); j++) {
-      if (infer_context->IsEqual(output_i[j], args_i[j])) {
-        infer_context->AddEqualCstr(output_i[j], input_i[j]);
-      }
-    }
+    AddCstrForOutputs(
+        operand_source(i + 1), result(i), body_args[i], infer_context);
   }
 
   return true;
