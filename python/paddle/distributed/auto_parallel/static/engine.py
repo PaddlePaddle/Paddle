@@ -58,8 +58,10 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
+    remove_other_rank_input_output_pass,
     remove_other_rank_op_pass,
     remove_unuseful_comm_op_pass,
+    remove_unuseful_data_op_pass,
 )
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
@@ -649,10 +651,11 @@ class Engine:
         startup_program = self._startup_progs[mode]
 
         # Part 1: Complete program
-        # Step 1.1: Mix2Dense Pass
+        # Step 1.1: Mix2Dist Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -673,7 +676,7 @@ class Engine:
                             decr_every_n_nan_or_inf=None,
                             incr_ratio=None,
                             decr_ratio=None,
-                            use_dynamic_loss_scaling=False,
+                            use_dynamic_loss_scaling=True,
                             use_amp_guard=None,
                             use_master_grad=master_grad,
                             use_promote=None,
@@ -682,14 +685,15 @@ class Engine:
                     scaler = paddle.amp.GradScaler(
                         init_loss_scaling=init_loss_scaling
                     )
-                    # re-run apply_mix2dist_pass to dist accumulator.
-                    apply_mix2dist_pass(dist_program)
 
                     scaled = scaler.scale(loss)
                     scaler.minimize(self._optimizer, scaled)
 
                     print(startup_program)
-                    print(dist_program)
+                    print('dist_program', dist_program, flush=1)
+
+                    # re-run apply_mix2dist_pass to dist accumulator.
+                    apply_mix2dist_pass(dist_program)
 
                     # params_grads = paddle.autograd.ir_backward.append_backward(
                     #     loss
@@ -703,7 +707,8 @@ class Engine:
                 self._logger.info(
                     "loss value is not found, skip append backward."
                 )
-        # Part 2: Parallelism search
+
+        # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
         # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
         if self._strategy.auto_mode == "semi-auto":
@@ -732,7 +737,18 @@ class Engine:
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
 
+        print('after reshard', dist_program, flush=1)
+
+        remove_other_rank_input_output_pass(dist_program)
+        print(
+            'after remove_other_rank_input_output_pass', dist_program, flush=1
+        )
+
         remove_other_rank_op_pass(dist_program)
+
+        remove_unuseful_data_op_pass(dist_program)
+
+        print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -1129,7 +1145,9 @@ class Engine:
                 for op in dist_main_prog.global_block().ops:
                     if op.name() == "pd_op.data":
                         var_name = op.str_attr("name")
-                        assert var_name not in name_map_value
+                        assert (
+                            var_name not in name_map_value
+                        ), f"The value {var_name} in {op} is already exist"
                         name_map_value[var_name] = op.result(0)
                 del_ops = []
                 block = startup_prog.global_block()

@@ -24,6 +24,7 @@ from .reshard_funcs.reshard_func_register import register_reshard_funcs
 register_reshard_funcs()
 
 partition_skip_op_list = ["builtin.combine", "builtin.split"]
+amp_ops = ["pd_op.check_finite_and_unscale_", "pd_op.update_loss_scaling_"]
 
 
 def reshard_single_value(op, operand, attr):
@@ -182,7 +183,7 @@ def apply_reshard_pass(dist_program):
             reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
             assert (
                 reshard_func is not None
-            ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
+            ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
             prev_op = var.get_defining_op()
             if prev_op:
                 paddle.pir.set_insertion_point_after(prev_op)
@@ -234,6 +235,32 @@ def remove_other_rank_op_pass(dist_program):
             op.erase()
 
 
+# pruning value not belong to cur rank
+# especially used for check_finite_and_unscale
+# and update_loss_scaling op in amp
+def remove_other_rank_input_output_pass(dist_program):
+    cur_rank = paddle.distributed.get_rank()
+    for op in dist_program.global_block().ops[::-1]:
+        if op.name() not in amp_ops:
+            continue
+        print(op, flush=1)
+        new_vars = []
+        combine_op = op.operand_source(0).get_defining_op()
+        for inner_operand in op.operand_source(0).get_defining_op().operands():
+            if (
+                cur_rank
+                in inner_operand.source().dist_attr().process_mesh.process_ids
+            ):
+                new_vars.append(inner_operand.source())
+                print(cur_rank, inner_operand, flush=1)
+                continue
+        result = op.operand_source(0).get_defining_op().result(0)
+        paddle.pir.set_insertion_point_after(combine_op)
+        res = paddle._C_ops.builtin_combine(new_vars)
+        result.replace_all_uses_with(res)
+        combine_op.erase()
+
+
 # Note: this is the pass in the dense program
 comm_ops = ["pd_op.c_allreduce_sum", "pd_op.c_allgather"]
 
@@ -249,6 +276,15 @@ def remove_unuseful_comm_op_pass(program):
         if op.name() == "pd_op.share_data_":
             if op.operand_source(0).has_one_use():
                 op.result(0).replace_all_uses_with(op.operand_source(0))
+                op.erase()
+
+
+def remove_unuseful_data_op_pass(program):
+    for op in program.global_block().ops:
+        if op.name() == "pd_op.data" and 'loss_scaling' in op.str_attr("name"):
+            print('opxxx', op)
+            if op.result(0).use_empty():
+                print('erase')
                 op.erase()
 
 

@@ -174,6 +174,7 @@ class TestSimpleNetForSemiAutoParallel:
         )
 
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
+        print('loss', dy_losses, dy2static_losses)
         np.testing.assert_array_equal(dy_losses, dy2static_losses)
 
     def test_dp_demo_net(self):
@@ -221,7 +222,7 @@ class TestSimpleNetForSemiAutoParallel:
         paddle.disable_static()
         self.set_random_seed(self._seed)
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
-        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["x"])
         data_loader = self.create_data_loader()
 
         self.set_random_seed(self._seed)
@@ -250,8 +251,8 @@ class TestSimpleNetForSemiAutoParallel:
 
     def run_test_case(self):
         self.test_mp_demo_net()
-        # self.test_pp_demo_net()
-        # self.test_dp_demo_net()
+        self.test_pp_demo_net()
+        self.test_dp_demo_net()
 
 
 if __name__ == '__main__':

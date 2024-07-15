@@ -96,6 +96,7 @@ class DPDemoNet(nn.Layer):
         out = self.relu_1(out)
         out = self.linear_1(out)
         out = self.relu_2(out)
+        out = paddle.cast(out, 'float32')
         return out
 
 
