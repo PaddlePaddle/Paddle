@@ -174,7 +174,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
+  if (phi::is_cpu_place(root_tensor->place())) {
     memory::Copy(thread_place,
                  thread_ptr,
                  phi::CPUPlace(),
@@ -200,7 +200,7 @@ void HeterXpuTrainer::HeterMemCpy(phi::DenseTensor* thread_tensor,
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
+  if (phi::is_cpu_place(root_tensor->place())) {
     memory::Copy(thread_place,
                  thread_ptr,
                  phi::CPUPlace(),
@@ -348,7 +348,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     }                                                                          \
   } while (0)
       _ForEachDataType_(MergeCallback);
-      if (!platform::is_cpu_place(thread_tensor->place())) {
+      if (!phi::is_cpu_place(thread_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
         auto dev_id = thread_tensor->place().device;
         platform::CUDADeviceGuard guard(dev_id);
@@ -362,8 +362,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         auto place = thread_tensor->place();
         auto dev_id = place.device;
         phi::backends::xpu::XPUDeviceGuard guard(dev_id);
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
+        phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
@@ -385,7 +384,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     auto* merge_var = response->add_vars();
     heter_ptr_->SerializeToReq(
         need_merge_var_names_[i], root_scope_, merge_var);
-    if (!platform::is_cpu_place(root_tensor->place())) {
+    if (!phi::is_cpu_place(root_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       auto dev_id = root_tensor->place().device;
       platform::CUDADeviceGuard guard(dev_id);
@@ -399,8 +398,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       auto place = root_tensor->place();
       auto dev_id = place.device;
       phi::backends::xpu::XPUDeviceGuard guard(dev_id);
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
@@ -516,7 +514,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   }
 #ifdef PADDLE_WITH_CUDA
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(context->event_, dev_ctx->stream()));
   // cudaEventSynchronize(context->event_);
