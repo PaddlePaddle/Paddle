@@ -50,6 +50,8 @@ struct PredicatePrinter : public ir::IrPrinter {
   void Visit(const ir::GE *x) { PrintBinaryOp("GE", x); }
   void Visit(const ir::And *x) { PrintBinaryOp("AND", x); }
   void Visit(const ir::Or *x) { PrintBinaryOp("OR", x); }
+  void Visit(const ir::Max *x) { PrintBinaryOp("MAX", x); }
+  void Visit(const ir::Min *x) { PrintBinaryOp("MIN", x); }
 
   template <typename IRN>
   void PrintBinaryOp(const std::string &op, const ir::BinaryOpNode<IRN> *x) {
