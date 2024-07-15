@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -36,28 +40,30 @@ class TestLayer(paddle.nn.Layer):
         return self.fn(x)
 
 
-class Test_to_static_infenrence_model(Dy2StTestBase):
+class TestToStaticInfenrenceModel(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
         hidd = 1024
-        dtype = "bfloat16"
+        dtype = "float32"
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.jit.to_static(
-            my_layer, backend="paddle_inference"
-        )
+        my_static_layer = paddle.jit.to_static(my_layer, backend="inference")
         result1 = my_layer(x).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
 
-class Test_to_static_infenrence_func(Dy2StTestBase):
+class TestToStaticInfenrenceFunc(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
         hidd = 1024
-        dtype = "bfloat16"
+        dtype = "float32"
         # test dynamic shape
         x = paddle.rand([batch, hidd], dtype=dtype)
         y = paddle.rand([batch + 1, hidd], dtype=dtype)
@@ -65,9 +71,7 @@ class Test_to_static_infenrence_func(Dy2StTestBase):
         result_x0 = my_layer(x).numpy()
         result_y0 = my_layer(y).numpy()
 
-        my_layer.func = paddle.jit.to_static(
-            my_layer.func, backend="paddle_inference"
-        )
+        my_layer.func = paddle.jit.to_static(my_layer.func, backend="inference")
 
         result_x1 = my_layer(x).numpy()
         result_y1 = my_layer(y).numpy()
