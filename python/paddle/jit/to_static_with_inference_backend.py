@@ -45,62 +45,61 @@ def register_triton_custom_ops(model_dir):
                 )
 
 
-def paddle_inference_decorator(function=None, **kwargs):
-    used_as_at_decorator = False
-    if function is None:
-        used_as_at_decorator = True
+class InferenceEngine:
+    def __init__(self, func, used_as_at_decorator, **kwargs):
+        super().__init__()
 
-    def decorator(func=None):
-        if isinstance(func, paddle.nn.Layer):
-            func = func.forward
-
-        predictors = [None]
+        self.predictor = None
         signature = inspect.signature(func)
-        arg_names = [v.name for v in signature.parameters.values()]
+        self.arg_names = [v.name for v in signature.parameters.values()]
 
         if "*" in str(signature):
             raise ValueError(
                 f"your function named {func.__name__} definition has * or ** args, please modify your function definition, but when calling this function, you can still use positional arguments."
             )
 
-        arg_defaults = [v.default for v in signature.parameters.values()]
+        self.arg_defaults = [v.default for v in signature.parameters.values()]
 
-        memory_pool_init_size_mb = kwargs.get("memory_pool_init_size_mb", 1000)
-        cache_static_model = kwargs.get("cache_static_model", False)
-        save_model_dir = kwargs.get(
+        self.memory_pool_init_size_mb = kwargs.get(
+            "memory_pool_init_size_mb", 1000
+        )
+        self.cache_static_model = kwargs.get("cache_static_model", False)
+        self.save_model_dir = kwargs.get(
             "save_model_dir", os.path.join(Path.home(), ".cache")
         )
-        save_model_dir += "/" + func.__name__
-        precision_mode = kwargs.get("precision_mode", "float32")
-        switch_ir_optim = kwargs.get("switch_ir_optim", True)
-        switch_ir_debug = kwargs.get("switch_ir_debug", False)
-        enable_cinn = kwargs.get("enable_cinn", False)
+        self.save_model_dir += "/" + func.__name__
+        self.precision_mode = kwargs.get("precision_mode", "float32")
+        self.switch_ir_optim = kwargs.get("switch_ir_optim", True)
+        self.switch_ir_debug = kwargs.get("switch_ir_debug", False)
+        self.enable_cinn = kwargs.get("enable_cinn", False)
 
-        with_trt = kwargs.get("with_trt", False)
-        trt_precision_mode = kwargs.get("trt_precision_mode", "float32")
-        trt_use_static = kwargs.get("trt_use_static", False)
-        collect_shape = kwargs.get("collect_shape", False)
+        self.with_trt = kwargs.get("with_trt", False)
+        self.trt_precision_mode = kwargs.get("trt_precision_mode", "float32")
+        self.trt_use_static = kwargs.get("trt_use_static", False)
+        self.collect_shape = kwargs.get("collect_shape", False)
         default_delete_pass_lists = [
             "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",
             "add_support_int8_pass",
         ]
-        delete_pass_lists = kwargs.get(
+        self.delete_pass_lists = kwargs.get(
             "delete_pass_lists", default_delete_pass_lists
         )
-        enable_new_ir = kwargs.get("enable_new_ir", False)
-        exp_enable_use_cutlass = kwargs.get("exp_enable_use_cutlass", False)
+        self.enable_new_ir = kwargs.get("enable_new_ir", False)
+        self.exp_enable_use_cutlass = kwargs.get(
+            "exp_enable_use_cutlass", False
+        )
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
         if used_as_at_decorator:
-            assert arg_names[0] == "self"
-        save_path = save_model_dir + "/infer"
-        d2s_input_info_path = save_path + "_d2s_input_info.txt"
+            assert self.arg_names[0] == "self"
+        self.save_path = self.save_model_dir + "/infer"
+        d2s_input_info_path = self.save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
         d2s_input_names = []
 
         # get old d2s shapes!
-        if os.path.exists(d2s_input_info_path) and cache_static_model:
+        if os.path.exists(d2s_input_info_path) and self.cache_static_model:
             with open(d2s_input_info_path, "r") as f:
                 for line in f.readlines():
                     line = line.strip()
@@ -113,6 +112,94 @@ def paddle_inference_decorator(function=None, **kwargs):
                         shape = [int(s) for s in shape.split(",")]
                     d2s_input_shapes.append(shape)
                     d2s_input_names.append(name)
+
+        self.d2s_input_info_path = d2s_input_info_path
+        self.d2s_input_shapes = d2s_input_shapes
+        self.d2s_input_names = d2s_input_names
+
+    # why we need input_tensor_lists, this is for TensorRT dynamic shape
+    def create_predictor(self, input_tensor_lists):
+        # create predictor
+        model_file = self.save_model_dir + "/infer.pdmodel"
+        params_file = self.save_model_dir + "/infer.pdiparams"
+
+        config = Config(model_file, params_file)
+        config.enable_memory_optim()
+        config.switch_ir_debug(self.switch_ir_debug)
+        config.switch_ir_optim(self.switch_ir_optim)
+        if self.exp_enable_use_cutlass:
+            config.exp_enable_use_cutlass()
+        if self.enable_cinn:
+            config.enable_cinn()
+        config.enable_new_ir(self.enable_new_ir)
+
+        device_num = paddle.device.get_device()
+        if 'gpu' in device_num:
+            gpu_id = int(device_num.split(':')[1])
+            config.enable_use_gpu(
+                self.memory_pool_init_size_mb,
+                gpu_id,
+                get_inference_precision(self.precision_mode),
+            )
+
+        if self.with_trt:
+            dynamic_names = []
+            min_input_shape = {}
+            max_input_shape = {}
+            opt_input_shape = {}
+            shape_range_file = self.save_model_dir + "/trt_shape.txt"
+            if self.collect_shape:
+                config.collect_shape_range_info(shape_range_file)
+            elif os.path.exists(shape_range_file):
+                config.enable_tuned_tensorrt_dynamic_shape(
+                    shape_range_file, True
+                )
+            else:
+                for i in range(len(input_tensor_lists)):
+                    if input_tensor_lists[i] is not None:
+                        min_input_shape[
+                            self.d2s_input_names[i]
+                        ] = input_tensor_lists[i].shape
+                        max_input_shape[
+                            self.d2s_input_names[i]
+                        ] = input_tensor_lists[i].shape
+                        opt_input_shape[
+                            self.d2s_input_names[i]
+                        ] = input_tensor_lists[i].shape
+
+                config.set_trt_dynamic_shape_info(
+                    min_input_shape, max_input_shape, opt_input_shape
+                )
+                config.enable_tensorrt_engine(
+                    workspace_size=1 << 30,
+                    max_batch_size=1,
+                    min_subgraph_size=3,
+                    precision_mode=get_inference_precision(
+                        self.trt_precision_mode
+                    ),
+                    use_static=self.trt_use_static,
+                    use_calib_mode=False,
+                )
+
+        if self.predictor is not None:
+            self.predictor = None
+
+        for pass_name in self.delete_pass_lists:
+            config.delete_pass(pass_name)
+
+        self.predictor = create_predictor(config)
+
+
+def paddle_inference_decorator(function=None, **kwargs):
+    used_as_at_decorator = False
+    if function is None:
+        used_as_at_decorator = True
+
+    def decorator(func=None):
+        if isinstance(func, paddle.nn.Layer):
+            func = func.forward
+
+        infer_engine = InferenceEngine(func, used_as_at_decorator, **kwargs)
 
         class WrappedLayer(paddle.nn.Layer):
             def __init__(self, layer):
@@ -151,6 +238,11 @@ def paddle_inference_decorator(function=None, **kwargs):
 
             input_tensor_lists = []
             collected_names = []
+            arg_names = infer_engine.arg_names
+            d2s_input_shapes = infer_engine.d2s_input_shapes
+            arg_defaults = infer_engine.arg_defaults
+            d2s_input_names = infer_engine.d2s_input_names
+
             for i in range(len(args)):
                 collected_names.append(arg_names[i])
                 if i == 0 and used_as_at_decorator:
@@ -213,16 +305,19 @@ def paddle_inference_decorator(function=None, **kwargs):
                 ele for ele in input_tensor_lists if ele is not None
             ]
 
-            if predictors[0] is not None and not re_do_d2s:
-                results = predictors[0].run(remove_non_input_tensor_lists)
+            if infer_engine.predictor is not None and not re_do_d2s:
+                results = infer_engine.predictor.run(
+                    remove_non_input_tensor_lists
+                )
                 return results if len(results) > 1 else results[0]
 
+            # we need do jit.to_static and jit.save!
             if (
-                not os.path.exists(save_path + ".pdmodel")
-                or not cache_static_model
+                not os.path.exists(infer_engine.save_path + ".pdmodel")
+                or not infer_engine.cache_static_model
                 or re_do_d2s
             ):
-                # we need do jit.to_static and jit.save.
+
                 def get_d2s_spec(run_time_args, name):
                     if isinstance(run_time_args, paddle.Tensor):
                         return InputSpec.from_tensor(run_time_args, name=name)
@@ -293,7 +388,12 @@ def paddle_inference_decorator(function=None, **kwargs):
                             d2s_input_names[d2s_shapes_id] = arg_names[i]
                         d2s_shapes_id += 1
 
-                os.environ["TRITON_KERNEL_CACHE_DIR"] = save_model_dir
+                infer_engine.d2s_input_names = d2s_input_names
+                infer_engine.d2s_input_shapes = d2s_input_shapes
+
+                os.environ[
+                    "TRITON_KERNEL_CACHE_DIR"
+                ] = infer_engine.save_model_dir
 
                 print("we are doing d2s!!")
                 print("input_specs: ", input_specs)
@@ -309,11 +409,13 @@ def paddle_inference_decorator(function=None, **kwargs):
                     input_spec=input_specs,
                     full_graph=True,
                 )
-                paddle.jit.save(model, save_path, skip_prune_program=True)
+                paddle.jit.save(
+                    model, infer_engine.save_path, skip_prune_program=True
+                )
 
                 # save d2s_shapes
                 assert len(d2s_input_names) == len(d2s_input_shapes)
-                with open(d2s_input_info_path, "w") as f:
+                with open(infer_engine.d2s_input_info_path, "w") as f:
                     for i in range(len(d2s_input_names)):
                         line = d2s_input_names[i] + ":"
                         line += (
@@ -325,79 +427,11 @@ def paddle_inference_decorator(function=None, **kwargs):
                 sys.stdout.flush()
             else:
                 # we need register some triton ops.
-                register_triton_custom_ops(save_model_dir)
+                register_triton_custom_ops(infer_engine.save_model_dir)
 
-            # create predictor
-            model_file = save_model_dir + "/infer.pdmodel"
-            params_file = save_model_dir + "/infer.pdiparams"
+            infer_engine.create_predictor(input_tensor_lists)
 
-            config = Config(model_file, params_file)
-            config.enable_memory_optim()
-            config.switch_ir_debug(switch_ir_debug)
-            config.switch_ir_optim(switch_ir_optim)
-            if exp_enable_use_cutlass:
-                config.exp_enable_use_cutlass()
-            if enable_cinn:
-                config.enable_cinn()
-            config.enable_new_ir(enable_new_ir)
-
-            device_num = paddle.device.get_device()
-            if 'gpu' in device_num:
-                gpu_id = int(device_num.split(':')[1])
-                config.enable_use_gpu(
-                    memory_pool_init_size_mb,
-                    gpu_id,
-                    get_inference_precision(precision_mode),
-                )
-
-            if with_trt:
-                dynamic_names = []
-                min_input_shape = {}
-                max_input_shape = {}
-                opt_input_shape = {}
-                shape_range_file = save_model_dir + "/trt_shape.txt"
-                if collect_shape:
-                    config.collect_shape_range_info(shape_range_file)
-                elif os.path.exists(shape_range_file):
-                    config.enable_tuned_tensorrt_dynamic_shape(
-                        shape_range_file, True
-                    )
-                else:
-                    for i in range(len(input_tensor_lists)):
-                        if input_tensor_lists[i] is not None:
-                            min_input_shape[
-                                d2s_input_names[i]
-                            ] = input_tensor_lists[i].shape
-                            max_input_shape[
-                                d2s_input_names[i]
-                            ] = input_tensor_lists[i].shape
-                            opt_input_shape[
-                                d2s_input_names[i]
-                            ] = input_tensor_lists[i].shape
-
-                    config.set_trt_dynamic_shape_info(
-                        min_input_shape, max_input_shape, opt_input_shape
-                    )
-                    config.enable_tensorrt_engine(
-                        workspace_size=1 << 30,
-                        max_batch_size=1,
-                        min_subgraph_size=3,
-                        precision_mode=get_inference_precision(
-                            trt_precision_mode
-                        ),
-                        use_static=trt_use_static,
-                        use_calib_mode=False,
-                    )
-
-            if predictors[0] is not None:
-                predictors[0] = None
-
-            for pass_name in delete_pass_lists:
-                config.delete_pass(pass_name)
-
-            predictors[0] = create_predictor(config)
-
-            results = predictors[0].run(remove_non_input_tensor_lists)
+            results = infer_engine.predictor.run(remove_non_input_tensor_lists)
             return results if len(results) > 1 else results[0]
 
         return innermost_decorator
