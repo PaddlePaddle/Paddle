@@ -20,18 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 framework::proto::VarType::Type VarMessageToVarType(
     VariableMessage::Type type) {
@@ -47,7 +44,7 @@ framework::proto::VarType::Type VarMessageToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "VarMessageToVarType:Unsupported type %d", type));
   }
 }
@@ -110,7 +107,7 @@ void SerializeLodTensor(framework::Variable* var,
     var_msg->add_dims(dim);
   }
   // IO Buffer
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
@@ -120,7 +117,7 @@ void SerializeLodTensor(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -157,7 +154,7 @@ void SerializeSelectedRows(framework::Variable* var,
     var_msg->add_dims(dim);
   }
   // IO Buffer
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     auto data_len = tensor->numel() * phi::SizeOf(tensor->dtype());
     iobuf->append(reinterpret_cast<const char*>(&data_len), 8);
     iobuf->append(reinterpret_cast<const char*>(tensor->data()), data_len);
@@ -167,7 +164,7 @@ void SerializeSelectedRows(framework::Variable* var,
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         temp_ptr,
         tensor->place(),
         tensor->data(),
@@ -212,7 +209,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     auto* var = scope->FindVar(msg.varname());
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
     if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);
@@ -249,11 +246,11 @@ void DeserializeLodTensor(framework::Variable* var,
       framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
 
   // IO Buffer
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);  // NOLINT
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     unsigned long data_len;  // NOLINT
     char* temp_ptr =
@@ -263,7 +260,7 @@ void DeserializeLodTensor(framework::Variable* var,
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  (void*)temp_ptr,  // NOLINT
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
@@ -293,11 +290,11 @@ void DeserializeSelectedRows(
       place,
       framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
   // IO Buffer
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);  // NOLINT
     io_buffer_itr.copy_and_forward(tensor_data, data_len);
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
@@ -307,7 +304,7 @@ void DeserializeSelectedRows(
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  temp_ptr,
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
                  stream);
@@ -321,18 +318,18 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
   // If there're some problem with DNS, or ip triggers the bug of Brpc
   // We will try to get the IP address of the domain name manually again
   std::string ip_port = ip + ":" + std::to_string(port);
-  struct hostent* hp = NULL;
+  struct hostent* hp = nullptr;
   hp = gethostbyname(ip.c_str());
 
-  if (NULL == hp) {
+  if (nullptr == hp) {
     LOG(ERROR) << "Brpc Start failed, ip_port= " << ip_port
                << " , Error infomation: " << hstrerror(h_errno);
   }
 
   int i = 0;
-  char* int_ip = NULL;
+  char* int_ip = nullptr;
 
-  while (hp->h_addr_list[i] != NULL) {
+  while (hp->h_addr_list[i] != nullptr) {
     int_ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
     VLOG(3) << "Brpc Get host by name, host:" << ip << " -> ip: " << int_ip;
     break;
@@ -343,5 +340,4 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
   return int_ip_port;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

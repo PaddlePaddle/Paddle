@@ -306,6 +306,12 @@ void* DistTensor::AllocateFrom(Allocator* allocator,
   return nullptr;
 }
 
+void DistTensor::unsafe_set_skip_check_mesh(bool skip) {
+  VLOG(6) << "You try to set an initialized DistTensor's dist attr. "
+             "Make sure you are aware of where you change its dist attr.";
+  dist_attr_.set_skip_check_mesh(skip);
+}
+
 void DistTensor::clear() {
   if (value_) {
     value_->clear();

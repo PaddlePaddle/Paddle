@@ -145,8 +145,9 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
     ops_mapper[op] = new_op;
   }
 
+  const auto new_fn_name = this->fn_name_ + "_cloned";
   // Construct Base information for new Group
-  auto new_group = std::make_shared<OpLoweringGroup>(new_ops);
+  auto new_group = std::make_shared<OpLoweringGroup>(new_ops, new_fn_name);
   for (auto* op : this->output_ops_) {
     new_group->output_ops_.insert(ops_mapper.at(op));
   }

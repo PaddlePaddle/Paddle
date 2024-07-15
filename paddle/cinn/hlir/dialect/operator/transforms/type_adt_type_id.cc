@@ -18,12 +18,16 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace cinn::dialect::ir {
 
 TypeAdtTypeId GetTypeAdtTypeId(const pir::Type& type) {
+  if (!type) {
+    return ::common::AdtTypeId<NullType>{};
+  }
 #define RETURN_TYPE_TYPE_ID_IF_MATCH(cls) \
   if (type.isa<cls>()) return ::common::AdtTypeId<cls>{};
   FOR_EACH_PIR_ALTERNATIVE_TYPLE(RETURN_TYPE_TYPE_ID_IF_MATCH)

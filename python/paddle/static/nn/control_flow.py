@@ -42,6 +42,7 @@ from paddle.common_ops_import import (
     in_dygraph_mode,
 )
 from paddle.framework import use_pir_api
+from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1382,11 +1383,59 @@ class OutputSelector:
                 return True
             return all(type(out) is type(outs[0]) for out in outs[1:])
 
+        def all_has_same_dtype(outs):
+            if len(outs) <= 1:
+                return True
+            return all(out.dtype == outs[0].dtype for out in outs[1:])
+
         def constant_to_variable_with_block(constant, block_context_manager):
             with block_context_manager():
                 return to_static_variable(constant)
 
+        def promote_precision(out_with_blocks):
+            def get_expected_precision(out_with_blocks):
+                if len(out_with_blocks) <= 1:
+                    return core.DataType.FLOAT32
+                # now only support FLOAT16 to FLOAT32
+                if any(
+                    out.dtype == core.DataType.FLOAT16
+                    for out, _ in out_with_blocks
+                ) and any(
+                    out.dtype == core.DataType.FLOAT32
+                    for out, _ in out_with_blocks
+                ):
+                    return core.DataType.FLOAT32
+                else:
+                    return out_with_blocks[0][0].dtype
+
+            new_outs = []
+            expected_dtype = get_expected_precision(out_with_blocks)
+            for out, block in out_with_blocks:
+                if expected_dtype != out.dtype:
+                    with block():
+                        out = paddle.cast(
+                            out, _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[expected_dtype]
+                        )
+                new_outs.append(out)
+            return new_outs
+
         if all(isinstance(out, paddle.pir.Value) for out in outs):
+            if in_pir_mode():
+                amp_attrs = core._get_amp_attrs()
+                amp_level = amp_attrs._amp_level
+                apply_amp_level_list = [
+                    core.AmpLevel.O0,
+                    core.AmpLevel.O1,
+                    core.AmpLevel.O2,
+                ]
+                if (amp_level in apply_amp_level_list) and (
+                    not all_has_same_dtype(outs)
+                ):
+                    warnings.warn(
+                        f"Return results from different branches in cond has different type: true value is '{outs[0]}' and false value is '{outs[1]}', "
+                        "so we will promote the lower precision to the higher one."
+                    )
+                    return promote_precision(out_with_blocks)
             return outs
 
         if all(arg is None for arg in outs):
@@ -2090,7 +2139,17 @@ def Print(
     check_variable_and_dtype(
         input,
         'input',
-        ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'float8_e4m3fn',
+            'float8_e5m2',
+        ],
         'paddle.static.Print',
     )
     message = message or ""

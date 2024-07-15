@@ -42,7 +42,7 @@ class WhileInstruction : public InstructionBase {
 
  public:
   WhileInstruction(size_t id,
-                   const platform::Place& place,
+                   const phi::Place& place,
                    ::pir::Operation* op,
                    ValueExecutionInfo* parent_exe_info,
                    interpreter::ExecutionConfig execution_config);
@@ -70,18 +70,18 @@ class WhileInstruction : public InstructionBase {
   // Pass argument to body_block for execution.
   void ShareOutputsToBlockArgs();
 
-  // Get return value from body_block after each execution.
-  void ShareDatasToOutputs();
+  // Get condition value from body_block after each execution.
+  void ShareConditionData();
 
   std::string name_{"while_instruction"};
 
   Variable* cond_var_;
+  std::string inner_cond_;
 
   std::vector<Variable*> inputs_;
   std::vector<Variable*> outputs_;
 
   std::unique_ptr<PirInterpreter> body_inter_;
-  std::vector<std::string> body_outputs_;
   std::set<std::string> external_input_names_;
 
   ::pir::Block* body_block_;

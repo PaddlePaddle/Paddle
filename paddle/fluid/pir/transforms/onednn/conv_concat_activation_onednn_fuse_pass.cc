@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/onednn/conv_concat_activation_onednn_fuse_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -38,11 +40,11 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatActivationFusePattern(size_t concat_count,
-                                   const std::string &activation_name,
+                                   std::string activation_name,
                                    int fused_level,
                                    int benefit)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level),
         benefit_(benefit) {}
 
@@ -293,10 +295,10 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatHardSigmoidFusePattern(size_t concat_count,
-                                    const std::string &activation_name,
+                                    std::string activation_name,
                                     int fused_level)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -512,10 +514,10 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatGeluFusePattern(size_t concat_count,
-                             const std::string &activation_name,
+                             std::string activation_name,
                              int fused_level)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -737,10 +739,10 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatClipFusePattern(size_t concat_count,
-                             const std::string &activation_name,
+                             std::string activation_name,
                              int fused_level)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -855,6 +857,15 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
     }
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_1_value");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_2_value");
+        });
+
     std::vector<const paddle::drr::Tensor *> combine_result_in;
     for (size_t i = 1; i <= concat_count_; i++) {
       const auto &fused_conv =
@@ -875,8 +886,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                         {"fuse_activation", res.StrAttr("clip")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
-                        {"fuse_alpha", pat.Attr("full_1_value")},
-                        {"fuse_beta", pat.Attr("full_2_value")},
+                        {"fuse_alpha", fuse_alpha},
+                        {"fuse_beta", fuse_beta},
                         {"scale_in", res.Float32Attr(1.0f)},
                         {"scale_out", res.Float32Attr(1.0f)},
                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
@@ -902,8 +913,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                                   std::to_string(i))},
                         {"force_fp32_output",
                          pat.Attr("force_fp32_output" + std::to_string(i))},
-                        {"fuse_alpha", pat.Attr("full_1_value")},
-                        {"fuse_beta", pat.Attr("full_2_value")},
+                        {"fuse_alpha", fuse_alpha},
+                        {"fuse_beta", fuse_beta},
                         {"scale_in", pat.Attr("scale_in" + std::to_string(i))},
                         {"scale_out",
                          pat.Attr("scale_out" + std::to_string(i))},

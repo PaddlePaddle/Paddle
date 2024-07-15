@@ -18,12 +18,12 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/extern_func_emitter_builtin.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/runtime/intrinsic.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
@@ -65,10 +65,22 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   llvm::Value* kernel_stream = nullptr;
   if (ll_function_args.size() == 3) {
     kernel_stream = ll_function_args[2];
-    CHECK_EQ(kernel_stream->getType(), ll_void_p_ty());  // void* stream
+    PADDLE_ENFORCE_EQ(
+        kernel_stream->getType(),
+        ll_void_p_ty(),
+        phi::errors::InvalidArgument(
+            "The type of kernel_stream should be void*"));  // void* stream
   }
-  CHECK_EQ(kernel_args->getType(), ll_void_p_ty());       // void* args
-  CHECK_EQ(kernel_args_count->getType(), ll_int32_ty());  // int32
+  PADDLE_ENFORCE_EQ(
+      kernel_args->getType(),
+      ll_void_p_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args should be void*"));  // void* args
+  PADDLE_ENFORCE_EQ(
+      kernel_args_count->getType(),
+      ll_int32_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
       {KERNEL_ARGS, kernel_args},
@@ -182,64 +194,6 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
-  // Create the function
-  // @{
-  auto* function_type = GenFunctionTypeFromCinnFunction(func, true);
-  f_ = llvm::Function::Create(
-      function_type, llvm::Function::ExternalLinkage, func->name, m_);
-  f_->setCallingConv(llvm::CallingConv::C);
-  f_->setHasUWTable();
-
-  std::vector<llvm::Value*> ll_function_args;
-  std::transform(f_->arg_begin(),
-                 f_->arg_end(),
-                 std::back_inserter(ll_function_args),
-                 [](auto& arg) { return std::addressof(arg); });
-  // @}
-
-  // Set local scope table
-  CHECK_EQ(ll_function_args.size(), func->args.size());
-  for (int i = 0; i < ll_function_args.size(); ++i) {
-    SetVar(func->args[i].name(), ll_function_args[i]);
-  }
-  llvm::BasicBlock* entry = llvm::BasicBlock::Create(
-      /*Context=*/b_->getContext(),
-      /*Name=*/"entry",
-      /*Parent=*/f_,
-      /*InsertBefore=*/nullptr);
-  b_->SetInsertPoint(entry);
-  CodeGenLLVM::Visit(&func->body);
-
-  // Reset local scope table
-  for (const ir::Argument& func_arg : func->args) {
-    symbol_table_->Erase(func_arg.name());
-  }
-  RetVoid();
-
-  return f_;
-}
-
-llvm::Value* CodeGenCUDA_Host::LowerParseArgsValueCall(
-    const ir::Call* call_ir) {
-  auto ret_type = CinnTypeToLLVMType(Int(64), m_);
-  std::vector<llvm::Type*> args_type;
-  CHECK_EQ(call_ir->read_args.size(), 2);
-  CHECK(call_ir->read_args[0].is_var() &&
-        call_ir->read_args[0].as_var()->type().is_cpp_handle());
-  CHECK(call_ir->read_args[1].type().is_int(32));
-  args_type.push_back(CinnTypeToLLVMType(type_of<void*>(), m_));
-  args_type.push_back(CinnTypeToLLVMType(type_of<int32_t>(), m_));
-
-  auto func_type = llvm::FunctionType::get(ret_type, args_type, false);
-  auto call_func = m_->getOrInsertFunction(call_ir->name, func_type);
-
-  std::vector<llvm::Value*> call_args;
-  call_args.push_back(std::addressof(*f_->arg_begin()));
-  call_args.push_back(b_->getInt32(call_ir->read_args[1].as_int32()));
-  return b_->CreateCall(call_func, call_args);
-}
-
 llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
@@ -251,10 +205,22 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
   llvm::Value* kernel_stream = nullptr;
   if (ll_function_args.size() == 3) {
     kernel_stream = ll_function_args[2];
-    CHECK_EQ(kernel_stream->getType(), ll_void_p_ty());  // void* stream
+    PADDLE_ENFORCE_EQ(
+        kernel_stream->getType(),
+        ll_void_p_ty(),
+        phi::errors::InvalidArgument(
+            "The type of kernel_stream should be void*"));  // void* stream
   }
-  CHECK_EQ(kernel_args->getType(), ll_void_p_ty());       // void* args
-  CHECK_EQ(kernel_args_count->getType(), ll_int32_ty());  // int32
+  PADDLE_ENFORCE_EQ(
+      kernel_args->getType(),
+      ll_void_p_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args should be void*"));  // void* args
+  PADDLE_ENFORCE_EQ(
+      kernel_args_count->getType(),
+      ll_int32_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
       {KERNEL_ARGS, kernel_args},

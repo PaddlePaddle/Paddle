@@ -23,13 +23,12 @@ import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
 
 import paddle
-from paddle.framework import Program
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -44,19 +43,20 @@ from .paddle_api_config import (
     paddle_api_module_prefix,
 )
 
+if TYPE_CHECKING:
+    from paddle.framework import Program
+
 T = TypeVar("T")
 ConstTypes = (int, float, str, bool, type(None))
 
 
-class Singleton(Generic[T]):
-    def __init__(self, cls: type[T]):
-        self._cls = cls
-        self._instance = {}
+class Singleton(type):
+    _instances: dict[Any, Any] = {}
 
-    def __call__(self) -> T:
-        if self._cls not in self._instance:
-            self._instance[self._cls] = self._cls()
-        return self._instance[self._cls]
+    def __call__(cls, *args: Any, **kwargs: Any):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 
 class NameGenerator:
@@ -71,9 +71,6 @@ class NameGenerator:
 
     def match_name(self, name: str) -> bool:
         return name.startswith(self.prefix)
-
-
-_tmp_name_records = None
 
 
 class TmpNameRecords:
@@ -93,6 +90,9 @@ class TmpNameRecords:
             return tmp_name
 
 
+_tmp_name_records = TmpNameRecords()
+
+
 @contextmanager
 def tmp_name_guard():
     global _tmp_name_records
@@ -107,8 +107,7 @@ def current_tmp_name_records():
     return _tmp_name_records
 
 
-@Singleton
-class ResumeFnNameFactory:
+class ResumeFnNameFactory(metaclass=Singleton):
     def __init__(self) -> None:
         self.gen = NameGenerator('resume_')
 
@@ -147,6 +146,10 @@ def no_eval_frame(func):
         return retval
 
     return no_eval_frame_func
+
+
+def is_comprehensive_name(name):
+    return name in ["<listcomp>", "<dictcomp>", "<setcomp>", "<genexpr>"]
 
 
 def is_paddle_api(func):
@@ -312,8 +315,7 @@ def get_unbound_method(obj, name):
     return getattr(obj.__class__, name)
 
 
-@Singleton
-class GraphLogger:
+class GraphLogger(metaclass=Singleton):
     graph_num: int
     op_num: int
     graphs: list[Program]
@@ -372,8 +374,7 @@ class GraphLogger:
         print(self)
 
 
-@Singleton
-class SotUndefinedVar:
+class SotUndefinedVar(metaclass=Singleton):
     pass
 
 
@@ -457,8 +458,7 @@ class StepInfo:
         return len(self.dyn_time_costs) < self.REQUIRED_DYN_INFOS
 
 
-@Singleton
-class StepInfoManager:
+class StepInfoManager(metaclass=Singleton):
     def __init__(self):
         self.step_record = {}
         self.current_code = None

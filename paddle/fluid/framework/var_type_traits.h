@@ -37,7 +37,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #ifdef PADDLE_WITH_RCCL
-#include <rccl.h>
+#include <rccl/rccl.h>
 #endif
 #endif
 
@@ -54,6 +54,9 @@ class DenseTensor;
 class SelectedRows;
 class SparseCooTensor;
 class SparseCsrTensor;
+namespace funcs {
+class CudnnRNNCache;
+}
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -80,8 +83,6 @@ class Scope;
 }  // namespace framework
 
 namespace operators {
-
-class CudnnRNNCache;
 
 class CUDAGraphWithInOuts;
 
@@ -182,7 +183,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     LoDRankTable,
     Strings,
     LoDTensorArray,
-    platform::PlaceList,
+    phi::PlaceList,
     ReaderHolder,
     String,
     Scope *,
@@ -196,7 +197,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     platform::Communicator,
     platform::NCCLCommunicator,
 #endif
-    operators::CudnnRNNCache,
+    phi::funcs::CudnnRNNCache,
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,
@@ -241,7 +242,7 @@ REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
-REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
+REG_PROTO_VAR_TYPE_TRAIT(phi::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
 REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);

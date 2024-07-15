@@ -16,8 +16,10 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/deserialize_utils.h"
 namespace pir {
 void ProgramReader::RecoverProgram(Json* program_json,
-                                   pir::Program* recover_program) {
+                                   pir::Program* recover_program,
+                                   pir::PatchBuilder* builder) {
   id_value_map[0] = pir::Value();
+  patch_builder = builder;
   ReadProgram(program_json, recover_program);
   VLOG(6) << "Finish json to program.";
   return;
@@ -42,10 +44,10 @@ void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
 void ProgramReader::ReadRegion(Json* region_json, pir::Region* region) {
   auto region_name = region_json->at(ID).template get<std::string>();
   for (auto& block_json : region_json->at(BLOCKS)) {
-    auto& block = region->emplace_back();
-    ReadBlock(&block_json, &block);
+    region->emplace_back();
+    ReadBlock(&block_json, &(region->back()));
   }
-  VLOG(6) << "Finish Read " << region_name;
+  VLOG(6) << "Finish Read " << region_name << ".";
   return;
 }
 
@@ -58,7 +60,22 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
       int64_t arg_id_ = arg_json.at(ID).template get<int64_t>();
       auto value = block->AddArg(ReadType(&(arg_json.at(TYPE_TYPE))));
       id_value_map[arg_id_] = value;
-      VLOG(6) << "Finish Read blockargument " << arg_id_;
+      VLOG(6) << "Finish Read blockargument " << arg_id_ << ".";
+    }
+    VLOG(6) << "Finish Read blockarguments.";
+  }
+
+  if (block_json->contains(KEYWORDBLOCKARGS)) {
+    Json& kwargs_json = block_json->at(KEYWORDBLOCKARGS);
+    if (!kwargs_json.empty()) {
+      for (auto& kwarg_json : kwargs_json) {
+        int64_t arg_id_ = kwarg_json.at(ID).template get<int64_t>();
+        auto value = block->AddKwarg(kwarg_json.at(KEYWORDNAME),
+                                     ReadType(&(kwarg_json.at(TYPE_TYPE))));
+        id_value_map[arg_id_] = value;
+        VLOG(6) << "Finish Read keyword blockargument " << arg_id_ << ".";
+      }
+      VLOG(6) << "Finish Read keyword blockarguments. ";
     }
   }
 
@@ -67,33 +84,111 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
     for (auto& op_json : ops_json) {
       block->push_back(ReadOp(&op_json));
     }
+    VLOG(6) << "read block size" << block->size() << ".";
   }
 
-  VLOG(6) << "Finish Read " << block_name;
+  VLOG(4) << "Finish Read " << block_name << ".";
   return;
+}
+pir::ArrayAttribute GetOneBoolArrayAttribute(pir::IrContext* ctx,
+                                             Json* attr_json) {
+  std::vector<pir::Attribute> val;
+  bool bool_value = attr_json->template get<int32_t>() != 0;
+  val.push_back(pir::BoolAttribute::get(ctx, bool_value));
+  return pir::ArrayAttribute::get(ctx, val);
+}
+
+pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
+  // attr is_distributed; is_parameter; need_clip; parameter_name; persistable;
+  // stop_gradient; trainable;
+  std::vector<pir::Value> inputs;
+  Json& opresult_json = op_json->at(OPRESULTS);
+  std::vector<pir::Type> output_types;
+
+  int64_t value_id_ = opresult_json.at(VALUE_ID).template get<int64_t>();
+  output_types.push_back(ReadType(&(opresult_json.at(TYPE_TYPE))));
+  VLOG(6) << "Finish Read value " << value_id_ << ".";
+
+  Json& attrs_json = op_json->at(ATTRS);
+  PADDLE_ENFORCE_EQ(
+      attrs_json.size(),
+      4,
+      common::errors::InvalidArgument(
+          "builtin ParameterOp has %d 's  attributes, which should be 4",
+          attrs_json.size()));
+  pir::AttributeMap attributes;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  attributes.insert(
+      {"is_distributed", GetOneBoolArrayAttribute(ctx, &attrs_json.at(0))});
+  attributes.insert(
+      {"is_parameter", GetOneBoolArrayAttribute(ctx, &attrs_json.at(1))});
+  attributes.insert(
+      {"need_clip", GetOneBoolArrayAttribute(ctx, &attrs_json.at(2))});
+  attributes.insert({"parameter_name",
+                     pir::StrAttribute::get(
+                         ctx, attrs_json.at(3).template get<std::string>())});
+
+  if (op_json->contains(OPRESULTS_ATTRS)) {
+    Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
+    PADDLE_ENFORCE_EQ(other_attrs_json.size(),
+                      3,
+                      common::errors::InvalidArgument(
+                          "builtin ParameterOp has %d 's  opresult attributes, "
+                          "which should be 3",
+                          other_attrs_json.size()));
+    attributes.insert({"persistable",
+                       GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(0))});
+    attributes.insert({"stop_gradient",
+                       GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(1))});
+    attributes.insert(
+        {"trainable", GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(2))});
+  }
+
+  pir::IrContext* ctx_ = pir::IrContext::Instance();
+  // prepare opinfo
+  pir::OpInfo op_info = ctx_->GetRegisteredOpInfo(pir::ParameterOp::name());
+  // deserialize op
+  pir::Operation* op =
+      Operation::Create(inputs, attributes, output_types, op_info);
+
+  id_value_map[value_id_] = op->result(0);
+  VLOG(4) << "Finish Read Operation " << op->name() << ".";
+  return op;
 }
 
 pir::Operation* ProgramReader::ReadOp(Json* op_json) {
+  // deal with patches
   auto op_name = op_json->at(ID).template get<std::string>();
-
+  if (patch_builder->HasOpPatch(op_name)) {
+    VLOG(8) << op_name << " brefore: " << *op_json;
+    Json op_patch = patch_builder->GetJsonOpPatch(op_name);
+    patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
+    VLOG(8) << op_name << " has been patched: " << *op_json;
+  }
+  if (op_name == PARAMETEROP) {
+    return ReadParameterOp(op_json);
+  }
+  GetDecompressOpName(&op_name);
+  VLOG(4) << "Read op_name = " << op_name << ".";
   // deserialize opoperands (find value)
   Json& operands_json = op_json->at(OPOPERANDS);
   std::vector<pir::Value> inputs;
   for (auto& operand_json : operands_json) {
-    int64_t id = operand_json.at(ID).template get<int64_t>();
+    int64_t id = operand_json.at(VALUE_ID).template get<int64_t>();
     inputs.push_back(id_value_map[id]);
   }
-
+  VLOG(6) << "Finish Read OP's OpOperand.";
   // deserialize opresults (find type)
   Json& opresults_json = op_json->at(OPRESULTS);
   std::vector<pir::Type> output_types;
   std::vector<int64_t> output_ids;
   for (auto& opresult_json : opresults_json) {
-    int64_t value_id_ = opresult_json.at(ID).template get<int64_t>();
+    int64_t value_id_ = opresult_json.at(VALUE_ID).template get<int64_t>();
     output_ids.push_back(value_id_);
     output_types.push_back(ReadType(&(opresult_json.at(TYPE_TYPE))));
-    VLOG(6) << "Finish Read value " << value_id_;
+    VLOG(6) << "Finish Read value " << value_id_ << ".";
   }
+  VLOG(6) << "Finish Read OP's OpResult.";
 
   // serialize necessary attributes
   Json& attrs_json = op_json->at(ATTRS);
@@ -111,9 +206,24 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   // prepare opinfo
   pir::OpInfo op_info = ctx_->GetRegisteredOpInfo(op_name);
 
+  size_t num_regions = 0;
+  if (op_json->contains(REGIONS)) {
+    num_regions = op_json->at(REGIONS).size();
+  }
   // deserialize op
   pir::Operation* op =
-      Operation::Create(inputs, attributes, output_types, op_info);
+      Operation::Create(inputs, attributes, output_types, op_info, num_regions);
+
+  // deserialize op's regions
+  if (op_json->contains(REGIONS)) {
+    Json& regions_json = op_json->at(REGIONS);
+    VLOG(6) << op->name() << " has " << num_regions << " regions.";
+    for (uint64_t i = 0; i < regions_json.size(); i++) {
+      auto region_json = regions_json.at(i);
+      ReadRegion(&region_json, &(op->region(i)));
+    }
+    VLOG(6) << "Finish Read OP's regions.";
+  }
 
   PADDLE_ENFORCE_EQ(
       output_ids.size(),
@@ -127,7 +237,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     id_value_map[output_ids[i]] = op->result(i);
   }
 
-  VLOG(6) << "Finish Read Operation " << op->name();
+  VLOG(4) << "Finish Read Operation " << op->name() << ".";
   return op;
 }
 
@@ -136,14 +246,22 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
   pir::AttributeMap attributes;
   for (auto& attr_json : *attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
-    attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    if (attr_json.contains(ATTR_TYPE)) {
+      attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    } else {
+      VLOG(6) << "Attribute " << attr_name << " Deleted.";
+    }
   }
-  VLOG(6) << "Finish Read pir::AttributeMap ";
+  VLOG(6) << "Finish Read pir::AttributeMap.";
   for (auto& attr_json : *opresult_attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
-    attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    if (attr_json.contains(ATTR_TYPE)) {
+      attributes.insert({attr_name, ReadAttribute(&attr_json)});
+    } else {
+      VLOG(6) << "Attribute " << attr_name << " Deleted.";
+    }
   }
-  VLOG(6) << "Finish Read Opresults_AttributeMap ";
+  VLOG(4) << "Finish Read Opresults_AttributeMap.";
   return attributes;
 }
 

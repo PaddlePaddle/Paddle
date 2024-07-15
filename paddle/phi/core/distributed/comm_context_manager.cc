@@ -43,8 +43,7 @@
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 int CommContextManager::device_id = -1;
 
@@ -211,8 +210,8 @@ void CommContextManager::CreateBKCLCommContext(
       std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
 
   if (CommContextManager::device_id != -1) {
-    std::unique_ptr<phi::XPUContext> dev_ctx(
-        new phi::XPUContext(phi::XPUPlace(CommContextManager::device_id)));
+    std::unique_ptr<phi::XPUContext> dev_ctx(new phi::XPUContext(
+        phi::XPUPlace(CommContextManager::device_id), true));
     dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
         CommContextManager::device_id, dev_ctx->stream()));
     dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
@@ -294,5 +293,4 @@ std::vector<int> CommContextManager::GetGroupRanks(
   return pg_key_ranks_.at(pg_key);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -602,11 +602,12 @@ void FCKernel(const Context& dev_ctx,
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
+  std::vector<std::string> mkldnn_data_type_list = {
+      "float32", "int8", "bfloat16"};
   PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
+      std::find(mkldnn_data_type_list.begin(),
+                mkldnn_data_type_list.end(),
+                mkldnn_data_type) != mkldnn_data_type_list.end(),
       true,
       phi::errors::InvalidArgument("The mkldnn_data_type should be [float32, "
                                    "int8, bfloat16], but found %s.",

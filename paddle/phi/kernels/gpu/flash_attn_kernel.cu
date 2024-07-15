@@ -14,17 +14,26 @@
 
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
+#include <cstddef>
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
 namespace phi {
+template <typename OutT>
+struct ZeroFunctor {
+  __device__ __forceinline__ OutT operator()() const {
+    return static_cast<OutT>(0);
+  }
+};
 
 template <typename T, typename Context>
-void FlashAttnUnpaddedKernel(
+void FlashAttnUnpaddedBaseKernel(
     const Context& ctx,
     const DenseTensor& q,
     const DenseTensor& k,
@@ -44,16 +53,41 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* out,
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
-    DenseTensor* seed_offset) {
+    DenseTensor* seed_offset,
+    bool varlen_padded) {
 #ifdef PADDLE_WITH_FLASHATTN
-  ctx.template Alloc<T>(out);
+  if (!out->IsInitialized()) ctx.template Alloc<T>(out);
+  if (varlen_padded) {
+    std::vector<const DenseTensor*> inputs{};
+    std::vector<DenseTensor*> outputs{out};
 
+    phi::funcs::ElementwiseKernel<T>(ctx, inputs, &outputs, ZeroFunctor<T>());
+  }
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream = ctx.stream();
+#else
   cudaStream_t stream = ctx.stream();
+#endif
 
   // q, k, v [total_q/k/v, num_heads, head_dim]
   auto dims = q.dims();
   PADDLE_ENFORCE_EQ(
       dims.size(),
+      3,
+      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                   "[total_seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      k.dims().size(),
+      3,
+      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                   "[total_seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      v.dims().size(),
+      3,
+      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                   "[total_seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(
+      out->dims().size(),
       3,
       phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
                                    "[total_seq_len, num_heads, head_dim]"));
@@ -90,7 +124,7 @@ void FlashAttnUnpaddedKernel(
 
   VLOG(10) << "FlashAttn fwd seed: " << params.seed
            << ", offset: " << params.offset;
-
+#ifdef PADDLE_WITH_HIP
   bool succ = phi::dynload::flash_attn_varlen_fwd(
       q.data(),
       k.data(),
@@ -121,7 +155,184 @@ void FlashAttnUnpaddedKernel(
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
+#else
+  bool succ = phi::dynload::flash_attn_varlen_fwd(
+      q.data(),
+      k.data(),
+      v.data(),
+      cu_seqlens_q.data<int32_t>(),
+      cu_seqlens_k.data<int32_t>(),
+      params.rng_state.data(),
+      out->data(),
+      params.return_softmax ? softmax->data() : nullptr,
+      softmax_lse->data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      1.0f / params.softmax_scale,
+      params.causal,
+      params.return_softmax,
+      params.is_bf16,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr,
+      q.strides()[0],
+      k.strides()[0],
+      v.strides()[0],
+      q.strides()[1],
+      k.strides()[1],
+      v.strides()[1],
+      out->strides()[0],
+      out->strides()[1],
+      max_seqlen_q * q.strides()[0],
+      max_seqlen_k * k.strides()[0],
+      max_seqlen_k * v.strides()[0],
+      max_seqlen_q * out->strides()[0],
+      varlen_padded);
+#endif
   CheckFlashAttnStatus(succ);
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+template <typename T, typename Context>
+void FlashAttnUnpaddedKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& cu_seqlens_q,
+    const DenseTensor& cu_seqlens_k,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    int64_t max_seqlen_q,
+    int64_t max_seqlen_k,
+    float scale,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_FLASHATTN
+  FlashAttnUnpaddedBaseKernel<T>(ctx,
+                                 q,
+                                 k,
+                                 v,
+                                 cu_seqlens_q,
+                                 cu_seqlens_k,
+                                 fixed_seed_offset,
+                                 attn_mask,
+                                 max_seqlen_q,
+                                 max_seqlen_k,
+                                 scale,
+                                 dropout,
+                                 causal,
+                                 return_softmax,
+                                 is_test,
+                                 rng_name,
+                                 out,
+                                 softmax,
+                                 softmax_lse,
+                                 seed_offset,
+                                 false /*varlen_padded*/);
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+static void sliceFlattenView(const DenseTensor& in,
+                             DenseTensor* out,
+                             int axis,
+                             int64_t offset,
+                             int64_t sliceLength) {
+  PADDLE_ENFORCE_LT(
+      axis,
+      in.dims().size(),
+      phi::errors::InvalidArgument("sliceView receive axis out of bound"));
+  std::array<int64_t, DDim::kMaxRank> dimArr;
+  std::array<int64_t, DDim::kMaxRank> strideArr;
+  auto id = dimArr.begin(), is = strideArr.begin();
+  for (int i = 0; i < in.dims().size(); i++) {
+    if (i == axis) continue;
+    if (i == axis + 1)
+      *id = in.dims()[i] * sliceLength;
+    else
+      *id = in.dims()[i];
+    *is = in.strides()[i];
+    id++;
+    is++;
+  }
+  *out = DenseTensor{
+      in.Holder(),
+      DenseTensorMeta{in.dtype(),
+                      DDim{dimArr.data(), in.dims().size() - 1},
+                      DDim(strideArr.data(), in.dims().size() - 1)}};
+  out->set_offset(in.offset() +
+                  offset * in.strides()[axis] * SizeOf(out->dtype()));
+}
+template <typename T, typename Context>
+void FlashAttnVarlenQKVPackedKernel(
+    const Context& ctx,
+    const DenseTensor& qkv,
+    const DenseTensor& cu_seqlens_q,
+    const DenseTensor& cu_seqlens_k,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    int64_t max_seqlen_q,
+    int64_t max_seqlen_k,
+    float scale,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    bool varlen_padded,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_FLASHATTN
+  const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
+  DenseTensor q, k, v;
+  sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 1, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 1, head_groupnum - 1, 1);
+  FlashAttnUnpaddedBaseKernel<T>(ctx,
+                                 q,
+                                 k,
+                                 v,
+                                 cu_seqlens_q,
+                                 cu_seqlens_k,
+                                 fixed_seed_offset,
+                                 attn_mask,
+                                 max_seqlen_q,
+                                 max_seqlen_k,
+                                 scale,
+                                 dropout,
+                                 causal,
+                                 return_softmax,
+                                 is_test,
+                                 rng_name,
+                                 out,
+                                 softmax,
+                                 softmax_lse,
+                                 seed_offset,
+                                 varlen_padded);
 #else
   RaiseNotSupportedError();
 #endif
@@ -154,14 +365,42 @@ void FlashAttnBaseKernel(
                     phi::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
-
+  PADDLE_ENFORCE_EQ(k.dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(v.dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(out->dims().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
   const int64_t batch_size = dims[0];
+#ifdef PADDLE_WITH_HIP
+  int64_t seqlen_q = dims[1];
+  int64_t num_heads = dims[2];
+  int64_t head_size = dims[3];
+  int64_t seqlen_k = k.dims()[1];
+  int64_t num_heads_k = k.dims()[2];
+  if (is_test) {
+    seqlen_q = dims[2];
+    num_heads = dims[1];
+    head_size = dims[3];
+    seqlen_k = k.dims()[2];
+    num_heads_k = k.dims()[1];
+  }
+#else
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
   const int64_t head_size = dims[3];
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
-
+#endif
   // TODO(umiswing): Add check shape
 
   const float softmax_scale = 1.0f / std::sqrt(head_size);
@@ -200,11 +439,45 @@ void FlashAttnBaseKernel(
     VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
+  if (!out->IsInitialized()) ctx.template Alloc<T>(out);
 
-  ctx.template Alloc<T>(out);
-
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream = ctx.stream();
+#else
   cudaStream_t stream = ctx.stream();
+#endif
 
+#ifdef PADDLE_WITH_HIP
+  bool succ = phi::dynload::flash_attn_fwd(
+      q.data(),
+      k.data(),
+      v.data(),
+      params.rng_state.data(),
+      out->data(),
+      params.return_softmax ? params.softmax->data() : nullptr,
+      params.softmax_lse->data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      softmax_unscale,  // for unscale
+      params.causal,
+      params.return_softmax,
+      params.is_bf16,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data(),
+      is_test);
+#else
   bool succ = phi::dynload::flash_attn_fwd(
       q.data(),
       k.data(),
@@ -239,7 +512,20 @@ void FlashAttnBaseKernel(
       params.attn_mask_start_row_indices_tensor
           ? params.attn_mask_start_row_indices_dims.data()
           : nullptr,
-      params.attn_mask_start_row);
+      params.attn_mask_start_row,
+      q.strides()[1],
+      k.strides()[1],
+      v.strides()[1],
+      q.strides()[2],
+      k.strides()[2],
+      v.strides()[2],
+      out->strides()[1],
+      out->strides()[2],
+      q.strides()[0],
+      k.strides()[0],
+      v.strides()[0],
+      out->strides()[0]);
+#endif
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -279,6 +565,49 @@ void FlashAttnKernel(const Context& ctx,
                                   softmax,
                                   softmax_lse,
                                   seed_offset);
+}
+
+template <typename T, typename Context>
+void FlashAttnQKVPackedKernel(
+    const Context& ctx,
+    const DenseTensor& qkv,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_FLASHATTN
+  const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
+  DenseTensor q, k, v;
+  sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 2, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 2, head_groupnum - 1, 1);
+  FlashAttnBaseKernel<T, Context>(ctx,
+                                  q,
+                                  k,
+                                  v,
+                                  fixed_seed_offset,
+                                  attn_mask,
+                                  paddle::none,
+                                  dropout,
+                                  causal,
+                                  return_softmax,
+                                  is_test,
+                                  rng_name,
+                                  0,
+                                  out,
+                                  softmax,
+                                  softmax_lse,
+                                  seed_offset);
+#else
+  RaiseNotSupportedError();
+#endif
 }
 
 template <typename T, typename Context>
@@ -330,6 +659,16 @@ PD_REGISTER_KERNEL(flash_attn_unpadded,
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
 
+PD_REGISTER_KERNEL(flash_attn_varlen_qkvpacked,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnVarlenQKVPackedKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(3).SetBackend(
+      phi::Backend::ALL_BACKEND);  // fixed_seed_offset
+}
+
 PD_REGISTER_KERNEL(flash_attn,
                    GPU,
                    ALL_LAYOUT,
@@ -337,6 +676,16 @@ PD_REGISTER_KERNEL(flash_attn,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(3).SetBackend(
+      phi::Backend::ALL_BACKEND);  // fixed_seed_offset
+}
+
+PD_REGISTER_KERNEL(flash_attn_qkvpacked,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnQKVPackedKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
 

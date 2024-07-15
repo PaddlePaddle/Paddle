@@ -18,11 +18,14 @@
 #include "paddle/fluid/distributed/fleet_executor/task_loop.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
-    : interceptor_id_(interceptor_id), node_(node) {}
+    : interceptor_id_(interceptor_id),
+      node_(node),
+      carrier_(nullptr),
+      loop_(nullptr),
+      messages_() {}
 
 Interceptor::~Interceptor() {  // NOLINT
   // FIXME(wangxi): throw in stop function
@@ -118,5 +121,4 @@ void InterceptorFactory::Register(
   interceptor_map.emplace(type, func);
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

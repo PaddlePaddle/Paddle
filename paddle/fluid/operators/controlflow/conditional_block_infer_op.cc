@@ -49,7 +49,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
@@ -83,7 +83,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
-      if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
+      if (!exec_ || !phi::is_same_place(exec_->GetPlace(), dev_place)) {
         auto &pdesc = *block->Program();
         exec_.reset(new framework::Executor(dev_place));
 #ifdef PADDLE_WITH_DNNL

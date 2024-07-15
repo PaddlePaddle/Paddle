@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import collections
+import logging
 import warnings
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from paddle import pir
@@ -25,71 +27,33 @@ from paddle.base.libpaddle.pir import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
-# TODO: Consider a better way to mark these ops has no grad op.
-# Such as use a new trait to mark these ops.
-ALLOW_NO_GRAD_OPS = [
-    # Compare ops
-    "pd_op.equal",
-    "pd_op.equal_",
-    "pd_op.not_equal",
-    "pd_op.not_equal_",
-    "pd_op.less_than",
-    "pd_op.less_than_",
-    "pd_op.less_equal",
-    "pd_op.less_equal_",
-    "pd_op.greater_than",
-    "pd_op.greater_than_",
-    "pd_op.greater_equal",
-    "pd_op.greater_equal_",
-    # Logical ops
-    "pd_op.logical_and",
-    "pd_op.logical_and_",
-    "pd_op.logical_not",
-    "pd_op.logical_not_",
-    "pd_op.logical_or",
-    "pd_op.logical_or_",
-    "pd_op.logical_xor",
-    "pd_op.logical_xor_",
-    # Bitwise ops
-    "pd_op.bitwise_and",
-    "pd_op.bitwise_and_",
-    "pd_op.bitwise_left_shift",
-    "pd_op.bitwise_left_shift_",
-    "pd_op.bitwise_not",
-    "pd_op.bitwise_not_",
-    "pd_op.bitwise_or",
-    "pd_op.bitwise_or_",
-    "pd_op.bitwise_right_shift",
-    "pd_op.bitwise_right_shift_",
-    "pd_op.bitwise_xor",
-    "pd_op.bitwise_xor_",
-    # Array ops
-    "pd_op.assign_array",
-    "pd_op.array_length",
-    "pd_op.slice_array",
-    "pd_op.slice_array_dense",
-    "pd_op.assign_array",
-    "pd_op.assign_array_",
-    "pd_op.create_array",
-    "pd_op.create_array_like",
-    "pd_op.array_read",
-    "pd_op.array_write_",
-    "pd_op.array_pop",
-    # Others
-    "pd_op.remainder",
-    "pd_op.argmax",
-    "pd_op.print",
-    "pd_op.accuracy",
-    "pd_op.uniform",
-    "pd_op.gaussian",
-    "pd_op.bernoulli",
-    "pd_op.full_like",
-    "pd_op.assign_value_",
-    "pd_op.nextafter",
-    "pd_op.isnan",
-    "pd_op.isinf",
-    "pd_op.all",
-    "pd_op.any",
+# TODO(CZ): to be removed when we support dynamic shape by default.
+ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
+    "pd_op.abs",
+    "pd_op.assign",
+    "pd_op.sin",
+    "pd_op.cos",
+    "pd_op.tanh",
+    "pd_op.cast",
+    "pd_op.log",
+    "pd_op.exp",
+    "pd_op.sqrt",
+    "pd_op.rsqrt",
+    "pd_op.sigmoid",
+    "pd_op.silu",
+    "pd_op.sum",
+    "pd_op.mean",
+    "pd_op.add",
+    "pd_op.subtract",
+    "pd_op.concat",
+    "pd_op.split",
+    "pd_op.multiply",
+    "pd_op.relu",
+    "pd_op.sigmoid",
+    "pd_op.divide",
+    "pd_op.pow",
+    "pd_op.elementwise_pow",
+    "pd_op.softmax",
 ]
 
 
@@ -153,10 +117,20 @@ class ValueDict:
         for key, val in self._items.items():
             yield key._value, val
 
+    def get(self, key, default=None):
+        if not self.__contains__(key):
+            return default
+        return self._items[ValueWrapper(key)]
+
     def pop(self, key):
         if not self.__contains__(key):
             raise KeyError(f'{key} is not in ValueDict')
         return self._items.pop(ValueWrapper(key))
+
+    def setdefault(self, key, default=None):
+        if not self.__contains__(key):
+            self[key] = default
+        return self[key]
 
     def __setitem__(self, key, val: Any):
         self._items[ValueWrapper(key)] = val
@@ -313,17 +287,23 @@ def _check_vjp_dynamic_shape(op, inputs):
 # Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
 @signature_safe_contextmanager
 def dynamic_shape_prim_vjp_guard(op, inputs):
-    skip_prim = (
-        core._is_bwd_prim_enabled()
-        and core._enable_prim_skip_dynamic_shape()
-        and _check_vjp_dynamic_shape(op, inputs)
-    )
+    origin_prim = core._is_bwd_prim_enabled()
+    if op.name() == "cf.tuple_push":
+        skip_prim = True
+    else:
+        skip_prim = (
+            origin_prim
+            and core._enable_prim_skip_dynamic_shape()
+            and _check_vjp_dynamic_shape(op, inputs)
+            and op.name() not in ALLOW_DYNAMIC_SHAPE_VJP_OPS
+        )
+
     try:
-        if skip_prim:
+        if origin_prim and skip_prim:
             core._set_prim_backward_enabled(False)
         yield
     finally:
-        if skip_prim:
+        if origin_prim:
             core._set_prim_backward_enabled(True)
 
 
@@ -370,11 +350,13 @@ def get_real_op_inputs(op):
         return op.operands_source() + get_used_external_value(
             op.as_while_op().body()
         )
+    elif op.name() == "pd_op.pylayer":
+        return get_used_external_value(op)
     else:
         return op.operands_source()
 
 
-def inverse_sort_op(ops):
+def inverse_sort_op(old_ops):
     '''
     if topo graph is op1 -> op2 -> op3
     return [op3, op2, op1]
@@ -385,6 +367,8 @@ def inverse_sort_op(ops):
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
+    ops = []
+    [ops.append(x) for x in old_ops if x not in ops]
     ops_set = set(ops)
     sorted_list = []
     for op in ops:
@@ -471,7 +455,7 @@ def remove_op(block, op, state):
 
             if value in state.sumvaluegrad_to_value:
                 raise ValueError(
-                    'input_grad in [%s] is value which need to sum ', op.name()
+                    f'input_grad in [%s] is value which need to sum {op.name()}'
                 )
     # NOTE(SigureMo): Ensure access to the op's results before removing it.
     # Otherwise, the op will be deconstructed and access the num_results
@@ -532,6 +516,14 @@ def all_output_grad_none(list_of_list):
             if value is not None:
                 return False
     return True
+
+
+def op_has_vjp(op):
+    # NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+    # not have a vjp interface, we still need to generate the backward
+    # block based on its registered backward function. To achieve this,
+    # we add more handling logic for `PyLayer` Op in the `call_vjp` function
+    return core.has_vjp(op) or op.name() == "pd_op.pylayer"
 
 
 def parent_total_ops(block):
@@ -597,6 +589,7 @@ def get_grad_semantic_info(op):
         "builtin.combine",
         "pd_op.if",
         "pd_op.while",
+        "pd_op.pylayer",
         "cf.tuple_push",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
@@ -612,3 +605,8 @@ def get_split_op(value):
         if op.name() == "builtin.split":
             return op
     return None
+
+
+@lru_cache
+def warning_once(message: str):
+    logging.warning(message)

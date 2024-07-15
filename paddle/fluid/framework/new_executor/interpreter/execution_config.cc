@@ -24,9 +24,7 @@
 
 PD_DECLARE_bool(new_executor_serial_run);
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
@@ -46,28 +44,28 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
       num_host_threads = kHostNumThreads;
 
   int device_count = 0, processor_count = 0;
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     num_device_threads = 0;
     num_host_threads = 4;
   } else {
     processor_count = static_cast<int>(std::thread::hardware_concurrency());
     if (processor_count) {
-      if (platform::is_gpu_place(place)) {
+      if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         device_count = phi::backends::gpu::GetGPUDeviceCount();
 #endif
       }
-      if (platform::is_xpu_place(place)) {
+      if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
         device_count = phi::backends::xpu::GetXPUDeviceCount();
 #endif
       }
-      if (platform::is_ipu_place(place)) {
+      if (phi::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
         device_count = platform::GetIPUDeviceCount();
 #endif
       }
-      if (platform::is_custom_place(place)) {
+      if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
         device_count =
             phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
@@ -151,6 +149,4 @@ void ExecutionConfig::Log(int log_level) {
   VLOG(log_level) << log_str.str();
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

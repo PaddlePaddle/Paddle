@@ -51,7 +51,7 @@ void BasicAucCalculator::reset() {
 void BasicAucCalculator::add_data(const float* d_pred,
                                   const int64_t* d_label,
                                   int batch_size,
-                                  const paddle::platform::Place& place) {
+                                  const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   h_pred.resize(batch_size);
@@ -100,7 +100,7 @@ void BasicAucCalculator::add_mask_data(const float* d_pred,
                                        const int64_t* d_label,
                                        const int64_t* d_mask,
                                        int batch_size,
-                                       const paddle::platform::Place& place) {
+                                       const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   thread_local std::vector<int64_t> h_mask;
@@ -263,7 +263,7 @@ void BasicAucCalculator::add_uid_data(const float* d_pred,
                                       const int64_t* d_label,
                                       const int64_t* d_uid,
                                       int batch_size,
-                                      const paddle::platform::Place& place) {
+                                      const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   thread_local std::vector<uint64_t> h_uid;
@@ -298,7 +298,7 @@ void BasicAucCalculator::add_uid_unlock_data(double pred,
       platform::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
 
-  WuaucRecord record;
+  WuaucRecord record = {0, 0, 0};
   record.uid_ = uid;
   record.label_ = label;
   record.pred_ = static_cast<float>(pred);
@@ -320,7 +320,7 @@ void BasicAucCalculator::computeWuAuc() {
               }
             });
 
-  WuaucRocData roc_data;
+  WuaucRocData roc_data = {0, 0, 0};
   uint64_t prev_uid = 0;
   size_t prev_pos = 0;
   for (size_t i = 0; i < wuauc_records_.size(); ++i) {

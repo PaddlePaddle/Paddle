@@ -69,6 +69,27 @@ class AvgPool {
 };
 
 template <class T>
+class LPPool {
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  MT intermediate_res;
+  float norm_type;
+
+ public:
+  HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
+  DEVICE inline T initial() {
+    intermediate_res = static_cast<MT>(0.0f);
+    return static_cast<T>(0);
+  }
+  DEVICE inline void compute(const T& x, T* y UNUSED) {
+    intermediate_res += static_cast<MT>(powf(x, norm_type));
+  }
+
+  DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+  }
+};
+
+template <class T>
 class MaxPoolGrad {
  public:
   static constexpr bool use_x = true;
@@ -85,6 +106,21 @@ class AvgPoolGrad {
   HOSTDEVICE inline void compute(
       const T& x UNUSED, const T& y UNUSED, const T& dy, T scale, T* dx) {
     *dx += (scale * dy);
+  }
+};
+
+template <class T>
+class LPPoolGrad {
+  float norm_type;
+
+ public:
+  static constexpr bool use_x = true;
+  HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
+  HOSTDEVICE inline void compute(
+      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
+    *dx += static_cast<T>(static_cast<double>(dy) *
+                          powf(static_cast<double>(x) / static_cast<double>(y),
+                               norm_type - 1.0f));
   }
 };
 
@@ -502,17 +538,18 @@ inline int PoolOutputSize(int input_size,
   return output_size;
 }
 
-inline int MaxPoolOutputSize(int input_size,
-                             int filter_size,
-                             int padding,
-                             int stride) {
+inline int MaxPoolOutputSize(
+    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
       phi::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
-  int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
-  return output_size;
+  if (ceil_mode) {
+    return (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
+  } else {
+    return (input_size - filter_size + 2 * padding) / stride + 1;
+  }
 }
 
 template <typename T = int>

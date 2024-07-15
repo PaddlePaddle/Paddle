@@ -31,7 +31,6 @@ DEFINE_ACTIVATION_CUDA_KERNEL(SoftRelu,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(soft_relu,
                           GPU,

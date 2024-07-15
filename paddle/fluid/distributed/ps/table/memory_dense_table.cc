@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int FLAGS_pslib_table_save_max_retry_dense = 3;
 
@@ -34,8 +33,7 @@ void MemoryDenseTable::CreateInitializer(const std::string &attr,
   } else if (slices[0] == "truncated_gaussian_random") {
     initializers_[name] = new TruncatedGaussianInitializer(slices);
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("%s can not be supported", name));
+    PADDLE_THROW(phi::errors::InvalidArgument("%s can not be supported", name));
   }
 }
 
@@ -158,7 +156,7 @@ int32_t MemoryDenseTable::PushDenseParam(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "update dense param numel expected %d, but got %d", param_dim_, num));
   std::copy_n(values, param_dim_, values_[param_idx_].begin());
   return 0;
@@ -189,7 +187,7 @@ int32_t MemoryDenseTable::_PushDense(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "update dense numel expected %d, but got %d", param_dim_, num));
 
   std::vector<int> buckets = bucket(param_dim_, task_pool_size_);
@@ -248,8 +246,8 @@ int32_t MemoryDenseTable::Load(const std::string &path,
     is_read_failed = false;
     try {
       int dim_idx = 0;
-      float data_buffer[5];
-      float *data_buff_ptr = data_buffer;
+      std::vector<float> data_buffer(5);
+      float *data_buff_ptr = data_buffer.data();
       std::string line_data;
       auto common = _config.common();
 
@@ -416,5 +414,4 @@ int32_t MemoryDenseTable::Save(const std::string &path,
   return feasign_size;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

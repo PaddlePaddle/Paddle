@@ -39,7 +39,7 @@ struct ParallelStrategy {
 class ParallelContext {
  public:
   explicit ParallelContext(const ParallelStrategy& strategy,
-                           const platform::Place& place)
+                           const phi::Place& place)
       : strategy_(strategy), place_(place) {}
 
   virtual ~ParallelContext() = default;
@@ -74,7 +74,7 @@ class ParallelContext {
 
  protected:
   ParallelStrategy strategy_;
-  platform::Place place_;
+  phi::Place place_;
 };
 
 }  //  namespace imperative

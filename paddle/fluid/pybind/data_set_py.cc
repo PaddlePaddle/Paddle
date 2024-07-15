@@ -27,7 +27,6 @@ limitations under the License. */
 
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
-#include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/data_set.h"
@@ -40,21 +39,24 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 class IterableDatasetWrapper {
  public:
   IterableDatasetWrapper(framework::Dataset *dataset,
                          const std::vector<std::string> &slots,
-                         const std::vector<platform::Place> &places,
+                         const std::vector<phi::Place> &places,
                          size_t batch_size,
                          bool drop_last)
       : dataset_(dataset),
         slots_(slots),
         places_(places),
         batch_size_(batch_size),
-        drop_last_(drop_last) {
+        drop_last_(drop_last),
+        data_feeds_(),
+        is_exhaustive_(),
+        scopes_(),
+        tensors_() {
 #if defined _WIN32
     PADDLE_THROW(
         platform::errors::Unimplemented("Dataset is not supported on Windows"));
@@ -100,7 +102,7 @@ class IterableDatasetWrapper {
                           "Device number does not match reader number"));
     for (size_t i = 0; i < places_.size(); ++i) {
       data_feeds_[i]->AssignFeedVar(*scopes_[i]);
-      data_feeds_[i]->SetPlace(platform::CPUPlace());
+      data_feeds_[i]->SetPlace(phi::CPUPlace());
       PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(),
                         true,
                         platform::errors::Unavailable(
@@ -192,7 +194,7 @@ class IterableDatasetWrapper {
  private:
   framework::Dataset *dataset_;
   std::vector<std::string> slots_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   size_t batch_size_;
   bool drop_last_;
 
@@ -390,12 +392,11 @@ void BindDataset(py::module *m) {
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")
       .def(py::init<framework::Dataset *,
                     const std::vector<std::string> &,
-                    const std::vector<platform::Place> &,
+                    const std::vector<phi::Place> &,
                     size_t,
                     bool>())
       .def("_start", &IterableDatasetWrapper::Start)
       .def("_next", &IterableDatasetWrapper::Next);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

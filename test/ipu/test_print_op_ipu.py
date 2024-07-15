@@ -113,7 +113,7 @@ class SimpleLayer(paddle.nn.Layer):
             in_channels=3, out_channels=1, kernel_size=2, stride=1
         )
 
-    @to_static()
+    @to_static(full_graph=True)
     def forward(self, x, target=None):
         x = self.conv(x)
         print(x)

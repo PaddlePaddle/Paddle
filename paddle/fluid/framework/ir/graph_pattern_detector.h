@@ -998,10 +998,6 @@ struct DotProductAttention : public PatternBase {
   PATTERN_DECL_NODE(attn_v_transpose);
   PATTERN_DECL_NODE(attn_q_scale);
   PATTERN_DECL_NODE(attn_qk_matmul);
-  PATTERN_DECL_NODE(attn_mask_cast1);
-  PATTERN_DECL_NODE(attn_mask_scale1);
-  PATTERN_DECL_NODE(attn_mask_scale2);
-  PATTERN_DECL_NODE(attn_mask_cast2);
   PATTERN_DECL_NODE(attn_mask_eleadd);
   PATTERN_DECL_NODE(attn_softmax);
   PATTERN_DECL_NODE(attn_dropout);
@@ -1021,10 +1017,6 @@ struct DotProductAttention : public PatternBase {
   PATTERN_DECL_NODE(attn_q_scale_out);
   PATTERN_DECL_NODE(attn_qk_matmul_out);
   PATTERN_DECL_NODE(attn_mask);
-  PATTERN_DECL_NODE(attn_mask_cast1_out);
-  PATTERN_DECL_NODE(attn_mask_scale1_out);
-  PATTERN_DECL_NODE(attn_mask_scale2_out);
-  PATTERN_DECL_NODE(attn_mask_cast2_out);
   PATTERN_DECL_NODE(attn_mask_eleadd_out);
   PATTERN_DECL_NODE(attn_softmax_out);
   PATTERN_DECL_NODE(attn_dropout_out);
@@ -2628,6 +2620,17 @@ struct BNAddActConvGrad : public PatternBase {
   PATTERN_DECL_NODE(d_bn2_x);
   PATTERN_DECL_NODE(d_bn2_scale);
   PATTERN_DECL_NODE(d_bn2_bias);
+};
+
+struct SparseConvOptimPartern : public PatternBase {
+  SparseConvOptimPartern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "sparse_conv_optim_partern") {}
+
+  void operator()();
+  PATTERN_DECL_NODE(sp_conv3d_x);
+  PATTERN_DECL_NODE(sp_conv3d_kernel);
+  PATTERN_DECL_NODE(sp_conv3d_op);
+  PATTERN_DECL_NODE(sp_conv3d_out);
 };
 
 }  // namespace patterns

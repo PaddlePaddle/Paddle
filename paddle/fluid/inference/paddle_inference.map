@@ -71,7 +71,7 @@
 			/* *paddle::framework*; */
 			*paddle::framework::InitDevices*;
 			*paddle::framework::InitMemoryMethod*;
-                        
+
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
 			*paddle::framework::proto*;

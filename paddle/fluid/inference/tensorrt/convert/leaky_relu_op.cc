@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 // LeakyRelu converter from fluid to tensorRT
 class LeakyReluOpConverter : public OpConverter {
@@ -45,7 +43,7 @@ class LeakyReluOpConverter : public OpConverter {
       engine_->SetTensorDynamicRange(input, in_scale);
     }
 #else
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     std::unique_ptr<phi::DenseTensor> alpha_tensor(new phi::DenseTensor());
     alpha_tensor->Resize(common::make_ddim({2}));
     float* alpha_data = alpha_tensor->mutable_data<float>(place);
@@ -121,8 +119,6 @@ class LeakyReluOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(leaky_relu, LeakyReluOpConverter);

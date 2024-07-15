@@ -15,55 +15,82 @@
 import fcntl
 import inspect
 import os
+import unittest
 
 import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.base.core import VarDesc
+from paddle.base.libpaddle import DataType
 
 type_dict_paddle_to_str = {
-    paddle.bool: 'bool',
-    paddle.uint8: 'uint8',
-    paddle.int8: 'int8',
-    paddle.int16: 'int16',
-    paddle.int32: 'int32',
-    paddle.int64: 'int64',
-    paddle.float16: 'float16',
-    paddle.bfloat16: 'bfloat16',
-    paddle.float32: 'float32',
-    paddle.float64: 'float64',
-    paddle.complex128: 'complex128',
-    paddle.complex64: 'complex64',
+    VarDesc.VarType.BOOL: 'bool',
+    VarDesc.VarType.UINT8: 'uint8',
+    VarDesc.VarType.INT8: 'int8',
+    VarDesc.VarType.INT16: 'int16',
+    VarDesc.VarType.INT32: 'int32',
+    VarDesc.VarType.INT64: 'int64',
+    VarDesc.VarType.FP16: 'float16',
+    VarDesc.VarType.BF16: 'bfloat16',
+    VarDesc.VarType.FP32: 'float32',
+    VarDesc.VarType.FP64: 'float64',
+    VarDesc.VarType.COMPLEX128: 'complex128',
+    VarDesc.VarType.COMPLEX64: 'complex64',
+    DataType.BOOL: 'bool',
+    DataType.UINT8: 'uint8',
+    DataType.INT8: 'int8',
+    DataType.INT16: 'int16',
+    DataType.INT32: 'int32',
+    DataType.INT64: 'int64',
+    DataType.FLOAT16: 'float16',
+    DataType.BFLOAT16: 'bfloat16',
+    DataType.FLOAT32: 'float32',
+    DataType.FLOAT64: 'float64',
+    DataType.COMPLEX128: 'complex128',
+    DataType.COMPLEX64: 'complex64',
 }
 
 type_dict_paddle_to_numpy = {
-    paddle.bool: np.bool_,
-    paddle.uint8: np.uint8,
-    paddle.int8: np.int8,
-    paddle.int16: np.int16,
-    paddle.int32: np.int32,
-    paddle.int64: np.int64,
-    paddle.bfloat16: np.uint16,
-    paddle.float16: np.float16,
-    paddle.float32: np.float32,
-    paddle.float64: np.float64,
-    paddle.complex128: np.complex128,
-    paddle.complex64: np.complex64,
+    VarDesc.VarType.BOOL: np.bool_,
+    VarDesc.VarType.UINT8: np.uint8,
+    VarDesc.VarType.INT8: np.int8,
+    VarDesc.VarType.INT16: np.int16,
+    VarDesc.VarType.INT32: np.int32,
+    VarDesc.VarType.INT64: np.int64,
+    VarDesc.VarType.FP16: np.float16,
+    VarDesc.VarType.BF16: np.uint16,
+    VarDesc.VarType.FP32: np.float32,
+    VarDesc.VarType.FP64: np.float64,
+    VarDesc.VarType.COMPLEX128: np.complex128,
+    VarDesc.VarType.COMPLEX64: np.complex64,
+    DataType.BOOL: np.bool_,
+    DataType.UINT8: np.uint8,
+    DataType.INT8: np.int8,
+    DataType.INT16: np.int16,
+    DataType.INT32: np.int32,
+    DataType.INT64: np.int64,
+    DataType.FLOAT16: np.float16,
+    DataType.BFLOAT16: np.uint16,
+    DataType.FLOAT32: np.float32,
+    DataType.FLOAT64: np.float64,
+    DataType.COMPLEX128: np.complex128,
+    DataType.COMPLEX64: np.complex64,
 }
 
 type_dict_str_to_paddle = {
-    'uint8': paddle.uint8,
-    'int8': paddle.int8,
-    'int16': paddle.int16,
-    'int32': paddle.int32,
-    'int64': paddle.int64,
-    'bfloat16': paddle.bfloat16,
-    'float16': paddle.float16,
-    'float32': paddle.float32,
-    'float64': paddle.float64,
-    'bool': paddle.bool,
-    'complex64': paddle.complex64,
-    'complex128': paddle.complex128,
+    'uint8': VarDesc.VarType.UINT8,
+    'int8': VarDesc.VarType.INT8,
+    'int16': VarDesc.VarType.INT16,
+    'int32': VarDesc.VarType.INT32,
+    'int64': VarDesc.VarType.INT64,
+    'bfloat16': VarDesc.VarType.BF16,
+    'float16': VarDesc.VarType.FP16,
+    'float32': VarDesc.VarType.FP32,
+    'float64': VarDesc.VarType.FP64,
+    'bool': VarDesc.VarType.BOOL,
+    'complex64': VarDesc.VarType.COMPLEX64,
+    'complex128': VarDesc.VarType.COMPLEX128,
 }
 
 type_dict_str_to_numpy = {
@@ -106,6 +133,16 @@ class XPUOpTestWrapper:
         return base_class, classes
 
 
+def get_version_str(xpu_version):
+    if xpu_version == core.XPUVersion.XPU1:
+        return "xpu1"
+    if xpu_version == core.XPUVersion.XPU2:
+        return "xpu2"
+    if xpu_version == core.XPUVersion.XPU3:
+        return "xpu3"
+    raise ValueError("unknown xpu version, not 1, 2, or 3")
+
+
 def get_op_white_list():
     op_white_list = xpu_test_op_white_list
     if os.getenv('XPU_TEST_OP_WHITE_LIST') is not None:
@@ -117,19 +154,25 @@ def get_op_white_list():
 
 def get_type_white_list():
     xpu_version = core.get_xpu_device_version(0)
-    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    version_str = get_version_str(xpu_version)
     xpu1_type_white_list = []
     xpu2_type_white_list = []
+    xpu3_type_white_list = []
     for device_type in xpu_test_device_type_white_list:
         device, t_type = device_type.split("_")
         if "xpu1" == device:
             xpu1_type_white_list.append(t_type)
-        else:
+        elif "xpu2" == device:
             xpu2_type_white_list.append(t_type)
+        elif "xpu3" == device:
+            xpu3_type_white_list.append(t_type)
+    if version_str == "xpu1":
+        type_white_list = xpu1_type_white_list
+    elif version_str == "xpu2":
+        type_white_list = xpu2_type_white_list
+    elif version_str == "xpu3":
+        type_white_list = xpu3_type_white_list
 
-    type_white_list = (
-        xpu1_type_white_list if version_str == "xpu1" else xpu2_type_white_list
-    )
     if os.getenv('XPU_TEST_TYPE_WHITE_LIST') is not None:
         type_white_list.extend(
             os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(',')
@@ -167,7 +210,7 @@ def get_device_op_type_white_list():
 def make_xpu_op_list(xpu_version):
     ops = []
     raw_op_list = core.get_xpu_device_op_list(xpu_version)
-    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    version_str = get_version_str(xpu_version)
     op_white_list = get_op_white_list()
     type_white_list = get_type_white_list()
     op_type_white_list = get_op_type_white_list()
@@ -279,7 +322,7 @@ def create_test_class(
         if test_class[0] == '__class__':
             continue
         class_obj = test_class[1]
-        cls_name = f"{test_class[0]}_{str(test_type)}"
+        cls_name = f"{test_class[0]}_{test_type}"
         func_globals[cls_name] = type(
             cls_name,
             (class_obj,),
@@ -296,7 +339,7 @@ def create_test_class(
     ):
         base_class, dynamic_classes = test_class_obj.dynamic_create_class()
         for dy_class in dynamic_classes:
-            cls_name = f"{dy_class[0]}_{str(test_type)}"
+            cls_name = f"{dy_class[0]}_{test_type}"
             attr_dict = dy_class[1]
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             attr_dict['in_type_str'] = test_type
@@ -308,9 +351,20 @@ def create_test_class(
         record_op_test(op_name + '_grad', test_type)
 
 
+def check_run_big_shape_test():
+    def wrapper(cls):
+        run_big_shape_test_flag = os.environ.get("FLAGS_xpu_big_shape_test")
+        return unittest.skipIf(
+            not (run_big_shape_test_flag and run_big_shape_test_flag == "true"),
+            "skip big shape test.",
+        )(cls)
+
+    return wrapper
+
+
 def get_test_cover_info():
     xpu_version = core.get_xpu_device_version(0)
-    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    version_str = get_version_str(xpu_version)
     xpu_op_list = make_xpu_op_list(xpu_version)
     xpu_op_covered = []
 

@@ -23,15 +23,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -309,9 +305,7 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
   AddStatis(found_conv_ac_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_affine_channel_onednn_fuse_pass,
               paddle::framework::ir::ConvAffineChannelFusePass);

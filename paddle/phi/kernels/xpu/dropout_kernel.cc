@@ -138,7 +138,8 @@ PD_REGISTER_KERNEL(dropout,
                    ALL_LAYOUT,
                    phi::DropoutRawKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

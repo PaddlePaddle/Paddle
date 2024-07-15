@@ -101,12 +101,19 @@ template <typename T>
 void PatternGraph<T>::HorizontalFusion() {
   GraphTransformer<NodePattern,
                    T,
-                   StmtPatternGraphMatcher<TrivialPattern<T>>,
+                   Or<StmtPatternGraphMatcher<TrivialPattern<T>>,
+                      StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>,
+                      StmtPatternGraphMatcher<ReducePattern<T>>,
+                      StmtPatternGraphMatcher<ReduceTreePattern<T>>>,
                    LiftToHorizontalFusionPatternOperation>(this);
 
   GraphTransformer<NodePairPattern,
                    T,
-                   HorizontalFusionConstrain,
+                   And<HorizontalFusionConstrain<T>,
+                       InputOutputMaximumConstrain<T>,
+                       HorizontalCheckMiddleOutputVar<T>>,  // Avoid two many
+                                                            // inputs and
+                                                            // outputs.
                    HorizontalFusionOperation>(this);
 }
 
@@ -213,6 +220,7 @@ std::string PatternGraph<T>::GraphInfo() const {
   for (const auto& v : all_pattern_nodes_) {
     ss << "\n" << v->DebugStr();
     ss << "\n    IsOutput: " << IsOutputNodeMatcher()(*this, v);
+    ss << "\n    Loop Framework is: " << GetLoopFramework(v->stmt_pattern());
   }
   ss << "\n===============================";
   return ss.str();

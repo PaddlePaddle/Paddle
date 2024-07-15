@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -34,8 +33,7 @@ limitations under the License. */
 PD_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 namespace {
 // block id starts from 0. This id is used to represent the codeblock
 // wrapping the first block 0.
@@ -44,7 +42,7 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog), block_id_(block_id), ops_(), unused_vars_() {}
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
@@ -53,8 +51,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         prog_, static_cast<int>(block_id_), ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-        prog_, static_cast<int>(block_id_), ops_);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         prog_, static_cast<int>(block_id_), ops_);
   }
 
@@ -70,7 +66,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const phi::Place& place) : place_(place) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_DNNL
@@ -531,7 +527,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     gc->DirectClearCallback(callback);
   } else {
     VLOG(4) << "Sync deleting scope";
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
     callback();
   }
 }
@@ -612,5 +608,4 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

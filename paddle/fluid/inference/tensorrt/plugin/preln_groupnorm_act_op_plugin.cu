@@ -120,8 +120,8 @@ struct GroupSumsOp {
 };
 
 template <int32_t tTHREADS_PER_BLOCK>
-__global__ void prelnGroupNormNHWCSumKernel(
-    GroupNormNHWCParams<__half> params) {
+__global__ void prelnGroupNormNDHWCSumKernel(
+    GroupNormNDHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -137,19 +137,19 @@ __global__ void prelnGroupNormNHWCSumKernel(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     static_cast<int64_t>(hwi) * params.c + ci;
+    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
+                     static_cast<int64_t>(dhwi) * params.c + ci;
     // Fetch two channels per thread.
     __half2 h2(0, 0);
     if (ci < params.c) {
@@ -213,30 +213,30 @@ __global__ void prelnGroupNormNHWCSumKernel(
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void prelnGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
-                           cudaStream_t stream) {
+void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
+                            cudaStream_t stream) {
   // Make sure the values are as we expect.
   PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
                     0,
                     platform::errors::InvalidArgument(
-                        "The groupNormNHWCSum of prelnGroupnormAct Plugin got "
+                        "The groupNormNDHWCSum of prelnGroupnormAct Plugin got "
                         "wrong parameters"
                         "params.c %% params.cPerBlock should be 0, but get %d.",
                         params.c % params.cPerBlock));
   PADDLE_ENFORCE_EQ(
-      params.hw % params.hwPerBlock,
+      params.dhw % params.dhwPerBlock,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCSum of prelnGroupnormAct Plugin got wrong "
+          "The groupNormNDHWCSum of prelnGroupnormAct Plugin got wrong "
           "parameters"
-          "params.hw  %% params.hwPerBlock should be 0, but get %d.",
-          params.hw % params.hwPerBlock));
+          "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
+          params.dhw % params.dhwPerBlock));
   // Make sure a group does not span multiple blocks.
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCSum of prelnGroupnormAct Plugin got wrong "
+          "The groupNormNDHWCSum of prelnGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
@@ -245,36 +245,36 @@ void prelnGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
   // The number of blocks to compute all the channels.
   grid.x = params.c / params.cPerBlock;
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
   switch (params.cPerBlock) {
     case 320:
-      prelnGroupNormNHWCSumKernel<160><<<grid, 160, 0, stream>>>(params);
+      prelnGroupNormNDHWCSumKernel<160><<<grid, 160, 0, stream>>>(params);
       break;
     case 480:
-      prelnGroupNormNHWCSumKernel<256><<<grid, 256, 0, stream>>>(params);
+      prelnGroupNormNDHWCSumKernel<256><<<grid, 256, 0, stream>>>(params);
       break;
     case 256:
-      prelnGroupNormNHWCSumKernel<128><<<grid, 128, 0, stream>>>(params);
+      prelnGroupNormNDHWCSumKernel<128><<<grid, 128, 0, stream>>>(params);
       break;
     case 128:
-      prelnGroupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
+      prelnGroupNormNDHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
     case 8:
-      prelnGroupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
+      prelnGroupNormNDHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
-          "The function groupNormNHWCSum of prelnGroupnormAct TRT Plugin "
+          "The function groupNormNDHWCSum of prelnGroupnormAct TRT Plugin "
           "encounter error"));
   }
 }
 
 template <int32_t tTHREADS_PER_BLOCK>
-__global__ void prelnGroupNormNHWCScaleKernel(
-    GroupNormNHWCParams<__half> params) {
+__global__ void prelnGroupNormNDHWCScaleKernel(
+    GroupNormNDHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -299,21 +299,21 @@ __global__ void prelnGroupNormNHWCScaleKernel(
   }
 
   // Compute the mean.
-  float mean = sum * params.invHWC;
+  float mean = sum * params.invDHWC;
   // Compute the variance.
-  float var = sumSq * params.invHWC - (mean * mean);
+  float var = sumSq * params.invDHWC - (mean * mean);
   // Compute the inverse of the stddev.
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)ni * params.hwc + hwi * params.c + ci;
+    int64_t offset = (int64_t)ni * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2(0, 0);
@@ -345,14 +345,14 @@ __global__ void prelnGroupNormNHWCScaleKernel(
   }
 }
 
-void prelnGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
-                             cudaStream_t stream) {
+void prelnGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
+                              cudaStream_t stream) {
   // Make sure the dimensions are aligned with what we expect.
   PADDLE_ENFORCE_EQ(
       params.c % params.cPerBlock,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCScale of prelnGroupnormAct Plugin got "
+          "The groupNormNDHWCScale of prelnGroupnormAct Plugin got "
           "wrong parameters"
           "params.c %% params.cPerBlock should be 0, but get %d.",
           params.c % params.cPerBlock));
@@ -361,7 +361,7 @@ void prelnGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
       params.cPerBlock % params.cPerGroup,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCScale of prelnGroupnormAct Plugin got wrong "
+          "The groupNormNDHWCScale of prelnGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
@@ -370,29 +370,29 @@ void prelnGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
   // The number of blocks to compute all the channels.
   grid.x = params.c / params.cPerBlock;
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
   switch (params.cPerBlock) {
     case 320:
-      prelnGroupNormNHWCScaleKernel<160><<<grid, 160, 0, stream>>>(params);
+      prelnGroupNormNDHWCScaleKernel<160><<<grid, 160, 0, stream>>>(params);
       break;
     case 480:
-      prelnGroupNormNHWCScaleKernel<256><<<grid, 256, 0, stream>>>(params);
+      prelnGroupNormNDHWCScaleKernel<256><<<grid, 256, 0, stream>>>(params);
       break;
     case 256:
-      prelnGroupNormNHWCScaleKernel<128><<<grid, 128, 0, stream>>>(params);
+      prelnGroupNormNDHWCScaleKernel<128><<<grid, 128, 0, stream>>>(params);
       break;
     case 128:
-      prelnGroupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
+      prelnGroupNormNDHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
     case 8:
-      prelnGroupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
+      prelnGroupNormNDHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
-          "The function groupNormNHWCSum of prelnGroupnormAct TRT Plugin "
+          "The function groupNormNDHWCSum of prelnGroupnormAct TRT Plugin "
           "encounter error"));
   }
 }
@@ -413,7 +413,7 @@ int PrelnGroupnormActPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. prelnGroupnormAct-->fp16";
 
     int32_t cPerBlock = 320;
-    int32_t maxBlocksPerHW = 1024;
+    int32_t maxBlocksPerDHW = 1024;
 
     switch (input_desc[0].dims.d[1]) {
       case 960:
@@ -433,6 +433,25 @@ int PrelnGroupnormActPluginDynamic::enqueue(
     if (cPerBlock > input_desc[0].dims.d[1]) {
       cPerBlock = 8;
     }
+    auto d_dim = input_desc[0].dims.nbDims;
+    params_.n = input_desc[0].dims.d[0];
+    if (d_dim == 3) {
+      params_.c = input_desc[0].dims.d[1];
+      params_.d = 1;
+      params_.h = 1;
+      params_.w = input_desc[0].dims.d[2];
+    } else if (d_dim == 4) {
+      params_.c = input_desc[0].dims.d[1];
+      params_.d = 1;
+      params_.h = input_desc[0].dims.d[2];
+      params_.w = input_desc[0].dims.d[3];
+    } else {
+      // d_dim == 5
+      params_.c = input_desc[0].dims.d[1];
+      params_.d = input_desc[0].dims.d[2];
+      params_.h = input_desc[0].dims.d[3];
+      params_.w = input_desc[0].dims.d[4];
+    }
     params_.withSilu = with_silu_;
     params_.dst = static_cast<half *>(outputs[1]);
     params_.eleOut = static_cast<half *>(outputs[0]);
@@ -441,24 +460,24 @@ int PrelnGroupnormActPluginDynamic::enqueue(
     params_.gamma = scale_gpu_.get();
     params_.beta = bias_gpu_.get();
     params_.redBuffer = static_cast<float *>(workspace);
-    params_.n = input_desc[0].dims.d[0];
-    params_.h = input_desc[0].dims.d[2];
-    params_.w = input_desc[0].dims.d[3];
-    params_.c = input_desc[0].dims.d[1];
+    // params_.n = input_desc[0].dims.d[0];
+    // params_.h = input_desc[0].dims.d[2];
+    // params_.w = input_desc[0].dims.d[3];
+    // params_.c = input_desc[0].dims.d[1];
     params_.groups = groups_;
-    params_.hw = params_.h * params_.w;
-    const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
-    params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
+    params_.dhw = params_.d * params_.h * params_.w;
+    const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+    params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
     params_.cPerBlock = cPerBlock;
     params_.cPerGroup = params_.c / params_.groups;
-    params_.hwc = params_.hw * params_.c;
-    params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
+    params_.dhwc = params_.dhw * params_.c;
+    params_.invDHWC = 1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
     params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
     params_.eps = eps_;
 
     cudaMemsetAsync(params_.redBuffer, 0, ws_, stream);
-    prelnGroupNormNHWCSum(params_, stream);
-    prelnGroupNormNHWCScale(params_, stream);
+    prelnGroupNormNDHWCSum(params_, stream);
+    prelnGroupNormNDHWCScale(params_, stream);
 
   } else {
     // input not fp16

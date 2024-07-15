@@ -135,23 +135,17 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
   }
 
-  static framework::DDim ValidateShape(const std::vector<int> shape,
-                                       const framework::DDim &in_dims) {
+  static phi::DDim ValidateShape(const std::vector<int> shape,
+                                 const phi::DDim &in_dims) {
     const int64_t in_size = common::product(in_dims);
     auto in_dims_vec = common::vectorize(in_dims);
-    bool all_positive = std::all_of(in_dims_vec.cbegin(),
-                                    in_dims_vec.cend(),
-                                    [](int64_t i) { return i > 0; });
-    // only one dimension can be set to -1, whose size will be automatically
-    // infered.
-    const int64_t unk_dim_val = -1;
-    const int64_t copy_dim_val = 0;
-
     std::vector<int64_t> output_shape(shape.size(), 0);
     int64_t capacity = 1;
     int unk_dim_idx = -1;
+
     for (size_t i = 0; i < shape.size(); ++i) {
-      if (shape[i] == unk_dim_val) {
+      if (shape[i] == -1) {
+        // only one dimension can be set to -1, whose size will be infered.
         PADDLE_ENFORCE_EQ(
             unk_dim_idx,
             -1,
@@ -161,19 +155,33 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 common::make_ddim(shape),
                 i));
         unk_dim_idx = static_cast<int>(i);
-      } else if (shape[i] == copy_dim_val) {
-        PADDLE_ENFORCE_LT(
-            static_cast<int>(i),
-            in_dims.size(),
-            phi::errors::InvalidArgument(
-                "The index of 0 in `shape` must be less than "
-                "the input tensor X's dimensions. "
-                "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
-                "X's dimensions = %d.",
-                common::make_ddim(shape),
-                i,
-                in_dims,
-                in_dims.size()));
+        output_shape[i] = shape[i];
+      } else if (shape[i] == 0) {
+        if (in_size == 0) {
+          // zero-sized tensor case
+          // index i could be < in_dims.size(): such as [3, 2, 0] -> [0, 0] is
+          // [0, 0], [3, 2, 0] -> [10, 0] is [10, 0]; index i could be >=
+          // in_dims.size(): such as [3, 2, 0] -> [1, 3, 0, 0] is [1, 3, 0, 0]
+          output_shape[i] = 0;
+        } else {
+          // in other cases 0 means keep in_dims[i] unchanged
+          // index i must be < in_dims.size(): such as [3, 2, 1] -> [0, 0]
+          // is [3, 2] or [3, 2, 1] -> [3, 2, 0] is [3, 2, 1]
+          PADDLE_ENFORCE_LT(
+              static_cast<int>(i),
+              in_dims.size(),
+              phi::errors::InvalidArgument(
+                  "The index of 0 in `shape` must be less than "
+                  "the input tensor X's dimensions. "
+                  "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
+                  "X's dimensions = %d.",
+                  phi::make_ddim(shape),
+                  i,
+                  in_dims,
+                  in_dims.size()));
+          output_shape[i] = in_dims[static_cast<int>(i)];
+        }
+        capacity *= output_shape[i];
       } else {
         PADDLE_ENFORCE_GT(
             shape[i],
@@ -185,25 +193,36 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 common::make_ddim(shape),
                 i,
                 shape[i]));
+        output_shape[i] = shape[i];
+        capacity *= output_shape[i];
       }
-
-      // NOTE all non-zero values will be converted to True (include negative
-      // value)
-      capacity *= (shape[i] ? shape[i] : in_dims[static_cast<int>(i)]);
-      output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i])
-                                  : in_dims[static_cast<int>(i)]);
     }
 
+    if (capacity == 0) {
+      PADDLE_ENFORCE_EQ(in_size,
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Only Zero-Size Tensor'shape can contain 0"));
+      PADDLE_ENFORCE_EQ(unk_dim_idx,
+                        -1,
+                        phi::errors::InvalidArgument(
+                            "can not reshape %s to %s, because the unspecified "
+                            "dimension %i can be any number and is ambiguous",
+                            in_dims,
+                            common::make_ddim(shape),
+                            unk_dim_idx));
+    }
+
+    bool no_negative = std::all_of(in_dims_vec.cbegin(),
+                                   in_dims_vec.cend(),
+                                   [](int64_t i) { return i >= 0; });
     if (unk_dim_idx != -1) {
-      if (all_positive) {
-        // in_size < 0 and is un-determinate in compile time, skip the check,
-        // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
-        // capacity = -24, in_size = -8, output_shape[0] = 0
-        // the following check will fail.
-        output_shape[unk_dim_idx] = -in_size / capacity;
+      // in compile time, no_negative may be False.
+      if (no_negative) {
+        output_shape[unk_dim_idx] = in_size / capacity;
         PADDLE_ENFORCE_EQ(
             output_shape[unk_dim_idx] * capacity,
-            -in_size,
+            in_size,
             phi::errors::InvalidArgument(
                 "The 'shape' attribute in ReshapeOp is invalid. "
                 "The input tensor X'size must be divisible by known "
@@ -215,10 +234,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 common::make_ddim(shape),
                 capacity));
       } else {
+        // such as [-1, 8, 3]->[-1, 8], out_shape will remain [-1, 8]
         output_shape[unk_dim_idx] = -1;
       }
     } else {
-      if (all_positive) {
+      if (no_negative) {
         PADDLE_ENFORCE_EQ(
             capacity,
             in_size,
@@ -233,24 +253,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 common::make_ddim(shape),
                 capacity));
       }
-    }
-
-    // support reshape with zero-input(input tensor with product(shape) == 0)
-    // by now we require that if the input tensor is zero shape, the target
-    // shape of output must be zero
-    if (in_size == 0) {
-      PADDLE_ENFORCE_LE(
-          capacity,
-          in_size,
-          phi::errors::InvalidArgument(
-              "The 'shape' in ReshapeOp is invalid. "
-              "The input tensor X's shape = [%s], X's capacity = %d."
-              "But the target shape of Out is [%s],  the "
-              "capacity of 'Out' is %d.",
-              in_dims,
-              in_size,
-              common::make_ddim(shape),
-              capacity));
     }
 
     return common::make_ddim(output_shape);
@@ -391,11 +393,10 @@ class ReshapeKernel {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
       for (auto &tensor : list_new_shape_tensor) {
-        if (platform::is_gpu_place(tensor->place()) ||
-            platform::is_xpu_place(tensor->place())) {
+        if (tensor->place().GetType() == phi::AllocationType::GPU ||
+            tensor->place().GetType() == phi::AllocationType::XPU) {
           phi::DenseTensor temp;
-          paddle::framework::TensorCopySync(
-              *tensor, platform::CPUPlace(), &temp);
+          paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
         } else {
           pt_vec_shape.push_back(*tensor);
@@ -404,11 +405,11 @@ class ReshapeKernel {
       pt_scalar_shape = phi::IntArray(pt_vec_shape);
     } else if (shape_tensor) {
       phi::DenseTensor pt_shape;
-      if (platform::is_gpu_place(shape_tensor->place()) ||
-          platform::is_xpu_place(shape_tensor->place())) {
+      if (shape_tensor->place().GetType() == phi::AllocationType::GPU ||
+          shape_tensor->place().GetType() == phi::AllocationType::XPU) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
-            *shape_tensor, platform::CPUPlace(), &temp);
+            *shape_tensor, phi::CPUPlace(), &temp);
         pt_shape = std::move(temp);
       } else {
         pt_shape = *shape_tensor;
@@ -418,7 +419,7 @@ class ReshapeKernel {
       auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
       pt_scalar_shape = phi::IntArray(shape_attr);
     }
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::CPUContext &>(dev_ctx),
                               *in,
@@ -426,7 +427,7 @@ class ReshapeKernel {
                               out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
                               *in,
@@ -435,8 +436,8 @@ class ReshapeKernel {
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
-      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+    if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
+      auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
                               *in,
                               pt_scalar_shape,
@@ -453,21 +454,21 @@ class ReshapeGradKernel {
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, d_x);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::GPUContext &>(dev_ctx), *d_out, d_x);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
-      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+    if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
+      auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::XPUContext &>(dev_ctx), *d_out, d_x);
     }
@@ -483,21 +484,21 @@ class ReshapeDoubleGradKernel {
     auto *dd_out = ctx.Output<phi::DenseTensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::GPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
-      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+    if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
+      auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::XPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }

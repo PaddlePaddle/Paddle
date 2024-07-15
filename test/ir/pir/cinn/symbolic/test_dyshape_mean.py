@@ -79,7 +79,7 @@ class TestReduceMean(unittest.TestCase):
             InputSpec(shape=[1, None, 768], dtype='float32'),
         ]
         cinn_out = self.eval(
-            x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
+            x=self.x, axis=axis, input_spec=input_spec, use_cinn=True
         )
         dy_out = self.eval(
             x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
@@ -93,7 +93,7 @@ class TestReduceMean(unittest.TestCase):
             InputSpec(shape=[None, None, 768], dtype='float32'),
         ]
         cinn_out = self.eval(
-            x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
+            x=self.x, axis=axis, input_spec=input_spec, use_cinn=True
         )
         dy_out = self.eval(
             x=self.x, axis=axis, input_spec=input_spec, use_cinn=False

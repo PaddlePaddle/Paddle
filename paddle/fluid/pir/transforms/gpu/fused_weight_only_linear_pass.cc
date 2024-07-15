@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -30,9 +32,6 @@ int getSMVersion() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
-#else
-  PADDLE_THROW(common::errors::Unavailable(
-      "fused_weight_only_linear_pass needs paddle compiled with CUDA."));
 #endif
   return sm_version;
 }
@@ -46,9 +45,11 @@ class FusedWeightOnlyLinearWithBiasPattern
 
  public:
   FusedWeightOnlyLinearWithBiasPattern(bool reverse_add,
-                                       const std::string &algo,
+                                       std::string algo,
                                        int sm_version)
-      : reverse_add_(reverse_add), algo_(algo), sm_version_(sm_version) {}
+      : reverse_add_(reverse_add),
+        algo_(std::move(algo)),
+        sm_version_(sm_version) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -165,8 +166,8 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
   int sm_version_;
 
  public:
-  FusedWeightOnlyLinearNoBiasPattern(const std::string &algo, int sm_version)
-      : algo_(algo), sm_version_(sm_version) {}
+  FusedWeightOnlyLinearNoBiasPattern(std::string algo, int sm_version)
+      : algo_(std::move(algo)), sm_version_(sm_version) {}
 
  public:
   std::string name() const override {
@@ -276,7 +277,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
         sm_version_(getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    std::string algo = "weight_only_int4";
+    std::string algo = "weight_only_int8";
     if (Has("weight_only_algo")) {
       algo = Get<std::string>("weight_only_algo");
     }
@@ -310,7 +311,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation *op) const override {
     if (sm_version_ != 70 && sm_version_ != 75 && sm_version_ != 80 &&
-        sm_version_ != 86) {
+        sm_version_ != 86 && sm_version_ != 89 && sm_version_ != 90) {
       return false;
     }
     return op->num_regions() > 0;

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,6 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 
-namespace ir {
-class Operation;
-}  // namespace ir
-
 namespace paddle {
 namespace framework {
 class Scope;
@@ -31,7 +27,7 @@ class ValueExecutionInfo;
 class PyLayerInstruction : public InstructionBase {
  public:
   PyLayerInstruction(size_t id,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      ::pir::Operation* op,
                      ValueExecutionInfo* value_exe_info,
                      interpreter::ExecutionConfig execution_config);
@@ -54,8 +50,6 @@ class PyLayerInstruction : public InstructionBase {
   std::vector<Variable*> output_vars_;
 
   PirInterpreter* fwd_inter_ = nullptr;
-
-  std::vector<std::string> fwd_outputs_;
 
   std::vector<std::string> fwd_skip_gc_names_;
 };

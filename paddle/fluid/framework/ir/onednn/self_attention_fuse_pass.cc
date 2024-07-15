@@ -17,6 +17,7 @@
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -41,9 +42,7 @@
   GET_IR_NODE(transpose2_2_op);  \
   GET_IR_NODE(transpose2_2_out);
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -53,6 +52,11 @@ void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   LOG(WARNING) << "No-avx512 or MKL supported!";
   return;
 #endif
+
+  if (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f)) {
+    return;
+  }
+
   // do something;
   GraphPatternDetector gpd;
   const std::string pattern_name = "self_attention_fuse";
@@ -134,9 +138,7 @@ void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(self_attention_fuse_pass,
               paddle::framework::ir::SelfAttentionFusePass);

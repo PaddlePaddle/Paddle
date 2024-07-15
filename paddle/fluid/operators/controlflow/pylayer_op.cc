@@ -19,28 +19,27 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 namespace {  // NOLINT
 enum class PyLayerBlockIndex { kFORWARD = 0, kBACKWARD = 1, kNONE = 2 };
 }  // namespace
 
-const char PyLayerOp::kInputs[] = "Input";  // NOLINT
-const char PyLayerOp::kOutputs[] = "Out";   // NOLINT
-const char PyLayerOp::kScope[] = "Scope";   // NOLINT
-const char PyLayerOp::kSkipEagerDeletionVars[] =
-    "skip_eager_deletion_vars";              // NOLINT
+const char PyLayerOp::kInputs[] = "Input";        // NOLINT
+const char PyLayerOp::kOutputs[] = "Out";         // NOLINT
+const char PyLayerOp::kScope[] = "Scope";         // NOLINT
+const char PyLayerOp::kSkipEagerDeletionVars[] =  // NOLINT
+    "skip_eager_deletion_vars";
 const char PyLayerOp::kBlocks[] = "blocks";  // NOLINT
 
 void PyLayerOp::CreateInterpreter(
-    const platform::Place &dev_place,
+    const phi::Place &dev_place,
     const framework::BlockDesc &block,
     framework::Scope *cur_scope,
     const std::vector<std::string> &skip_vars) const {
-  if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+  if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
     VLOG(10) << "[interpreterCore cache]" << core_.get();
-    VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(), dev_place);
+    VLOG_IF(10, core_) << phi::is_same_place(core_->GetPlace(), dev_place);
 
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
@@ -91,7 +90,7 @@ class PyLayerForwardOp : public PyLayerOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const {
+               const phi::Place &dev_place) const override {
     auto *scope_var = scope.FindVar(Output(kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
@@ -175,7 +174,7 @@ class PyLayerBackwardOp : public PyLayerOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     const auto &inputs = Inputs(PyLayerOp::kInputs);
     const auto &outside_grads =
         Outputs(framework::GradVarName(PyLayerOp::kInputs));
@@ -263,8 +262,7 @@ class PyLayerBackwardInferVarType : public framework::VarTypeInference {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pylayer,

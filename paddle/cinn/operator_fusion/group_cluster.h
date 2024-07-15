@@ -27,7 +27,8 @@ namespace cinn::fusion {
 
 template <typename T>
 inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
-    const std::vector<fusion::PatternContent<T>>& contents) {
+    const std::vector<fusion::PatternContent<T>>& contents,
+    const std::vector<pir::Value>& output_values) {
   std::function<pir::Operation*(fusion::PatternContent<T>)> func =
       [](const fusion::PatternContent<T>& content) { return content.op; };
   const auto& origin_ops = fusion::MapVector(contents, func);
@@ -36,7 +37,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   VLOG(4) << "Input Group with size " << origin_ops.size() << " :\n"
           << fusion::OpsDebugStr(origin_ops);
 
-  std::vector<pir::Value> outputs;
+  std::vector<pir::Value> outputs = output_values;
   const auto& ops = [&] {
     std::vector<pir::Operation*> ops;
     for (const auto& content : contents) {
@@ -56,7 +57,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
         return content.op->name() != "cf.yield";
       });
 
-  pir::Program* program = ops.at(0)->GetParentProgram();
+  pir::Program* program = origin_ops.at(0)->GetParentProgram();
 
   auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
 

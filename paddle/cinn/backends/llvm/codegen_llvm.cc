@@ -24,7 +24,6 @@
 #include <llvm/IR/Metadata.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
-
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -32,6 +31,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include "paddle/common/enforce.h"
 
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -205,12 +205,12 @@ llvm::Value *CodeGenLLVM::EmitBinaryOp(llvm::Value *lhs,
                                        bool is_integral,
                                        bool is_signed) {
   llvm::Instruction::BinaryOps ops;
-  CHECK_EQ(lhs->getType(), rhs->getType())
-      << "the types of operands of binary operation are mismatch"
-      << ", lhs[" << DumpToString(*lhs) << "] " << opcode << " rhs["
-      << DumpToString(*rhs) << "]"
-      << ", lhs_type[" << DumpToString(*lhs->getType()) << "], rhs_type["
-      << DumpToString(*rhs->getType()) << "]";
+  PADDLE_ENFORCE_EQ(
+      lhs->getType(),
+      rhs->getType(),
+      phi::errors::InvalidArgument(
+          "the types of operands of binary operation are mismatch"));
+
   switch (opcode) {
     case '+':
       ops = is_integral ? llvm::Instruction::BinaryOps::Add
@@ -288,6 +288,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Sub *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Mul *op) {
+  ir::TryElevateInt32ToInt64({op->a(), op->b()});
   auto *lhs = Visit(&op->a());
   auto *rhs = Visit(&op->b());
   return EmitBinaryOp(lhs, rhs, '*', is_integral_type(op->type()));
@@ -591,8 +592,8 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
 
   llvm::Value *old_var = GetVar(op->loop_var->name);
   // loop iterator
-  llvm::AllocaInst *loop_var =
-      Alloca(b_->getInt32Ty(), nullptr, op->loop_var->name);
+  llvm::AllocaInst *loop_var = Alloca(
+      b_->getIntNTy(op->min->type().bits()), nullptr, op->loop_var->name);
   loop_var->setAlignment(llvm::Align(4));
   SetVar(op->loop_var->name, loop_var);
 
@@ -613,7 +614,8 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
 
   // loop_body
   b_->SetInsertPoint(body_bb);
-  llvm::Value *step = llvm::ConstantInt::get(b_->getInt32Ty(), stride);
+  llvm::Value *step =
+      llvm::ConstantInt::get(b_->getIntNTy(op->min->type().bits()), stride);
 
   Visit(&op->body);
   llvm::Value *indvar_inc = Add(indvar,
@@ -880,7 +882,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
     {
       int alignment = op->type().bits();
       alignment = 8;
-      CHECK_GT(alignment, 0);
+      PADDLE_ENFORCE_GT(
+          alignment,
+          0,
+          phi::errors::InvalidArgument("alignment should be greater than 0"));
       load_inst->setAlignment(llvm::Align(std::min(alignment, 8)));
     }
 
@@ -949,7 +954,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
     {
       int alignment = op->type().bits();
       alignment = 8;
-      CHECK_GT(alignment, 0);
+      PADDLE_ENFORCE_GT(
+          alignment,
+          0,
+          phi::errors::InvalidArgument("alignment should be greater than 0"));
       store_inst->setAlignment(llvm::Align(std::min(alignment, 8)));
     }
     // TODO(fc500110): tbaa AliasAnalysis
@@ -1059,9 +1067,12 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
   auto init_function_state = [this]() { alias_vars_.clear(); };
   init_function_state();
 
-  CHECK_EQ(op->alloc_output_buffer_exprs.size(),
-           op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocation expressions is not match";
+  PADDLE_ENFORCE_EQ(
+      op->alloc_output_buffer_exprs.size(),
+      op->dealloc_output_buffer_exprs.size(),
+      phi::errors::InvalidArgument(
+          "the count of allocation and deallocation expressions is not "
+          "match"));
 
   std::vector<Expr> new_body;
   auto create_temp_buffers = op->PrepareCreateTempBufferExprs();
@@ -1228,7 +1239,11 @@ llvm::Value *CodeGenLLVM::EmitCall_get_address(const ir::Call *op) {
 
 llvm::Value *CodeGenLLVM::EmitCall_debug_info(const ir::Call *op) {
   auto callee = m_->getFunction(runtime::intrinsic::debug_log_repr);
-  CHECK_GE(op->read_args.size(), 1UL);
+  PADDLE_ENFORCE_GE(op->read_args.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The arguments of debug_log_repr should be greater "
+                        "than 1"));
   std::vector<llvm::Value *> args;
   for (auto &arg : op->read_args) {
     args.push_back(Visit(&arg));
@@ -1315,7 +1330,9 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
     slices.push_back(load_inst);
   }
 
-  CHECK_EQ(slices.size(), 1UL);
+  PADDLE_ENFORCE_EQ(slices.size(),
+                    1UL,
+                    phi::errors::InvalidArgument("slices size should be 1."));
 
   return slices[0];
 }
@@ -1323,7 +1340,11 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
 llvm::Value *CodeGenLLVM::CreateBufferVecPtr(Type t,
                                              llvm::Value *buffer,
                                              llvm::Value *index) {
-  CHECK_GT(t.lanes(), 1) << "type is not a vector type: " << t;
+  PADDLE_ENFORCE_GT(t.lanes(),
+                    1,
+                    phi::errors::InvalidArgument("type lanes should be greater "
+                                                 "than 1, but received %d",
+                                                 t.lanes()));
   llvm::PointerType *btype =
       llvm::dyn_cast<llvm::PointerType>(buffer->getType());
   CHECK(btype);
@@ -1338,7 +1359,11 @@ llvm::Value *CodeGenLLVM::CreateBufferVecPtr(Type t,
 llvm::Value *CodeGenLLVM::CreateBufferPtr(Type t,
                                           llvm::Value *buffer,
                                           llvm::Value *index) {
-  CHECK_EQ(t.lanes(), 1);
+  PADDLE_ENFORCE_EQ(t.lanes(),
+                    1,
+                    phi::errors::InvalidArgument("type lanes should be 1, but "
+                                                 "received %d",
+                                                 t.lanes()));
   auto *btype = llvm::dyn_cast<llvm::PointerType>(buffer->getType());
   CHECK(btype);
   auto *ptype =
@@ -1355,7 +1380,10 @@ llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
                                          int lanes) {
   int total_lanes =
       llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
-  CHECK_LE(begin + lanes, total_lanes);
+  PADDLE_ENFORCE_LE(begin + lanes,
+                    total_lanes,
+                    phi::errors::InvalidArgument(
+                        "begin + lanes should be less than total_lanes"));
   if (lanes == total_lanes && begin == 0) return vec;  // full slice
   std::vector<llvm::Constant *> indices;
   for (int i = 0; i < lanes; ++i) {
@@ -1384,6 +1412,10 @@ int GetNaiveVecAlignmentImpl(common::ARMArch, const Target &target) {
 }
 
 int GetNaiveVecAlignmentImpl(common::NVGPUArch, const Target &target) {
+  return 128;
+}
+
+int GetNaiveVecAlignmentImpl(common::HygonDCUArchHIP, const Target &target) {
   return 128;
 }
 
@@ -1422,7 +1454,10 @@ void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,
       if (pstride_int && pbase_int) {
         int stride = pstride_int->value;
         base = pbase_int->value;
-        CHECK_GE(base, 0);
+        PADDLE_ENFORCE_GE(
+            base,
+            0,
+            phi::errors::InvalidArgument("base should be greater than 0"));
         width = NextPowerOfTwo(ramp->lanes * stride);
 
         while (base % width) {
@@ -1491,12 +1526,15 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BufferCreate *op) {
   CHECK(buffer_node);
   std::vector<llvm::Value *> args(
       {ll_const_int32(buffer_node->target.runtime_arch())});
-  uint64_t memory_size = (buffer_node->dtype.ElementOf().bits() + 7) / 8;
-  for (auto shape : buffer_node->shape) {
-    int shape_int = shape.as_int32();
-    memory_size *= shape_int;
+  int64_t memory_size = (buffer_node->dtype.ElementOf().bits() + 7) / 8;
+  // Calculate buffer size and determine if it contains a symbolic constant
+  Expr buffer_size(static_cast<int64_t>(1));
+  buffer_size = buffer_size * ir::Expr(memory_size);
+  for (int i = 0; i < buffer_node->shape.size(); i++) {
+    buffer_size = buffer_size * buffer_node->shape[i];
   }
-  args.push_back(ll_const_int64(memory_size));
+  ir::TryElevateInt32ToInt64({buffer_size});
+  args.push_back(Visit(&buffer_size));
   args.push_back(ll_const_int32(32));
 
   return Call(callee, args);
@@ -1596,29 +1634,50 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BuiltinIntrin *op) {
   std::string func_name = op->name;
   if (op->id == -1) {
     if (func_name == "bitwise_and") {
-      CHECK_GE(op->args.size(), 2U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        2U,
+                        phi::errors::InvalidArgument(
+                            "bitwise_and should have at least 2 arguments"));
       return b_->CreateAnd(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "bitwise_or") {
-      CHECK_GE(op->args.size(), 2U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        2U,
+                        phi::errors::InvalidArgument(
+                            "bitwise_or should have at least 2 arguments"));
       return b_->CreateOr(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "bitwise_xor") {
-      CHECK_GE(op->args.size(), 2U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        2U,
+                        phi::errors::InvalidArgument(
+                            "bitwise_xor should have at least 2 arguments"));
       return b_->CreateXor(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "bitwise_not") {
-      CHECK_GE(op->args.size(), 1U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        1U,
+                        phi::errors::InvalidArgument(
+                            "bitwise_not should have at least 1 argument"));
       return b_->CreateNot(Visit(&op->args[0]));
     } else if (func_name == "left_shift") {
-      CHECK_GE(op->args.size(), 2U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        2U,
+                        phi::errors::InvalidArgument(
+                            "left_shift should have at least 2 arguments"));
       return b_->CreateShl(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "right_shift") {
-      CHECK_GE(op->args.size(), 2U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        2U,
+                        phi::errors::InvalidArgument(
+                            "right_shift should have at least 2 arguments"));
       if (op->args[0]->type().is_int()) {
         return b_->CreateAShr(Visit(&op->args[0]), Visit(&op->args[1]));
       } else {
         return b_->CreateLShr(Visit(&op->args[0]), Visit(&op->args[1]));
       }
     } else if (func_name == "isnan") {
-      CHECK_GE(op->args.size(), 1U);
+      PADDLE_ENFORCE_GE(op->args.size(),
+                        1U,
+                        phi::errors::InvalidArgument(
+                            "isnan should have at least 1 argument"));
       llvm::Value *v = Visit(&op->args[0]);
       return b_->CreateFCmpUNO(v, v);
     }

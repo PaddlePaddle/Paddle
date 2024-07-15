@@ -128,7 +128,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     auto w_dims = weight_tensor->dims();
 
     float* quantized_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+        weight_tensor->mutable_data<float>(phi::CPUPlace());
 
     // Get weight scale
     if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
@@ -151,7 +151,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       const phi::DenseTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<phi::DenseTensor>();
       PADDLE_ENFORCE(
-          paddle::platform::is_cpu_place(channel_scale_tensor.place()),
+          phi::is_cpu_place(channel_scale_tensor.place()),
           platform::errors::InvalidArgument(
               "Channel scale tensor's place should be CPU."));
       // compute the channel wise abs max of the weight tensor

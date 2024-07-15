@@ -18,7 +18,9 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-sys.path.append("../deprecated/sequence")
+import paddle
+
+sys.path.append("../sequence")
 from test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,
@@ -34,6 +36,12 @@ def convert_to_offset(lod):
     return offset
 
 
+def api_wrapper(x, pooltype="SUM", axis=1):
+    if isinstance(x, paddle.Tensor):
+        x = [x]
+    return paddle._C_ops.fusion_seqpool_concat(x, pooltype, axis)
+
+
 class TestFusionSeqPoolConcatOp(OpTest):
     def setUp(self):
         self.w = 11
@@ -41,6 +49,7 @@ class TestFusionSeqPoolConcatOp(OpTest):
         self.set_conf()
         self.set_pooltype()
         self.op_type = 'fusion_seqpool_concat'
+        self.python_api = api_wrapper
         self.axis = 1
         bs = len(self.lods[0][0])
         inputs = []

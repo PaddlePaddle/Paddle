@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -261,6 +262,41 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
         def init_axis(self):
             self.axis = 2
 
+    @check_run_big_shape_test()
+    class TestElementwiseAddOpLargeShape1(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(8192, 1920).astype(self.dtype)
+            self.y = np.random.rand(1920).astype(self.dtype)
+            self.out = self.x + self.y
+
+    @check_run_big_shape_test()
+    class TestElementwiseAddOpLargeShape2(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(1, 8192, 5, 128).astype(self.dtype)
+            self.y = np.random.rand(1, 8192, 5, 128).astype(self.dtype)
+            self.out = self.x + self.y
+
+    @check_run_big_shape_test()
+    class TestElementwiseAddOpLargeShape3(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(1024, 5120).astype(self.dtype)
+            self.y = np.random.rand(5120).astype(self.dtype)
+            self.out = self.x + self.y
+
+    @check_run_big_shape_test()
+    class TestElementwiseAddOpLargeShape4(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(8192, 3456).astype(self.dtype)
+            self.y = np.random.rand(3456).astype(self.dtype)
+            self.out = self.x + self.y
+
+    @check_run_big_shape_test()
+    class TestElementwiseAddOpLargeShape5(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(1, 8192, 31776).astype(self.dtype)
+            self.y = np.random.rand(31776).astype(self.dtype)
+            self.out = self.x + self.y
+
     class TestAddOp(unittest.TestCase):
         def test_name(self):
             with base.program_guard(base.Program()):
@@ -317,7 +353,10 @@ class TestTensorFloat32Bfloat16OrFloat16Add(unittest.TestCase):
         val_range = 10000
         shapes = []
         for i in range(test_num):
-            shape = [np.random.randint(val_range), np.random.randint(val_range)]
+            shape = [
+                np.random.randint(1, val_range),
+                np.random.randint(1, val_range),
+            ]
             shapes.append(shape)
 
         for i, shape in enumerate(shapes):

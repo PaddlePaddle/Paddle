@@ -80,6 +80,8 @@ class TestFlashAttnPatternQscaleCast(PassTest):
               |                 |
               ------matmul------
                       |
+                  transpose
+                      |
                      out
 
          Q   K   V   None   mask
@@ -202,6 +204,8 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
               |                 |
               ------matmul------
                       |
+                  transpose
+                      |
                      out
 
          Q   K   V   None   mask
@@ -323,6 +327,8 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
              cast               |
               |                 |
               ------matmul------
+                      |
+                  transpose
                       |
                      out
 
@@ -449,6 +455,8 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
               |                 |
               ------matmul------
                       |
+                  transpose
+                      |
                      out
 
          Q   K   V   None   mask
@@ -527,6 +535,227 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
                                     "mask": np.random.random(mask_shape).astype(
                                         "float16"
                                     ),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.flash_attn": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must >= 8.x",
+)
+class TestFlashAttnPatternOutscaleCastNoMask(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+        -- matmul--            |
+             |                 |
+           scale               |
+             |                 |
+           cast                |
+             |                 |
+          softmax              |
+             |                 |
+            cast               |
+             |                 |
+             ------matmul------
+                     |
+                 transpose
+                     |
+                    out
+
+        Q   K   V   None   None
+        |   |   |     |      |
+        ------flash_attn------
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+
+                                score = paddle.matmul(qt, kt, transpose_y=True)
+                                score_scale = paddle.scale(
+                                    score, scale=0.125, bias=0.0
+                                )
+                                cast_out = paddle.cast(score_scale, 'float16')
+                                softmax_out = paddle.nn.functional.softmax(
+                                    cast_out
+                                )
+                                softmax_out = paddle.cast(
+                                    softmax_out, 'float16'
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.flash_attn": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must >= 8.x",
+)
+class TestFlashAttnPatternOutscaleNoCastNoMask(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+        -- matmul--            |
+             |                 |
+           scale               |
+             |                 |
+          softmax              |
+             |                 |
+             |                 |
+             ------matmul------
+                     |
+                 transpose
+                     |
+                    out
+
+        Q   K   V   None   None
+        |   |   |     |      |
+        ------flash_attn------
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+
+                                score = paddle.matmul(qt, kt, transpose_y=True)
+                                score_scale = paddle.scale(
+                                    score, scale=0.125, bias=0.0
+                                )
+                                softmax_out = paddle.nn.functional.softmax(
+                                    score_scale
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {

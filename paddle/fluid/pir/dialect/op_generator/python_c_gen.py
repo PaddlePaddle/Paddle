@@ -111,7 +111,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
 INPUT_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
-        auto {name} = {cast_func}({name}_obj, "{api_name}", {index});"""
+        auto {name} = {cast_func}({name}_obj, "{api_name}", {index}, {dispensable});"""
 
 NO_MUTABLE_ATTR_CAST_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
@@ -203,6 +203,7 @@ TYPE_TO_FUNC_MAP = {
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
+    "phi::Place": "CastPyArg2Place",
     "Place": "CastPyArg2Place",
     "phi::DataType": "CastPyArg2DataTypeDirectly",
 }
@@ -274,14 +275,20 @@ class PythonCCodeGen(CodeGen):
                     if VECTOR_TYPE in type
                     else 'CastPyArg2OptionalValue'
                 )
+                dispensable = "true"
             else:
                 cast_func = (
                     'CastPyArg2VectorOfValue'
                     if VECTOR_TYPE in type
                     else 'CastPyArg2Value'
                 )
+                dispensable = "false"
             ret += INPUT_TEMPLATE.format(
-                name=name, index=i, cast_func=cast_func, api_name=op_name
+                name=name,
+                index=i,
+                cast_func=cast_func,
+                api_name=op_name,
+                dispensable=dispensable,
             )
         return ret
 

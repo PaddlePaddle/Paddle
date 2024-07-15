@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CReduceScatterOp : public framework::OperatorWithKernel {
  public:
@@ -27,7 +26,7 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceScatter");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "X", "ReduceScatter");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     if (dim[0] > 0 || dim[0] < -1) {
       PADDLE_ENFORCE_EQ(
           dim[0] % nranks,
@@ -63,8 +62,7 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

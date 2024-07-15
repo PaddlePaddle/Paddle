@@ -28,7 +28,7 @@ StmtPattern<FrontendStage> ConvertToStmtPattern(
   } else if (kind == hlir::framework::kElementWise ||
              kind == hlir::framework::kBroadcast ||
              kind == hlir::framework::kInjective) {
-    return TrivialPattern<FrontendStage>({content.op});
+    return TrivialPattern<FrontendStage>({content.op}, content.op);
   } else {
     return UnsupportPattern<FrontendStage>({content.op});
   }
@@ -58,17 +58,7 @@ StmtPattern<FrontendStage> MergePatternImpl(
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
                          GetOpsInPattern<FrontendStage>(second));
-  return TrivialPattern<FrontendStage>(contents);
-}
-
-template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const HorizontalFusionPattern<FrontendStage>& first,
-    const HorizontalFusionPattern<FrontendStage>& second) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
-                         GetOpsInPattern<FrontendStage>(second));
-  return HorizontalFusionPattern<FrontendStage>({first, second});
+  return TrivialPattern<FrontendStage>(contents, second.sink());
 }
 
 }  // namespace cinn::fusion

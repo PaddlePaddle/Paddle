@@ -48,7 +48,12 @@ def tensor_method_property(a: paddle.Tensor, b: paddle.Tensor):
         a.type,
         a.is_tensor(),
         a.clear_gradient(),
-        a @ b.T + len(a.shape) + b.size + a.ndim + a.dim() + a.rank(),
+        a @ b.T.astype(a.dtype)
+        + len(a.shape)
+        + b.size
+        + a.ndim
+        + a.dim()
+        + a.rank(),
     )
 
 

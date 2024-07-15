@@ -92,7 +92,7 @@ static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
 
 OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
@@ -254,13 +254,8 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
 }
 
 OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
-  if (kernel_context_ != nullptr) {
-    delete kernel_context_;
-  }
-
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete kernel_context_;
+  delete phi_kernel_;
 }
 
 void OneDNNLegacyKernelInstruction::Run() {

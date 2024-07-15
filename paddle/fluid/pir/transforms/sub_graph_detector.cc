@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
@@ -33,7 +34,6 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-#include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/flags.h"
 
@@ -52,11 +52,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     if (pending_count.find(&op) == pending_count.end()) {
       pending_count[&op] = 0;
     }
-    for (auto operand : op.operands()) {
-      if (!operand || !(operand.source())) {
+    for (auto operand : GetUsedExternalValue(op)) {
+      if (!operand || !operand.defining_op()) {
         continue;
       }
-      auto* defined_op = operand.source().defining_op();
+      auto* defined_op = operand.defining_op();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
       } else {
@@ -78,11 +78,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     queue.pop();
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
-    for (auto& operand : op->operands()) {
-      if (!operand || !(operand.source())) {
+    for (auto operand : GetUsedExternalValue(*op)) {
+      if (!operand || !operand.defining_op()) {
         continue;
       }
-      auto* defined_op = operand.source().defining_op();
+      auto* defined_op = operand.defining_op();
       --pending_count[defined_op];
       if (defined_op && pending_count[defined_op] == 0 &&
           defined_op->GetParent() == block) {
@@ -108,11 +108,11 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
   std::unordered_set<pir::Operation*> producers;
 
   std::vector<pir::Operation*> vec_res;
-  for (auto& operand : op->operands()) {
-    if (!operand || !(operand.source())) {
+  for (auto operand : GetUsedExternalValue(*op)) {
+    if (!operand || !operand.defining_op()) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
+    auto* source_op = operand.defining_op();
     if (source_op && !producers.count(source_op) &&
         source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
@@ -135,11 +135,11 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
-  for (auto& operand : op->operands()) {
-    if (!operand || !(operand.source())) {
+  for (auto operand : GetUsedExternalValue(*op)) {
+    if (!operand || !operand.defining_op()) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
+    auto* source_op = operand.defining_op();
     if (source_op && source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
     }
@@ -147,12 +147,21 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   return producers;
 }
 
-std::unordered_set<pir::Operation*> GetConsumerOps(pir::Operation* op) {
+std::unordered_set<pir::Operation*> GetConsumerOps(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
   std::unordered_set<pir::Operation*> consumers;
 
   for (auto& result : op->results()) {
     for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-      consumers.insert(it->owner());
+      auto parent_op = it->owner();
+      while (parent_op) {
+        if (op2id.count(parent_op)) {
+          consumers.insert(parent_op);
+          break;
+        }
+        parent_op = parent_op->GetParentOp();
+      }
     }
   }
   return consumers;
@@ -241,7 +250,7 @@ void SubgraphDetector::DoOpFusion() {
       }
 
       bool can_fused = true;
-      auto consumers = GetConsumerOps(producer);
+      auto consumers = GetConsumerOps(producer, op2id_);
       for (auto consumer : consumers) {
         if (!subgraph->op_set.count(consumer)) {
           can_fused = false;
@@ -484,66 +493,7 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
-std::vector<pir::Value> AnalysisExternalInputs(Operation* op) {  // NOLINT
-  if (!op->isa<cinn::dialect::GroupOp>()) {
-    return op->operands_source();
-  }
-  // Get all ops in group
-  const auto all_ops = [&]() -> decltype(auto) {
-    const auto all_ops = op->dyn_cast<cinn::dialect::GroupOp>().GetOperators();
-    return std::unordered_set<pir::Operation*>(all_ops.begin(), all_ops.end());
-  }();
-  std::unordered_set<pir::Value> value_set;
-  const auto& IsOutsideInput = [&](const pir::Value& value) -> bool {
-    const bool is_outside =
-        value && value.defining_op() && !all_ops.count(value.defining_op());
-    const bool has_visited = value_set.count(value);
-    if (!has_visited) value_set.insert(value);
-    return is_outside && !has_visited;
-  };
-
-  std::vector<::pir::Value> inputs;
-  // count all op's input Value
-  for (auto inner_op : all_ops) {
-    for (auto& value : inner_op->operands_source()) {
-      if (IsOutsideInput(value)) inputs.push_back(value);
-    }
-  }
-  return inputs;
-}
-
 namespace {
-
-pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
-                                const std::vector<pir::Value>& outputs) {
-  // Regard last op as insert position if there are no downstream ops between in
-  // group_ops.
-  pir::Operation* insert_point_op = group_ops.back();
-  auto begin = group_ops.front()->operator Block::ConstIterator();
-  auto end = ++(group_ops.back()->operator Block::ConstIterator());
-  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
-                                                   outputs.end());
-  const std::unordered_set<const pir::Operation*> group_ops_set(
-      group_ops.begin(), group_ops.end());
-
-  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
-    if (group_ops_set.find(op) != group_ops_set.end()) return false;
-    for (auto& value : op->operands_source()) {
-      if (outputs_set.find(value) != outputs_set.end()) {
-        return true;
-      }
-    }
-    return false;
-  };
-  // Find first downstream op as final insert position.
-  for (; begin != end; ++begin) {
-    if (IsDownstreamOp(begin)) {
-      insert_point_op = begin;
-      break;
-    }
-  }
-  return insert_point_op;
-}
 
 struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
@@ -576,7 +526,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     }
     return false;
   };
-  std::vector<pir::Value> op_inputs = AnalysisExternalInputs(op);
+  std::vector<pir::Value> op_inputs = GetUsedExternalValue(*op);
   for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
@@ -592,6 +542,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
   }
   return ops;
 }
+}  // namespace
 
 void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
                                pir::Block* block,
@@ -613,7 +564,37 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
     op->MoveTo(block, insert_point_op->operator Block::Iterator());
   }
 }
-}  // namespace
+
+pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                                const std::vector<pir::Value>& outputs) {
+  // Regard last op as insert position if there are no downstream ops between in
+  // group_ops.
+  pir::Operation* insert_point_op = group_ops.back();
+  auto begin = group_ops.front()->operator Block::ConstIterator();
+  auto end = ++(group_ops.back()->operator Block::ConstIterator());
+  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
+                                                   outputs.end());
+  const std::unordered_set<const pir::Operation*> group_ops_set(
+      group_ops.begin(), group_ops.end());
+
+  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
+    if (group_ops_set.find(op) != group_ops_set.end()) return false;
+    for (auto& value : GetUsedExternalValue(*op)) {
+      if (outputs_set.find(value) != outputs_set.end()) {
+        return true;
+      }
+    }
+    return false;
+  };
+  // Find first downstream op as final insert position.
+  for (; begin != end; ++begin) {
+    if (IsDownstreamOp(begin)) {
+      insert_point_op = begin;
+      break;
+    }
+  }
+  return insert_point_op;
+}
 
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT

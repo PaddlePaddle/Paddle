@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 std::string RuntimeGraph::DebugString() const {
   std::ostringstream os;
@@ -29,5 +28,4 @@ std::string RuntimeGraph::DebugString() const {
   return os.str();
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

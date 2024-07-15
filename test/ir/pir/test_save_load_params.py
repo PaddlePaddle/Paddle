@@ -132,7 +132,14 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     paddle.base.core.save_func(v, k, path, True, True)
                     tensor = param_dict[k]
                     tensor.set(np.zeros_like(np.array(tensor)), self.place)
-                    paddle.base.core.load_func(path, -1, [], False, tensor)
+                    paddle.base.core.load_func(
+                        path,
+                        -1,
+                        [],
+                        False,
+                        tensor,
+                        paddle.framework._current_expected_place_(),
+                    )
                     np.testing.assert_array_equal(tensor, v)
 
                 for k, v in opt_dict.items():
@@ -140,7 +147,14 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     paddle.base.core.save_func(v, k, path, True, False)
                     tensor = opt_dict[k]
                     tensor.set(np.zeros_like(np.array(tensor)), self.place)
-                    paddle.base.core.load_func(path, -1, [], False, tensor)
+                    paddle.base.core.load_func(
+                        path,
+                        -1,
+                        [],
+                        False,
+                        tensor,
+                        paddle.framework._current_expected_place_(),
+                    )
                     np.testing.assert_array_equal(tensor, v)
 
                 # test save_combine_func and load_combine_func
@@ -157,7 +171,11 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     tensor.set(np.zeros_like(np.array(tensor)), self.place)
                     param_new.append(tensor)
                 paddle.base.core.load_combine_func(
-                    path, list(param_dict.keys()), param_new, False
+                    path,
+                    list(param_dict.keys()),
+                    param_new,
+                    False,
+                    paddle.framework._current_expected_place_(),
                 )
                 np.testing.assert_equal(param_new, param_vec)
                 # save to memory
@@ -170,7 +188,11 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 )
                 # load as fp16
                 paddle.base.core.load_combine_func(
-                    path, list(param_dict.keys()), param_new, True
+                    path,
+                    list(param_dict.keys()),
+                    param_new,
+                    True,
+                    paddle.framework._current_expected_place_(),
                 )
 
                 # test save_vars

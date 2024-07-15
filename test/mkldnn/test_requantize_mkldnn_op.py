@@ -18,6 +18,7 @@ import numpy as np
 from mkldnn_op_test import format_reorder
 from op_test import OpTest
 
+import paddle
 from paddle import base
 from paddle.base import core
 
@@ -335,6 +336,7 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
         pass
 
     def test_check_output(self):
+        paddle.enable_static()
         variables = {
             "input": self.input,
             "output": self.output,

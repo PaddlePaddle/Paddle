@@ -43,7 +43,7 @@ void* GetDsoHandle(const std::string& dso_name) {
 
   PADDLE_ENFORCE_NOT_NULL(
       dso_handle,
-      paddle::platform::errors::NotFound(
+      phi::errors::NotFound(
           "TensorRT is needed, "
           "but TensorRT dynamic library is not found.\n"
           "  Suggestions:\n"

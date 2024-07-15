@@ -22,11 +22,18 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 CondInterceptor::CondInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node) {
+    : Interceptor(interceptor_id, node),
+      cur_scope_id_(0),
+      normal_in_id_(),
+      normal_out_id_(),
+      stop_loop_id_(0),
+      loop_id_(0),
+      scope_id_to_gen_step_(),
+      start_micro_step_(0),
+      num_micro_step_(0) {
   PrepareDeps();
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Run(msg); });
 }
@@ -70,21 +77,21 @@ bool CondInterceptor::GetCondResult() {
                      cur_scope_id_));
   const auto& cond_tensor = cond_var->Get<phi::DenseTensor>();
   bool res = false;
-  if (platform::is_gpu_place(cond_tensor.place())) {
+  if (phi::is_gpu_place(cond_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::DenseTensor cpu_tensor;
-    framework::TensorCopy(cond_tensor, platform::CPUPlace(), &cpu_tensor);
-    platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
+    framework::TensorCopy(cond_tensor, phi::CPUPlace(), &cpu_tensor);
+    phi::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
-  } else if (platform::is_custom_place(cond_tensor.place())) {
+  } else if (phi::is_custom_place(cond_tensor.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DenseTensor cpu_tensor;
-    framework::TensorCopy(cond_tensor, platform::CPUPlace(), &cpu_tensor);
-    platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
+    framework::TensorCopy(cond_tensor, phi::CPUPlace(), &cpu_tensor);
+    phi::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
-  } else if (platform::is_cpu_place(cond_tensor.place())) {
+  } else if (phi::is_cpu_place(cond_tensor.place())) {
     res = cond_tensor.data<bool>()[0];
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -215,5 +222,4 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
 
 REGISTER_INTERCEPTOR(Cond, CondInterceptor);
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -16,9 +16,12 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -31,9 +34,14 @@ void SliceStridedKernel(const Context& ctx,
                         const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
-  auto in_dims = input.dims();
+  const auto& in_dims = input.dims();
 
   auto new_axes = axes;
   for (auto& item : new_axes) {

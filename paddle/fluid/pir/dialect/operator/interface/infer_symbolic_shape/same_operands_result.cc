@@ -33,7 +33,6 @@ OP_SAME_OPERANDS_AND_RESULT(Acos_)
 OP_SAME_OPERANDS_AND_RESULT(Acosh)
 OP_SAME_OPERANDS_AND_RESULT(Acosh_)
 OP_SAME_OPERANDS_AND_RESULT(Angle)
-OP_SAME_OPERANDS_AND_RESULT(Argsort)
 OP_SAME_OPERANDS_AND_RESULT(Asin)
 OP_SAME_OPERANDS_AND_RESULT(Asin_)
 OP_SAME_OPERANDS_AND_RESULT(Asinh)
@@ -51,6 +50,8 @@ OP_SAME_OPERANDS_AND_RESULT(Cast)
 OP_SAME_OPERANDS_AND_RESULT(Cast_)
 OP_SAME_OPERANDS_AND_RESULT(Ceil)
 OP_SAME_OPERANDS_AND_RESULT(Ceil_)
+OP_SAME_OPERANDS_AND_RESULT(Clip)
+OP_SAME_OPERANDS_AND_RESULT(Clip_)
 OP_SAME_OPERANDS_AND_RESULT(Conj)
 OP_SAME_OPERANDS_AND_RESULT(Cos)
 OP_SAME_OPERANDS_AND_RESULT(Cos_)
@@ -117,6 +118,7 @@ OP_SAME_OPERANDS_AND_RESULT(Scale_)
 OP_SAME_OPERANDS_AND_RESULT(ScatterNdAdd)
 OP_SAME_OPERANDS_AND_RESULT(Scatter)
 OP_SAME_OPERANDS_AND_RESULT(Scatter_)
+OP_SAME_OPERANDS_AND_RESULT(Select)
 OP_SAME_OPERANDS_AND_RESULT(Sign)
 OP_SAME_OPERANDS_AND_RESULT(Sin)
 OP_SAME_OPERANDS_AND_RESULT(Sin_)
@@ -173,11 +175,17 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool ArgsortOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(1), operand_shape_or_data);
+  return true;
+}
+
 }  // namespace paddle::dialect
 
-namespace cinn::dialect {
-using paddle::dialect::ReverseOpInferSymbolicShape;
-using paddle::dialect::ScaleOpInferSymbolicShape;
-}  // namespace cinn::dialect
+namespace cinn::dialect {}  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT

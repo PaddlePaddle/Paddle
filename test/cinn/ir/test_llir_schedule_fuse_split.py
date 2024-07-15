@@ -13,11 +13,10 @@
 # limitations under the License.
 
 
-from test.cinn.utils.testing import assert_llir_equal
-
 from paddle.cinn import ir, to_cinn_llir
 from paddle.cinn.runtime.data_array import DataArray
 from paddle.cinn.schedule import IRSchedule as sch
+from test.cinn.utils.testing import assert_llir_equal
 
 
 def test_fuse():
@@ -158,7 +157,7 @@ def test_fuse_dynamic():
                             i_j_k_fused % 128,
                         ],
                     )
-                    Y[i1, j1, k1] = 2.0 * X[i1, j1, k1]
+                    Y[i1, j1, k1] = X[i1, j1, k1] * 2.0
 
     assert str(origin.elementwise_fuse_assign_loop) == str(
         expected.elementwise_fuse_assign_loop

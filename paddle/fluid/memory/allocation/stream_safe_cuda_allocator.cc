@@ -64,7 +64,17 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
   VLOG(8) << "Try remove stream " << stream << " for address " << ptr();
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-  outstanding_event_map_.erase(stream);
+  auto it = outstanding_event_map_.find(stream);
+  if (it == outstanding_event_map_.end()) {
+    return;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(it->second));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(it->second));
+#endif
+  outstanding_event_map_.erase(it);
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
@@ -152,7 +162,7 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    platform::CUDAPlace place,
+    phi::GPUPlace place,
     gpuStream_t default_stream,
     bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
@@ -234,7 +244,7 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
+uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const phi::Place& place) {
   if (UNLIKELY(in_cuda_graph_capturing_)) {
     VLOG(7) << "Memory release forbidden in CUDA Graph Capturing";
     return 0;
@@ -276,7 +286,7 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
-std::map<platform::Place, std::vector<StreamSafeCUDAAllocator*>>
+std::map<phi::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;
 SpinLock StreamSafeCUDAAllocator::allocator_map_lock_;
 

@@ -25,10 +25,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define normalization api
+from __future__ import annotations
 
 import numbers
 import warnings
+from typing import TYPE_CHECKING, Literal, Sequence
 
 import numpy as np
 
@@ -50,6 +51,20 @@ from ..functional import batch_norm, group_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
 from .layers import Layer
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout0D,
+        DataLayout1D,
+        DataLayout2D,
+        DataLayout3D,
+        DataLayoutND,
+        DTypeLike,
+        ParamAttrLike,
+        ShapeLike,
+    )
+
+
 __all__ = []
 
 
@@ -60,16 +75,19 @@ class _InstanceNormBase(Layer):
     See InstanceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
+    scale: Tensor | None
+    bias: Tensor | None
+
     def __init__(
         self,
-        num_features,
-        epsilon=1e-5,
-        momentum=0.9,
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NCHW",
-        name=None,
-    ):
+        num_features: int,
+        epsilon: float = 1e-5,
+        momentum: float = 0.9,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NCHW"] = "NCHW",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
 
         if weight_attr is False or bias_attr is False:
@@ -103,7 +121,7 @@ class _InstanceNormBase(Layer):
     def _check_input_dim(self, input):
         raise NotImplementedError("InstanceNorm Base error")
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         self._check_input_dim(input)
 
         return instance_norm(
@@ -115,7 +133,7 @@ class _InstanceNormBase(Layer):
             data_format=self._data_format,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'num_features={self._num_features}, epsilon={self._epsilon}'
 
 
@@ -144,18 +162,18 @@ class InstanceNorm1D(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale` of instance_norm.
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale` of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
             one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
             If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         data_format(str, optional): Specify the input data format, may be "NC", "NCL". Default "NCL".
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
+        name(str|None, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
 
     Shape:
@@ -186,14 +204,14 @@ class InstanceNorm1D(_InstanceNormBase):
 
     def __init__(
         self,
-        num_features,
-        epsilon=0.00001,
-        momentum=0.9,
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NCL",
-        name=None,
-    ):
+        num_features: int,
+        epsilon: float = 1e-5,
+        momentum: float = 0.9,
+        weight_attr: bool | ParamAttr | None = None,
+        bias_attr: bool | ParamAttr | None = None,
+        data_format: Literal['NC', 'NCL'] = 'NCL',
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             epsilon,
@@ -204,7 +222,7 @@ class InstanceNorm1D(_InstanceNormBase):
             name,
         )
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> None:
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
                 f'expected 2D or 3D input (got {len(input.shape)}D input)'
@@ -237,18 +255,18 @@ class InstanceNorm2D(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale`
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
             one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
             If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
+        name(str|None, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 4-D tensor with shape: (batch, num_features, height, weight).
@@ -282,14 +300,14 @@ class InstanceNorm2D(_InstanceNormBase):
 
     def __init__(
         self,
-        num_features,
-        epsilon=0.00001,
-        momentum=0.9,
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NCHW",
-        name=None,
-    ):
+        num_features: int,
+        epsilon: float = 1e-5,
+        momentum: float = 0.9,
+        weight_attr: bool | ParamAttr | None = None,
+        bias_attr: bool | ParamAttr | None = None,
+        data_format: Literal["NCWH"] = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             epsilon,
@@ -300,7 +318,7 @@ class InstanceNorm2D(_InstanceNormBase):
             name,
         )
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> None:
         if len(input.shape) != 4:
             raise ValueError(
                 f'expected 4D input (got {len(input.shape)}D input)'
@@ -386,14 +404,14 @@ class InstanceNorm3D(_InstanceNormBase):
 
     def __init__(
         self,
-        num_features,
-        epsilon=0.00001,
-        momentum=0.9,
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NCDHW",
-        name=None,
-    ):
+        num_features: int,
+        epsilon: float = 1e-5,
+        momentum: float = 0.9,
+        weight_attr: bool | ParamAttr | None = None,
+        bias_attr: bool | ParamAttr | None = None,
+        data_format: Literal['NCDHW'] = 'NCDHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             epsilon,
@@ -404,7 +422,7 @@ class InstanceNorm3D(_InstanceNormBase):
             name,
         )
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> Tensor:
         if len(input.shape) != 5:
             raise ValueError(
                 f'expected 5D input (got {len(input.shape)}D input)'
@@ -424,14 +442,14 @@ class GroupNorm(Layer):
         num_channels(int): The number of channels of input.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
             scale :math:`g`. If it is set to False, no scale will be added to the output units.
-            If it is set to None, the bias is initialized one. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+            If it is set to None, the scale is initialized one. Default: None.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
             bias :math:`b`. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
-        name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: Tensor with shape: attr:`(batch, num_features, *)`.
@@ -477,24 +495,29 @@ class GroupNorm(Layer):
                [ 0.44721183,  1.34163547]]]])
     """
 
+    weight: Tensor
+    bias: Tensor
+
     def __init__(
         self,
-        num_groups,
-        num_channels,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NCHW',
-        name=None,
-    ):
+        num_groups: int,
+        num_channels: int,
+        epsilon: float = 1e-5,
+        weight_attr: bool | ParamAttr | None = None,
+        bias_attr: bool | ParamAttr | None = None,
+        data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_format not in ['NCHW', 'NHWC']:
+        if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
             raise ValueError("unsupported data layout:" + data_format)
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
         self._data_format = data_format
 
         param_shape = [self._num_channels]
@@ -532,7 +555,7 @@ class GroupNorm(Layer):
                 and self._bias_attr.learning_rate == 0.0
             )
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return group_norm(
             input,
             self._num_groups,
@@ -542,7 +565,7 @@ class GroupNorm(Layer):
             self._data_format,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'num_groups={self._num_groups}, num_channels={self._num_channels}, epsilon={self._epsilon}'
 
 
@@ -576,13 +599,13 @@ class LayerNorm(Layer):
             which is expected to be of that specific size.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
             gain :math:`g`. If False, weight is None. If is None, a default :code:`ParamAttr` would be added as scale. The
             :attr:`param_attr` is initialized as 1 if it is added. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
             bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
-        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
+        name(str|None, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 2-D, 3-D, 4-D or 5-D tensor.
@@ -613,14 +636,17 @@ class LayerNorm(Layer):
                [-0.81222653,  0.84285998, -1.96189952]]]])
     """
 
+    weight: Tensor | None
+    bias: Tensor | None
+
     def __init__(
         self,
-        normalized_shape,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        name=None,
-    ):
+        normalized_shape: int | Sequence[int],
+        epsilon: float = 1e-5,
+        weight_attr: bool | ParamAttr | None = None,
+        bias_attr: bool | ParamAttr | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = [normalized_shape]
@@ -647,7 +673,7 @@ class LayerNorm(Layer):
                 attr=self._bias_attr, shape=param_shape, is_bias=True
             )
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return layer_norm(
             input,
             normalized_shape=self._normalized_shape,
@@ -656,7 +682,7 @@ class LayerNorm(Layer):
             epsilon=self._epsilon,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return f'normalized_shape={self._normalized_shape}, epsilon={self._epsilon}'
 
 
@@ -665,17 +691,20 @@ class _BatchNormBase(Layer):
     BatchNorm base .
     """
 
+    weight: Tensor | None
+    bias: Tensor | None
+
     def __init__(
         self,
-        num_features,
-        momentum=0.9,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NCHW',
-        use_global_stats=None,
-        name=None,
-    ):
+        num_features: int,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: DataLayoutND = 'NCHW',
+        use_global_stats: bool | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._num_features = num_features
         self._weight_attr = weight_attr
@@ -771,13 +800,13 @@ class _BatchNormBase(Layer):
         self._fuse_with_relu = False
         self._name = name
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> None:
         raise NotImplementedError("BatchNorm Base error")
 
-    def _check_data_format(self, input):
+    def _check_data_format(self, input: Tensor) -> None:
         raise NotImplementedError("BatchNorm Base data format error")
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         self._check_data_format(self._data_format)
 
         self._check_input_dim(input)
@@ -800,7 +829,7 @@ class _BatchNormBase(Layer):
             use_global_stats=self._use_global_stats,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = f'num_features={self._num_features}, momentum={self._momentum}, epsilon={self._epsilon}'
         if self._data_format != 'NCHW':
             main_str += f', data_format={self._data_format}'
@@ -864,11 +893,11 @@ class BatchNorm(Layer):
              Default: False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
-        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+        param_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
@@ -904,24 +933,27 @@ class BatchNorm(Layer):
             >>> hidden1 = batch_norm(x)
     """
 
+    weight: Tensor | None
+    bias: Tensor | None
+
     def __init__(
         self,
-        num_channels,
-        act=None,
-        is_test=False,
-        momentum=0.9,
-        epsilon=1e-05,
-        param_attr=None,
-        bias_attr=None,
-        dtype='float32',
-        data_layout='NCHW',
-        in_place=False,
-        moving_mean_name=None,
-        moving_variance_name=None,
-        do_model_average_for_mean_and_var=True,
-        use_global_stats=False,
-        trainable_statistics=False,
-    ):
+        num_channels: int,
+        act: str | None = None,
+        is_test: bool = False,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        param_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        dtype: DTypeLike = 'float32',
+        data_layout: DataLayout2D = 'NCHW',
+        in_place: bool = False,
+        moving_mean_name: str | None = None,
+        moving_variance_name: str | None = None,
+        do_model_average_for_mean_and_var: bool = True,
+        use_global_stats: bool = False,
+        trainable_statistics: bool = False,
+    ) -> None:
         super().__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1012,7 +1044,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
         self.training = not self._is_test
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         if in_dynamic_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
@@ -1157,17 +1189,17 @@ class BatchNorm1D(_BatchNormBase):
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC", where `N` is batch size, `C` is the number of the feature map, `L` is the length of the feature map. Default "NCL".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
-        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str|None, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length) when data_format is "NC" or "NCL",
@@ -1195,15 +1227,15 @@ class BatchNorm1D(_BatchNormBase):
 
     def __init__(
         self,
-        num_features,
-        momentum=0.9,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NCL',
-        use_global_stats=None,
-        name=None,
-    ):
+        num_features: int,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: DataLayout1D = 'NCL',
+        use_global_stats: bool | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             momentum,
@@ -1215,7 +1247,9 @@ class BatchNorm1D(_BatchNormBase):
             name,
         )
 
-    def _check_data_format(self, input):
+    def _check_data_format(
+        self, input: DataLayout0D | DataLayout1D | DataLayout2D
+    ) -> None:
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
         elif input == "NHWC" or input == 'NLC':
@@ -1225,7 +1259,7 @@ class BatchNorm1D(_BatchNormBase):
                 'expected NC , NCL, NLC or None for data_format input'
             )
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> None:
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
                 f'expected 2D or 3D input (got {len(input.shape)}D input)'
@@ -1271,11 +1305,11 @@ class BatchNorm2D(_BatchNormBase):
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
@@ -1308,15 +1342,12 @@ class BatchNorm2D(_BatchNormBase):
                [ 1.44764757, -0.25489068,  1.90842628]]]])
     """
 
-    def _check_data_format(self, input):
-        if input == 'NCHW':
-            self._data_format = input
-        elif input == "NHWC":
-            self._data_format = input
-        else:
+    def _check_data_format(self, input: DataLayout2D) -> None:
+        if input not in ["NCHW", "NHWC"]:
             raise ValueError('expected NCHW or NHWC for data_format input')
+        self._data_format = input
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> None:
         if len(input.shape) != 4:
             raise ValueError(
                 f'expected 4D input (got {len(input.shape)}D input)'
@@ -1362,17 +1393,17 @@ class BatchNorm3D(_BatchNormBase):
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC", where `N` is batch size, `C` is the number of the feature map, `D` is the depth of the feature, `H` is the height of the feature map, `W` is the width of the feature map. Default: NCDHW.
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
-        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str|None, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 5-D tensor with shape: (batch, num_features, dims, height, weight) when data_format is "NCDHW",
@@ -1405,15 +1436,15 @@ class BatchNorm3D(_BatchNormBase):
 
     def __init__(
         self,
-        num_features,
-        momentum=0.9,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NCDHW',
-        use_global_stats=None,
-        name=None,
-    ):
+        num_features: int,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: DataLayout3D = 'NCDHW',
+        use_global_stats: bool | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             momentum,
@@ -1425,7 +1456,7 @@ class BatchNorm3D(_BatchNormBase):
             name,
         )
 
-    def _check_data_format(self, input):
+    def _check_data_format(self, input: DataLayout2D | DataLayout3D) -> None:
         if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
         elif input == "NHWC" or input == "NDHWC":
@@ -1435,7 +1466,7 @@ class BatchNorm3D(_BatchNormBase):
                 'expected NCDHW, NDHWC or None for data_format input'
             )
 
-    def _check_input_dim(self, input):
+    def _check_input_dim(self, input: Tensor) -> None:
         if len(input.shape) != 5:
             raise ValueError(
                 f'expected 5D input (got {len(input.shape)}D input)'
@@ -1498,16 +1529,18 @@ class SyncBatchNorm(_BatchNormBase):
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for Parameter `scale`
              of this layer. If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with ones. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
+        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the bias of this layer.
              If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not
              have trainable bias parameter. Default: None.
+        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC", where `N` is batch size, `C` is the number of the feature map, `H` is the height of the feature map, `W` is the width of the feature map. Default: NCHW.
+        name(str|None, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shapes:
         - input: Tensor that the dimension from 2 to 5.
@@ -1537,14 +1570,14 @@ class SyncBatchNorm(_BatchNormBase):
 
     def __init__(
         self,
-        num_features,
-        momentum=0.9,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NCHW',
-        name=None,
-    ):
+        num_features: int,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: DataLayoutND = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             momentum,
@@ -1574,7 +1607,7 @@ class SyncBatchNorm(_BatchNormBase):
             )
             self.bias.stop_gradient = True
 
-    def _check_data_format(self):
+    def _check_data_format(self) -> None:
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
             self._data_format = 'NCHW'
         elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
@@ -1584,7 +1617,7 @@ class SyncBatchNorm(_BatchNormBase):
                 'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
             )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         self._check_data_format()
         # create output
         # mean and mean_out share the same memory
@@ -1659,12 +1692,12 @@ class SyncBatchNorm(_BatchNormBase):
         return sync_batch_norm_out
 
     @classmethod
-    def convert_sync_batchnorm(cls, layer):
+    def convert_sync_batchnorm(cls, layer: Layer) -> Layer:
         """
         Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
 
         Parameters:
-            layer(paddle.nn.Layer): model containing one or more `BatchNorm*d` layers.
+            layer(Layer): model containing one or more `BatchNorm*d` layers.
 
         Returns:
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
@@ -1747,7 +1780,7 @@ class LocalResponseNorm(Layer):
             the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
             If input is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
             the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name (str, optional): Name for the operation (optional, default is None). For more information,
+        name (str|None, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -1767,15 +1800,22 @@ class LocalResponseNorm(Layer):
             [3, 3, 112, 112]
     """
 
+    size: int
+    alpha: float
+    beta: float
+    k: float
+    data_format: DataLayout1D | DataLayout2D | DataLayout3D
+    name: str | None
+
     def __init__(
         self,
-        size,
-        alpha=0.0001,
-        beta=0.75,
-        k=1.0,
-        data_format="NCHW",
-        name=None,
-    ):
+        size: int,
+        alpha: float = 0.0001,
+        beta: float = 0.75,
+        k: float = 1.0,
+        data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.size = size
         self.alpha = alpha
@@ -1784,7 +1824,7 @@ class LocalResponseNorm(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         out = F.local_response_norm(
             input,
             self.size,
@@ -1796,7 +1836,7 @@ class LocalResponseNorm(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = f'size={self.size}, alpha={self.alpha}, beta={self.beta}, k={self.k}'
         if self.data_format != 'NCHW':
             main_str += f', data_format={self.data_format}'
@@ -1845,7 +1885,6 @@ class SpectralNorm(Layer):
         dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
         power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
         eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Returns:
@@ -1863,14 +1902,17 @@ class SpectralNorm(Layer):
 
     """
 
+    weight_u: Tensor
+    weight_v: Tensor
+
     def __init__(
         self,
-        weight_shape,
-        dim=0,
-        power_iters=1,
-        eps=1e-12,
-        dtype='float32',
-    ):
+        weight_shape: ShapeLike,
+        dim: int = 0,
+        power_iters: int = 1,
+        eps: float = 1e-12,
+        dtype: DTypeLike = 'float32',
+    ) -> None:
         super().__init__()
         self._power_iters = power_iters
         self._eps = eps
@@ -1905,7 +1947,7 @@ class SpectralNorm(Layer):
         )
         self.weight_v.stop_gradient = True
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         weight = x
         if in_dynamic_or_pir_mode():
             return _C_ops.spectral_norm(

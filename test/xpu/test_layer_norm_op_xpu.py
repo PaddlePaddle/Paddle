@@ -78,14 +78,14 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
                 mul, self.shape[self.begin_norm_axis : len(self.shape)], 1
             )
             np.random.seed(10)
-            x_np = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-            scale_np = np.random.uniform(0.1, 1, [right]).astype('float32')
-            bias_np = np.random.uniform(0.1, 1, [right]).astype('float32')
+            x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            scale_np = np.random.uniform(-1, 1, [right]).astype('float32')
+            bias_np = np.random.uniform(-1, 1, [right]).astype('float32')
             if self.dtype == np.float16 and self.use_fp16_scale_bias:
                 scale_np = scale_np.astype('float16')
-                bias_np = scale_np.astype('float16')
+                bias_np = bias_np.astype('float16')
             if (
-                self.dtype == np.uint16 and self.use_fp16_scale_bias
+                self.dtype == np.uint16 and self.use_bf16_scale_bias
             ):  # bfloat16 actually
                 scale_np = convert_float_to_uint16(scale_np)
                 bias_np = convert_float_to_uint16(bias_np)
@@ -166,11 +166,18 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
     class TestXPULayerNormOpBF16_3D(TestXPULayerNormOp):
         def set_attrs(self):
             self.shape = [4, 5, 6]
-            self.use_bf16_scale_bias = False
+            self.use_bf16_scale_bias = True
             if core.get_xpu_device_version(0) == core.XPUVersion.XPU3:
                 self.dtype = np.uint16
             else:
                 self.dtype = np.float32
+
+    # @check_run_big_shape_test()
+    # class TestXPULayerNormOpLargeShape1(TestXPULayerNormOp):
+    #     def set_attrs(self):
+    #         self.shape = [1024, 5120]
+    #         self.use_bf16_scale_bias = True
+    #         self.use_fp16_scale_bias = True
 
 
 support_types = get_xpu_op_support_types('layer_norm')

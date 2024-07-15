@@ -36,7 +36,7 @@ inline static std::string DumpMatrixShape(
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
  */
-static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+static phi::DDim RowMatrixFromVector(const phi::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
@@ -47,14 +47,15 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
  * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
  * original y_dim is returned.
  */
-static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
+static phi::DDim ColumnMatrixFromVector(const phi::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
   return common::make_ddim({y_dim[0], 1});
 }
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
 template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value, void>::type
 ComputeMatmulImpl(const framework::ExecutionContext &context) {
@@ -959,6 +960,7 @@ REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
 #if defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul,
+    ops::MatMulKernel<phi::GPUContext, int8_t>,
     ops::MatMulKernel<phi::GPUContext, float>,
     ops::MatMulKernel<phi::GPUContext, double>,
     ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);

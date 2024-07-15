@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-sys.path.append("../deprecated/sequence")
+sys.path.append("../sequence")
 from test_sequence_conv import seqconv
 
 

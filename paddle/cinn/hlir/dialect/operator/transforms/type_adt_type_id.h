@@ -18,7 +18,6 @@
 
 namespace pir {
 class Type;
-
 class VectorType;
 class DenseTensorType;
 class BFloat16Type;
@@ -37,6 +36,15 @@ class Complex128Type;
 
 }  // namespace pir
 
+namespace paddle::dialect {
+
+class SelectedRowsType;
+class DenseTensorArrayType;
+class SparseCooTensorType;
+class SparseCsrTensorType;
+
+}  // namespace paddle::dialect
+
 // clang-format off
 #define FOR_EACH_PIR_ALTERNATIVE_TYPLE(__macro)     \
   __macro(::pir::VectorType)                        \
@@ -53,18 +61,25 @@ class Complex128Type;
   __macro(::pir::IndexType)                         \
   __macro(::pir::BoolType)                          \
   __macro(::pir::Complex64Type)                     \
-  __macro(::pir::Complex128Type)
+  __macro(::pir::Complex128Type)                    \
+  __macro(::paddle::dialect::SelectedRowsType)      \
+  __macro(::paddle::dialect::DenseTensorArrayType)  \
+  __macro(::paddle::dialect::SparseCooTensorType)   \
+  __macro(::paddle::dialect::SparseCsrTensorType)
 // clang-format on
 
 namespace cinn::dialect::ir {
 
+class NullType;
 class UnclassifiedType;
 
-using TypeAdtTypeIdBase = ::common::AdtBaseTypeId<
+using TypeAdtTypeIdBase =
+    ::common::AdtBaseTypeId<NullType,
 #define MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE(cls) cls,
-    FOR_EACH_PIR_ALTERNATIVE_TYPLE(MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE)
+                            FOR_EACH_PIR_ALTERNATIVE_TYPLE(
+                                MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE)
 #undef MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE
-        UnclassifiedType>;
+                                UnclassifiedType>;
 
 struct TypeAdtTypeId : public TypeAdtTypeIdBase {
   using TypeAdtTypeIdBase::TypeAdtTypeIdBase;

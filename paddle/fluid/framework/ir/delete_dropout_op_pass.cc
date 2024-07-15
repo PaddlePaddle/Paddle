@@ -21,9 +21,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node_) GET_IR_NODE_FROM_SUBGRAPH(node_, node_, pattern)
 
@@ -258,9 +256,7 @@ void DeleteDropoutOpXPass::ReplaceOutputVar(Node* op,
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_dropout_op_pass,
               paddle::framework::ir::DeleteDropoutOpPass);

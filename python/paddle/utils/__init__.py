@@ -22,6 +22,7 @@ from . import (  # noqa: F401
     unique_name,
 )
 from .deprecated import deprecated
+from .environments import strtobool as strtobool
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,
@@ -43,6 +44,7 @@ from .layers_utils import (  # noqa: F401
     get_int_tensor_list,
     get_shape_tensor_inputs,
     hold_mutable_vars,
+    is_same_shape,
     is_sequence,
     map_structure,
     pack_sequence_as,

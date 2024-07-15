@@ -221,7 +221,7 @@ class Conv2dOpConverter : public OpConverter {
           return layer;
         },
         [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          layer->setDilation(dilations);
+          layer->setDilationNd(dilations);
         },
         "conv2d");
   }
@@ -245,7 +245,7 @@ class Deconv2dOpConverter : public OpConverter {
             TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IDeconvolutionLayer* {
           auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                             Deconvolution,
+                                             DeconvolutionNd,
                                              *inputs,
                                              n_output,
                                              ksize,

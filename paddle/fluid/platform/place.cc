@@ -51,7 +51,7 @@ bool is_custom_place(const Place &p) {
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (is_custom_place(p1) && is_custom_place(p2)) {
+  if (phi::is_custom_place(p1) && phi::is_custom_place(p2)) {
     return p1.GetDeviceType() == p2.GetDeviceType();
   }
 #endif
@@ -59,8 +59,8 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 }
 
 bool is_same_place(const Place &p1, const Place &p2) {
-  if (places_are_same_class(p1, p2)) {
-    if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
+  if (phi::places_are_same_class(p1, p2)) {
+    if (phi::is_cpu_place(p1) || phi::is_cuda_pinned_place(p1)) {
       return true;
     } else {
       return p1 == p2;
@@ -72,16 +72,16 @@ bool is_same_place(const Place &p1, const Place &p2) {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 std::string PlaceHelper::GetDeviceType(const Place &place) {
-  if (is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return "cpu";
-  } else if (is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     return "gpu";
-  } else if (is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     return "xpu";
-  } else if (is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     return place.GetDeviceType();
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Unknown device type. Please check available devices by "
         "paddle.device.get_available_device()"));
   }
@@ -93,13 +93,13 @@ size_t PlaceHelper::GetDeviceId(const Place &place) {
 
 Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
   if (dev_type == "cpu") {
-    return platform::CPUPlace();
+    return phi::CPUPlace();
   } else if (dev_type == "gpu") {
-    return platform::CUDAPlace(dev_id);
+    return phi::GPUPlace(dev_id);
   } else if (dev_type == "xpu") {
-    return platform::XPUPlace(dev_id);
+    return phi::XPUPlace(dev_id);
   } else {
-    return platform::CustomPlace(dev_type, dev_id);
+    return phi::CustomPlace(dev_type, dev_id);
   }
 }
 #endif

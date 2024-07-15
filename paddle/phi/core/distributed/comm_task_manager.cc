@@ -62,7 +62,7 @@ std::unordered_map<std::string, std::shared_ptr<CommTask>>
 std::chrono::time_point<std::chrono::steady_clock>
     CommTaskManager::last_update_time_ = std::chrono::steady_clock::now();
 
-CommTaskManager::CommTaskManager() {
+CommTaskManager::CommTaskManager() : timeout_(0) {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
   comm_task_clear_loop_thread_ =
@@ -158,7 +158,7 @@ void CommTaskManager::CommTaskLoop() {
       } else {
         // case 2: all group is not empty, but all last task is completed
         // case 3: all group is not empty, some group task started but not
-        for (auto iter : group_last_comm_task_) {
+        for (const auto& iter : group_last_comm_task_) {
           LogLongStr("Find last group comm task:", iter.second->GetTraceMsg());
         }
       }

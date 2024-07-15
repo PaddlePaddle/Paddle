@@ -18,16 +18,14 @@
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  tensor->mutable_data<float>(phi::CPUPlace());
 }
 
 Scope* CreateParamScope() {
@@ -105,9 +103,7 @@ TEST(FCFusePass, basic) {
                         num_sparse_fc_nodes_after));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(fc_fuse_pass);
 USE_PASS(dense_fc_to_sparse_pass);

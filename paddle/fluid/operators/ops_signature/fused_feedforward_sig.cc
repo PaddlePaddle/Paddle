@@ -84,14 +84,14 @@ KernelSignature FeedForwardGradFuseOpArgumentMapping(
                           "add_residual",
                           "ring_id"},
                          {"X@GRAD",
-                          "Ln1Scale@GRAD",
-                          "Ln1Bias@GRAD",
-                          "Ln2Scale@GRAD",
-                          "Ln2Bias@GRAD",
                           "Linear1Weight@GRAD",
                           "Linear1Bias@GRAD",
                           "Linear2Weight@GRAD",
-                          "Linear2Bias@GRAD"});
+                          "Linear2Bias@GRAD",
+                          "Ln1Scale@GRAD",
+                          "Ln1Bias@GRAD",
+                          "Ln2Scale@GRAD",
+                          "Ln2Bias@GRAD"});
 }
 }  // namespace phi
 

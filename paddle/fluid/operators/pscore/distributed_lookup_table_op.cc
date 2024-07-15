@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 constexpr int64_t kNoPadding = -1;
 
@@ -60,7 +59,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     auto lookup_table_version =
         ctx->Attrs().Get<std::string>("lookup_table_version");
 
-    auto outputs_dims = std::vector<framework::DDim>();
+    auto outputs_dims = std::vector<phi::DDim>();
 
     for (auto &ids_dim : ids_dims) {
       if (lookup_table_version == "lookup_table") {
@@ -142,8 +141,7 @@ random value and set the value into the table for the next looking up.
 )DOC");
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

@@ -14,18 +14,23 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 
+#include <utility>
+
 #include "paddle/common/enforce.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 IrTensor::IrTensor(phi::DataType dtype,
                    const phi::DDim& dims,
                    phi::DataLayout layout,
-                   const LoD& lod,
+                   LoD lod,
                    size_t offset)
-    : dims_(dims), dtype_(dtype), layout_(layout), lod_(lod), offset_(offset) {}
+    : dims_(dims),
+      dtype_(dtype),
+      layout_(layout),
+      lod_(std::move(lod)),
+      offset_(offset) {}
 
-IrTensor::IrTensor(const IrTensor& other) {
+IrTensor::IrTensor(const IrTensor& other) : TensorBase(other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -42,7 +47,7 @@ IrTensor& IrTensor::operator=(const IrTensor& other) {
   return *this;
 }
 
-IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {
+IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {  // NOLINT
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -64,5 +69,4 @@ void* IrTensor::AllocateFrom(phi::Allocator* allocator,
   IR_THROW("Don't use IrTensor::AllocateFrom method.");
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

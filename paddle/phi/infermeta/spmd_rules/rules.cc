@@ -446,6 +446,11 @@ PD_REGISTER_SPMD_RULE(swiglu,
 
 // reduction rule
 PD_REGISTER_SPMD_RULE(
+    reduce_base,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
     all,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
@@ -558,9 +563,18 @@ PD_REGISTER_SPMD_RULE(slice,
                       PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    strided_slice,
+    PD_INFER_SPMD(phi::distributed::StridedSliceInferSpmd),
+    PD_INFER_SPMD(phi::distributed::StridedSliceGradInferSpmd));
+
 PD_REGISTER_SPMD_RULE(concat,
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(stack,
+                      PD_INFER_SPMD(phi::distributed::StackInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::StackInferSpmdReverse));
 
 // transpose rule
 PD_REGISTER_SPMD_RULE(
@@ -636,6 +650,11 @@ PD_REGISTER_SPMD_RULE(
     gather,
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdReverseBase));
+
+PD_REGISTER_SPMD_RULE(
+    gather_nd,
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmd),
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmdReverse));
 
 // one_hot
 PD_REGISTER_SPMD_RULE(one_hot,
