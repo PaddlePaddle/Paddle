@@ -283,8 +283,15 @@ class TestTransformer(unittest.TestCase):
     def test_multi_head_attention(self):
         def multihead_attention_test_helper(self_attention, cache):
             paddle.seed(2020)
-            paddle.framework.random._manual_program_seed(2020)
-            # self_attention|cross_attention, cache|No cache
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(2020)
+                paddle.framework.random._manual_program_seed(2020)
+            else:
+                paddle.framework.random._manual_program_seed(
+                    2020
+                )  # self_attention|cross_attention, cache|No cache
             with base.dygraph.guard(base.CPUPlace()):
                 # generate params for multi_head_attention
                 (
@@ -401,7 +408,15 @@ class TestTransformer(unittest.TestCase):
     def test_transformer_encoder_layer(self):
         with base.dygraph.guard(base.CPUPlace()):
             paddle.framework.seed(2020)
-            paddle.framework.random._manual_program_seed(2020)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(2020)
+                paddle.framework.random._manual_program_seed(2020)
+            else:
+                paddle.framework.random._manual_program_seed(
+                    2020
+                )  # self_attention|cross_attention, cache|No cache
 
             ffn_fc1_act = "relu"
             # 1.generate basic params
@@ -466,7 +481,15 @@ class TestTransformer(unittest.TestCase):
     def test_transformer_encoder_layer_attr_1(self):
         with base.dygraph.guard(base.CPUPlace()):
             paddle.framework.seed(2020)
-            paddle.framework.random._manual_program_seed(2020)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(2020)
+                paddle.framework.random._manual_program_seed(2020)
+            else:
+                paddle.framework.random._manual_program_seed(
+                    2020
+                )  # self_attention|cross_attention, cache|No cache
 
             ffn_fc1_act = "relu"
             # 1.generate basic params
