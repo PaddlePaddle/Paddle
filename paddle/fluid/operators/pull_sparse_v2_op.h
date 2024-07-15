@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/pull_sparse_op.h"
 
 namespace paddle {
 namespace operators {
