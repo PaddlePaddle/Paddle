@@ -134,8 +134,7 @@ platform::DeviceContext* ParseDeviceContext(
       }
       return dev_ctx;
     }
-    if ((op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0) &&
-        FLAGS_dynamic_static_unified_comm) {
+    if (FLAGS_dynamic_static_unified_comm) {
       if (op_attributes.count("ring_id") != 0) {
         int ring_id =
             op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
@@ -143,10 +142,11 @@ platform::DeviceContext* ParseDeviceContext(
             phi::distributed::CommContextManager::GetInstance();
         if (comm_context_manager.Has(std::to_string(ring_id))) {
           auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
-          static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-              ->GetDevContext()
-              ->SetCommContext(comm_context);
-          if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0) {
+          dev_ctx = static_cast<platform::DeviceContext*>(
+              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                  ->GetDevContext());
+          dev_ctx->SetCommContext(comm_context);
+          if (typeid(op) == typeid(pir::Operation*)) {
             return dev_ctx;
           }
         } else {
