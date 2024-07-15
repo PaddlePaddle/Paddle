@@ -93,7 +93,6 @@ class Imikolov(Dataset):
     window_size: int
     mode: _ImikolovDataSetMode
     min_word_freq: int
-    download: bool
     word_idx: dict[str, int]
 
     def __init__(
@@ -104,7 +103,7 @@ class Imikolov(Dataset):
         mode: _ImikolovDataSetMode = 'train',
         min_word_freq: int = 50,
         download: bool = True,
-    ):
+    ) -> None:
         assert data_type.upper() in [
             'NGRAM',
             'SEQ',
@@ -195,7 +194,9 @@ class Imikolov(Dataset):
                 else:
                     raise AssertionError('Unknow data type')
 
-    def __getitem__(self, idx: int) -> tuple[npt.NDArray[np.int_]]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         return tuple([np.array(d) for d in self.data[idx]])
 
     def __len__(self) -> int:
