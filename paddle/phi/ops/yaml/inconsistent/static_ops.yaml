@@ -750,13 +750,14 @@
   interfaces : paddle::dialect::ParseKernelKeyInterface
 
 - op : seed
-  args : (int seed, bool deterministic, str rng_name, bool force_cpu)
+  args : (int seed=0, bool deterministic=false, str rng_name="", bool force_cpu=false)
   output : Tensor(out)
   infer_meta:
     func: SeedInferMeta
     param: [seed]
   kernel:
     func: seed
+    param: [seed, deterministic, rng_name, force_cpu]
   traits : pir::SideEffectTrait
 
 - op : send_and_recv
