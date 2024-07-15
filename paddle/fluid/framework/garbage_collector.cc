@@ -31,7 +31,7 @@ GarbageCollector::GarbageCollector(const phi::Place &place,
     : garbages_(std::make_unique<GarbageQueue>()),
       mutex_(nullptr),
       max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place);
   if (max_memory_size_ > 1) {
     mutex_ = std::make_unique<std::mutex>();
   }
@@ -201,7 +201,7 @@ double GetEagerDeletionMemoryFraction() {
 std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     const phi::Place &place, const size_t max_memory_size) {
   std::unique_ptr<GarbageCollector> gc = nullptr;
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (IsFastEagerDeletionModeEnabled()) {
       gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place,
@@ -214,23 +214,23 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     PADDLE_THROW(
         platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
-  } else if (platform::is_ipu_place(place)) {
+  } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (IsFastEagerDeletionModeEnabled()) {
       VLOG(4) << "Use unsafe fast gc for " << place << ".";

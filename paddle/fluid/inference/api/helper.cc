@@ -103,7 +103,7 @@ void RegisterAllCustomOperator(bool use_pir) {
             PADDLE_ENFORCE_EQ(
                 meta_inputs.size(),
                 inputs.size(),
-                paddle::platform::errors::InvalidArgument(
+                phi::errors::InvalidArgument(
                     "The number of inputs for the custom operator [%s] given "
                     "in the Pattern needs to be consistent with the number at "
                     "implementation time.",
@@ -111,7 +111,7 @@ void RegisterAllCustomOperator(bool use_pir) {
             PADDLE_ENFORCE_EQ(
                 meta_attrs.size(),
                 attrs.size(),
-                paddle::platform::errors::InvalidArgument(
+                phi::errors::InvalidArgument(
                     "The number of attrs for the custom operator [%s] given "
                     "in the Pattern needs to be consistent with the number at "
                     "implementation time.",
@@ -162,7 +162,7 @@ void RegisterAllCustomOperator(bool use_pir) {
                 PADDLE_ENFORCE_EQ(
                     inputs[i].type().isa<::pir::VectorType>(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The [%d] input of the custom operator [%s] "
                         "should be a pir::VectorType.",
                         i,
@@ -204,7 +204,7 @@ void RegisterAllCustomOperator(bool use_pir) {
               auto attr_type = attr_name_and_type[1];
               PADDLE_ENFORCE_EQ(attrs.count(attr_name),
                                 true,
-                                paddle::platform::errors::InvalidArgument(
+                                phi::errors::InvalidArgument(
                                     "The attr [%s] in the custom operator [%s] "
                                     "specified in the Pattern needs to be "
                                     "consistent with the implementation",

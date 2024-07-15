@@ -155,13 +155,13 @@ PreparedOp PrepareImpl(
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
     const framework::OperatorWithKernel& op,
-    const platform::Place& place,
+    const phi::Place& place,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
     const phi::KernelFactory& phi_kernel_factory,
     const phi::OpUtilsMap& phi_op_utils_map,
     const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
 #ifdef PADDLE_WITH_DNNL
@@ -456,7 +456,7 @@ PreparedOp PrepareImpl(
 PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
                                const NameVarMap<VarBase>& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
   return PrepareImpl<VarBase>(ins,
@@ -473,7 +473,7 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
 PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                const NameVarMap<VariableWrapper>& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
   return PrepareImpl<VariableWrapper>(ins,
@@ -490,7 +490,7 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerVariable>& ins,
                                const NameVarMap<egr::EagerVariable>& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
   return PrepareImpl<egr::EagerVariable>(ins,

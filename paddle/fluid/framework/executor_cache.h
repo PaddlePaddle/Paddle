@@ -147,7 +147,7 @@ class InterpreterCoreInfoCache {
 
 std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc& program_desc,
-    const platform::Place& place,
+    const phi::Place& place,
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope,
@@ -155,7 +155,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_prog,
-    const platform::Place& place,
+    const phi::Place& place,
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope,

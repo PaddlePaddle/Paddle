@@ -787,7 +787,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 /**
  * @brief add auc monitor
  */
-inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
+inline void AddAucMonitor(const Scope* scope, const phi::Place& place) {
   auto metric_ptr = Metric::GetInstance();
   auto& metric_list = metric_ptr->GetMetricList();
   for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {

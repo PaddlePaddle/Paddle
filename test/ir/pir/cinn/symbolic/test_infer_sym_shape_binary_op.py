@@ -267,7 +267,7 @@ class MaskedSelectOpInferSymbolicShapeTest(TestBase):
                 shape=[None for _ in range(len(x.shape))], dtype='float32'
             )
             mask_spec = InputSpec(
-                shape=[None for _ in range(len(mask.shape))], dtype='float32'
+                shape=[None for _ in range(len(mask.shape))], dtype='bool'
             )
 
             input_spec = [x_spec, mask_spec]

@@ -45,7 +45,7 @@ class IterableDatasetWrapper {
  public:
   IterableDatasetWrapper(framework::Dataset *dataset,
                          const std::vector<std::string> &slots,
-                         const std::vector<platform::Place> &places,
+                         const std::vector<phi::Place> &places,
                          size_t batch_size,
                          bool drop_last)
       : dataset_(dataset),
@@ -194,7 +194,7 @@ class IterableDatasetWrapper {
  private:
   framework::Dataset *dataset_;
   std::vector<std::string> slots_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   size_t batch_size_;
   bool drop_last_;
 
@@ -392,7 +392,7 @@ void BindDataset(py::module *m) {
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")
       .def(py::init<framework::Dataset *,
                     const std::vector<std::string> &,
-                    const std::vector<platform::Place> &,
+                    const std::vector<phi::Place> &,
                     size_t,
                     bool>())
       .def("_start", &IterableDatasetWrapper::Start)

@@ -42,7 +42,7 @@ struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& o,
                        const std::string& v,
                        const phi::DenseTensor& t,
-                       const platform::Place& p)
+                       const phi::Place& p)
       : op_type(o), var_name(v), tensor(t), place(p) {}
 
   template <typename T>
@@ -59,7 +59,7 @@ struct TensorCheckerVisitor {
           std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
           0) const {
     auto* dev_ctx = reinterpret_cast<Context*>(
-        platform::DeviceContextPool::Instance().Get(tensor.place()));
+        phi::DeviceContextPool::Instance().Get(tensor.place()));
 
     phi::DenseTensor stats;
     phi::DenseTensor values;
@@ -78,14 +78,14 @@ struct TensorCheckerVisitor {
   std::string op_type;
   std::string var_name;
   const phi::DenseTensor& tensor;
-  const platform::Place& place;
+  const phi::Place& place;
 };
 
 template <typename Context>
 void tensor_check(const std::string& op_type,
                   const std::string& var_name,
                   const phi::DenseTensor& tensor,
-                  const platform::Place& place) {
+                  const phi::Place& place) {
   TensorCheckerVisitor<Context> vistor(op_type, var_name, tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }

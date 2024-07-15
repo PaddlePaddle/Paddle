@@ -93,7 +93,7 @@ struct CastDataType {
     auto* in_end = in_begin + in_.numel();
     auto* out_begin = out_->mutable_data<OutType>(in_.place());
 
-    if (platform::is_cpu_place(in_.place())) {
+    if (phi::is_cpu_place(in_.place())) {
       phi::Transform<phi::CPUContext> trans;
       auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
@@ -102,7 +102,7 @@ struct CastDataType {
             out_begin,
             CastDataTypeFunctor<InType, OutType>());
 #if defined(__NVCC__) || defined(__HIPCC__)
-    } else if (platform::is_gpu_place(in_.place())) {
+    } else if (phi::is_gpu_place(in_.place())) {
       phi::Transform<phi::GPUContext> trans;
       auto* context = static_cast<const phi::GPUContext*>(ctx_);
       trans(*context,
@@ -113,7 +113,7 @@ struct CastDataType {
       context->Wait();
 #endif
 #if defined(PADDLE_WITH_IPU)
-    } else if (platform::is_ipu_place(in_.place())) {
+    } else if (phi::is_ipu_place(in_.place())) {
       phi::Transform<phi::CPUContext> trans;
       auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
@@ -147,7 +147,7 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
 void TransDataType(const phi::DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
                    phi::DenseTensor* out) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
   auto src_type = framework::TransToProtoVarType(in.dtype());
@@ -232,7 +232,7 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
                         const phi::DenseTensor& in,
                         phi::DenseTensor* out) {
-  auto& pool = platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());
   out->Resize(in.dims());
   // complex -> real

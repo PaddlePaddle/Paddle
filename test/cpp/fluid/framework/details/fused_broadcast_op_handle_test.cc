@@ -62,16 +62,14 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with CUDA."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
     } else if (use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, bkcl_ctxs_.get());
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with XPU."));
+      PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
     } else {
       op_handle_ = new FusedBroadcastOpHandle(
