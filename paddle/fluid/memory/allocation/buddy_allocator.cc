@@ -46,11 +46,11 @@ BuddyAllocator::BuddyAllocator(
   if (!dev_type.empty()) {
     init_allocate_size_func_ = [dev_type]() {
       return phi::DeviceManager::GetInitAllocSize(
-          platform::PlaceHelper::CreatePlace(dev_type));
+          phi::PlaceHelper::CreatePlace(dev_type));
     };
     re_allocate_size_func_ = [dev_type]() {
       return phi::DeviceManager::GetReallocSize(
-          platform::PlaceHelper::CreatePlace(dev_type));
+          phi::PlaceHelper::CreatePlace(dev_type));
     };
     use_custom_device_ = true;
   } else {
