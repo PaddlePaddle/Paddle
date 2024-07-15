@@ -128,13 +128,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.input_num == 3:
+            if not dynamic_shape or self.dims == 0 or self.input_num == 3:
                 return 0, 3
             else:
-                if not dynamic_shape and (self.dims == 1 or self.dims == 0):
-                    return 0, 3
-                else:
-                    return 1, 2
+                return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

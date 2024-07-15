@@ -26,25 +26,27 @@ class ClipOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(5130)
-    VLOG(3) << "convert a clip op to tensorrt IActivationLayer.";
+    VLOG(3) << "convert a clip op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     float min = PADDLE_GET_CONST(float, op_desc.GetAttr("min"));
     float max = PADDLE_GET_CONST(float, op_desc.GetAttr("max"));
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Activation, *input, nvinfer1::ActivationType::kCLIP);
-    layer->setAlpha(min);
-    layer->setBeta(max);
-
+    auto input_type = input->getType();
+    auto in_shape_tensor = Shape(input);
+    auto* min_tensor = Cast(
+        FillConstantLayer(in_shape_tensor, input->getDimensions().nbDims, min),
+        input_type);
+    auto* max_tensor = Cast(
+        FillConstantLayer(in_shape_tensor, input->getDimensions().nbDims, max),
+        input_type);
+    auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                      ElementWise,
+                                      *Max(input, min_tensor),
+                                      *max_tensor,
+                                      nvinfer1::ElementWiseOperation::kMIN);
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(layer, "clip", {output_name}, test_mode);
-#else
-    PADDLE_THROW(
-        platform::errors::Fatal("clip TRT converter is only supported on TRT "
-                                "5.1.3.0 or higher version."));
-#endif
   }
 };
 
