@@ -570,7 +570,7 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
 
 XCCLComm* XCCLCommContext::AssignXCCLComm(
     phi::ccl::CCLComm comm, int nranks, int rank, int dev_id, int ring_id) {
-  auto place = CustomPlace(device_type_, dev_id);
+  auto place = phi::CustomPlace(device_type_, dev_id);
   std::unique_ptr<phi::CustomContext> dev_ctx(new phi::CustomContext(place));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(place)
