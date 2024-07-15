@@ -117,15 +117,12 @@ class MatmulReshapeElementwiseAddFusePattern
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           auto reshape_x_dims = match_ctx.Attr<std::vector<int64_t>>("value");
-          int target = reshape_x_dims[0];
-          int value = 1;
-          int index = 0;
-          for (auto v : x_dims) {
-            value *= v;
-            if (value == target) {
-              return static_cast<int>(index) + 1;
+          int target = reshape_x_dims[1];
+          for (size_t i = x_dims.size() - 1; i > 0; i--) {
+            target /= x_dims[i];
+            if (target == 1) {
+              return static_cast<int>(i);
             }
-            index++;
           }
           return static_cast<int>(reshape_x_dims.size()) - 1;
         });
