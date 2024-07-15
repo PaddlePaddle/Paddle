@@ -212,6 +212,14 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& atol_tensor,
+                                 const MetaTensor& rtol_tensor,
+                                 bool use_default_atol,
+                                 bool use_default_rtol,
+                                 bool hermitian,
+                                 MetaTensor* out);
+
 void MatchMatrixTensorInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 const MetaTensor& w,

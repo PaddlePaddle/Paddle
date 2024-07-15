@@ -2968,13 +2968,37 @@
   backward : matrix_power_grad
 
 - op : matrix_rank
-  args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
+  args : (Tensor x, float tol, bool use_default_atol=true, bool use_default_rtol=true, bool hermitian=false, float atol=0.0, float rtol=0.0, bool use_atol_rtol=false)
   output : Tensor(out)
   infer_meta :
     func : MatrixRankInferMeta
-    param : [x, use_default_tol, hermitian]
+    param : [x, use_default_atol, hermitian]
   kernel :
     func : matrix_rank
+
+- op : matrix_rank_atol
+  args : (Tensor x, Tensor atol_tensor, float rtol, bool use_default_rtol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankAtolInferMeta
+  kernel :
+    func : matrix_rank_atol
+
+- op : matrix_rank_atol_rtol
+  args : (Tensor x, Tensor atol_tensor, Tensor rtol_tensor, bool use_default_atol=true, bool use_default_rtol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankAtolRtolInferMeta
+  kernel :
+    func : matrix_rank_atol_rtol
+
+- op : matrix_rank_rtol
+  args : (Tensor x, Tensor rtol_tensor, float atol, bool use_default_atol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankRtolInferMeta
+  kernel :
+    func : matrix_rank_rtol
 
 - op : matrix_rank_tol
   args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)

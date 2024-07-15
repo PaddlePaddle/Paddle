@@ -22,8 +22,30 @@ template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       float tol,
-                      bool use_default_tol,
+                      bool use_default_atol,
+                      bool use_default_rtol,
                       bool hermitian,
+                      float atol,
+                      float rtol,
+                      bool use_atol_rtol,
                       DenseTensor* out);
+
+template <typename T, typename Context>
+void MatrixRankAtolKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& atol_tensor,
+                          float rtol,
+                          bool use_default_rtol,
+                          bool hermitian,
+                          DenseTensor* out);
+
+template <typename T, typename Context>
+void MatrixRankRtolKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& rtol_tensor,
+                          float atol,
+                          bool use_default_atol,
+                          bool hermitian,
+                          DenseTensor* out);
 
 }  // namespace phi

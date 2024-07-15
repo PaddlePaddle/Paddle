@@ -169,9 +169,119 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                           false,
                           out);
 }
+
+template <typename T, typename Context>
+void MatrixRankAtolRtolKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& atol_tensor,
+                              const DenseTensor& rtol_tensor,
+                              bool use_default_atol,
+                              bool use_default_rtol,
+                              bool hermitian,
+                              DenseTensor* out) {
+  dev_ctx.template Alloc<int64_t>(out);
+  auto dim_x = x.dims();
+  auto dim_out = out->dims();
+  int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
+  int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+  int k = std::min(rows, cols);
+  int batches = static_cast<int>(x.numel() / (rows * cols));
+
+  DenseTensor eigenvalue_tensor;
+  eigenvalue_tensor.Resize(detail::GetEigenvalueDim(dim_x, k));
+  auto* eigenvalue_data = dev_ctx.template Alloc<T>(&eigenvalue_tensor);
+
+  if (hermitian) {
+    phi::funcs::MatrixEighFunctor<Context, T> functor;
+    functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
+    phi::AbsKernel<T, Context>(dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
+  } else {
+    DenseTensor trans_x = phi::TransposeLast2Dim<T>(dev_ctx, x);
+    auto* x_data = trans_x.data<T>();
+    BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols);
+  }
+
+  DenseTensor max_eigenvalue_tensor;
+  max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
+  dev_ctx.template Alloc<T>(&max_eigenvalue_tensor);
+  phi::MaxKernel<T, Context>(dev_ctx,
+                             eigenvalue_tensor,
+                             phi::IntArray({-1}),
+                             false,
+                             &max_eigenvalue_tensor);
+
+  DenseTensor tol_tensor;
+  tol_tensor.Resize(dim_out);
+  dev_ctx.template Alloc<T>(&tol_tensor);
+
+  if (use_default_atol && use_default_rtol) {
+    T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
+    DenseTensor default_rtol_tensor;
+    default_rtol_tensor =
+        phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol_T));
+    default_rtol_tensor =
+        phi::Multiply<T>(dev_ctx, default_rtol_tensor, max_eigenvalue_tensor);
+    funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
+        dev_ctx,
+        atol_tensor,
+        default_rtol_tensor,
+        GreaterElementFunctor<T>(),
+        &tol_tensor);
+  } else {
+    DenseTensor tmp_rtol_tensor;
+    tmp_rtol_tensor =
+        phi::Multiply<T>(dev_ctx, rtol_tensor, max_eigenvalue_tensor);
+    funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
+        dev_ctx,
+        atol_tensor,
+        tmp_rtol_tensor,
+        GreaterElementFunctor<T>(),
+        &tol_tensor);
+  }
+
+  tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
+
+  DenseTensor compare_result;
+  compare_result.Resize(detail::NewAxisDim(dim_out, k));
+  dev_ctx.template Alloc<int64_t>(&compare_result);
+  int axis = -1;
+  if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
+    funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int>(
+        dev_ctx,
+        eigenvalue_tensor,
+        tol_tensor,
+        funcs::GreaterThanFunctor<T, int64_t>(),
+        &compare_result,
+        axis);
+  } else {
+    funcs::ElementwiseCompute<funcs::LessThanFunctor<T, int64_t>, T, int>(
+        dev_ctx,
+        eigenvalue_tensor,
+        tol_tensor,
+        funcs::LessThanFunctor<T, int64_t>(),
+        &compare_result,
+        axis);
+  }
+
+  phi::SumKernel<int64_t>(dev_ctx,
+                          compare_result,
+                          std::vector<int64_t>{-1},
+                          compare_result.dtype(),
+                          false,
+                          out);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     matrix_rank_tol, CPU, ALL_LAYOUT, phi::MatrixRankTolKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}
+
+PD_REGISTER_KERNEL(matrix_rank_atol_rtol,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MatrixRankAtolRtolKernel,
+                   float,
+                   double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }

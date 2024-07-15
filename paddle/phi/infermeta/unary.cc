@@ -2447,7 +2447,7 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_tol,
+                         bool use_default_atol,
                          bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();

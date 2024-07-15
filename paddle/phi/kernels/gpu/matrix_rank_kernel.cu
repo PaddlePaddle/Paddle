@@ -27,17 +27,91 @@ template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       float tol,
-                      bool use_default_tol,
+                      bool use_default_atol,
+                      bool use_default_rtol,
                       bool hermitian,
+                      float atol,
+                      float rtol,
+                      bool use_atol_rtol,
                       DenseTensor* out) {
+  if (!use_atol_rtol) {
+    DenseTensor atol_tensor;
+    if (use_default_atol) {
+      atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
+    } else {
+      atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(tol));
+    }
+    MatrixRankTolKernel<T, Context>(
+        dev_ctx, x, atol_tensor, use_default_atol, hermitian, out);
+  } else {
+    DenseTensor atol_tensor, rtol_tensor;
+    if (use_default_atol) {
+      atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
+    } else {
+      atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(atol));
+    }
+    if (use_default_rtol) {
+      rtol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
+    } else {
+      rtol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol));
+    }
+    MatrixRankAtolRtolKernel<T, Context>(dev_ctx,
+                                         x,
+                                         atol_tensor,
+                                         rtol_tensor,
+                                         use_default_atol,
+                                         use_default_rtol,
+                                         hermitian,
+                                         out);
+  }
+}
+
+template <typename T, typename Context>
+void MatrixRankAtolKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& atol_tensor,
+                          float rtol,
+                          bool use_default_rtol,
+                          bool hermitian,
+                          DenseTensor* out) {
+  DenseTensor rtol_tensor;
+  if (use_default_rtol) {
+    rtol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
+  } else {
+    rtol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol));
+  }
+  MatrixRankAtolRtolKernel<T, Context>(dev_ctx,
+                                       x,
+                                       atol_tensor,
+                                       rtol_tensor,
+                                       false,
+                                       use_default_rtol,
+                                       hermitian,
+                                       out);
+}
+
+template <typename T, typename Context>
+void MatrixRankRtolKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& rtol_tensor,
+                          float atol,
+                          bool use_default_atol,
+                          bool hermitian,
+                          DenseTensor* out) {
   DenseTensor atol_tensor;
-  if (use_default_tol) {
+  if (use_default_atol) {
     atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
   } else {
-    atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(tol));
+    atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(atol));
   }
-  MatrixRankTolKernel<T, Context>(
-      dev_ctx, x, atol_tensor, use_default_tol, hermitian, out);
+  MatrixRankAtolRtolKernel<T, Context>(dev_ctx,
+                                       x,
+                                       atol_tensor,
+                                       rtol_tensor,
+                                       use_default_atol,
+                                       false,
+                                       hermitian,
+                                       out);
 }
 
 }  // namespace phi
@@ -46,6 +120,20 @@ PD_REGISTER_KERNEL(matrix_rank,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
                    phi::MatrixRankKernel,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(matrix_rank_atol,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatrixRankAtolKernel,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(matrix_rank_rtol,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatrixRankRtolKernel,
                    float,
                    double) {}
 

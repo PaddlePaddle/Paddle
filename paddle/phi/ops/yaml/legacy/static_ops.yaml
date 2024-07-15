@@ -515,11 +515,11 @@
   backward : matmul_with_flatten_grad
 
 - op : matrix_rank
-  args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
+  args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_atol=true, bool use_default_rtol=true, float atol=0.0f, float rtol=0.0f, bool use_atol_rtol=false)
   output : Tensor(out)
   infer_meta :
     func : MatrixRankStaticInferMeta
-    param : [x, tol_tensor, use_default_tol, hermitian]
+    param : [x, tol_tensor, use_default_atol, hermitian]
   optional : tol_tensor
   kernel :
     func : matrix_rank {dense -> dense},

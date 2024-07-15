@@ -21,21 +21,25 @@ KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsForInferShape()) {
     return KernelSignature("matrix_rank_tol",
                            {"X", "TolTensor"},
-                           {"use_default_tol", "hermitian"},
+                           {"use_default_atol", "hermitian"},
                            {"Out"});
   }
   if (ctx.HasInput("TolTensor")) {
     return KernelSignature("matrix_rank_tol",
                            {"X", "TolTensor"},
-                           {"use_default_tol", "hermitian"},
+                           {"use_default_atol", "hermitian"},
                            {"Out"});
   } else {
     return KernelSignature("matrix_rank",
                            {"X"},
                            {
                                "tol",
-                               "use_default_tol",
+                               "use_default_atol",
+                               "use_default_rtol",
                                "hermitian",
+                               "atol",
+                               "rtol",
+                               "use_atol_rtol",
                            },
                            {"Out"});
   }

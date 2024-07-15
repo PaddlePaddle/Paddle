@@ -395,7 +395,7 @@ void LUInferMeta(const MetaTensor& x,
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_tol,
+                         bool use_default_atol,
                          bool hermitian,
                          MetaTensor* out);
 

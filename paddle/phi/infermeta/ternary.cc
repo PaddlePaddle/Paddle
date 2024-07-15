@@ -25,6 +25,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace phi {
+namespace detail {
+// Used in MatrixRankTolInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = common::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return common::make_ddim({});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return common::make_ddim(x_vec);
+}
+}  // namespace detail
 
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
@@ -1185,6 +1196,49 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out) {
   LinspaceRawInferMeta(start, stop, number, out);
+}
+
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& atol_tensor,
+                                 const MetaTensor& rtol_tensor,
+                                 bool use_default_atol,
+                                 bool use_default_rtol,
+                                 bool hermitian,
+                                 MetaTensor* out) {
+  auto dim_x = x.dims();
+  PADDLE_ENFORCE_GE(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+
+  if (hermitian) {
+    int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
+    int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+    PADDLE_ENFORCE_EQ(rows,
+                      cols,
+                      phi::errors::InvalidArgument(
+                          "if hermitian == true, matrix should be n*n"));
+  }
+  DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+  auto dim_tol = atol_tensor.dims();
+  if (dim_x_batch == dim_tol) {
+    out->set_dims(dim_x_batch);
+  } else {
+    int max_dim = std::max(dim_x_batch.size(), dim_tol.size());
+    int axis = std::abs(dim_x_batch.size() - dim_tol.size());
+    std::vector<int> x_batch_dims_array(max_dim);
+    std::vector<int> tol_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    phi::funcs::GetBroadcastDimsArrays(dim_x_batch,
+                                       dim_tol,
+                                       x_batch_dims_array.data(),
+                                       tol_dims_array.data(),
+                                       out_dims_array.data(),
+                                       max_dim,
+                                       axis);
+    out->set_dims(common::make_ddim(out_dims_array));
+  }
+  out->share_lod(x);
 }
 
 void MatchMatrixTensorInferMeta(const MetaTensor& x,

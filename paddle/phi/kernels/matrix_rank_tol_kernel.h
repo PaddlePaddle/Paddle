@@ -26,4 +26,14 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          bool hermitian,
                          DenseTensor* out);
 
+template <typename T, typename Context>
+void MatrixRankAtolRtolKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& atol_tensor,
+                              const DenseTensor& rtol_tensor,
+                              bool use_default_atol,
+                              bool use_default_rtol,
+                              bool hermitian,
+                              DenseTensor* out);
+
 }  // namespace phi
