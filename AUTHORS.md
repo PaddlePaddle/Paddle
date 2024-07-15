@@ -76,6 +76,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
+| tizhou86 | Ti Zhou |
 | tpatejko | Tomasz Patejko |
 | [tsocha](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Tomasz Socha |
 | typhoonzero | Yi Wu |
