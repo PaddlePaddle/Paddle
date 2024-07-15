@@ -2433,7 +2433,6 @@ def matrix_rank(
                     outputs={'out': out},
                     attrs=attrs,
                 )
-                # return _C_ops.matrix_rank_atol_rtol(x, atol_tensor, rtol_tensor, use_default_atol, use_default_rtol, hermitian)
             elif rtol_is_tensor:
                 inputs['x'] = x
                 attrs.pop('use_default_rtol')
@@ -2445,7 +2444,6 @@ def matrix_rank(
                     outputs={'out': out},
                     attrs=attrs,
                 )
-                # return _C_ops.matrix_rank_rtol(x, rtol_tensor, atol_attr, use_default_atol, hermitian)
             elif atol_is_tensor:
                 inputs['x'] = x
                 attrs.pop('use_default_atol')
@@ -2457,7 +2455,6 @@ def matrix_rank(
                     outputs={'out': out},
                     attrs=attrs,
                 )
-                # return _C_ops.matrix_rank_atol(x, atol_tensor, rtol_attr, use_default_rtol, hermitian)
             else:
                 inputs['X'] = x
                 attrs['tol'] = 0.0
@@ -2470,7 +2467,6 @@ def matrix_rank(
                     outputs={'Out': out},
                     attrs=attrs,
                 )
-                # return _C_ops.matrix_rank(x, 0.0, use_default_atol, use_default_rtol, hermitian, atol_attr, rtol_attr, use_atol_rtol)
         else:
             inputs['X'] = x
             if tol is None:
