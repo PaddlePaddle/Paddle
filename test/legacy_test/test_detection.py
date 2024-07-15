@@ -239,6 +239,9 @@ class TestDistributeFpnProposals(LayerTest):
             fpn_rois = paddle.static.data(
                 name='data_error', shape=[10, 4], dtype='int32', lod_level=1
             )
+            rois_num = paddle.static.data(
+                name='rois_num', shape=[None], dtype='int32'
+            )
             self.assertRaises(
                 TypeError,
                 paddle.vision.ops.distribute_fpn_proposals,
@@ -247,6 +250,7 @@ class TestDistributeFpnProposals(LayerTest):
                 max_level=5,
                 refer_level=4,
                 refer_scale=224,
+                rois_num=rois_num,
             )
 
     def test_distribute_fpn_proposals_error2(self):

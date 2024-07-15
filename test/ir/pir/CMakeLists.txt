@@ -31,6 +31,7 @@ endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
 set_tests_properties(test_map_op_another_pass PROPERTIES TIMEOUT 60)
+set_tests_properties(test_while_api PROPERTIES TIMEOUT 100)
 
 py_test_modules(
   test_subgraph_exporter

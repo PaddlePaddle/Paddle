@@ -219,8 +219,8 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     std::unique_ptr<::paddle::framework::Scope> local_scope_ptr(
         new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    phi::CPUPlace cpu_place;
     auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
     auto message_name = request->message_name();

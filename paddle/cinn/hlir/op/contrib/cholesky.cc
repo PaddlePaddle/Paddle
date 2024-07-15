@@ -26,7 +26,6 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"

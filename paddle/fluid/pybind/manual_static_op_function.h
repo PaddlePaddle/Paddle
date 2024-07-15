@@ -516,7 +516,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
-                    paddle::platform::errors::NotFound(
+                    phi::errors::NotFound(
                         "Can't find %s in Eager OpMetaInfoMap which should be "
                         "created by LoadOpMetaInfoAndRegisterOp, please make "
                         "sure you registered your op first and try again. ",

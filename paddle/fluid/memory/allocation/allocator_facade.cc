@@ -554,7 +554,7 @@ class AllocatorFacadePrivate {
 
     VLOG(6) << "GetStream for a non-StreamSafeCUDAAllocation";
     return static_cast<phi::GPUContext*>(
-               platform::DeviceContextPool::Instance().Get(allocation->place()))
+               phi::DeviceContextPool::Instance().Get(allocation->place()))
         ->stream();
   }
 #endif
@@ -662,7 +662,7 @@ class AllocatorFacadePrivate {
 
     VLOG(6) << "GetStream for a non-StreamSafeXPUAllocation";
     return static_cast<phi::XPUContext*>(
-               platform::DeviceContextPool::Instance().Get(allocation->place()))
+               phi::DeviceContextPool::Instance().Get(allocation->place()))
         ->stream();
   }
 #endif
@@ -778,7 +778,7 @@ class AllocatorFacadePrivate {
 
     VLOG(6) << "GetStream for a non-StreamSafeCustomDeviceAllocation";
     return static_cast<phi::CustomContext*>(
-               platform::DeviceContextPool::Instance().Get(allocation->place()))
+               phi::DeviceContextPool::Instance().Get(allocation->place()))
         ->stream();
   }
 #endif
@@ -1149,7 +1149,7 @@ class AllocatorFacadePrivate {
   void WrapStreamSafeCUDAAllocatorForDefault() {
     for (auto& pair : allocators_) {
       auto& place = pair.first;
-      if (platform::is_gpu_place(place)) {
+      if (phi::is_gpu_place(place)) {
         std::shared_ptr<StreamSafeCUDAAllocator>&& allocator =
             std::make_shared<StreamSafeCUDAAllocator>(
                 pair.second,
@@ -1171,7 +1171,7 @@ class AllocatorFacadePrivate {
   void WrapCUDAMallocAsyncAllocatorForDefault() {
     for (auto& pair : allocators_) {
       auto& place = pair.first;
-      if (platform::is_gpu_place(place)) {
+      if (phi::is_gpu_place(place)) {
         // we set default stream of the Allocator to 0 (nullptr) here, but we
         // would set it to the compute stream of the device with
         // SetDefaultStream later
@@ -1298,7 +1298,7 @@ class AllocatorFacadePrivate {
   void WrapStreamSafeXPUAllocatorForDefault() {
     for (auto& pair : allocators_) {
       auto& place = pair.first;
-      if (platform::is_xpu_place(place)) {
+      if (phi::is_xpu_place(place)) {
         std::shared_ptr<StreamSafeXPUAllocator>&& allocator =
             std::make_shared<StreamSafeXPUAllocator>(
                 pair.second,
@@ -1400,7 +1400,7 @@ class AllocatorFacadePrivate {
   void WrapStreamSafeCustomDeviceAllocatorForDefault() {
     for (auto& pair : allocators_) {
       auto& place = pair.first;
-      if (platform::is_custom_place(place)) {
+      if (phi::is_custom_place(place)) {
         std::shared_ptr<StreamSafeCustomDeviceAllocator>&& allocator =
             std::make_shared<StreamSafeCustomDeviceAllocator>(
                 pair.second,
@@ -1525,8 +1525,7 @@ class AllocatorFacadePrivate {
         platform::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     for (auto& pair : allocators_) {
-      if (platform::is_gpu_place(pair.first) ||
-          platform::is_xpu_place(pair.first)) {
+      if (phi::is_gpu_place(pair.first) || phi::is_xpu_place(pair.first)) {
         pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
       }
     }
@@ -1536,10 +1535,9 @@ class AllocatorFacadePrivate {
     for (auto& pair : allocators_) {
       // Now memory stats is only supported for CPU, GPU, XPU and CustomDevice
       const phi::Place& place = pair.first;
-      if (platform::is_cpu_place(place) ||
-          platform::is_cuda_pinned_place(place) ||
-          platform::is_gpu_place(place) || platform::is_custom_place(place) ||
-          platform::is_xpu_place(place)) {
+      if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place) ||
+          phi::is_gpu_place(place) || phi::is_custom_place(place) ||
+          phi::is_xpu_place(place)) {
         pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }
@@ -1625,13 +1623,13 @@ void* AllocatorFacade::GetBasePtr(
     const std::shared_ptr<phi::Allocation>& allocation) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
                     AllocatorStrategy::kAutoGrowth,
-                    paddle::platform::errors::Unimplemented(
+                    phi::errors::Unimplemented(
                         "GetBasePtr() is only implemented for auto_growth "
                         "strategy, not support allocator strategy: %d",
                         static_cast<int>(GetAllocatorStrategy())));
-  PADDLE_ENFORCE_EQ(platform::is_gpu_place(allocation->place()),
+  PADDLE_ENFORCE_EQ(phi::is_gpu_place(allocation->place()),
                     true,
-                    paddle::platform::errors::Unimplemented(
+                    phi::errors::Unimplemented(
                         "GetBasePtr() is only implemented for CUDAPlace(), not "
                         "support place: %s",
                         allocation->place()));
@@ -1667,7 +1665,7 @@ AllocationPtr AllocatorFacade::Alloc(const phi::Place& place,
                                      size_t size,
                                      const phi::Stream& stream) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
     if (!GetPrivate()->IsStreamSafeCUDAAllocatorUsed()) {
       VLOG(6) << "Warning: StreamSafeCustomDeviceAllocator is not used!";
       return Alloc(place, size);
@@ -1685,7 +1683,7 @@ AllocationPtr AllocatorFacade::Alloc(const phi::Place& place,
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (platform::is_xpu_place(place)) {
+  if (phi::is_xpu_place(place)) {
     if (!GetPrivate()->IsStreamSafeCUDAAllocatorUsed()) {
       return Alloc(place, size);
     }
@@ -1777,7 +1775,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     return GetAllocator(place);
   }
 
-  if (platform::is_gpu_place(place) && FLAGS_use_system_allocator == false) {
+  if (phi::is_gpu_place(place) && FLAGS_use_system_allocator == false) {
     return m->GetAllocator(place,
                            stream,
                            /*create_if_not_found=*/true);
@@ -1851,7 +1849,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     return GetAllocator(place);
   }
 
-  if (platform::is_xpu_place(place) && FLAGS_use_system_allocator == false) {
+  if (phi::is_xpu_place(place) && FLAGS_use_system_allocator == false) {
     return m->GetAllocator(place,
                            stream,
                            /*create_if_not_found=*/true);
@@ -1886,7 +1884,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     return GetAllocator(place);
   }
 
-  if (platform::is_custom_place(place) && FLAGS_use_system_allocator == false) {
+  if (phi::is_custom_place(place) && FLAGS_use_system_allocator == false) {
     return m->GetAllocator(place,
                            stream,
                            /*create_if_not_found=*/true);

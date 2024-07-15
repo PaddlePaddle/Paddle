@@ -181,9 +181,7 @@ def _load_program_scope(main=None, startup=None, scope=None):
 @static_only
 def _legacy_static_save(param_dict, model_path, protocol=2):
     def get_tensor(var):
-        if isinstance(var, core.eager.Tensor):
-            return np.array(var)
-        elif isinstance(var, core.LoDTensor):
+        if isinstance(var, (paddle.Tensor, core.LoDTensor)):
             return np.array(var)
         return var
 
