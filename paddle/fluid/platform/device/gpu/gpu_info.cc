@@ -616,7 +616,7 @@ bool IsGpuMallocRecorded(int dev_id) {
 void EmptyCache() {
   std::vector<int> devices = GetSelectedDevices();
   for (auto device : devices) {
-    memory::Release(CUDAPlace(device));
+    memory::Release(phi::GPUPlace(device));
   }
 }
 

@@ -23,7 +23,7 @@ class CUDADeviceGuard {
  public:
   explicit CUDADeviceGuard(int dev_id) { SetDeviceIndex(dev_id); }
 
-  explicit CUDADeviceGuard(const CUDAPlace& place)
+  explicit CUDADeviceGuard(const phi::GPUPlace& place)
       : CUDADeviceGuard(place.device) {}
 
   // create uninitialized CUDADeviceGuard

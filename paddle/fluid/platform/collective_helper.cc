@@ -210,17 +210,18 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 NCCLComm* NCCLCommContext::AssignNCCLComm(
     ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<phi::GPUContext> dev_ctx(
-      new phi::GPUContext(CUDAPlace(dev_id)));
-  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
-                            .get());
+      new phi::GPUContext(phi::GPUPlace(dev_id)));
+  dev_ctx->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(dev_id), dev_ctx->stream())
+          .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(CUDAPlace(dev_id))
+          .GetZeroAllocator(phi::GPUPlace(dev_id))
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()

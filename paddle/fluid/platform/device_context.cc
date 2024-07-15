@@ -229,7 +229,7 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
-          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "GPUPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
     } else if (phi::is_ipu_place(place)) {
