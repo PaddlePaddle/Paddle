@@ -642,9 +642,6 @@ void InitBlockArgSymbolicShape(const pir::Value &origin_input,
   origin_input_shape_or_data.Match(
       [&](const symbol::TensorShapeOrDataDimExprs &impl) {
         infer_context->SetSymbolForValueByStaticShape(block_arg);
-        const auto &origin_input_shape = impl.shape();
-        const auto &block_arg_shape =
-            infer_context->GetShapeOrDataForValue(block_arg).shape();
       },
       [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
         PADDLE_THROW(phi::errors::Fatal(
@@ -653,7 +650,7 @@ void InitBlockArgSymbolicShape(const pir::Value &origin_input,
       [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
         const auto &input_shape_hint = impl.GetShapeHint();
         std::vector<symbol::DimExpr> block_arg_shape_hint;
-        for (int i = 0; i < input_shape_hint.size(); ++i) {
+        for (size_t i = 0; i < input_shape_hint.size(); ++i) {
           block_arg_shape_hint.emplace_back(infer_context->GetNextSymName());
         }
         infer_context->SetShapeOrDataForValue(
