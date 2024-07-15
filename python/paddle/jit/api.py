@@ -78,8 +78,8 @@ from .dy2static.program_translator import (
     SymbolicStaticFunction,
     unwrap_decorators,
 )
+from .inference import paddle_inference_decorator
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
-from .to_static_with_inference_backend import paddle_inference_decorator
 from .translated_layer import (
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_INFO_SUFFIX,
