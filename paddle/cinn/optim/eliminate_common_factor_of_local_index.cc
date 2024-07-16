@@ -417,11 +417,161 @@ void EliminateCommonFactorHelper(ir::Expr* expr) {
   eliminate_common_factor_visitor(expr);
 }
 
+class TransformExprVisitor : public ir::IRMutator<> {
+ public:
+  TransformExprVisitor() {}
+
+  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+ private:
+  template <typename OpType>
+  void ExtractIterHelper(const ir::Expr& expr,
+                         std::map<std::string, ir::Expr>& name_to_iter) {
+    const auto op = expr.As<OpType>();
+    ExtractIterFromIndice(op->a(), name_to_iter);
+    ExtractIterFromIndice(op->b(), name_to_iter);
+  }
+
+  void ExtractIterFromIndice(const ir::Expr& expr,
+                             std::map<std::string, ir::Expr>& name_to_iter) {
+    if (expr.As<ir::_Var_>()) {
+      const auto var = expr.As<ir::_Var_>();
+      if (var->is_symbolic_constant) {
+        VLOG(6) << "symbolic constant: \n" << var->name;
+        return;
+      }
+      if (name_to_iter.count(var->name) == 0) {
+        name_to_iter[var->name] = expr;
+      }
+      return;
+    } else if (expr.As<ir::Add>()) {
+      ExtractIterHelper<ir::Add>(expr, name_to_iter);
+    } else if (expr.As<ir::Sub>()) {
+      ExtractIterHelper<ir::Sub>(expr, name_to_iter);
+    } else if (expr.As<ir::Mul>()) {
+      ExtractIterHelper<ir::Mul>(expr, name_to_iter);
+    } else if (expr.As<ir::Div>()) {
+      ExtractIterHelper<ir::Div>(expr, name_to_iter);
+    } else if (expr.As<ir::Mod>()) {
+      ExtractIterHelper<ir::Mod>(expr, name_to_iter);
+    } else {
+      VLOG(4) << "Not support for extract iter: \n" << expr;
+      return;
+    }
+    return;
+  }
+
+  void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
+    auto* node = expr->As<ir::ScheduleBlockRealize>();
+    CHECK(node);
+    current_sbr_ = node;
+    IRMutator<>::Visit(op, expr);
+  }
+
+  void Visit(const ir::For* op, ir::Expr* expr) override {
+    auto* for_ir = expr->As<ir::For>();
+    loop_vars_.push_back(for_ir->loop_var);
+    IRMutator<>::Visit(op, expr);
+    loop_vars_.pop_back();
+  }
+
+  void Visit(const ir::Store* op, ir::Expr* expr) override {
+    auto CopyIndiceItersToLocalBuffer =
+        [&](std::map<std::string, ir::Expr>& name_to_iter,
+            std::vector<ir::Expr>& local_buffer_iters) {
+          std::map<std::size_t, ir::Expr> name_helper;
+          for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
+            VLOG(6) << "iter var name: " << loop_vars_[i]->name;
+            if (name_to_iter.count(loop_vars_[i]->name) > 0) {
+              name_helper[i] = name_to_iter[loop_vars_[i]->name];
+            }
+          }
+          for (const auto& [key, iter] : name_helper) {
+            local_buffer_iters.push_back(iter);
+          }
+        };
+
+    auto ConvertIndicesToIters =
+        [&](std::vector<ir::Expr>& indices) -> std::vector<ir::Expr> {
+      std::vector<ir::Expr> local_buffer_iters_;
+      std::map<std::string, ir::Expr> name_to_iter_;
+      for (const auto& indice : indices) {
+        ExtractIterFromIndice(indice, name_to_iter_);
+        VLOG(6) << "extract iter: " << indice
+                << " iter_set: " << name_to_iter_.size();
+      }
+      CopyIndiceItersToLocalBuffer(name_to_iter_, local_buffer_iters_);
+      while (local_buffer_iters_.size() < indices.size()) {
+        local_buffer_iters_.insert(local_buffer_iters_.begin(), ir::Expr(0));
+      }
+      return local_buffer_iters_;
+    };
+
+    auto store = expr->As<ir::Store>();
+    if (store->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
+      store->indices = ConvertIndicesToIters(store->indices);
+    }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
+  void Visit(const ir::Load* op, ir::Expr* expr) override {
+    auto CopyIndiceItersToLocalBuffer =
+        [&](std::map<std::string, ir::Expr>& name_to_iter,
+            std::vector<ir::Expr>& local_buffer_iters) {
+          std::map<std::size_t, ir::Expr> name_helper;
+          for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
+            VLOG(6) << "iter var name: " << loop_vars_[i]->name;
+            if (name_to_iter.count(loop_vars_[i]->name) > 0) {
+              name_helper[i] = name_to_iter[loop_vars_[i]->name];
+            }
+          }
+          for (const auto& [key, iter] : name_helper) {
+            local_buffer_iters.push_back(iter);
+          }
+        };
+
+    auto ConvertIndicesToIters =
+        [&](std::vector<ir::Expr>& indices) -> std::vector<ir::Expr> {
+      std::vector<ir::Expr> local_buffer_iters_;
+      std::map<std::string, ir::Expr> name_to_iter_;
+      for (const auto& indice : indices) {
+        ExtractIterFromIndice(indice, name_to_iter_);
+        VLOG(6) << "extract iter: " << indice
+                << " iter_set: " << name_to_iter_.size();
+      }
+      CopyIndiceItersToLocalBuffer(name_to_iter_, local_buffer_iters_);
+      while (local_buffer_iters_.size() < indices.size()) {
+        local_buffer_iters_.insert(local_buffer_iters_.begin(), ir::Expr(0));
+      }
+      return local_buffer_iters_;
+    };
+
+    auto load = expr->As<ir::Load>();
+    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
+      load->indices = ConvertIndicesToIters(load->indices);
+    }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
+  ir::ScheduleBlockRealize* current_sbr_;
+  std::vector<ir::Var> loop_vars_;
+};
+
+void TransformExprToIters(ir::Expr* expr) {
+  TransformExprVisitor transfromExprVisitor;
+  transfromExprVisitor(expr);
+}
+
 void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
   VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
   EliminateCommonFactorHelper<Gcd>(expr);
   EliminateCommonFactorHelper<Offset>(expr);
   EliminateCommonFactorHelper<Symbolic>(expr);
+
+  TransformExprToIters(expr);
+
   VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
