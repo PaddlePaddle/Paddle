@@ -93,7 +93,9 @@ void GPUCollectFpnProposalsOpKernel(
   int lod_size;
   auto place = dev_ctx.GetPlace();
 
-  auto multi_rois_num = multi_level_rois_num.get();
+  auto multi_rois_num = multi_level_rois_num
+                            ? multi_level_rois_num.get()
+                            : std::vector<const DenseTensor*>();
   for (size_t i = 0; i < roi_ins.size(); ++i) {
     auto roi_in = roi_ins[i];
     auto score_in = score_ins[i];
@@ -280,4 +282,7 @@ PD_REGISTER_KERNEL(collect_fpn_proposals,
                    ALL_LAYOUT,
                    phi::GPUCollectFpnProposalsOpKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

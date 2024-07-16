@@ -69,7 +69,9 @@ void CollectFpnProposalsOpKernel(
   auto multi_layer_rois = multi_level_rois;
 
   auto multi_layer_scores = multi_level_scores;
-  auto multi_rois_num = multi_level_rois_num.get();
+  auto multi_rois_num = multi_level_rois_num
+                            ? multi_level_rois_num.get()
+                            : std::vector<const DenseTensor*>();
   int num_size = multi_rois_num.size();
 
   auto* fpn_rois = fpn_rois_out;

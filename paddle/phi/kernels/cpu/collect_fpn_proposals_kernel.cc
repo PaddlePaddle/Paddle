@@ -21,5 +21,6 @@ PD_REGISTER_KERNEL(collect_fpn_proposals,
                    phi::CollectFpnProposalsOpKernel,
                    float,
                    double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
 }
