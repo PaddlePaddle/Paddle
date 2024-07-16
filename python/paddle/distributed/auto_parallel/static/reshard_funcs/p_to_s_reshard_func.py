@@ -76,7 +76,7 @@ class PToSReshardFunction(ReshardFunction):
 
         num_of_process = len(src_mesh.process_ids)
         group = new_process_group(sorted(src_mesh.process_ids))
-        dst_value = paddle._C_ops.c_reducescatter(
+        dst_value = paddle._C_ops.reduce_scatter(
             src_value, group.id, num_of_process, True
         )
 
