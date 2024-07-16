@@ -870,7 +870,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                     epsilon=epsilon,
                     lr_ratio=simple_lr_fun,
                 )
-                opt.minimize(avg_cost)
+                _, params_grads1 = opt.minimize(avg_cost)
 
         def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
             np_inputs = {
@@ -896,27 +896,69 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             )
             return param_out, moment1_out, moment2_out
 
-        fetch_list1 = [
-            "linear_0.w_0",
-            "linear_0.b_0",
-            "linear_1.w_0",
-            "linear_1.b_0",
-        ]
-        fetch_list2 = [
-            "linear_0.w_0",
-            "linear_0.w_0@GRAD",
-            "linear_0.b_0",
-            "linear_0.b_0@GRAD",
-            "linear_1.w_0",
-            "linear_1.w_0@GRAD",
-            "linear_1.b_0",
-            "linear_1.b_0@GRAD",
-        ]
-
         exe = base.Executor(place)
         exe.run(startup)
-        test_prog = train_prog.clone(for_test=True)
 
+        test_prog = paddle.static.Program()
+        with paddle.static.program_guard(test_prog, startup):
+            with base.unique_name.guard():
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[None, 1], dtype='float32'
+                )
+
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                linear1 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                )
+                linear2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                )
+
+                out = linear1(x)
+                out = linear2(out)
+
+                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
+                avg_cost = paddle.mean(cost)
+
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                )
+
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=learning_rate,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=weight_decay,
+                    epsilon=epsilon,
+                    lr_ratio=simple_lr_fun,
+                )
+                _, params_grads2 = opt.minimize(avg_cost)
+
+        fetch_list1 = [item[0] for item in params_grads2]
+        fetch_list2 = [item for sublist in params_grads1 for item in sublist]
         for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
@@ -932,15 +974,14 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 fetch_list=fetch_list2,
             )
 
-            fc1_w = param[0]
-            fc1_w_grad = params_and_gras[1]
-            fc1_b = param[1]
-            fc1_b_grad = params_and_gras[3]
-            fc2_w = param[2]
-            fc2_w_grad = params_and_gras[5]
-            fc2_b = param[3]
-            fc2_b_grad = params_and_gras[7]
-
+            fc1_w = param[3]
+            fc1_w_grad = params_and_gras[7]
+            fc1_b = param[2]
+            fc1_b_grad = params_and_gras[5]
+            fc2_w = param[1]
+            fc2_w_grad = params_and_gras[3]
+            fc2_b = param[0]
+            fc2_b_grad = params_and_gras[1]
             fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
                 fc1_w,
                 fc1_w_grad,
@@ -974,10 +1015,10 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 i + 1,
             )
 
-            np.testing.assert_allclose(params_and_gras[0], fc1_w, rtol=1e-6)
-            np.testing.assert_allclose(params_and_gras[2], fc1_b, rtol=1e-6)
-            np.testing.assert_allclose(params_and_gras[4], fc2_w, rtol=1e-6)
-            np.testing.assert_allclose(params_and_gras[6], fc2_b, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[4], fc1_w, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[6], fc1_b, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[2], fc2_w, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[0], fc2_b, rtol=1e-6)
 
         paddle.disable_static()
 
