@@ -1285,6 +1285,14 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          "enable nccl debug mode to synchronize nccl comm");
 #endif
 
+PHI_DEFINE_EXPORTED_bool(
+    benchmark,
+    false,
+    "Doing memory benchmark. It will make deleting scope synchronized, "
+    "and add some memory usage logs."
+    "Default cuda is asynchronous device, set to True will"
+    "force op run in synchronous mode.");
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune

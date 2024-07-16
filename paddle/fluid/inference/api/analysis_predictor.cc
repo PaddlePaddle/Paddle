@@ -445,6 +445,15 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
+  if (load_pir_model_) {
+    PADDLE_ENFORCE_EQ(
+        FLAGS_enable_pir_api || (config_.use_pir_ && config_.use_new_executor_),
+        true,
+        platform::errors::InvalidArgument(
+            "Models with a .json suffix can only run in PIR mode. Please set "
+            "export FLAGS_enable_pir_api=True or "
+            "config.EnableNewExecutor(true)) and config.EnableNewIR(true)"));
+  }
 
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
@@ -1025,7 +1034,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      if (load_pir_model_ && for_save) {
+      if (!load_pir_model_ && for_save) {
         sub_scope_->Var(data_name);
       }
       idx2feeds_[feed_idx] = data_name;
