@@ -283,6 +283,7 @@ class TEST_API FetchOp
                      paddle::dialect::InferSymbolicShapeInterface,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::GetKernelTypeForVarInterface,
+                     paddle::dialect::ForwardOnlyTrait,
                      pir::SideEffectTrait,
                      pir::ImmutableLayoutTrait> {
  public:
