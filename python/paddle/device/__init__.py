@@ -13,9 +13,13 @@
 # limitations under the License.
 
 # TODO: define the functions to manipulate devices
+
+from __future__ import annotations
+
 import ctypes
 import os
 import re
+from typing import TYPE_CHECKING, Union
 
 import paddle
 from paddle.base import core, framework
@@ -31,6 +35,11 @@ from . import (  # noqa: F401
     xpu,
 )
 
+if TYPE_CHECKING:
+    from paddle._typing.device_like import PlaceLike
+
+    _InitStreamBase = Union[core.CUDAStream, core.CustomDeviceStream]
+    _InitEventBase = Union[core.CUDAEvent, core.CustomDeviceEvent]
 __all__ = [
     'get_cudnn_version',
     'set_device',
@@ -59,7 +68,7 @@ __all__ = [
 _cudnn_version = None
 
 
-def is_compiled_with_custom_device(device_type):
+def is_compiled_with_custom_device(device_type: str) -> bool:
     """
 
     Whether paddle was built with Paddle_CUSTOM_DEVICE .
@@ -80,7 +89,7 @@ def is_compiled_with_custom_device(device_type):
     return core.is_compiled_with_custom_device(device_type)
 
 
-def is_compiled_with_ipu():
+def is_compiled_with_ipu() -> bool:
     """
 
     Whether paddle was built with WITH_IPU=ON to support Graphcore IPU.
@@ -115,7 +124,7 @@ def IPUPlace():
     return core.IPUPlace()
 
 
-def is_compiled_with_xpu():
+def is_compiled_with_xpu() -> bool:
     """
 
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
@@ -132,7 +141,7 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
-def XPUPlace(dev_id):
+def XPUPlace(dev_id: int):
     """
 
     Return a Baidu Kunlun Place
@@ -153,7 +162,7 @@ def XPUPlace(dev_id):
     return core.XPUPlace(dev_id)
 
 
-def get_cudnn_version():
+def get_cudnn_version() -> int | None:
     """
 
     This function return the version of cudnn. the return value is int which represents the
@@ -186,7 +195,7 @@ def get_cudnn_version():
         return _cudnn_version
 
 
-def _convert_to_place(device):
+def _convert_to_place(device: str) -> PlaceLike:
     lower_device = device.lower()
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
@@ -262,7 +271,7 @@ def _convert_to_place(device):
     return place
 
 
-def set_device(device):
+def set_device(device: str) -> PlaceLike:
     """
 
     Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
@@ -294,7 +303,7 @@ def set_device(device):
     return place
 
 
-def get_device():
+def get_device() -> str:
     """
 
     This function can get the current global device of the program is running.
@@ -334,7 +343,7 @@ def get_device():
     return device
 
 
-def get_all_device_type():
+def get_all_device_type() -> list[str]:
     """
 
     Get all available device types.
@@ -364,7 +373,7 @@ def get_all_device_type():
     return core.get_all_device_type()
 
 
-def get_all_custom_device_type():
+def get_all_custom_device_type() -> list[str] | None:
     """
 
     Get all available custom device types.
@@ -388,7 +397,7 @@ def get_all_custom_device_type():
     return core.get_all_custom_device_type()
 
 
-def get_available_device():
+def get_available_device() -> list[str]:
     """
 
     Get all available devices.
@@ -418,7 +427,7 @@ def get_available_device():
     return core.get_available_device()
 
 
-def get_available_custom_device():
+def get_available_custom_device() -> list[str] | None:
     """
 
     Get all available custom devices.
@@ -448,7 +457,7 @@ class Event:
     A device event wrapper around StreamBase.
 
     Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream run on. If device is None, the device is the current device. Default: None.
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
@@ -472,13 +481,17 @@ class Event:
 
     '''
 
+    device: PlaceLike | None
+    enable_timing: bool
+    event_base: _InitEventBase
+
     def __init__(
         self,
-        device=None,
-        enable_timing=False,
-        blocking=False,
-        interprocess=False,
-    ):
+        device: PlaceLike | None = None,
+        enable_timing: bool = False,
+        blocking: bool = False,
+        interprocess: bool = False,
+    ) -> None:
         if device is None:
             self.device = paddle.framework._current_expected_place()
         elif isinstance(device, str):
@@ -507,7 +520,7 @@ class Event:
                 )
             )
 
-    def record(self, stream=None):
+    def record(self, stream: Stream | None = None) -> None:
         '''
 
         Records the event in a given stream.
@@ -538,7 +551,7 @@ class Event:
 
         self.event_base.record(stream.stream_base)
 
-    def query(self):
+    def query(self) -> bool:
         '''
 
         Checks if all work currently captured by event has completed.
@@ -560,7 +573,7 @@ class Event:
         '''
         return self.event_base.query()
 
-    def elapsed_time(self, end_event):
+    def elapsed_time(self, end_event: Event) -> int:
         '''
 
         Returns the time elapsed in milliseconds after the event was
@@ -586,7 +599,7 @@ class Event:
         '''
         return 0
 
-    def synchronize(self):
+    def synchronize(self) -> None:
         '''
 
         Waits for the event to complete.
@@ -610,7 +623,7 @@ class Event:
         '''
         self.event_base.synchronize()
 
-    def __repr__(self):
+    def __repr__(self) -> core.CUDAEvent | core.CustomDeviceEvent:
         return self.event_base
 
 
@@ -620,7 +633,7 @@ class Stream:
     A device stream wrapper around StreamBase.
 
     Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream run on. If device is None, the device is the current device. Default: None.
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         priority(int, optional): priority of the CUDA stream. Can be either
@@ -644,7 +657,15 @@ class Stream:
 
     '''
 
-    def __init__(self, device=None, priority=2, stream_base=None):
+    stream_base: _InitStreamBase
+    device: PlaceLike
+
+    def __init__(
+        self,
+        device: PlaceLike | None = None,
+        priority: int = 2,
+        stream_base: _InitStreamBase | None = None,
+    ) -> None:
         if stream_base is not None:
             if isinstance(
                 stream_base, (core.CUDAStream, core.CustomDeviceStream)
@@ -684,7 +705,7 @@ class Stream:
                 )
             )
 
-    def wait_event(self, event):
+    def wait_event(self, event: Event) -> None:
         '''
 
         Makes all future work submitted to the stream wait for an event.
@@ -711,7 +732,7 @@ class Stream:
         '''
         self.stream_base.wait_event(event.event_base)
 
-    def wait_stream(self, stream):
+    def wait_stream(self, stream: Stream) -> None:
         '''
 
         Synchronizes with another stream.
@@ -738,7 +759,7 @@ class Stream:
         '''
         self.stream_base.wait_stream(stream.stream_base)
 
-    def record_event(self, event=None):
+    def record_event(self, event: Event | None = None) -> Event:
         '''
 
         Records an event.
@@ -769,7 +790,7 @@ class Stream:
         event.record(self)
         return event
 
-    def query(self):
+    def query(self) -> bool:
         '''
 
         Checks if all the work submitted has been completed.
@@ -790,7 +811,7 @@ class Stream:
         '''
         return self.stream_base.query()
 
-    def synchronize(self):
+    def synchronize(self) -> None:
         '''
 
         Wait for all the kernels in this stream to complete.
@@ -818,19 +839,19 @@ class Stream:
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
-    def __eq__(self, o):
+    def __eq__(self, o: Stream | None) -> bool:
         if isinstance(o, Stream):
             return super().__eq__(o)
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.stream_base, self.device))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
 
 
-def current_stream(device=None):
+def current_stream(device: PlaceLike | None = None) -> Stream:
     '''
 
     Return the current stream by the device.
@@ -881,7 +902,7 @@ def current_stream(device=None):
         )
 
 
-def set_stream(stream):
+def set_stream(stream: Stream) -> Stream:
     '''
 
     Set the current stream.
@@ -956,10 +977,12 @@ class stream_guard:
 
     '''
 
-    def __init__(self, stream=None):
+    stream: Stream | None
+
+    def __init__(self, stream: Stream | None = None) -> None:
         self.stream = stream
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         cur_stream = self.stream
         if cur_stream is None:
             return
@@ -973,7 +996,7 @@ class stream_guard:
         else:
             set_stream(cur_stream)
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         cur_stream = self.stream
         if cur_stream is None:
             return
@@ -986,7 +1009,7 @@ class stream_guard:
             set_stream(self.src_prev_stream)
 
 
-def synchronize(device=None):
+def synchronize(device: PlaceLike | None = None) -> None:
     """
 
     Wait for the compute on the given device to finish.
