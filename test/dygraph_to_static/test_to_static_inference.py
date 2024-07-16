@@ -30,7 +30,7 @@ class TestLayer(paddle.nn.Layer):
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=True)
 
     def forward(self, x):
-        for i in range(10):
+        for i in range(5):
             x = paddle.nn.functional.softmax(x, -1)
         x = x.cast("float32")
         x = self.func(x)
