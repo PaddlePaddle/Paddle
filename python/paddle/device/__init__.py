@@ -36,6 +36,7 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from paddle import IPUPlace, XPUPlace
     from paddle._typing.device_like import PlaceLike
 
     _InitStreamBase = Union[core.CUDAStream, core.CustomDeviceStream]
@@ -106,7 +107,7 @@ def is_compiled_with_ipu() -> bool:
     return core.is_compiled_with_ipu()
 
 
-def IPUPlace():
+def IPUPlace() -> IPUPlace:
     """
 
     Return a Graphcore IPU Place
@@ -141,7 +142,7 @@ def is_compiled_with_xpu() -> bool:
     return core.is_compiled_with_xpu()
 
 
-def XPUPlace(dev_id: int):
+def XPUPlace(dev_id: int) -> XPUPlace:
     """
 
     Return a Baidu Kunlun Place
