@@ -28,7 +28,7 @@ class ValueExecutionInfo;
 class PhiKernelInstruction : public InstructionBase {
  public:
   PhiKernelInstruction(size_t id,
-                       const platform::Place& place,
+                       const phi::Place& place,
                        ::pir::Operation* op,
                        const ValueExecutionInfo* value_exec_info);
 

@@ -86,7 +86,7 @@ BuddyAllocator *GetCPUBuddyAllocator() {
 
 template <>
 void *Alloc<phi::CPUPlace>(const phi::CPUPlace &place, size_t size) {
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
@@ -97,7 +97,7 @@ void *Alloc<phi::CPUPlace>(const phi::CPUPlace &place, size_t size) {
 
 template <>
 void Free<phi::CPUPlace>(const phi::CPUPlace &place, void *p, size_t size) {
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << phi::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
@@ -114,7 +114,7 @@ size_t Used<phi::CPUPlace>(const phi::CPUPlace &place) {
 // For Graphcore IPU
 template <>
 void *Alloc<phi::IPUPlace>(const phi::IPUPlace &place, size_t size) {
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   VLOG(10) << "IPUPlace, Allocate on cpu.";
 
   void *p = GetCPUBuddyAllocator()->Alloc(size);
@@ -126,7 +126,7 @@ void *Alloc<phi::IPUPlace>(const phi::IPUPlace &place, size_t size) {
 }
 template <>
 void Free<phi::IPUPlace>(const phi::IPUPlace &place, void *p, size_t size) {
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << phi::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 template <>
@@ -142,10 +142,10 @@ size_t Used<phi::IPUPlace>(const phi::IPUPlace &place) {
 template <>
 void *Alloc<phi::XPUPlace>(const phi::XPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_XPU
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   void *p = nullptr;
 
-  platform::XPUDeviceGuard guard(place.device);
+  phi::backends::xpu::XPUDeviceGuard guard(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
@@ -173,10 +173,10 @@ void *Alloc<phi::XPUPlace>(const phi::XPUPlace &place, size_t size) {
 template <>
 void Free<phi::XPUPlace>(const phi::XPUPlace &place, void *p, size_t size) {
 #ifdef PADDLE_WITH_XPU
-  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(10) << "Free " << size << " bytes on " << phi::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << phi::Place(place);
 
-  platform::XPUDeviceGuard guard(place.device);
+  phi::backends::xpu::XPUDeviceGuard guard(place.device);
   xpu_free(p);
 #else
   PADDLE_THROW(
@@ -371,7 +371,7 @@ template <>
 void *Alloc<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place,
                                  size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   auto *buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void *ptr = buddy_allocator->Alloc(size);
 
@@ -393,7 +393,7 @@ void Free<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place,
                                void *p,
                                size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free " << size << " bytes on " << phi::Place(place);
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -404,7 +404,7 @@ void Free<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place,
 template <>
 uint64_t Release<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  VLOG(10) << "Release on " << platform::Place(place);
+  VLOG(10) << "Release on " << phi::Place(place);
   return GetCUDAPinnedBuddyAllocator()->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -473,7 +473,7 @@ class BuddyAllocatorList {
 
 BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
   VLOG(10) << "GetBuddyAllocator place = " << place;
-  if (platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
     return BuddyAllocatorList::Instance(
                platform::PlaceHelper::GetDeviceType(place))
         ->Get(platform::PlaceHelper::GetDeviceId(place));
@@ -487,7 +487,7 @@ BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
 template <>
 void *Alloc<phi::CustomPlace>(const phi::CustomPlace &place, size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   auto *buddy_allocator = GetBuddyAllocator(place);
   auto *ptr = buddy_allocator->Alloc(size);
 
@@ -522,7 +522,7 @@ void Free<phi::CustomPlace>(const phi::CustomPlace &place,
                             void *p,
                             size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << phi::Place(place);
   if (phi::DeviceManager::HasDeviceType(place.GetDeviceType())) {
     GetBuddyAllocator(place)->Free(p);
   }

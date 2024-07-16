@@ -34,15 +34,14 @@ void CastDataTypeInplace(phi::DenseTensor *tensor) {
   tmp_tensor.set_type(phi::CppTypeToDataType<OutType>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto *cpu_ctx = static_cast<phi::CPUContext *>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto *tmp_data = cpu_ctx->Alloc<OutType>(&tmp_tensor);
   auto *data = tensor->data<InType>();
   for (int i = 0; i < tensor->numel(); i++) {
     tmp_data[i] = static_cast<OutType>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(
-      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
 }
 }  // namespace
 

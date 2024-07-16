@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import math
 from collections.abc import Iterable
+from typing import TYPE_CHECKING, Sequence, Union
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
@@ -23,6 +26,31 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor, dtype
+    from paddle._typing import NestedSequence
+
+    _NormalLocBase: TypeAlias = Union[float, complex]
+    _NormalLocNDArray: TypeAlias = Union[
+        np.float32, np.float64, np.complex64, np.complex128
+    ]
+    _NormalLoc: TypeAlias = Union[
+        _NormalLocBase,
+        Sequence[_NormalLocBase],
+        NestedSequence[_NormalLocBase],
+        npt.NDArray[_NormalLocNDArray],
+        Tensor,
+    ]
+    _NormalScale: TypeAlias = Union[
+        float,
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[Union[np.float32, np.float64]],
+        Tensor,
+    ]
 
 
 class Normal(distribution.Distribution):
@@ -59,7 +87,7 @@ class Normal(distribution.Distribution):
     Args:
         loc(int|float|complex|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32, float64, complex64 and complex128.
         scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32 and float64.
-        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -103,8 +131,14 @@ class Normal(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.34939718])
     """
+    loc: Tensor
+    scale: Tensor
+    name: str
+    dtype: dtype
 
-    def __init__(self, loc, scale, name=None):
+    def __init__(
+        self, loc: _NormalLoc, scale: _NormalScale, name: str | None = None
+    ) -> None:
         if not in_dynamic_mode():
             check_type(
                 loc,
@@ -218,7 +252,7 @@ class Normal(distribution.Distribution):
         super().__init__(self.loc.shape)
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of normal distribution.
 
         Returns:
@@ -227,7 +261,7 @@ class Normal(distribution.Distribution):
         return self.loc
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of normal distribution.
 
         Returns:
@@ -235,7 +269,7 @@ class Normal(distribution.Distribution):
         """
         return self.scale.pow(2)
 
-    def sample(self, shape=(), seed=0):
+    def sample(self, shape: Sequence[int] = (), seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -288,7 +322,7 @@ class Normal(distribution.Distribution):
             else:
                 return output
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:
@@ -307,7 +341,7 @@ class Normal(distribution.Distribution):
         )
         return self.loc + eps * self.scale
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         If non-complex, the entropy is
@@ -360,7 +394,7 @@ class Normal(distribution.Distribution):
                 name=name,
             )
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function.
 
         Args:
@@ -388,7 +422,7 @@ class Normal(distribution.Distribution):
                 name=name,
             )
 
-    def probs(self, value):
+    def probs(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
 
         Args:
@@ -423,7 +457,7 @@ class Normal(distribution.Distribution):
                 name=name,
             )
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Normal) -> Tensor:
         r"""The KL-divergence between two normal distributions.
 
         If non-complex, the KL-divergence is

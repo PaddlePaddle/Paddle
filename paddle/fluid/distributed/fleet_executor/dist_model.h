@@ -99,7 +99,7 @@ class DistModel {
   std::shared_ptr<FleetExecutor> fleet_exe;
   std::shared_ptr<TaskNode> task_node_;
   std::shared_ptr<framework::Scope> scope_;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::shared_ptr<framework::ProgramDesc> program_;
 };
 

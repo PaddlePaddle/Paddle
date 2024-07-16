@@ -29,7 +29,7 @@ namespace paddle::framework::details {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places,
+                                     const std::vector<phi::Place> &places,
                                      const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
   PADDLE_ENFORCE_EQ(places_.size(),
@@ -44,7 +44,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #elif defined(PADDLE_WITH_XPU_BKCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places,
+                                     const std::vector<phi::Place> &places,
                                      const platform::BKCLCommunicator *ctxs)
     : BKCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
   PADDLE_ENFORCE_EQ(places_.size(),
@@ -59,7 +59,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places)
+                                     const std::vector<phi::Place> &places)
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
   PADDLE_ENFORCE_EQ(places_.size(),
                     local_scopes_.size(),
@@ -114,7 +114,7 @@ void AllReduceOpHandle::AllReduceImpl(
           num_places));
 
   std::vector<const void *> lod_tensor_data;
-  std::vector<platform::Place> places;
+  std::vector<phi::Place> places;
   lod_tensor_data.reserve(num_places);
   places.reserve(num_places);
   int64_t numel = -1;
@@ -143,9 +143,9 @@ void AllReduceOpHandle::AllReduceImpl(
               in_var_handles[i]->name(),
               numel));
       dtype = framework::TransToProtoVarType(lod_tensor.dtype());
-      is_gpu_place = platform::is_gpu_place(lod_tensor.place());
+      is_gpu_place = phi::is_gpu_place(lod_tensor.place());
 #if defined(PADDLE_WITH_XPU_BKCL)
-      is_xpu_place = platform::is_xpu_place(lod_tensor.place());
+      is_xpu_place = phi::is_xpu_place(lod_tensor.place());
 #endif
     }
     PADDLE_ENFORCE_EQ(
@@ -162,13 +162,13 @@ void AllReduceOpHandle::AllReduceImpl(
             "scopes should be equal."));
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_EQ(is_xpu_place,
-                      platform::is_xpu_place(lod_tensor.place()),
+                      phi::is_xpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
 #endif
     PADDLE_ENFORCE_EQ(is_gpu_place,
-                      platform::is_gpu_place(lod_tensor.place()),
+                      phi::is_gpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
@@ -202,9 +202,9 @@ void AllReduceOpHandle::AllReduceFunc(
     std::vector<const void *> lod_tensor_data,
     const framework::proto::VarType::Type &dtype,
     int64_t numel,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const std::vector<std::string> &out_var_names) {
-  if (platform::is_gpu_place(places[0])) {
+  if (phi::is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_,
                             platform::errors::InvalidArgument(
@@ -223,7 +223,7 @@ void AllReduceOpHandle::AllReduceFunc(
     PADDLE_THROW(
         platform::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
-  } else if (platform::is_xpu_place(places[0])) {
+  } else if (phi::is_xpu_place(places[0])) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_,
                             platform::errors::InvalidArgument(
@@ -260,7 +260,7 @@ void AllReduceOpHandle::AllReduceFunc(
           numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, size] {
         auto dst_ptr = var->GetMutable<phi::DenseTensor>()->data();
-        platform::CPUPlace cpu_place;
+        phi::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
       });
     }

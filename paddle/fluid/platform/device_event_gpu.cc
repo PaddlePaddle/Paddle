@@ -22,7 +22,7 @@ struct CUDADeviceEventWrapper {
   CUDADeviceEventWrapper(const phi::Place& place, unsigned int flag)
       : inner_event_(flag) {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place),
+        phi::is_gpu_place(place),
         true,
         phi::errors::PreconditionNotMet(
             "Required device shall be CUDAPlace, but received %d. ", place));

@@ -122,7 +122,7 @@ struct VarHandle : public VarHandleBase {
             size_t version,
             size_t scope_index,
             std::string name,
-            platform::Place place)
+            phi::Place place)
       : VarHandleBase(node),
         version_(version),
         scope_idx_(scope_index),
@@ -153,7 +153,7 @@ struct VarHandle : public VarHandleBase {
   size_t version_;
   size_t scope_idx_;
   std::string name_;
-  platform::Place place_;
+  phi::Place place_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Only when this event is triggered, var is generated.
   gpuEvent_t event_;
@@ -170,7 +170,7 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx() const { return scope_idx_; }
   const std::string& Name() const override { return name_; }
   const std::string& name() const { return name_; }
-  const platform::Place& place() const { return place_; }
+  const phi::Place& place() const { return place_; }
 };
 
 // Dummy Variable. It is used to represent dependencies between operators
