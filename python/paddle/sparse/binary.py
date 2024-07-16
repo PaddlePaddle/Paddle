@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.framework import core, dygraph_only, in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 
 from .unary import cast
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -31,7 +38,7 @@ _int_dtype_ = [
 
 
 @dygraph_only
-def matmul(x, y, name=None):
+def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Note:
         This API is only supported from ``CUDA 11.0`` .
@@ -109,7 +116,9 @@ def matmul(x, y, name=None):
 
 
 @dygraph_only
-def masked_matmul(x, y, mask, name=None):
+def masked_matmul(
+    x: Tensor, y: Tensor, mask: Tensor, name: str | None = None
+) -> Tensor:
     """
     Note:
         This API is only supported from ``CUDA 11.3`` .
@@ -173,7 +182,7 @@ def masked_matmul(x, y, mask, name=None):
 
 
 @dygraph_only
-def mv(x, vec, name=None):
+def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
     """
     Note:
         This API is only supported from ``CUDA 11.0`` .
@@ -230,7 +239,7 @@ def mv(x, vec, name=None):
     return _C_ops.sparse_mv(x, vec)
 
 
-def add(x, y, name=None):
+def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Add two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
     type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
@@ -284,7 +293,7 @@ def add(x, y, name=None):
 
 
 @dygraph_only
-def subtract(x, y, name=None):
+def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Subtract two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
     type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
@@ -327,7 +336,7 @@ def subtract(x, y, name=None):
 
 
 @dygraph_only
-def multiply(x, y, name=None):
+def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Multiply two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
     type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
@@ -373,7 +382,7 @@ def multiply(x, y, name=None):
 
 
 @dygraph_only
-def divide(x, y, name=None):
+def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Divide two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
     type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
@@ -422,7 +431,7 @@ def divide(x, y, name=None):
 
 
 @dygraph_only
-def is_same_shape(x, y):
+def is_same_shape(x: Tensor, y: Tensor) -> bool:
     """
     Return the results of shape comparison between two Tensors, check whether x.shape equal to y.shape.
     Any two type Tensor among DenseTensor/SparseCooTensor/SparseCsrTensor are supported.
@@ -455,7 +464,7 @@ def is_same_shape(x, y):
 
 
 @dygraph_only
-def mask_as(x, mask, name=None):
+def mask_as(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
     r"""
     Filter the input dense tensor `x` using the `indices` of the sparse matrix `mask`,
     which in turn generates a sparse matrix of the corresponding format.

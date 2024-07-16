@@ -46,7 +46,7 @@ class StubAllocator : public Allocator {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(
         alloc,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input allocation is not type of StubAllocation."));
     if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
     ++destruct_count_;
@@ -56,9 +56,9 @@ class StubAllocator : public Allocator {
   phi::Allocation *AllocateImpl(size_t size) override {
     ++construct_count_;
     if (size == 0) {
-      return new StubAllocation(nullptr, 0, platform::CPUPlace());
+      return new StubAllocation(nullptr, 0, phi::CPUPlace());
     } else {
-      return new StubAllocation(new uint8_t[size], size, platform::CPUPlace());
+      return new StubAllocation(new uint8_t[size], size, phi::CPUPlace());
     }
   }
 

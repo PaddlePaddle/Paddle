@@ -22,8 +22,7 @@ namespace {
 template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(
-          paddle::platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
@@ -34,8 +33,7 @@ void ConvertTensorType(phi::DenseTensor* tensor) {
     tmp_data[i] = static_cast<T2>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(
-      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
 }
 }  // namespace
 
@@ -198,11 +196,10 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     const phi::DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())
             ->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "Input scale tensor's place should be CPU."));
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
     if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
@@ -231,11 +228,10 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     const phi::DenseTensor& weight_scale_tensor =
         scope->FindVar(weight_dequantize_linear_op_scale->Name())
             ->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(weight_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "weight_scale tensor's place should be CPU."));
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(weight_scale_tensor.place()),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "weight_scale tensor's place should be CPU."));
     const float* weight_scale_data = weight_scale_tensor.data<float>();
 
     std::vector<float> scale_weights(weight_tensor->dims()[1], 1.0f);

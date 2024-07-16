@@ -538,7 +538,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
     def get_concrete_program(
         self, *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
+    ) -> tuple[ConcreteProgram, PirPartialProgramLayer]:
         raise NotImplementedError("Not implemented yet.")
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -829,7 +829,7 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
 
     def get_concrete_program(
         self, *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
+    ) -> tuple[ConcreteProgram, PirPartialProgramLayer]:
         """
         Returns traced concrete program and inner executable partial layer.
 

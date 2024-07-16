@@ -39,7 +39,7 @@ namespace details {
 class NCCLOpHandleBase : public OpHandleBase {
  public:
   NCCLOpHandleBase(ir::Node* node,
-                   const std::vector<platform::Place>& places,
+                   const std::vector<phi::Place>& places,
                    const platform::NCCLCommunicator* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs == nullptr) {
@@ -155,7 +155,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatNCCLAllReduce(platform::Place place,
+  void FlatNCCLAllReduce(phi::Place place,
                          const void* sendbuff,
                          void* recvbuff,
                          size_t count,
@@ -180,7 +180,7 @@ class NCCLOpHandleBase : public OpHandleBase {
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
-  void NCCLAllReduce(platform::Place place,
+  void NCCLAllReduce(phi::Place place,
                      const void* sendbuff,
                      void* recvbuff,
                      size_t count,
@@ -199,7 +199,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     HierarchicalAllReduce(place, sendbuff, recvbuff, count, datatype, op);
   }
 
-  void HierarchicalAllReduce(platform::Place place,
+  void HierarchicalAllReduce(phi::Place place,
                              const void* sendbuff,
                              void* recvbuff,
                              size_t count,
@@ -220,7 +220,7 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  void InterReduce(platform::Place place,
+  void InterReduce(phi::Place place,
                    const void* sendbuff,
                    void* recvbuff,
                    size_t count,
@@ -252,7 +252,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void ExterAllReduce(platform::Place place,
+  void ExterAllReduce(phi::Place place,
                       const void* sendbuff,
                       void* recvbuff,
                       size_t count,
@@ -293,7 +293,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void InterBroadCast(platform::Place place,
+  void InterBroadCast(phi::Place place,
                       void* sendbuff,
                       size_t count,
                       ncclDataType_t datatype,
@@ -318,7 +318,7 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   const platform::NCCLCommunicator* nccl_ctxs_{nullptr};
   // When multi trainer call collective function, they need run the same order.
   // Or the program will hang.So we use allreduce_deps_pass to set this

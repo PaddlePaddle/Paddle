@@ -24,15 +24,14 @@ namespace ir {
 
 template <typename T>
 static bool IsMatchedPlaceSingleDeviceOp(details::OpHandleBase *op_base,
-                                         const platform::Place &place) {
+                                         const phi::Place &place) {
   auto *op = dynamic_cast<T *>(op_base);
   return op && op->GetPlace() == place;
 }
 
 static bool IsLockAndRecordEventFreeComputationOpHandle(
     details::ComputationOpHandle *op, const OpGraphView &graph_view) {
-  if (!platform::is_gpu_place(op->GetPlace()) &&
-      !platform::is_xpu_place(op->GetPlace()))
+  if (!phi::is_gpu_place(op->GetPlace()) && !phi::is_xpu_place(op->GetPlace()))
     return false;
   for (auto &pending_op : graph_view.PendingOps(op)) {
     if (!IsMatchedPlaceSingleDeviceOp<details::ComputationOpHandle>(

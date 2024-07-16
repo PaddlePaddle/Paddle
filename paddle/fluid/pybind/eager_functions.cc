@@ -99,7 +99,7 @@ class EagerNumpyAllocation : public phi::Allocation {
       : Allocation(
             static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
             phi::SizeOf(dtype) * PyArray_Size_(numpy_data),
-            paddle::platform::CPUPlace()),
+            phi::CPUPlace()),
         arr_(numpy_data) {
     PADDLE_ENFORCE_NOT_NULL(
         arr_,
@@ -364,14 +364,14 @@ static void ConstructFwdAndBwdMap(
     PADDLE_ENFORCE_LE(
         grad_outputs_names.size(),
         inputs_names.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Grad outputs num should be less equal than forward inputs num."));
     for (size_t i = 0; i < grad_outputs_names.size(); i++) {
       size_t end = grad_outputs_names[i].find("@GRAD");
       PADDLE_ENFORCE_NE(
           end,
           std::string::npos,
-          paddle::platform::errors::NotFound(
+          phi::errors::NotFound(
               "All Grad outputs should be grad and we got %s is not grad var, "
               "please check your op and change to fit the rule.",
               grad_outputs_names[i]));
@@ -429,7 +429,7 @@ static void ConstructFwdAndBwdMap(
           attrs_names.begin(), attrs_names.end(), grad_attrs_names[i]);
       PADDLE_ENFORCE_NE(end,
                         attrs_names.end(),
-                        paddle::platform::errors::NotFound(
+                        phi::errors::NotFound(
                             "All Grad attrs should be one of forward attrs and "
                             "we got %s is not one of them, please check your "
                             "op and change to fit the rule.",
@@ -471,7 +471,7 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
-                    paddle::platform::errors::NotFound(
+                    phi::errors::NotFound(
                         "Can't find %s in Eager OpMetaInfoMap which should be "
                         "created by LoadOpMetaInfoAndRegisterOp, please make "
                         "sure you registered your op first and try again. ",
@@ -543,7 +543,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
-                    paddle::platform::errors::NotFound(
+                    phi::errors::NotFound(
                         "Can't find %s in Eager OpMetaInfoMap which should be "
                         "created by LoadOpMetaInfoAndRegisterOp, please make "
                         "sure you registered your op first and try again. ",
@@ -866,12 +866,12 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   paddle::Tensor tensor;
   {
     eager_gil_scoped_release guard;
-    PADDLE_ENFORCE(non_zero_indices.is_dense_tensor(),
-                   paddle::platform::errors::Fatal(
-                       "the non-zero indices must be a DenseTensor."));
-    PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
-                   paddle::platform::errors::Fatal(
-                       "the non-zero elements must be a DenseTensor."));
+    PADDLE_ENFORCE(
+        non_zero_indices.is_dense_tensor(),
+        phi::errors::Fatal("the non-zero indices must be a DenseTensor."));
+    PADDLE_ENFORCE(
+        non_zero_elements.is_dense_tensor(),
+        phi::errors::Fatal("the non-zero elements must be a DenseTensor."));
     auto dense_indices =
         std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
     auto dense_elements =
@@ -911,14 +911,14 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
   {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE(non_zero_crows.is_dense_tensor(),
-                   paddle::platform::errors::Fatal(
+                   phi::errors::Fatal(
                        "the compressed non-zero rows must be a DenseTensor."));
-    PADDLE_ENFORCE(non_zero_cols.is_dense_tensor(),
-                   paddle::platform::errors::Fatal(
-                       "the non-zero cols must be a DenseTensor."));
-    PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
-                   paddle::platform::errors::Fatal(
-                       "the non-zero elements must be a DenseTensor."));
+    PADDLE_ENFORCE(
+        non_zero_cols.is_dense_tensor(),
+        phi::errors::Fatal("the non-zero cols must be a DenseTensor."));
+    PADDLE_ENFORCE(
+        non_zero_elements.is_dense_tensor(),
+        phi::errors::Fatal("the non-zero elements must be a DenseTensor."));
 
     auto dense_crows =
         std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_crows.impl());
@@ -1331,12 +1331,12 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
       continue;
     }
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
-    PADDLE_ENFORCE_NE(grad,
-                      nullptr,
-                      paddle::platform::errors::Fatal(
-                          "Detected nullptr grad"
-                          "Please check if you have manually cleared"
-                          "the grad inside autograd_meta"));
+    PADDLE_ENFORCE_NE(
+        grad,
+        nullptr,
+        phi::errors::Fatal("Detected nullptr grad"
+                           "Please check if you have manually cleared"
+                           "the grad inside autograd_meta"));
     if (((*grad).initialized() || (*grad).is_dist_tensor()) &&
         ((*grad).dtype() == phi::DataType::FLOAT16 ||
          (*grad).dtype() == phi::DataType::BFLOAT16)) {

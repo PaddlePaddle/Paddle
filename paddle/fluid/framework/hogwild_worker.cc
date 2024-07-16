@@ -160,7 +160,7 @@ template <typename TStream>
 inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 #if defined(PADDLE_WITH_CUDA)
   const size_t mem_len = tensor->memory_size();
-  auto place = platform::CUDAPinnedPlace();
+  auto place = phi::GPUPinnedPlace();
   auto holder = memory::AllocShared(place, mem_len);
   memory::Copy(
       place, holder->ptr(), tensor->place(), tensor->data(), mem_len, stream);
@@ -169,7 +169,7 @@ inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 }
 template <typename TCopyer>
 void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
-                                               const platform::Place &place,
+                                               const phi::Place &place,
                                                Scope *scope,
                                                TCopyer *copyer) {
   if (!cast_vars.empty()) {
@@ -231,12 +231,12 @@ void HogwildWorker::OffLoadVarInfo::BackUpInputs(Scope *root_scope,
     if (root_var == nullptr) {
       root_var = root_scope->Var(name);
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
-      auto place = platform::CUDAPinnedPlace();
+      auto place = phi::GPUPinnedPlace();
       copyer->Copy(src_tensor, place, root_tensor);
     } else {
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
       if (root_tensor->IsInitialized() &&
-          !platform::is_gpu_place(root_tensor->place())) {
+          !phi::is_gpu_place(root_tensor->place())) {
         copyer->Copy(src_tensor, root_tensor->place(), root_tensor);
       }
     }
@@ -1060,7 +1060,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
                            holder->ptr(),
                            holder->size(),
                            stream);
-              CHECK(platform::is_gpu_place(root_tensor->place()));
+              CHECK(phi::is_gpu_place(root_tensor->place()));
               ++persist_reset;
             }
           } else {

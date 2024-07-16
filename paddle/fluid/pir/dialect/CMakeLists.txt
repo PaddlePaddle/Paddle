@@ -274,6 +274,7 @@ set(op_dialect_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_attribute.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_type.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/tensorrt_op.cc
     ${op_info_file}
     ${split_op_source_files}
     ${split_bwd_op_source_files}

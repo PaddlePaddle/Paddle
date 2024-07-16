@@ -111,7 +111,7 @@ class DeviceTraceEventNode {
     PADDLE_ENFORCE_EQ(
         device_event_.type,
         TracerEventType::Kernel,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "Can not kernel_info, "
             "TracerEventType in node must be TracerEventType::Kernel."));
     return device_event_.kernel_info;
@@ -120,7 +120,7 @@ class DeviceTraceEventNode {
     PADDLE_ENFORCE_EQ(
         device_event_.type,
         TracerEventType::Memcpy,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "Can not get memcpy_info, "
             "TracerEventType in node must be TracerEventType::Memcpy."));
     return device_event_.memcpy_info;
@@ -129,7 +129,7 @@ class DeviceTraceEventNode {
     PADDLE_ENFORCE_EQ(
         device_event_.type,
         TracerEventType::Memset,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "Can not get memset_info, "
             "TracerEventType in node must be TracerEventType::Memset."));
     return device_event_.memset_info;

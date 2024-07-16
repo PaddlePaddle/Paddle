@@ -27,7 +27,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 void CreateVarsOnScope(framework::Scope* scope,
-                       platform::Place* place,
+                       phi::Place* place,
                        const platform::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
@@ -61,9 +61,9 @@ void CreateVarsOnScope(framework::Scope* scope,
   for (int i = 0; i < 564; ++i) rows->push_back(i);
 }
 
-void RunMultiVarMsg(platform::Place place) {
+void RunMultiVarMsg(phi::Place place) {
   framework::Scope scope;
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
   CreateVarsOnScope(&scope, &place, ctx);
 
@@ -125,13 +125,13 @@ void RunMultiVarMsg(platform::Place place) {
 }
 
 TEST(MultiVarMsgCPU, Run) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   RunMultiVarMsg(place);
 }
 
 // #ifdef PADDLE_WITH_CUDA
 // TEST(MultiVarMsgGPU, Run) {
-//   platform::CUDAPlace place;
+//   phi::GPUPlace place;
 //   RunMultiVarMsg(place);
 // }
 // #endif

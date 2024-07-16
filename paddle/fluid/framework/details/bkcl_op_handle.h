@@ -33,7 +33,7 @@ namespace details {
 class BKCLOpHandleBase : public OpHandleBase {
  public:
   BKCLOpHandleBase(ir::Node* node,
-                   const std::vector<platform::Place>& places,
+                   const std::vector<phi::Place>& places,
                    const platform::BKCLCommunicator* bkcl_ctxs)
       : OpHandleBase(node), places_(places), bkcl_ctxs_(bkcl_ctxs) {
     if (bkcl_ctxs == nullptr) {
@@ -79,7 +79,7 @@ class BKCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatBKCLAllReduce(platform::Place place,
+  void FlatBKCLAllReduce(phi::Place place,
                          const void* sendbuff,
                          void* recvbuff,
                          size_t count,
@@ -107,7 +107,7 @@ class BKCLOpHandleBase : public OpHandleBase {
         platform::errors::PreconditionNotMet("bckl all reduce failed"));
   }
 
-  void BKCLAllReduce(platform::Place place,
+  void BKCLAllReduce(phi::Place place,
                      const void* sendbuff,
                      void* recvbuff,
                      size_t count,
@@ -129,7 +129,7 @@ class BKCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   const platform::BKCLCommunicator* bkcl_ctxs_{nullptr};
   // When multi trainer call collective function, they need run the same order.
   // Or the program will hang.So we use allreduce_deps_pass to set this

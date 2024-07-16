@@ -516,7 +516,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
-                    paddle::platform::errors::NotFound(
+                    phi::errors::NotFound(
                         "Can't find %s in Eager OpMetaInfoMap which should be "
                         "created by LoadOpMetaInfoAndRegisterOp, please make "
                         "sure you registered your op first and try again. ",
@@ -956,6 +956,93 @@ static PyObject *static_api_array_pop(PyObject *self,
   }
 }
 
+extern PyTypeObject *g_tensorrt_engine_params_pytype;
+
+static PyObject *static_api_tensorrt_engine(PyObject *self,
+                                            PyObject *args,
+                                            PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add tensorrt_engine op into program";
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2VectorOfValue(x_obj, "tensorrt_engine", 0);
+
+    PyObject *param_obj = PyTuple_GET_ITEM(args, 1);
+    if (!PyObject_TypeCheck(param_obj, g_tensorrt_engine_params_pytype)) {
+      PADDLE_THROW(platform::errors::InvalidType(
+          "tensorrt_engine(): argument (position %d) must be "
+          "EngineParams, but got %s",
+          2,
+          ((PyTypeObject *)param_obj->ob_type)->tp_name));  // NOLINT
+    }
+    auto trt_param =
+        ::pybind11::handle(param_obj).cast<paddle::platform::EngineParams>();
+
+    PyObject *input_names_obj = PyTuple_GET_ITEM(args, 2);
+    auto input_names = CastPyArg2VectorOfString(input_names_obj, 2);
+
+    PyObject *output_names_obj = PyTuple_GET_ITEM(args, 3);
+    auto output_names = CastPyArg2VectorOfString(output_names_obj, 3);
+
+    PyObject *outputs_shape_obj = PyTuple_GET_ITEM(args, 4);
+    std::vector<std::vector<int64_t>> outputs_shape;
+    if (PyList_Check(outputs_shape_obj)) {
+      Py_ssize_t len = PyList_Size(outputs_shape_obj);
+      PyObject *item = nullptr;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(outputs_shape_obj, i);
+        outputs_shape.emplace_back(CastPyArg2VectorOfInt64(item, 4));
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidType(
+          "argument (position %d) must be "
+          "list but got %s",
+          5,
+          reinterpret_cast<PyTypeObject *>(outputs_shape_obj->ob_type)
+              ->tp_name));
+    }
+
+    PyObject *outputs_dtype_obj = PyTuple_GET_ITEM(args, 5);
+    std::vector<paddle::DataType> outputs_dtype;
+    if (PyList_Check(outputs_dtype_obj)) {
+      Py_ssize_t len = PyList_Size(outputs_dtype_obj);
+      PyObject *item = nullptr;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(outputs_dtype_obj, i);
+        outputs_dtype.emplace_back(
+            CastPyArg2DataTypeDirectly(item, "tensorrt_engine", 5));
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidType(
+          "argument (position %d) must be "
+          "list but got %s",
+          6,
+          reinterpret_cast<PyTypeObject *>(outputs_dtype_obj->ob_type)
+              ->tp_name));
+    }
+    PyObject *converter_debug_info_obj = PyTuple_GET_ITEM(args, 6);
+    std::string converter_debug_info =
+        CastPyArg2String(converter_debug_info_obj, "converter_debug_info", 6);
+    // Call ir static api
+    CallStackRecorder callstack_recoder("tensorrt_engine");
+    callstack_recoder.Record();
+    auto static_api_out =
+        paddle::dialect::tensorrt_engine(x,
+                                         trt_param,
+                                         input_names,
+                                         output_names,
+                                         outputs_shape,
+                                         outputs_dtype,
+                                         converter_debug_info);
+    callstack_recoder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 extern PyObject *eager_api_fused_gemm_epilogue(PyObject *self,
                                                PyObject *args,
                                                PyObject *kwargs);
@@ -1037,6 +1124,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))builtin_combine_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for builtin_combine_op."},
+    {"tensorrt_engine",
+     (PyCFunction)(void (*)(void))static_api_tensorrt_engine,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for tensorrt_engine."},
     {"array_pop",
      (PyCFunction)(void (*)(void))static_api_array_pop,
      METH_VARARGS | METH_KEYWORDS,

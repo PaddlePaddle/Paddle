@@ -34,7 +34,7 @@ struct StubAllocator : public Allocator {
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
     ++alloc_num_;
-    return new Allocation(new uint8_t[size], size, platform::CPUPlace());
+    return new Allocation(new uint8_t[size], size, phi::CPUPlace());
   }
 
   void FreeImpl(phi::Allocation *allocation) override {

@@ -170,6 +170,19 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : legacy_crop_grad
+  forward : legacy_crop (Tensor x, Tensor y, IntArray offsets = {}, int[] shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, IntArray offsets = {}, int[] shape = {})
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : legacy_crop_grad
+    data_type : out_grad
+  optional: y
+  no_need_buffer: y
+
 - backward_op : legacy_expand_grad
   forward : legacy_expand (Tensor x, IntArray shape) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray shape)

@@ -143,8 +143,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -227,8 +226,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -310,8 +308,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -393,8 +390,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -484,7 +480,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(
       ptr, std::make_unique<MemEventRecorder::RecordMemEvent>(place, size));
@@ -520,7 +516,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(
       ptr, std::make_unique<MemEventRecorder::RecordMemEvent>(place, size));
@@ -673,7 +669,7 @@ void Mark(const std::string &name) {
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state,
                     ProfilerState::kDisabled,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Can't enable profiling, since the input state is"
                         "ProfilerState::kDisabled"));
   SynchronizeAllDevice();
