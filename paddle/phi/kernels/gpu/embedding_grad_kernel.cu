@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "stdio.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
@@ -88,9 +91,9 @@ struct EmbeddingGradCUDAFunctor {
       auto d_output_t = out_grad_;
       auto d_table_t = weight_grad_;
 
-      int N = weight_grad_->dims()[0];
-      int D = weight_grad_->dims()[1];
-      int K = input_.numel();
+      size_t N = weight_grad_->dims()[0];
+      size_t D = weight_grad_->dims()[1];
+      size_t K = input_.numel();
 
       const T* d_output = d_output_t.template data<T>();
       const auto* ids = input_.template data<IdT>();
