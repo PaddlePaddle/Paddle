@@ -1027,7 +1027,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               *instr_node.InnerRuntimeContext().get(),
-              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              const_cast<phi::DeviceContext*>(&instr_node.DeviceContext()),
               &phi_kernel_context);
 
           (*kernel)(&phi_kernel_context);

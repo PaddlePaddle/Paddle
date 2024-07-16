@@ -39,7 +39,7 @@ struct ScaleLossGradOpHandle final : public OpHandleBase {
                         size_t num_dev,
                         Scope *scope,
                         phi::Place place,
-                        platform::DeviceContext *context,
+                        phi::DeviceContext *context,
                         proto::VarType::Type dtype);
 
   ~ScaleLossGradOpHandle() final;

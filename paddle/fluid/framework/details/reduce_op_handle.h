@@ -135,13 +135,13 @@ struct ReduceOpHandle : public OpHandleBase {
   void GatherSelectedRows(
       const std::vector<const phi::SelectedRows *> &src_selecte_rows_,
       const std::vector<phi::Place> &in_places,
-      const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes,
+      const std::map<phi::Place, phi::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle,
       const phi::Place &out_place,
       phi::SelectedRows *dst_selecte_rows);
 #endif
 
-  void Wait(const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes);
+  void Wait(const std::map<phi::Place, phi::DeviceContext *> &dev_ctxes);
 
   template <typename T>
   std::vector<const T *> GetInputValues(

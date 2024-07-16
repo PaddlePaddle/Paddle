@@ -28,7 +28,7 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
                                              size_t num_dev,
                                              Scope *scope,
                                              phi::Place place,
-                                             platform::DeviceContext *dev_ctx,
+                                             phi::DeviceContext *dev_ctx,
                                              proto::VarType::Type dtype)
     : OpHandleBase(node),
       coeff_(static_cast<float>(1.0 / num_dev)),  // NOLINT
@@ -45,13 +45,13 @@ struct ScaleLossGradFunctor {
   phi::DenseTensor *out_;
   phi::Place place_;
   proto::VarType::Type out_dtype_;
-  platform::DeviceContext *ctx_;
+  phi::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff,
                        phi::DenseTensor *out,
                        phi::Place place,
                        proto::VarType::Type dtype,
-                       platform::DeviceContext *ctx)
+                       phi::DeviceContext *ctx)
       : coeff_(coeff), out_(out), place_(place), out_dtype_(dtype), ctx_(ctx) {}
 
   template <typename OutT>

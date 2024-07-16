@@ -37,7 +37,7 @@ static inline std::string GetRemoteVarName(const std::string &var_name,
 }
 
 void ReduceOpHandle::Wait(
-    const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes) {
+    const std::map<phi::Place, phi::DeviceContext *> &dev_ctxes) {
   // TODO(gongwb): use event wait?
   for (auto &dev_ctx : dev_ctxes) {
     dev_ctx.second->Wait();

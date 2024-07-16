@@ -71,8 +71,7 @@ class OpHandleBase {
 
   TEST_API void Run(DeviceType use_device);
 
-  TEST_API virtual void RecordWaitEventOnCtx(
-      platform::DeviceContext *waited_ctx);
+  TEST_API virtual void RecordWaitEventOnCtx(phi::DeviceContext *waited_ctx);
 
   TEST_API void AddInput(VarHandleBase *in);
 
@@ -97,15 +96,15 @@ class OpHandleBase {
   // will likely block other computations.
   virtual bool IsMultiDeviceTransfer() { return false; }
 
-  const platform::DeviceContext *DeviceContext(phi::Place place) {
+  const phi::DeviceContext *DeviceContext(phi::Place place) {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
   }
-  const std::map<phi::Place, platform::DeviceContext *> &DeviceContext() {
+  const std::map<phi::Place, phi::DeviceContext *> &DeviceContext() {
     return dev_ctxes_;
   }
 
-  void SetDeviceContext(phi::Place place, platform::DeviceContext *ctx_) {
+  void SetDeviceContext(phi::Place place, phi::DeviceContext *ctx_) {
     dev_ctxes_[place] = ctx_;
   }
 
@@ -151,7 +150,7 @@ class OpHandleBase {
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
-  std::map<phi::Place, platform::DeviceContext *> dev_ctxes_;
+  std::map<phi::Place, phi::DeviceContext *> dev_ctxes_;
 
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;

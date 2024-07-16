@@ -363,7 +363,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         auto dev_id = place.device;
         phi::backends::xpu::XPUDeviceGuard guard(dev_id);
         phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-        platform::DeviceContext* dev_ctx = pool.Get(place);
+        phi::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
         xpu::memset(
@@ -399,7 +399,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       auto dev_id = place.device;
       phi::backends::xpu::XPUDeviceGuard guard(dev_id);
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      platform::DeviceContext* dev_ctx = pool.Get(place);
+      phi::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
       xpu::memset(

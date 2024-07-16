@@ -171,7 +171,7 @@ void OpHandleBase::Run(DeviceType use_device) {
   RunImpl();
 }
 
-void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
+void OpHandleBase::RecordWaitEventOnCtx(phi::DeviceContext *waited_ctx) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_NOT_NULL(
       waited_ctx,
