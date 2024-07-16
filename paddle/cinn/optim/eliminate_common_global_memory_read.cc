@@ -149,7 +149,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
       if (indice_and_extent.size() <= 1) return false;
       if (IndiceContainsLoad(indice_and_extent[0])) return false;
-      if (IndiceComplexExpr(indice_and_extent[0])) return false;
+      // if (IndiceComplexExpr(indice_and_extent[0])) return false;
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 
