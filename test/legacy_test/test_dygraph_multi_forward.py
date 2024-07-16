@@ -19,6 +19,7 @@ from test_imperative_base import new_program_scope
 
 import paddle
 from paddle import base
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.nn import Linear
 
@@ -106,7 +107,7 @@ class MNIST(paddle.nn.Layer):
 def create_parameter_mapping(startup_program, main_program):
     startup_params = {}
     main_params = {}
-    parameter_mapping = paddle.core.pir.ValueDict()
+    parameter_mapping = ValueDict()
     for op in startup_program.global_block().ops:
         if op.name() == "builtin.set_parameter":
             name = op.attrs()["parameter_name"]
