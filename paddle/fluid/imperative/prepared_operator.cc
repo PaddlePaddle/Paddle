@@ -36,7 +36,7 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(run_kp_kernel);
 
 namespace paddle::imperative {
