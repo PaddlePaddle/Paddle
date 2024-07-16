@@ -3093,6 +3093,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
+- op : resnet_basic_block
+  backward: resnet_basic_block_grad
+  inputs:
+    {x : X, filter1 : Filter1, scale1 : Scale1, bias1 : Bias1, mean1 : Mean1, var1 : Var1, filter2 : Filter2, scale2 : Scale2, bias2 : Bias2, mean2 : Mean2, var2 : Var2, filter3 : Filter3, scale3 : Scale3, bias3 : Bias3, mean3 : Mean3, var3 : Var3}
+  outputs:
+    {out : Y, conv1 : Conv1, saved_mean1 : SavedMean1, saved_invstd1 : SavedInvstd1, mean1_out : Mean1Out, var1_out : Var1Out, conv2 : Conv2, conv2_input : Conv2Input, saved_mean2 : SavedMean2, saved_invstd2 : SavedInvstd2, mean2_out : Mean2Out, var2_out : Var2Out, conv3 : Conv3, saved_mean3 : SavedMean3, saved_invstd3 : SavedInvstd3, mean3_out : Mean3Out, var3_out : Var3Out, max_input1 : MaxInput1, max_filter1 : MaxFilter1, max_input2 : MaxInput2, max_filter2 : MaxFilter2, max_input3 : MaxInput3, max_filter3 : MaxFilter3}
+
 - op : resnet_unit
   backward: resnet_unit_grad
   inputs:
