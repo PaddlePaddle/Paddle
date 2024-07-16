@@ -510,7 +510,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_a_sync_optimizer_auto_async',
     'test_dist_fleet_a_sync_optimizer_auto',
     'test_dist_fleet_ps9',
-    'test_dist_fleet_raw_program_optimizer_fuse_allreduce',
     'test_dist_fleet_ps11',
     'test_dist_fleet_ps8',
     'test_dist_mnist_fp16_allreduce',
