@@ -228,8 +228,8 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
       break;
 #endif
     default:
-      paddle::platform::errors::InvalidArgument(
-          "phi::DataType not supported data type %s.", type);
+      phi::errors::InvalidArgument("phi::DataType not supported data type %s.",
+                                   type);
       break;
   }
   return nv_type;
@@ -253,7 +253,7 @@ static TRT_DT FluidDataType2TRT(FluidDT type) {
 
 #endif
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "unsupported datatype in TRT op converter, type: %s. "
           "Boolean type is supported as TRT input/output "
           "using TensorRT v8.4+.",
@@ -269,7 +269,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
                                    bool with_dynamic_shape = false) {
   PADDLE_ENFORCE_GE(shape.size(),
                     0UL,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TensorRT's tensor input requires at least 0 "
                         "dimensions, but input %s has %d dims.",
                         input,
@@ -300,7 +300,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
       return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 5UL) {
       if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input,
@@ -309,7 +309,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
       return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
     } else if (shape.size() == 3UL) {
       if (shape[1] == -1 || shape[2] == -1) {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input,
@@ -318,7 +318,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
       return nvinfer1::Dims2(shape[1], shape[2]);
     } else if (shape.size() == 2UL) {
       if (shape[1] == -1) {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input,
@@ -332,7 +332,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
     // static shape doesn't support 1D op so far.
     PADDLE_ENFORCE_NE(shape.size(),
                       1UL,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input [%s] shape of trt subgraph is %s."
                           "it's not supported by trt so far",
                           input,

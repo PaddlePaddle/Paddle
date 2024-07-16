@@ -83,8 +83,8 @@ class SparseFcOpConverter : public OpConverter {
     } else if (activation_type == "gelu") {
       act = plugin::SpmmPluginDynamic::Activation::kGelu;
     } else if (activation_type != "") {
-      PADDLE_THROW(paddle::platform::errors::Fatal("unknown activation_type %s",
-                                                   activation_type.c_str()));
+      PADDLE_THROW(phi::errors::Fatal("unknown activation_type %s",
+                                      activation_type.c_str()));
     }
     return new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic",
                                          type,

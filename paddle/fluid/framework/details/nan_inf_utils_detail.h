@@ -59,7 +59,7 @@ struct TensorCheckerVisitor {
           std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
           0) const {
     auto* dev_ctx = reinterpret_cast<Context*>(
-        platform::DeviceContextPool::Instance().Get(tensor.place()));
+        phi::DeviceContextPool::Instance().Get(tensor.place()));
 
     phi::DenseTensor stats;
     phi::DenseTensor values;

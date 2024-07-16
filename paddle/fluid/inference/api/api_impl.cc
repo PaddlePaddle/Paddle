@@ -238,7 +238,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     PADDLE_ENFORCE_EQ(
         inputs[i].data.length(),
         input.numel() * phi::SizeOf(input.dtype()),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
 
     if (phi::is_cpu_place(place_)) {

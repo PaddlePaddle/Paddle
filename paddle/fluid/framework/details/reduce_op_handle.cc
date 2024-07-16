@@ -112,8 +112,8 @@ void ReduceOpHandle::RunImpl() {
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
   phi::Place t_out_p;
-  if (platform::is_gpu_place(in_p)) {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()),
+  if (phi::is_gpu_place(in_p)) {
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(out_var_handle->place()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Places of input and output must be all on GPU."));
@@ -134,8 +134,7 @@ void ReduceOpHandle::RunImpl() {
 
       // TODO(gongwb): add cpu support
       if (collective_context.endpoints_.size() <= 1 ||
-          platform::is_cpu_place(in_places[0]) ||
-          platform::is_cpu_place(t_out_p)) {
+          phi::is_cpu_place(in_places[0]) || phi::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
             in_selected_rows,
             in_places,
@@ -151,7 +150,7 @@ void ReduceOpHandle::RunImpl() {
     std::vector<const phi::DenseTensor *> lod_tensors =
         GetInputValues<phi::DenseTensor>(in_var_handles, var_scopes);
 
-    if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
+    if (phi::is_cpu_place(lod_tensors[0]->place())) {
       WaitInputVarGenerated();
       this->RunAndRecordEvent([&] {
         // FIXME(zcd): The order of summing is important,
@@ -179,7 +178,7 @@ void ReduceOpHandle::RunImpl() {
           }
         }
       });
-    } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
+    } else if (phi::is_gpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
@@ -231,7 +230,7 @@ void ReduceOpHandle::RunImpl() {
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
-    } else if (paddle::platform::is_xpu_place(lod_tensors[0]->place())) {
+    } else if (phi::is_xpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_XPU_BKCL)
       auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);

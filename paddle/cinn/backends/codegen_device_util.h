@@ -47,6 +47,12 @@ namespace backends {
  */
 std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module);
 
+ir::Module CreateSwitchWithBroadcastConditionModule(
+    const std::vector<ir::Expr>& broadcast_conditions,
+    const std::vector<std::string>& case_func_names,
+    const std::string& wrapper_func_name,
+    const std::unordered_map<int, ir::Var>& symbolic_shape_var_index);
+
 namespace detail {
 
 struct CollectHostFunctionVisitor : public ir::IRMutator<> {

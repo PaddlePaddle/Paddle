@@ -35,7 +35,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
                         "the type of micro id should be LoDTensor."));
   auto micro_id = -1;
   auto* tensor = var->GetMutable<phi::DenseTensor>();
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     auto data = reinterpret_cast<const float*>(tensor->data());
     micro_id = static_cast<int>(data[0]);
   } else {
@@ -367,7 +367,7 @@ int HeterClient::Recv(const platform::DeviceContext& ctx,
   fut.wait();
   VLOG(4) << "RecvFromSwitch done";
   // save in worker
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
   auto& res_io_buffer = closure->cntl.response_attachment();

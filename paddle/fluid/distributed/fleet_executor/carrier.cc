@@ -74,7 +74,7 @@ void Carrier::Init(
   interceptor_id_to_node_ = interceptor_id_to_node;
   place_ = place;
   root_scope_ = scope;
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   bool need_create_scope = micro_scope_list.empty();
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -278,7 +278,7 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
   std::shared_ptr<framework::GarbageCollector> gc;
   if (max_memory_size >= 0) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc.reset(new framework::UnsafeFastGPUGarbageCollector(place,
                                                               max_memory_size));
@@ -286,7 +286,7 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place)) {
+    if (phi::is_custom_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc.reset(new framework::CustomDeviceUnsafeFastGarbageCollector(
             place, max_memory_size));

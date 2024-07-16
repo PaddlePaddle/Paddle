@@ -63,7 +63,7 @@ void CreateVarsOnScope(framework::Scope* scope,
 
 void RunMultiVarMsg(phi::Place place) {
   framework::Scope scope;
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
   CreateVarsOnScope(&scope, &place, ctx);
 
