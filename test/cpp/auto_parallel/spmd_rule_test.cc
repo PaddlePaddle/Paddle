@@ -1816,10 +1816,10 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   out_grad_dist_attr.set_process_mesh(process_mesh);
 
   // inputs: [-1], [0] --> [0]
-  // x_grad: [0]
+  // x_grad: [-1]
   x_dist_attr.set_dims_mapping({-1});
   index_dist_attr.set_dims_mapping({0});
-  out_grad_dist_attr.set_dims_mapping({-1});
+  out_grad_dist_attr.set_dims_mapping({0});
   phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
                                          index_dist_attr);
@@ -1830,12 +1830,12 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1}));
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({0, -1}));
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({-1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({0}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({0}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]), std::vector<int64_t>({-1}));
 
   // inputs: [-1, -1], [0, -1, -1] --> [0, -1, -1]
-  // x_grad: [0, -1, -1]
+  // x_grad: [-1, -1]
   x_shape = {64, 32};
   index_shape = {16, 16, 1};
   out_grad_shape = {16, 16, 32};
