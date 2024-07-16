@@ -88,7 +88,7 @@ void GPUCollectFpnProposalsOpKernel(
   T* concat_scores_data = dev_ctx.template Alloc<T>(&concat_scores);
   phi::DenseTensor roi_batch_id_list;
   roi_batch_id_list.Resize({total_roi_num});
-  int* roi_batch_id_data = dev_ctx.template Alloc<int>(&roi_batch_id_list);
+  int* roi_batch_id_data = dev_ctx.template HostAlloc<int>(&roi_batch_id_list);
   int index = 0;
   int lod_size;
   auto place = dev_ctx.GetPlace();
