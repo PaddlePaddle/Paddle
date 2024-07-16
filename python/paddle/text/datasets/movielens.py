@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 import zipfile
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -38,6 +38,10 @@ class MovieInfo:
     """
     Movie id, title and categories information are stored in MovieInfo.
     """
+
+    index: int
+    categories: list[str]
+    title: str
 
     def __init__(self, index: str, categories: list[str], title: str) -> None:
         self.index = int(index)
@@ -69,6 +73,11 @@ class UserInfo:
     """
     User id, gender, age, and job information are stored in UserInfo.
     """
+
+    index: int
+    is_male: bool
+    age: int
+    job_id: int
 
     def __init__(self, index: str, gender: str, age: str, job_id: str) -> None:
         self.index = int(index)
@@ -163,7 +172,7 @@ class Movielens(Dataset):
     movie_title_dict: dict[str, int]
     categories_dict: dict[str, int]
     user_info: dict[int, UserInfo]
-    data: list[list[npt.NDArray[np.float32]]]
+    data: list[list[float]]
 
     def __init__(
         self,
@@ -172,7 +181,7 @@ class Movielens(Dataset):
         test_ratio: float = 0.1,
         rand_seed: int = 0,
         download: bool = True,
-    ):
+    ) -> None:
         assert mode.lower() in [
             'train',
             'test',
@@ -257,7 +266,7 @@ class Movielens(Dataset):
                             + [[rating]]
                         )
 
-    def __getitem__(self, idx: int) -> tuple[list[npt.NDArray[np.float32]]]:
+    def __getitem__(self, idx: int) -> tuple[npt.NDArray[Any], ...]:
         data = self.data[idx]
         return tuple([np.array(d) for d in data])
 
