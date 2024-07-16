@@ -63,7 +63,11 @@ void FlashAttnUnpaddedBaseKernel(
 
     phi::funcs::ElementwiseKernel<T>(ctx, inputs, &outputs, ZeroFunctor<T>());
   }
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream = ctx.stream();
+#else
   cudaStream_t stream = ctx.stream();
+#endif
 
   // q, k, v [total_q/k/v, num_heads, head_dim]
   auto dims = q.dims();
@@ -120,7 +124,38 @@ void FlashAttnUnpaddedBaseKernel(
 
   VLOG(10) << "FlashAttn fwd seed: " << params.seed
            << ", offset: " << params.offset;
-
+#ifdef PADDLE_WITH_HIP
+  bool succ = phi::dynload::flash_attn_varlen_fwd(
+      q.data(),
+      k.data(),
+      v.data(),
+      cu_seqlens_q.data<int32_t>(),
+      cu_seqlens_k.data<int32_t>(),
+      params.rng_state.data(),
+      out->data(),
+      params.return_softmax ? softmax->data() : nullptr,
+      softmax_lse->data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      1.0f / params.softmax_scale,
+      params.causal,
+      params.return_softmax,
+      params.is_bf16,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
+#else
   bool succ = phi::dynload::flash_attn_varlen_fwd(
       q.data(),
       k.data(),
@@ -164,6 +199,7 @@ void FlashAttnUnpaddedBaseKernel(
       max_seqlen_k * v.strides()[0],
       max_seqlen_q * out->strides()[0],
       varlen_padded);
+#endif
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -345,12 +381,26 @@ void FlashAttnBaseKernel(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
   const int64_t batch_size = dims[0];
+#ifdef PADDLE_WITH_HIP
+  int64_t seqlen_q = dims[1];
+  int64_t num_heads = dims[2];
+  int64_t head_size = dims[3];
+  int64_t seqlen_k = k.dims()[1];
+  int64_t num_heads_k = k.dims()[2];
+  if (is_test) {
+    seqlen_q = dims[2];
+    num_heads = dims[1];
+    head_size = dims[3];
+    seqlen_k = k.dims()[2];
+    num_heads_k = k.dims()[1];
+  }
+#else
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
   const int64_t head_size = dims[3];
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
-
+#endif
   // TODO(umiswing): Add check shape
 
   const float softmax_scale = 1.0f / std::sqrt(head_size);
@@ -391,8 +441,43 @@ void FlashAttnBaseKernel(
   }
   if (!out->IsInitialized()) ctx.template Alloc<T>(out);
 
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream = ctx.stream();
+#else
   cudaStream_t stream = ctx.stream();
+#endif
 
+#ifdef PADDLE_WITH_HIP
+  bool succ = phi::dynload::flash_attn_fwd(
+      q.data(),
+      k.data(),
+      v.data(),
+      params.rng_state.data(),
+      out->data(),
+      params.return_softmax ? params.softmax->data() : nullptr,
+      params.softmax_lse->data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      softmax_unscale,  // for unscale
+      params.causal,
+      params.return_softmax,
+      params.is_bf16,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data(),
+      is_test);
+#else
   bool succ = phi::dynload::flash_attn_fwd(
       q.data(),
       k.data(),
@@ -440,6 +525,7 @@ void FlashAttnBaseKernel(
       k.strides()[0],
       v.strides()[0],
       out->strides()[0]);
+#endif
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();

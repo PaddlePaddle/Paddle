@@ -31,13 +31,6 @@ namespace pir {
   pir::DialectIdMap::Instance()->GetCompressDialectId( \
       (attr_template).dialect().name())
 
-void GetCompressOpName(std::string* op_name) {
-  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
-  *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
-             "." + name.second;
-  return;
-}
-
 class AttrTypeWriter {
  public:
   static Json WriteBuiltInAttr(const pir::Attribute& attr);

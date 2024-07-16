@@ -24,24 +24,24 @@ TEST(scatter, ScatterUpdate) {
   phi::DenseTensor index;
   phi::DenseTensor output;
 
-  auto* p_src = src.mutable_data<float>(common::make_ddim({1, 4}),
-                                        paddle::platform::CPUPlace());
-  auto* p_index = index.mutable_data<int>(common::make_ddim({1}),
-                                          paddle::platform::CPUPlace());
+  auto* p_src =
+      src.mutable_data<float>(common::make_ddim({1, 4}), phi::CPUPlace());
+  auto* p_index =
+      index.mutable_data<int>(common::make_ddim({1}), phi::CPUPlace());
 
   for (size_t i = 0; i < 4; ++i) {
     p_src[i] = static_cast<float>(i);
   }
   p_index[0] = 1;
 
-  auto* p_output = output.mutable_data<float>(common::make_ddim({4, 4}),
-                                              paddle::platform::CPUPlace());
+  auto* p_output =
+      output.mutable_data<float>(common::make_ddim({4, 4}), phi::CPUPlace());
 
   for (int64_t i = 0; i < output.numel(); ++i) {
     p_output[i] = 0;
   }
 
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
   phi::CPUContext ctx(*cpu_place);
   phi::funcs::ScatterAssign<float>(ctx, src, index, &output);
 

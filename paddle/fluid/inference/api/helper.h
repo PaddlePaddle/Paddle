@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
 #include <glog/logging.h>
+#include <sys/stat.h>
 
 #include <fstream>
 #if !defined(_WIN32)
@@ -73,7 +73,7 @@ inline PaddleDType ConvertToPaddleDType(
   } else if (type == paddle::framework::proto::VarType::UINT8) {
     return PaddleDType::UINT8;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "The paddle dtype convert function only supports FLOAT32, INT64, INT32 "
         "and UINT8 now. But "
         "we get %d here.",
@@ -431,6 +431,16 @@ static bool IsFileExists(const std::string &path) {
   return exists;
 }
 
+static bool IsDirectory(const std::string &path) {
+  struct stat info;
+  if (stat(path.c_str(), &info) != 0) {
+    return false;
+  } else if (info.st_mode & S_IFDIR) {
+    return true;
+  }
+  return false;
+}
+
 void RegisterAllCustomOperator(bool use_pir);
 
 void InitGflagsFromEnv();
@@ -439,7 +449,7 @@ static inline double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);
 }
 
-static inline void DisplayMemoryInfo(platform::Place place,
+static inline void DisplayMemoryInfo(phi::Place place,
                                      const std::string &hint) {
 #ifdef PADDLE_WITH_CUDA
   // size_t free, total;

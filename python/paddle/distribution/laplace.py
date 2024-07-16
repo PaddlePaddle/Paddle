@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import numbers
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
 import paddle
 from paddle.base import framework
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class Laplace(distribution.Distribution):
@@ -52,8 +57,10 @@ class Laplace(distribution.Distribution):
                 1.31554604)
 
     """
+    loc: Tensor
+    scale: Tensor
 
-    def __init__(self, loc, scale):
+    def __init__(self, loc: float | Tensor, scale: float | Tensor) -> None:
         if not isinstance(
             loc, (numbers.Real, framework.Variable, paddle.pir.Value)
         ):
@@ -84,7 +91,7 @@ class Laplace(distribution.Distribution):
         super().__init__(self.loc.shape)
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of distribution.
 
         Returns:
@@ -93,7 +100,7 @@ class Laplace(distribution.Distribution):
         return self.loc
 
     @property
-    def stddev(self):
+    def stddev(self) -> Tensor:
         r"""Standard deviation.
 
         The stddev is
@@ -111,7 +118,7 @@ class Laplace(distribution.Distribution):
         return (2**0.5) * self.scale
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         r"""Variance of distribution.
 
         The variance is
@@ -128,7 +135,9 @@ class Laplace(distribution.Distribution):
         """
         return self.stddev.pow(2)
 
-    def _validate_value(self, value):
+    def _validate_value(
+        self, value: float | Tensor
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Argument dimension check for distribution methods such as `log_prob`,
         `cdf` and `icdf`.
 
@@ -155,7 +164,7 @@ class Laplace(distribution.Distribution):
 
         return loc, scale, value
 
-    def log_prob(self, value):
+    def log_prob(self, value: float | Tensor) -> Tensor:
         r"""Log probability density/mass function.
 
         The log_prob is
@@ -191,7 +200,7 @@ class Laplace(distribution.Distribution):
 
         return log_scale - paddle.abs(value - loc) / scale
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Entropy of Laplace distribution.
 
         The entropy is:
@@ -218,7 +227,7 @@ class Laplace(distribution.Distribution):
         """
         return 1 + paddle.log(2 * self.scale)
 
-    def cdf(self, value):
+    def cdf(self, value: float | Tensor) -> Tensor:
         r"""Cumulative distribution function.
 
         The cdf is
@@ -257,7 +266,7 @@ class Laplace(distribution.Distribution):
 
         return 0.5 - iterm
 
-    def icdf(self, value):
+    def icdf(self, value: float | Tensor) -> Tensor:
         r"""Inverse Cumulative distribution function.
 
         The icdf is
@@ -291,7 +300,7 @@ class Laplace(distribution.Distribution):
 
         return loc - scale * (term).sign() * paddle.log1p(-2 * term.abs())
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         r"""Generate samples of the specified shape.
 
         Args:
@@ -314,7 +323,7 @@ class Laplace(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape):
+    def rsample(self, shape: Sequence[int]) -> Tensor:
         r"""Reparameterized sample.
 
         Args:
@@ -346,7 +355,7 @@ class Laplace(distribution.Distribution):
             -uniform.abs()
         )
 
-    def _get_eps(self):
+    def _get_eps(self) -> float:
         """
         Get the eps of certain data type.
 
@@ -366,7 +375,7 @@ class Laplace(distribution.Distribution):
 
         return eps
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Laplace) -> Tensor:
         r"""Calculate the KL divergence KL(self || other) with two Laplace instances.
 
         The kl_divergence between two Laplace distribution is

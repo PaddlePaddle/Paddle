@@ -29,19 +29,19 @@ PD_DECLARE_bool(use_system_allocator);
 namespace paddle {
 namespace framework {
 
-static std::vector<platform::Place> CreatePlaceList() {
-  std::vector<platform::Place> places;
-  places.emplace_back(platform::CPUPlace());
+static std::vector<phi::Place> CreatePlaceList() {
+  std::vector<phi::Place> places;
+  places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  places.emplace_back(platform::CUDAPlace(0));
+  places.emplace_back(phi::GPUPlace(0));
 #endif
   return places;
 }
 
 template <typename T>
 static bool CopySameTensorTestMain(const DDim &dims,
-                                   const platform::Place &src_place,
-                                   const platform::Place &dst_place,
+                                   const phi::Place &src_place,
+                                   const phi::Place &dst_place,
                                    bool sync_copy) {
   FLAGS_use_system_allocator = true;  // force to use system allocator
 
@@ -49,7 +49,7 @@ static bool CopySameTensorTestMain(const DDim &dims,
   phi::DenseTensor src_cpu_tensor;
   {
     src_cpu_tensor.Resize(dims);
-    auto *src_ptr_cpu = src_cpu_tensor.mutable_data<T>(platform::CPUPlace());
+    auto *src_ptr_cpu = src_cpu_tensor.mutable_data<T>(phi::CPUPlace());
     int64_t num = src_cpu_tensor.numel();
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -70,12 +70,12 @@ static bool CopySameTensorTestMain(const DDim &dims,
       TensorCopySync(src_tensor, dst_place, &src_tensor);
     } else {
       paddle::framework::TensorCopy(src_tensor, dst_place, &src_tensor);
-      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(src_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
     }
 
     // Get the result cpu tensor
-    TensorCopySync(src_tensor, platform::CPUPlace(), &dst_cpu_tensor);
+    TensorCopySync(src_tensor, phi::CPUPlace(), &dst_cpu_tensor);
   }
 
   const void *ground_truth_ptr = src_cpu_tensor.data();

@@ -135,7 +135,7 @@ def build_groups(vars, group_size):
     for var in vars:
         var_dtype = var.dtype
         if isinstance(var_dtype, core.DataType):
-            var_dtype = paddle.pir.core.datatype_to_vartype(var_dtype)
+            var_dtype = paddle.pir.core.datatype_to_vartype[var_dtype]
         bytes = np.prod(var.shape) * core.size_of_dtype(var_dtype)
         if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes
@@ -197,6 +197,8 @@ def sync_params_buffers(
             )
     else:
         for var in model_vars:
+            # NOTE(shenliang03): Now, we dont support contiguous tensor in dp
+            var = var.contiguous()
             paddle.distributed.broadcast(
                 var, src=src_rank, group=comm_group, sync_op=True
             )
@@ -334,7 +336,7 @@ class DataParallel(layers.Layer):
             ...     model = paddle.DataParallel(model)
             ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     for step in range(10):
-            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32) # type: ignore[var-annotated]
             ...         x = paddle.to_tensor(x_data)
             ...         x.stop_gradient = False
             ...         # step 1 : skip gradient synchronization by 'no_sync'
@@ -397,6 +399,13 @@ class DataParallel(layers.Layer):
                     self.group, paddle.distributed.collective.Group
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
+                [
+                    warnings.warn(
+                        f"param [{name}] is not contiguous, please check it and make it contiguous."
+                    )
+                    for name, param in self._layers.named_parameters()
+                    if not param.is_contiguous()
+                ]
             # sync buffer and params
             sync_params_buffers(self._layers, fuse_params=False)
 

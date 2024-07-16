@@ -79,32 +79,30 @@ static bool IsNumpyArray(PyObject* obj) {
 }
 
 void InitTensorWithNumpyValue(const py::object& array,
-                              const paddle::platform::Place& place,
+                              const phi::Place& place,
                               Tensor* self,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->defined(),
       true,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Calling InitTensorWithNumpyValue of Eager Tensor without "
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->impl().get());
-  if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
+  if (phi::is_cpu_place(place)) {
+    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_xpu_place(place)) {
+    SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_gpu_place(place)) {
+    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_cuda_pinned_place(place)) {
+    SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
-  } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        impl_ptr, array, place, zero_copy);
-  } else if (platform::is_custom_place(place)) {
-    SetTensorFromPyArray<platform::CustomPlace>(
-        impl_ptr, array, place, zero_copy);
+  } else if (phi::is_custom_place(place)) {
+    SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -136,26 +134,26 @@ std::set<phi::DataType> _complex_dtypes{
 //     '__rtruediv__',
 //     '__matmul__',
 
-void SetDevice(paddle::platform::Place place) {
-  if (paddle::platform::is_gpu_place(place)) {
+void SetDevice(phi::Place place) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
     VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
   }
 
-  if (paddle::platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
     VLOG(6) << "CurrentDeviceId: "
             << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
             << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use "
         "CustomPlace."));
 #endif
@@ -294,7 +292,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -399,7 +397,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -502,7 +500,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -609,7 +607,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -713,7 +711,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -820,7 +818,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -931,7 +929,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1032,7 +1030,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1134,7 +1132,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1232,7 +1230,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1361,7 +1359,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1462,7 +1460,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1564,7 +1562,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1669,7 +1667,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1770,7 +1768,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1871,7 +1869,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1971,7 +1969,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =

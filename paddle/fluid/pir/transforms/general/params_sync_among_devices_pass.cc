@@ -79,7 +79,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
                                          param_name));
         if (param_var->IsType<phi::DenseTensor>()) {
           auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
-          paddle::platform::CPUPlace cpu_place;
+          phi::CPUPlace cpu_place;
           phi::DenseTensor temp_tensor;
           temp_tensor.Resize(param_tensor->dims());
           paddle::framework::TensorCopySync(
@@ -101,20 +101,18 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
 #ifdef PADDLE_WITH_XPU
-    PADDLE_ENFORCE(paddle::platform::is_xpu_place(place_) ||
-                       paddle::platform::is_cpu_place(place_),
+    PADDLE_ENFORCE(phi::is_xpu_place(place_) || phi::is_cpu_place(place_),
                    phi::errors::PreconditionNotMet(
                        "The Place attr in params_sync_among_devices_pass "
                        "should be cpu or xpu."));
 #endif
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(paddle::platform::is_gpu_place(place_) ||
-                       paddle::platform::is_cpu_place(place_),
+    PADDLE_ENFORCE(phi::is_gpu_place(place_) || phi::is_cpu_place(place_),
                    phi::errors::PreconditionNotMet(
                        "The Place attr in params_sync_among_devices_pass "
                        "should be cpu or gpu."));
 #endif
-    if (paddle::platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       return false;
     }
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;

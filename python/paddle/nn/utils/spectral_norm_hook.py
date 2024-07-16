@@ -12,23 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 
 from .. import functional as F
 from ..layer.common import Linear
 from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
 
+if TYPE_CHECKING:
+    from typing_extensions import Never
+
+    from paddle import Tensor
+    from paddle.nn import Layer
+
 __all__ = []
 
 
-def normal_(x, mean=0.0, std=1.0):
+def normal_(x: Tensor, mean: float = 0.0, std: float = 1.0) -> Tensor:
     temp_value = paddle.normal(mean, std, shape=x.shape)
     paddle.assign(temp_value, x)
     return x
 
 
 class SpectralNorm:
-    def __init__(self, name='weight', n_power_iterations=1, dim=0, eps=1e-12):
+    name: str
+    dim: int
+    n_power_iterations: int
+    eps: float
+
+    def __init__(
+        self,
+        name: str = 'weight',
+        n_power_iterations: int = 1,
+        dim: int = 0,
+        eps: float = 1e-12,
+    ) -> None:
         self.name = name
         self.dim = dim
         if n_power_iterations <= 0:
@@ -39,7 +60,7 @@ class SpectralNorm:
         self.n_power_iterations = n_power_iterations
         self.eps = eps
 
-    def reshape_weight_to_matrix(self, weight):
+    def reshape_weight_to_matrix(self, weight: Tensor) -> Tensor:
         weight_mat = weight
         if self.dim != 0:
             # transpose dim to front
@@ -52,7 +73,7 @@ class SpectralNorm:
 
         return weight_mat.reshape([height, -1])
 
-    def compute_weight(self, layer, do_power_iteration):
+    def compute_weight(self, layer: Layer, do_power_iteration: bool) -> Tensor:
         weight = getattr(layer, self.name + '_orig')
         u = getattr(layer, self.name + '_u')
         v = getattr(layer, self.name + '_v')
@@ -91,7 +112,7 @@ class SpectralNorm:
         weight = weight / sigma
         return weight
 
-    def __call__(self, layer, inputs):
+    def __call__(self, layer: Layer, inputs: Never) -> None:
         setattr(
             layer,
             self.name,
@@ -99,7 +120,9 @@ class SpectralNorm:
         )
 
     @staticmethod
-    def apply(layer, name, n_power_iterations, dim, eps):
+    def apply(
+        layer: Layer, name: str, n_power_iterations: int, dim: int, eps: float
+    ) -> SpectralNorm:
         for k, hook in layer._forward_pre_hooks.items():
             if isinstance(hook, SpectralNorm) and hook.name == name:
                 raise RuntimeError(
@@ -138,8 +161,12 @@ class SpectralNorm:
 
 
 def spectral_norm(
-    layer, name='weight', n_power_iterations=1, eps=1e-12, dim=None
-):
+    layer: Layer,
+    name: str = 'weight',
+    n_power_iterations: int = 1,
+    eps: float = 1e-12,
+    dim: int | None = None,
+) -> Layer:
     r"""
     Applies spectral normalization to a parameter according to the
     following Calculation:
@@ -176,7 +203,7 @@ def spectral_norm(
         name(str, optional): Name of the weight parameter. Default: 'weight'.
         n_power_iterations(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
         eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
-        dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: None.
+        dim(int|None, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: None.
 
     Returns:
         Layer, the original layer with the spectral norm hook.

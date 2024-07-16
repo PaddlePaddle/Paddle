@@ -36,12 +36,12 @@ struct ForEachFill {
 };
 
 TEST(BestFitAllocator, concurrent_cuda) {
-  CUDAAllocator allocator(platform::CUDAPlace(0));
+  CUDAAllocator allocator(phi::GPUPlace(0));
   // 256 MB
   auto cuda_allocation = allocator.Allocate(256U * 1024 * 1024);
   BestFitAllocator concurrent_allocator(cuda_allocation.get());
 
-  platform::CUDAPlace gpu(0);
+  phi::GPUPlace gpu(0);
   phi::GPUContext dev_ctx(gpu);
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu, dev_ctx.stream())
@@ -65,7 +65,7 @@ TEST(BestFitAllocator, concurrent_cuda) {
       platform::ForRange<phi::GPUContext> for_range(dev_ctx, allocate_size);
       for_range(fill);
 
-      memory::Copy(platform::CPUPlace(),
+      memory::Copy(phi::CPUPlace(),
                    buf.data(),
                    gpu,
                    data,

@@ -17,7 +17,6 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -26,7 +25,6 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
@@ -67,52 +65,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForTriangularSolve(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 2U)
-      << "The input's shape size should be 2! Please check again.";
-  framework::shape_t a_shape = inputs_shape[0];
-  framework::shape_t b_shape = inputs_shape[1];
-  int a_shape_size = a_shape.size();
-  int b_shape_size = b_shape.size();
-  CHECK_GE(a_shape_size, 2U)
-      << "The input matrix A shape size should >= 2! Please check again.";
-  CHECK_GE(b_shape_size, 2U)
-      << "The input matrix B shape size should >= 2! Please check again.";
-
-  int left_side = -1;
-  for (auto &iter : attrs) {
-    if (iter.first == "left_side") {
-      left_side = absl::get<bool>(iter.second);
-      break;
-    }
-  }
-
-  CHECK_EQ(a_shape[a_shape_size - 2], a_shape[a_shape_size - 1])
-      << "The last two dimensions of the input a must be the same!";
-  if (left_side) {
-    CHECK_EQ(a_shape[a_shape_size - 2], b_shape[b_shape_size - 2])
-        << "The last-but-one dimension of the two vectors must be consistent.";
-  } else {
-    CHECK_EQ(a_shape[a_shape_size - 1], b_shape[b_shape_size - 1])
-        << "The last dimension of the two vectors must be consistent.";
-  }
-
-  return {b_shape};
-}
-
-std::vector<Type> InferDtypeForTriangularSolve(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 2U)
-      << "The input's shape size should be 2! Please check again.";
-  CHECK(inputs_type[0].is_float(32) || inputs_type[0].is_float(64))
-      << "The input's dtype should be float32 or float64! Please check again.";
-  CHECK(inputs_type[1].is_float(32) || inputs_type[1].is_float(64))
-      << "The input's dtype should be float32 or float64! Please check again.";
-  return std::vector<Type>{inputs_type[1]};
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -124,10 +76,6 @@ CINN_REGISTER_HELPER(triangular_solve_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForTriangularSolve)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForTriangularSolve))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForTriangularSolve))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
