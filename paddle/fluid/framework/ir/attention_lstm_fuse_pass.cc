@@ -299,7 +299,7 @@ void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
   out->Resize(common::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
-  float* out_data = out->mutable_data<float>(platform::CPUPlace());
+  float* out_data = out->mutable_data<float>(phi::CPUPlace());
   std::array<const float*, 4> tensors{W_forget_w0.data<float>(),
                                       W_input_w0.data<float>(),
                                       W_output_w0.data<float>(),
@@ -344,7 +344,7 @@ void PrepareLSTMBias(const phi::DenseTensor& B_forget,
           B_forget.dims().size()));
   int D = static_cast<int>(B_forget.dims()[0]);
   out->Resize(common::make_ddim({1, 4 * D}));
-  auto* out_data = out->mutable_data<float>(platform::CPUPlace());
+  auto* out_data = out->mutable_data<float>(phi::CPUPlace());
   for (size_t i = 0; i < tensors.size(); i++) {
     memcpy(out_data + D * i, tensors[i], D * sizeof(float));
   }

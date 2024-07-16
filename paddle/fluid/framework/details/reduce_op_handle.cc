@@ -37,7 +37,7 @@ static inline std::string GetRemoteVarName(const std::string &var_name,
 }
 
 void ReduceOpHandle::Wait(
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes) {
+    const std::map<phi::Place, platform::DeviceContext *> &dev_ctxes) {
   // TODO(gongwb): use event wait?
   for (auto &dev_ctx : dev_ctxes) {
     dev_ctx.second->Wait();
@@ -86,7 +86,7 @@ void ReduceOpHandle::RunImpl() {
                                  in_0_handle->name()));
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
-  std::vector<platform::Place> in_places;  // used to get dev_ctx
+  std::vector<phi::Place> in_places;  // used to get dev_ctx
   for (auto *in_handle : in_var_handles) {
     in_places.emplace_back(in_handle->place());
     auto in_var =
@@ -111,15 +111,15 @@ void ReduceOpHandle::RunImpl() {
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
-  platform::Place t_out_p;
-  if (platform::is_gpu_place(in_p)) {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()),
+  phi::Place t_out_p;
+  if (phi::is_gpu_place(in_p)) {
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(out_var_handle->place()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Places of input and output must be all on GPU."));
     t_out_p = out_var_handle->place();
   } else {
-    t_out_p = platform::CPUPlace();
+    t_out_p = phi::CPUPlace();
   }
 
   if (pre_in_var->IsType<phi::SelectedRows>()) {
@@ -134,8 +134,7 @@ void ReduceOpHandle::RunImpl() {
 
       // TODO(gongwb): add cpu support
       if (collective_context.endpoints_.size() <= 1 ||
-          platform::is_cpu_place(in_places[0]) ||
-          platform::is_cpu_place(t_out_p)) {
+          phi::is_cpu_place(in_places[0]) || phi::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
             in_selected_rows,
             in_places,
@@ -151,7 +150,7 @@ void ReduceOpHandle::RunImpl() {
     std::vector<const phi::DenseTensor *> lod_tensors =
         GetInputValues<phi::DenseTensor>(in_var_handles, var_scopes);
 
-    if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
+    if (phi::is_cpu_place(lod_tensors[0]->place())) {
       WaitInputVarGenerated();
       this->RunAndRecordEvent([&] {
         // FIXME(zcd): The order of summing is important,
@@ -175,11 +174,11 @@ void ReduceOpHandle::RunImpl() {
 
           auto trg = out_var->GetMutable<phi::DenseTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
-            TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+            TensorCopy(reduce_sum_trg, phi::CPUPlace(), trg);
           }
         }
       });
-    } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
+    } else if (phi::is_gpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
@@ -231,7 +230,7 @@ void ReduceOpHandle::RunImpl() {
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
-    } else if (paddle::platform::is_xpu_place(lod_tensors[0]->place())) {
+    } else if (phi::is_xpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_XPU_BKCL)
       auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);

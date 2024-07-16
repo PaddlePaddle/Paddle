@@ -263,7 +263,7 @@ void DataFeed::AssignFeedVar(const Scope& scope) {
 }
 
 void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
-  if (platform::is_cpu_place(this->place_)) {
+  if (phi::is_cpu_place(this->place_)) {
     memcpy(dst, src, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
@@ -1013,7 +1013,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
     VLOG(4) << "total_instance: " << total_instance;
-    // platform::CPUPlace()
+    // phi::CPUPlace()
     VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
@@ -2720,7 +2720,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
   }
   this->finish_start_ = true;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
+  CHECK(phi::is_gpu_place(this->place_));
   for (int i = 0; i < pack_thread_num_ + 1; i++) {
     auto pack = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
     pack_vec_.push_back(pack);
@@ -2895,7 +2895,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(this->place_));
+      phi::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
     if (scope_feed_vec_.size() > 0) {
       if (scope_feed_vec_.begin()->second[j] == nullptr) {
@@ -3032,7 +3032,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
       lod.resize(1);
       lod[0].resize(offset_cols_size);
       phi::MixVector<size_t> mixv_lod(&lod[0]);
-      memcpy(mixv_lod.MutableData(platform::CPUPlace()),
+      memcpy(mixv_lod.MutableData(phi::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }
@@ -3062,7 +3062,7 @@ MiniBatchGpuPack* SlotRecordInMemoryDataFeed::get_pack(
   }
 }
 
-MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+MiniBatchGpuPack::MiniBatchGpuPack(const phi::Place& place,
                                    const std::vector<UsedSlotInfo>& infos,
                                    phi::StreamId stream_id) {
   place_ = place;
@@ -3099,7 +3099,7 @@ MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
 
 MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
-void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
+void MiniBatchGpuPack::reset(const phi::Place& place) {
   place_ = place;
   stream_holder_.reset(new phi::CUDAStream(place));
   stream_ = stream_holder_->raw_stream();

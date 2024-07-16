@@ -46,14 +46,14 @@ OpSupportedInfos(const std::string& place,
                  place.end(),
                  std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
-  using fn_type = std::add_pointer<bool(const platform::Place&)>::type;
+  using fn_type = std::add_pointer<bool(const phi::Place&)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place},
-      {"CPU", &platform::is_cpu_place},
-      {"XPU", &platform::is_xpu_place},
-      {"CUSTOM_DEVICE", &platform::is_custom_place},
+      {"GPU", &phi::is_gpu_place},
+      {"CPU", &phi::is_cpu_place},
+      {"XPU", &phi::is_xpu_place},
+      {"CUSTOM_DEVICE", &phi::is_custom_place},
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      {query_place, &platform::is_custom_place},
+      {query_place, &phi::is_custom_place},
 #endif
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
@@ -274,10 +274,8 @@ template <typename VarType>
 inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   auto place = GetPlace(var);
   auto data_type = GetDataType<VarType>(var);
-  if (paddle::platform::is_gpu_place(place) ||
-      paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_custom_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_cuda_pinned_place(place) ||
+      phi::is_xpu_place(place) || phi::is_custom_place(place)) {
     // CudaPinnedPlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||

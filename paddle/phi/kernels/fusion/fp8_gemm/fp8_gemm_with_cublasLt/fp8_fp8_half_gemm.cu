@@ -38,6 +38,7 @@ void fp8_fp8_half_gemm(
     const std::string& activation_type,
     DenseTensor* out) {
 #if CUDA_VERSION >= 12010
+  VLOG(3) << "fp8_fp8_half_gemm_fused of cublasLt start run: ";
   static_assert(std::is_same<Context, phi::GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
   if (out->dtype() == phi::DataType::BFLOAT16) {

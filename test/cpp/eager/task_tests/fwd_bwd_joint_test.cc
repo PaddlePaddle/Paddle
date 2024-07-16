@@ -62,13 +62,13 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
 }
 
 TEST(FwdBwdJoint, SingleNode) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -106,13 +106,13 @@ Node1
  out
 */
 TEST(FwdBwdJoint, LinearNodes) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -160,13 +160,13 @@ TEST(FwdBwdJoint, LinearNodes) {
    out1    out2
 */
 TEST(FwdBwdJoint, BranchedNodes) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -204,13 +204,13 @@ TEST(FwdBwdJoint, BranchedNodes) {
   // Examine Forward Output 2
   {
     auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out2.impl());
-    float* ptr = dense_out->mutable_data<float>(paddle::platform::CPUPlace());
+    float* ptr = dense_out->mutable_data<float>(phi::CPUPlace());
     for (int i = 0; i < 20; i++) {
-      PADDLE_ENFORCE(ptr[i] == 150.0,
-                     paddle::platform::errors::Fatal(
-                         "Detected numerical Error, Expected %f but got %f",
-                         150.0,
-                         ptr[i]));
+      PADDLE_ENFORCE(
+          ptr[i] == 150.0,
+          phi::errors::Fatal("Detected numerical Error, Expected %f but got %f",
+                             150.0,
+                             ptr[i]));
     }
   }
 
@@ -233,13 +233,13 @@ TEST(FwdBwdJoint, BranchedNodes) {
    out1    out2
 */
 TEST(FwdBwdJoint, GradientHook) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -306,13 +306,13 @@ TEST(FwdBwdJoint, GradientHook) {
    out1    out2
 */
 TEST(FwdBwdJoint, CrossBatchAccumulation) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -361,13 +361,13 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(FwdBwdJoint, SingleNodeCUDA) {
-  eager_test::InitEnv(paddle::platform::CUDAPlace());
+  eager_test::InitEnv(phi::GPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CUDAPlace(),
+                                        phi::GPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -402,13 +402,13 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
    out1    out2
 */
 TEST(FwdBwdJoint, BranchedNodesCUDA) {
-  eager_test::InitEnv(paddle::platform::CUDAPlace());
+  eager_test::InitEnv(phi::GPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CUDAPlace(),
+                                        phi::GPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,

@@ -306,16 +306,14 @@ int tensor_properties_set_grad(TensorObject* self,
                                void* closure) {
   EAGER_TRY
   auto& src = CastPyArg2Tensor(value, 0);
-  PADDLE_ENFORCE(
-      egr::EagerUtils::IsLeafTensor(self->tensor),
-      paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+  PADDLE_ENFORCE(egr::EagerUtils::IsLeafTensor(self->tensor),
+                 phi::errors::Fatal("Only leaf Tensor can be set grad."));
 
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(grad != nullptr,
-                 paddle::platform::errors::Fatal(
-                     "Detected NULL grad"
-                     "Please check if you have manually cleared"
-                     "the grad inside autograd_meta"));
+                 phi::errors::Fatal("Detected NULL grad"
+                                    "Please check if you have manually cleared"
+                                    "the grad inside autograd_meta"));
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
     ConvertAllInputsToDistTensor(mesh, src, self->tensor, *grad);
@@ -330,16 +328,14 @@ int tensor_properties_set_grad_(TensorObject* self,
                                 void* closure) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
-  PADDLE_ENFORCE(
-      egr::EagerUtils::IsLeafTensor(self->tensor),
-      paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+  PADDLE_ENFORCE(egr::EagerUtils::IsLeafTensor(self->tensor),
+                 phi::errors::Fatal("Only leaf Tensor can be set grad."));
 
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(grad != nullptr,
-                 paddle::platform::errors::Fatal(
-                     "Detected NULL grad"
-                     "Please check if you have manually cleared"
-                     "the grad inside autograd_meta"));
+                 phi::errors::Fatal("Detected NULL grad"
+                                    "Please check if you have manually cleared"
+                                    "the grad inside autograd_meta"));
   *grad = src;
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
@@ -590,7 +586,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
       value.emplace_back(static_cast<int64_t>(
           var_tensor->Get<paddle::framework::Strings>().size()));
     } else {
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "VariableCompatTensor only support get shape from Vocab or "
           "Strings."));
     }
@@ -863,7 +859,7 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
       } else if (var_tensor->IsType<paddle::framework::Strings>()) {
         return ToPyObject(phi::DataType::PSTRING);
       } else {
-        PADDLE_THROW(paddle::platform::errors::Unavailable(
+        PADDLE_THROW(phi::errors::Unavailable(
             "VariableCompatTensor only support get shape from Vocab or "
             "Strings."));
       }
@@ -883,7 +879,7 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
       } else if (var_tensor->IsType<paddle::framework::Strings>()) {
         return ToPyObject(framework::proto::VarType::STRING);
       } else {
-        PADDLE_THROW(paddle::platform::errors::Unavailable(
+        PADDLE_THROW(phi::errors::Unavailable(
             "VariableCompatTensor only support get shape from Vocab or "
             "Strings."));
       }

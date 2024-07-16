@@ -96,12 +96,9 @@ class Allocator;
  */
 class Allocation : public phi::Allocation {
  public:
-  Allocation(void* ptr, size_t size, platform::Place place)
+  Allocation(void* ptr, size_t size, phi::Place place)
       : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
-  Allocation(void* ptr,
-             void* base_ptr,
-             size_t size,
-             const platform::Place& place)
+  Allocation(void* ptr, void* base_ptr, size_t size, const phi::Place& place)
       : phi::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
   void* base_ptr() const { return base_ptr_; }
@@ -147,7 +144,7 @@ static T&& FillValue(T&& allocation) {
 #if defined(PADDLE_WITH_CUDA)
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      bool need_sync = !platform::is_cpu_place(allocation->place());
+      bool need_sync = !phi::is_cpu_place(allocation->place());
       if (need_sync) {
         PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
@@ -155,7 +152,7 @@ static T&& FillValue(T&& allocation) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
-        if (platform::is_gpu_place(allocation->place())) {
+        if (phi::is_gpu_place(allocation->place())) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
         } else {
@@ -196,14 +193,12 @@ class Allocator : public phi::Allocator {
     FreeImpl(allocation);
   }
 
-  uint64_t Release(const platform::Place& place) { return ReleaseImpl(place); }
+  uint64_t Release(const phi::Place& place) { return ReleaseImpl(place); }
 
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
-  virtual uint64_t ReleaseImpl(const platform::Place& place UNUSED) {
-    return 0;
-  }
+  virtual uint64_t ReleaseImpl(const phi::Place& place UNUSED) { return 0; }
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {

@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/squeeze_grad_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -24,6 +27,11 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               const IntArray& axes UNUSED,
                               DenseTensor* dx) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   const auto& xshape_dims = xshape.dims();
   auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(

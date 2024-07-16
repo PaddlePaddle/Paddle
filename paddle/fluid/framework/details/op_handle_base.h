@@ -89,7 +89,7 @@ class OpHandleBase {
   // This method adds the wait events of all the input on the specified device
   // context.
   // NOTE: This Wait is asynchronous operation.
-  TEST_API virtual void WaitInputVarGenerated(const platform::Place &place);
+  TEST_API virtual void WaitInputVarGenerated(const phi::Place &place);
 
   TEST_API virtual bool NeedWait(VarHandleBase *in_var);
 
@@ -97,15 +97,15 @@ class OpHandleBase {
   // will likely block other computations.
   virtual bool IsMultiDeviceTransfer() { return false; }
 
-  const platform::DeviceContext *DeviceContext(platform::Place place) {
+  const platform::DeviceContext *DeviceContext(phi::Place place) {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
   }
-  const std::map<platform::Place, platform::DeviceContext *> &DeviceContext() {
+  const std::map<phi::Place, platform::DeviceContext *> &DeviceContext() {
     return dev_ctxes_;
   }
 
-  void SetDeviceContext(platform::Place place, platform::DeviceContext *ctx_) {
+  void SetDeviceContext(phi::Place place, platform::DeviceContext *ctx_) {
     dev_ctxes_[place] = ctx_;
   }
 
@@ -141,8 +141,7 @@ class OpHandleBase {
 
   void RunAndRecordEvent(const std::function<void()> &callback);
 
-  void RunAndRecordEvent(platform::Place p,
-                         const std::function<void()> &callback);
+  void RunAndRecordEvent(phi::Place p, const std::function<void()> &callback);
 
   virtual void RunImpl() = 0;
 
@@ -152,7 +151,7 @@ class OpHandleBase {
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
-  std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
+  std::map<phi::Place, platform::DeviceContext *> dev_ctxes_;
 
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;

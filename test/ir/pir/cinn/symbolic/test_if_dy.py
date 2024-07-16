@@ -43,7 +43,7 @@ class IfSubgraph(nn.Layer):
     def forward(self, x):
         if x.shape[-1] > 1:
             x = self.exp_sub(x)
-        x = paddle.nn.functional.relu(x)
+        x = paddle.sin(x)
         return x
 
 

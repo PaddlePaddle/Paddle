@@ -201,14 +201,14 @@ __global__ void PushCopy(FeaturePushValue* dest,
 
 PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
 
-void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
+void PSGPUWrapper::CopyKeys(const phi::Place& place,
                             uint64_t** origin_keys,
                             uint64_t* total_keys,
                             const int64_t* gpu_len,
                             int slot_num,
                             int total_len) {
   XPUStream stream = nullptr;
-  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;

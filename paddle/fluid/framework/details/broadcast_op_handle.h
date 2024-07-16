@@ -58,7 +58,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
+                    const std::vector<phi::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
@@ -66,7 +66,7 @@ struct BroadcastOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+        this->SetDeviceContext(phi::GPUPlace(p_ctx.first),
                                p_ctx.second.ctx_.get());
       }
     }
@@ -75,7 +75,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_XPU_BKCL)
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
+                    const std::vector<phi::Place> &places,
                     const platform::BKCLContextMap *bkcl_ctxs)
       : OpHandleBase(node),
         local_scopes_(local_scopes),
@@ -83,7 +83,7 @@ struct BroadcastOpHandle : public OpHandleBase {
         bkcl_ctxs_(bkcl_ctxs) {
     if (bkcl_ctxs_) {
       for (auto &p_ctx : bkcl_ctxs_->contexts_) {
-        this->SetDeviceContext(platform::XPUPlace(p_ctx.first),
+        this->SetDeviceContext(phi::XPUPlace(p_ctx.first),
                                p_ctx.second.ctx_.get());
       }
     }
@@ -91,7 +91,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 #endif
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places)
+                    const std::vector<phi::Place> &places)
       : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 
   TEST_API std::string Name() const override;
@@ -108,7 +108,7 @@ struct BroadcastOpHandle : public OpHandleBase {
                        const std::vector<Scope *> &var_scopes);
 
   std::vector<Scope *> local_scopes_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
 #elif defined(PADDLE_WITH_XPU_BKCL)
