@@ -111,8 +111,7 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 }
 
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
-    const std::shared_ptr<imperative::VarBase>& var,
-    const platform::Place& place) {
+    const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place) {
   // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
   // need to add callback, see tensor_utils.cc:245
   auto place_ = phi::is_gpu_place(place) ? place : var->Place();
@@ -131,7 +130,7 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
 }
 
 paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
-    const platform::Place& place) {
+    const phi::Place& place) {
   // if not exists, create a new GarbageCollector at given place
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
@@ -211,7 +210,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameVarMap<VarType>& ins,
                      const NameVarMap<VarType>& outs,
                      framework::AttributeMap attrs,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
@@ -232,7 +231,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          const NameVarMap<VarType>& ins,
                          const NameVarMap<VarType>& outs,
                          framework::AttributeMap& attrs,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          bool trace_backward,
                          const std::map<std::string, std::string>& inplace_map,
                          paddle::framework::AttributeMap* passed_default_attrs_,
@@ -334,9 +333,9 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
 
     if (!use_default_attr_map) {
-      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
-                              paddle::platform::errors::PermissionDenied(
-                                  "Detected default_attrs = nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          passed_default_attrs_,
+          phi::errors::PermissionDenied("Detected default_attrs = nullptr."));
       VLOG(6) << "Use passed in default attrs";
       OpBase::Run(*op, new_ins, outs, attrs, (*passed_default_attrs_), place);
     } else {
@@ -373,7 +372,7 @@ void Tracer::TraceOpImpl(const std::string& type,
       PADDLE_ENFORCE_EQ(
           passed_default_attrs_,
           nullptr,
-          paddle::platform::errors::PermissionDenied(
+          phi::errors::PermissionDenied(
               "We expect passed_default_attrs_ is nullptr while "
               "use_default_attr_map is true, however we got not null "
               "passed_default_attrs_. Please check your usage of trace_op. "));
@@ -391,7 +390,7 @@ template TEST_API void Tracer::TraceOp<VarBase>(
     const NameVarMap<VarBase>& ins,
     const NameVarMap<VarBase>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map,
     paddle::framework::AttributeMap* default_attrs,
@@ -402,7 +401,7 @@ template void Tracer::TraceOp<egr::EagerVariable>(
     const NameVarMap<egr::EagerVariable>& ins,
     const NameVarMap<egr::EagerVariable>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map_,
     paddle::framework::AttributeMap* default_attrs,

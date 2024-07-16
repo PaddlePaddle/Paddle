@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 import typing
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Sequence, TypeVar
 
 import paddle
 from paddle.base import framework
@@ -37,8 +40,16 @@ from .utils import (
     prepare_python_api_arguments,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.framework import Block
 
-def topo_path(xs, ys, block=None):
+    _TensorOrTensorsT = TypeVar("_TensorOrTensorsT", Tensor, Sequence[Tensor])
+
+
+def topo_path(
+    xs: Sequence[Tensor], ys: Sequence[Tensor], block: Block | None = None
+) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
     """Returns the list of ops on the path from `xs` to `ys` in topological
     order.
 
@@ -100,7 +111,9 @@ def topo_path(xs, ys, block=None):
     return list(reversed(backpath)), unused_xs, unreached_ys
 
 
-def output_vars_on_path(path):
+def output_vars_on_path(
+    path: Sequence[Operator],
+) -> OrderedDict[int, list[Tensor]]:
     """Returns the output variables of all the ops on the path from `xs`
     to `ys`.
 
@@ -126,15 +139,19 @@ class VarMap:
 
     __slots__ = ['name', 'varset', 'tab']
 
-    def __init__(self, name, varset):
+    name: str
+    varset: OrderedDict[int, Tensor]
+    tab: OrderedDict[int, int]
+
+    def __init__(self, name: str, varset: OrderedDict[int, Tensor]) -> None:
         self.name = name
         self.varset = varset
         self.tab = OrderedDict()
 
-    def add(self, key_var, value_var):
+    def add(self, key_var: Tensor, value_var: Tensor) -> None:
         self.tab[id(key_var)] = id(value_var)
 
-    def add_rec(self, key_vars, value_vars):
+    def add_rec(self, key_vars: Tensor, value_vars: Tensor | None) -> None:
         if value_vars is None:
             return
         if isinstance(
@@ -155,34 +172,34 @@ class VarMap:
             for key_var, value_var in zip(key_vars, value_vars):
                 self.add_rec(key_var, value_var)
 
-    def lookup(self, key_var):
+    def lookup(self, key_var: Tensor) -> Tensor | None:
         value_id = self.tab.get(id(key_var))
         if value_id is not None:
             return self.varset.get(value_id)
         else:
             return None
 
-    def delete(self, key_var):
+    def delete(self, key_var: Tensor) -> None:
         varid = id(key_var)
         if varid in self.tab:
             del self.tab[id(key_var)]
 
-    def delete_keyvars(self, key_vars):
+    def delete_keyvars(self, key_vars: Sequence[Tensor]) -> None:
         for var in key_vars:
             varid = id(var)
             if varid in self.tab:
                 del self.tab[varid]
 
-    def delete_valuevars(self, value_vars):
+    def delete_valuevars(self, value_vars: Sequence[Tensor]) -> None:
         ids = [id(v) for v in value_vars]
         keys = [k for k, v in self.tab.items() if v in ids]
         for k in keys:
             del self.tab[k]
 
-    def contain_var(self, key_var):
+    def contain_var(self, key_var: Tensor) -> bool:
         return self.tab.__contains__(id(key_var))
 
-    def contain_value(self, value_var):
+    def contain_value(self, value_var: Tensor) -> bool:
         return id(value_var) in self.tab.values()
 
 
@@ -191,7 +208,12 @@ class Transform:
     """An object that maintains the state of transformations applied to a
     primitive program."""
 
-    def __init__(self, block):
+    block: Block
+    vars: OrderedDict[int, Tensor]
+    var2dot: VarMap
+    dot2bar: VarMap
+
+    def __init__(self, block: Block) -> None:
         assert (
             block == default_main_program().current_block()
         ), 'only support transform on current block of main program.'
@@ -200,16 +222,16 @@ class Transform:
         self.var2dot = VarMap('var2dot', self.vars)
         self.dot2bar = VarMap('dot2var', self.vars)
 
-    def init_vars(self, block):
+    def init_vars(self, block: Block) -> OrderedDict[int, Tensor]:
         vars = OrderedDict()
         for _, var in block.vars.items():
             vars[id(var)] = var
         return vars
 
-    def add_vars(self, new_vars):
+    def add_vars(self, new_vars: Sequence[Tensor | None]) -> None:
         self.vars.update({id(v): v for v in new_vars if v is not None})
 
-    def add_vars_rec(self, new_vars):
+    def add_vars_rec(self, new_vars: Tensor | list[Tensor] | None) -> None:
         if new_vars is None:
             return
         if isinstance(
@@ -222,7 +244,7 @@ class Transform:
         for var in new_vars:
             self.add_vars_rec(var)
 
-    def erase_ops(self, ordered_indexes):
+    def erase_ops(self, ordered_indexes: Sequence[int]) -> None:
         block = self.block
         for op_index in reversed(ordered_indexes):
             block.desc._remove_op(op_index, op_index + 1)
@@ -233,7 +255,7 @@ class Transform:
 
         block._sync_with_cpp()
 
-    def erase_dots(self, vars_to_erase):
+    def erase_dots(self, vars_to_erase: Sequence[Tensor]) -> None:
         for var in vars_to_erase:
             if id(var) in self.vars:
                 del self.vars[id(var)]
@@ -246,7 +268,7 @@ class Transform:
             del block.vars[name]
         block._sync_with_cpp()
 
-    def var2dot_rec(self, vars):
+    def var2dot_rec(self, vars: _TensorOrTensorsT) -> _TensorOrTensorsT:
         """Lookup var2dot recursively."""
         if isinstance(vars, (paddle.base.framework.Variable, paddle.pir.Value)):
             dot = self.var2dot.lookup(vars)
@@ -255,7 +277,7 @@ class Transform:
         dots = [self.var2dot_rec(var) for var in vars]
         return dots
 
-    def dot2bar_rec(self, dots):
+    def dot2bar_rec(self, dots: _TensorOrTensorsT) -> _TensorOrTensorsT:
         if isinstance(dots, (paddle.base.framework.Variable, paddle.pir.Value)):
             bar = self.dot2bar.lookup(dots)
             assert bar is not None, 'bar must be not None'
@@ -593,7 +615,7 @@ def _lower_composite(
 
 
 @framework.static_only
-def orig2prim(block=None):
+def orig2prim(block: Block | None = None) -> None:
     """
     Note:
         **This API is ONLY available in the static graph mode.**
@@ -618,7 +640,9 @@ def orig2prim(block=None):
 
 
 @framework.static_only
-def prim2orig(block=None, blacklist=None):
+def prim2orig(
+    block: Block | None = None, blacklist: list[str] | None = None
+) -> None:
     """
     Note:
         **ONLY available in the static graph mode.**

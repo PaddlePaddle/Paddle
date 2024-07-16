@@ -205,11 +205,10 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
-  list(REMOVE_ITEM TEST_OPS test_detection_map_op)
   list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
 if(NOT WITH_MKLML)
@@ -645,7 +644,6 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
@@ -771,8 +769,10 @@ set_tests_properties(test_layer_norm_op_deprecated_static_build
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
-set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
+set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
+                                                                      100)
+set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)

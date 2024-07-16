@@ -173,10 +173,10 @@ std::vector<uint64_t> TreeIndex::GetChildrenCodes(uint64_t ancestor,
 
 std::vector<uint64_t> TreeIndex::GetTravelCodes(uint64_t id, int start_level) {
   std::vector<uint64_t> res;
-  PADDLE_ENFORCE_NE(id_codes_map_.find(id),
-                    id_codes_map_.end(),
-                    paddle::platform::errors::InvalidArgument(
-                        "id = %d doesn't exist in Tree.", id));
+  PADDLE_ENFORCE_NE(
+      id_codes_map_.find(id),
+      id_codes_map_.end(),
+      phi::errors::InvalidArgument("id = %d doesn't exist in Tree.", id));
   auto code = id_codes_map_.at(id);
   int level = meta_.height() - 1;
 

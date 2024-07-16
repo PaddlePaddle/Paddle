@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -125,12 +125,30 @@ class ConvOneDNNHandlerT
                 DataLayout::ONEDNN,
                 bias->layout()));
 
-        PADDLE_ENFORCE_EQ(
-            bias->dims().size(),
-            1,
-            phi::errors::InvalidArgument("Bias must only have 1 dimension, "
-                                         "i.e. X, but got dimension = %d .",
-                                         bias->dims().size()));
+        auto bias_shape = common::vectorize(bias->dims());
+        auto output_shape = common::vectorize(output->dims());
+        // layout of bias is always NCHW/NCDHW, so channel is always at 1st dim
+        if (bias_shape.size() != 1) {
+          PADDLE_ENFORCE_EQ(
+              bias_shape[1],
+              output_shape[1],
+              phi::errors::InvalidArgument(
+                  "Bias must only have 1 dimension or only bias_dims[1] == "
+                  "output_dims[1] i.e. [X] or [1, X, 1, 1], but got dimension "
+                  "== %d and failed",
+                  bias->dims().size()));
+          for (size_t i = 0; i < bias_shape.size(); i++) {
+            if (i == 1) continue;
+            PADDLE_ENFORCE_EQ(
+                bias_shape[i],
+                1,
+                phi::errors::InvalidArgument(
+                    "Bias with multiply dimensions must only have 1 dimension "
+                    "> 1, i.e. [1, X, 1, 1], but got %d-th dimension == %d .",
+                    i,
+                    bias_shape[i]));
+          }
+        }
       }
       const auto input_dims = input->dims();
       const auto data_dims =
@@ -195,6 +213,7 @@ class ConvOneDNNHandlerT
 
       if (bias) {
         auto bias_tz = common::vectorize(bias->dims());
+        if (bias_tz.size() > 1) bias_tz = {bias_tz[1]};
         dnnl::memory::desc bias_md =
             funcs::OneDNNMemDesc(bias_tz,
                                  dnnl::memory::data_type::f32,
@@ -594,8 +613,16 @@ class ConvOneDNNHandlerT
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
 
+      dnnl::memory::desc bias_md = bias->mem_desc();
+      auto bias_tz = common::vectorize(bias->dims());
+      if (bias_tz.size() > 1) {
+        bias_tz = {bias_tz[1]};
+        bias_md = funcs::OneDNNMemDesc(bias_tz,
+                                       dnnl::memory::data_type::f32,
+                                       funcs::OneDNNMemoryFormat::x);
+      }
       return this->AcquireMemoryWithReorder(
-          bias->mem_desc(),
+          bias_md,
           this->fwd_pd_->bias_desc(),
           funcs::to_void_cast<K_Bias>(bias_data),
           "@bias_mem_p",
