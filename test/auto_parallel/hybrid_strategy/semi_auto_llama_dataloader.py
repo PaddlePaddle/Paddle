@@ -52,6 +52,7 @@ class Config:
 
 inputs = []
 labels = []
+np.random.seed(0)
 
 for i in range(100):
     inputs.append(
