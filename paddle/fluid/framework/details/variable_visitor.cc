@@ -21,15 +21,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 template <typename Func>
 static void VisitVariable(Variable* var, Func* func) {
   if (var->IsType<phi::DenseTensor>()) {
@@ -181,6 +177,4 @@ void VariableVisitor::EnforceShapeAndDTypeEQ(const Variable& var1,
   VisitVariable(var2, &visitor);
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

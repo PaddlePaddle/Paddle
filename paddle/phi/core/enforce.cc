@@ -31,8 +31,7 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 COMMON_DECLARE_int32(call_stack_level);
-namespace phi {
-namespace enforce {
+namespace phi::enforce {
 
 void ThrowWarnInternal(const std::string& msg) {
   LOG(WARNING) << "WARNING :" << msg;
@@ -42,7 +41,8 @@ void ThrowWarnInternal(const std::string& msg) {
 /**************************** NVIDIA ERROR ********************************/
 #ifdef PADDLE_WITH_CUDA
 
-namespace details {
+}  // namespace phi::enforce
+namespace phi::enforce::details {
 
 template <typename T>
 struct ExternalApiProtoType {};
@@ -71,7 +71,8 @@ DEFINE_EXTERNAL_API_PROTO_TYPE(ncclResult_t, NCCL);
 
 #undef DEFINE_EXTERNAL_API_PROTO_TYPE
 
-}  // namespace details
+}  // namespace phi::enforce::details
+namespace phi::enforce {
 
 template <typename T>
 inline const char* GetErrorMsgUrl(T status) {
@@ -224,5 +225,4 @@ template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 
 #endif  // PADDLE_WITH_CUDA
 
-}  // namespace enforce
-}  // namespace phi
+}  // namespace phi::enforce

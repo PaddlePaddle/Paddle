@@ -20,8 +20,7 @@ PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num,
                              12,
                              "number of threads for rpc send");
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 static void split(const std::string &str,
                   char sep,
@@ -209,8 +208,7 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

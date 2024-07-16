@@ -31,8 +31,7 @@ limitations under the License. */
  * directly in the header file
  */
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 // matmul rule
 PD_REGISTER_SPMD_RULE(matmul,
@@ -676,5 +675,4 @@ PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

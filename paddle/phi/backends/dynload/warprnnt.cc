@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/warprnnt.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 std::once_flag warprnnt_dso_flag;
 void* warprnnt_dso_handle = nullptr;
@@ -24,5 +23,4 @@ void* warprnnt_dso_handle = nullptr;
 
 WARPRNNT_ROUTINE_EACH(DEFINE_WRAP);
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

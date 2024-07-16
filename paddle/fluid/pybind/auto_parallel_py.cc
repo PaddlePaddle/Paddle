@@ -58,8 +58,7 @@
 
 namespace py = pybind11;  // NOLINT
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 static bool PyCheckInteger(PyObject *obj) {
 #if PY_VERSION_HEX < 0x03000000
@@ -900,5 +899,4 @@ infer_backward(const phi::distributed::SpmdRule &self, const py::args &args) {
   return self.InferBackward(ctx);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

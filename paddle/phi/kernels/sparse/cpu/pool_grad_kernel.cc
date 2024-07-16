@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename IntT = int>
 void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
@@ -86,8 +85,7 @@ void MaxPoolCooGradKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(maxpool_coo_grad,
                    CPU,

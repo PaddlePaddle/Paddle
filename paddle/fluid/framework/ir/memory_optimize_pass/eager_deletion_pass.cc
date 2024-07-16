@@ -26,9 +26,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 // op -> variables which can be deleted after op runs
 using OpToVarNameSetMap = std::unordered_map<details::ComputationOpHandle *,
@@ -302,9 +300,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   while_op_eager_deletion_pass->Apply(graph);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)

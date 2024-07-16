@@ -26,8 +26,7 @@
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
@@ -117,5 +116,4 @@ PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   VLOG(3) << "Create PSClient[" << service_param.client_class() << "] success";
   return client;
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

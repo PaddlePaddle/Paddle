@@ -40,8 +40,7 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
@@ -815,5 +814,4 @@ void BindEagerPyLayer(PyObject* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

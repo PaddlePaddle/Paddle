@@ -20,9 +20,7 @@
 #include "paddle/phi/kernels/funcs/jit/macro.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void EmbSeqPoolJitCode::genCode() {
   preCode();
@@ -164,9 +162,7 @@ class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
   }
 };
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

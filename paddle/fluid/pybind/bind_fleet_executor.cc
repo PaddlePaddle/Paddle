@@ -33,8 +33,7 @@
 
 namespace py = pybind11;
 
-namespace pybind11 {
-namespace detail {
+namespace pybind11::detail {
 
 // Note: use same enum number of float16 in numpy.
 // import numpy as np
@@ -59,11 +58,9 @@ struct npy_format_descriptor<paddle::platform::float16> {
   static constexpr auto name = _("float16");
 };
 
-}  // namespace detail
-}  // namespace pybind11
+}  // namespace pybind11::detail
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 using paddle::distributed::DependType;
 using paddle::distributed::DistModel;
@@ -300,5 +297,4 @@ void BindFleetExecutor(py::module* m) {
       .value("INT32", DistModelDataType::INT32)
       .value("FLOAT16", DistModelDataType::FLOAT16);
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

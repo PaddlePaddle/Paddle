@@ -15,8 +15,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
@@ -28,8 +27,7 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
       dev_ctx, out, out_grad, 3, x_grad);  // axis for softmax
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_softmax_mask_grad,
                    CPU,

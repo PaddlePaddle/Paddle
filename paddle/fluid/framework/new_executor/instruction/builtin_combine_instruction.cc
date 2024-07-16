@@ -15,8 +15,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 BuiltinCombineInstruction::BuiltinCombineInstruction(
     size_t id,
@@ -33,5 +32,4 @@ BuiltinCombineInstruction::BuiltinCombineInstruction(
 
 void BuiltinCombineInstruction::Run() {}
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

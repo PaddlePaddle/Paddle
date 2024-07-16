@@ -33,9 +33,7 @@
   GET_IR_NODE(reshape2_50_op);    \
   GET_IR_NODE(reshape2_50_out);
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
 ReverseRollFusePass::ReverseRollFusePass() {  // NOLINT
   AddOpCompat(OpCompat("reshape2"))
@@ -189,9 +187,7 @@ void ReverseRollFusePass::ApplyImpl(ir::Graph* graph) const {
   fuse_count += ApplyPattern(graph, false);
   AddStatis(fuse_count);
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(reverse_roll_fuse_pass,
               paddle::framework::ir::ReverseRollFusePass);

@@ -27,8 +27,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject *g_jit_function_pytype = nullptr;
 using Variable = paddle::framework::Variable;
@@ -107,5 +106,4 @@ void BindEvalFrame(pybind11::module *m) {
       py::arg("py_codes"));
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind
