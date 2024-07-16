@@ -470,15 +470,27 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    set_property(
-      TEST ${TARGET_NAME}
-      PROPERTY
-        ENVIRONMENT
-        FLAGS_cpu_deterministic=true
-        FLAGS_init_allocated_mem=true
-        FLAGS_cudnn_deterministic=true
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-    )
+    if(WITH_ROCM)
+      set_property(
+        TEST ${TARGET_NAME}
+        PROPERTY
+          ENVIRONMENT
+          FLAGS_cpu_deterministic=true
+          FLAGS_init_allocated_mem=true
+          FLAGS_cudnn_deterministic=true
+          LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+      )
+    else()
+      set_property(
+        TEST ${TARGET_NAME}
+        PROPERTY
+          ENVIRONMENT
+          FLAGS_cpu_deterministic=true
+          FLAGS_init_allocated_mem=true
+          FLAGS_cudnn_deterministic=true
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+      )
+    endif()
     # No unit test should exceed 2 minutes.
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
