@@ -1285,6 +1285,14 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          "enable nccl debug mode to synchronize nccl comm");
 #endif
 
+PHI_DEFINE_EXPORTED_bool(
+    benchmark,
+    false,
+    "Doing memory benchmark. It will make deleting scope synchronized, "
+    "and add some memory usage logs."
+    "Default cuda is asynchronous device, set to True will"
+    "force op run in synchronous mode.");
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
@@ -1494,6 +1502,11 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
 PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
                            "",
                            "the logging directory to save pir py code");
+
+PHI_DEFINE_EXPORTED_int64(
+    logging_pir_py_code_int_tensor_element_limit,
+    2048,
+    "dump int tensor data if its element count less than this limit.");
 
 PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
                          true,

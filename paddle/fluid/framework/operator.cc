@@ -61,7 +61,7 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(enable_unused_var_check);
 COMMON_DECLARE_bool(run_kp_kernel);
