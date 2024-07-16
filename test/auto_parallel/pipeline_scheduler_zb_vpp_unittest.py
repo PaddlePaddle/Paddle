@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+from get_gpt_model import FakeDataset, generate_model
 
 import paddle
-import paddle.nn.functional as F
-from paddle import nn
 from paddle.distributed import ParallelEnv
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
@@ -28,85 +28,29 @@ from paddle.distributed.auto_parallel.static.utils import (
 )
 from paddle.distributed.fleet import auto
 
+sys.path.append("../legacy_test")
+
 paddle.enable_static()
 
-PP_MESH_0 = auto.ProcessMesh([0])
-PP_MESH_1 = auto.ProcessMesh([1])
 
-
-class MyLinear(nn.Layer):
-    def __init__(
-        self,
-        hidden_size=784,
-        intermediate_size=4 * 784,
-        dropout_ratio=0.1,
-        weight_attr=None,
-    ):
-        super().__init__()
-
-        self.linear0 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear1 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-        self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
-
-    def forward(self, input):
-        out = self.linear0(input)
-        out = F.gelu(out, approximate=True)
-        out = self.linear1(out)
-        out = self.dropout(out)
-
-        return out
-
-
-class MLPLayer(nn.Layer):
-    def __init__(
-        self,
-        hidden_size=784,
-        dropout_ratio=0.1,
-        initializer_range=0.02,
-    ):
-        super().__init__()
-
-        weight_attr = paddle.ParamAttr(
-            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
-        )
-
-        self.layers = nn.LayerList(
-            [
-                MyLinear(hidden_size, hidden_size, dropout_ratio, weight_attr)
-                for _ in range(4)
-            ]
-        )
-
-        self.layer_to_mesh = [PP_MESH_0, PP_MESH_0, PP_MESH_1, PP_MESH_1]
-
-    def forward(self, x):
-        for i, layer in enumerate(self.layers):
-            auto.shard_tensor(x, self.layer_to_mesh[i], [None, None])
-            x = layer(x)
-        return x
-
-
-def loss_fn(pred, label):
-    loss = F.l1_loss(pred, label)
-    return loss
-
-
-def apply_pass(schedule_mode, acc_step, enable_send_recv_overlap=False):
+def apply_pass(use_zbvpp=False, enable_send_recv_overlap=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
 
-    pipeline = strategy.pipeline
-    pipeline.enable = True
-    pipeline.schedule_mode = schedule_mode
-    pipeline.accumulate_steps = acc_step
-    pipeline.vpp_degree = 2
-    pipeline.vpp_seg_method = "MyLinear"
-    pipeline.enable_send_recv_overlap = enable_send_recv_overlap
+    if use_zbvpp:
+        pipeline = strategy.pipeline
+        pipeline.enable = True
+        pipeline.schedule_mode = "ZBVPP"
+        pipeline.accumulate_steps = 2
+        pipeline.vpp_degree = 2
+        pipeline.vpp_seg_method = "TransformerDecoderLayer"
+        pipeline.enable_send_recv_overlap = enable_send_recv_overlap
+    else:
+        gradient_merge = strategy.gradient_merge
+        gradient_merge.enable = True
+        gradient_merge.k_steps = 2
+        gradient_merge.avg = True
 
     return strategy
 
@@ -114,112 +58,91 @@ def apply_pass(schedule_mode, acc_step, enable_send_recv_overlap=False):
 def reset_prog():
     paddle.base.framework.switch_main_program(paddle.static.Program())
     paddle.base.framework.switch_startup_program(paddle.static.Program())
-    paddle.utils.unique_name.switch()
-
-
-class MyDataset(paddle.io.Dataset):
-    def __init__(self, num_samples):
-        super().__init__()
-        self.num_samples = num_samples
-
-    def __getitem__(self, index):
-        input = np.random.uniform(size=784).astype("float32")
-        label = np.random.uniform(size=1).astype("float32")
-        return input, label
-
-    def __len__(self):
-        return self.num_samples
 
 
 class TestZBVPPPass(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 4
+        self.rtol = 1e-5
+        self.atol = 1e-8
+        self.batch_size = 2
         self.batch_num = 10
         self.clip_norm = 0.2
-        self.dataset = MyDataset(self.batch_size * self.batch_num)
+        self.dataset = FakeDataset(self.batch_size * self.batch_num)
 
     def init(self, engine):
-        paddle.seed(2024)
-        np.random.seed(2024)
-        random.seed(2024)
+        paddle.seed(2021)
+        np.random.seed(2021)
+        random.seed(2021)
         paddle.distributed.fleet.init(is_collective=True)
         place = paddle.base.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(
-        self,
-        schedule_mode,
-        acc_step,
-        enable_send_recv_overlap=False,
-    ):
+    def get_engine(self, use_zbvpp=False, enable_send_recv_overlap=False):
         reset_prog()
 
-        strategy = apply_pass(schedule_mode, acc_step, enable_send_recv_overlap)
+        strategy = apply_pass(use_zbvpp, enable_send_recv_overlap)
+
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model = MLPLayer()
+        model, loss = generate_model("pp", num_hidden_layers=4)
 
-        engine = auto.Engine(model, loss_fn, opt, strategy=strategy)
+        engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
         return engine
 
     def test_pp_pass(self):
-        # pp2-zbvpp
-        engine = self.get_engine(schedule_mode="ZBVPP", acc_step=2)
-        out = engine.fit(self.dataset, batch_size=self.batch_size, log_freq=1)
-        assert engine._strategy.pipeline.schedule_mode == "ZBVPP"
+        # pp2 zbvpp training
+        engine_zbvpp = self.get_engine(True)
+        history_zbvpp = engine_zbvpp.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine_zbvpp._strategy.pipeline.enable is True
 
         fw_chunk_ids = []
         bw_chunk_ids = []
-        for op in engine.main_program.global_block().ops:
+        for op in engine_zbvpp.main_program.global_block().ops:
             if is_optimize_op(op):
                 break
 
-            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            dist_op = engine_zbvpp.dist_context.get_dist_op_for_program(op)
             if is_forward_op(op):
                 fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
             if is_backward_op(op):
                 bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
 
         if paddle.distributed.get_rank() == 0:
-            self.assertEqual(sum(fw_chunk_ids), 13)
-            self.assertEqual(sum(bw_chunk_ids), 19)
+            self.assertEqual(sum(fw_chunk_ids), 43)
+            self.assertEqual(sum(bw_chunk_ids), 60)
         else:
-            print(sum(fw_chunk_ids))
-            print(sum(bw_chunk_ids))
-            self.assertEqual(sum(fw_chunk_ids), 7)
-            self.assertEqual(sum(bw_chunk_ids), 12)
+            self.assertEqual(sum(fw_chunk_ids), 32)
+            self.assertEqual(sum(bw_chunk_ids), 50)
 
-        # pp2-zbvpp-overlap
-        engine = self.get_engine(
-            schedule_mode="ZBVPP",
-            acc_step=2,
-            enable_send_recv_overlap=True,
+    def test_pp_pass_enable_send_recv_overlap(self):
+        # pp2 zbvpp training
+        engine_zbvpp = self.get_engine(True, enable_send_recv_overlap=True)
+        history_zbvpp = engine_zbvpp.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-        out_overlap = engine.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine._strategy.pipeline.schedule_mode == "ZBVPP"
-        assert engine._strategy.pipeline.enable_send_recv_overlap is True
+        assert engine_zbvpp._strategy.pipeline.enable is True
 
         fw_chunk_ids = []
         bw_chunk_ids = []
-        for op in engine.main_program.global_block().ops:
+        for op in engine_zbvpp.main_program.global_block().ops:
             if is_optimize_op(op):
                 break
 
-            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            dist_op = engine_zbvpp.dist_context.get_dist_op_for_program(op)
             if is_forward_op(op):
                 fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
             if is_backward_op(op):
                 bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
 
         if paddle.distributed.get_rank() == 0:
-            self.assertEqual(sum(fw_chunk_ids), 13)
-            self.assertEqual(sum(bw_chunk_ids), 19)
+            self.assertEqual(sum(fw_chunk_ids), 43)
+            self.assertEqual(sum(bw_chunk_ids), 60)
         else:
-            self.assertEqual(sum(fw_chunk_ids), 7)
-            self.assertEqual(sum(bw_chunk_ids), 12)
+            self.assertEqual(sum(fw_chunk_ids), 32)
+            self.assertEqual(sum(bw_chunk_ids), 50)
 
 
 if __name__ == "__main__":
