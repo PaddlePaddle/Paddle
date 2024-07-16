@@ -19,6 +19,7 @@ from amp_base_models import AmpTestBase
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -182,6 +183,7 @@ class TestMasterWeight(AmpTestBase):
         paddle.disable_static()
         return losses
 
+    @test_with_pir_api
     def test_master_weight(self):
         np.random.seed(1)
         paddle.seed(1)
@@ -194,14 +196,18 @@ class TestMasterWeight(AmpTestBase):
         loss_dygraph = self.run_dygraph(
             dtype, level, use_promote, total_steps, x_data
         )
-        loss_static = self.run_static(
-            dtype, level, use_promote, total_steps, x_data
-        )
-        loss_pir = self.run_pir(dtype, level, use_promote, total_steps, x_data)
-
-        for i in range(total_steps):
-            self.assertEqual(loss_dygraph[i], loss_static[i])
-            self.assertEqual(loss_dygraph[i], loss_pir[i])
+        if paddle.framework.use_pir_api():
+            loss_pir = self.run_pir(
+                dtype, level, use_promote, total_steps, x_data
+            )
+            for i in range(total_steps):
+                self.assertEqual(loss_dygraph[i], loss_pir[i])
+        else:
+            loss_static = self.run_static(
+                dtype, level, use_promote, total_steps, x_data
+            )
+            for i in range(total_steps):
+                self.assertEqual(loss_dygraph[i], loss_static[i])
 
 
 if __name__ == '__main__':
