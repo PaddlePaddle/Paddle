@@ -64,8 +64,8 @@ class TestSimpleNetForSemiAutoParallel:
         self._amp = eval(os.getenv("amp"))
         self._master_weight = eval(os.getenv("use_master_weight"))
         self._master_grad = eval(os.getenv("use_master_grad"))
-        self._amp_dtype = eval(os.getenv("amp_dtype"))
-        self._amp_level = eval(os.getenv("amp_level"))
+        self._amp_dtype = os.getenv("amp_dtype")
+        self._amp_level = os.getenv("amp_level")
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
@@ -142,11 +142,12 @@ class TestSimpleNetForSemiAutoParallel:
             layer, opt = paddle.amp.decorate(
                 models=layer,
                 optimizers=opt,
-                level='O2',
-                master_weight=False,
-                master_grad=False,
+                level=self._amp_level,
+                master_weight=self._master_weight,
+                master_grad=self._master_grad,
             )
         loss_list = []
+        scaler = paddle.amp.GradScaler()
         for epoch in range(5):
             for batch_id, data in enumerate(dist_loader()):
                 if isinstance(data, dict):
@@ -158,13 +159,17 @@ class TestSimpleNetForSemiAutoParallel:
                     image.stop_gradient = False
 
                 with paddle.amp.auto_cast(
-                    level='O2', dtype='float16', enable=self._amp
+                    level=self._amp_level,
+                    dtype=self._amp_dtype,
+                    enable=self._amp,
                 ):
                     out = layer(image)
                     loss = loss_fn(out, label)
+                scaled = scaler.scale(loss)
                 loss_list.append(loss.numpy())
-                loss.backward()
-                opt.step()
+                scaled.backward()
+                scaler.step(opt)
+                scaler.update()
                 opt.clear_grad()
         return np.array(loss_list)
 

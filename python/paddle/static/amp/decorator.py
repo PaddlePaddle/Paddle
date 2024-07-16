@@ -631,6 +631,7 @@ class OptimizerWithMixedPrecision:
                     name="find_infinite_scale",
                     float_status=self._float_status,
                 )
+                found_infs.append(found_inf)
 
         if len(found_infs) > 1:
             with self._train_program._optimized_guard([]):

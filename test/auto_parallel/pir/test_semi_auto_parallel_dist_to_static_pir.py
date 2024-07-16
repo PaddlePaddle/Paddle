@@ -31,11 +31,11 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
             {"dtype": "float32", "seed": "2023"},
             {
                 "backend": ["gpu"],
-                "amp": [True, False],
+                "amp": ['1', '0'],
                 "amp_dtype": ['float16', 'bfloat16'],
                 'amp_level': ['O1', 'O2'],
-                'use_master_weight': [True, False],
-                'use_master_grad': [True, False],
+                'use_master_weight': ['1', '0'],
+                'use_master_grad': ['1', '0'],
             },
         )
         for envs in envs_list:

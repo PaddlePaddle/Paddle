@@ -24,6 +24,7 @@ import numpy as np
 import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
+from paddle.amp.auto_cast import amp_global_state
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
 from paddle.framework import (
@@ -660,6 +661,7 @@ class Engine:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
                 if self._strategy.amp.enable:
+                    amp_global_state().amp_dtype = self._strategy.amp.dtype
                     with static.program_guard(dist_program, startup_program):
                         amp_lists = paddle.static.amp.decorator.AutoMixedPrecisionLists(
                             custom_white_list=self._strategy.amp.custom_white_list,
@@ -692,9 +694,11 @@ class Engine:
                             enable=self._strategy.amp.enable
                             and self._strategy.amp.dtype != 'bfloat16',
                         )
-
                         scaled = scaler.scale(loss)
                         scaler.minimize(self._optimizer, scaled)
+                        # print('after minimize', dist_program, flush=1)
+                        # re-run apply_mix2dist_pass to dist accumulator.
+                        apply_mix2dist_pass(dist_program)
                 else:
                     params_grads = paddle.autograd.ir_backward.append_backward(
                         loss
@@ -708,9 +712,6 @@ class Engine:
                 self._logger.info(
                     "loss value is not found, skip append backward."
                 )
-
-        # re-run apply_mix2dist_pass to dist accumulator.
-        apply_mix2dist_pass(dist_program)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,

@@ -19,7 +19,7 @@ from enum import Enum
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import check_type
 from paddle.base.framework import _dygraph_tracer, in_pir_mode
@@ -385,7 +385,7 @@ class AmpScaler:
                 ]
         self._found_inf = self._temp_found_inf_value_false
         if len(param_grads_fp16):
-            _legacy_C_ops.check_finite_and_unscale(
+            _C_ops.check_finite_and_unscale_(
                 param_grads_fp16,
                 self._scale,
                 param_grads_fp16,
@@ -395,7 +395,7 @@ class AmpScaler:
                 self._found_inf, self._temp_found_inf_fp16
             )
         if len(param_grads_bf16):
-            _legacy_C_ops.check_finite_and_unscale(
+            _C_ops.check_finite_and_unscale_(
                 param_grads_bf16,
                 self._scale,
                 param_grads_bf16,
@@ -405,7 +405,7 @@ class AmpScaler:
                 self._found_inf, self._temp_found_inf_bf16
             )
         if len(param_grads_fp32):
-            _legacy_C_ops.check_finite_and_unscale(
+            _C_ops.check_finite_and_unscale_(
                 param_grads_fp32,
                 self._scale,
                 param_grads_fp32,
