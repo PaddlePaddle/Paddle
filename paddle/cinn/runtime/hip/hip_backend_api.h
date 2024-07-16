@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <hip/hip_runtime.h>
 #include "paddle/cinn/runtime/backend_api.h"
 
 namespace cinn {

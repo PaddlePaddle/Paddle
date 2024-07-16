@@ -44,7 +44,9 @@ class CodeGenCUDA_Host : public CodeGenHost {
 
   llvm::Value *Visit(const ir::Call *op) override {
     if (op->name == runtime::intrinsic::call_cuda_kernel) {
-      return LowerCUDAKernelCall(op);
+      return LowerGPUKernelCall(op);
+    } else if (op->name == runtime::intrinsic::call_hip_kernel) {
+      return LowerGPUKernelCall(op);
     } else {
       return CodeGenHost::Visit(op);
     }
@@ -66,7 +68,7 @@ class CodeGenCUDA_Host : public CodeGenHost {
    */
   llvm::Value *LowerGPUKernelLauncher(const ir::_LoweredFunc_ *func);
 
-  llvm::Value *LowerCUDAKernelCall(const ir::Call *op);
+  llvm::Value *LowerGPUKernelCall(const ir::Call *op);
 };
 
 }  // namespace backends

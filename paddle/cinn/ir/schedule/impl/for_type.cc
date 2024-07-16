@@ -15,6 +15,7 @@
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
@@ -162,11 +163,22 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       },
       [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
-        auto cur_dev_info =
-            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
-        const std::array<int, 3> kMaxBlockDims =
-            cur_dev_info->GetMaxBlockDims();
-        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        using cinn::runtime::BackendAPI;
+        auto HipBackendAPI = BackendAPI::get_backend(common::HygonDCUArchHIP{});
+        std::array<int, 3> kMaxBlockDims;
+        kMaxBlockDims[0] = HipBackendAPI->get_device_property(
+            BackendAPI::DeviceProperty::MaxBlockDimX);
+        kMaxBlockDims[1] = HipBackendAPI->get_device_property(
+            BackendAPI::DeviceProperty::MaxBlockDimY);
+        kMaxBlockDims[2] = HipBackendAPI->get_device_property(
+            BackendAPI::DeviceProperty::MaxBlockDimZ);
+        std::array<int, 3> kMaxGridDims;
+        kMaxGridDims[0] = HipBackendAPI->get_device_property(
+            BackendAPI::DeviceProperty::MaxGridDimX);
+        kMaxGridDims[1] = HipBackendAPI->get_device_property(
+            BackendAPI::DeviceProperty::MaxGridDimY);
+        kMaxGridDims[2] = HipBackendAPI->get_device_property(
+            BackendAPI::DeviceProperty::MaxGridDimZ);
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       });

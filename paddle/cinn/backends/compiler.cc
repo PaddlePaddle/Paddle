@@ -16,19 +16,24 @@
 
 #include <sys/stat.h>
 #include <fstream>
-
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
-#include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
+#endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#include "paddle/cinn/backends/hip/compiler_hip.h"
+#include "paddle/cinn/runtime/hip/hip_module.h"
 #endif
 #include "paddle/cinn/adt/adt.h"
 
@@ -272,8 +277,17 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #endif
       },
       [&](common::HygonDCUArchHIP) -> std::string {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+        auto _host_module_device_module_ =
+            SplitDeviceAndHostModule(module);  // NOLINT
+        auto& host_module = std::get<0>(_host_module_device_module_);
+        auto& device_module = std::get<1>(_host_module_device_module_);
+        hip::CodeGenHIP_Dev codegen(target_);
+        auto source_code = codegen.Compile(device_module);
+        return source_code;
+#else
+        CINN_NOT_IMPLEMENTED
+#endif
       });
 }
 
@@ -382,7 +396,9 @@ void Compiler::CompileCudaModule(const Module& module,
 #endif
 }
 
-void Compiler::CompileHipModule(const Module& module, const std::string& code) {
+void Compiler::CompileHipModule(const Module& module,
+                                const std::string& code,
+                                bool add_module) {
   PADDLE_THROW(
       phi::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
 }
