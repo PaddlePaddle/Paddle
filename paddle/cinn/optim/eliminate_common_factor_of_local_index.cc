@@ -536,7 +536,7 @@ class TransformExprVisitor : public ir::IRMutator<> {
       std::vector<ir::Expr> local_buffer_iters_;
       std::map<std::string, ir::Expr> name_to_iter_;
       for (const auto& indice : indices) {
-        ExtractIterFromIndice(indice, name_to_iter_);
+        ExtractIterFromIndice(indice, &name_to_iter_);
         VLOG(6) << "extract iter: " << indice
                 << " iter_set: " << name_to_iter_.size();
       }
