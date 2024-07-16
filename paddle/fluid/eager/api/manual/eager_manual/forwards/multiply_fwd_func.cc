@@ -172,7 +172,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (check_if_support_elementwise_mul_mem_opt(x.place().GetDeviceType())) {
 #else
-    if (paddle::platform::is_gpu_place(x.place())) {
+    if (phi::is_gpu_place(x.place())) {
 #endif
       if (x_autograd_meta != nullptr && x_autograd_meta->StopGradient() &&
           y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {

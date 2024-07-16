@@ -35,7 +35,7 @@ __global__ void Kernel(T* output, int dim) {
 template <typename Place>
 float test_pinned_memory() {
   Place cpu_place;
-  paddle::platform::CUDAPlace cuda_place;
+  phi::GPUPlace cuda_place;
 
   const int data_size = 4096;
   const int iteration = 10;
@@ -196,7 +196,7 @@ TEST(CPUANDCUDAPinned, CPUAllocatorAndCUDAPinnedAllocator) {
   // Generally speaking, operation on pinned_memory is faster than that on
   // unpinned-memory, but if this unit test fails frequently, please close this
   // test for the time being.
-  float time1 = test_pinned_memory<paddle::platform::CPUPlace>();
-  float time2 = test_pinned_memory<paddle::platform::CUDAPinnedPlace>();
+  float time1 = test_pinned_memory<phi::CPUPlace>();
+  float time2 = test_pinned_memory<phi::GPUPinnedPlace>();
   EXPECT_GT(time1, time2);
 }

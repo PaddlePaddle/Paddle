@@ -46,7 +46,7 @@ float random(float low, float high) {
 }
 
 void RandomizeTensor(phi::DenseTensor* tensor,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      const platform::DeviceContext& ctx) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
@@ -56,7 +56,7 @@ void RandomizeTensor(phi::DenseTensor* tensor,
       platform::errors::PermissionDenied("RandomizeTensor only can be used for "
                                          "tensor which dims is not zero."));
 
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::DenseTensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
@@ -250,7 +250,7 @@ class TRTConvertValidation {
   framework::Scope& scope() { return scope_; }
 
  private:
-  platform::CUDAPlace place_;
+  phi::GPUPlace place_;
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
   std::unique_ptr<framework::OperatorBase> op_;

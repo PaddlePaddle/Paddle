@@ -118,7 +118,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
       const std::vector<std::unordered_set<std::string>> &bcast_varnames) const;
 
   void SetCommunicationContext(details::OpHandleBase *op_handle,
-                               const platform::Place &p) const;
+                               const phi::Place &p) const;
 
   void CreateOpHandleIOs(ir::Graph *result,
                          ir::Node *node,
@@ -135,7 +135,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 #endif
 
   mutable std::string loss_var_name_;
-  mutable std::vector<platform::Place> places_;
+  mutable std::vector<phi::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
 
   mutable details::BuildStrategy strategy_;

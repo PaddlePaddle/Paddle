@@ -22,8 +22,8 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-using platform::is_cpu_place;
-using platform::is_gpu_place;
+using phi::is_cpu_place;
+using phi::is_gpu_place;
 
 class DefaultIOConverter : public EngineIOConverter {
  public:

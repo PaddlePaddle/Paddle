@@ -140,7 +140,7 @@ class GradSlotMeta {
   bool HasTensorMeta() const { return meta_ && meta_.get(); }
   const phi::DenseTensorMeta& GetTensorMeta() const {
     if (!HasTensorMeta()) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "meta_ of GradSlotMeta has not been initialized yet."
           "You're expected to check Edge availability with HasTensorMeta()"
           "before calling GetTensorMeta() interface."));

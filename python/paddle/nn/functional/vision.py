@@ -17,9 +17,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import (
-    in_dygraph_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
@@ -437,10 +436,8 @@ def pixel_unshuffle(
             f"But receive Attr(data_format): {data_format} "
         )
 
-    if in_dygraph_mode():
-        return _legacy_C_ops.pixel_unshuffle(
-            x, "downscale_factor", downscale_factor, "data_format", data_format
-        )
+    if in_dynamic_or_pir_mode():
+        return _C_ops.pixel_unshuffle(x, downscale_factor, data_format)
 
     helper = LayerHelper("pixel_unshuffle", **locals())
     check_variable_and_dtype(

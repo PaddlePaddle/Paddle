@@ -212,6 +212,7 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
@@ -441,6 +442,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_install_check)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -495,6 +497,7 @@ set(TEST_OPS_WITH_GC
     test_elementwise_add_op
     test_elementwise_sub_op
     test_gather_op
+    test_gather_nd_op
     test_mean_op
     test_lod_reset_op)
 
@@ -770,6 +773,7 @@ set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
@@ -872,6 +876,7 @@ set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
+set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op PROPERTIES TIMEOUT 120)
@@ -972,6 +977,8 @@ endif()
 
 set(TEST_CINN_OPS
     test_assign_op
+    test_reduce_op
+    test_scatter_nd_op
     test_layer_norm_op
     test_atan2_op
     test_cast_op
@@ -1015,7 +1022,8 @@ set(TEST_CINN_OPS
     test_transpose_op
     test_strided_slice_op
     test_pad_op
-    test_pool2d_op)
+    test_pool2d_op
+    test_erf_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1042,6 +1050,7 @@ set_tests_properties(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_adagrad_op
+    test_reduce_op
     test_adamw_op
     test_bincount_op
     test_batch_norm_op
@@ -1176,6 +1185,7 @@ set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pad3d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1203,3 +1213,15 @@ set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
+                                                                        120)
+set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
+py_test_modules(test_install_check MODULES test_install_check ENVS
+                FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+py_test_modules(test_install_check_pir MODULES test_install_check ENVS
+                FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
+set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")

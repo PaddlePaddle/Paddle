@@ -87,7 +87,7 @@ void GetHeterListenAndServProgram(framework::ProgramDesc* program,
   op->SetAttr("pserver_id", 0);
 }
 
-void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
+void CreateVarsOnScope(framework::Scope* scope, phi::CPUPlace* place) {
   auto x_var = scope->Var("x");
   x_var->GetMutable<phi::DenseTensor>();
 
@@ -99,49 +99,47 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
-      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+      micro_id_var->mutable_data<float>(phi::DDim({1}), *place);
   micro_id_ptr[0] = 0;
 
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
-      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+      res_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
 void InitTensorsOnClient2(framework::Scope* scope,
-                          platform::CPUPlace* place,
+                          phi::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
-      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+      micro_id_var->mutable_data<float>(phi::DDim({1}), *place);
   micro_id_ptr[0] = 1;
 
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
-      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+      res_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
 void InitTensorsOnServer(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 }
@@ -149,7 +147,7 @@ void InitTensorsOnServer(framework::Scope* scope,
 void RunHeterServerOp(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   phi::CPUContext ctx(place);
 
@@ -211,7 +209,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
           .get();
 
   framework::Scope* scope = (*micro_scope)[0];
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
 
   // create var on local scope
@@ -231,7 +229,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   PADDLE_ENFORCE_EQ(
       task.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
@@ -242,7 +240,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   PADDLE_ENFORCE_EQ(
       task2.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   heter_client_ptr_->Stop();

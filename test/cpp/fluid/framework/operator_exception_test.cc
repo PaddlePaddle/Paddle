@@ -35,7 +35,7 @@ class ExceptionThrownOperator : public OperatorBase {
   }
 
  protected:
-  void RunImpl(const Scope &, const platform::Place &) const override {
+  void RunImpl(const Scope &, const phi::Place &) const override {
     if (exception_) {
       std::rethrow_exception(exception_);
     }
@@ -58,7 +58,7 @@ bool ExceptionTestMain(T &&obj, bool set_exception) {
   }
   Scope scope;
   try {
-    op.Run(scope, platform::CPUPlace());
+    op.Run(scope, phi::CPUPlace());
     return false;
   } catch (T &) {
     return true;

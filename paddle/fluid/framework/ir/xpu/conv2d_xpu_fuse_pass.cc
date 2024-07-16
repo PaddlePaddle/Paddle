@@ -844,7 +844,7 @@ void Conv2dXPUFusePass::CreateFusionInputs(
     input_max_tensor->set_type(phi::DataType::FLOAT32);
     input_max_tensor->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     std::vector<float> input_scales(max_ptr_size, input_scale);
     memcpy(cpu_ctx->Alloc<float>(input_max_tensor),
            input_scales.data(),
@@ -904,7 +904,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
       ew_branch_add_max_tensor->set_type(phi::DataType::FLOAT32);
       ew_branch_add_max_tensor->Resize({max_ptr_size});
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       std::vector<float> ew_branch_add_scales(max_ptr_size,
                                               ew_branch_add_scale);
       memcpy(cpu_ctx->Alloc<float>(ew_branch_add_max_tensor),
@@ -1026,7 +1026,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
         GetScaleValueForNode(var_quant_scales, conv2d_out_var_node);
     phi::DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
     out_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, output_scale);

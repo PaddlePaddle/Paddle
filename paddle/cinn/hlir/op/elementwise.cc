@@ -20,7 +20,6 @@
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -137,46 +136,6 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
       unary_compute, lang::PackedFunc(), "strategy." + op_name + ".x86", 1);
 
   return strategy;
-}
-
-std::vector<shape_t> InferShapeForElementwise(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1UL);
-  std::vector<shape_t> res{inputs_shape[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForElementwise(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
-void GenerateEquationsForElementwise(
-    cinn::adt::config::OpEquationContext *ctx) {
-  CHECK(ctx->GetInTensorsRanks().size() != 0)
-      << "The inputs is empty! Please check again.";
-  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
-}
-
-std::vector<Type> InferDtypeForElementwiseBool(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  return {Bool()};
-}
-
-std::vector<std::vector<std::string>> InferLayoutForElementwise(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  CHECK_EQ(input_layouts.size(), 1U)
-      << "The input's layouts size is not 1! Please check again.";
-  return {input_layouts, input_layouts};
 }
 
 std::shared_ptr<OpStrategy> StrategyForScale(
@@ -405,36 +364,6 @@ std::shared_ptr<OpStrategy> StrategyForConstScalar(
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForConstScalar(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  return {{1}};
-}
-
-std::vector<Type> InferDtypeForConstScalar(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  Type out_type;
-  if (attrs.find("dtype") != attrs.end()) {
-    auto dtype_str = absl::get<std::string>(attrs.at("dtype"));
-    if (!dtype_str.empty()) {
-      out_type = cinn::common::Str2Type(dtype_str);
-    }
-  } else {
-    auto scalar = GetScalarExpr(attrs.at("value"));
-    out_type = scalar->type();
-  }
-  VLOG(3) << "scalar type: " << out_type;
-  return {out_type};
-}
-
-std::vector<std::vector<std::string>> InferLayoutForConstScalar(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  return {{"C"}, input_layouts};
-}
-
 std::shared_ptr<OpStrategy> StrategyForSum(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -444,41 +373,6 @@ std::shared_ptr<OpStrategy> StrategyForSum(
   PADDLE_THROW(phi::errors::Fatal(
       "The operator will be decomposed into several primitive "
       "operators. Please Use Decomposer Program Pass."));
-}
-
-std::vector<shape_t> InferShapeForSum(const std::vector<shape_t> &inputs_shape,
-                                      const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty()) << "At least 1 input tensor for sum operator.";
-  auto shape = inputs_shape[0];
-  for (size_t i = 1; i < inputs_shape.size(); ++i) {
-    if (inputs_shape[i] != shape) {
-      std::stringstream ss;
-      ss << "The input shapes must be the same. But received: the i-th(" << i
-         << ") input shape is " << utils::Join(inputs_shape[i], ",")
-         << " and the first input shape is " << utils::Join(shape, ",");
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-    }
-  }
-  std::vector<shape_t> out_shape{shape};
-
-  return out_shape;
-}
-
-std::vector<Type> InferDtypeForSum(const std::vector<Type> &inputs_type,
-                                   const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty()) << "At least 1 input tensor for sum operator.";
-  auto type = inputs_type[0];
-  for (size_t i = 1; i < inputs_type.size(); ++i) {
-    if (inputs_type[i] != type) {
-      std::stringstream ss;
-      ss << "The input types must be the same. But received: the i-th(" << i
-         << ") input type is " << inputs_type[i]
-         << " and the first input type is " << type;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-    }
-  }
-  std::vector<Type> res{type};
-  return res;
 }
 
 std::shared_ptr<OpStrategy> StrategyForFillConstant(
@@ -582,46 +476,6 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForFillConstant(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("shape"));
-  auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForFillConstant(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  cinn::common::Type out_type;
-  CHECK(attrs.count("value"));
-  if (attrs.find("dtype") != attrs.end()) {
-    // attribute [dtype] are given
-    auto dtype_str = absl::get<std::string>(attrs.at("dtype"));
-    out_type = cinn::common::Str2Type(dtype_str);
-    VLOG(3) << "FillConstant output dtype (from [dtype]): " << dtype_str;
-  } else {
-    // attribute [dtype] no given, inferred by value's type
-    auto scalar = GetScalarExpr(attrs.at("value"));
-    out_type = scalar->type();
-    VLOG(3) << "FillConstant scalar type (from [value]): "
-            << cinn::common::Type2Str(out_type);
-  }
-  return {out_type};
-}
-
-void GenerateEquationsForFillConstant(
-    cinn::adt::config::OpEquationContext *ctx) {
-  // Do nothing
-}
-
-std::vector<std::vector<std::string>> InferLayoutForFillConstant(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  return {{""}, input_layouts};
-}
-
 #define EXPAND_ATTR_TYPE(MACRO) \
   MACRO(bool)                   \
   MACRO(int)                    \
@@ -682,87 +536,6 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
                     1);
 
   return strategy;
-}
-
-std::vector<shape_t> InferShapeForAssignValue(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("values"))
-      << "assign_value should set attribute [values]! Please check.";
-  const auto &value = attrs.at("values");
-
-  shape_t shape;
-#define EXPAND_ATTR_TO_GET_SHAPE(TYPE)                              \
-  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/                 \
-    shape.emplace_back(1);                                          \
-  }                                                                 \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/    \
-    shape.emplace_back(absl::get<std::vector<TYPE>>(value).size()); \
-  }
-
-  if (false) {  // NOLINT
-  }
-  EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_SHAPE)
-  else {  // NOLINT
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("assign_value not support the type!"));
-  }
-#undef EXPAND_ATTR_TO_GET_SHAPE
-
-  VLOG(3) << "The output shape of assign_value is ["
-          << cinn::utils::Join(shape, ", ") << "]";
-
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForAssignValue(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  Type out_type;
-  if (attrs.find("dtype") != attrs.end()) {
-    // attribute [dtype] are given
-    auto dtype_str = absl::get<std::string>(attrs.at("dtype"));
-    if (!dtype_str.empty()) {
-      // if the [dtype] is not empty, output as the given type
-      out_type = cinn::common::Str2Type(dtype_str);
-    }
-  }
-
-  // attribute [dtype] not given or is empty
-  if (out_type.is_unk()) {
-    // infer from [values]'s dtype
-    CHECK(attrs.count("values"))
-        << "assign_value should set attribute [values]! Please check.";
-    const auto &value = attrs.at("values");
-
-#define EXPAND_ATTR_TO_GET_DTYPE(TYPE)                           \
-  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/              \
-    out_type = cinn::common::type_of<TYPE>();                    \
-  }                                                              \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/ \
-    out_type = cinn::common::type_of<TYPE>();                    \
-  }
-
-    if (false) {  // NOLINT
-    }
-    EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_DTYPE)
-    else {  // NOLINT
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("assign_value not support the type!"));
-    }
-#undef EXPAND_ATTR_TO_GET_DTYPE
-  }
-
-  VLOG(3) << "The data type of assign_value is " << out_type;
-
-  return {out_type};
-}
-
-std::vector<std::vector<std::string>> InferLayoutForAssignValue(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  return {{""}, input_layouts};
 }
 
 #undef EXPAND_ATTR_TYPE
@@ -852,41 +625,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
   return strategy;
 }
 
-std::vector<std::vector<int>> InferShapeForSqueeze(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1U);
-  const std::vector<int> &axes =
-      attrs.count("axes") ? absl::get<std::vector<int>>(attrs.at("axes"))
-                          : std::vector<int>{};
-  VLOG(4) << "The [axis] value used in Squeeze: "
-          << cinn::utils::Join(axes, ",");
-
-  const auto &posi_axes = utils::GetPositiveAxes(axes, inputs_shape[0].size());
-  std::vector<int> output_shape;
-  if (posi_axes.size()) {
-    for (int idx = 0; idx < inputs_shape[0].size(); ++idx) {
-      // if can't find idx in axis
-      if (std::find(posi_axes.begin(), posi_axes.end(), idx) ==
-          posi_axes.end()) {
-        output_shape.push_back(inputs_shape[0][idx]);
-      } else {
-        CHECK_EQ(inputs_shape[0][idx], 1);
-      }
-    }
-  } else {
-    for (int idx = 0; idx < inputs_shape[0].size(); ++idx) {
-      if (inputs_shape[0][idx] != 1) {
-        output_shape.push_back(inputs_shape[0][idx]);
-      }
-    }
-  }
-
-  VLOG(4) << "The output calculated in Squeeze: "
-          << cinn::utils::Join(output_shape, ", ");
-  return {output_shape};
-}
-
 std::shared_ptr<OpStrategy> StrategyForExpandDims(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -925,38 +663,6 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
                     "strategy.expand_dims.x86",
                     1);
   return strategy;
-}
-
-std::vector<std::vector<int>> InferShapeForExpandDims(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty())
-      << "At least 1 input tensor for expand_dims operator.";
-
-  CHECK_EQ(inputs_shape.size(), 1U);
-  const std::vector<int> &axes =
-      attrs.count("axes") ? absl::get<std::vector<int>>(attrs.at("axes"))
-                          : std::vector<int>{};
-  VLOG(4) << "The [axes] value used in ExpandDims: "
-          << cinn::utils::Join(axes, ",");
-
-  std::vector<int> out_shape(inputs_shape[0].size() + axes.size(), 1);
-  const auto &posi_axes = utils::GetPositiveAxes(axes, out_shape.size());
-
-  int shape_pos = 0, axes_pos = 0;
-  for (int i = 0; i < out_shape.size(); ++i) {
-    if (axes_pos < posi_axes.size() && posi_axes[axes_pos] == i) {
-      out_shape[i] = 1;
-      ++axes_pos;
-    } else if (shape_pos < inputs_shape[0].size()) {
-      out_shape[i] = inputs_shape[0][shape_pos];
-      ++shape_pos;
-    }
-  }
-
-  VLOG(4) << "The output calculated in ExpandDims: "
-          << cinn::utils::Join(out_shape, ", ");
-  return {out_shape};
 }
 
 std::shared_ptr<OpStrategy> StrategyForReshape(
@@ -1046,55 +752,6 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
   strategy->AddImpl(
       reshape_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
   return strategy;
-}
-
-std::vector<std::vector<int>> InferShapeForReshape(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1U)
-      << "The input's shape size should be 1! Please check again.";
-  std::vector<int> output_shape;
-  for (auto &iter : attrs) {
-    if (iter.first == "shape") {
-      output_shape = absl::get<std::vector<int>>(iter.second);
-      break;
-    }
-  }
-  int tensor_size = 1;
-  for (auto i : inputs_shape[0]) {
-    tensor_size *= i;
-  }
-  int flag_index = -1;
-  for (int i = 0; i < output_shape.size(); i++) {
-    if (output_shape[i] > 0) {
-      CHECK_EQ(tensor_size % output_shape[i], 0)
-          << "Incompatible input shape and output shape in op reshape: "
-          << tensor_size << ", " << output_shape[i];
-      tensor_size /= output_shape[i];
-    } else if (output_shape[i] == 0) {
-      CHECK_LT(i, inputs_shape[0].size())
-          << "In op reshape, when attribute shape[i] == 0, shape[i] = "
-             "input_shape[i]. But now the size of input_shape "
-             "<= i, which is incompatible. Please check!";
-      output_shape[i] = inputs_shape[0][i];
-      CHECK_EQ(tensor_size % output_shape[i], 0)
-          << "Incompatible input shape and output shape in op reshape: "
-          << tensor_size << ", " << output_shape[i];
-      tensor_size /= output_shape[i];
-    } else if (output_shape[i] == -1 && flag_index == -1) {
-      flag_index = i;
-    } else if (output_shape[i] == -1) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "More than one -1 in output_shape of op reshape."));
-    } else {
-      std::stringstream ss;
-      ss << "Unsupported output_shape " << output_shape[i];
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-    }
-  }
-  if (flag_index >= 0) output_shape[flag_index] = tensor_size;
-  std::vector<std::vector<int>> res{output_shape};
-  return res;
 }
 
 std::shared_ptr<framework::OpStrategy> StrategyForCast(
@@ -1344,25 +1001,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateXShapeSymbolic(
   return strategy;
 }
 
-std::vector<std::vector<int>> InferShapeForGenerateXShape(
-    const std::vector<std::vector<int>> &input_shape,
-    const framework::AttrMapType &attrs) {
-  PADDLE_ENFORCE_EQ(
-      input_shape.size(),
-      1U,
-      ::common::errors::InvalidArgument(
-          "The input's shape size should be 1! Please check again."));
-  std::vector<int> output_shape(input_shape[0].begin(), input_shape[0].end());
-  output_shape.insert(output_shape.begin(), 0);
-  return std::vector<std::vector<int>>{output_shape};
-}
-
-std::vector<Type> InferDtypeForCast(const std::vector<Type> &inputs_type,
-                                    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("dtype"));
-  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
-}
-
 std::shared_ptr<framework::OpStrategy> StrategyForArange(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1460,35 +1098,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
   strategy->AddImpl(
       arange_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
   return strategy;
-}
-
-std::vector<std::vector<int>> InferShapeForArange(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("start"));
-  CHECK(attrs.count("stop"));
-  CHECK(attrs.count("step"));
-  float start = absl::get<float>(attrs.at("start"));
-  float stop = absl::get<float>(attrs.at("stop"));
-  float step = absl::get<float>(attrs.at("step"));
-  CHECK_NE(step, 0.0f) << "The value of step can't be 0!";
-
-  int num = static_cast<int>(std::ceil((stop - start) / step));
-  CHECK(num) << "Invalid arange parameters, start = " << start
-             << ", stop = " << stop << ", step = " << step
-             << ", cause num_elem = " << num << " which is negative.";
-  return {{num}};
-}
-
-std::vector<Type> InferDtypeForArange(const std::vector<Type> &inputs_type,
-                                      const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("dtype"));
-  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
-}
-
-std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  return {cinn::common::Bool()};
 }
 
 std::shared_ptr<OpStrategy> StrategyForTril(
@@ -1711,38 +1320,6 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
   return strategy;
 }
 
-std::vector<Type> InferDtypeForIsClose(const std::vector<Type> &inputs_type,
-                                       const framework::AttrMapType &attrs) {
-  int input_size = inputs_type.size();
-  CHECK_EQ(input_size, 2UL)
-      << "The input number of isclose should be a multiple of 2, but here "
-      << input_size << "! Please check.";
-  CHECK(inputs_type[0].is_float())
-      << "The op \"isclose\" only support float point dtype now, but here "
-      << inputs_type[0];
-  CHECK(inputs_type[0] == inputs_type[1])
-      << "The two inputs dtype sof isclose should be equal, but here x:"
-      << inputs_type[0] << " != y:" << inputs_type[1] << "! Please check.";
-
-  return {Bool()};
-}
-
-std::vector<shape_t> InferShapeForIsclose(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(inputs_shape.size() == 2UL) << "Need 2 input tensors for isclose op.";
-  auto shape1 = inputs_shape[0];
-  auto shape2 = inputs_shape[1];
-  CHECK(shape1 == shape2) << "The input shapes must be the same. But received: "
-                          << "The first input shape is "
-                          << utils::Join(shape1, ",")
-                          << " and the second input shape is "
-                          << utils::Join(shape2, ",");
-  std::vector<shape_t> out_shape{shape1};
-
-  return out_shape;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -1758,15 +1335,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
           "CINNStrategySymbolic",                                          \
           cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
-      .set_attr("infershape",                                              \
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
-      .set_attr("inferdtype",                                              \
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))  \
-      .set_attr(                                                           \
-          "generate_equations",                                            \
-          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise)) \
-      .set_attr("inferlayout",                                             \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise)) \
       .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise) \
       .set_support_level(4);
@@ -1807,24 +1375,18 @@ CINN_REGISTER_HELPER(elementwise_ops) {
 
 #undef CINN_REGISTER_UNARY
 
-#define CINN_REGISTER_COMPARE(op__, op_strategy__)                            \
-  CINN_REGISTER_OP(op__)                                                      \
-      .describe(#op__ " function")                                            \
-      .set_num_inputs(1)                                                      \
-      .set_num_outputs(1)                                                     \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                     \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)         \
-      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(             \
-          "CINNStrategySymbolic",                                             \
-          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)               \
-      .set_attr("infershape",                                                 \
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))     \
-      .set_attr("inferdtype",                                                 \
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwiseBool)) \
-      .set_attr("inferlayout",                                                \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))    \
-      .set_attr<cinn::hlir::framework::OpPatternKind>(                        \
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)    \
+#define CINN_REGISTER_COMPARE(op__, op_strategy__)                         \
+  CINN_REGISTER_OP(op__)                                                   \
+      .describe(#op__ " function")                                         \
+      .set_num_inputs(1)                                                   \
+      .set_num_outputs(1)                                                  \
+      .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)      \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
+          "CINNStrategySymbolic",                                          \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
+      .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise) \
       .set_support_level(4);
 
   CINN_REGISTER_COMPARE(isnan, IsNan)
@@ -1841,16 +1403,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForScale)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForScaleSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-      .set_attr("generate_equations",
-                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1861,14 +1413,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForConstScalar)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForConstScalar))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForConstScalar))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForConstScalar))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1878,8 +1422,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSum)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSum))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForSum))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
 
@@ -1892,17 +1434,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForFillConstantSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForFillConstant))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForFillConstant))
-      .set_attr(
-          "generate_equations",
-          MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1913,14 +1444,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForAssignValue)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForAssignValue))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForAssignValue))
-#if !defined(CINN_WITH_CUDA) && !defined(CINN_WITH_HIP)
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForAssignValue))
-#endif
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1931,12 +1454,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSqueeze)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForSqueeze))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1947,12 +1464,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForExpandDims)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForExpandDims))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1965,12 +1476,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForReshape)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForReshapeSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForReshape))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -1983,11 +1488,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForCast)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForCastSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -2000,11 +1500,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForYieldStore)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForYieldStoreSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -2016,11 +1511,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForGenerateShapeSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
@@ -2034,12 +1524,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForGenerateXShapeSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForGenerateXShape))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
@@ -2052,24 +1536,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForArange)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForArangeSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForArange))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForArange))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
-
-  CINN_REGISTER_OP(gelu)
-      .describe("The implement of gelu.")
-      .set_num_inputs(1)
-      .set_num_outputs(1)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
 
   CINN_REGISTER_OP(logical_not)
       .describe("Logical not function")
@@ -2079,12 +1548,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForLogicalNot)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForLogicalNotSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalNot))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
@@ -2119,12 +1582,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForIsClose)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForIsCloseSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForIsclose))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForIsClose))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);

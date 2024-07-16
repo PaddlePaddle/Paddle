@@ -31,20 +31,19 @@ namespace egr {
 
 TEST(Forward, SingleNode) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        false /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -81,20 +80,19 @@ Node1
  out
 */
 TEST(Forward, LinearNodes) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        false /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -167,20 +165,19 @@ TEST(Forward, LinearNodes) {
    out1    out2
 */
 TEST(Forward, BranchedNodes) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        false /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);

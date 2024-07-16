@@ -1131,6 +1131,28 @@ PHI_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
                          "Enable CUDAMallocAsyncAllocator");
 
 /*
+ * CUDAMallocAsyncAllocator related FLAG
+ * Name: FLAGS_cuda_malloc_async_pool_memory_throttle_ratio
+ * Since Version: 3.0
+ * Value Range:  double, [0.0, 1.0], default=0.8
+ * Note:memory_throttle_ratio provides a threshold that determines when to
+ * initiate synchronization operations to deallocate memory. This mechanism
+ * helps in ensuring that the system does not exceed its memory capacity while
+ * also attempting to minimize performance degradation caused by frequent memory
+ * synchronization.
+ *
+ * Please see Note [cuda_malloc_async_pool_memory_throttle_ratio]
+ */
+PHI_DEFINE_EXPORTED_double(
+    cuda_malloc_async_pool_memory_throttle_ratio,
+    0.8,
+    "memory_throttle_ratio provides a threshold that determines when to "
+    "initiate synchronization operations to deallocate memory. "
+    "This mechanism helps in ensuring that the system does not exceed its "
+    "memory capacity while also attempting to minimize performance degradation "
+    "caused by frequent memory synchronization.");
+
+/*
  * CUDA Graph / Allocator related FLAG
  * Name: FLAGS_auto_free_cudagraph_allocations_on_launch
  * Since Version: 2.7
@@ -1262,6 +1284,14 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          false,
                          "enable nccl debug mode to synchronize nccl comm");
 #endif
+
+PHI_DEFINE_EXPORTED_bool(
+    benchmark,
+    false,
+    "Doing memory benchmark. It will make deleting scope synchronized, "
+    "and add some memory usage logs."
+    "Default cuda is asynchronous device, set to True will"
+    "force op run in synchronous mode.");
 
 /**
  * Autotune related FLAG
@@ -1791,6 +1821,17 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify path for loading *.dll about cuda on windows");
 
+/**
+ * Collect shapes of value for TensorRTEngine
+ * Name: enable_collect_shape
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will collect shapes of value when run executor.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_collect_shape,
+                         false,
+                         "Collect shapes of value for TensorRTEngine");
 // Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
 PHI_DEFINE_EXPORTED_double(accuracy_check_atol_fp32,
                            1e-6,

@@ -34,7 +34,7 @@ typedef std::vector<
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce,
     const platform::NCCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
@@ -43,7 +43,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce,
     const platform::BKCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
@@ -52,7 +52,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
+    const std::vector<phi::Place> &places,
     const size_t num_of_all_reduce)
     : AllReduceOpHandle(node, local_scopes, places),
       num_of_all_reduce_(num_of_all_reduce) {}
@@ -91,7 +91,7 @@ void FusedAllReduceOpHandle::RunImpl() {
                       platform::errors::Unimplemented(
                           "FLAGS_allreduce_record_one_event=true is only valid "
                           "when using one GPU device per process."));
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(places_[0]),
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(places_[0]),
                       true,
                       platform::errors::Unimplemented(
                           "FLAGS_allreduce_record_one_event=true is only valid "
@@ -114,9 +114,9 @@ void FusedAllReduceOpHandle::RunImpl() {
   gpuStream_t compute_stream{nullptr};
 
   if (FLAGS_allreduce_record_one_event) {
-    auto gpu_place = platform::CUDAPlace(places_[0].GetDeviceId());
+    auto gpu_place = phi::GPUPlace(places_[0].GetDeviceId());
     compute_stream =
-        platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
+        phi::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     auto &nccl_ctx = flat_nccl_ctxs->at(gpu_place.device);
     nccl_stream = nccl_ctx.stream();
@@ -320,7 +320,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           platform::errors::NotFound(
               "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<phi::DenseTensor>();
-      if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
+      if (!phi::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
     }
@@ -355,7 +355,7 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     auto &lod_tensor = var->Get<phi::DenseTensor>();
 
     PADDLE_ENFORCE_EQ(
-        platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
+        phi::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
         true,
         platform::errors::InvalidArgument(
             "The variable '%s' at scope %d is not in the right place.",

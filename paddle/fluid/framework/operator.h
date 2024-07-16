@@ -107,7 +107,7 @@ constexpr char kAllKernelsMustComputeRuntimeShape[] =
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
-extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+extern std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   std::string result;
@@ -282,7 +282,7 @@ class TEST_API OperatorBase {
 
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
-  void Run(const Scope& scope, const platform::Place& place);
+  void Run(const Scope& scope, const phi::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -364,11 +364,10 @@ class TEST_API OperatorBase {
   virtual void SetIsRuntimeInferShape(bool x UNUSED) {}
 
   virtual void RuntimeInferShape(const Scope& scope UNUSED,
-                                 const platform::Place& place UNUSED,
+                                 const phi::Place& place UNUSED,
                                  const RuntimeContext& ctx UNUSED) const {}
 
-  virtual platform::Place GetExecutionPlace(
-      const platform::Place& place) const {
+  virtual phi::Place GetExecutionPlace(const phi::Place& place) const {
     return place;
   }
 
@@ -418,8 +417,7 @@ class TEST_API OperatorBase {
  private:
   void GenerateTemporaryNames();
   void CheckAllInputOutputSet() const;
-  virtual void RunImpl(const Scope& scope,
-                       const platform::Place& place) const = 0;
+  virtual void RunImpl(const Scope& scope, const phi::Place& place) const = 0;
 };
 
 class ExecutionContext : public phi::KernelContext {
@@ -573,7 +571,7 @@ class ExecutionContext : public phi::KernelContext {
     return res;
   }
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  phi::Place GetPlace() const { return device_context_.GetPlace(); }
 
   template <typename DeviceContextType>
   const DeviceContextType& device_context() const {
@@ -586,7 +584,7 @@ class ExecutionContext : public phi::KernelContext {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const inline phi::GPUContext& cuda_device_context() const {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(device_context_.GetPlace()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
@@ -795,7 +793,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   void RuntimeInferShape(const Scope& scope,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          const RuntimeContext& ctx) const override;
 
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
@@ -816,8 +814,8 @@ class OperatorWithKernel : public OperatorBase {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const;
 
-  platform::Place GetExecutionPlace(
-      const platform::Place& platform UNUSED) const override {
+  phi::Place GetExecutionPlace(
+      const phi::Place& platform UNUSED) const override {
     return kernel_type_->place_;
   }
 
@@ -864,9 +862,9 @@ class OperatorWithKernel : public OperatorBase {
   void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
 
  private:
-  void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const Scope& scope, const phi::Place& place) const final;
   void RunImpl(const Scope& scope,
-               const platform::Place& place,
+               const phi::Place& place,
                RuntimeContext* runtime_ctx) const;
 
   /**

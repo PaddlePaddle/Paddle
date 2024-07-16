@@ -35,7 +35,7 @@ namespace imperative {
 class GLOOParallelContext : public ParallelContext {
  public:
   explicit GLOOParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
+                               const phi::Place& place)
       : ParallelContext(strategy, place) {}
 
   ~GLOOParallelContext() override = default;
