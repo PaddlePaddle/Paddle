@@ -493,13 +493,13 @@ struct finfo {
   explicit finfo(const framework::proto::VarType::Type &type) {
     switch (type) {
       case framework::proto::VarType::FP16:
-        eps = std::numeric_limits<paddle::platform::float16>::epsilon();
-        min = std::numeric_limits<paddle::platform::float16>::lowest();
-        max = std::numeric_limits<paddle::platform::float16>::max();
-        smallest_normal = std::numeric_limits<paddle::platform::float16>::min();
+        eps = std::numeric_limits<phi::dtype::float16>::epsilon();
+        min = std::numeric_limits<phi::dtype::float16>::lowest();
+        max = std::numeric_limits<phi::dtype::float16>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::float16>::min();
         tiny = smallest_normal;
-        resolution = std::pow(
-            10, -std::numeric_limits<paddle::platform::float16>::digits10);
+        resolution =
+            std::pow(10, -std::numeric_limits<phi::dtype::float16>::digits10);
         bits = 16;
         dtype = "float16";
         break;
@@ -526,14 +526,13 @@ struct finfo {
         dtype = "float64";
         break;
       case framework::proto::VarType::BF16:
-        eps = std::numeric_limits<paddle::platform::bfloat16>::epsilon();
-        min = std::numeric_limits<paddle::platform::bfloat16>::lowest();
-        max = std::numeric_limits<paddle::platform::bfloat16>::max();
-        smallest_normal =
-            std::numeric_limits<paddle::platform::bfloat16>::min();
+        eps = std::numeric_limits<phi::dtype::bfloat16>::epsilon();
+        min = std::numeric_limits<phi::dtype::bfloat16>::lowest();
+        max = std::numeric_limits<phi::dtype::bfloat16>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::bfloat16>::min();
         tiny = smallest_normal;
-        resolution = std::pow(
-            10, -std::numeric_limits<paddle::platform::bfloat16>::digits10);
+        resolution =
+            std::pow(10, -std::numeric_limits<phi::dtype::bfloat16>::digits10);
         bits = 16;
         dtype = "bfloat16";
         break;
