@@ -62,8 +62,7 @@ SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(index_dist_attr_src);
   index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
 
-  TensorDistAttr out_dist_attr =
-      CopyTensorDistAttrForOutput(index_dist_attr_src);
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
   LOG_SPMD_INPUT(x);
