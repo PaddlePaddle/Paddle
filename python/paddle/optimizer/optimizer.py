@@ -1511,6 +1511,7 @@ class Optimizer:
                 >>> optimizer.apply_gradients(params_grads)
 
         """
+
         # NOTE(zhaoyinglia): AutoParallel set '_sorted' attribute to skip the 'sorted' operator.
         if not hasattr(self, "_sorted"):
             params_grads = sorted(params_grads, key=lambda x: x[0].name)

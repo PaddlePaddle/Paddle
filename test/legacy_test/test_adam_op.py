@@ -978,17 +978,18 @@ class TestMultiTensorAdam(unittest.TestCase):
             np.testing.assert_allclose(
                 params_dygraph1[idx], params_dygraph2[idx], rtol=1e-05
             )
-        # test static graph mode
-        output_static1 = self._adam_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=True
-        )
-        output_static2 = self._adam_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=False
-        )
-        for idx in range(len(output_static1)):
-            np.testing.assert_allclose(
-                output_static1[idx], output_static2[idx], rtol=1e-05
+        with paddle.pir_utils.IrGuard():
+            # test static graph mode
+            output_static1 = self._adam_optimize_static(
+                place=place, use_amp=use_amp, use_multi_tensor=True
             )
+            output_static2 = self._adam_optimize_static(
+                place=place, use_amp=use_amp, use_multi_tensor=False
+            )
+            for idx in range(len(output_static1)):
+                np.testing.assert_allclose(
+                    output_static1[idx], output_static2[idx], rtol=1e-05
+                )
 
     def _check_with_param_arrt(self, place, use_amp):
         output1, params1 = self._adam_optimize_dygraph(

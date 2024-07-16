@@ -187,15 +187,6 @@ class OptimizerWithMixedPrecision:
                     ),
                 )
 
-            self._loss_scaling = paddle.pir.core.create_persistable_value(
-                dtype='float32',
-                shape=[1],
-                name=unique_name.generate("loss_scaling"),
-                initializer=paddle.nn.initializer.ConstantInitializer(
-                    value=float(self._init_loss_scaling)
-                ),
-            )
-
             if isinstance(self._optimizer._learning_rate, float):
                 self._optimizer._learning_rate_map[
                     paddle.static.default_main_program()
