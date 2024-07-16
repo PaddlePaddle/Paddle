@@ -64,6 +64,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 #include "paddle/phi/common/port.h"
 #include "paddle/utils/string/printf.h"
