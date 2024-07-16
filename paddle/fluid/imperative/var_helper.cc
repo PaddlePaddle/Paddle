@@ -25,7 +25,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/selected_rows.h"
 namespace paddle {
 namespace imperative {

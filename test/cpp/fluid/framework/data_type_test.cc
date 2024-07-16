@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 TEST(DataType, float16) {
   using paddle::platform::float16;
