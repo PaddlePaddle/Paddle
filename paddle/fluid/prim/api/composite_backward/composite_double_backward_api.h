@@ -98,16 +98,22 @@ void minimum_double_grad(const Tensor& x,
   if (grad_out_grad) {
     if (grad_x_grad && grad_y_grad) {
       auto x_mask = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
-      auto ddout =
-          grad_x_grad.get() * x_mask + grad_y_grad.get() * (1 - x_mask);
+      auto y_mask = cast<T>(greater_than<T>(x, y), grad_y_grad.get().dtype());
+      auto ddout = (grad_x_grad.get() * x_mask) + (grad_y_grad.get() * y_mask) +
+                   ((1 - x_mask - y_mask) * 0.5 *
+                    (grad_x_grad.get() + grad_y_grad.get()));
       set_output<T>(ddout, grad_out_grad);
     } else if (grad_x_grad) {
       auto x_mask = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
-      auto ddout = grad_x_grad.get() * x_mask;
+      auto y_mask = cast<T>(greater_than<T>(x, y), y.dtype());
+      auto ddout = (grad_x_grad.get() * x_mask) +
+                   (1 - x_mask - y_mask) * 0.5 * grad_x_grad.get();
       set_output<T>(ddout, grad_out_grad);
     } else if (grad_y_grad) {
+      auto x_mask = cast<T>(less_than<T>(x, y), x.dtype());
       auto y_mask = cast<T>(greater_equal<T>(x, y), grad_y_grad.get().dtype());
-      auto ddout = grad_y_grad.get() * y_mask;
+      auto ddout = grad_y_grad.get() * y_mask +
+                   (1 - x_mask - y_mask) * 0.5 * grad_y_grad.get();
       set_output<T>(ddout, grad_out_grad);
     }
   }

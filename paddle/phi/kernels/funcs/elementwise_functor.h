@@ -512,13 +512,25 @@ struct MinimumFunctor {
 template <typename T>
 struct MinGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x < y);
+    if (x < y) {
+      return dout * static_cast<T>(1.0);
+    } else if (x > y) {
+      return dout * static_cast<T>(0.0);
+    } else {
+      return dout * static_cast<T>(0.5);
+    }
   }
 };
 template <typename T>
 struct MinGradYFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x >= y);
+    if (x < y) {
+      return dout * static_cast<T>(0.0);
+    } else if (x > y) {
+      return dout * static_cast<T>(1.0);
+    } else {
+      return dout * static_cast<T>(0.5);
+    }
   }
 };
 
