@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 template <typename T>
 static bool IsMatchedPlaceSingleDeviceOp(details::OpHandleBase *op_base,
@@ -62,9 +60,7 @@ class ModifyOpLockAndRecordEventPass : public ir::Pass {
     }
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(modify_op_lock_and_record_event_pass,
               paddle::framework::ir::ModifyOpLockAndRecordEventPass);

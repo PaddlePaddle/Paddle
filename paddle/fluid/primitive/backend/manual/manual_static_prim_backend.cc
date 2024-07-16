@@ -19,9 +19,7 @@
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
-namespace paddle {
-namespace primitive {
-namespace backend {
+namespace paddle::primitive::backend {
 
 template <>
 Tensor full<LazyTensor>(const IntArray& shape,
@@ -86,6 +84,4 @@ Tensor arange_with_tensor<LazyTensor>(const Tensor& start,
   return out;
 }
 
-}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive::backend

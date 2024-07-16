@@ -37,8 +37,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(enable_pir_api);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 extern PyTypeObject* p_tensor_type;
 
@@ -1050,5 +1049,4 @@ struct PyGetSetDef string_tensor_variable_properties[] = {  // NOLINT
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

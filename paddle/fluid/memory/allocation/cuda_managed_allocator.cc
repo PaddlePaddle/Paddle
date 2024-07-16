@@ -29,9 +29,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 bool CUDAManagedAllocator::IsAllocThreadSafe() const { return true; }
 
 void CUDAManagedAllocator::FreeImpl(phi::Allocation* allocation) {
@@ -90,6 +88,4 @@ phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
       err_msg));
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
