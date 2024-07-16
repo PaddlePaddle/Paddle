@@ -47,7 +47,6 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
-        hidd = 1024
         dtype = "float32"
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer(hidd)
@@ -64,7 +63,6 @@ class TestToStaticInfenrenceTensorRTModel(Dy2StTestBase):
             return
         hidd = 1024
         batch = 4096
-        hidd = 1024
         dtype = "float32"
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer(hidd)
@@ -82,7 +80,6 @@ class TestToStaticInfenrenceFunc(Dy2StTestBase):
     def test_dygraph_static_same_result(self):
         hidd = 1024
         batch = 4096
-        hidd = 1024
         dtype = "float32"
         # test dynamic shape
         x = paddle.rand([batch, hidd], dtype=dtype)
