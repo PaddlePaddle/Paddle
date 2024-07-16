@@ -47,7 +47,7 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
     framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    const platform::DeviceContext* dev_ctx = pool.Get(x->place());
+    const phi::DeviceContext* dev_ctx = pool.Get(x->place());
     dev_ctx->Wait();
 #endif
     value = cpu_x.data<T>()[0];

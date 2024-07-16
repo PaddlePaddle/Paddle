@@ -202,12 +202,10 @@ void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
                     platform::errors::Unavailable("bkcl_broadcast failed"));
 }
 
-paddle::platform::DeviceContext *BKCLParallelContext::GetDeviceContext(
-    int ring_id) {
-  return static_cast<platform::DeviceContext *>(
-      platform::BKCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
+phi::DeviceContext *BKCLParallelContext::GetDeviceContext(int ring_id) {
+  return static_cast<phi::DeviceContext *>(platform::BKCLCommContext::Instance()
+                                               .Get(ring_id, place_)
+                                               ->dev_context());
 }
 
 void BKCLParallelContext::WaitCompute(int ring_id) {

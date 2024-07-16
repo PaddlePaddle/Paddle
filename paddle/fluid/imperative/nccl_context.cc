@@ -153,12 +153,10 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 
-paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
-    int ring_id) {
-  return static_cast<platform::DeviceContext *>(
-      platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
+phi::DeviceContext *NCCLParallelContext::GetDeviceContext(int ring_id) {
+  return static_cast<phi::DeviceContext *>(platform::NCCLCommContext::Instance()
+                                               .Get(ring_id, place_)
+                                               ->dev_context());
 }
 
 void NCCLParallelContext::WaitCompute(int ring_id) {
