@@ -39,7 +39,7 @@
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
-#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_helper.cu.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/fused_moe_helper.h"
 // Ignore CUTLASS warnings about type punning
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"

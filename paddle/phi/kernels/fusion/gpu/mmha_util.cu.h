@@ -3656,7 +3656,7 @@ struct Qk_dot {
 };
 
 constexpr int32_t WARP_SIZE_TMP = 32;
-constexpr int32_t HALF_WARP = 16;
+constexpr int32_t HALF_WARP_TMP = 16;
 constexpr float QUANT_MAX_BOUND = 127.0;
 constexpr float QUANT_MIN_BOUND = -127.0;
 
@@ -3744,7 +3744,7 @@ __inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT
 template <typename T>
 __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
-  for (int mask = HALF_WARP; mask > 0; mask >>= 1) {
+  for (int mask = HALF_WARP_TMP; mask > 0; mask >>= 1) {
     val =
         MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
   }
