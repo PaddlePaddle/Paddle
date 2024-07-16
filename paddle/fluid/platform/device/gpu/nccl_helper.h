@@ -126,9 +126,9 @@ struct NCCLContext {
   ncclComm_t comm_;
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
-    ctx_.reset(new phi::GPUContext(phi::GPUPlace(dev_id)));
+    ctx_.reset(new phi::GPUContext(CUDAPlace(dev_id)));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace(dev_id), ctx_->stream())
+                           .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -136,7 +136,7 @@ struct NCCLContext {
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(phi::GPUPlace(dev_id))
+            .GetZeroAllocator(CUDAPlace(dev_id))
             .get());
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()

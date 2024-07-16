@@ -17,8 +17,8 @@ limitations under the License. */
 #include <map>
 #include <string>
 
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
-#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace platform {

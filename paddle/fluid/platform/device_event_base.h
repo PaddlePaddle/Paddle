@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/common/place.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {

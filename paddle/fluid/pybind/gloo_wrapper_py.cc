@@ -23,8 +23,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
-#include "paddle/phi/common/place.h"
 
 namespace py = pybind11;
 

@@ -19,9 +19,9 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/resource_pool.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace platform {

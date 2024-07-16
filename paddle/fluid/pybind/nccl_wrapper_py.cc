@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/nccl_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
-#include "paddle/phi/common/place.h"
+#include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 

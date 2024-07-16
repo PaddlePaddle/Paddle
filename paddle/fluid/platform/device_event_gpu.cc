@@ -25,7 +25,7 @@ struct CUDADeviceEventWrapper {
         phi::is_gpu_place(place),
         true,
         phi::errors::PreconditionNotMet(
-            "Required device shall be GPUPlace, but received %d. ", place));
+            "Required device shall be CUDAPlace, but received %d. ", place));
 
     device_id_ = place.device;  // NOLINT
     PADDLE_ENFORCE_GT(

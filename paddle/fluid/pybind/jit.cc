@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/eval_frame.h"
 #include "paddle/fluid/pybind/eval_frame_tools.h"
-#include "paddle/phi/common/place.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
