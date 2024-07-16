@@ -29,7 +29,7 @@ from .serialization_utils import (
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import task
+    from paddle.base.core import task
     from paddle.distributed.communication.group import Group
 
     _T = TypeVar("_T")

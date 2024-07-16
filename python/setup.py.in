@@ -1172,8 +1172,6 @@ package_data['paddle.base'] = package_data.get('paddle.base', []) + [
     '*.pyi'
 ]
 package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + ['tensor.pyi']
-package_data['paddle._typing'] = package_data.get('paddle._typing', []) + ['*.pyi']
-
 
 def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
     print('-'*2, 'Generate stub file tensor.pyi ... ')
