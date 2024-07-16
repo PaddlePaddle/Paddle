@@ -426,24 +426,19 @@ class TransformExprVisitor : public ir::IRMutator<> {
  private:
   template <typename OpType>
   void ExtractIterHelper(const ir::Expr& expr,
-                         std::map<std::string, ir::Expr>& name_to_iter) {
+                         std::map<std::string, ir::Expr>* name_to_iter) {
     const auto op = expr.As<OpType>();
     ExtractIterFromIndice(op->a(), name_to_iter);
     ExtractIterFromIndice(op->b(), name_to_iter);
   }
 
   void ExtractIterFromIndice(const ir::Expr& expr,
-                             std::map<std::string, ir::Expr>& name_to_iter) {
+                             std::map<std::string, ir::Expr>* name_to_iter) {
     if (expr.As<ir::_Var_>()) {
       const auto var = expr.As<ir::_Var_>();
-      if (var->is_symbolic_constant) {
-        VLOG(6) << "symbolic constant: \n" << var->name;
-        return;
+      if (name_to_iter->count(var->name) == 0) {
+        (*name_to_iter)[var->name] = expr;
       }
-      if (name_to_iter.count(var->name) == 0) {
-        name_to_iter[var->name] = expr;
-      }
-      return;
     } else if (expr.As<ir::Add>()) {
       ExtractIterHelper<ir::Add>(expr, name_to_iter);
     } else if (expr.As<ir::Sub>()) {
@@ -461,6 +456,37 @@ class TransformExprVisitor : public ir::IRMutator<> {
     return;
   }
 
+  void CopyIndiceItersToLocalBuffer(
+      const std::map<std::string, ir::Expr>& name_to_iter,
+      std::vector<ir::Expr>* local_buffer_iters) {
+    std::map<std::size_t, ir::Expr> name_helper;
+    for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
+      VLOG(6) << "iter var name: " << loop_vars_[i]->name;
+      if (name_to_iter.count(loop_vars_[i]->name) > 0) {
+        name_helper[i] = name_to_iter.at(loop_vars_[i]->name);
+      }
+    }
+    for (const auto& [key, iter] : name_helper) {
+      local_buffer_iters->push_back(iter);
+    }
+  }
+
+  std::vector<ir::Expr> ConvertIndicesToIters(
+      const std::vector<ir::Expr>& indices) {
+    std::vector<ir::Expr> local_buffer_iters;
+    std::map<std::string, ir::Expr> name_to_iter;
+    for (const auto& indice : indices) {
+      ExtractIterFromIndice(indice, &name_to_iter);
+      VLOG(6) << "extract iter: " << indice
+              << " iter_set size: " << name_to_iter.size();
+    }
+    CopyIndiceItersToLocalBuffer(name_to_iter, &local_buffer_iters);
+    while (local_buffer_iters.size() < indices.size()) {
+      local_buffer_iters.insert(local_buffer_iters.begin(), ir::Expr(0));
+    }
+    return local_buffer_iters;
+  }
+
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
     CHECK(node);
@@ -476,37 +502,6 @@ class TransformExprVisitor : public ir::IRMutator<> {
   }
 
   void Visit(const ir::Store* op, ir::Expr* expr) override {
-    auto CopyIndiceItersToLocalBuffer =
-        [&](std::map<std::string, ir::Expr>& name_to_iter,
-            std::vector<ir::Expr>& local_buffer_iters) {
-          std::map<std::size_t, ir::Expr> name_helper;
-          for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
-            VLOG(6) << "iter var name: " << loop_vars_[i]->name;
-            if (name_to_iter.count(loop_vars_[i]->name) > 0) {
-              name_helper[i] = name_to_iter[loop_vars_[i]->name];
-            }
-          }
-          for (const auto& [key, iter] : name_helper) {
-            local_buffer_iters.push_back(iter);
-          }
-        };
-
-    auto ConvertIndicesToIters =
-        [&](std::vector<ir::Expr>& indices) -> std::vector<ir::Expr> {
-      std::vector<ir::Expr> local_buffer_iters_;
-      std::map<std::string, ir::Expr> name_to_iter_;
-      for (const auto& indice : indices) {
-        ExtractIterFromIndice(indice, name_to_iter_);
-        VLOG(6) << "extract iter: " << indice
-                << " iter_set: " << name_to_iter_.size();
-      }
-      CopyIndiceItersToLocalBuffer(name_to_iter_, local_buffer_iters_);
-      while (local_buffer_iters_.size() < indices.size()) {
-        local_buffer_iters_.insert(local_buffer_iters_.begin(), ir::Expr(0));
-      }
-      return local_buffer_iters_;
-    };
-
     auto store = expr->As<ir::Store>();
     if (store->tensor.as_tensor_ref()->buffer->memory_type ==
         ir::MemoryType::GPULocal) {
@@ -516,37 +511,6 @@ class TransformExprVisitor : public ir::IRMutator<> {
   }
 
   void Visit(const ir::Load* op, ir::Expr* expr) override {
-    auto CopyIndiceItersToLocalBuffer =
-        [&](std::map<std::string, ir::Expr>& name_to_iter,
-            std::vector<ir::Expr>& local_buffer_iters) {
-          std::map<std::size_t, ir::Expr> name_helper;
-          for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
-            VLOG(6) << "iter var name: " << loop_vars_[i]->name;
-            if (name_to_iter.count(loop_vars_[i]->name) > 0) {
-              name_helper[i] = name_to_iter[loop_vars_[i]->name];
-            }
-          }
-          for (const auto& [key, iter] : name_helper) {
-            local_buffer_iters.push_back(iter);
-          }
-        };
-
-    auto ConvertIndicesToIters =
-        [&](std::vector<ir::Expr>& indices) -> std::vector<ir::Expr> {
-      std::vector<ir::Expr> local_buffer_iters_;
-      std::map<std::string, ir::Expr> name_to_iter_;
-      for (const auto& indice : indices) {
-        ExtractIterFromIndice(indice, name_to_iter_);
-        VLOG(6) << "extract iter: " << indice
-                << " iter_set: " << name_to_iter_.size();
-      }
-      CopyIndiceItersToLocalBuffer(name_to_iter_, local_buffer_iters_);
-      while (local_buffer_iters_.size() < indices.size()) {
-        local_buffer_iters_.insert(local_buffer_iters_.begin(), ir::Expr(0));
-      }
-      return local_buffer_iters_;
-    };
-
     auto load = expr->As<ir::Load>();
     if (load->tensor.as_tensor_ref()->buffer->memory_type ==
         ir::MemoryType::GPULocal) {
