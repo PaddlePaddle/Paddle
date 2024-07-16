@@ -27,7 +27,7 @@
 #include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
@@ -1575,7 +1575,7 @@ class AllocatorFacadePrivate {
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
-  std::map<platform::Place, std::shared_ptr<CUDAMallocAsyncAllocator>>
+  std::map<phi::Place, std::shared_ptr<CUDAMallocAsyncAllocator>>
       default_cuda_malloc_async_allocators_;
 #endif
 

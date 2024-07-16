@@ -95,7 +95,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -133,6 +132,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
@@ -205,6 +205,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -940,6 +941,23 @@ void BindVjp(pybind11::module *m) {
             for (size_t j = 0; j < inputs[idx].size(); ++j) {
               if (vjp_res[grad_index][j]) {
                 // The grad_type must equal to forward type.
+                if (auto fwd_type =
+                        inputs[idx][j]
+                            .type()
+                            .dyn_cast<dialect::DistTypeInterface>()) {
+                  if (auto bwd_type =
+                          vjp_res[grad_index][j]
+                              .type()
+                              .dyn_cast<dialect::DistTypeInterface>()) {
+                    auto fwd_attr = fwd_type.tensor_dist_attr();
+                    auto bwd_attr = bwd_type.tensor_dist_attr();
+                    if (fwd_attr.process_mesh_attr() ==
+                            bwd_attr.process_mesh_attr() &&
+                        fwd_attr.dims_mapping() == bwd_attr.dims_mapping()) {
+                      continue;
+                    }
+                  }
+                }
                 vjp_res[grad_index][j].set_type(inputs[idx][j].type());
               }
             }
