@@ -228,7 +228,7 @@ phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
     case AnalysisConfig::Precision::kInt8:
       return phi::DataType::INT8;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Paddle Inference not support precision. We now only support "
           "Float32, Half, Bfloat16 and Int8"));
       return phi::DataType::FLOAT32;
@@ -249,7 +249,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     case paddle_infer::PlaceType::kCUSTOM:
       return phi::Backend::CUSTOM;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU "
           "and CPU."));
       return phi::Backend::CPU;
@@ -283,16 +283,16 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
   if (!has_zero_dim) {
     PADDLE_ENFORCE_NOT_NULL(
         input_ptr,
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "Cannot convert to LoDTensor because LoDTensor creation failed."));
     PADDLE_ENFORCE_NOT_NULL(
         pt.data.data(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor is illegal."));
     PADDLE_ENFORCE_EQ(
         pt.data.length(),
         t->numel() * phi::SizeOf(t->dtype()),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
   }
 
@@ -307,7 +307,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     std::memcpy(
         static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Not compile with WITH_IPU, should not reach here."));
 #endif
   } else if (phi::is_gpu_place(place)) {
@@ -326,8 +326,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                  pt.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with CUDA, should not reach here."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Not compile with CUDA, should not reach here."));
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
@@ -338,8 +338,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                  pt.data.data(),
                  pt.data.length());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with XPU, should not reach here."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Not compile with XPU, should not reach here."));
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -354,11 +354,11 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                  pt.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Not compile with CUSTOM_DEVICE, should not reach here."));
 #endif
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
         "now."));
   }
@@ -445,6 +445,15 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
+  if (load_pir_model_) {
+    PADDLE_ENFORCE_EQ(
+        FLAGS_enable_pir_api || (config_.use_pir_ && config_.use_new_executor_),
+        true,
+        platform::errors::InvalidArgument(
+            "Models with a .json suffix can only run in PIR mode. Please set "
+            "export FLAGS_enable_pir_api=True or "
+            "config.EnableNewExecutor(true)) and config.EnableNewIR(true)"));
+  }
 
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
@@ -1025,7 +1034,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      if (load_pir_model_ && for_save) {
+      if (!load_pir_model_ && for_save) {
         sub_scope_->Var(data_name);
       }
       idx2feeds_[feed_idx] = data_name;
@@ -1747,7 +1756,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   if (config_.use_xpu_) {
     PADDLE_ENFORCE(
         private_context_,
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "Must use private context if run predictor on xpu place."));
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
@@ -1866,12 +1875,12 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
   for (const auto &input : inputs) {
     PADDLE_ENFORCE_EQ(input.defined(),
                       true,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input Tensor expected to be defined."));
     PADDLE_ENFORCE_EQ(
         input.is_dense_tensor(),
         true,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input Tensor expected to be type of dense tensor."));
   }
 
@@ -2517,7 +2526,7 @@ AnalysisPredictor::GetInputTypes() {
     } else if (dtype == paddle::framework::proto::VarType::BOOL) {
       input_type[name] = paddle_infer::DataType::BOOL;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when get input dtype ", dtype));
     }
   }
@@ -2572,7 +2581,7 @@ AnalysisPredictor::GetOutputTypes() {
     } else if (dtype == paddle::framework::proto::VarType::INT8) {
       output_type[name] = paddle_infer::DataType::INT8;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when get output dtype ", dtype));
     }
   }
@@ -2713,7 +2722,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   if (config_.use_xpu_) {
     PADDLE_ENFORCE(
         private_context_,
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "Must use private context if run predictor on xpu place."));
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
@@ -3778,7 +3787,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) : preds_() {
   PADDLE_ENFORCE_GE(
       size,
       1UL,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
   Config copy_config(config);
@@ -3797,7 +3806,7 @@ Predictor *PredictorPool::Retrieve(size_t idx) {
   PADDLE_ENFORCE_LT(
       idx,
       preds_.size() + 1,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "There are (%d) predictors in the pool, but the idx is (%d)",
           idx,
           preds_.size() + 1));

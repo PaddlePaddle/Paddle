@@ -333,9 +333,9 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
 
     if (!use_default_attr_map) {
-      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
-                              paddle::platform::errors::PermissionDenied(
-                                  "Detected default_attrs = nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          passed_default_attrs_,
+          phi::errors::PermissionDenied("Detected default_attrs = nullptr."));
       VLOG(6) << "Use passed in default attrs";
       OpBase::Run(*op, new_ins, outs, attrs, (*passed_default_attrs_), place);
     } else {
@@ -372,7 +372,7 @@ void Tracer::TraceOpImpl(const std::string& type,
       PADDLE_ENFORCE_EQ(
           passed_default_attrs_,
           nullptr,
-          paddle::platform::errors::PermissionDenied(
+          phi::errors::PermissionDenied(
               "We expect passed_default_attrs_ is nullptr while "
               "use_default_attr_map is true, however we got not null "
               "passed_default_attrs_. Please check your usage of trace_op. "));

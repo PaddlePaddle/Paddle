@@ -143,9 +143,9 @@ void AllReduceOpHandle::AllReduceImpl(
               in_var_handles[i]->name(),
               numel));
       dtype = framework::TransToProtoVarType(lod_tensor.dtype());
-      is_gpu_place = platform::is_gpu_place(lod_tensor.place());
+      is_gpu_place = phi::is_gpu_place(lod_tensor.place());
 #if defined(PADDLE_WITH_XPU_BKCL)
-      is_xpu_place = platform::is_xpu_place(lod_tensor.place());
+      is_xpu_place = phi::is_xpu_place(lod_tensor.place());
 #endif
     }
     PADDLE_ENFORCE_EQ(
@@ -162,13 +162,13 @@ void AllReduceOpHandle::AllReduceImpl(
             "scopes should be equal."));
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_EQ(is_xpu_place,
-                      platform::is_xpu_place(lod_tensor.place()),
+                      phi::is_xpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
 #endif
     PADDLE_ENFORCE_EQ(is_gpu_place,
-                      platform::is_gpu_place(lod_tensor.place()),
+                      phi::is_gpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
@@ -204,7 +204,7 @@ void AllReduceOpHandle::AllReduceFunc(
     int64_t numel,
     const std::vector<phi::Place> &places,
     const std::vector<std::string> &out_var_names) {
-  if (platform::is_gpu_place(places[0])) {
+  if (phi::is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_,
                             platform::errors::InvalidArgument(
@@ -223,7 +223,7 @@ void AllReduceOpHandle::AllReduceFunc(
     PADDLE_THROW(
         platform::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
-  } else if (platform::is_xpu_place(places[0])) {
+  } else if (phi::is_xpu_place(places[0])) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_,
                             platform::errors::InvalidArgument(

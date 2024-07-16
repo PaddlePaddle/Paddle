@@ -40,10 +40,10 @@ void BoxWrapper::PullSparseCase(const phi::Place& place,
       reinterpret_cast<boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
           buf->ptr());
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
@@ -149,10 +149,10 @@ void BoxWrapper::PushSparseGradCase(
       total_grad_values_gpu = reinterpret_cast<
           boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
           buf->ptr());
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
     int device_id = place.GetDeviceId();
     phi::DenseTensor& cached_total_keys_tensor = keys_tensor[device_id];

@@ -4260,6 +4260,7 @@
   output : Tensor(out)
   infer_meta :
     func : SquaredL2NormInferMeta
+    spmd_rule : SquaredL2NormInferSpmd
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad

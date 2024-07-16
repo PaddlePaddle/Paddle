@@ -608,18 +608,17 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::Place, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::Place, phi::CustomPlace>)
       .def("is_gpu_place",
-           [](phi::Place &self) { return platform::is_gpu_place(self); })
+           [](phi::Place &self) { return phi::is_gpu_place(self); })
       .def("is_cpu_place",
-           [](phi::Place &self) { return platform::is_cpu_place(self); })
+           [](phi::Place &self) { return phi::is_cpu_place(self); })
       .def("is_xpu_place",
-           [](phi::Place &self) { return platform::is_xpu_place(self); })
+           [](phi::Place &self) { return phi::is_xpu_place(self); })
       .def("is_ipu_place",
-           [](phi::Place &self) { return platform::is_ipu_place(self); })
-      .def(
-          "is_cuda_pinned_place",
-          [](phi::Place &self) { return platform::is_cuda_pinned_place(self); })
+           [](phi::Place &self) { return phi::is_ipu_place(self); })
+      .def("is_cuda_pinned_place",
+           [](phi::Place &self) { return phi::is_cuda_pinned_place(self); })
       .def("is_custom_place",
-           [](phi::Place &self) { return platform::is_custom_place(self); })
+           [](phi::Place &self) { return phi::is_custom_place(self); })
       .def("gpu_device_id", [](phi::Place &self) { return self.device; })
       .def("xpu_device_id", [](phi::Place &self) { return self.device; })
       .def("ipu_device_id", [](phi::Place &self) { return self.device; })
