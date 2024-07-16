@@ -68,16 +68,16 @@ def all_gather(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
-                >>> import paddle
-                >>> import paddle.distributed as dist
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-                >>> dist.init_parallel_env()
-                >>> tensor_list = [] # type: ignore
-                >>> if dist.get_rank() == 0:
-                ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-                >>> else:
-                ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-                >>> dist.all_gather(tensor_list, data)
+            >>> dist.init_parallel_env()
+            >>> tensor_list = [] # type: ignore
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> dist.all_gather(tensor_list, data)
             >>> print(tensor_list)
             >>> # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """
