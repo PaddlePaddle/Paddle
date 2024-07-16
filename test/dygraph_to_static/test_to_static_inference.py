@@ -22,6 +22,7 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
+import paddle.inference as paddle_infer
 
 
 class TestLayer(paddle.nn.Layer):
@@ -52,6 +53,25 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
         my_layer = TestLayer(hidd)
         result0 = my_layer(x).numpy()
         my_static_layer = paddle.jit.to_static(my_layer, backend="inference")
+        result1 = my_layer(x).numpy()
+        np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
+
+
+class TestToStaticInfenrenceTensorRTModel(Dy2StTestBase):
+    @test_ast_only
+    def test_dygraph_static_same_result(self):
+        if paddle_infer.get_trt_compile_version()[0] == 0:
+            return
+        hidd = 1024
+        batch = 4096
+        hidd = 1024
+        dtype = "float32"
+        x = paddle.rand([batch, hidd], dtype=dtype)
+        my_layer = TestLayer(hidd)
+        result0 = my_layer(x).numpy()
+        my_static_layer = paddle.jit.to_static(
+            my_layer, backend="inference", with_trt=True
+        )
         result1 = my_layer(x).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
