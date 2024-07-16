@@ -107,9 +107,7 @@ class InferenceEngine:
         self.cache_static_model = kwargs.get("cache_static_model", False)
         self.save_model_dir = kwargs.get(
             "save_model_dir",
-            os.path.join(
-                Path.home(), ".cache", "paddle", "to_static_inference_models"
-            ),
+            os.path.join(Path.home(), ".cache", "paddle", "inference_models"),
         )
         self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
         self.precision_mode = kwargs.get("precision_mode", "float32")
@@ -179,8 +177,10 @@ class InferenceEngine:
             # The rank of this tensor has changed
             if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
                 self.re_do_d2s = True
-                d2s_input_shapes[i] = input_tensor_lists[i]
-                print("rank is changed, we need re do d2s.")
+                print(
+                    f"{self.d2s_input_names[i]}'s rank is changed from {len(d2s_input_shapes[i])} to {len(input_tensor_lists[i].shape)}, need re do d2s."
+                )
+                d2s_input_shapes[i] = input_tensor_lists[i].shape
                 continue
             for j in range(len(d2s_input_shapes[i])):
                 if (
@@ -188,8 +188,10 @@ class InferenceEngine:
                     and d2s_input_shapes[i][j] != input_tensor_lists[i].shape[j]
                 ):
                     self.re_do_d2s = True
+                    print(
+                        f"{self.d2s_input_names[i]}'s shape is changed from {d2s_input_shapes[i]} to {input_tensor_lists[i].shape}, need re do d2s."
+                    )
                     d2s_input_shapes[i][j] = -1
-                    print("shape is changed, we need re do d2s.")
             sys.stdout.flush()
         # update the d2s_input_shapes, because of dynamic shape
         self.d2s_input_shapes = d2s_input_shapes
