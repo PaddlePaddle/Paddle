@@ -571,8 +571,10 @@ class TensorVariable(VariableBase):
         if name in [
             "dtype",
             "type",
+            "name",
             "persistable",
             "stop_gradient",
+            "place",
         ]:
             return VariableFactory.from_value(
                 getattr(self.meta, name),
