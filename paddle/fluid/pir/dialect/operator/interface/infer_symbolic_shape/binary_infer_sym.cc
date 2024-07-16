@@ -64,6 +64,67 @@ inline void UpdatePaddingAndDilation(
 }  // namespace
 namespace paddle::dialect {
 
+bool BceLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &input_dim_expr_vector = [&] {
+    std::vector<symbol::DimExpr> dim_expr_vector;
+    if (input_shape_or_data.data().has_value()) {
+      dim_expr_vector = input_shape_or_data.data().value();
+    } else {
+      dim_expr_vector = input_shape_or_data.shape();
+    }
+    return dim_expr_vector;
+  }();
+
+  const std::vector<symbol::DimExpr> &label_dim_expr_vector = [&] {
+    std::vector<symbol::DimExpr> dim_expr_vector;
+    if (label_shape_or_data.data().has_value()) {
+      dim_expr_vector = label_shape_or_data.data().value();
+    } else {
+      dim_expr_vector = label_shape_or_data.shape();
+    }
+    return dim_expr_vector;
+  }();
+
+  int rank = input_dim_expr_vector.size();
+
+  PADDLE_ENFORCE_EQ(rank,
+                    label_dim_expr_vector.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        label_dim_expr_vector.size()));
+
+  // TODO(WintersMontagne10335): CINN currently does not support comparing
+  // symbol::DimExpr with 0
+
+  for (int i = 0; i < rank; i++) {
+    infer_context->AddEqualCstr(input_dim_expr_vector[i],
+                                label_dim_expr_vector[i]);
+  }
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dim_expr_vector = input_dim_expr_vector;
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dim_expr_vector)};
+  }();
+
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
+bool BceLoss_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BceLossOpInferSymbolicShape(op, infer_context);
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =

@@ -455,6 +455,7 @@
     data_type : input
   inplace : (input -> out)
   backward : bce_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search
   args: (Tensor pre_ids, Tensor pre_scores, Tensor ids, Tensor scores, int level,
