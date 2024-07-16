@@ -111,7 +111,7 @@ class UCIHousing(Dataset):
         data_file: str | None = None,
         mode: _UciHousingDataSetMode = 'train',
         download: bool = True,
-    ):
+    ) -> None:
         assert mode.lower() in [
             'train',
             'test',
