@@ -1799,7 +1799,7 @@ TEST(GatherGradInferSpmd, Ctor) {
 
 TEST(GatherNdGradInferSpmd, Ctor) {
   std::vector<int64_t> x_shape = {32};
-  std::vector<int64_t> index_shape = {16, 1};
+  std::vector<int64_t> index_shape = {16};
   std::vector<int64_t> out_grad_shape = {16};
 
   std::vector<int64_t> mesh_shape = {2, 3};
@@ -1815,10 +1815,10 @@ TEST(GatherNdGradInferSpmd, Ctor) {
   TensorDistAttr out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
 
-  // inputs: [-1], [0, -1] --> [0, -1]
+  // inputs: [-1], [0] --> [0]
   // x_grad: [0]
   x_dist_attr.set_dims_mapping({-1});
-  index_dist_attr.set_dims_mapping({0, -1});
+  index_dist_attr.set_dims_mapping({0});
   out_grad_dist_attr.set_dims_mapping({-1});
   phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
