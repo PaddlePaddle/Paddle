@@ -134,6 +134,27 @@ platform::DeviceContext* ParseDeviceContext(
       }
       return dev_ctx;
     }
+    if (FLAGS_dynamic_static_unified_comm) {
+      if (op_attributes.count("ring_id") != 0) {
+        int ring_id =
+            op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        if (comm_context_manager.Has(std::to_string(ring_id))) {
+          auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+          dev_ctx = static_cast<platform::DeviceContext*>(
+              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                  ->GetDevContext());
+          dev_ctx->SetCommContext(comm_context);
+          if (typeid(op) == typeid(pir::Operation*)) {
+            return dev_ctx;
+          }
+        } else {
+          VLOG(10) << "ring_id " << ring_id
+                   << " not found in comm_context_manager for op " << op_name;
+        }
+      }
+    }
 #endif
   }
 
