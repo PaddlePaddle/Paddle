@@ -185,8 +185,6 @@ class TestZBVPPPass(unittest.TestCase):
             self.assertEqual(sum(fw_chunk_ids), 13)
             self.assertEqual(sum(bw_chunk_ids), 19)
         else:
-            print(sum(fw_chunk_ids))
-            print(sum(bw_chunk_ids))
             self.assertEqual(sum(fw_chunk_ids), 7)
             self.assertEqual(sum(bw_chunk_ids), 12)
 
