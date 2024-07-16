@@ -426,22 +426,22 @@ class TransformExprVisitor : public ir::IRMutator<> {
  private:
   template <typename OpType>
   void ExtractIterHelper(const ir::Expr& expr,
-                         std::map<std::string, ir::Expr>& name_to_iter) {
+                         std::map<std::string, ir::Expr>* name_to_iter) {
     const auto op = expr.As<OpType>();
     ExtractIterFromIndice(op->a(), name_to_iter);
     ExtractIterFromIndice(op->b(), name_to_iter);
   }
 
   void ExtractIterFromIndice(const ir::Expr& expr,
-                             std::map<std::string, ir::Expr>& name_to_iter) {
+                             std::map<std::string, ir::Expr>* name_to_iter) {
     if (expr.As<ir::_Var_>()) {
       const auto var = expr.As<ir::_Var_>();
       if (var->is_symbolic_constant) {
         VLOG(6) << "symbolic constant: \n" << var->name;
         return;
       }
-      if (name_to_iter.count(var->name) == 0) {
-        name_to_iter[var->name] = expr;
+      if (name_to_iter->count(var->name) == 0) {
+        (*name_to_iter)[var->name] = expr;
       }
       return;
     } else if (expr.As<ir::Add>()) {
@@ -496,7 +496,7 @@ class TransformExprVisitor : public ir::IRMutator<> {
       std::vector<ir::Expr> local_buffer_iters_;
       std::map<std::string, ir::Expr> name_to_iter_;
       for (const auto& indice : indices) {
-        ExtractIterFromIndice(indice, name_to_iter_);
+        ExtractIterFromIndice(indice, &name_to_iter_);
         VLOG(6) << "extract iter: " << indice
                 << " iter_set: " << name_to_iter_.size();
       }
