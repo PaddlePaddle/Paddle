@@ -145,13 +145,16 @@ struct LiftToAnchorPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     auto origin_name = node->id();
     std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
-    // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
-    // type has sink and the others not) then, update logic here
-    PADDLE_ENFORCE_EQ(
-        node->sink_op()->num_results(),
-        1,
-        phi::errors::PreconditionNotMet(
-            "Op with multi output value can not lift to AnchorPattern"));
+    // TODO(huangjiyi): rm if condition after xshape removed in pd_op.reshape
+    if (node->sink_op()->name() != "pd_op.reshape") {
+      // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
+      // type has sink and the others not) then, update logic here
+      PADDLE_ENFORCE_EQ(
+          node->sink_op()->num_results(),
+          1,
+          phi::errors::PreconditionNotMet(
+              "Op with multi output value can not lift to AnchorPattern"));
+    }
     pir::Value anchor = node->sink_op()->result(0);
     node->set_stmt_pattern(AnchorPattern(
         ops,
