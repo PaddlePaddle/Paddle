@@ -574,7 +574,7 @@ void gemm_impl_new(int m,
                    const T* beta,
                    T* C) {
   auto* device_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+      phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
   const phi::GPUContext& dev_ctx = *device_ctx;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;

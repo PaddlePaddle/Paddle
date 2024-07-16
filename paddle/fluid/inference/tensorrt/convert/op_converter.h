@@ -708,7 +708,7 @@ class OpConverter {
         shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(phi::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }
@@ -744,7 +744,7 @@ class OpConverter {
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(phi::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }

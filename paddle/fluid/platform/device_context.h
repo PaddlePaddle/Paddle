@@ -67,7 +67,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"
@@ -82,9 +82,9 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
 namespace paddle {
@@ -100,7 +100,7 @@ enum DeviceType {
   MAX_DEVICE_TYPES = 7,
 };
 
-DeviceType Place2DeviceType(const platform::Place& place);
+DeviceType Place2DeviceType(const phi::Place& place);
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;

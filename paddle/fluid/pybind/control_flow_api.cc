@@ -237,13 +237,13 @@ Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
 void BuildPipeForBlock(Block* block) {
   PADDLE_ENFORCE_NOT_NULL(
       block,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The block used to hook local value can't be nullptr"));
   auto& builder = *(ApiBuilder::Instance().GetBuilder());
   Program* program = block->parent_program();
   PADDLE_ENFORCE_NOT_NULL(
       program,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The block used to hook local value must belong to a program"));
 
   auto original_position = builder.insertion_point();
@@ -274,18 +274,18 @@ namespace paddle::pybind {
 PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
   PADDLE_ENFORCE_NOT_NULL(
       if_op,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The if_op used to construct PyIfOp can't be nullptr"));
 }
 
 void PyIfOp::UpdateOutput() {
   PADDLE_ENFORCE_NOT_NULL(
       operation_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The if_op in PyIfOp used to update output can't be nullptr"));
   auto block = parent();
   PADDLE_ENFORCE_NOT_NULL(block,
-                          paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The parent block of if_op which used to update "
                               "output can't be nullptr"));
   Block::Iterator iter = **this;
@@ -300,19 +300,19 @@ void PyIfOp::UpdateOutput() {
 PyWhileOp::PyWhileOp(WhileOp while_op) : WhileOp(while_op) {
   PADDLE_ENFORCE_NOT_NULL(
       operation_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The while_op used to construct PyWhileOp can't be nullptr"));
 }
 
 std::vector<Value> PyWhileOp::OptimizeUpdate() {
   PADDLE_ENFORCE_NOT_NULL(operation_,
-                          paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The while_op in PyWhileOp used to remove unused "
                               "loop vars can't be nullptr"));
   auto parent_block = parent();
   PADDLE_ENFORCE_NOT_NULL(
       parent_block,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The parent block of while_op which used to remove "
           "unused loop vars can't be nullptr"));
 

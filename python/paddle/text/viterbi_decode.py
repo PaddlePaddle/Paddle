@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 
@@ -19,12 +22,19 @@ from ..base.framework import in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..nn import Layer
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = ['viterbi_decode', 'ViterbiDecoder']
 
 
 def viterbi_decode(
-    potentials, transition_params, lengths, include_bos_eos_tag=True, name=None
-):
+    potentials: Tensor,
+    transition_params: Tensor,
+    lengths: Tensor,
+    include_bos_eos_tag: bool = True,
+    name: str | None = None,
+) -> Tensor:
     """
     Decode the highest scoring sequence of tags computed by transitions and potentials and get the viterbi path.
 
@@ -36,7 +46,7 @@ def viterbi_decode(
         lengths (Tensor):  The input tensor of length of each sequence. This is a 1-D tensor with shape of [batch_size]. The data type is int64.
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -105,7 +115,7 @@ class ViterbiDecoder(Layer):
         transitions (`Tensor`): The transition matrix. Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
         include_bos_eos_tag (`bool`, optional): If set to True, the last row and the last column of transitions will be considered
             as start tag, the second to last row and the second to last column of transitions will be considered as stop tag. Defaults to ``True``.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -141,13 +151,22 @@ class ViterbiDecoder(Layer):
              [1, 1]])
     """
 
-    def __init__(self, transitions, include_bos_eos_tag=True, name=None):
+    transitions: Tensor
+    include_bos_eos_tag: bool
+    name: str | None
+
+    def __init__(
+        self,
+        transitions: Tensor,
+        include_bos_eos_tag: bool = True,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.transitions = transitions
         self.include_bos_eos_tag = include_bos_eos_tag
         self.name = name
 
-    def forward(self, potentials, lengths):
+    def forward(self, potentials: Tensor, lengths: Tensor) -> Tensor:
         return viterbi_decode(
             potentials,
             self.transitions,

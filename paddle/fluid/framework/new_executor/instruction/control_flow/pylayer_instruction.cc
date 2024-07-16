@@ -45,7 +45,7 @@ namespace framework {
 
 PyLayerInstruction::PyLayerInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)

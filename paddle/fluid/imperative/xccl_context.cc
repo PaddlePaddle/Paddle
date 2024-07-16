@@ -40,7 +40,7 @@ static void XcclAllReduce(const phi::DenseTensor &src,
                           const phi::ccl::CCLComm &comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
@@ -160,14 +160,14 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place_),
+      phi::is_custom_place(place_),
       true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   auto place = place_;
 
   auto *dev_ctx = static_cast<platform::CustomDeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   platform::XCCLComm *comm =
       platform::XCCLCommContext::Instance(place.GetDeviceType())
           .Get(ring_id, place);
@@ -232,7 +232,7 @@ void XCCLParallelContext::WaitCompute(int ring_id) {
                         compute_events_.size()));
 
   auto compute_stream = static_cast<phi::CustomContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->GetStream();
   auto comm_stream = platform::XCCLCommContext::Instance(place_.GetDeviceType())
                          .Get(ring_id, place_)
@@ -258,7 +258,7 @@ void XCCLParallelContext::WaitComm(int ring_id) {
                         comm_events_.size()));
 
   auto compute_stream = static_cast<phi::CustomContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->GetStream();
   auto comm_stream = platform::XCCLCommContext::Instance(place_.GetDeviceType())
                          .Get(ring_id, place_)
@@ -272,7 +272,7 @@ void XCCLParallelContext::WaitComm(int ring_id) {
 
 void XCCLParallelContext::SynchronizeCompute() {
   auto *compute_dev_ctx = static_cast<phi::CustomContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
+      phi::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }
 

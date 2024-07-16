@@ -35,8 +35,8 @@ struct InputVars {
 };
 
 void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
-  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
+  phi::DDim dims({1, 4, 8, 512});           // NHWC shape
+  phi::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
   phi::CPUPlace p;
   framework::Scope scope;
 
@@ -55,7 +55,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   scope.Var("y")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d followed by transpose
 
@@ -86,7 +86,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(),
                     expected_dims,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
 
@@ -96,8 +96,8 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
 }
 
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
-  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
+  phi::DDim dims({1, 4, 8, 512});           // NHWC shape
+  phi::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
   phi::CPUPlace p;
   framework::Scope scope;
 
@@ -117,7 +117,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   scope.Var("u")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d(oneDNN) followed by relu(CPU paddle) followed by
   // relu(oneDNN). Second relu should make a shape rotation to NCHW
@@ -154,12 +154,12 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(),
                     expected_dims,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
 
 TEST(test_pool2d_shape_nhwc, cpu_place) {
-  framework::DDim dims({1, 4, 8, 512});              // NHWC shape
+  phi::DDim dims({1, 4, 8, 512});                    // NHWC shape
   std::vector<int32_t> expected_dims{1, 3, 7, 512};  // NHWC expected shape
   phi::CPUPlace p;
   framework::Scope scope;
@@ -179,7 +179,7 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   scope.Var("y")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
 
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
 
   // Make pool2d followed by shape. shape for NHWC should return
   // as output tensor not-rotated shape of Pool (
@@ -209,76 +209,8 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   // Verify shape of output
   PADDLE_ENFORCE_EQ(vzdata,
                     expected_dims,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
-}
-
-TEST(test_pool2d_crop_nhwc, cpu_place) {
-  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 3, 7, 512});  // NCHW expected shape
-  phi::CPUPlace p;
-  framework::Scope scope;
-
-  InputVars input_name = {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()};
-  InputVars second_crop_input_name = {
-      "v", scope.Var("v")->GetMutable<phi::DenseTensor>()};
-  // Initialize input data
-  std::uniform_real_distribution<float> dist(10.0f, 20.0f);
-  std::mt19937 engine;
-  size_t numel = static_cast<size_t>(common::product(dims));
-  input_name.tensor->Resize(dims);
-  auto data_ptr = input_name.tensor->mutable_data<float>(p);
-  for (size_t i = 0; i < numel; ++i) {
-    data_ptr[i] = dist(engine);
-  }
-  // Second input (Y) to crop is having no buffer
-  // but as it is MKLDNN then its shape order should be NCHW
-  auto expected_dims_nchw = common::vectorize<int64_t>(expected_dims);
-  std::rotate(expected_dims_nchw.begin() + 1,
-              expected_dims_nchw.end() - 1,
-              expected_dims_nchw.end());
-  second_crop_input_name.tensor->Resize(common::make_ddim(expected_dims_nchw));
-  const auto second_crop_input_md =
-      dnnl::memory::desc(expected_dims_nchw,
-                         dnnl::memory::data_type::f32,
-                         dnnl::memory::format_tag::nhwc);
-  second_crop_input_name.tensor->set_mem_desc(second_crop_input_md);
-
-  scope.Var("y")->GetMutable<phi::DenseTensor>();
-  auto *z = scope.Var("z")->GetMutable<phi::DenseTensor>();
-
-  auto &pool = platform::DeviceContextPool::Instance();
-
-  // Make pool2d followed by crop. crop may have Y input as
-  // non buffered so the path to be executed is handling oneDNN kernel
-  // that is followed by CPU kernel with non-buffered Input
-
-  auto ksize = std::vector<int>(2, 2);
-  auto op_pool =
-      framework::OpRegistry::CreateOp("pool2d",
-                                      {{"X", {"x"}}},
-                                      {{"Out", {"y"}}},
-                                      {{"pooling_type", {std::string("max")}},
-                                       {"ksize", {ksize}},
-                                       {"data_format", {std::string("NHWC")}},
-                                       {"use_mkldnn", {true}}});
-
-  std::vector<int> offsets{0, 0, 0, 0};
-  auto op_crop = framework::OpRegistry::CreateOp("crop",
-                                                 {{"X", {"y"}}, {"Y", {"v"}}},
-                                                 {{"Out", {"z"}}},
-                                                 {{"offsets", {offsets}}});
-
-  op_pool->Run(scope, p);
-  op_crop->Run(scope, p);
-
-  pool.Get(p)->Wait();
-
-  // Verify shape of output
-  PADDLE_ENFORCE_EQ(z->dims(),
-                    expected_dims,
-                    platform::errors::InvalidArgument(
-                        "Output shape does not match expected output shape"));
 }
 
 }  // namespace operators

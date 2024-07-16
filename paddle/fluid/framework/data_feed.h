@@ -538,13 +538,13 @@ struct BatchGPUValue {
 
 class MiniBatchGpuPack {
  public:
-  MiniBatchGpuPack(const paddle::platform::Place& place,
+  MiniBatchGpuPack(const phi::Place& place,
                    const std::vector<UsedSlotInfo>& infos,
                    phi::StreamId stream_id);
   ~MiniBatchGpuPack();
   bool is_use() { return is_using_; }
   void set_use_flag(bool is_use) { is_using_ = is_use; }
-  void reset(const paddle::platform::Place& place);
+  void reset(const phi::Place& place);
   void pack_instance(const SlotRecord* ins_vec, int num);
   int ins_num() { return ins_num_; }
   int pv_num() { return pv_num_; }
@@ -628,7 +628,7 @@ class MiniBatchGpuPack {
 
  private:
   bool is_using_ = false;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::unique_ptr<phi::CUDAStream> stream_holder_;
   cudaStream_t stream_;
   BatchGPUValue value_;
@@ -682,7 +682,7 @@ class MiniBatchGpuPackMgr {
   }
 
   // thread unsafe
-  MiniBatchGpuPack* get(const paddle::platform::Place& place,
+  MiniBatchGpuPack* get(const phi::Place& place,
                         const std::vector<UsedSlotInfo>& infos) {
     int device_id = place.GetDeviceId();
     for (size_t i = 0; i < pack_list_[device_id].size(); i++) {
@@ -1068,7 +1068,7 @@ class GraphDataGenerator {
 
   cudaStream_t train_stream_;
   cudaStream_t sample_stream_;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::vector<phi::DenseTensor*> feed_vec_;
   std::vector<UsedSlotInfo>* feed_info_;  // adapt for float feature
   std::vector<size_t> offset_;
@@ -1387,10 +1387,8 @@ class DataFeed {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
   }
-  virtual void SetPlace(const paddle::platform::Place& place) {
-    place_ = place;
-  }
-  virtual const paddle::platform::Place& GetPlace() const { return place_; }
+  virtual void SetPlace(const phi::Place& place) { place_ = place; }
+  virtual const phi::Place& GetPlace() const { return place_; }
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack) {
@@ -1469,7 +1467,7 @@ class DataFeed {
   std::vector<SlotConf> slot_conf_;
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
-  platform::Place place_;
+  phi::Place place_;
   std::string uid_slot_;
 
   // The input type of pipe reader, 0 for one sample, 1 for one batch

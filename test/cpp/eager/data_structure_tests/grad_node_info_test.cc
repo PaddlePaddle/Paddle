@@ -39,11 +39,10 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   paddle::Tensor et1(dt);
   grads = {{et1}};
@@ -90,10 +89,10 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
         phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
     std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace())
+            phi::CPUPlace())
             .get(),
         meta);
-    auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+    auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
     dt_ptr[0] = 6.0f;
     auto* et_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(et.impl())->data<float>();
@@ -127,8 +126,7 @@ TEST(GradNodeInfo, Edge) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
   paddle::Tensor et1(dt);

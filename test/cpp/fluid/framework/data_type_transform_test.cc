@@ -17,7 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(DataTypeTransform, CPUTransform) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
 
   auto kernel_fp16 = phi::KernelKey(
       place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT16);

@@ -133,8 +133,7 @@ void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
 
-void LogDeviceMemoryStats(const platform::Place& place,
-                          const std::string& op_name);
+void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
 
 #define DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, id)               \
   case id:                                                          \
@@ -163,7 +162,7 @@ void LogDeviceMemoryStats(const platform::Place& place,
       DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 14);                          \
       DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 15);                          \
       default:                                                                \
-        PADDLE_THROW(paddle::platform::errors::OutOfRange(                    \
+        PADDLE_THROW(phi::errors::OutOfRange(                                 \
             "Only support device id between [0, 15] for device memory stats," \
             "not support device id: %d",                                      \
             id));                                                             \
@@ -179,17 +178,17 @@ void LogDeviceMemoryStats(const platform::Place& place,
 #define DEVICE_MEMORY_STAT_UPDATE(item, id, increment) \
   DEVICE_MEMORY_STAT_FUNC(item, id, Update, increment)
 
-#define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                     \
-  [&] {                                                                \
-    PADDLE_ENFORCE_EQ(id,                                              \
-                      0,                                               \
-                      paddle::platform::errors::OutOfRange(            \
-                          "Only support device id 0 for host memory "  \
-                          "stats, not support device id: %d",          \
-                          id));                                        \
-    return paddle::memory::Stat<                                       \
-               paddle::memory::HostMemoryStat##item##0>::GetInstance() \
-        ->func(__VA_ARGS__);                                           \
+#define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                          \
+  [&] {                                                                     \
+    PADDLE_ENFORCE_EQ(                                                      \
+        id,                                                                 \
+        0,                                                                  \
+        phi::errors::OutOfRange("Only support device id 0 for host memory " \
+                                "stats, not support device id: %d",         \
+                                id));                                       \
+    return paddle::memory::Stat<                                            \
+               paddle::memory::HostMemoryStat##item##0>::GetInstance()      \
+        ->func(__VA_ARGS__);                                                \
   }()
 
 #define HOST_MEMORY_STAT_CURRENT_VALUE(item, id) \

@@ -160,29 +160,10 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
 
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto weight_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
-
-  const std::vector<symbol::DimExpr> &weight_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (weight_shape_or_data.data().has_value()) {
-      dims = weight_shape_or_data.data().value();
-    } else {
-      dims = weight_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &weight_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_dims = x_dims;
@@ -391,7 +372,25 @@ bool MaskedSelectOpInferSymbolicShape(
     out_dims.push_back(out_shape);
     return out_dims;
   }();
-  // TODO(fty1777): Add constrains between the shapes of x and mask
+  // Add constrains between the shapes of x and mask
+  const std::vector<symbol::DimExpr> &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &mask_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  size_t ndims_x = x_shape.size();
+  size_t ndims_mask = mask_shape.size();
+  if (ndims_x >= ndims_mask) {
+    size_t diff = ndims_x - ndims_mask;
+    for (size_t i = 0; i < ndims_mask; i++) {
+      infer_context->AddBroadcastableCstr(x_shape[i + diff], mask_shape[i]);
+    }
+  } else {
+    size_t diff = ndims_mask - ndims_x;
+    for (size_t i = 0; i < ndims_x; i++) {
+      infer_context->AddBroadcastableCstr(x_shape[i], mask_shape[i + diff]);
+    }
+  }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   return true;
@@ -513,6 +512,14 @@ bool AccuracyCheckOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
+bool ReduceAsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &target_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), target_shape);
   return true;
 }
 

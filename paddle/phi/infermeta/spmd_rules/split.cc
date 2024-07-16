@@ -209,20 +209,11 @@ SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
   return SplitWithNumInferSpmd(x, num, axis);
 }
 
-SpmdInfo SplitInferSpmdDynamic(const DistMetaTensor& x, const std::vector<int64_t>& sections, const Scalar& axis) {
-  std::vector<int> tmp_sections = std::vector<int>(sections.begin(), sections.end());
-  int tmp_axis = axis.to<int32_t>();
-  auto tmp_spmd_info = SplitInferSpmd(x, tmp_sections, tmp_axis);
-
-  SpmdInfo ret;
-  ret.first = tmp_spmd_info.first;
-  std::vector<TensorDistAttr> out_dist_attrs;
-  out_dist_attrs.reserve(tmp_spmd_info.second.size());
-  for (const auto& out : tmp_spmd_info.second) {
-    out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
-  }
-  ret.second = {out_dist_attrs};
-  return ret;
+SpmdInfo SplitInferSpmdDynamic(const DistMetaTensor& x,
+                               const std::vector<int64_t>& sections,
+                               const Scalar& axis) {
+  int num = static_cast<int>(sections.size());
+  return SplitWithNumInferSpmdDynamic(x, num, axis);
 }
 
 SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,

@@ -28,7 +28,7 @@ void AddVarToScope(Scope* param_scope,
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* data = cpu_ctx->Alloc<T>(tensor);
   for (int64_t i = 0; i < tensor->numel(); i++) {
     data[i] = value;
