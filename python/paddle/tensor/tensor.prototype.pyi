@@ -115,7 +115,7 @@ class AbstractTensor:
         parameter equals to case 1)
         def __init__ (
             value: ndarray,
-            place: paddle::platform::Place,
+            place: paddle::phi::Place,
             persistable: bool,
             zero_copy: bool,
             name: std::string,
@@ -131,7 +131,7 @@ class AbstractTensor:
         parameter equals to case 1.)
         def __init__ (
             global_tensor: Tensor,
-            place: paddle::platform::Place,
+            place: paddle::phi::Place,
             name: std::string,
             process_mesh: phi::distributed::ProcessMesh
             placements: std::vector<Placement>)
@@ -148,7 +148,7 @@ class AbstractTensor:
         to case 5, zero parameter equals to case 1.)
         def __init__ (
             tensor: FrameworkTensor,
-            place: paddle::platform::Place,
+            place: paddle::phi::Place,
             name: std::string)
         """
         ...
