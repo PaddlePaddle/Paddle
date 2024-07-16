@@ -410,7 +410,7 @@ class PassAutoScanTest(AutoScanTest):
         quant=False,
         max_examples=100,
         reproduce=None,
-        min_success_num=20,
+        min_success_num=25,
         max_duration=180,
         passes=None,
     ):
