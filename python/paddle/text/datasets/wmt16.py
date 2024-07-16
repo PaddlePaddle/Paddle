@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 import tarfile
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -123,9 +123,9 @@ class WMT16(Dataset):
     trg_dict_size: int
     src_dict: dict[str, int]
     trg_dict: dict[str, int]
-    src_ids: list[npt.NDArray[np.int_]]
-    trg_ids: list[npt.NDArray[np.int_]]
-    trg_ids_next: list[npt.NDArray[np.int_]]
+    src_ids: list[list[int]]
+    trg_ids: list[list[int]]
+    trg_ids_next: list[list[int]]
 
     def __init__(
         self,
@@ -171,9 +171,28 @@ class WMT16(Dataset):
         # load data
         self.data = self._load_data()
 
+    @overload
     def _load_dict(
-        self, lang: _Wmt16Language, dict_size: int, reverse: bool = False
-    ) -> dict[str, int] | dict[int, str]:
+        self, lang: _Wmt16Language, dict_size: int, reverse: Literal[True] = ...
+    ) -> dict[int, str]:
+        ...
+
+    @overload
+    def _load_dict(
+        self,
+        lang: _Wmt16Language,
+        dict_size: int,
+        reverse: Literal[False] = ...,
+    ) -> dict[str, int]:
+        ...
+
+    @overload
+    def _load_dict(
+        self, lang: _Wmt16Language, dict_size: int, reverse: bool = ...
+    ) -> dict[int, str] | dict[str, int]:
+        ...
+
+    def _load_dict(self, lang, dict_size, reverse=False):
         dict_path = os.path.join(
             paddle.dataset.common.DATA_HOME,
             "wmt16/%s_%d.dict" % (lang, dict_size),
@@ -271,9 +290,25 @@ class WMT16(Dataset):
     def __len__(self) -> int:
         return len(self.src_ids)
 
+    @overload
     def get_dict(
-        self, lang: _Wmt16Language, reverse: bool = False
-    ) -> dict[str, int] | dict[int, str]:
+        self, lang: _Wmt16Language, reverse: Literal[True] = ...
+    ) -> dict[int, str]:
+        ...
+
+    @overload
+    def get_dict(
+        self, lang: _Wmt16Language, reverse: Literal[False] = ...
+    ) -> dict[str, int]:
+        ...
+
+    @overload
+    def get_dict(
+        self, lang: _Wmt16Language, reverse: bool = ...
+    ) -> dict[int, str] | dict[str, int]:
+        ...
+
+    def get_dict(self, lang, reverse=False):
         """
         return the word dictionary for the specified language.
 

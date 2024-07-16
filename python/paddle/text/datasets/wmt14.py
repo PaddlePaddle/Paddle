@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import tarfile
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -104,10 +104,11 @@ class WMT14(Dataset):
     mode: _Wmt14DataSetMode
     data_file: str | None
     dict_size: int
-    out_dict: dict[str, int]
-    src_ids: list[npt.NDArray[np.int_]]
-    trg_ids: list[npt.NDArray[np.int_]]
-    trg_ids_next: list[npt.NDArray[np.int_]]
+    src_ids: list[list[int]]
+    trg_ids: list[list[int]]
+    trg_ids_next: list[list[int]]
+    src_dict: dict[str, int]
+    trg_dict: dict[str, int]
 
     def __init__(
         self,
@@ -138,7 +139,7 @@ class WMT14(Dataset):
         self._load_data()
 
     def _load_data(self) -> None:
-        def __to_dict(fd, size: int) -> dict:
+        def __to_dict(fd, size: int) -> dict[str, int]:
             out_dict = {}
             for line_count, line in enumerate(fd):
                 if line_count < size:
@@ -215,9 +216,28 @@ class WMT14(Dataset):
     def __len__(self) -> int:
         return len(self.src_ids)
 
+    @overload
     def get_dict(
-        self, reverse: bool = False
-    ) -> tuple[dict[str, int], dict[int, str]]:
+        self, reverse: Literal[True] = ...
+    ) -> tuple[dict[int, str], dict[int, str]]:
+        ...
+
+    @overload
+    def get_dict(
+        self, reverse: Literal[False] = ...
+    ) -> tuple[dict[str, int], dict[str, int]]:
+        ...
+
+    @overload
+    def get_dict(
+        self, reverse: bool = ...
+    ) -> (
+        tuple[dict[str, int], dict[str, int]]
+        | tuple[dict[int, str], dict[int, str]]
+    ):
+        ...
+
+    def get_dict(self, reverse=False):
         """
         Get the source and target dictionary.
 
