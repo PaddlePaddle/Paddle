@@ -5916,7 +5916,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& qkv_out_scale,
                                        const MetaTensor& out_shift,
                                        const MetaTensor& out_smooth,
-                                       const MetaTensor& seq_len,
+                                       int seq_len,
                                        int rotary_emb_dims,
                                        const bool use_neox_rotary_style,
                                        const std::string& compute_dtype,
@@ -5963,19 +5963,6 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
         errors::InvalidArgument(
             "The dtype of rotary_tensor must be float32, but got %d",
             rotary_tensor.dtype()));
-  }
-
-  if (seq_len) {
-    PADDLE_ENFORCE_EQ(
-        seq_len.dtype(),
-        DataType::INT32,
-        errors::InvalidArgument(
-            "The dtype of seq_len must be int32, but got %d", seq_len.dtype()));
-    PADDLE_ENFORCE_EQ(
-        seq_len.dims().size(),
-        1,
-        errors::InvalidArgument("The seq_len must be 1 dim, but got %d",
-                                seq_len.dims().size()));
   }
 
   out->set_dims({bsz, num_head * dim_head});
