@@ -77,7 +77,7 @@ bool AllcloseOpInferSymbolicShape(
                         "dimension size. but got %d vs %d",
                         x_shape.size(),
                         y_shape.size()));
-  for (int i = 0; i < x_shape.size(); ++i) {
+  for (size_t i = 0; i < x_shape.size(); ++i) {
     infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
   }
 
