@@ -11,10 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
+from typing_extensions import TypeAlias
 
 from paddle.base import core
 from paddle.utils import deprecated
 
+if TYPE_CHECKING:
+    from paddle import XPUPlace
+
+    _XPUPlaceLike: TypeAlias = Union[
+        "XPUPlace",
+        int,  # some int like 0, 1, etc.
+    ]
 __all__ = [
     'synchronize',
 ]
@@ -26,7 +38,7 @@ __all__ = [
     level=1,
     reason="synchronize in paddle.device.xpu will be removed in future",
 )
-def synchronize(device=None):
+def synchronize(device: _XPUPlaceLike | None = None) -> int:
     """
     Wait for the compute on the given XPU device to finish.
 
@@ -59,7 +71,7 @@ def synchronize(device=None):
     return core._xpu_device_synchronize(device_id)
 
 
-def device_count():
+def device_count() -> int:
     '''
     Return the number of XPUs available.
 
@@ -84,7 +96,7 @@ def device_count():
     return num_xpus
 
 
-def set_debug_level(level=1):
+def set_debug_level(level: int = 1) -> None:
     '''
     Set the debug level of XPUs' api.
 
