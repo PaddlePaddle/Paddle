@@ -48,7 +48,7 @@ COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 
-ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
+ProgramInterpreter::ProgramInterpreter(const phi::Place& place,
                                        const BlockDesc& block,
                                        framework::Scope* scope,
                                        const ExecutionConfig& execution_config)
@@ -162,8 +162,8 @@ void ProgramInterpreter::RunImpl() {
   }
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(place_)) {
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  if (phi::is_custom_place(place_)) {
+    phi::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 #endif
 }
@@ -515,7 +515,7 @@ void ProgramInterpreter::BuildInplace() {
     }
 
     auto in_to_outs = op_base->Info().infer_inplace_(
-        platform::is_gpu_place(instr.DeviceContext().GetPlace()));
+        phi::is_gpu_place(instr.DeviceContext().GetPlace()));
 
     auto& inputs = instr.Inputs();
     auto& outputs = instr.Outputs();
@@ -562,7 +562,7 @@ void ProgramInterpreter::PrepareForCUDAGraphCapture() {
       false,
       platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
                                          "before prepare."));
-  PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
+  PADDLE_ENFORCE_EQ(phi::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
                         "CUDA Graph is only supported on NVIDIA GPU device."));
@@ -715,7 +715,7 @@ void ProgramInterpreter::Convert(
       auto& op_type = op->Type();
       if (op_type == interpreter::kMemcpyD2H ||
           op_type == interpreter::kMemcpyH2D) {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
+        PADDLE_THROW(phi::errors::Fatal(
             "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
       }
       PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
@@ -754,7 +754,7 @@ void ProgramInterpreter::Convert(
     if ((*dependency_count_)[i] == 0) {
       auto& inst = vec_instruction_[i];
       if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
-          platform::is_gpu_place(place_)) {
+          phi::is_gpu_place(place_)) {
         for (auto& item : inst.Inputs()) {
           for (auto var_id : item.second) {
             auto name = var_scope_.GetNameById(var_id);
@@ -1408,10 +1408,10 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       return;
     }
 
-    const platform::Place& place = allocation->place();
-    if (platform::is_gpu_place(place)) {
+    const phi::Place& place = allocation->place();
+    if (phi::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
-    } else if (platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
       // TODO(Ruibiao): Here should do something to make sure that the tensor
       // is not freed until the H2D copies done. However, simply launch a
       // CUDA runtime callback to the H2D stream may lead a high performance
@@ -1659,7 +1659,7 @@ void ProgramInterpreter::TraceInstructionList(
 void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
   if (instr_node.OpBase()->Type() == interpreter::kMemcpyD2H) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node.EventsToWait()) {
       platform::RecordEvent record(

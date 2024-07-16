@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -46,17 +46,17 @@ void GLOOParallelContext::Init() {
   int port = std::stoi(addr[1]);
   gloo_wrapper->SetHttpStore(host, port, "worker");
   gloo_wrapper->Init();
-  device_ = std::make_unique<phi::CPUContext>(platform::CPUPlace());
+  device_ = std::make_unique<phi::CPUContext>(phi::CPUPlace());
   device_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(platform::CPUPlace())
+                            .GetAllocator(phi::CPUPlace())
                             .get());
   device_->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   device_->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
 }
 

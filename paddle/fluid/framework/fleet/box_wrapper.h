@@ -370,14 +370,14 @@ class BoxWrapper {
   void SetTestMode(bool is_test) const;
 
   template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
-  void PullSparseCase(const paddle::platform::Place& place,
+  void PullSparseCase(const phi::Place& place,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<float*>& values,
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int expand_embed_dim);
 
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
@@ -385,7 +385,7 @@ class BoxWrapper {
                   const int expand_embed_dim);
 
   template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
-  void PushSparseGradCase(const paddle::platform::Place& place,
+  void PushSparseGradCase(const phi::Place& place,
                           const std::vector<const uint64_t*>& keys,
                           const std::vector<const float*>& grad_values,
                           const std::vector<int64_t>& slot_lengths,
@@ -393,7 +393,7 @@ class BoxWrapper {
                           const int expand_embed_dim,
                           const int batch_size);
 
-  void PushSparseGrad(const paddle::platform::Place& place,
+  void PushSparseGrad(const phi::Place& place,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
@@ -401,7 +401,7 @@ class BoxWrapper {
                       const int expand_embed_dim,
                       const int batch_size);
 
-  void CopyForPull(const paddle::platform::Place& place,
+  void CopyForPull(const phi::Place& place,
                    uint64_t** gpu_keys,
                    const std::vector<float*>& values,
                    void* total_values_gpu,
@@ -411,7 +411,7 @@ class BoxWrapper {
                    const int expand_embed_dim,
                    const int64_t total_length);
 
-  void CopyForPush(const paddle::platform::Place& place,
+  void CopyForPush(const phi::Place& place,
                    const std::vector<const float*>& grad_values,
                    void* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
@@ -420,7 +420,7 @@ class BoxWrapper {
                    const int64_t total_length,
                    const int batch_size);
 
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
@@ -441,8 +441,7 @@ class BoxWrapper {
       for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
         phi::GPUContext* context = dynamic_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(i)));
+            phi::DeviceContextPool::Instance().Get(phi::GPUPlace(i)));
         stream_list_[i] = context->stream();
         stream_list.push_back(&stream_list_[i]);
       }

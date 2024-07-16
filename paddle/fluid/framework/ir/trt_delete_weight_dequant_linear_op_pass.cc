@@ -217,7 +217,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
   // Device context
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {

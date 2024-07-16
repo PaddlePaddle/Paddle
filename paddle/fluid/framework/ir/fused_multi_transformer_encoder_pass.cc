@@ -1465,7 +1465,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
                               const int dim_head,
                               const int dim_embed) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* wq_data = wq_tensor->data<T>();
   auto* wk_data = wk_tensor->data<T>();
   auto* wv_data = wv_tensor->data<T>();
@@ -1507,7 +1507,7 @@ inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
                            const int dim_head,
                            const int dim_embed) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* bq_data = bq_tensor->data<T>();
   auto* bk_data = bk_tensor->data<T>();
   auto* bv_data = bv_tensor->data<T>();
@@ -1584,7 +1584,7 @@ inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
                                      const int dim_head,
                                      const int dim_embed) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* qkv_w_data = qkv_w_tensor->data<T>();
   auto transpose_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
@@ -1622,7 +1622,7 @@ inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
                                   const int dim_head,
                                   const int dim_embed) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* qkv_b_data = qkv_b_tensor->data<T>();
   auto transpose_b_dims = common::make_ddim({3, num_head, dim_head});
 
@@ -1693,7 +1693,7 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 // Just use for fused_multi_transformer_int8
 inline void TransposeWeights(phi::DenseTensor* weight_tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   int m = static_cast<int>(weight_tensor->dims()[0]);
   int n = static_cast<int>(weight_tensor->dims()[1]);
   phi::DenseTensor tmp_weight_tensor;
@@ -1932,7 +1932,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     // Quantization attribute/Input
     if (enable_int8) {
       auto* dev_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       // Set input scale
       std::string qkv_input_name = matmul0_op->Input("X")[0];
       auto qkv_in_scale = PADDLE_GET_CONST(
@@ -2738,7 +2738,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     // Quantization attribute/Input
     if (enable_int8) {
       auto* dev_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       // Set input scale
       std::string qkv_input_name = matmul0_op->Input("X")[0];
       auto qkv_in_scale = PADDLE_GET_CONST(
@@ -4381,7 +4381,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     // Quantization attribute/Input
     if (enable_int8) {
       auto* dev_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       // Set input scale
       std::string matmul_input_scale_suffix = c_identity_op->Input("X")[0];
       auto qkv_in_scale = PADDLE_GET_CONST(

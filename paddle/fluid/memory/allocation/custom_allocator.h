@@ -16,7 +16,7 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {
@@ -24,8 +24,7 @@ namespace allocation {
 
 class CustomAllocator : public Allocator {
  public:
-  explicit CustomAllocator(const platform::CustomPlace& place)
-      : place_(place) {}
+  explicit CustomAllocator(const phi::CustomPlace& place) : place_(place) {}
 
   bool IsAllocThreadSafe() const override;
 
@@ -34,7 +33,7 @@ class CustomAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  platform::Place place_;
+  phi::Place place_;
   std::once_flag once_flag_;
 };
 
