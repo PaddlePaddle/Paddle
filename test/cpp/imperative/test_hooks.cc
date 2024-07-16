@@ -56,7 +56,7 @@ std::shared_ptr<imperative::VariableWrapper> DoubleHook(
 
   // 3. double calc
   auto* data = tensor.data<float>();
-  auto* out_data = out_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* out_data = out_tensor->mutable_data<float>(phi::CPUPlace());
   for (int64_t i = 0; i < out_tensor->numel(); ++i) {
     out_data[i] = data[i] * 2.0;  // NOLINT
   }
@@ -73,7 +73,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   x->SetOverriddenStopGradient(false);
   y->SetOverriddenStopGradient(false);
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> x_dims = {2, 5};
   std::vector<int64_t> y_dims = {5, 2};
@@ -161,7 +161,7 @@ void GradVarLeafBackwardHookWithGradAccumulatedTest() {
   y->SetOverriddenStopGradient(false);
   z->SetOverriddenStopGradient(false);
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> x_dims = {2, 5};
   std::vector<int64_t> y_dims = {5, 2};

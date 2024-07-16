@@ -295,9 +295,9 @@ class Instruction {
 
   const platform::DeviceContext& DeviceContext() const;
 
-  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
+  const std::vector<std::pair<const Variable*, Variable*>>& InplaceInfo() const;
 
-  void AddInplace(Variable* in, Variable* out);
+  void AddInplace(const Variable* in, Variable* out);
 
   void ClearInplace();
 
@@ -340,7 +340,7 @@ class Instruction {
 
   std::vector<size_t> gc_check_vars_;
 
-  std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
+  std::vector<std::pair<const Variable*, Variable*>> vec_inplace_in_to_out_;
 
   bool pre_define_context_{false};
 };

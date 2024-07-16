@@ -24,16 +24,16 @@ namespace framework {
 TEST(TensorCopy, Tensor) {
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
-  phi::CPUContext cpu_ctx((platform::CPUPlace()));
+  phi::CPUContext cpu_ctx((phi::CPUPlace()));
 
-  int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
-                                              platform::CPUPlace());
+  int* src_ptr =
+      src_tensor.mutable_data<int>(common::make_ddim({3, 3}), phi::CPUPlace());
 
   std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr.data(), 9 * sizeof(int));
   src_tensor.set_layout(DataLayout::kAnyLayout);
 
-  auto cpu_place = new platform::CPUPlace();
+  auto cpu_place = new phi::CPUPlace();
   TensorCopy(src_tensor, *cpu_place, &dst_tensor);
 
   const int* dst_ptr = dst_tensor.data<int>();
@@ -66,13 +66,13 @@ TEST(TensorCopy, Tensor) {
     phi::DenseTensor dst_tensor;
 
     int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
-                                                platform::CPUPlace());
+                                                phi::CPUPlace());
 
     std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     memcpy(src_ptr, arr.data(), 9 * sizeof(int));
 
     // CPU phi::DenseTensor to GPU phi::DenseTensor
-    auto gpu_place = new platform::CUDAPlace(0);
+    auto gpu_place = new phi::GPUPlace(0);
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
@@ -81,7 +81,7 @@ TEST(TensorCopy, Tensor) {
     TensorCopy(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
     // GPU phi::DenseTensor to CPU phi::DenseTensor
-    auto cpu_place = new platform::CPUPlace();
+    auto cpu_place = new phi::CPUPlace();
     TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Tensors
@@ -130,7 +130,7 @@ TEST(TensorFromVector, Tensor) {
 
     // Copy to CPU phi::DenseTensor
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    auto cpu_place = new paddle::platform::CPUPlace();
+    auto cpu_place = new phi::CPUPlace();
     paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
 
     // Compare Tensors
@@ -163,13 +163,13 @@ TEST(TensorFromVector, Tensor) {
 
     // Copy to CPU phi::DenseTensor
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    auto cpu_place = new paddle::platform::CPUPlace();
+    auto cpu_place = new phi::CPUPlace();
     phi::CPUContext cpu_ctx(*cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
     gpu_tensor.Resize(common::make_ddim({3, 3}));
-    auto gpu_place = new paddle::platform::CUDAPlace();
+    auto gpu_place = new phi::GPUPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
@@ -220,12 +220,12 @@ TEST(TensorFromVector, Tensor) {
 TEST(TensorToVector, Tensor) {
   {
     phi::DenseTensor src;
-    int* src_ptr = src.mutable_data<int>({3, 3}, paddle::platform::CPUPlace());
+    int* src_ptr = src.mutable_data<int>({3, 3}, phi::CPUPlace());
     for (int i = 0; i < 3 * 3; ++i) {
       src_ptr[i] = i;
     }
 
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     std::vector<int> dst;
     paddle::framework::TensorToVector<int>(src, &dst);
 
@@ -237,7 +237,7 @@ TEST(TensorToVector, Tensor) {
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     phi::DenseTensor gpu_tensor;
-    paddle::platform::CUDAPlace place;
+    phi::GPUPlace place;
     phi::GPUContext gpu_ctx(place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place, gpu_ctx.stream())
@@ -257,12 +257,12 @@ TEST(TensorToVector, Tensor) {
 
 TEST(TensorToVector, Tensor_bool) {
   phi::DenseTensor src;
-  bool* src_ptr = src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
+  bool* src_ptr = src.mutable_data<bool>({3, 3}, phi::CPUPlace());
   for (int i = 0; i < 3 * 3; ++i) {
     src_ptr[i] = static_cast<bool>(i % 2);
   }
 
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
   std::vector<bool> dst;
   paddle::framework::TensorToVector<bool>(src, &dst);
 
@@ -284,7 +284,7 @@ TEST(TensorToVector, Tensor_bool) {
         false,
     };
     phi::DenseTensor gpu_tensor;
-    paddle::platform::CUDAPlace place;
+    phi::GPUPlace place;
     phi::GPUContext gpu_ctx(place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place, gpu_ctx.stream())
@@ -308,7 +308,7 @@ TEST(TensorFromDLPack, Tensor) {
     phi::DenseTensor cpu_tensor;
 
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    paddle::platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
     paddle::framework::DLPackTensor dlpack_tensor(cpu_tensor, 1);
@@ -334,15 +334,14 @@ TEST(TensorFromDLPack, Tensor) {
 
     // Copy to CPU phi::DenseTensor
     cpu_tensor.Resize(common::make_ddim({3, 3}));
-    paddle::platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
     gpu_tensor.Resize(common::make_ddim({3, 3}));
-    paddle::platform::CUDAPlace gpu_place;
-    auto& gpu_ctx =
-        *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);
+    phi::GPUPlace gpu_place;
+    auto& gpu_ctx = *phi::DeviceContextPool::Instance().GetByPlace(gpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     gpu_ctx.Wait();
 
@@ -371,7 +370,7 @@ TEST(TensorFromDLPack, Tensor) {
 TEST(TensorContainsNAN, CPU) {
   {
     phi::DenseTensor src;
-    float* buf = src.mutable_data<float>({3}, paddle::platform::CPUPlace());
+    float* buf = src.mutable_data<float>({3}, phi::CPUPlace());
     buf[0] = 0.0;
     buf[1] = NAN;
     buf[2] = 0.0;
@@ -383,8 +382,7 @@ TEST(TensorContainsNAN, CPU) {
   {
     phi::DenseTensor src;
     paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>(
-            {3}, paddle::platform::CPUPlace());
+        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
     buf[0] = 0.0;
     buf[1].x = 0x7fff;
     buf[2] = 0.0;
@@ -397,7 +395,7 @@ TEST(TensorContainsNAN, CPU) {
 TEST(TensorContainsInf, CPU) {
   {
     phi::DenseTensor src;
-    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    double* buf = src.mutable_data<double>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1] = INFINITY;
     buf[2] = 0.0;
@@ -409,8 +407,7 @@ TEST(TensorContainsInf, CPU) {
   {
     phi::DenseTensor src;
     paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>(
-            {3}, paddle::platform::CPUPlace());
+        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
@@ -423,7 +420,7 @@ TEST(TensorContainsInf, CPU) {
 TEST(TensorIsfinite, CPU) {
   {
     phi::DenseTensor src, out;
-    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    double* buf = src.mutable_data<double>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1] = INFINITY;
     buf[2] = 0.0;
@@ -436,7 +433,7 @@ TEST(TensorIsfinite, CPU) {
 
   {
     phi::DenseTensor src, out;
-    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    double* buf = src.mutable_data<double>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1] = NAN;
     buf[2] = 0.0;
@@ -450,8 +447,7 @@ TEST(TensorIsfinite, CPU) {
   {
     phi::DenseTensor src, out;
     paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>(
-            {3}, paddle::platform::CPUPlace());
+        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
@@ -470,20 +466,20 @@ TEST(Tensor, FromAndToStream) {
   phi::DenseTensor src_tensor;
   std::array<int, 6> array = {1, 2, 3, 4, 5, 6};
   src_tensor.Resize({2, 3});
-  int* src_ptr = src_tensor.mutable_data<int>(platform::CPUPlace());
+  int* src_ptr = src_tensor.mutable_data<int>(phi::CPUPlace());
   for (int i = 0; i < 6; ++i) {
     src_ptr[i] = array[i];
   }
   {
     phi::DenseTensor dst_tensor;
-    auto place = new platform::CPUPlace();
+    auto place = new phi::CPUPlace();
     phi::CPUContext cpu_ctx(*place);
     std::ostringstream oss;
     TensorToStream(oss, src_tensor, cpu_ctx);
 
     std::istringstream iss(oss.str());
     TensorFromStream(iss, &dst_tensor, cpu_ctx);
-    int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
+    int* dst_ptr = dst_tensor.mutable_data<int>(phi::CPUPlace());
     for (int i = 0; i < 5; ++i) {
       EXPECT_EQ(dst_ptr[i], array[i]);
     }
@@ -496,7 +492,7 @@ TEST(Tensor, FromAndToStream) {
     gpu_tensor.Resize({2, 3});
     phi::DenseTensor dst_tensor;
 
-    auto gpu_place = new platform::CUDAPlace();
+    auto gpu_place = new phi::GPUPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
@@ -509,12 +505,11 @@ TEST(Tensor, FromAndToStream) {
     TensorToStream(oss, gpu_tensor, gpu_ctx);
 
     std::istringstream iss(oss.str());
-    TensorFromStream(
-        iss,
-        &dst_tensor,
-        *platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+    TensorFromStream(iss,
+                     &dst_tensor,
+                     *phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
-    int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
+    int* dst_ptr = dst_tensor.mutable_data<int>(phi::CPUPlace());
     for (int i = 0; i < 6; ++i) {
       EXPECT_EQ(dst_ptr[i], array[i]);
     }

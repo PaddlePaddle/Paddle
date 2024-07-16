@@ -13,7 +13,6 @@ gather_srcs(
   profiler.cc
   event.cc
   multi_threading.cc
-  data_util.cc
   random_engine.cc
   external_func_names.cc)
 

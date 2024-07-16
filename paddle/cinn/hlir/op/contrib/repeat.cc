@@ -23,7 +23,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
@@ -33,7 +32,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
@@ -81,50 +79,6 @@ std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
       },
       cinn::common::UniqName(output_name));
   return {res};
-}
-
-std::vector<std::vector<int>> InferShapeForRepeat(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1U)
-      << "The input's shape size should be 1! Please check again.";
-
-  int repeats = 0;
-  int axis = 0;
-  std::vector<int> new_shape;
-  const std::vector<int> &tensor_shape = inputs_shape[0];
-  int ndim = static_cast<int>(tensor_shape.size());
-
-  if (attrs.find("repeats") != attrs.end()) {
-    repeats = absl::get<int>(attrs.at("repeats"));
-  }
-  if (attrs.find("axis") != attrs.end()) {
-    axis = absl::get<int>(attrs.at("axis"));
-  }
-
-  if (axis < 0) {
-    // Calculate offset from last dimension
-    axis += ndim;
-  }
-
-  for (size_t i = 0; i < static_cast<size_t>(axis); ++i) {
-    new_shape.push_back(tensor_shape[i]);
-  }
-  new_shape.push_back(repeats * tensor_shape[axis]);
-  for (size_t i = axis + 1; i < tensor_shape.size(); ++i) {
-    new_shape.push_back(tensor_shape[i]);
-  }
-
-  std::vector<std::vector<int>> res{new_shape};
-  return res;
-}
-
-std::vector<Type> InferDtypeForRepeat(const std::vector<Type> &inputs_type,
-                                      const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
 }
 
 std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
@@ -231,10 +185,6 @@ CINN_REGISTER_HELPER(repeat_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRepeat)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForRepeat))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForRepeat))
       .set_support_level(4);
 
   return true;

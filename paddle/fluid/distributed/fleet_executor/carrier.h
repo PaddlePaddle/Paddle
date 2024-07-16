@@ -60,7 +60,7 @@ class Carrier final {
       const framework::ProgramDesc& program,
       framework::Scope* scope,
       int64_t num_micro_batches,
-      const platform::Place& place,
+      const phi::Place& place,
       const std::vector<std::string>& inference_root_scope_vars = {},
       const std::vector<framework::Scope*>& micro_scope_list = {});
 
@@ -110,7 +110,7 @@ class Carrier final {
   std::vector<framework::Scope*> microbatch_scopes_;
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
-  paddle::platform::Place place_;
+  phi::Place place_;
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
   int64_t rank_;
   std::string carrier_id_;

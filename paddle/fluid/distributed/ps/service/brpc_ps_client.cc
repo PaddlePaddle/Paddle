@@ -1461,8 +1461,8 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   PADDLE_ENFORCE_NE(
       var_name,
       "",
-      platform::errors::InvalidArgument(
-          "Cannot find table id %d to save variables.", table_id));
+      phi::errors::InvalidArgument("Cannot find table id %d to save variables.",
+                                   table_id));
 
   std::string var_store = string::Sprintf("%s", path);
   MkDirRecursively(var_store.c_str());
@@ -1498,8 +1498,8 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   // create lod tensor
   std::shared_ptr<framework::Scope> scope;
   scope.reset(new framework::Scope());
-  auto place = platform::CPUPlace();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto place = phi::CPUPlace();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(place);
 
   framework::Variable *var = scope->Var(var_name);
@@ -1515,10 +1515,10 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
 
   std::string file_name = string::Sprintf("%s/%s", var_store, var_name);
   std::ofstream fout(file_name, std::ios::binary);
-  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
-                    true,
-                    platform::errors::Unavailable(
-                        "Cannot open %s to save variables.", file_name));
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save variables.", file_name));
 
   framework::SerializeToStream(fout, *var_tensor, dev_ctx);
   fout.close();

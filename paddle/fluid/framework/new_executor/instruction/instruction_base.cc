@@ -86,7 +86,7 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const platform::Place& p) {
+  auto to_string = [](const phi::Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
@@ -152,11 +152,10 @@ static double GetDenseTensorEleSum(const Scope& scope,
   if (var->IsType<phi::DenseTensor>() &&
       var->Get<phi::DenseTensor>().initialized()) {
     phi::DenseTensor cpu_tensor;
-    paddle::platform::CPUPlace place;
+    phi::CPUPlace place;
     paddle::framework::TensorCopy(
         var->Get<phi::DenseTensor>(), place, &cpu_tensor);
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(var->Get<phi::DenseTensor>().place());
     dev_ctx.Wait();
     double sum = 0.0;
@@ -184,7 +183,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
-InstructionBase::InstructionBase(size_t id, const platform::Place& place)
+InstructionBase::InstructionBase(size_t id, const phi::Place& place)
     : next_instrs_in_different_thread_(),
       next_instrs_in_same_thread_(),
       events_to_wait_info_(),
@@ -200,7 +199,7 @@ InstructionBase::InstructionBase(size_t id, const platform::Place& place)
 
   is_artificial_ = false;
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     type_ = OpFuncType::kCpuSync;
   } else {
     PADDLE_ENFORCE_EQ(
@@ -210,7 +209,7 @@ InstructionBase::InstructionBase(size_t id, const platform::Place& place)
     type_ = OpFuncType::kGpuAsync;
   }
 
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place);
 }
 
 OpFuncType InstructionBase::KernelType() const { return type_; }
@@ -230,7 +229,7 @@ void InstructionBase::RecordEvent(const Place& place) const {
 
 void InstructionBase::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return;
   }
   for (const EventInter& event_iter : events_to_wait_) {
@@ -273,12 +272,12 @@ const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
 
 void InstructionBase::ClearEagerGCVars() { eager_gc_vars_.clear(); }
 
-const std::vector<std::pair<Variable*, Variable*>>&
+const std::vector<std::pair<const Variable*, Variable*>>&
 InstructionBase::InplaceInfo() const {
   return vec_inplace_in_to_out_;
 }
 
-void InstructionBase::AddInplace(Variable* in, Variable* out) {
+void InstructionBase::AddInplace(const Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
 
@@ -332,6 +331,17 @@ void InstructionBase::InitInputsOutputsIds(
               op_name));
       std::vector<int> outputs_id = GetValueIds(value, value_exec_info);
       outputs.emplace(value, outputs_id);
+    }
+  }
+
+  const auto value_2_var_name_map = value_exec_info.GetValue2VarName();
+  for (auto inplace_var_pair : this->InplaceInfo()) {
+    for (auto item : value_2_var_name_map) {
+      if (item.second == value_exec_info.GetVarName(inplace_var_pair.first)) {
+        std::vector<int> outputs_id = GetValueIds(item.first, value_exec_info);
+        outputs.emplace(item.first, outputs_id);
+        break;
+      }
     }
   }
   SetOutputs(outputs);

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/add_n.h"
 #include "paddle/phi/infermeta/spmd_rules/amp_ops.h"
 #include "paddle/phi/infermeta/spmd_rules/argmax.h"
 #include "paddle/phi/infermeta/spmd_rules/cast.h"
@@ -46,6 +47,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/squared_l2_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/squeeze.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
 #include "paddle/phi/infermeta/spmd_rules/tile.h"

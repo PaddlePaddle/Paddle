@@ -158,22 +158,21 @@ namespace paddle {
 namespace imperative {
 
 static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
-                                  const paddle::platform::Place& place,
+                                  const phi::Place& place,
                                   float value) {
   auto* tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
   float* t_ptr = tensor->mutable_data<float>(place);
   std::vector<float> host_data(tensor->numel());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (place == paddle::platform::CUDAPlace()) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+  if (place == phi::GPUPlace()) {
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
+    paddle::memory::Copy(phi::CPUPlace(),
                          host_data.data(),
-                         paddle::platform::CUDAPlace(),
+                         phi::GPUPlace(),
                          t_ptr,
                          sizeof(float) * tensor->numel(),
                          stream);
@@ -184,28 +183,27 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   VLOG(6) << "Tensor Value: " << t_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       t_ptr[0] == value,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, t_ptr[0]));
 }
 
 static void FluidCheckGradTensorValue(
     const std::shared_ptr<imperative::VarBase>& X,
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     float value) {
   auto* grad_tensor = X->MutableGradVar()->GetMutable<phi::DenseTensor>();
   float* g_ptr = grad_tensor->mutable_data<float>(place);
   std::vector<float> g_host_data(grad_tensor->numel());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (place == paddle::platform::CUDAPlace()) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+  if (place == phi::GPUPlace()) {
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
+    paddle::memory::Copy(phi::CPUPlace(),
                          g_host_data.data(),
-                         paddle::platform::CUDAPlace(),
+                         phi::GPUPlace(),
                          g_ptr,
                          sizeof(float) * grad_tensor->numel(),
                          stream);
@@ -216,7 +214,7 @@ static void FluidCheckGradTensorValue(
   VLOG(6) << "Tensor Value: " << g_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       g_ptr[0] == value,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, g_ptr[0]));
 }
 
@@ -225,7 +223,7 @@ static void FluidCheckGradTensorValue(
 /* --------------------- */
 // TODO(jiabin): Change this and remove nolint
 void benchmark_fluid_scale(const std::shared_ptr<imperative::VarBase>& X,
-                           const paddle::platform::Place& place,
+                           const phi::Place& place,
                            bool accuracy_check) {
   imperative::Tracer tracer;
   framework::AttributeMap attrs;
@@ -264,7 +262,7 @@ void benchmark_fluid_scale(const std::shared_ptr<imperative::VarBase>& X,
 /* ---------------------- */
 void benchmark_fluid_matmul(const std::shared_ptr<imperative::VarBase>& X,
                             const std::shared_ptr<imperative::VarBase>& Y,
-                            const paddle::platform::Place& place,
+                            const phi::Place& place,
                             bool accuracy_check) {
   imperative::Tracer tracer;
 
@@ -301,7 +299,7 @@ void benchmark_fluid_mlp(
     const std::shared_ptr<imperative::VarBase>& X,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Ws,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Bs,
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     bool accuracy_check) {
   imperative::Tracer tracer;
 

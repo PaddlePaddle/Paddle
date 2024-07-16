@@ -225,12 +225,21 @@ class SoftplusClipFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value1");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value2");
+        });
+
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
         {"beta", pat.Attr("beta")},
         {"threshold", pat.Attr("threshold")},
         {"fuse_activation", res.StrAttr("clip")},
-        {"fuse_alpha", pat.Attr("value1")},
-        {"fuse_beta", pat.Attr("value2")}};
+        {"fuse_alpha", fuse_alpha},
+        {"fuse_beta", fuse_beta}};
 
     const auto &fused_softplus = res.Op(fused_softplus_name_, fused_attrs);
 

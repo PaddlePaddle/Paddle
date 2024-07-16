@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_or_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class Dirichlet(exponential_family.ExponentialFamily):
@@ -70,7 +76,9 @@ class Dirichlet(exponential_family.ExponentialFamily):
             10.80000019)
     """
 
-    def __init__(self, concentration):
+    concentration: Tensor
+
+    def __init__(self, concentration: Tensor) -> None:
         if concentration.dim() < 1 or math.prod(concentration.shape) == 0:
             # 0-dim tensor or 0-sized tensor is invalid
             raise ValueError(
@@ -81,7 +89,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         super().__init__(concentration.shape[:-1], concentration.shape[-1:])
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of Dirichlet distribution.
 
         Returns:
@@ -90,7 +98,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         return self.concentration / self.concentration.sum(-1, keepdim=True)
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of Dirichlet distribution.
 
         Returns:
@@ -101,7 +109,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             concentration0.pow(2) * (concentration0 + 1)
         )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Sample from dirichlet distribution.
 
         Args:
@@ -110,7 +118,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         return _dirichlet(self.concentration.expand(self._extend_shape(shape)))
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density function(PDF) evaluated at value.
 
         Args:
@@ -121,7 +129,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         """
         return paddle.exp(self.log_prob(value))
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log of probability density function.
 
         Args:
@@ -133,7 +141,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             - paddle.lgamma(self.concentration).sum(-1)
         )
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """Entropy of Dirichlet distribution.
 
         Returns:
@@ -151,14 +159,14 @@ class Dirichlet(exponential_family.ExponentialFamily):
         )
 
     @property
-    def _natural_parameters(self):
+    def _natural_parameters(self) -> tuple[Tensor]:
         return (self.concentration,)
 
-    def _log_normalizer(self, x):
+    def _log_normalizer(self, x: Tensor) -> Tensor:
         return x.lgamma().sum(-1) - paddle.lgamma(x.sum(-1))
 
 
-def _dirichlet(concentration, name=None):
+def _dirichlet(concentration: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         return paddle._C_ops.dirichlet(concentration)
     else:

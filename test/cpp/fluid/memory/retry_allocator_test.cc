@@ -83,7 +83,7 @@ TEST(RetryAllocator, RetryAllocator) {
                                     addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
-    allocator->Release(platform::CPUPlace());
+    allocator->Release(phi::CPUPlace());
   }
 }
 
@@ -93,7 +93,7 @@ class DummyAllocator : public Allocator {
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
-    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+    PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 
@@ -116,7 +116,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    platform::CUDAPlace p(0);
+    phi::GPUPlace p(0);
     RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);
     size_t allocate_size = (static_cast<size_t>(1) << 40);  // Very large number
     try {
