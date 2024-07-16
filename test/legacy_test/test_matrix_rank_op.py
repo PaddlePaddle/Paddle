@@ -357,8 +357,8 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
 
             # atol: tensor, rtol: tensor; broadcast_shape
             x_np = np.random.rand(3, 4, 7, 8).astype(np.float64)
-            atol_np = np.random.random([3, 4]).astype(np.float32)
-            rtol_np = np.random.random([3, 4]).astype(np.float32)
+            atol_np = np.random.random([3, 1]).astype(np.float32)
+            rtol_np = np.random.random([3, 1]).astype(np.float32)
             x_pd = paddle.to_tensor(x_np)
             atol_pd = paddle.to_tensor(atol_np)
             rtol_pd = paddle.to_tensor(rtol_np)
@@ -486,17 +486,17 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
         for place in places:
             # atol: tensor, rtol: tensor
             with static.program_guard(static.Program(), static.Program()):
-                x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
+                x_np = np.eye(10).astype(np.float64)
                 x_pd = paddle.static.data(
-                    name="X", shape=[3, 4, 7, 7], dtype='float64'
+                    name="X", shape=x_np.shape, dtype='float64'
                 )
-                atol_np = np.random.random([3, 4]).astype(np.float32)
+                atol_np = np.array([0.02]).astype(np.float32)
                 atol_pd = paddle.static.data(
-                    name="Atol", shape=[3, 4], dtype='float32'
+                    name="Atol", shape=atol_np.shape, dtype='float32'
                 )
-                rtol_np = np.random.random([3, 4]).astype(np.float32)
+                rtol_np = np.array([0.02]).astype(np.float32)
                 rtol_pd = paddle.static.data(
-                    name="Rtol", shape=[3, 4], dtype='float32'
+                    name="Rtol", shape=rtol_np.shape, dtype='float32'
                 )
                 rank_np = np_matrix_rank_atol_rtol(
                     x_np, atol=atol_np, rtol=rtol_np, hermitian=True
