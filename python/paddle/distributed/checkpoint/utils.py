@@ -35,6 +35,7 @@ def get_coordinator(mesh: Union[np.array, List[List[int]]], rank: int):
     )
 
 
+# NOTE(zhangbo): Refer to the BalancedSplit function in the reshard_utils.cc file.
 def balanced_split(total_nums, num_of_pieces):
     has_remainder = total_nums % num_of_pieces != 0
     result = [(total_nums + num_of_pieces - 1) // num_of_pieces] * num_of_pieces
