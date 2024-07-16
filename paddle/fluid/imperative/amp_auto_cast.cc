@@ -46,7 +46,7 @@ OpSupportedInfos(const std::string& place,
                  place.end(),
                  std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
-  using fn_type = std::add_pointer<bool(const platform::Place&)>::type;
+  using fn_type = std::add_pointer<bool(const phi::Place&)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
       {"GPU", &phi::is_gpu_place},
       {"CPU", &phi::is_cpu_place},

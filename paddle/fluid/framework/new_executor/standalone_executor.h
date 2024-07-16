@@ -33,7 +33,7 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const platform::Place& place,
+  StandaloneExecutor(const phi::Place& place,
                      const interpreter::Plan& plan_,
                      Scope* scope);
 

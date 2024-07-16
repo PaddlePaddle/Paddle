@@ -106,7 +106,7 @@ class Compiler final {
   void Build(const ir::Module& module,
              const std::string& code = "",
              const bool end = true);
-  void AppendCX86(const ir::Module& module);
+  void AppendCX86(const ir::Module& module, const bool end = true);
 
   void ExportObject(const std::string& path);
 
@@ -123,15 +123,17 @@ class Compiler final {
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
  private:
+  // do not register device symbol until end=true for build fucntion
+  void RegisterDeviceModuleSymbol();
+
+  void RegisterCudaModuleSymbol();
+
   void CompileCudaModule(const ir::Module& module,
-                         const std::string& code = "",
-                         bool add_module = true);
+                         const std::string& code = "");
 
-  void CompileHipModule(const ir::Module& module,
-                        const std::string& code = "",
-                        bool add_module = true);
+  void CompileHipModule(const ir::Module& module, const std::string& code = "");
 
-  void CompileX86Module(const ir::Module& module, bool add_module = true);
+  void CompileX86Module(const ir::Module& module);
 
   explicit Compiler(const Target& target)
       : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}
@@ -143,6 +145,9 @@ class Compiler final {
   std::unique_ptr<ExecutionEngine> engine_;
 
   std::vector<void*> fn_ptr_;
+  // only heterogeneous systems need to record device func and module
+  std::vector<std::string> device_fn_name_;
+  std::string device_fn_code_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
 #endif
