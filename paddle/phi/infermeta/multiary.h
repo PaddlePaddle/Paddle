@@ -1152,6 +1152,16 @@ void MoeInferMeta(const MetaTensor& x,
                   const std::string& act_type,
                   MetaTensor* out);
 
+void FusedMoeInferMeta(const MetaTensor& X,
+                       const MetaTensor& gate_weight,
+                       const MetaTensor& ffn1_weight,
+                       const MetaTensor& ffn1_bias,
+                       const MetaTensor& ffn2_weight,
+                       const MetaTensor& ffn2_bias,
+                       const std::string& int8_moe_method,
+                       const int moe_topk,
+                       MetaTensor* out);
+
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,
                                       const MetaTensor& value,

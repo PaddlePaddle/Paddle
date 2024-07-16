@@ -4923,6 +4923,15 @@
     data_type: DataType::FLOAT32
   optional: seq_length
 
+- op: fused_moe
+  args: (Tensor x, Tensor gate_weight, Tensor ffn1_weight, Tensor ffn1_bias, Tensor ffn2_weight, Tensor ffn2_bias,
+    str int8_moe_method = "None", int moe_topk = 2)
+  output: Tensor (out)
+  infer_meta:
+    func: FusedMoeInferMeta
+  kernel:
+    func: fused_moe
+
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
     str act_type = "gelu")

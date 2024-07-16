@@ -5867,6 +5867,21 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void FusedMoeInferMeta(const MetaTensor& X,
+                       const MetaTensor& gate_weight,
+                       const MetaTensor& ffn1_weight,
+                       const MetaTensor& ffn1_bias,
+                       const MetaTensor& ffn2_weight,
+                       const MetaTensor& ffn2_bias,
+                       const std::string& int8_moe_method,
+                       const int moe_topk,
+                       MetaTensor* out) {
+  out->set_dims(X.dims());
+  out->share_lod(X);
+  out->set_dtype(X.dtype());
+  out->set_layout(X.layout());
+}
+
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,
                                       const MetaTensor& edge_weight,

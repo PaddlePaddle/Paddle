@@ -52,7 +52,7 @@ def fused_ec_moe(
             >>> print(out.shape)
             [10, 128, 1024]
     """
-    helper = LayerHelper('fused_moe', **locals())
+    helper = LayerHelper('fused_ec_moe', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='moe',
