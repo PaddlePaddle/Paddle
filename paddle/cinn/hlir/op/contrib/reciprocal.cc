@@ -22,7 +22,6 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/contrib/reciprocal.h"
@@ -34,7 +33,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/common/flags.h"
 
@@ -166,23 +164,6 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForReciprocal(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty())
-      << "The input's shape size is empty! Please check again.";
-  std::vector<framework::shape_t> res{inputs_shape[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForReciprocal(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -196,10 +177,6 @@ CINN_REGISTER_HELPER(reciprocal_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForReciprocal)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForReciprocalSymbolic)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForReciprocal))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForReciprocal))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);

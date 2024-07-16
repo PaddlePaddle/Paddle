@@ -51,7 +51,7 @@ void BasicAucCalculator::reset() {
 void BasicAucCalculator::add_data(const float* d_pred,
                                   const int64_t* d_label,
                                   int batch_size,
-                                  const paddle::platform::Place& place) {
+                                  const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   h_pred.resize(batch_size);
@@ -100,7 +100,7 @@ void BasicAucCalculator::add_mask_data(const float* d_pred,
                                        const int64_t* d_label,
                                        const int64_t* d_mask,
                                        int batch_size,
-                                       const paddle::platform::Place& place) {
+                                       const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   thread_local std::vector<int64_t> h_mask;
@@ -263,7 +263,7 @@ void BasicAucCalculator::add_uid_data(const float* d_pred,
                                       const int64_t* d_label,
                                       const int64_t* d_uid,
                                       int batch_size,
-                                      const paddle::platform::Place& place) {
+                                      const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   thread_local std::vector<uint64_t> h_uid;

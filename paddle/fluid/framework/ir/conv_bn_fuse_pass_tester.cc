@@ -32,7 +32,7 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  auto* data = tensor->mutable_data<float>(platform::CPUPlace());
+  auto* data = tensor->mutable_data<float>(phi::CPUPlace());
   int64_t numel = tensor->numel();
   for (int64_t i = 0; i < numel; ++i) {
     data[i] = 0;

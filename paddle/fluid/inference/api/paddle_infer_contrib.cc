@@ -49,11 +49,11 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
   dst.Reshape(src.shape());
   PADDLE_ENFORCE(
       src.place() == PlaceType::kCPU || src.place() == PlaceType::kGPU,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "CopyTensor only support PlaceType kCPU/kGPU now."));
   PADDLE_ENFORCE(
       dst.place() == PlaceType::kCPU || dst.place() == PlaceType::kGPU,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "CopyTensor only support PlaceType kCPU/kGPU now."));
   // copy to cpu, gpu => cpu or cpu => cpu
   if (dst.place() == PlaceType::kCPU) {
@@ -115,7 +115,7 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
             cb_params);
         break;
       default:
-        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16, BFLOAT16, FLOAT32 "
             "and "
             "FLOAT64 is supported in Tensor. Others not implements"));
@@ -187,28 +187,27 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
         data_len = data_size * 2;
         break;
       default:
-        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16, BFLOAT16, FLOAT32 "
             "and "
             "FLOAT64 is supported in Tensor. Others not implements"));
     }
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    paddle::platform::CUDAPlace gpu_place(dst.device_);
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    phi::GPUPlace gpu_place(dst.device_);
     auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.Get(gpu_place));
 
     if (src.place() == PlaceType::kCPU) {
       paddle::memory::Copy(gpu_place,
                            static_cast<void*>(dst_data),
-                           paddle::platform::CPUPlace(),
+                           phi::CPUPlace(),
                            src_data,
                            data_len,
                            dev_ctx->stream());
     } else {
       paddle::memory::Copy(gpu_place,
                            static_cast<void*>(dst_data),
-                           paddle::platform::CUDAPlace(),
+                           phi::GPUPlace(),
                            src_data,
                            data_len,
                            dev_ctx->stream());
@@ -222,7 +221,7 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
       cudaStreamSynchronize(dev_ctx->stream());
     }
 #else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Can not copy tensor to GPU CUDA place because paddle is not compiled "
         "with CUDA."));
 #endif

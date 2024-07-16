@@ -53,7 +53,7 @@ class Measurer {
   std::string compile_label_;
   std::string execute_label_;
   ::pir::Program* program_;
-  paddle::platform::Place place_ = paddle::platform::CUDAPlace(0);
+  phi::Place place_ = phi::GPUPlace(0);
   std::unique_ptr<pir::Program> kernel_program_;
   std::unique_ptr<paddle::framework::Scope> exe_scope_ =
       std::make_unique<paddle::framework::Scope>();

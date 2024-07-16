@@ -28,7 +28,7 @@ struct CostInfo {
 
 class ProfilerGuard {
  public:
-  ProfilerGuard(const platform::Place& place, CostInfo* cost_info)
+  ProfilerGuard(const phi::Place& place, CostInfo* cost_info)
       : place_(place), cost_info_(cost_info) {
     timer_.Start();
   }
@@ -40,8 +40,8 @@ class ProfilerGuard {
   }
 
  private:
-  void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
-    if (platform::is_gpu_place(place)) {
+  void TotalCUDAAllocatedMemorySize(const phi::Place& place) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto cuda_place = place;
       cost_info_->device_memory_bytes =
@@ -50,7 +50,7 @@ class ProfilerGuard {
     }
   }
 
-  const platform::Place& place_;
+  const phi::Place& place_;
   CostInfo* cost_info_;
   platform::Timer timer_;
 };

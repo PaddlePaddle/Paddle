@@ -79,7 +79,7 @@ void OpHandleBase::InitCUDA() {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
         PADDLE_ENFORCE_EQ(
-            platform::is_same_place(place, out_var_handle->place()),
+            phi::is_same_place(place, out_var_handle->place()),
             true,
             platform::errors::InvalidArgument(
                 "The place of output(%s) is not consistent with the "
@@ -118,7 +118,7 @@ void OpHandleBase::InitXPU() {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
         PADDLE_ENFORCE_EQ(
-            platform::is_same_place(place, out_var_handle->place()),
+            phi::is_same_place(place, out_var_handle->place()),
             true,
             platform::errors::InvalidArgument(
                 "The place of output(%s) is not consistent with the "
@@ -176,7 +176,7 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_ENFORCE_NOT_NULL(
       waited_ctx,
       platform::errors::InvalidArgument("Argument waited_ctx is NULL."));
-  if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
+  if (phi::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
       PADDLE_ENFORCE_NOT_NULL(
           dev_ctx.second,
@@ -220,7 +220,7 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
       auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
       if (in_var_handle) {
         auto &place = in_var_handle->place();
-        if (platform::is_gpu_place(place)) {
+        if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto stream =
               static_cast<phi::GPUContext *>(dev_ctxes_.at(place))->stream();
@@ -247,10 +247,9 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
         auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
         if (in_var_handle) {
           auto &place = in_var_handle->place();
-          if (platform::is_gpu_place(place)) {
+          if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-            platform::DeviceContextPool &pool =
-                platform::DeviceContextPool::Instance();
+            phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
             auto stream =
                 static_cast<phi::GPUContext *>(pool.Get(place))->stream();
             platform::GpuStreamSync(stream);
@@ -265,14 +264,14 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
   }
 }
 
-void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
+void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
       // Dummy Variable is used to represent dependencies between operators,
       // so there doesn't add event for it.
       auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
       if (in_var_handle) {
-        if (platform::is_gpu_place(in_var_handle->place())) {
+        if (phi::is_gpu_place(in_var_handle->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto stream = static_cast<phi::GPUContext *>(
                             dev_ctxes_.at(in_var_handle->place()))
@@ -329,10 +328,10 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #endif
 }
 
-void OpHandleBase::RunAndRecordEvent(platform::Place p,
+void OpHandleBase::RunAndRecordEvent(phi::Place p,
                                      const std::function<void()> &callback) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_cpu_place(p) || events_.empty()) {
+  if (phi::is_cpu_place(p) || events_.empty()) {
     callback();
   } else {
     auto *ctx = dev_ctxes_.at(p);

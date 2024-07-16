@@ -1514,6 +1514,17 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   }
 }
 
+template <typename T>
+Tensor log_loss_decomp(const Tensor& input,
+                       const Tensor& label,
+                       float epsilon) {
+  Tensor ones = full_scalar<T>(1.0, input.dtype());
+  Tensor eps = full_scalar<T>(epsilon);
+  Tensor term1 = -label * log<T>(input + eps);
+  Tensor term2 = (ones - label) * log<T>(ones - input + eps);
+  return term1 - term2;
+}
+
 }  // namespace details
 
 }  // namespace primitive

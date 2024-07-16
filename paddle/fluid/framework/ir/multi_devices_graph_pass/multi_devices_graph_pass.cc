@@ -98,7 +98,7 @@ void PolishGraphToSupportDataHazards(ir::Graph *graph) {
 
 details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
                                                ir::Node *node,
-                                               const platform::Place &place,
+                                               const phi::Place &place,
                                                size_t place_offset) {
   auto &var_holders =
       graph->Get<details::GraphVars>(details::kGraphVars)[place_offset];
@@ -130,7 +130,7 @@ details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
 void CreateOpOutput(ir::Graph *graph,
                     details::OpHandleBase *op_handle,
                     ir::Node *new_node,
-                    const platform::Place &place,
+                    const phi::Place &place,
                     size_t place_offset) {
   auto &vars = graph->Get<details::GraphVars>(
       details::kGraphVars)[place_offset][new_node->Name()];
@@ -162,7 +162,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 
   loss_var_name_ = Get<const std::string>(kLossVarName);
   VLOG(10) << "Init MultiDevSSAGraphBuilder, loss name: " << loss_var_name_;
-  places_ = Get<const std::vector<platform::Place>>(details::kPlaces);
+  places_ = Get<const std::vector<phi::Place>>(details::kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -360,8 +360,7 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
                                                     size_t place_id) const {
   auto p = places_[place_id];
   auto *op_handle = result->Get<GraphOps>(kGraphOps).back();
-  op_handle->SetDeviceContext(p,
-                              platform::DeviceContextPool::Instance().Get(p));
+  op_handle->SetDeviceContext(p, phi::DeviceContextPool::Instance().Get(p));
 
   for (ir::Node *input : node->inputs) {
     details::VarHandle *var =
@@ -383,20 +382,17 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
 }
 
 void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
-    details::OpHandleBase *op_handle, const platform::Place &p) const {
+    details::OpHandleBase *op_handle, const phi::Place &p) const {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nccl_ctxs_ == nullptr) {
-    op_handle->SetDeviceContext(p,
-                                platform::DeviceContextPool::Instance().Get(p));
+    op_handle->SetDeviceContext(p, phi::DeviceContextPool::Instance().Get(p));
   }
 #elif defined(PADDLE_WITH_XPU_BKCL)
   if (bkcl_ctxs_ == nullptr) {
-    op_handle->SetDeviceContext(p,
-                                platform::DeviceContextPool::Instance().Get(p));
+    op_handle->SetDeviceContext(p, phi::DeviceContextPool::Instance().Get(p));
   }
 #else
-  op_handle->SetDeviceContext(p,
-                              platform::DeviceContextPool::Instance().Get(p));
+  op_handle->SetDeviceContext(p, phi::DeviceContextPool::Instance().Get(p));
 #endif
 }
 
@@ -512,9 +508,9 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
                                                     ir::Node *node,
                                                     const std::string &og,
                                                     bool is_encoded) const {
-  auto append_allreduce_op = [&](const std::vector<Scope *> &scopes,
-                                 const std::vector<platform::Place> &places)
-      -> details::OpHandleBase * {
+  auto append_allreduce_op =
+      [&](const std::vector<Scope *> &scopes,
+          const std::vector<phi::Place> &places) -> details::OpHandleBase * {
     if (is_encoded) {
 #if defined(PADDLE_WITH_DGC) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
@@ -601,7 +597,7 @@ void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
     size_t loss_scale,
     proto::VarType::Type dtype) const {
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
+    auto *dev_ctx = phi::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new details::ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
         loss_scale,

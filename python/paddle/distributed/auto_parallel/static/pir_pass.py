@@ -184,11 +184,7 @@ def apply_reshard_pass(dist_program):
             assert (
                 reshard_func is not None
             ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
-            prev_op = var.get_defining_op()
-            if prev_op:
-                paddle.pir.set_insertion_point_after(prev_op)
-            else:
-                paddle.pir.set_insertion_point_after(op)
+            paddle.pir.set_insertion_point(op)
             out_value = reshard_func.reshard(
                 src_dist_attr,
                 dst_dist_attr,
