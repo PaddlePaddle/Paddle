@@ -3675,3 +3675,14 @@
   kernel:
     func: unpool_grad
     data_type: x
+
+- backward_op: lsqplus_grad
+  forward: lsqplus (Tensor x, Tensor alpha, Tensor beta, Tensor g, int Qn, int Qp) -> Tensor(out)
+  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g, Tensor out_grad, int Qn, int Qp)
+  output: Tensor(x_grad), Tensor(alpha_grad), Tensor(beta_grad)
+  infer_meta:
+    func: LsqplusGradInferMeta
+  kernel:
+    func: lsqplus_grad
+    data_type: x
+    

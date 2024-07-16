@@ -6137,5 +6137,55 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   }
 }
 
+// lsqplus Infermeta, TODO
+void LsqplusInferMeta(const MetaTensor& x,
+                      const MetaTensor& alpha,
+                      const MetaTensor& beta,
+                      const MetaTensor& g,
+                      int Qn,
+                      int Qp,
+                      MetaTensor* out) {
+  
+
+  auto x_dims = x.dims();
+  auto alpha_dims = alpha.dims();
+  auto beta_dims = beta.dims();
+  auto g_dims = g.dims();
+
+  // check shape
+  PADDLE_ENFORCE(
+    x_dims.size() >= 1 && x.numel() >= 1,
+    phi::errors::InvalidArgument(
+      "The input tensor 'x' of Lsqplus op must have at least 1 dimensions and 1 element."));
+
+  PADDLE_ENFORCE(
+    alpha_dims.size() == 1 && alpha.numel() == 1,
+    phi::errors::InvalidArgument(
+      "The input tensor 'alpha' must be a scalar value."));
+  
+  PADDLE_ENFORCE(
+    beta_dims.size() == 1 && beta.numel() == 1,
+    phi::errors::InvalidArgument(
+      "The input tensor 'beta' must be a scalar value."));
+  
+  PADDLE_ENFORCE(
+    g_dims.size() == 1 && g.numel() == 1,
+    phi::errors::InvalidArgument(
+      "The input tensor 'g' must be a scalar value."));
+  
+  PADDLE_ENFORCE_GT(
+    Qp,
+    Qn,
+    phi::errors::InvalidArgument(
+      "The input tensor 'Qp' of Lsqplus op must be greater than Qn."));
+  
+  // set output metadata
+  auto sizes = vectorize(x_dims);
+  out->set_dims(phi::make_ddim(sizes));
+  out->set_dtype(x.dtype());
+
+}
+
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

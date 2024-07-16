@@ -1814,4 +1814,46 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
+
+// lsqplus backward Infermeta
+void LsqplusGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& alpha,
+                          const MetaTensor& beta,
+                          const MetaTensor& g,
+                          const MetaTensor& dout,
+                          int Qn,
+                          int Qp,
+                          MetaTensor* din,
+                          MetaTensor* dalpha,
+                          MetaTensor* dbeta) {
+
+  // check dout
+  PADDLE_ENFORCE_EQ(
+    x.dims().size(),
+    dout.dims().size(),
+    phi::errors::InvalidArgument(
+      "The input x and output dout should have the same dimension size."));
+
+  PADDLE_ENFORCE_EQ(
+    x.numel(),
+    dout.numel(),
+    phi::errors::InvalidArgument(
+      "The input x and output dout should have the same number of elements."));
+
+  // set metadata
+  if (din) {
+    din->set_dims(x.dims());
+    din->set_dtype(x.dtype());
+  }
+  if (dalpha) {
+    dalpha->set_dims(alpha.dims());
+    dalpha->set_dtype(alpha.dtype());
+  }
+  if (dbeta) {
+    dbeta->set_dims(beta.dims());
+    dbeta->set_dtype(beta.dtype());
+  }
+
+}
+
 }  // namespace phi

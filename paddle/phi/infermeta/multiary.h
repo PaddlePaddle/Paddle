@@ -1241,4 +1241,12 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids);
 
+void LsqplusInferMeta(const MetaTensor& x,
+                      const MetaTensor& alpha,
+                      const MetaTensor& beta,
+                      const MetaTensor& g,
+                      int Qn,
+                      int Qp,
+                      MetaTensor* out);
+
 }  // namespace phi

@@ -4939,3 +4939,12 @@
   kernel:
      func: number_count
      data_type: numbers
+
+- op: lsqplus
+  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g, int Qn, int Qp)
+  output: Tensor(out)
+  infer_meta:
+    func: LsqplusInferMeta
+  kernel:
+    func: lsqplus
+  backward: lsqplus_grad

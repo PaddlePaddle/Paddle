@@ -644,4 +644,14 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void LsqplusGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& alpha,
+                          const MetaTensor& beta,
+                          const MetaTensor& g,
+                          const MetaTensor& dout,
+                          int Qn,
+                          int Qp,
+                          MetaTensor* din,
+                          MetaTensor* dalpha,
+                          MetaTensor* dbeta);
 }  // namespace phi
