@@ -1575,7 +1575,7 @@ class AllocatorFacadePrivate {
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
-  std::map<platform::Place, std::shared_ptr<CUDAMallocAsyncAllocator>>
+  std::map<phi::Place, std::shared_ptr<CUDAMallocAsyncAllocator>>
       default_cuda_malloc_async_allocators_;
 #endif
 
