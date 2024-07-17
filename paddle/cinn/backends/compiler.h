@@ -131,6 +131,8 @@ class Compiler final {
 
   void RegisterCudaModuleSymbol();
 
+  void RegisterHipModuleSymbol();
+
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "");
 
