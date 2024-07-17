@@ -147,7 +147,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
     args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "1"))
     )
     model.run_trainer(args)
 
@@ -263,7 +263,7 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
-            "FLAGS_dynamic_static_unified_comm": "0",
+            "FLAGS_dynamic_static_unified_comm": "1",
             "DTYPE": "float32",
         }
         required_envs.update(need_envs)
