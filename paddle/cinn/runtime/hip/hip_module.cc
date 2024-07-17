@@ -27,7 +27,10 @@ HIPModule::HIPModule(const std::string& data) : data_(data) {
       ::common::errors::PreconditionNotMet("HIP Module Error: data is empty."));
 
   hipGetDeviceCount(&num_devices_);
-  CHECK_GT(num_devices_, 0) << "No available devices";
+  PADDLE_ENFORCE_GT(
+      num_devices_,
+      0,
+      phi::errors::Fatal("HIP Module Error: No available devices."));
 
   int current_device_id;
   hipGetDevice(&current_device_id);
