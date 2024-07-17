@@ -26,7 +26,14 @@ def download_file():
     ssl._create_default_https_context = ssl._create_unverified_context
     sysstr = sys.platform
     if sysstr == 'win32':
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
+        if os.environ.get('BRANCH') == "release/3.0-beta":
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_win_30'
+            )
+        else:
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_win'
+            )
     else:
         if os.environ.get('BRANCH') == "release/3.0-beta":
             url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_30')
