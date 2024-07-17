@@ -141,6 +141,7 @@ void InferXPUContext::ClearL3Block(void* out_tensor_ptr) {
    for (auto& holder_l3_block : holder_l3_blocks_) {
      if (holder_l3_block.first->ptr() == out_tensor_ptr) {
        holder_l3_block.second->Clear();
+       
      }
    }
  }
