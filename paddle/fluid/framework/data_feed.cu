@@ -2996,7 +2996,7 @@ int multi_node_sync_sample(int flag,
   int *stat_ptr = multi_node_sync_stat_ptr->data<int>();
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
   auto stream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
       &stat_ptr[flag], &stat_ptr[3], 1, ncclInt, op, comm->comm(), stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
                                              &stat_ptr[3],
@@ -3023,13 +3023,13 @@ int get_multi_node_global_flag(int local_flag,
       send_buff_ptr, &local_flag, sizeof(int), cudaMemcpyHostToDevice, stream);
   cudaStreamSynchronize(stream);
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
-                                                              &send_buff_ptr[1],
-                                                              1,
-                                                              ncclInt,
-                                                              op,
-                                                              comm->comm(),
-                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                         &send_buff_ptr[1],
+                                                         1,
+                                                         ncclInt,
+                                                         op,
+                                                         comm->comm(),
+                                                         stream));
   int global_flag = 0;
   cudaMemcpyAsync(&global_flag,
                   &send_buff_ptr[1],
@@ -4259,13 +4259,13 @@ int dynamic_adjust_total_row_for_infer(int local_reach_end,
                   stream);
   cudaStreamSynchronize(stream);
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
-                                                              &send_buff_ptr[1],
-                                                              1,
-                                                              ncclInt,
-                                                              ncclProd,
-                                                              comm->comm(),
-                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                         &send_buff_ptr[1],
+                                                         1,
+                                                         ncclInt,
+                                                         ncclProd,
+                                                         comm->comm(),
+                                                         stream));
   int global_reach_end = 0;
   cudaMemcpyAsync(&global_reach_end,
                   &send_buff_ptr[1],
@@ -5003,13 +5003,13 @@ int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
   cudaStreamSynchronize(sample_stream_);
   auto comm =
       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
-                                                              &send_buff_ptr[1],
-                                                              1,
-                                                              ncclInt,
-                                                              ncclMax,
-                                                              comm->comm(),
-                                                              sample_stream_));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                         &send_buff_ptr[1],
+                                                         1,
+                                                         ncclInt,
+                                                         ncclMax,
+                                                         comm->comm(),
+                                                         sample_stream_));
   int thread_max_batch_num = 0;
   cudaMemcpyAsync(&thread_max_batch_num,
                   &send_buff_ptr[1],

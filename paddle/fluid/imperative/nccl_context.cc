@@ -67,7 +67,7 @@ void NCCLParallelContext::Init() {
   if (strategy_.local_rank_ == 0) {  // NOLINT
     // generate the unique ncclid on the root worker
     for (auto &nccl_id : nccl_ids) {
-      platform::dynload::ncclGetUniqueId(&nccl_id);
+      phi::dynload::ncclGetUniqueId(&nccl_id);
     }
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
@@ -103,7 +103,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
 
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
-    platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
+    phi::dynload::ncclGetUniqueId(&nccl_ids[0]);
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
     // on rank0.
@@ -149,7 +149,7 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   void *src_ptr = src_tensor->data();
   auto nccl_dtype = platform::ToNCCLDataType(
       framework::TransToProtoVarType(src_tensor->dtype()));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 

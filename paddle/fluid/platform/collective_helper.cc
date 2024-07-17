@@ -109,7 +109,7 @@ NCCLComm* NCCLCommContext::CreateComm(
   ncclComm_t comm = nullptr;
   SetDeviceId(dev_id);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
+      phi::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 
   auto* comm_wrapper = AssignNCCLComm(comm, nranks, rank, dev_id, ring_id);
 
@@ -134,8 +134,8 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];  // NOLINT
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitAll(
-      comms, dev_ids.size(), dev_ids.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclCommInitAll(comms, dev_ids.size(), dev_ids.data()));
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
@@ -178,7 +178,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(i));
 #endif
-      platform::dynload::ncclCommInitRank(
+      phi::dynload::ncclCommInitRank(
           comms + i, kDevices * ntrainers, *nccl_id, train_id * kDevices + i);
       VLOG(1) << "ncclCommInitRank: " << i;
     }
