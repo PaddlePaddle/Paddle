@@ -708,7 +708,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
   return ver;
 #else
   PADDLE_THROW(platform::errors::External(
@@ -1477,7 +1477,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+  m.def("_set_paddle_lib_path", &phi::dynload::SetPaddleLibPath);
 
   m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 

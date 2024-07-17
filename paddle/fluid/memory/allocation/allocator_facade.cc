@@ -950,13 +950,12 @@ class AllocatorFacadePrivate {
     int val;
     try {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
+          phi::dynload::cuDeviceGet(&device, p.GetDeviceId()));
 
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cuDeviceGetAttribute(
-              &val,
-              CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
-              device));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuDeviceGetAttribute(
+          &val,
+          CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+          device));
     } catch (...) {
       val = 0;
     }
@@ -1067,13 +1066,12 @@ class AllocatorFacadePrivate {
     int val;
     try {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
+          phi::dynload::cuDeviceGet(&device, p.GetDeviceId()));
 
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cuDeviceGetAttribute(
-              &val,
-              CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
-              device));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuDeviceGetAttribute(
+          &val,
+          CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+          device));
     } catch (...) {
       val = 0;
     }

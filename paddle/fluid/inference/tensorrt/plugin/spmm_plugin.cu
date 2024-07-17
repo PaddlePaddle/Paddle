@@ -113,11 +113,11 @@ inline void convertAndCopy(const nvinfer1::Weights& src,
 }
 
 SpmmPluginDynamic::cusparseLtContext::cusparseLtContext() {
-  paddle::platform::dynload::cusparseLtInit(&handle);
+  phi::dynload::cusparseLtInit(&handle);
 }
 
 SpmmPluginDynamic::cusparseLtContext::~cusparseLtContext() {
-  paddle::platform::dynload::cusparseLtDestroy(&handle);
+  phi::dynload::cusparseLtDestroy(&handle);
 }
 
 void SpmmPluginDynamic::cusparseLtContext::init(
@@ -156,9 +156,9 @@ void SpmmPluginDynamic::cusparseLtContext::init(
           phi::errors::Fatal("cusparLtContext only supports data type"
                              "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]"));
   }
-  paddle::platform::dynload::cusparseLtDenseDescriptorInit(
+  phi::dynload::cusparseLtDenseDescriptorInit(
       &handle, &matA, m, k, k, alignment, type, CUSPARSE_ORDER_ROW);
-  paddle::platform::dynload::cusparseLtStructuredDescriptorInit(
+  phi::dynload::cusparseLtStructuredDescriptorInit(
       &handle,
       &matB,
       n,
@@ -168,35 +168,34 @@ void SpmmPluginDynamic::cusparseLtContext::init(
       type,
       CUSPARSE_ORDER_ROW,
       CUSPARSELT_SPARSITY_50_PERCENT);
-  paddle::platform::dynload::cusparseLtDenseDescriptorInit(
+  phi::dynload::cusparseLtDenseDescriptorInit(
       &handle, &matC, m, n, n, alignment, type, CUSPARSE_ORDER_ROW);
-  paddle::platform::dynload::cusparseLtMatmulDescriptorInit(
-      &handle,
-      &matmul,
-      CUSPARSE_OPERATION_NON_TRANSPOSE,
-      CUSPARSE_OPERATION_TRANSPOSE,
-      &matA,
-      &matB,
-      &matC,
-      &matC,
-      compute_type);
+  phi::dynload::cusparseLtMatmulDescriptorInit(&handle,
+                                               &matmul,
+                                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                               CUSPARSE_OPERATION_TRANSPOSE,
+                                               &matA,
+                                               &matB,
+                                               &matC,
+                                               &matC,
+                                               compute_type);
   if (activation == SpmmPluginDynamic::Activation::kRelu) {
     int true_value = 1;
     float relu_upper_bound = std::numeric_limits<float>::max();
     float relu_threshold = 0.0f;
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_RELU,
         &true_value,
         sizeof(true_value));
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_RELU_UPPERBOUND,
         &relu_upper_bound,
         sizeof(relu_upper_bound));
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_RELU_THRESHOLD,
@@ -204,7 +203,7 @@ void SpmmPluginDynamic::cusparseLtContext::init(
         sizeof(relu_threshold));
   } else if (activation == SpmmPluginDynamic::Activation::kGelu) {
     int true_value = 1;
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_GELU,
@@ -217,21 +216,21 @@ void SpmmPluginDynamic::cusparseLtContext::init(
         platform::errors::InvalidArgument("Received unknown activation"));
   }
   if (bias_ptr != nullptr) {
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_BIAS_POINTER,
         &bias_ptr,
         sizeof(bias_ptr));
   }
-  paddle::platform::dynload::cusparseLtMatmulAlgSelectionInit(
+  phi::dynload::cusparseLtMatmulAlgSelectionInit(
       &handle, &alg_sel, &matmul, CUSPARSELT_MATMUL_ALG_DEFAULT);
   int alg = 0;
-  paddle::platform::dynload::cusparseLtMatmulAlgSetAttribute(
+  phi::dynload::cusparseLtMatmulAlgSetAttribute(
       &handle, &alg_sel, CUSPARSELT_MATMUL_ALG_CONFIG_ID, &alg, sizeof(alg));
-  paddle::platform::dynload::cusparseLtMatmulGetWorkspace(
+  phi::dynload::cusparseLtMatmulGetWorkspace(
       &handle, &alg_sel, &workspace_size);
-  paddle::platform::dynload::cusparseLtMatmulPlanInit(
+  phi::dynload::cusparseLtMatmulPlanInit(
       &handle, &plan, &matmul, &alg_sel, workspace_size);
   is_initialized = true;
 }
@@ -242,12 +241,12 @@ void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
       true,
       platform::errors::InvalidArgument(
           "Descriptor should be initialized before setting algorithm"));
-  paddle::platform::dynload::cusparseLtMatmulAlgSetAttribute(
+  phi::dynload::cusparseLtMatmulAlgSetAttribute(
       &handle, &alg_sel, CUSPARSELT_MATMUL_ALG_CONFIG_ID, &alg, sizeof(alg));
-  paddle::platform::dynload::cusparseLtMatmulGetWorkspace(
+  phi::dynload::cusparseLtMatmulGetWorkspace(
       &handle, &alg_sel, &workspace_size);
-  paddle::platform::dynload::cusparseLtMatmulPlanDestroy(&plan);
-  paddle::platform::dynload::cusparseLtMatmulPlanInit(
+  phi::dynload::cusparseLtMatmulPlanDestroy(&plan);
+  phi::dynload::cusparseLtMatmulPlanInit(
       &handle, &plan, &matmul, &alg_sel, workspace_size);
 }
 
@@ -256,10 +255,10 @@ void SpmmPluginDynamic::cusparseLtContext::destroy() {
                     true,
                     platform::errors::InvalidArgument(
                         "cusparseLtContext is destroy before init"));
-  paddle::platform::dynload::cusparseLtMatmulPlanDestroy(&plan);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matC);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matA);
+  phi::dynload::cusparseLtMatmulPlanDestroy(&plan);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matC);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matB);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matA);
   is_initialized = false;
 }
 
@@ -280,7 +279,7 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
                     platform::errors::InvalidArgument(
                         "before compressMatB *dest must be nullptr"));
   constexpr int alignment = 16;
-  paddle::platform::dynload::cusparseLtStructuredDescriptorInit(
+  phi::dynload::cusparseLtStructuredDescriptorInit(
       &handle,
       &matB,
       n,
@@ -291,12 +290,11 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
       CUSPARSE_ORDER_ROW,
       CUSPARSELT_SPARSITY_50_PERCENT);
 
-  paddle::platform::dynload::cusparseLtSpMMACompressedSize2(
-      &handle, &matB, compressed_size);
+  phi::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB, compressed_size);
   cudaMalloc(dest, *compressed_size);
-  paddle::platform::dynload::cusparseLtSpMMACompress2(
+  phi::dynload::cusparseLtSpMMACompress2(
       &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matB);
 }
 
 // Constructor for new plugin
@@ -733,19 +731,18 @@ void SpmmPluginDynamic::configurePlugin(
                m_max_ * out_dim_ * sizeof(dataType));
     cudaMalloc(reinterpret_cast<void**>(&d_workspace),
                spmm_context_.workspace_size);
-    paddle::platform::dynload::cusparseLtMatmulSearch(
-        &spmm_context_.handle,
-        &spmm_context_.plan,
-        &alpha,
-        dA,
-        weight_compressed_dev_global_.get(),
-        &beta,
-        dC,
-        dC,
-        d_workspace,
-        nullptr,
-        0);
-    paddle::platform::dynload::cusparseLtMatmulAlgGetAttribute(
+    phi::dynload::cusparseLtMatmulSearch(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         dA,
+                                         weight_compressed_dev_global_.get(),
+                                         &beta,
+                                         dC,
+                                         dC,
+                                         d_workspace,
+                                         nullptr,
+                                         0);
+    phi::dynload::cusparseLtMatmulAlgGetAttribute(
         &spmm_context_.handle,
         &spmm_context_.alg_sel,
         CUSPARSELT_MATMUL_ALG_CONFIG_ID,
@@ -798,34 +795,34 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       auto* output = static_cast<float*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status =
-          paddle::platform::dynload::cusparseLtMatmul(&spmm_context_.handle,
-                                                      &spmm_context_.plan,
-                                                      &alpha,
-                                                      input,
-                                                      weight_compressed_dev_p_,
-                                                      &beta,
-                                                      output,
-                                                      output,
-                                                      workSpace,
-                                                      &stream,
-                                                      1);
+          phi::dynload::cusparseLtMatmul(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         input,
+                                         weight_compressed_dev_p_,
+                                         &beta,
+                                         output,
+                                         output,
+                                         workSpace,
+                                         &stream,
+                                         1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);
       auto* output = static_cast<half*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status =
-          paddle::platform::dynload::cusparseLtMatmul(&spmm_context_.handle,
-                                                      &spmm_context_.plan,
-                                                      &alpha,
-                                                      input,
-                                                      weight_compressed_dev_p_,
-                                                      &beta,
-                                                      output,
-                                                      output,
-                                                      workSpace,
-                                                      &stream,
-                                                      1);
+          phi::dynload::cusparseLtMatmul(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         input,
+                                         weight_compressed_dev_p_,
+                                         &beta,
+                                         output,
+                                         output,
+                                         workSpace,
+                                         &stream,
+                                         1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kINT8) {
       alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
@@ -833,17 +830,17 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       auto* output = static_cast<int8_t*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status =
-          paddle::platform::dynload::cusparseLtMatmul(&spmm_context_.handle,
-                                                      &spmm_context_.plan,
-                                                      &alpha,
-                                                      input,
-                                                      weight_compressed_dev_p_,
-                                                      &beta,
-                                                      output,
-                                                      output,
-                                                      workSpace,
-                                                      &stream,
-                                                      1);
+          phi::dynload::cusparseLtMatmul(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         input,
+                                         weight_compressed_dev_p_,
+                                         &beta,
+                                         output,
+                                         output,
+                                         workSpace,
+                                         &stream,
+                                         1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else {
       PADDLE_THROW(phi::errors::Fatal(
