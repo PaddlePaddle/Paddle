@@ -22,7 +22,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

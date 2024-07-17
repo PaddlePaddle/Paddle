@@ -649,7 +649,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
                     platform::errors::AlreadyExists(
@@ -662,13 +662,13 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
   auto cpu_dev_ctx = static_cast<phi::CPUContext *>(
-      phi::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   // if trt not support dtype, we need to cast to fp16.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
     phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &bf16_tensor);
+        weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
     auto *fp16_data =
         cpu_dev_ctx->Alloc<float16>(weight_map[name_with_suffix].get());
@@ -682,7 +682,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     phi::DenseTensor fp32_tensor;
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &fp32_tensor);
+        weight_tensor, phi::CPUPlace(), &fp32_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
     auto *fp16_data =
         cpu_dev_ctx->Alloc<float16>(weight_map[name_with_suffix].get());
@@ -696,7 +696,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &int64_tensor);
+        weight_tensor, phi::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
         cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix].get());
@@ -723,7 +723,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
                     platform::errors::AlreadyExists(
@@ -736,13 +736,13 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
   auto cpu_dev_ctx = static_cast<phi::CPUContext *>(
-      phi::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
     phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &bf16_tensor);
+        weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
         cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix].get());
@@ -756,7 +756,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     phi::DenseTensor fp16_tensor;
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &fp16_tensor);
+        weight_tensor, phi::CPUPlace(), &fp16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
         cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix].get());
@@ -770,7 +770,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &int64_tensor);
+        weight_tensor, phi::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
         cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix].get());
@@ -796,7 +796,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
                     platform::errors::AlreadyExists(
@@ -813,13 +813,13 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
   auto cpu_dev_ctx = static_cast<phi::CPUContext *>(
-      phi::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
     phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &bf16_tensor);
+        weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
         cpu_dev_ctx->Alloc<float>(weight_map[name_with_suffix].get());
@@ -833,7 +833,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &int64_tensor);
+        weight_tensor, phi::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
     auto *int32_data =
         cpu_dev_ctx->Alloc<int32_t>(weight_map[name_with_suffix].get());
