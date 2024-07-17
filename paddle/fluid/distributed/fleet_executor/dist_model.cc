@@ -44,7 +44,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  phi::DenseTensor *input_tensor,
-                                 const platform::Place &place) {
+                                 const phi::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = common::make_ddim(input_data.shape);
   void *input_tensor_ptr = nullptr;
@@ -63,65 +63,65 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
 
   PADDLE_ENFORCE_NOT_NULL(
       input_tensor_ptr,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "LoDTensor creation failed. DistModel loaded data failed."));
-  PADDLE_ENFORCE_NOT_NULL(input_data.data.data(),
-                          paddle::platform::errors::InvalidArgument(
-                              "DistModelTensor contains no data."));
+  PADDLE_ENFORCE_NOT_NULL(
+      input_data.data.data(),
+      phi::errors::InvalidArgument("DistModelTensor contains no data."));
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     VLOG(3) << "Loading data for CPU.";
     std::memcpy(static_cast<void *>(input_tensor_ptr),
                 input_data.data.data(),
                 input_data.data.length());
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     VLOG(3) << "Loading data for GPU.";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = dynamic_cast<const phi::GPUContext *>(pool.Get(place));
     auto gpu_place = place;
     memory::Copy(gpu_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Paddle wasn't compiled with CUDA, but place is GPU."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     VLOG(3) << "Loading data for XPU.";
 #if defined(PADDLE_WITH_XPU)
     auto xpu_place = place;
     memory::Copy(xpu_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Paddle wasn't compiled with XPU, but place is XPU."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     VLOG(3) << "Loading data for CustomDevice: " << place;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = dynamic_cast<const phi::CustomContext *>(pool.Get(place));
     auto custom_place = place;
     memory::Copy(custom_place,
                  static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  input_data.data.data(),
                  input_data.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Paddle wasn't compiled with custom_device, but place is "
         "CustomPlace."));
 #endif
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
@@ -216,14 +216,13 @@ bool DistModel::Init() {
 
 bool DistModel::PreparePlace() {
   if (config_.place == "GPU") {  // NOLINT
-    place_ = paddle::platform::CUDAPlace(config_.device_id);
+    place_ = phi::GPUPlace(config_.device_id);
   } else if (config_.place == "CPU") {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   } else if (config_.place == "XPU") {
-    place_ = paddle::platform::XPUPlace(config_.device_id);
+    place_ = phi::XPUPlace(config_.device_id);
   } else if (config_.place == "CUSTOM_DEVICE") {
-    place_ =
-        paddle::platform::CustomPlace(config_.device_type, config_.device_id);
+    place_ = phi::CustomPlace(config_.device_type, config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place must be choosen from GPU or CPU or XPU, but got %s.",

@@ -31,12 +31,12 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/common/place.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(run_kp_kernel);
 
 namespace paddle::imperative {
@@ -155,7 +155,7 @@ PreparedOp PrepareImpl(
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
     const framework::OperatorWithKernel& op,
-    const platform::Place& place,
+    const phi::Place& place,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
     const phi::KernelFactory& phi_kernel_factory,
@@ -456,7 +456,7 @@ PreparedOp PrepareImpl(
 PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
                                const NameVarMap<VarBase>& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
   return PrepareImpl<VarBase>(ins,
@@ -473,7 +473,7 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
 PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                const NameVarMap<VariableWrapper>& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
   return PrepareImpl<VariableWrapper>(ins,
@@ -490,7 +490,7 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerVariable>& ins,
                                const NameVarMap<egr::EagerVariable>& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
   return PrepareImpl<egr::EagerVariable>(ins,

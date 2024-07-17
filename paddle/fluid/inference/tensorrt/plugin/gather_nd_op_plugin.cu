@@ -22,8 +22,8 @@
 
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/gather_nd_op_plugin.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace inference {

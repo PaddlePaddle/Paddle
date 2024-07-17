@@ -52,15 +52,15 @@ std::vector<int> GetXPUSelectedDevices();
 void MemcpySyncH2D(void *dst,
                    const void *src,
                    size_t count,
-                   const platform::XPUPlace &dst_place);
+                   const phi::XPUPlace &dst_place);
 void MemcpySyncD2H(void *dst,
                    const void *src,
                    size_t count,
-                   const platform::XPUPlace &src_place);
+                   const phi::XPUPlace &src_place);
 void MemcpySyncD2D(void *dst,
-                   const platform::XPUPlace &dst_place,
+                   const phi::XPUPlace &dst_place,
                    const void *src,
-                   const platform::XPUPlace &src_place,
+                   const phi::XPUPlace &src_place,
                    size_t count);
 
 //! Blocks until stream has completed all operations.

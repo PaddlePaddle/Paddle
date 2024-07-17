@@ -327,7 +327,7 @@ TEST(float16, lod_tensor_on_gpu) {
   memcpy(src_ptr, arr, 4 * sizeof(float16));
 
   // CPU LoDTensor to GPU LoDTensor
-  CUDAPlace gpu_place(0);
+  phi::GPUPlace gpu_place(0);
   phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, gpu_ctx.stream())

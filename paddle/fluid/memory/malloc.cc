@@ -15,33 +15,32 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {
 
-std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
-                                        size_t size) {
+std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size) {
   return allocation::AllocatorFacade::Instance().AllocShared(place, size);
 }
 
-AllocationPtr Alloc(const platform::Place& place, size_t size) {
+AllocationPtr Alloc(const phi::Place& place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
 }
 
-uint64_t Release(const platform::Place& place) {
+uint64_t Release(const phi::Place& place) {
   return allocation::AllocatorFacade::Instance().Release(place);
 }
 
-std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().AllocShared(
       place, size, stream);
 }
 
-AllocationPtr Alloc(const platform::Place& place,
+AllocationPtr Alloc(const phi::Place& place,
                     size_t size,
                     const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size, stream);

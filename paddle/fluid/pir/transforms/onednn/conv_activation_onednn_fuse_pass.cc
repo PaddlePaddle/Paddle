@@ -447,6 +447,14 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_1_value");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_2_value");
+        });
 
     const auto &fused_conv =
         fused_level_ == 0
@@ -462,8 +470,8 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"fuse_activation", res.StrAttr("clip")},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
-                         {"fuse_alpha", pat.Attr("full_1_value")},
-                         {"fuse_beta", pat.Attr("full_2_value")},
+                         {"fuse_alpha", fuse_alpha},
+                         {"fuse_beta", fuse_beta},
                          {"scale_in", res.Float32Attr(1.0f)},
                          {"scale_out", res.Float32Attr(1.0f)},
                          {"scale_in_eltwise", res.Float32Attr(1.0f)},
@@ -482,8 +490,8 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},
                          {"force_fp32_output", pat.Attr("force_fp32_output")},
-                         {"fuse_alpha", pat.Attr("full_1_value")},
-                         {"fuse_beta", pat.Attr("full_2_value")},
+                         {"fuse_alpha", fuse_alpha},
+                         {"fuse_beta", fuse_beta},
                          {"scale_in", pat.Attr("scale_in")},
                          {"scale_out", pat.Attr("scale_out")},
                          {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},

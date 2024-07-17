@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 TEST(AssignOp, AssignLoDTensor) {
   phi::CPUPlace cpu_place;
@@ -28,7 +28,7 @@ TEST(AssignOp, AssignLoDTensor) {
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
 
   phi::DenseTensor input;
-  paddle::framework::DDim in_dims = common::make_ddim({3, 4});
+  phi::DDim in_dims = common::make_ddim({3, 4});
   int* in_data = input.mutable_data<int>(in_dims, cpu_place);
   for (int i = 0; i < 12; ++i) {
     in_data[i] = i;
@@ -37,7 +37,7 @@ TEST(AssignOp, AssignLoDTensor) {
   assign_functor(input);
 
   auto& out_tensor = output.Get<phi::DenseTensor>();
-  paddle::framework::DDim out_dims = out_tensor.dims();
+  phi::DDim out_dims = out_tensor.dims();
   EXPECT_EQ(in_dims, out_dims);
   auto* out_data = out_tensor.data<int>();
   for (int i = 0; i < 12; ++i) {
@@ -54,7 +54,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
 
   paddle::framework::LoDTensorArray input;
   for (int i = 0; i < 5; ++i) {
-    paddle::framework::DDim in_dims = common::make_ddim({i + 1, i + 2});
+    phi::DDim in_dims = common::make_ddim({i + 1, i + 2});
     phi::DenseTensor lod_tensor;
     float* in_data = lod_tensor.mutable_data<float>(in_dims, cpu_place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
@@ -67,7 +67,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
 
   auto& out_array = output.Get<paddle::framework::LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {
-    paddle::framework::DDim out_dims = out_array[i].dims();
+    phi::DDim out_dims = out_array[i].dims();
     EXPECT_EQ(common::make_ddim({i + 1, i + 2}), out_dims);
     const float* out_data = out_array[i].data<float>();
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
@@ -89,7 +89,7 @@ TEST(AssignOp, AssignSelectedRows) {
   phi::SelectedRows input(rows, height);
   phi::DenseTensor* input_tensor = input.mutable_value();
 
-  paddle::framework::DDim in_dims = common::make_ddim({3, 4});
+  phi::DDim in_dims = common::make_ddim({3, 4});
   int* in_data = input_tensor->mutable_data<int>(in_dims, cpu_place);
   for (int i = 0; i < 12; ++i) {
     in_data[i] = i;
@@ -105,7 +105,7 @@ TEST(AssignOp, AssignSelectedRows) {
   }
   EXPECT_EQ(height, out_selected_row.height());
   const phi::DenseTensor& out_tensor = out_selected_row.value();
-  paddle::framework::DDim out_dims = out_tensor.dims();
+  phi::DDim out_dims = out_tensor.dims();
   EXPECT_EQ(in_dims, out_dims);
   auto* out_data = out_tensor.data<int>();
   for (int i = 0; i < 12; ++i) {

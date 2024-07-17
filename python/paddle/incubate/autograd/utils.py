@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import collections
 import typing
 
@@ -36,7 +39,7 @@ prim_option = PrimOption()
 
 
 @framework.static_only
-def prim_enabled():
+def prim_enabled() -> bool:
     """
     Note:
         **ONLY available in the static graph mode.**
@@ -70,7 +73,7 @@ def prim_enabled():
 
 
 @framework.static_only
-def enable_prim():
+def enable_prim() -> None:
     """
     Note:
         **ONLY available in the static graph mode.**
@@ -96,7 +99,7 @@ def enable_prim():
 
 
 @framework.static_only
-def disable_prim():
+def disable_prim() -> None:
     """
     Note:
         **ONLY available in the static graph mode.**

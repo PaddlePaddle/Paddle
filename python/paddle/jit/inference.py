@@ -35,16 +35,6 @@ def get_inference_precision(precision_str):
         raise AssertionError(f"unsupported precision {precision_str}")
 
 
-def register_triton_custom_ops(model_dir):
-    for root, dirs, files in os.walk(model_dir):
-        for file in files:
-            if file.endswith("_package.so"):
-                so_full_path = os.path.join(root, file)
-                paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
-                    so_full_path
-                )
-
-
 # get paddle.Tensor for paddle inference use.
 def get_tensor(run_time_args, arg_name):
     if isinstance(run_time_args, paddle.Tensor):
@@ -107,9 +97,7 @@ class InferenceEngine:
         self.cache_static_model = kwargs.get("cache_static_model", False)
         self.save_model_dir = kwargs.get(
             "save_model_dir",
-            os.path.join(
-                Path.home(), ".cache", "paddle", "to_static_inference_models"
-            ),
+            os.path.join(Path.home(), ".cache", "paddle", "inference_models"),
         )
         self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
         self.precision_mode = kwargs.get("precision_mode", "float32")
@@ -179,8 +167,10 @@ class InferenceEngine:
             # The rank of this tensor has changed
             if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
                 self.re_do_d2s = True
-                d2s_input_shapes[i] = input_tensor_lists[i]
-                print("rank is changed, we need re do d2s.")
+                print(
+                    f"{self.d2s_input_names[i]}'s rank is changed from {len(d2s_input_shapes[i])} to {len(input_tensor_lists[i].shape)}, need re do jit.save"
+                )
+                d2s_input_shapes[i] = input_tensor_lists[i].shape
                 continue
             for j in range(len(d2s_input_shapes[i])):
                 if (
@@ -188,8 +178,10 @@ class InferenceEngine:
                     and d2s_input_shapes[i][j] != input_tensor_lists[i].shape[j]
                 ):
                     self.re_do_d2s = True
+                    print(
+                        f"{self.d2s_input_names[i]}'s shape is changed from {d2s_input_shapes[i]} to {input_tensor_lists[i].shape}, need re do jit.save"
+                    )
                     d2s_input_shapes[i][j] = -1
-                    print("shape is changed, we need re do d2s.")
             sys.stdout.flush()
         # update the d2s_input_shapes, because of dynamic shape
         self.d2s_input_shapes = d2s_input_shapes
@@ -257,9 +249,9 @@ class InferenceEngine:
                     self.d2s_input_names[d2s_shapes_id] = arg_names[i]
                 d2s_shapes_id += 1
 
-        os.environ["TRITON_KERNEL_CACHE_DIR"] = self.save_model_dir
-
-        print("we are doing d2s!!")
+        print(
+            f"now will use paddle.jit.save to save the {func.__name__} function to {self.save_path}.pdmodel"
+        )
         print("input_specs: ", input_specs)
         sys.stdout.flush()
 
@@ -284,7 +276,9 @@ class InferenceEngine:
                     ",".join([str(s) for s in self.d2s_input_shapes[i]]) + "\n"
                 )
                 f.write(line)
-        print("d2s are done!!")
+        print(
+            f"the {func.__name__} function is sucessfully saved to {self.save_path}.pdmodel"
+        )
         sys.stdout.flush()
 
     def get_input_tensor_lists(self, *args, **kwargs):
@@ -376,16 +370,14 @@ class InferenceEngine:
                 config.set_trt_dynamic_shape_info(
                     min_input_shape, max_input_shape, opt_input_shape
                 )
-                config.enable_tensorrt_engine(
-                    workspace_size=1 << 30,
-                    max_batch_size=1,
-                    min_subgraph_size=3,
-                    precision_mode=get_inference_precision(
-                        self.trt_precision_mode
-                    ),
-                    use_static=self.trt_use_static,
-                    use_calib_mode=False,
-                )
+            config.enable_tensorrt_engine(
+                workspace_size=1 << 30,
+                max_batch_size=1,
+                min_subgraph_size=3,
+                precision_mode=get_inference_precision(self.trt_precision_mode),
+                use_static=self.trt_use_static,
+                use_calib_mode=False,
+            )
 
         if self.predictor is not None:
             self.predictor = None
@@ -439,9 +431,6 @@ def paddle_inference_decorator(function=None, **kwargs):
                 infer_engine.to_static_model(
                     func, input_tensor_lists, *args, **kwargs
                 )
-            else:
-                # we need register some triton ops.
-                register_triton_custom_ops(infer_engine.save_model_dir)
 
             infer_engine.create_predictor(input_tensor_lists)
 

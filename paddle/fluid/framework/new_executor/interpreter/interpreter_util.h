@@ -97,7 +97,7 @@ bool IsSupportedHeterPlace(const phi::Place& place);
 void AddFetch(const std::vector<std::string>& fetch_names,
               framework::BlockDesc* block);
 
-void BuildOpFuncList(const platform::Place& place,
+void BuildOpFuncList(const phi::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -114,8 +114,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
 void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
                      std::unordered_map<int, std::string>* id_2_var_name);
 
-void LogDeviceMemoryStats(const platform::Place& place,
-                          const std::string& op_name);
+void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);

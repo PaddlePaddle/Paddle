@@ -67,7 +67,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_scale = true;
     has_layernorm_bias = true;
     epsilon = 0.00001f;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -90,7 +90,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_bias = _has_bias;
     has_scale = true;
     has_layernorm_bias = true;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }

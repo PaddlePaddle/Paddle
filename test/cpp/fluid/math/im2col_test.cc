@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/im2col_cfo_cpu.h"
 
 template <typename DeviceContext, typename Place>
@@ -67,7 +67,7 @@ void testIm2col() {
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
 
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
@@ -90,7 +90,7 @@ void testIm2col() {
   std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
   float* out_cfo_ptr = nullptr;
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
     paddle::framework::TensorCopySync(output_cfo, phi::CPUPlace(), &output_tmp);
@@ -101,7 +101,7 @@ void testIm2col() {
   }
 
   float* out_ocf_ptr = nullptr;
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
     paddle::framework::TensorCopySync(output_ocf, phi::CPUPlace(), &output_tmp);
@@ -120,7 +120,7 @@ void testIm2col() {
   std::array<float, 6> col2im_data = {0, 2, 2, 3, 8, 5};
 
   memset(input_ptr, 0, 6 * sizeof(float));
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
@@ -129,7 +129,7 @@ void testIm2col() {
   col2im(*context, output_cfo, dilation, stride, padding, &input);
 
   float* in_ptr = nullptr;
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
     paddle::framework::TensorCopySync(input, phi::CPUPlace(), &input_tmp);
@@ -141,7 +141,7 @@ void testIm2col() {
 
   // Col2Im: kOCF
   memset(input_ptr, 0, 6 * sizeof(float));
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
@@ -149,7 +149,7 @@ void testIm2col() {
 
   col2im_ocf(*context, output_ocf, dilation, stride, padding, &input);
 
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
     paddle::framework::TensorCopySync(input, phi::CPUPlace(), &input_tmp);
@@ -212,7 +212,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
                             .GetAllocator(*place, context->stream())
                             .get());
   context->PartialInitWithAllocator();
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
@@ -235,7 +235,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
   std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
   float* out_cfo_ptr;
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
     paddle::framework::TensorCopySync(output_cfo, phi::CPUPlace(), &output_tmp);
@@ -246,7 +246,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
   }
 
   float* out_ocf_ptr;
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
     paddle::framework::TensorCopySync(output_ocf, phi::CPUPlace(), &output_tmp);
@@ -265,7 +265,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
   std::array<float, 6> col2im_data = {0, 2, 2, 3, 8, 5};
 
   memset(input_ptr, 0, 6 * sizeof(float));
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
@@ -274,7 +274,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
   col2im(*context, output_cfo, dilation, stride, padding, &input);
 
   float* in_ptr;
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
     paddle::framework::TensorCopySync(input, phi::CPUPlace(), &input_tmp);
@@ -286,7 +286,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
 
   // Col2Im: kOCF
   memset(input_ptr, 0, 6 * sizeof(float));
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
@@ -294,7 +294,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
 
   col2im_ocf(*context, output_ocf, dilation, stride, padding, &input);
 
-  if (paddle::platform::is_cpu_place(*place)) {
+  if (phi::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
     paddle::framework::TensorCopySync(input, phi::CPUPlace(), &input_tmp);

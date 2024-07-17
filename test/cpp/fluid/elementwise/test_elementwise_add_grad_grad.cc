@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "test/cpp/fluid/elementwise/test_elementwise_op_grad_grad.h"
 
@@ -33,7 +33,7 @@ class TestElementwiseAddGradGradWithoutDDX
     : public TestElementwiseOpGradGrad<T> {
  public:
   TestElementwiseAddGradGradWithoutDDX(const phi::Place &place,
-                                       const framework::DDim &dims)
+                                       const phi::DDim &dims)
       : TestElementwiseOpGradGrad<T>("elementwise_add_grad_grad",
                                      place,
                                      dims,
@@ -65,14 +65,14 @@ class TestElementwiseAddGradGradWithoutDDX
 };
 
 TEST(test_elementwise_add_grad_grad_without_ddx, cpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   phi::CPUPlace p;
   TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_grad_grad_without_ddx, gpu_place) {
-  framework::DDim dims({32, 64});
+  phi::DDim dims({32, 64});
   phi::GPUPlace p(0);
   TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
