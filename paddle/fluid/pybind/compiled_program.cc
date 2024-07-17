@@ -338,33 +338,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                         >>> build_strategy.debug_graphviz_path = "./graph"
           )DOC")
       .def_property(
-          "remove_unnecessary_lock",
-          [](const BuildStrategy &self) {
-            return self.remove_unnecessary_lock_;
-          },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.remove_unnecessary_lock_ = b;
-          },
-          R"DOC((bool, optional): If set True, some locks in GPU ops would be
-                released and CompiledProgram would run faster. Default is True.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.remove_unnecessary_lock = True
-          )DOC")
-      .def_property(
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {

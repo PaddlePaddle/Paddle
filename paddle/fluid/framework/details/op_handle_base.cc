@@ -212,58 +212,6 @@ void OpHandleBase::AddOutput(VarHandleBase *out) {
   out->AddInput(this, this->Node());
 }
 
-void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
-  for (auto in_var : inputs_) {
-    if (NeedWait(in_var)) {
-      // Dummy Variable is used to represent dependencies between operators, so
-      // there doesn't add event for it.
-      auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
-      if (in_var_handle) {
-        auto &place = in_var_handle->place();
-        if (phi::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          auto stream =
-              static_cast<phi::GPUContext *>(dev_ctxes_.at(place))->stream();
-#ifdef PADDLE_WITH_HIP
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
-#else
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
-#endif
-#else
-          PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with CUDA."));
-#endif
-        }
-        // There are nothing to do when the place is CPUPlace.
-      }
-    } else {
-      // NOTE(zhiqiu): Special case when using fetch_async_op_handle may lead to
-      // nodetermination due to parallel execution of cuda memory operation. Eg:
-      // execute stream: CPU->GPU copy (feed)
-      // fetch stream: GPU->CUDAPinned (fetch)
-      if (in_var && wait_for_feed) {
-        auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
-        if (in_var_handle) {
-          auto &place = in_var_handle->place();
-          if (phi::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-            phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-            auto stream =
-                static_cast<phi::GPUContext *>(pool.Get(place))->stream();
-            platform::GpuStreamSync(stream);
-#else
-            PADDLE_THROW(platform::errors::PreconditionNotMet(
-                "Not compiled with CUDA."));
-#endif
-          }
-        }
-      }
-    }
-  }
-}
-
 void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {

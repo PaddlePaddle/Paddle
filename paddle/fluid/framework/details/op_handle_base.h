@@ -77,14 +77,6 @@ class OpHandleBase {
 
   TEST_API void AddOutput(VarHandleBase *out);
 
-  // This method adds the wait events of all the input on all the device
-  // context.
-  // NOTE: This Wait is asynchronous operation.
-  // NOTE: wait_for_feed is added to wait for feed var, since it has
-  // generated op, no event and cannot perform event wait. It is only
-  // used in fetch_async_op_handle currently.
-  TEST_API virtual void WaitInputVarGenerated(bool wait_for_feed = false);
-
   // This method adds the wait events of all the input on the specified device
   // context.
   // NOTE: This Wait is asynchronous operation.
