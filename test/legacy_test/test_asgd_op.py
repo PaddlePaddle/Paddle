@@ -296,6 +296,56 @@ class TestASGDMultiPrecision(unittest.TestCase):
             out.append(loss_data)
         return out
 
+    def static_asgd_mp_with_pir(self, mp):
+        paddle.enable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.ASGD(batch_num=2, multi_precision=mp)
+
+        with paddle.static.program_guard(train_program, startup_program):
+            if mp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16'
+                )
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+            hidden_layer = paddle.nn.Linear(2, 10)
+            if mp:
+                hidden_layer, optimizer = paddle.amp.decorate(
+                    models=hidden_layer,
+                    optimizers=optimizer,
+                    level='O2',
+                    master_weight=True,
+                    master_grad=False,
+                )
+                with paddle.amp.auto_cast(
+                    level='O2', dtype='float16', use_promote=True
+                ):
+                    hidden = hidden_layer(data)
+                    loss = paddle.mean(hidden)
+            else:
+                hidden = hidden_layer(data)
+                loss = paddle.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if mp:
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss]
+            )
+            out.append(loss_data)
+        return out
+
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -316,15 +366,28 @@ class TestASGDMultiPrecision(unittest.TestCase):
                 atol=0.1,
             )
         "Test static graph mode"
-        output1_st = self.static_asgd_mp(mp=True)
-        output2_st = self.static_asgd_mp(mp=False)
-        for idx in range(len(output1_st)):
-            np.testing.assert_allclose(
-                output1_st[idx].astype('float32'),
-                output2_st[idx].astype('float32'),
-                rtol=1e-05,
-                atol=0.1,
-            )
+        with paddle.pir_utils.OldIrGuard():
+            output1_st = self.static_asgd_mp(mp=True)
+            output2_st = self.static_asgd_mp(mp=False)
+            for idx in range(len(output1_st)):
+                np.testing.assert_allclose(
+                    output1_st[idx].astype('float32'),
+                    output2_st[idx].astype('float32'),
+                    rtol=1e-05,
+                    atol=0.1,
+                )
+
+        "Test static graph mode with PIR"
+        with paddle.pir_utils.IrGuard():
+            output1_st = self.static_asgd_mp_with_pir(mp=True)
+            output2_st = self.static_asgd_mp_with_pir(mp=False)
+            for idx in range(len(output1_st)):
+                np.testing.assert_allclose(
+                    output1_st[idx].astype('float32'),
+                    output2_st[idx].astype('float32'),
+                    rtol=1e-05,
+                    atol=0.1,
+                )
 
 
 class TestASGDSimple(unittest.TestCase):
