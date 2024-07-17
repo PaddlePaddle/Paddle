@@ -380,7 +380,7 @@
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
-    func : UnchangedInferMeta
+    func : ReshapeGradInferMeta
     param : [x, out_grad]
     spmd_rule: StaticReshapeGradInferSpmd
   kernel :

@@ -268,6 +268,14 @@ class ReshapeOpPattern
             out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
       }
     }
+    PADDLE_ENFORCE_EQ(
+        op->num_results(),
+        2U,
+        ::common::errors::PreconditionNotMet(
+            "The size of source op outputs must be 2, but received %d.",
+            op->num_results()));
+    auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+        op->operand_source(0), vec_out_shape);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
     rewriter.EraseOp(op);
   }
