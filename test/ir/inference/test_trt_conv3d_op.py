@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.core import AnalysisConfig, PassVersionChecker
-from paddle.pir_utils import test_with_pir_api
 
 
 class TensorRTSubgraphPassConv3dTest(InferencePassTest):
@@ -64,7 +63,6 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
     def set_params(self):
         pass
 
-    @test_with_pir_api
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
@@ -162,7 +160,6 @@ class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
         self.use_cudnn = True
         self.stride = [2, 2, 2]
 
-    @test_with_pir_api
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
