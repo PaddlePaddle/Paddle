@@ -1257,6 +1257,16 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   return argument_outputs;
 }
 
+bool CreateArrayOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{symbol::RankedTensorArrayShapeOrDataDimExprs(
+          std::vector<symbol::DimExpr>{})});
+
+  return true;
+}
+
 const char *CreateArrayLikeOp::attributes_name[1] = {"val"};  // NOLINT
 
 OpInfoTuple CreateArrayLikeOp::GetOpInfo() {
@@ -1513,6 +1523,16 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
+}
+
+bool ArrayLengthOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr{1}})});
+
+  return true;
 }
 
 OpInfoTuple ArrayReadOp::GetOpInfo() {
@@ -1879,6 +1899,17 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   return argument_outputs;
 }
 
+bool ArrayWrite_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape = infer_context->GetShapeOrDataForValue(x()).shape();
+  infer_context->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{
+          symbol::RankedTensorArrayShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
+
 const char *ArrayToTensorOp::attributes_name[2] = {"axis",
                                                    "use_stack"};  //  NOLINT
 
@@ -2070,6 +2101,45 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
       dense_out_index.offset());
   argument_outputs.push_back(out_index_dense_tensor_type);
   return argument_outputs;
+}
+
+bool ArrayToTensorOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  int axis =
+      this->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
+  bool use_stack =
+      this->attributes().at("use_stack").dyn_cast<pir::BoolAttribute>().data();
+  const auto &x_shape_data =
+      infer_context->GetShapeOrDataForValue(x())
+          .dyn_cast<symbol::RankedTensorArrayShapeOrDataDimExprs>();
+
+  const auto &UseStackInfer = [&]() {
+    std::vector<symbol::DimExpr> result_shape = x_shape_data.GetShapeHint();
+    result_shape.insert(result_shape.begin() + axis,
+                        symbol::DimExpr{infer_context->GetNextSymName()});
+    return symbol::ShapeOrDataDimExprs(
+        symbol::TensorShapeOrDataDimExprs(result_shape));
+  };
+
+  const auto &UseConcatInfer = [&]() {
+    std::vector<symbol::DimExpr> result_shape = x_shape_data.GetShapeHint();
+    result_shape[axis] = symbol::DimExpr{infer_context->GetNextSymName()};
+    return symbol::ShapeOrDataDimExprs(
+        symbol::TensorShapeOrDataDimExprs(result_shape));
+  };
+  if (use_stack) {
+    infer_context->SetShapeOrDataForValue(out(), UseStackInfer());
+  } else {
+    infer_context->SetShapeOrDataForValue(out(), UseConcatInfer());
+  }
+
+  std::vector<symbol::DimExpr> out_index_shape{
+      symbol::DimExpr{infer_context->GetNextSymName()}};
+  infer_context->SetShapeOrDataForValue(
+      out_index(),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(out_index_shape)));
+  return true;
 }
 
 const char *TensorToArrayOp::attributes_name[2] = {"axis",
