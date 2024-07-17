@@ -4485,7 +4485,7 @@ void GraphDataGenerator::AllocResource(
   platform::CUDADeviceGuard guard(conf_.gpuid);
   sample_stream_ = gpu_graph_ptr->get_local_stream(conf_.gpuid);
   train_stream_ = dynamic_cast<phi::GPUContext *>(
-                      platform::DeviceContextPool::Instance().Get(place_))
+                      phi::DeviceContextPool::Instance().Get(place_))
                       ->stream();
   if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
     if (conf_.gpu_graph_training) {

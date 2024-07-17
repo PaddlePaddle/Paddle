@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -109,13 +109,13 @@ void TestToDLManagedTensor(const phi::Place &place, uint16_t lanes) {
 template <typename T>
 void TestMainLoop() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  std::vector<platform::Place> places{
+  std::vector<phi::Place> places{
       phi::CPUPlace(), phi::GPUPlace(0), phi::GPUPinnedPlace()};
   if (platform::GetGPUDeviceCount() > 1) {
     places.emplace_back(phi::GPUPlace(1));
   }
 #else
-  std::vector<platform::Place> places{phi::CPUPlace()};
+  std::vector<phi::Place> places{phi::CPUPlace()};
 #endif
   std::vector<uint16_t> lanes{1, 2};
   for (auto &p : places) {

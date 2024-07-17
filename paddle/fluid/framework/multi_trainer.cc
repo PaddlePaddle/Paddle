@@ -146,7 +146,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       workers_[i]->SetPlace(places_[i]);
       workers_[i]->SetReaderPlace(places_[i]);
       workers_[i]->SetDeviceContext(
-          platform::DeviceContextPool::Instance().Get(places_[i]));
+          phi::DeviceContextPool::Instance().Get(places_[i]));
 #else
       workers_[i]->SetPlace(place);
       workers_[i]->SetReaderPlace(place);

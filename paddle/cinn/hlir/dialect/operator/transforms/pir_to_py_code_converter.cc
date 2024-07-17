@@ -48,6 +48,7 @@
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 COMMON_DECLARE_bool(logging_trunc_pir_py_code);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
+COMMON_DECLARE_int64(logging_pir_py_code_int_tensor_element_limit);
 
 namespace paddle::framework {
 
@@ -134,7 +135,7 @@ void VisitFeedName(const pir::Program& program,
 
 std::optional<std::vector<int64_t>> GetTensorData(
     const phi::DenseTensor& tensor) {
-  constexpr int kLimit = 64;
+  int kLimit = FLAGS_logging_pir_py_code_int_tensor_element_limit;
   if (tensor.numel() > kLimit || !tensor.IsInitialized()) return std::nullopt;
   if (tensor.dtype() == phi::DataType::INT64) {
     return phi::GetVectorFromTensor<int64_t>(&tensor);

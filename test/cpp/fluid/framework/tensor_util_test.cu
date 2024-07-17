@@ -16,7 +16,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {

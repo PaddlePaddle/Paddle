@@ -48,8 +48,7 @@ struct ReluFunctor {
     y_->Resize(x_.dims());
     auto *y_data = y_->mutable_data<T>(place);
 
-    const auto &dev_ctx =
-        *paddle::platform::DeviceContextPool::Instance().Get(place);
+    const auto &dev_ctx = *phi::DeviceContextPool::Instance().Get(place);
 
 #define LAUNCH_RELU_KERNEL(DevCtxT)                              \
   do {                                                           \
