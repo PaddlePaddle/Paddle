@@ -802,225 +802,429 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
             np.testing.assert_allclose(linear2.bias.numpy(), fc2_b, rtol=1e-6)
 
-    # @test_with_pir_api
     def test_adamw_op(self):
-        paddle.enable_static()
-        place = base.CUDAPlace(0)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.enable_static()
+            place = base.CUDAPlace(0)
 
-        learning_rate = 0.0001
-        beta1 = 0.85
-        beta2 = 0.95
-        weight_decay = 0.01
-        epsilon = 1e-8
+            learning_rate = 0.0001
+            beta1 = 0.85
+            beta2 = 0.95
+            weight_decay = 0.01
+            epsilon = 1e-8
 
-        train_prog = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                x = paddle.static.data(
-                    name='x', shape=[None, 10], dtype='float32'
+            train_prog = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(train_prog, startup):
+                with base.unique_name.guard():
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=[None, 1], dtype='float32'
+                    )
+
+                    weight_attr1 = paddle.framework.ParamAttr(
+                        name="linear_0.w_0"
+                    )
+                    bias_attr1 = paddle.framework.ParamAttr(
+                        name="linear_0.b_0",
+                        initializer=paddle.nn.initializer.Constant(value=1.0),
+                    )
+                    weight_attr2 = paddle.framework.ParamAttr(
+                        name="linear_1.w_0"
+                    )
+                    bias_attr2 = paddle.framework.ParamAttr(
+                        name="linear_1.b_0",
+                        initializer=paddle.nn.initializer.Constant(value=1.0),
+                    )
+                    linear1 = paddle.nn.Linear(
+                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                    )
+                    linear2 = paddle.nn.Linear(
+                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                    )
+
+                    out = linear1(x)
+                    out = linear2(out)
+
+                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
+                        "float32"
+                    )
+                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
+                        "float32"
+                    )
+                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
+                        "float32"
+                    )
+                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
+                        "float32"
+                    )
+                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+
+                    cost = paddle.nn.functional.square_error_cost(
+                        input=out, label=y
+                    )
+                    avg_cost = paddle.mean(cost)
+
+                    simple_lr_fun = partial(
+                        simple_lr_setting, decay_rate=0.8, n_layers=2
+                    )
+
+                    opt = paddle.optimizer.AdamW(
+                        learning_rate=learning_rate,
+                        beta1=beta1,
+                        beta2=beta2,
+                        weight_decay=weight_decay,
+                        epsilon=epsilon,
+                        lr_ratio=simple_lr_fun,
+                    )
+                    opt.minimize(avg_cost)
+
+            def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+                np_inputs = {
+                    'Param': param,
+                    'Grad': grad,
+                    'Moment1': moment1,
+                    'Moment2': moment2,
+                    'LearningRate': np.array([learning_rate]).astype("float32"),
+                    'Beta1Pow': np.array([beta1**t]).astype("float32"),
+                    'Beta2Pow': np.array([beta2**t]).astype("float32"),
+                }
+
+                np_attrs = {
+                    'epsilon': epsilon,
+                    'beta1': beta1,
+                    'beta2': beta2,
+                    "lr_ratio": lr_ratio,
+                    "coeff": weight_decay,
+                    "with_decay": True,
+                }
+                param_out, moment1_out, moment2_out = adamw_step(
+                    np_inputs, np_attrs
                 )
-                y = paddle.static.data(
-                    name='y', shape=[None, 1], dtype='float32'
-                )
+                return param_out, moment1_out, moment2_out
 
-                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
-                bias_attr1 = paddle.framework.ParamAttr(
-                    name="linear_0.b_0",
-                    initializer=paddle.nn.initializer.Constant(value=1.0),
-                )
-                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
-                bias_attr2 = paddle.framework.ParamAttr(
-                    name="linear_1.b_0",
-                    initializer=paddle.nn.initializer.Constant(value=1.0),
-                )
-                linear1 = paddle.nn.Linear(
-                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
-                )
-                linear2 = paddle.nn.Linear(
-                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
-                )
+            fetch_list1 = [
+                "linear_0.w_0",
+                "linear_0.b_0",
+                "linear_1.w_0",
+                "linear_1.b_0",
+            ]
+            fetch_list2 = [
+                "linear_0.w_0",
+                "linear_0.w_0@GRAD",
+                "linear_0.b_0",
+                "linear_0.b_0@GRAD",
+                "linear_1.w_0",
+                "linear_1.w_0@GRAD",
+                "linear_1.b_0",
+                "linear_1.b_0@GRAD",
+            ]
 
-                out = linear1(x)
-                out = linear2(out)
+            exe = base.Executor(place)
+            exe.run(startup)
+            test_prog = train_prog.clone(for_test=True)
 
-                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
-                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
-                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
-                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
-                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
-                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
-                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
-                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+            for i in range(5):
+                inputs = np.random.random(size=[8, 10]).astype('float32')
+                outputs = np.random.random(size=[8, 1]).astype('float32')
 
-                cost = paddle.nn.functional.square_error_cost(
-                    input=out, label=y
+                param = exe.run(
+                    test_prog,
+                    feed={"x": inputs, "y": outputs},
+                    fetch_list=fetch_list1,
                 )
-                avg_cost = paddle.mean(cost)
-
-                simple_lr_fun = partial(
-                    simple_lr_setting, decay_rate=0.8, n_layers=2
-                )
-
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=learning_rate,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=weight_decay,
-                    epsilon=epsilon,
-                    lr_ratio=simple_lr_fun,
-                )
-                _, params_grads1 = opt.minimize(avg_cost)
-
-        def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
-            np_inputs = {
-                'Param': param,
-                'Grad': grad,
-                'Moment1': moment1,
-                'Moment2': moment2,
-                'LearningRate': np.array([learning_rate]).astype("float32"),
-                'Beta1Pow': np.array([beta1**t]).astype("float32"),
-                'Beta2Pow': np.array([beta2**t]).astype("float32"),
-            }
-
-            np_attrs = {
-                'epsilon': epsilon,
-                'beta1': beta1,
-                'beta2': beta2,
-                "lr_ratio": lr_ratio,
-                "coeff": weight_decay,
-                "with_decay": True,
-            }
-            param_out, moment1_out, moment2_out = adamw_step(
-                np_inputs, np_attrs
-            )
-            return param_out, moment1_out, moment2_out
-
-        exe = base.Executor(place)
-        exe.run(startup)
-
-        test_prog = paddle.static.Program()
-        with paddle.static.program_guard(test_prog, startup):
-            with base.unique_name.guard():
-                x = paddle.static.data(
-                    name='x', shape=[None, 10], dtype='float32'
-                )
-                y = paddle.static.data(
-                    name='y', shape=[None, 1], dtype='float32'
-                )
-
-                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
-                bias_attr1 = paddle.framework.ParamAttr(
-                    name="linear_0.b_0",
-                    initializer=paddle.nn.initializer.Constant(value=1.0),
-                )
-                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
-                bias_attr2 = paddle.framework.ParamAttr(
-                    name="linear_1.b_0",
-                    initializer=paddle.nn.initializer.Constant(value=1.0),
-                )
-                linear1 = paddle.nn.Linear(
-                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
-                )
-                linear2 = paddle.nn.Linear(
-                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
-                )
-
-                out = linear1(x)
-                out = linear2(out)
-
-                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
-                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
-                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
-                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
-                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
-                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
-                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
-                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
-
-                cost = paddle.nn.functional.square_error_cost(
-                    input=out, label=y
-                )
-                avg_cost = paddle.mean(cost)
-
-                simple_lr_fun = partial(
-                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                params_and_gras = exe.run(
+                    train_prog,
+                    feed={"x": inputs, "y": outputs},
+                    fetch_list=fetch_list2,
                 )
 
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=learning_rate,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=weight_decay,
-                    epsilon=epsilon,
-                    lr_ratio=simple_lr_fun,
+                fc1_w = param[0]
+                fc1_w_grad = params_and_gras[1]
+                fc1_b = param[1]
+                fc1_b_grad = params_and_gras[3]
+                fc2_w = param[2]
+                fc2_w_grad = params_and_gras[5]
+                fc2_b = param[3]
+                fc2_b_grad = params_and_gras[7]
+
+                fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
+                    fc1_w,
+                    fc1_w_grad,
+                    fc1_w_mon1,
+                    fc1_w_mon2,
+                    simple_lr_fun(linear1.weight),
+                    i + 1,
                 )
-                _, params_grads2 = opt.minimize(avg_cost)
+                fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
+                    fc1_b,
+                    fc1_b_grad,
+                    fc1_b_mon1,
+                    fc1_b_mon2,
+                    simple_lr_fun(linear1.bias),
+                    i + 1,
+                )
+                fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
+                    fc2_w,
+                    fc2_w_grad,
+                    fc2_w_mon1,
+                    fc2_w_mon2,
+                    simple_lr_fun(linear2.weight),
+                    i + 1,
+                )
+                fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
+                    fc2_b,
+                    fc2_b_grad,
+                    fc2_b_mon1,
+                    fc2_b_mon2,
+                    simple_lr_fun(linear2.bias),
+                    i + 1,
+                )
 
-        fetch_list1 = [item[0] for item in params_grads2]
-        fetch_list2 = [item for sublist in params_grads1 for item in sublist]
-        for i in range(5):
-            inputs = np.random.random(size=[8, 10]).astype('float32')
-            outputs = np.random.random(size=[8, 1]).astype('float32')
+                np.testing.assert_allclose(params_and_gras[0], fc1_w, rtol=1e-6)
+                np.testing.assert_allclose(params_and_gras[2], fc1_b, rtol=1e-6)
+                np.testing.assert_allclose(params_and_gras[4], fc2_w, rtol=1e-6)
+                np.testing.assert_allclose(params_and_gras[6], fc2_b, rtol=1e-6)
 
-            param = exe.run(
-                test_prog,
-                feed={"x": inputs, "y": outputs},
-                fetch_list=fetch_list1,
-            )
-            params_and_gras = exe.run(
-                train_prog,
-                feed={"x": inputs, "y": outputs},
-                fetch_list=fetch_list2,
-            )
+            paddle.disable_static()
 
-            fc1_w = param[3]
-            fc1_w_grad = params_and_gras[7]
-            fc1_b = param[2]
-            fc1_b_grad = params_and_gras[5]
-            fc2_w = param[1]
-            fc2_w_grad = params_and_gras[3]
-            fc2_b = param[0]
-            fc2_b_grad = params_and_gras[1]
-            fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
-                fc1_w,
-                fc1_w_grad,
-                fc1_w_mon1,
-                fc1_w_mon2,
-                simple_lr_fun(linear1.weight),
-                i + 1,
-            )
-            fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
-                fc1_b,
-                fc1_b_grad,
-                fc1_b_mon1,
-                fc1_b_mon2,
-                simple_lr_fun(linear1.bias),
-                i + 1,
-            )
-            fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
-                fc2_w,
-                fc2_w_grad,
-                fc2_w_mon1,
-                fc2_w_mon2,
-                simple_lr_fun(linear2.weight),
-                i + 1,
-            )
-            fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
-                fc2_b,
-                fc2_b_grad,
-                fc2_b_mon1,
-                fc2_b_mon2,
-                simple_lr_fun(linear2.bias),
-                i + 1,
-            )
+    def test_adamw_op_with_pir(self):
+        with paddle.pir_utils.IrGuard():
+            paddle.enable_static()
+            place = base.CUDAPlace(0)
 
-            np.testing.assert_allclose(params_and_gras[4], fc1_w, rtol=1e-6)
-            np.testing.assert_allclose(params_and_gras[6], fc1_b, rtol=1e-6)
-            np.testing.assert_allclose(params_and_gras[2], fc2_w, rtol=1e-6)
-            np.testing.assert_allclose(params_and_gras[0], fc2_b, rtol=1e-6)
+            learning_rate = 0.0001
+            beta1 = 0.85
+            beta2 = 0.95
+            weight_decay = 0.01
+            epsilon = 1e-8
 
-        paddle.disable_static()
+            train_prog = paddle.static.Program()
+            train_startup = paddle.static.Program()
+            with paddle.static.program_guard(train_prog, train_startup):
+                with base.unique_name.guard():
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=[None, 1], dtype='float32'
+                    )
+
+                    weight_attr1 = paddle.framework.ParamAttr(
+                        name="linear_0.w_0"
+                    )
+                    bias_attr1 = paddle.framework.ParamAttr(
+                        name="linear_0.b_0",
+                        initializer=paddle.nn.initializer.Constant(value=1.0),
+                    )
+                    weight_attr2 = paddle.framework.ParamAttr(
+                        name="linear_1.w_0"
+                    )
+                    bias_attr2 = paddle.framework.ParamAttr(
+                        name="linear_1.b_0",
+                        initializer=paddle.nn.initializer.Constant(value=1.0),
+                    )
+                    linear1 = paddle.nn.Linear(
+                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                    )
+                    linear2 = paddle.nn.Linear(
+                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                    )
+
+                    out = linear1(x)
+                    out = linear2(out)
+
+                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
+                        "float32"
+                    )
+                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
+                        "float32"
+                    )
+                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
+                        "float32"
+                    )
+                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
+                        "float32"
+                    )
+                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+
+                    cost = paddle.nn.functional.square_error_cost(
+                        input=out, label=y
+                    )
+                    avg_cost = paddle.mean(cost)
+
+                    simple_lr_fun = partial(
+                        simple_lr_setting, decay_rate=0.8, n_layers=2
+                    )
+
+                    opt = paddle.optimizer.AdamW(
+                        learning_rate=learning_rate,
+                        beta1=beta1,
+                        beta2=beta2,
+                        weight_decay=weight_decay,
+                        epsilon=epsilon,
+                        lr_ratio=simple_lr_fun,
+                    )
+                    _, params_grads = opt.minimize(avg_cost)
+
+            def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+                np_inputs = {
+                    'Param': param,
+                    'Grad': grad,
+                    'Moment1': moment1,
+                    'Moment2': moment2,
+                    'LearningRate': np.array([learning_rate]).astype("float32"),
+                    'Beta1Pow': np.array([beta1**t]).astype("float32"),
+                    'Beta2Pow': np.array([beta2**t]).astype("float32"),
+                }
+
+                np_attrs = {
+                    'epsilon': epsilon,
+                    'beta1': beta1,
+                    'beta2': beta2,
+                    "lr_ratio": lr_ratio,
+                    "coeff": weight_decay,
+                    "with_decay": True,
+                }
+                param_out, moment1_out, moment2_out = adamw_step(
+                    np_inputs, np_attrs
+                )
+                return param_out, moment1_out, moment2_out
+
+            exe = base.Executor(place)
+            exe.run(train_startup)
+
+            test_prog = paddle.static.Program()
+            test_startup = paddle.static.Program()
+            with paddle.static.program_guard(test_prog, test_startup):
+                with base.unique_name.guard():
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=[None, 1], dtype='float32'
+                    )
+
+                    weight_attr1 = paddle.framework.ParamAttr(
+                        name="linear_0.w_0"
+                    )
+                    bias_attr1 = paddle.framework.ParamAttr(
+                        name="linear_0.b_0",
+                        initializer=paddle.nn.initializer.Constant(value=1.0),
+                    )
+                    weight_attr2 = paddle.framework.ParamAttr(
+                        name="linear_1.w_0"
+                    )
+                    bias_attr2 = paddle.framework.ParamAttr(
+                        name="linear_1.b_0",
+                        initializer=paddle.nn.initializer.Constant(value=1.0),
+                    )
+                    linear1_2 = paddle.nn.Linear(
+                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                    )
+                    linear2_2 = paddle.nn.Linear(
+                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                    )
+
+                    out = linear1_2(x)
+                    out = linear2_2(out)
+
+                    cost = paddle.nn.functional.square_error_cost(
+                        input=out, label=y
+                    )
+                    avg_cost = paddle.mean(cost)
+
+                    simple_lr_fun = partial(
+                        simple_lr_setting, decay_rate=0.8, n_layers=2
+                    )
+
+            random.seed(2022)
+            np.random.seed(2022)
+            paddle.seed(2022)
+            exe.run(test_startup)
+
+            test_fetch_list = [
+                linear1_2.weight,
+                linear1_2.bias,
+                linear2_2.weight,
+                linear2_2.bias,
+            ]
+
+            train_fetch_list = [
+                item for sublist in params_grads for item in sublist
+            ]
+
+            for i in range(5):
+                inputs = np.random.random(size=[8, 10]).astype('float32')
+                outputs = np.random.random(size=[8, 1]).astype('float32')
+
+                param = exe.run(
+                    test_prog,
+                    feed={"x": inputs, "y": outputs},
+                    fetch_list=test_fetch_list,
+                )
+                params_and_gras = exe.run(
+                    train_prog,
+                    feed={"x": inputs, "y": outputs},
+                    fetch_list=train_fetch_list,
+                )
+
+                fc1_w = param[0]
+                fc1_w_grad = params_and_gras[7]
+                fc1_b = param[1]
+                fc1_b_grad = params_and_gras[5]
+                fc2_w = param[2]
+                fc2_w_grad = params_and_gras[3]
+                fc2_b = param[3]
+                fc2_b_grad = params_and_gras[1]
+
+                fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
+                    fc1_w,
+                    fc1_w_grad,
+                    fc1_w_mon1,
+                    fc1_w_mon2,
+                    simple_lr_fun(linear1.weight),
+                    i + 1,
+                )
+                fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
+                    fc1_b,
+                    fc1_b_grad,
+                    fc1_b_mon1,
+                    fc1_b_mon2,
+                    simple_lr_fun(linear1.bias),
+                    i + 1,
+                )
+                fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
+                    fc2_w,
+                    fc2_w_grad,
+                    fc2_w_mon1,
+                    fc2_w_mon2,
+                    simple_lr_fun(linear2.weight),
+                    i + 1,
+                )
+                fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
+                    fc2_b,
+                    fc2_b_grad,
+                    fc2_b_mon1,
+                    fc2_b_mon2,
+                    simple_lr_fun(linear2.bias),
+                    i + 1,
+                )
+
+                np.testing.assert_allclose(params_and_gras[6], fc1_w, rtol=1e-6)
+                np.testing.assert_allclose(params_and_gras[4], fc1_b, rtol=1e-6)
+                np.testing.assert_allclose(params_and_gras[2], fc2_w, rtol=1e-6)
+                np.testing.assert_allclose(params_and_gras[0], fc2_b, rtol=1e-6)
+
+            paddle.disable_static()
 
 
 if __name__ == "__main__":
