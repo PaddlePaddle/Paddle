@@ -67,7 +67,9 @@ class TestLoadStateDict:
         load_state_dict(state_dict, self._ckpt_path)
         # check
         cur_rank = paddle.distributed.get_rank()
-        expect_w1 = saved_w1.split(4, axis=0)[cur_rank]
+        expect_w1 = saved_w1.split(num_or_sections=[4, 4, 4, 1], axis=0)[
+            cur_rank
+        ]
         expect_w2 = sharded_w2
         expect_state_dict = dict(
             zip(list(global_state_dict.keys()), [expect_w1, expect_w2])
@@ -90,7 +92,7 @@ class TestLoadStateDict:
         load_state_dict(state_dict, self._ckpt_path)
         # check
         cur_rank = paddle.distributed.get_rank()
-        expect_w1 = saved_w1.split(2, axis=0)[cur_rank]
+        expect_w1 = saved_w1.split(num_or_sections=[7, 6], axis=0)[cur_rank]
         expect_w2 = saved_w2.split(2, axis=1)[cur_rank]
         expect_state_dict = dict(
             zip(list(global_state_dict.keys()), [expect_w1, expect_w2])
