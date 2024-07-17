@@ -533,6 +533,20 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 out.persistable = True
 
 
+def _add_single_pir_fetch_op(program, fetch_value, fetch_name, fetch_col):
+    import paddle
+
+    global_block = program.global_block()
+    fetch_op = "pd_op.fetch"
+    need_fetch_info = has_fetch_operations(
+        global_block, [fetch_value], fetch_name, fetch_op
+    )
+    if need_fetch_info:
+        with paddle.static.program_guard(program):
+            out = paddle._pir_ops.fetch(fetch_value, fetch_name, fetch_col)
+            out.persistable = True
+
+
 def _merge_tensors(tensor, micro_batch_num):
     if micro_batch_num <= 1:
         return tensor
@@ -864,6 +878,7 @@ class _ExecutorCache:
             fetch_var_name,
             place,
             scope,
+            plan=None,
         ):
             self.program = program
             self.feed = feed
@@ -872,6 +887,7 @@ class _ExecutorCache:
             self.fetch_var_name = fetch_var_name
             self.place = place
             self.scope = scope
+            self.plan = plan
 
             # NOTE(Ruibiao): Not all changeable item is considered for key at present,
             # ONLY: program, feed, and fetch_list
@@ -1122,7 +1138,31 @@ class _ExecutorCache:
         fetch_var_name,
         place,
         scope,
+        plan,
     ):
+        if plan is None:
+            _add_pir_fetch_ops(
+                program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+            )
+        else:
+            for i, value in enumerate(fetch_list):
+                _add_single_pir_fetch_op(
+                    value.block.program, value, fetch_var_name + str(i), i
+                )
+            # map_program_fetch = OrderedDict()
+            # for job_type in plan.job_types():
+            #     map_program_fetch[job_type] = []
+            # for value in fetch_list:
+            #     assert value.block.program in map_program_fetch, "The value to fetch is not belong to any program."
+            #     map_program_fetch[value.block.program].append(value)
+            # print("==== map_program_fetch ====")
+            # print(map_program_fetch)
+            # for sub_program, value_list in map_program_fetch.items():
+            #     print("==== value_list ====")
+            #     print(value_list)
+            #     _add_pir_fetch_ops(
+            #         sub_program, fetch_list=value_list, fetch_var_name=fetch_var_name
+            #     )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1132,6 +1172,7 @@ class _ExecutorCache:
                 fetch_var_name,
                 place,
                 scope,
+                plan,
             )
         )
 
@@ -1144,13 +1185,12 @@ class _ExecutorCache:
         place = cached_data.place
         scope = cached_data.scope
 
-        _add_pir_fetch_ops(
-            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-        )
-
-        default_job = core.Job("default")
-        type_to_program = {"default": program}
-        plan = core.Plan([default_job], type_to_program)
+        if cached_data.plan is None:
+            default_job = core.Job("default")
+            type_to_program = {"default": program}
+            plan = core.Plan([default_job], type_to_program)
+        else:
+            plan = cached_data.plan
 
         new_exe = _StandaloneExecutor(place, plan, scope)
 
@@ -1261,6 +1301,7 @@ class Executor:
         self._closed = False
         self.pruned_program_scope_caches = {}
         self._prepare_to_run_called = False
+        self.plan = None
 
         self._auto_checkpoint_name = unique_name.generate(
             "__auto_checkpoint_executor__"
@@ -1288,6 +1329,9 @@ class Executor:
         # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
         self.close()
         self._executor_cache.clear()
+
+    def _set_plan(self, plan):
+        self.plan = plan
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -2103,6 +2147,7 @@ class Executor:
             fetch_var_name,
             self.place,
             scope,
+            self.plan,
         )
         self._pir_feed_data(program, feed, scope, data_op_infos)
 

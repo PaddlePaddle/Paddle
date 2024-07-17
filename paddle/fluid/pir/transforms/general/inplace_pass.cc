@@ -211,6 +211,10 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : block) {
+    if (op.name() == "builtin.shadow_output") {
+      skip_dels.insert(op.operand_source(0));
+      continue;
+    }
     if (op.dialect()->name() != paddle::dialect::KernelDialect::name()) {
       continue;
     }
@@ -228,8 +232,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
       continue;
     }
     // TODO(chenxi67) add logic for shadow_feed_tensors op
-    if (upper_op_name == "pd_op.fetch" ||
-        upper_op_name == "builtin.shadow_output") {
+    if (upper_op_name == "pd_op.fetch") {
       skip_dels.insert(op.operand_source(0));
       continue;
     }
