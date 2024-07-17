@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import ssl
 import sys
 
@@ -27,7 +28,10 @@ def download_file():
     if sysstr == 'win32':
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
     else:
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+        if os.environ.get('BRANCH') == "release/3.0-beta":
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_30')
+        else:
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
 
     if paddle.is_compiled_with_rocm():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
