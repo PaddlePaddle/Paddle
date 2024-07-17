@@ -2289,15 +2289,22 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
 #ifdef PADDLE_WITH_XPU
   if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
-    // temporary fix, please do not merge.
-    auto output_names = GetOutputNames();
-    int output_size = 0;
-    paddle::PaddlePlace place;
-    for (auto &name : output_names) {
-      auto output_ptr =
-          GetOutputTensor(name)->data<float>(&place, &output_size);
-      infer_xpu_ctx->ClearL3Block(output_ptr);
-    }
+    //  temporary fix, clear the output_tensor's l3_block, that does not
+    //  participate in L3CacheAutotune
+    static std::once_flag output_l3block_clear;
+    std::call_once(output_l3block_clear, [&]() {
+      VLOG(4) << "clear the output_tensor's l3_block, that does not "
+                 "participate in L3CacheAutotune";
+      auto output_names = GetOutputNames();
+      int output_size = 0;
+      paddle::PaddlePlace place;
+      for (auto &name : output_names) {
+        auto output_ptr =
+            GetOutputTensor(name)->data<float>(&place, &output_size);
+        infer_xpu_ctx->ClearL3Block(output_ptr);
+      }
+    });
+
     infer_xpu_ctx->L3CacheAutotune();
   }
 #endif
