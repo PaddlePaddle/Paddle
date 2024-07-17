@@ -768,7 +768,6 @@ set_tests_properties(test_layer_norm_op_deprecated_static_build
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
-set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
 set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT

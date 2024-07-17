@@ -103,7 +103,7 @@ namespace paddle {
 namespace inference {
 
 using ::paddle::framework::proto::VarType;
-using float16 = ::paddle::platform::float16;
+using float16 = ::phi::dtype::float16;
 
 template <typename T>
 constexpr ::paddle::PaddleDType GetPaddleDType();

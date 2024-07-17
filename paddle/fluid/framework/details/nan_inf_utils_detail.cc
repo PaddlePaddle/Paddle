@@ -182,7 +182,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   VLOG(10) << "begin check " << op_type << " var_name:" << var_name
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
-  if (platform::is_gpu_place(tensor->place())) {
+  if (phi::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
@@ -192,7 +192,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         var_name));
 #endif
     return;
-  } else if (platform::is_xpu_place(tensor->place())) {
+  } else if (phi::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU
     if (framework::TransToProtoVarType(tensor->dtype()) !=
         proto::VarType::FP32) {

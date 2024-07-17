@@ -552,7 +552,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
     max_buffer_tensor.Resize({max_buffer_len});
     std::vector<float> ones_vec(max_buffer_len, 1.f);
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     memcpy(cpu_ctx->Alloc<float>(&max_buffer_tensor),
            ones_vec.data(),
            max_buffer_len * sizeof(float));
