@@ -26,12 +26,10 @@ from .streams import Event, Stream
 
 if TYPE_CHECKING:
     from paddle import CUDAPlace
-    from paddle.base.libpaddle._gpuDeviceProperties import (
-        _gpuDeviceProperties,  # type: ignore
-    )
+    from paddle.base.libpaddle._gpuDeviceProperties import _gpuDeviceProperties
 
     _CudaPlaceLike: TypeAlias = Union[
-        "CUDAPlace",
+        CUDAPlace,
         str,  # some string like "cpu", "gpu:0", etc.
         int,  # some int like 0, 1, etc.
     ]

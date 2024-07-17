@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from paddle import XPUPlace
 
     _XPUPlaceLike: TypeAlias = Union[
-        "XPUPlace",
+        XPUPlace,
         int,  # some int like 0, 1, etc.
     ]
 __all__ = [
