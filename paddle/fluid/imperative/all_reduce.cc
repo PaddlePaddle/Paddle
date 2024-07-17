@@ -69,13 +69,13 @@ static void AllReduce(const phi::DenseTensor &src,
   auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
   auto nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(src.dtype()));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(src_ptr,
-                                                              dst_ptr,
-                                                              src.numel(),
-                                                              nccl_dtype,
-                                                              ncclSum,
-                                                              comm->comm(),
-                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(src_ptr,
+                                                         dst_ptr,
+                                                         src.numel(),
+                                                         nccl_dtype,
+                                                         ncclSum,
+                                                         comm->comm(),
+                                                         stream));
 }
 
 #if NCCL_VERSION_CODE >= 2212
@@ -114,12 +114,12 @@ static void AllReduce(const phi::SelectedRows &src,
     dev_ctx->Wait();
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::ncclAllGather(gpu_rows_num_ptr + strategy.local_rank_,
-                                       gpu_rows_num_ptr,
-                                       1,
-                                       ncclInt64,
-                                       comm->comm(),
-                                       stream));
+      phi::dynload::ncclAllGather(gpu_rows_num_ptr + strategy.local_rank_,
+                                  gpu_rows_num_ptr,
+                                  1,
+                                  ncclInt64,
+                                  comm->comm(),
+                                  stream));
 
   if (!use_calc_stream) {
     platform::GpuStreamSync(stream);
@@ -163,42 +163,42 @@ static void AllReduce(const phi::SelectedRows &src,
     // allgather is used to speed up the allreduce by replacing broadcast.
     auto row_sendcount = cpu_rows_num_ptr[0];
     VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(src_rows_ptr,
-                                                                dst_rows_ptr,
-                                                                row_sendcount,
-                                                                ncclInt64,
-                                                                comm->comm(),
-                                                                stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllGather(src_rows_ptr,
+                                                           dst_rows_ptr,
+                                                           row_sendcount,
+                                                           ncclInt64,
+                                                           comm->comm(),
+                                                           stream));
     auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(src_tensor_ptr,
-                                                                dst_tensor_ptr,
-                                                                value_sendcount,
-                                                                nccl_dtype,
-                                                                comm->comm(),
-                                                                stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllGather(src_tensor_ptr,
+                                                           dst_tensor_ptr,
+                                                           value_sendcount,
+                                                           nccl_dtype,
+                                                           comm->comm(),
+                                                           stream));
   } else {
     for (int i = 0; i < strategy.nranks_; ++i) {
       if (cpu_rows_num_ptr[i] > 0) {
         // 2. Broadcast the rows of SelectedRows
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclBroadcast(src_rows_ptr,
-                                             dst_rows_ptr + row_offset,
-                                             cpu_rows_num_ptr[i],
-                                             ncclInt64,
-                                             i,
-                                             comm->comm(),
-                                             stream));
+            phi::dynload::ncclBroadcast(src_rows_ptr,
+                                        dst_rows_ptr + row_offset,
+                                        cpu_rows_num_ptr[i],
+                                        ncclInt64,
+                                        i,
+                                        comm->comm(),
+                                        stream));
         // 3. Broadcast the tensor data of SelectedRows
         auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
                                  row_offset * feature_size * sizeof_dtype;
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclBroadcast(src_tensor_ptr,
-                                             dst_tensor_ptr_i,
-                                             cpu_rows_num_ptr[i] * feature_size,
-                                             nccl_dtype,
-                                             i,
-                                             comm->comm(),
-                                             stream));
+            phi::dynload::ncclBroadcast(src_tensor_ptr,
+                                        dst_tensor_ptr_i,
+                                        cpu_rows_num_ptr[i] * feature_size,
+                                        nccl_dtype,
+                                        i,
+                                        comm->comm(),
+                                        stream));
         row_offset += cpu_rows_num_ptr[i];
       }
     }

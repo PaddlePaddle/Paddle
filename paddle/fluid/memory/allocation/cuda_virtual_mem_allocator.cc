@@ -25,7 +25,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 #endif
 #if CUDA_VERSION >= 10020
 
@@ -74,9 +74,8 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
     size_t granularity;
     prop.location.id = dev_id;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cuMemGetAllocationGranularity(
-            &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemGetAllocationGranularity(
+        &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
     granularity_ = std::max(granularity, granularity_);
   }
 
@@ -91,7 +90,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   // GPU,
   // so the virtual address space size we reserve is equal to the GPU video
   // memory size
-  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cuMemAddressReserve(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
       &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
   virtual_mem_alloced_offset_ = 0;
@@ -119,8 +118,7 @@ void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
     cudaSetDevice(place_.device);
   }
 
-  auto result =
-      paddle::platform::dynload::cuMemUnmap(iter->first, iter->second.second);
+  auto result = phi::dynload::cuMemUnmap(iter->first, iter->second.second);
   if (result != CUDA_ERROR_DEINITIALIZED) {
     PADDLE_ENFORCE_GPU_SUCCESS(result);
   }
@@ -198,7 +196,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   // Assign the chunk to the appropriate VA range and release the handle.
   // After mapping the memory, it can be referenced by virtual address.
   // The allocation will be kept live until it is unmapped.
-  result = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
+  result = phi::dynload::cuMemMap(ptr, size, 0, handle, 0);
 
   if (result != CUDA_SUCCESS) {
     platform::RecordedGpuMemRelease(handle, size, place_.device);
@@ -207,11 +205,11 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   }
 
   // Apply the access descriptors to the whole VA range.
-  result = paddle::platform::dynload::cuMemSetAccess(
+  result = phi::dynload::cuMemSetAccess(
       ptr, size, access_desc_.data(), access_desc_.size());
 
   if (result != CUDA_SUCCESS) {
-    paddle::platform::dynload::cuMemUnmap(ptr, size);
+    phi::dynload::cuMemUnmap(ptr, size);
     platform::RecordedGpuMemRelease(handle, size, place_.device);
     PADDLE_ENFORCE_GPU_SUCCESS(result);
     return nullptr;

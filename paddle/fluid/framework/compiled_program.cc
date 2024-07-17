@@ -110,7 +110,7 @@ class CompiledProgramPrivate {
       } else {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
-            platform::dynload::ncclGetUniqueId(nccl_id),
+            phi::dynload::ncclGetUniqueId(nccl_id),
             ncclSuccess,
             platform::errors::PreconditionNotMet(
                 "PaddlePaddle failed to get NCCL unique ID. It may due to your "
@@ -637,12 +637,12 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);
-          platform::dynload::ncclBcast(buffers[i],
-                                       numel,
-                                       data_type,
-                                       0,
-                                       nccl_ctx.comm_,
-                                       nccl_ctx.stream());
+          phi::dynload::ncclBcast(buffers[i],
+                                  numel,
+                                  data_type,
+                                  0,
+                                  nccl_ctx.comm_,
+                                  nccl_ctx.stream());
         }
         nccl_ctxs->WaitAll();
       } else {

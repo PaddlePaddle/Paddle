@@ -27,10 +27,10 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #ifdef PADDLE_WITH_NCCL
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 #ifdef PADDLE_WITH_RCCL
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -184,7 +184,7 @@ class NCCLContextMap {
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(
@@ -204,7 +204,7 @@ class NCCLContextMap {
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
           SetDeviceId(gpu_id);
-          PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
+          PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
       }
