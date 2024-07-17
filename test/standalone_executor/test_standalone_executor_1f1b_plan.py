@@ -14,11 +14,21 @@
 
 import unittest
 
-from paddle import static
+from paddle import base, static
 from paddle.distributed.passes import PassContext, new_pass
 
 
 class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.origin_flag = base.framework.get_flags("FLAGS_enable_pir_api")[
+            "FLAGS_enable_pir_api"
+        ]
+        base.set_flags({'FLAGS_enable_pir_api': 0})
+
+    def __del__(self):
+        base.set_flags({'FLAGS_enable_pir_api': self.origin_flag})
+
     def test_standalone_executor_1f1b_plan_stage0(self):
         config = {"num_micro_batches": 8, "pp_stage": 0, "pp_degree": 4}
         pass_context = PassContext()
