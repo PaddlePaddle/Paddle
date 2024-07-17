@@ -111,7 +111,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   PADDLE_ENFORCE_EQ(
       places_.size(),
       local_scopes_.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Places size and LocalScopes not equal "
           "Places size(%d), LocalScopes size(%d) "
           "If use multi devices, Places size must equas to LocalScopes size.",
@@ -174,7 +174,7 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       loss_scale = 0;
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unknown gradient scale strategy. Now only supports One, "
           "CoeffNumDevice and Customized strategies."));
       break;

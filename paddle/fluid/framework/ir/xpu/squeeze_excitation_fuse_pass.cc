@@ -220,8 +220,7 @@ SqueezeExcitationFusePattern::SqueezeExcitationFusePattern(
 
 void SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph,
-      platform::errors::PreconditionNotMet("graph should not be null. "));
+      graph, phi::errors::PreconditionNotMet("graph should not be null. "));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -287,7 +286,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = pool2d->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
 
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("squeeze_excitation_block");
@@ -320,7 +319,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
 
     PADDLE_ENFORCE_EQ(mul_1_w_dims[1] % mul_1_w_dims[0] == 0,
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Reduction ratio of excitation is not an integer."
                           "Received mul_1_w_dims[1]: %d, mul_1_w_dims[0]: %d",
                           mul_1_w_dims[1],
