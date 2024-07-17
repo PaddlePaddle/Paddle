@@ -351,7 +351,7 @@ template <typename T>
 struct Functor {
   bool operator()(const T &val) {
     return std::type_index(typeid(T)) ==
-           std::type_index(typeid(platform::float16));
+           std::type_index(typeid(phi::dtype::float16));
   }
 };
 

@@ -754,10 +754,10 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::float16>(dst_place));
+            dst->mutable_data<phi::dtype::float16>(dst_place));
       if (type.code == kDLBfloat)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::bfloat16>(dst_place));
+            dst->mutable_data<phi::dtype::bfloat16>(dst_place));
       PADDLE_THROW(platform::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
