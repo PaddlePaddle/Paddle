@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/bfloat16.h"
 
 TEST(DataTransform, DataLayoutFunction) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
   phi::DenseTensor out = phi::DenseTensor();
   in.mutable_data<double>(common::make_ddim({2, 3, 1, 2}), place);
@@ -42,7 +42,7 @@ TEST(DataTransform, DataLayoutFunction) {
 
 #ifdef PADDLE_WITH_DNNL
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
   in.mutable_data<paddle::platform::bfloat16>(common::make_ddim({2, 3, 1, 2}),
                                               place);
@@ -54,7 +54,7 @@ TEST(DataTransformBf16, GetDataFromTensorDNNL) {
 }
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
   in.mutable_data<int32_t>(common::make_ddim({2, 3, 1, 2}), place);
 

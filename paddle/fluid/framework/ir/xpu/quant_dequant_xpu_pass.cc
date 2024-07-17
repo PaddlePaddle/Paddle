@@ -431,7 +431,7 @@ void QuantDequantXPUPass::RestoreWeightsToInt8(
     weight_tensor->set_type(phi::DataType::INT8);
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     auto* new_weight_data = cpu_ctx->Alloc<int8_t>(weight_tensor);
     memcpy(new_weight_data,
            weight_data.data(),

@@ -39,11 +39,10 @@ TEST(Tensor, Constructor) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   paddle::Tensor et3 = paddle::Tensor(dt);
@@ -69,11 +68,10 @@ TEST(Tensor, MemberFunction) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   VLOG(6) << "Make Dense Tensor";
@@ -91,7 +89,7 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), phi::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), phi::DataLayout::NCHW);
-  CHECK(paddle::platform::is_cpu_place(et3.place()));
+  CHECK(phi::is_cpu_place(et3.place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
@@ -123,11 +121,10 @@ TEST(EagerVariable, Constructor) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   VLOG(6) << "Make Dense Tensor";
@@ -162,7 +159,7 @@ TEST(EagerVariable, Constructor) {
       ->Resize(common::make_ddim(dims));
   auto* dt7_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t7.impl())
                           ->mutable_value()
-                          ->mutable_data<float>(paddle::platform::CPUPlace());
+                          ->mutable_data<float>(phi::CPUPlace());
   dt7_tmp_ptr[0] = 6.0f;
   dt7_tmp_ptr[1] = 11.0f;
 
@@ -172,8 +169,8 @@ TEST(EagerVariable, Constructor) {
   paddle::Tensor t6;
   paddle::Tensor t9;
   VLOG(6) << "Check Tensor Copy_ Selected Rows";
-  t8.copy_(t7, paddle::platform::CUDAPlace(0), false);
-  t9.copy_(t8, paddle::platform::CPUPlace(), false);
+  t8.copy_(t7, phi::GPUPlace(0), false);
+  t9.copy_(t8, phi::CPUPlace(), false);
   auto* dt9_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())
                           ->value()
                           .data<float>();
@@ -183,14 +180,14 @@ TEST(EagerVariable, Constructor) {
            2);
 
   VLOG(6) << "Check Tensor Copy_ Dense Tensor";
-  t5.copy_(t3, paddle::platform::CUDAPlace(0), false);
-  t6.copy_(t5, paddle::platform::CPUPlace(), false);
+  t5.copy_(t3, phi::GPUPlace(0), false);
+  t6.copy_(t5, phi::CPUPlace(), false);
   auto* dt6_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t6.impl())->data<float>();
   CHECK_EQ(dt6_tmp_ptr[0], 5.0f);
   CHECK_EQ(dt6_tmp_ptr[1], 10.0f);
 #else
-  t5.copy_(t3, paddle::platform::CPUPlace(), false);
+  t5.copy_(t3, phi::CPUPlace(), false);
   auto* dt5_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t5.impl())->data<float>();
   CHECK_EQ(dt5_tmp_ptr[0], 5.0f);
@@ -207,11 +204,10 @@ TEST(EagerVariable, DataLayout) {
                            common::make_ddim({1, 1, 1, 1}),
                            phi::DataLayout::UNDEFINED);
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 5.0f;
   dt_ptr[2] = 5.0f;

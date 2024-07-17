@@ -43,13 +43,13 @@ class DenseTensor;
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
-void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
+void CreateVarsOnScope(framework::Scope* scope, phi::CPUPlace* place) {
   auto x_var = scope->Var("x");
   x_var->GetMutable<phi::DenseTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
@@ -196,7 +196,7 @@ void RunBrpcPushDense() {
   // Start Client
   LOG(INFO) << "Run InitTensorsOnClient";
   framework::Scope client_scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   InitTensorsOnClient(&client_scope, &place, 100);
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
   dense_regions.insert(

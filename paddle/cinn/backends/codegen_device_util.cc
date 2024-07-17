@@ -33,6 +33,93 @@ std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module) {
   return visitor(&expr);
 }
 
+ir::Module CreateSwitchWithBroadcastConditionModule(
+    const std::vector<ir::Expr> &broadcast_conditions,
+    const std::vector<std::string> &case_func_names,
+    const std::string &wrapper_func_name,
+    const std::unordered_map<int, ir::Var> &symbolic_shape_var_index) {
+  ir::Var kernel_args(KERNEL_ARGS, type_of<void *>());
+  ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
+  ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+  ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int64_t **>());
+  std::vector<ir::Argument> host_func_arguments = {
+      ir::Argument(kernel_args, ir::Argument::IO::kOutput),
+      ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
+      ir::Argument(kernel_stream, ir::Argument::IO::kOutput)};
+  std::vector<ir::Argument> infer_shape_func_arguments = {
+      ir::Argument(kernel_args, ir::Argument::IO::kOutput),
+      ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
+      ir::Argument(tensor_shape_args, ir::Argument::IO::kOutput)};
+
+  const auto &CreateSymbolArgDefines = [&]() -> std::vector<ir::Expr> {
+    std::vector<ir::Expr> arg_defs;
+    for (const auto &item : symbolic_shape_var_index) {
+      ir::Expr call_get_value_in_kernel_args =
+          ir::Call::Make(Int(64),
+                         runtime::intrinsic::get_value_in_cuda_kernel_args,
+                         {kernel_args, ir::Expr(item.first)},
+                         {},
+                         ir::CallType::Extern,
+                         ir::FunctionRef(),
+                         0);
+      ir::Expr let_symbol = ir::Expr(item.second);
+      let_symbol->set_type(type_of<int64_t>());
+      ir::Expr stmt = ir::Let::Make(let_symbol, call_get_value_in_kernel_args);
+      arg_defs.push_back(stmt);
+    }
+    return arg_defs;
+  };
+
+  const auto &CreateSwitchFunction =
+      [&](std::vector<ir::Argument> func_arguments,
+          const std::vector<ir::Expr> &read_args,
+          std::string name_extend) -> ir::Expr {
+    std::vector<ir::Expr> body_stmts(CreateSymbolArgDefines());
+    for (int i = 0; i < broadcast_conditions.size(); ++i) {
+      ir::Expr callee = ir::Call::Make(Void(),
+                                       case_func_names[i] + name_extend,
+                                       read_args,
+                                       {},
+                                       ir::CallType::Extern,
+                                       ir::FunctionRef(),
+                                       0);
+      if (i == 0) {
+        body_stmts.emplace_back(
+            ir::IfThenElse::Make(broadcast_conditions[i], callee));
+      } else {
+        auto false_expr = body_stmts.back();
+        body_stmts.pop_back();
+        body_stmts.emplace_back(
+            ir::IfThenElse::Make(broadcast_conditions[i], callee, false_expr));
+      }
+    }
+    ir::Expr caller = ir::_LoweredFunc_::Make(wrapper_func_name + name_extend,
+                                              func_arguments,
+                                              ir::Block::Make(body_stmts),
+                                              {});
+    return caller;
+  };
+
+  ir::Module::Builder module_builder(wrapper_func_name + "_switch",
+                                     cinn::common::DefaultHostTarget());
+  ir::Expr host_func_caller = CreateSwitchFunction(
+      host_func_arguments, {kernel_args, kernel_args_num, kernel_stream}, "");
+  ir::Expr infer_shape_func_caller =
+      CreateSwitchFunction(infer_shape_func_arguments,
+                           {kernel_args, kernel_args_num, tensor_shape_args},
+                           "_infer_shape");
+  module_builder.AddFunctionWithoutOptim(
+      host_func_caller.as_lowered_func_ref());
+  module_builder.AddFunctionWithoutOptim(
+      infer_shape_func_caller.as_lowered_func_ref());
+  // no need cx86 func
+  ir::Expr cx86_func_caller = ir::_LoweredFunc_::Make(
+      wrapper_func_name + "_CX86", host_func_arguments, ir::Expr(), {});
+  module_builder.AddFunctionWithoutOptim(
+      cx86_func_caller.as_lowered_func_ref());
+  return module_builder.Build();
+}
+
 struct PredicatePrinter : public ir::IrPrinter {
   explicit PredicatePrinter(std::ostream &os) : ir::IrPrinter(os) {}
 
@@ -50,6 +137,8 @@ struct PredicatePrinter : public ir::IrPrinter {
   void Visit(const ir::GE *x) { PrintBinaryOp("GE", x); }
   void Visit(const ir::And *x) { PrintBinaryOp("AND", x); }
   void Visit(const ir::Or *x) { PrintBinaryOp("OR", x); }
+  void Visit(const ir::Max *x) { PrintBinaryOp("MAX", x); }
+  void Visit(const ir::Min *x) { PrintBinaryOp("MIN", x); }
 
   template <typename IRN>
   void PrintBinaryOp(const std::string &op, const ir::BinaryOpNode<IRN> *x) {

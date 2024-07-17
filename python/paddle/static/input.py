@@ -103,7 +103,7 @@ def data(
 
             # In this example, we will feed x and y with np-ndarray "1"
             # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
-            >>> feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+            >>> feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32) # type: ignore[var-annotated]
 
             >>> exe = paddle.static.Executor(paddle.framework.CPUPlace())
             >>> out = exe.run(paddle.static.default_main_program(),
@@ -142,6 +142,10 @@ def data(
     for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
+        if isinstance(shape[i], int) and shape[i] < 0 and shape[i] != -1:
+            raise ValueError(
+                f"Only -1 can be used in shape to indicate unknown dimension, but received {shape[i]}"
+            )
 
     if dtype is None:
         dtype = paddle.get_default_dtype()
@@ -297,7 +301,7 @@ class InputSpec:
                 >>> import numpy as np
                 >>> from paddle.static import InputSpec
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> x_spec = InputSpec.from_numpy(x, name='x')
                 >>> print(x_spec)
                 InputSpec(shape=(2, 2), dtype=paddle.float32, name=x, stop_gradient=False)

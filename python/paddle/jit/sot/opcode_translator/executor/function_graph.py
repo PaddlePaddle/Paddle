@@ -51,7 +51,7 @@ from ...utils import (
     tmp_name_guard,
 )
 from ..instruction_utils import get_instructions
-from .guard import Guard, StringifyExpression, make_guard
+from .guard import Guard, StringifiedExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
 from .pycode_generator import PyCodeGen
 from .side_effects import (
@@ -291,19 +291,19 @@ class FunctionGraph:
     @event_register("guard_fn")
     def guard_fn(self) -> Guard:
         with tmp_name_guard():
-            guards: list[StringifyExpression] = []
-            with EventGuard("guard_fn: find vars and make stringify guard"):
+            guards: list[StringifiedExpression] = []
+            with EventGuard("guard_fn: find vars and make stringified guard"):
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)
                 ):
-                    guards.extend(variable.make_stringify_guard())
+                    guards.extend(variable.make_stringified_guard())
 
             guards = OrderedSet(guards)  # type: ignore
 
             for guard in guards:
                 assert isinstance(
-                    guard, StringifyExpression
-                ), "guard must be StringifyExpression."
+                    guard, StringifiedExpression
+                ), "guard must be StringifiedExpression."
 
             return make_guard(guards)
 

@@ -21,6 +21,7 @@ set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/nlohmann_json)
 set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
 include_directories(${JSON_INCLUDE_DIR})
+include_directories(${SOURCE_INCLUDE_DIR})
 
 set(JSON_BuildTests
     OFF

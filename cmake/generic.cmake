@@ -474,7 +474,6 @@ function(cc_test_run TARGET_NAME)
       TEST ${TARGET_NAME}
       PROPERTY
         ENVIRONMENT
-        FLAGS_cpu_deterministic=true
         FLAGS_init_allocated_mem=true
         FLAGS_cudnn_deterministic=true
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
@@ -709,11 +708,14 @@ function(nv_test TARGET_NAME)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
+    if(WIN32)
+      target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+    else()
+      target_link_libraries(${TARGET_NAME} python)
+    endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -823,8 +825,6 @@ function(hip_test TARGET_NAME)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
@@ -927,8 +927,6 @@ function(xpu_test TARGET_NAME)
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -1155,8 +1153,8 @@ function(py_test TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true FLAGS_cpu_deterministic=true
-          PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+          FLAGS_cudnn_deterministic=true PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS}
           ${py_test_ARGS}
@@ -1166,9 +1164,8 @@ function(py_test TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true FLAGS_cpu_deterministic=true
-          ${py_test_ENVS} ${PYTHON_EXECUTABLE} -u ${py_test_SRCS}
-          ${py_test_ARGS}
+          FLAGS_cudnn_deterministic=true ${py_test_ENVS} ${PYTHON_EXECUTABLE} -u
+          ${py_test_SRCS} ${py_test_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 

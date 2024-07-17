@@ -191,10 +191,9 @@ class VariableWrapper {
 
   void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
 
-  const platform::Place Place() const {
+  const phi::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
-    auto place =
-        platform::CPUPlace();  // Default place for var not initialized.
+    auto place = phi::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());

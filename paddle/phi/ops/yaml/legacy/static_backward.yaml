@@ -155,6 +155,61 @@
     param : [x, out_grad]
   inplace : (out_grad -> x_grad)
 
+- backward_op : legacy_bilinear_interp_grad
+  forward : legacy_bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  no_need_buffer : x
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : legacy_bilinear_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+
+- backward_op : legacy_crop_grad
+  forward : legacy_crop (Tensor x, Tensor y, IntArray offsets = {}, int[] shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, IntArray offsets = {}, int[] shape = {})
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : legacy_crop_grad
+    data_type : out_grad
+  optional: y
+  no_need_buffer: y
+
+- backward_op : legacy_expand_grad
+  forward : legacy_expand (Tensor x, IntArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : legacy_expand_grad
+    data_type : out_grad
+  no_need_buffer : x
+
+- backward_op : legacy_nearest_interp_grad
+  forward : legacy_nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  no_need_buffer : x
+  kernel :
+    func : legacy_nearest_interp_grad
+    data_type : output_grad
+  data_transform :
+    skip_transform : out_size, size_tensor, scale_tensor
+
 - backward_op : lrn_grad
   forward: lrn (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout") -> Tensor (out), Tensor (mid_out)
   args: (Tensor x, Tensor out, Tensor mid_out, Tensor out_grad, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format
@@ -322,6 +377,29 @@
   kernel :
     func : rnn_grad
     data_type: out_grad
+
+- backward_op : sequence_expand_grad
+  forward: sequence_expand (Tensor x, Tensor y, int ref_level = -1) -> Tensor (out)
+  args: (Tensor x, Tensor y, Tensor out_grad, int ref_level = -1)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: sequence_expand_grad
+    data_type: out_grad
+  no_need_buffer: x, y
+
+- backward_op : sequence_softmax_grad
+  forward : sequence_softmax (Tensor x) -> Tensor(out)
+  args: (Tensor x, Tensor out, Tensor out_grad)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: sequence_softmax_grad
+  no_need_buffer: x
 
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis=-1) -> Tensor(out)
