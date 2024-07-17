@@ -142,7 +142,7 @@ inline bool NeedTransformBackend(const phi::Backend& type_for_var_backend,
   // NOTE(jiahongyu): KernelKey does not hold place information, so we need to
   // explicitly transform CUDAPinnedPlace->CUDAPlace
   if (type_for_var_backend != phi::Backend::ALL_BACKEND &&
-      paddle::platform::is_cuda_pinned_place(tensor.place()) &&
+      phi::is_cuda_pinned_place(tensor.place()) &&
       expected_backend != phi::Backend::CPU) {
     VLOG(3) << "Transform Variable " << tensor.name() << " from "
             << tensor.place() << " to "

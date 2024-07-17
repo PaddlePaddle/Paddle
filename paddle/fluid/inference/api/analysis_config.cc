@@ -41,6 +41,7 @@ COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_bool(use_cinn);
 #endif
 
+COMMON_DECLARE_bool(enable_pir_api);
 namespace paddle {
 struct MkldnnQuantizerConfig;
 
@@ -85,17 +86,51 @@ AnalysisConfig::AnalysisConfig(const std::string &model_dir) {
 
   Update();
 }
-AnalysisConfig::AnalysisConfig(const std::string &prog_file,
-                               const std::string &params_file) {
-  prog_file_ = prog_file;
-  params_file_ = params_file;
+
+AnalysisConfig::AnalysisConfig(const std::string &prog_file_or_model_dir,
+                               const std::string &params_file_or_model_prefix) {
+  if (paddle::inference::IsDirectory(prog_file_or_model_dir)) {
+    if (FLAGS_enable_pir_api) {
+      prog_file_ =
+          prog_file_or_model_dir + "/" + params_file_or_model_prefix + ".json";
+    } else {
+      prog_file_ = prog_file_or_model_dir + "/" + params_file_or_model_prefix +
+                   ".pdmodel";
+    }
+    params_file_ = prog_file_or_model_dir + "/" + params_file_or_model_prefix +
+                   ".pdiparams";
+  } else {
+    prog_file_ = prog_file_or_model_dir;
+    params_file_ = params_file_or_model_prefix;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      paddle::inference::IsFileExists(prog_file_),
+      true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file is normal.",
+          prog_file_));
 
   Update();
 }
-void AnalysisConfig::SetModel(const std::string &prog_file_path,
-                              const std::string &params_file_path) {
-  prog_file_ = prog_file_path;
-  params_file_ = params_file_path;
+
+void AnalysisConfig::SetModel(
+    const std::string &prog_file_path_or_model_dir_path,
+    const std::string &params_file_path_or_model_prefix) {
+  if (paddle::inference::IsDirectory(prog_file_path_or_model_dir_path)) {
+    if (FLAGS_enable_pir_api) {
+      prog_file_ = prog_file_path_or_model_dir_path + "/" +
+                   params_file_path_or_model_prefix + ".json";
+    } else {
+      prog_file_ = prog_file_path_or_model_dir_path + "/" +
+                   params_file_path_or_model_prefix + ".pdmodel";
+    }
+    params_file_ = prog_file_path_or_model_dir_path + "/" +
+                   params_file_path_or_model_prefix + ".pdiparams";
+  } else {
+    prog_file_ = prog_file_path_or_model_dir_path;
+    params_file_ = params_file_path_or_model_prefix;
+  }
 
   Update();
 }

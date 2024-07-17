@@ -32,9 +32,9 @@ TEST(Device, Init) {
 }
 
 TEST(Device, DeviceContextPool) {
-  using paddle::platform::DeviceContextPool;
   using paddle::platform::XPUDeviceContext;
   using phi::CPUPlace;
+  using phi::DeviceContextPool;
   using phi::Place;
   using phi::XPUPlace;
 

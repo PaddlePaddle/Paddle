@@ -227,9 +227,9 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(device_type));
 #else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Paddle is not compiled with CustomDevice. "
-        "Cannot enable custom_device_mixed."));
+    PADDLE_THROW(
+        phi::errors::Unavailable("Paddle is not compiled with CustomDevice. "
+                                 "Cannot enable custom_device_mixed."));
 #endif
   }
 

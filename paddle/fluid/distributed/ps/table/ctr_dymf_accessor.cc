@@ -217,10 +217,12 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
       }
     }
       return;
+#ifndef PADDLE_WITH_HETERPS
     case 3: {
       common_feature_value.UnseenDays(value)++;
     }
       return;
+#endif
     default:
       return;
   }

@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/fluid/platform/place.h"
-
-#include "paddle/common/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -101,20 +99,18 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
 #ifdef PADDLE_WITH_XPU
-    PADDLE_ENFORCE(paddle::platform::is_xpu_place(place_) ||
-                       paddle::platform::is_cpu_place(place_),
+    PADDLE_ENFORCE(phi::is_xpu_place(place_) || phi::is_cpu_place(place_),
                    phi::errors::PreconditionNotMet(
                        "The Place attr in params_sync_among_devices_pass "
                        "should be cpu or xpu."));
 #endif
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(paddle::platform::is_gpu_place(place_) ||
-                       paddle::platform::is_cpu_place(place_),
+    PADDLE_ENFORCE(phi::is_gpu_place(place_) || phi::is_cpu_place(place_),
                    phi::errors::PreconditionNotMet(
                        "The Place attr in params_sync_among_devices_pass "
                        "should be cpu or gpu."));
 #endif
-    if (paddle::platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       return false;
     }
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
