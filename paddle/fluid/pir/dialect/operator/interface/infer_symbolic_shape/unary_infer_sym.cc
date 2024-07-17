@@ -19,6 +19,46 @@
 namespace paddle::dialect {
 using paddle::dialect::details::CreateShapeOrDataForXShape;
 
+bool AllOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
+bool AmaxOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
+bool AminOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
+bool AnyOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
 bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   bool flatten = GetBoolAttr(op, "flatten");
@@ -731,8 +771,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   pir::Value operand_ends = op->operand_source(2);
   pir::Value res = op->result(0);
 
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      infer_context->GetShapeOrDataForValue(operand_source);
   const symbol::ShapeOrDataDimExprs &starts_shape_data =
       infer_context->GetShapeOrDataForValue(operand_starts);
   const symbol::ShapeOrDataDimExprs &ends_shape_data =
@@ -746,14 +784,17 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<int64_t> infer_flags = details::GetVectorAttr(op, "infer_flags");
   const std::vector<int64_t> decrease_axis =
       details::GetVectorAttr(op, "decrease_axis");
-  auto res_shape_or_data =
-      slice_utils::SliceRawInferSymbolicShape(operand_shape_or_data,
+
+  infer_context->SetShapeOrDataForValue(
+      res,
+      slice_utils::SliceRawInferSymbolicShape(operand_source,
                                               starts,
                                               ends,
                                               axes_vec,
                                               infer_flags,
-                                              decrease_axis);
-  infer_context->SetShapeOrDataForValue(res, res_shape_or_data);
+                                              decrease_axis,
+                                              infer_context));
+
   return true;
 }
 

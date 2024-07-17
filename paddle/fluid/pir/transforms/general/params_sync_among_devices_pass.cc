@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/fluid/platform/place.h"
-
-#include "paddle/common/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"

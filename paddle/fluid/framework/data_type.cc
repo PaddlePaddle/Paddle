@@ -20,8 +20,8 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/pstring.h"
 
-using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using pstring = phi::dtype::pstring;
 
 namespace paddle::framework {

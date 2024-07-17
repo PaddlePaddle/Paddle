@@ -143,12 +143,14 @@ inline std::vector<int64_t> FormatSliceAxes(
 }
 
 inline ShapeOrData SliceRawInferSymbolicShape(
-    const ShapeOrData &in_shapeordata,
+    const pir::Value x,
     const ExprVec &starts_expr,
     const ExprVec &ends_expr,
     const std::vector<int64_t> &axes_raw,
     const std::vector<int64_t> &infer_flags_raw,
-    const std::vector<int64_t> &decrease_axis) {
+    const std::vector<int64_t> &decrease_axis,
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &in_shapeordata = infer_context->GetShapeOrDataForValue(x);
   ExprVec starts = starts_expr;
   ExprVec ends = ends_expr;
   std::vector<int64_t> infer_flags = [&infer_flags_raw, &axes_raw] {
@@ -163,6 +165,20 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     ExprVec slice_dims =
         GetSliceDims(in_dims, axes, starts, ends, &infer_flags);
     ExprVec out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+
+    auto IsOne = [](const symbol::DimExpr &expr) {
+      return expr.isa<int64_t>() && expr.dyn_cast<int64_t>() == 1;
+    };
+    auto IsIntType = [](pir::Value value) {
+      const auto &dtype = value.type().dyn_cast<pir::DenseTensorType>().dtype();
+      return dtype.isa<pir::Int32Type>() || dtype.isa<pir::Int64Type>();
+    };
+    if (IsIntType(x) &&
+        (out_dims.empty() || (out_dims.size() == 1 && IsOne(out_dims[0])))) {
+      return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          out_dims,
+          std::vector<symbol::DimExpr>{infer_context->GetNextSymName()})};
+    }
 
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
