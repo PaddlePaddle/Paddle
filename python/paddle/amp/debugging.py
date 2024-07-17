@@ -288,12 +288,6 @@ class TensorCheckerConfig:
                 flag,
             )
 
-        paddle.set_flags({"FLAGS_cpu_deterministic": flag})
-        print(
-            "AMP Debugging TensorCheckerConfig: FLAGS_cpu_deterministic is ",
-            flag,
-        )
-
     def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})
         if check_flag:

@@ -25,8 +25,7 @@ class CosineOp : public OperatorBase {
   using OperatorBase::OperatorBase;
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -46,8 +45,7 @@ class MyTestOp : public OperatorBase {
   using OperatorBase::OperatorBase;
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -57,9 +55,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE_EQ(
-          i % 2,
-          0,
-          platform::errors::InvalidArgument("'test_attr' must be even!"));
+          i % 2, 0, phi::errors::InvalidArgument("'test_attr' must be even!"));
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);

@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -39,7 +39,7 @@ struct ParallelStrategy {
 class ParallelContext {
  public:
   explicit ParallelContext(const ParallelStrategy& strategy,
-                           const platform::Place& place)
+                           const phi::Place& place)
       : strategy_(strategy), place_(place) {}
 
   virtual ~ParallelContext() = default;

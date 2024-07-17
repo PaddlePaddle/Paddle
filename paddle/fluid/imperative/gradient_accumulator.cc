@@ -79,7 +79,7 @@ static void MoveOrCopyVar(framework::Variable* dst,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void XPUTensorAddFunctor(const platform::Place& place,
+void XPUTensorAddFunctor(const phi::Place& place,
                          const phi::DenseTensor& src,
                          phi::DenseTensor* dst) {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -270,13 +270,13 @@ void TensorAdd(const VarType& src, VarType* dst) {
     if (data_type == framework::DataTypeTrait<float>::DataType()) {
       XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
     } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
-      XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
+               framework::DataTypeTrait<phi::dtype::float16>::DataType()) {
+      XPUTensorAddFunctor<phi::dtype::float16>(place, src_tensor, dst_tensor);
     } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
       XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
     } else if (data_type ==
-               framework::DataTypeTrait<platform::bfloat16>::DataType()) {
-      XPUTensorAddFunctor<platform::bfloat16>(place, src_tensor, dst_tensor);
+               framework::DataTypeTrait<phi::dtype::bfloat16>::DataType()) {
+      XPUTensorAddFunctor<phi::dtype::bfloat16>(place, src_tensor, dst_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "

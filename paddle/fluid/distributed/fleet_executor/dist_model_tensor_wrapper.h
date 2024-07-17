@@ -43,7 +43,7 @@ constexpr DistModelDataType DistModelGetDtype<float>() {
 }
 
 template <>
-constexpr DistModelDataType DistModelGetDtype<platform::float16>() {
+constexpr DistModelDataType DistModelGetDtype<phi::dtype::float16>() {
   return DistModelDataType::FLOAT16;
 }
 

@@ -94,7 +94,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_clip_op',
     'test_collect_fpn_proposals_op',
     'test_compare_reduce_op',
-    'test_compiled_program',
+    'test_compiled_program_deprecated2',
     'test_cond',
     'test_conditional_block_deprecated',
     'test_context_manager',

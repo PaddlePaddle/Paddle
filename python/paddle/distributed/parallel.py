@@ -135,7 +135,7 @@ def build_groups(vars, group_size):
     for var in vars:
         var_dtype = var.dtype
         if isinstance(var_dtype, core.DataType):
-            var_dtype = paddle.pir.core.datatype_to_vartype(var_dtype)
+            var_dtype = paddle.pir.core.datatype_to_vartype[var_dtype]
         bytes = np.prod(var.shape) * core.size_of_dtype(var_dtype)
         if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes

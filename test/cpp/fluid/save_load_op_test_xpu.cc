@@ -107,17 +107,13 @@ TEST(SaveLoadOp, XPU) {
   r = SaveLoadOpTest<phi::CPUPlace, int>(cpu_place, 2, 128);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadOpTest<phi::XPUPlace, paddle::platform::float16>(
-      xpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::XPUPlace, phi::dtype::float16>(xpu_place, 2, 128);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<phi::CPUPlace, paddle::platform::float16>(
-      cpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::CPUPlace, phi::dtype::float16>(cpu_place, 2, 128);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadOpTest<phi::XPUPlace, paddle::platform::bfloat16>(
-      xpu_place, 4, 32);
+  r = SaveLoadOpTest<phi::XPUPlace, phi::dtype::bfloat16>(xpu_place, 4, 32);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<phi::CPUPlace, paddle::platform::bfloat16>(
-      cpu_place, 4, 32);
+  r = SaveLoadOpTest<phi::CPUPlace, phi::dtype::bfloat16>(cpu_place, 4, 32);
   EXPECT_EQ(r, 0);
 }

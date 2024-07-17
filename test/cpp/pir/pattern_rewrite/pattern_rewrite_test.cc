@@ -84,12 +84,12 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Type of attribute: parameter_name is not right."));
   }
 }
@@ -445,8 +445,7 @@ void BuildConstantFoldingProgram(pir::Program *program,
   phi::DenseTensorMeta meta(
       phi::DataType::FLOAT32, dims, data_layout, lod, offset);
   paddle::platform::DeviceContext *dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(
-          paddle::platform::CPUPlace());
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
 
   auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
   auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);

@@ -12,13 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generator,
+    Generic,
+    Iterator,
+    Sequence,
+    Sized,
+    TypeVar,
+)
+
 import numpy as np
 
 from ...framework import core
 from ...tensor import randperm
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
-class Sampler:
+    from paddle import Tensor
+
+
+_T = TypeVar("_T")
+
+
+class Sampler(Generic[_T]):
     """
     An abstract class to encapsulate methods and behaviors of samplers.
 
@@ -48,7 +69,7 @@ class Sampler:
             >>> import numpy as np
             >>> from paddle.io import Dataset, Sampler
 
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -60,15 +81,15 @@ class Sampler:
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> class MySampler(Sampler):
+            >>> class MySampler(Sampler):  # type: ignore[type-arg]
             ...     def __init__(self, data_source):
             ...         self.data_source = data_source
             ...
             ...     def __iter__(self):
-            ...         return iter(range(len(self.data_source)))
+            ...         return iter(range(len(self.data_source)))  # type: ignore[arg-type]
             ...
             ...     def __len__(self):
-            ...         return len(self.data_source)
+            ...         return len(self.data_source)  # type: ignore[arg-type]
             ...
             >>> sampler = MySampler(data_source=RandomDataset(100))
 
@@ -85,17 +106,23 @@ class Sampler:
 
     """
 
-    def __init__(self, data_source=None):
+    data_source: Sized | None
+
+    def __init__(self, data_source: Sized | None = None) -> None:
         self.data_source = data_source
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         raise NotImplementedError
 
     # Not define __len__ method in this base class here for __len__
     # is not needed in same sence, e.g. paddle.io.IterableDataset
+    if TYPE_CHECKING:
+
+        def __len__(self) -> int:
+            ...
 
 
-class SequenceSampler(Sampler):
+class SequenceSampler(Sampler[int]):
     """
     Iterate samples sequentially, yield :code:`0, 1, 2, ..., len(data_source) -1`
     generally,
@@ -115,7 +142,7 @@ class SequenceSampler(Sampler):
             >>> import numpy as np
             >>> from paddle.io import Dataset, SequenceSampler
 
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -140,17 +167,19 @@ class SequenceSampler(Sampler):
     see `paddle.io.Sampler`
     """
 
-    def __init__(self, data_source):
+    data_source: Sized
+
+    def __init__(self, data_source: Sized) -> None:
         self.data_source = data_source
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         return iter(range(len(self.data_source)))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data_source)
 
 
-class RandomSampler(Sampler):
+class RandomSampler(Sampler[int]):
     """
     Iterate samples randomly, yield shuffled indices, if :attr:`replacement=False`,
     yield shuffled indices of the whole data source, if :attr:`replacement=True`,
@@ -176,7 +205,7 @@ class RandomSampler(Sampler):
             >>> from paddle.io import Dataset, RandomSampler
 
             >>> np.random.seed(2023)
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -199,9 +228,17 @@ class RandomSampler(Sampler):
             87
     """
 
+    data_source: Sized
+    replacement: bool
+    generator: Generator[int, None, None] | None
+
     def __init__(
-        self, data_source, replacement=False, num_samples=None, generator=None
-    ):
+        self,
+        data_source: Sized,
+        replacement: bool = False,
+        num_samples: int | None = None,
+        generator: Generator[int, None, None] | None = None,
+    ) -> None:
         self.data_source = data_source
         self.replacement = replacement
         self._num_samples = num_samples
@@ -226,12 +263,12 @@ class RandomSampler(Sampler):
             )
 
     @property
-    def num_samples(self):
+    def num_samples(self) -> int:
         if self._num_samples is None:
             return len(self.data_source)
         return self._num_samples
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         n = len(self.data_source)
         if self.generator:
             for i in range(self.num_samples):
@@ -252,7 +289,7 @@ class RandomSampler(Sampler):
                 ).tolist():
                     yield index
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_samples
 
 
@@ -288,7 +325,7 @@ def _weighted_sample(weights, num_samples, replacement=True):
     return np.array(rets)
 
 
-class WeightedRandomSampler(Sampler):
+class WeightedRandomSampler(Sampler[int]):
     """
     Random sample with given weights (probabilities), sample index will be in range
     [0, len(weights) - 1], if :attr:`replacement` is True, index can be sampled
@@ -325,7 +362,16 @@ class WeightedRandomSampler(Sampler):
             1
     """
 
-    def __init__(self, weights, num_samples, replacement=True):
+    weights: npt.NDArray[Any] | Tensor | Sequence[float]
+    num_samples: int
+    replacement: bool
+
+    def __init__(
+        self,
+        weights: npt.NDArray[Any] | Tensor | Sequence[float],
+        num_samples: int,
+        replacement: bool = True,
+    ) -> None:
         if not isinstance(num_samples, int) or num_samples <= 0:
             raise ValueError("num_samples should be a positive integer")
         if not isinstance(replacement, bool):
@@ -334,18 +380,18 @@ class WeightedRandomSampler(Sampler):
         self.num_samples = num_samples
         self.replacement = replacement
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         idxs = _weighted_sample(
             self.weights, self.num_samples, self.replacement
         )
         return iter(idxs.reshape(-1).tolist())
 
-    def __len__(self):
+    def __len__(self) -> int:
         mul = np.prod(self.weights.shape) // self.weights.shape[-1]
         return self.num_samples * mul
 
 
-class SubsetRandomSampler(Sampler):
+class SubsetRandomSampler(Sampler[int]):
     r"""
     Randomly sample elements from a given list of indices, without replacement.
 
@@ -372,14 +418,16 @@ class SubsetRandomSampler(Sampler):
 
     """
 
-    def __init__(self, indices):
+    indices: Sequence[int]
+
+    def __init__(self, indices: Sequence[int]) -> None:
         if len(indices) == 0:
             raise ValueError(
                 "The length of `indices` in SubsetRandomSampler should be greater than 0."
             )
         self.indices = indices
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         for i in randperm(len(self.indices)):
             yield self.indices[i]
 

@@ -152,7 +152,7 @@ void SaveLoadCombineOp() {
 TEST(SaveLoadCombineOp, CPU) { SaveLoadCombineOp<int, int>(); }
 
 TEST(SaveLoadCombineBF16Op, CPU) {
-  SaveLoadCombineOp<paddle::platform::bfloat16, paddle::platform::bfloat16>();
+  SaveLoadCombineOp<phi::dtype::bfloat16, phi::dtype::bfloat16>();
 }
 
 // FP16 version of SaveLoadCombineOp Test, only altering the saving aspect
@@ -164,25 +164,25 @@ TEST(SaveCombineFP16Op, CPU) {
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
   paddle::framework::LoD expect_lod1;
-  float* expect1 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect1 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
   paddle::framework::LoD expect_lod2;
-  float* expect2 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect2 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 20};
   int numel3 = 4000;
   paddle::framework::LoD expect_lod3;
-  float* expect3 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect3 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
   paddle::framework::LoD expect_lod4;
-  float* expect4 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect4 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
   // Set attributes
@@ -214,26 +214,26 @@ TEST(SaveCombineFP16Op, CPU) {
   load_combine_op->Run(scope, place);
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
-  paddle::platform::float16* actual1 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual1 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target1, scope, &actual_lod1);
-  paddle::platform::float16* actual2 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual2 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target2, scope, &actual_lod2);
-  paddle::platform::float16* actual3 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual3 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target3, scope, &actual_lod3);
-  paddle::platform::float16* actual4 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual4 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target4, scope, &actual_lod4);
 
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect1, actual1, expect_lod1, actual_lod1, numel1);
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect2, actual2, expect_lod2, actual_lod2, numel2);
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect3, actual3, expect_lod3, actual_lod3, numel3);
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect4, actual4, expect_lod4, actual_lod4, numel4);
 }
 
@@ -246,25 +246,25 @@ TEST(LoadCombineFP16Op, CPU) {
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
   paddle::framework::LoD expect_lod1;
-  float* expect1 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect1 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
   paddle::framework::LoD expect_lod2;
-  float* expect2 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect2 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 20};
   int numel3 = 4000;
   paddle::framework::LoD expect_lod3;
-  float* expect3 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect3 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
   paddle::framework::LoD expect_lod4;
-  float* expect4 = CreateForSaveCombineOp<float, paddle::platform::float16>(
+  float* expect4 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
   // Set attributes
@@ -301,26 +301,26 @@ TEST(LoadCombineFP16Op, CPU) {
   auto* target4 = load_var4->GetMutable<phi::DenseTensor>();
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
-  paddle::platform::float16* actual1 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual1 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target1, scope, &actual_lod1);
-  paddle::platform::float16* actual2 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual2 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target2, scope, &actual_lod2);
-  paddle::platform::float16* actual3 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual3 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target3, scope, &actual_lod3);
-  paddle::platform::float16* actual4 =
-      GetValuesAfterLoadCombineOp<paddle::platform::float16>(
+  phi::dtype::float16* actual4 =
+      GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target4, scope, &actual_lod4);
 
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect1, actual1, expect_lod1, actual_lod1, numel1);
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect2, actual2, expect_lod2, actual_lod2, numel2);
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect3, actual3, expect_lod3, actual_lod3, numel3);
-  CheckValues<float, paddle::platform::float16>(
+  CheckValues<float, phi::dtype::float16>(
       expect4, actual4, expect_lod4, actual_lod4, numel4);
 }
 
