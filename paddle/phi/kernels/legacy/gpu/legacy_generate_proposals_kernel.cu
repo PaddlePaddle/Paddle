@@ -52,7 +52,8 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
 
   // 2. box decode and clipping
   phi::DenseTensor proposals;
-  proposals.mutable_data<T>({pre_nms_num, 4}, ctx.GetPlace());
+  proposals.Resize({pre_nms_num, 4});
+  ctx.Alloc<T>(&proposals);
 
   {
     phi::funcs::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
@@ -66,8 +67,10 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
 
   // 3. filter
   phi::DenseTensor keep_index, keep_num_t;
-  keep_index.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
-  keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
+  keep_index.Resize({pre_nms_num});
+  keep_num_t.Resize({1});
+  ctx.Alloc<int>(&keep_index);
+  ctx.Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
   auto stream = ctx.stream();
   phi::funcs::FilterBBoxes<T, 512>
@@ -92,14 +95,18 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
-    proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
-    scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
+    proposals_filter.Resize({1, 4});
+    scores_filter.Resize({1, 1});
+    ctx.Alloc<T>(&proposals_filter);
+    ctx.Alloc<T>(&scores_filter);
     set_zero(ctx, &proposals_filter, static_cast<T>(0));
     set_zero(ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(proposals_filter, scores_filter);
   }
-  proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
-  scores_filter.mutable_data<T>({keep_num, 1}, ctx.GetPlace());
+  proposals_filter.Resize({keep_num, 4});
+  scores_filter.Resize({keep_num, 1});
+  ctx.Alloc<T>(&proposals_filter);
+  ctx.Alloc<T>(&scores_filter);
   phi::funcs::GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
   phi::funcs::GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
 
@@ -115,8 +122,10 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   }
 
   phi::DenseTensor scores_nms, proposals_nms;
-  proposals_nms.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
-  scores_nms.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());
+  proposals_nms.Resize({keep_nms.numel(), 4});
+  scores_nms.Resize({keep_nms.numel(), 1});
+  ctx.Alloc<T>(&proposals_nms);
+  ctx.Alloc<T>(&scores_nms);
   phi::funcs::GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
   phi::funcs::GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
 

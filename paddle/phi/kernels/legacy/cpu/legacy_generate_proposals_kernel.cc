@@ -159,8 +159,10 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   int64_t h_bbox = bbox_dim[2];
   int64_t w_bbox = bbox_dim[3];
 
-  rpn_rois->mutable_data<T>({bbox_deltas->numel() / 4, 4}, dev_ctx.GetPlace());
-  rpn_roi_probs->mutable_data<T>({scores->numel(), 1}, dev_ctx.GetPlace());
+  rpn_rois->Resize({bbox_deltas->numel() / 4, 4});
+  rpn_roi_probs->Resize({scores->numel(), 1});
+  dev_ctx.template Alloc<T>(rpn_rois);
+  dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   phi::DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
