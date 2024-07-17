@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_XPU_XRE5
+#include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
 #endif
 namespace phi {
@@ -231,32 +231,13 @@ void FlashAttnKernel(const Context& ctx,
   // generate seed offset
   seed_offset->Resize({2});
   int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
-  if (fixed_seed_offset.get_ptr()) {
-    if ((fixed_seed_offset->place()).GetType() == phi::AllocationType::XPU) {
-      memory_utils::Copy(phi::CPUPlace(),
-                         seed_offset_data,
-                         fixed_seed_offset->place(),
-                         fixed_seed_offset->data<int64_t>(),
-                         sizeof(int64_t) * 2);
-    } else {
-      const int64_t* fixed_seed_offset_data =
-          fixed_seed_offset->data<int64_t>();
-      seed_offset_data[0] = fixed_seed_offset_data[0];
-      seed_offset_data[1] = fixed_seed_offset_data[1];
-    }
-  } else {
-    std::pair<uint64_t, uint64_t> seed_offset_pair;
-    uint64_t inc = batch_size * num_heads * 32;
-    if (rng_name != "") {
-      auto gen = phi::GetRandomSeedGenerator(rng_name);
-      seed_offset_pair = gen->IncrementOffset(inc);
-    } else {
-      auto* gen = ctx.GetGenerator();
-      seed_offset_pair = gen->IncrementOffset(inc);
-    }
-    seed_offset_data[0] = static_cast<int64_t>(seed_offset_pair.first);
-    seed_offset_data[1] = static_cast<int64_t>(seed_offset_pair.second);
-  }
+
+  phi::GenerateRNGState(ctx,
+                        fixed_seed_offset,
+                        seed_offset_data,
+                        rng_name,
+                        batch_size,
+                        num_heads);
 
   // raw pointers
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -309,33 +290,47 @@ void FlashAttnKernel(const Context& ctx,
   // const TACCUM* bias = nullptr, const float* q_maxptr = nullptr, const float*
   // k_maxptr = nullptr, const float* v_maxptr = nullptr, float* o_maxptr =
   // nullptr);
-  int r = baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, tfloat32, int>(
-      ctx.x_context(),
-      q_data,                                     // q
-      k_data,                                     // k
-      v_data,                                     // v
-      out_data,                                   // out
-      softmax_lse_data,                           // softmax_lse
-      qlod,                                       // lod_seqlens_q
-      kvlod,                                      // lod_seqlens_k
-      seqlen_q,                                   // max_seqlen_q
-      seqlen_k,                                   // max_seqlen_k
-      num_heads,                                  // head_num
-      num_heads_k,                                // head_num_k
-      head_size,                                  // head_dim
-      1.0f / std::sqrt(head_size),                // softmax_scale
-      dropout,                                    // p_dropout
-      static_cast<int32_t>(seed_offset_data[0]),  // seed
-      causal,                                     // is_causal
-      nullptr,                                    // attn_mask
-      bias_data,                                  // bias
-      nullptr,                                    // q_maxptr
-      nullptr,                                    // k_maxptr
-      nullptr,                                    // v_maxptr
-      nullptr,                                    // o_maxptr
-      false,                                      // is_qkv_fusion
-      fa_layout                                   // qkv_layout
-  );
+  int fa_tgemm = get_flash_attn_tgemm<XPUType>();
+  auto flash_attention_kernel =
+      baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, tfloat32, int>;
+  if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT) {
+    flash_attention_kernel =
+        baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, float, int>;
+  } else if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT16) {
+    flash_attention_kernel =
+        baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, XPUTypeFP16, int>;
+  }
+  int r =
+      flash_attention_kernel(ctx.x_context(),
+                             q_data,                       // q
+                             k_data,                       // k
+                             v_data,                       // v
+                             out_data,                     // out
+                             softmax_lse_data,             // softmax_lse
+                             qlod,                         // lod_seqlens_q
+                             kvlod,                        // lod_seqlens_k
+                             seqlen_q,                     // max_seqlen_q
+                             seqlen_k,                     // max_seqlen_k
+                             num_heads,                    // head_num
+                             num_heads_k,                  // head_num_k
+                             head_size,                    // head_dim
+                             1.0f / std::sqrt(head_size),  // softmax_scale
+                             dropout,                      // p_dropout
+                             static_cast<int32_t>(seed_offset_data[0]),  // seed
+                             causal,     // is_causal
+                             nullptr,    // attn_mask
+                             bias_data,  // bias
+                             nullptr,    // q_maxptr
+                             nullptr,    // k_maxptr
+                             nullptr,    // v_maxptr
+                             nullptr,    // o_maxptr
+                             false,      // is_qkv_fusion
+                             fa_layout,  // qkv_layout
+                             nullptr,    // alibi_slopes
+                             {},         // alibi_slopes_shape
+                             -1,         // window_size_left
+                             -1          // window_size_right
+      );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
