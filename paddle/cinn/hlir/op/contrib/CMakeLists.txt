@@ -17,5 +17,4 @@ gather_srcs(
   triangular_solve.cc
   bitcast_convert.cc
   randint.cc
-  resize.cc
   assert_true.cc)

@@ -25,7 +25,7 @@ namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
                 platform::DeviceContext* dev_ctx,
-                const platform::Place& place,
+                const phi::Place& place,
                 int micro_id) {
   // create microbatch_id variable
   // and set micro id value
@@ -42,7 +42,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   tensor->Resize(common::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
       place, framework::TransToPhiDataType(framework::proto::VarType::FP32));
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
@@ -53,7 +53,7 @@ void SetMicroId(paddle::framework::Scope* scope,
     memory::Copy(
         place,
         tensor_data,
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         reinterpret_cast<void*>(temp_ptr),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
@@ -73,7 +73,7 @@ uint64_t HeterSectionWorker::batch_id_(0);
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
   fetch_config_ = desc.fetch_config();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -118,7 +118,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
   fetch_config_ = desc.fetch_config();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -324,7 +324,7 @@ void HeterSectionWorker::CreateMicrobatchScopes() {
 
 void HeterSectionWorker::CopyParameters(int microbatch_id,
                                         const ProgramDesc& program,
-                                        const platform::Place& place) {
+                                        const phi::Place& place) {
   auto& global_block = program.Block(0);
   auto var_list = global_block.AllVars();
   if (program.Size() > 1) {

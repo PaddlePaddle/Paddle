@@ -24,10 +24,10 @@ namespace framework {
 namespace details {
 
 static void ThrowEnforceNotMet() {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "\n----------------------\nError Message "
-      "Summary:\n----------------------\n"
-      "Created error."));
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("\n----------------------\nError Message "
+                                   "Summary:\n----------------------\n"
+                                   "Created error."));
 }
 
 }  // namespace details

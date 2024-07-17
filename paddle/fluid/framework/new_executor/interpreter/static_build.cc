@@ -337,10 +337,10 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
   if (tensor->initialized()) {  // avoid overwriting valid data
     platform::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
-      dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
+      dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
     } else {
       dev_ctx_for_copy =
-          platform::DeviceContextPool::Instance().Get(tensor->place());
+          phi::DeviceContextPool::Instance().Get(tensor->place());
     }
     phi::Copy(*dev_ctx_for_copy, *tensor, place, /*blocking=*/true, tensor);
   } else {
@@ -410,7 +410,7 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
 }
 
 void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
-                                       const platform::Place& dev_place,
+                                       const phi::Place& dev_place,
                                        const OperatorBase& op) {
   auto* scope_var = scope.FindVar(op.Output("Scope"));
   PADDLE_ENFORCE_NOT_NULL(
@@ -442,7 +442,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
       << "[ControlFlow][ConditionalBlock] New Executor is Running.";
 
   VLOG(10) << "[interpreterCore cache]" << core.get();
-  VLOG_IF(10, core) << platform::is_same_place(core->GetPlace(), dev_place);
+  VLOG_IF(10, core) << phi::is_same_place(core->GetPlace(), dev_place);
 
   framework::interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -458,7 +458,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
 }
 
 void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
-                                 const platform::Place& dev_place,
+                                 const phi::Place& dev_place,
                                  const OperatorBase& op) {
   PADDLE_ENFORCE_NOT_NULL(
       scope.FindVar(op.Input("Condition")),
@@ -473,7 +473,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
   auto* block = op.Attr<framework::BlockDesc*>("sub_block");
 
   // get device context from pool
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(dev_place);
 
   bool is_test = op.Attr<bool>("is_test");
@@ -510,7 +510,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
                          ->GetMutable<std::vector<framework::Scope*>>();
 
   if (!step_scopes->empty()) {
-    platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+    phi::DeviceContextPool::Instance().Get(dev_place)->Wait();
     for (auto& s : *step_scopes) {
       if (scope.HasKid(s)) {
         scope.DeleteScope(s);
@@ -654,8 +654,7 @@ void FakeInitializeOutputsForOperatorBase(
     return;
   }
 
-  phi::DeviceContext* dev_ctx =
-      platform::DeviceContextPool::Instance().Get(place);
+  phi::DeviceContext* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
 
   if (op_type == "conditional_block" || op_type == "while") {
     // Note(sonder): skip fake init for conditional_block when there is no

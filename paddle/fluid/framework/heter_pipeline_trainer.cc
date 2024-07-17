@@ -159,7 +159,7 @@ void HeterPipelineTrainer::InitDumpEnv() {
 }
 
 void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                          const platform::Place& place) {
+                                          const phi::Place& place) {
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,

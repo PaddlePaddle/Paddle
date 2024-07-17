@@ -327,7 +327,7 @@ TEST(float16, lod_tensor_on_gpu) {
   memcpy(src_ptr, arr, 4 * sizeof(float16));
 
   // CPU LoDTensor to GPU LoDTensor
-  CUDAPlace gpu_place(0);
+  phi::GPUPlace gpu_place(0);
   phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, gpu_ctx.stream())
@@ -351,7 +351,7 @@ template <typename T>
 struct Functor {
   bool operator()(const T &val) {
     return std::type_index(typeid(T)) ==
-           std::type_index(typeid(platform::float16));
+           std::type_index(typeid(phi::dtype::float16));
   }
 };
 
@@ -366,11 +366,11 @@ TEST(float16, typeid) {
   PADDLE_ENFORCE_EQ(
       functor(a),
       true,
-      platform::errors::Unavailable("The float16 support in GPU failed."));
+      phi::errors::Unavailable("The float16 support in GPU failed."));
   PADDLE_ENFORCE_EQ(
       functor2(b),
       false,
-      platform::errors::Unavailable("The float16 support in GPU failed."));
+      phi::errors::Unavailable("The float16 support in GPU failed."));
 }
 
 // GPU test

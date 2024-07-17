@@ -34,6 +34,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -47,6 +48,7 @@
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 COMMON_DECLARE_bool(logging_trunc_pir_py_code);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
+COMMON_DECLARE_int64(logging_pir_py_code_int_tensor_element_limit);
 
 namespace paddle::framework {
 
@@ -97,12 +99,30 @@ void VisitFeedName(const pir::Program& program,
     if (op_name != "pd_op.feed") return std::nullopt;
     return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
   };
+  auto GetParameterOpName =
+      [](const pir::Operation& op) -> std::optional<std::string> {
+    if (!op.isa<pir::ParameterOp>()) return std::nullopt;
+    const auto& attributes = op.attributes();
+    const auto& parameter_name = op.attributes().at("parameter_name");
+    return parameter_name.dyn_cast<pir::StrAttribute>().AsString();
+  };
+  auto GetConstantOpName =
+      [](const pir::Operation& op) -> std::optional<std::string> {
+    if (!op.isa<pir::ConstantOp>()) return std::nullopt;
+    const auto& attributes = op.attributes();
+    const auto& tensor_name = op.attributes().at("value");
+    return tensor_name.dyn_cast<pir::TensorNameAttribute>().data();
+  };
   for (const auto& op : block) {
     if (const auto& name = GetDataOpName(op)) {
       DoEachFeadName(name.value());
     } else if (const auto& name = GetFeedOpName(op)) {
       DoEachFeadName(name.value());
     } else if (const auto& name = GetPhiFeedOpName(op)) {
+      DoEachFeadName(name.value());
+    } else if (const auto& name = GetParameterOpName(op)) {
+      DoEachFeadName(name.value());
+    } else if (const auto& name = GetConstantOpName(op)) {
       DoEachFeadName(name.value());
     } else {
       // Do nothing.
@@ -115,7 +135,7 @@ void VisitFeedName(const pir::Program& program,
 
 std::optional<std::vector<int64_t>> GetTensorData(
     const phi::DenseTensor& tensor) {
-  constexpr int kLimit = 64;
+  int kLimit = FLAGS_logging_pir_py_code_int_tensor_element_limit;
   if (tensor.numel() > kLimit || !tensor.IsInitialized()) return std::nullopt;
   if (tensor.dtype() == phi::DataType::INT64) {
     return phi::GetVectorFromTensor<int64_t>(&tensor);
@@ -608,13 +628,13 @@ struct PirToPyCodeConverterHelper {
       if (i++ > 0) {
         ss << ", ";
       }
-      ss << attr_name << "=" << ConvertAttr(attr);
+      ss << std::quoted(attr_name) << ":" << ConvertAttr(attr);
     });
     VisitSymbolicAttrs(op, [&](const auto& attr_name, const auto& attrs) {
       if (i++ > 0) {
         ss << ", ";
       }
-      ss << attr_name << "=" << ConvertSymbolicAttrs(attrs);
+      ss << std::quoted(attr_name) << ":" << ConvertSymbolicAttrs(attrs);
     });
     return ss.str();
   }
@@ -651,6 +671,10 @@ struct PirToPyCodeConverterHelper {
         },
         [](const symbol::TensorListShapeOrDataDimExprs& impl) {
           return ConvertTensorListShapeOrData(impl);
+        },
+        [](const symbol::RankedTensorArrayShapeOrDataDimExprs& impl) {
+          // TODO(Hongqing-work): support tensor_array to py
+          return std::string("self.s_tensor_array()");
         },
         [](const symbol::NullShapeOrDataDimExpr& impl) {
           return std::string("self.s_null()");
@@ -1230,6 +1254,27 @@ struct PirToPyCodeConverterHelper {
       const auto& name = ::pir::Complex128Type::name();
       return std::string("self.") + name + "()";
     }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SelectedRowsType>) {
+      const auto& name = ::paddle::dialect::SelectedRowsType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::DenseTensorArrayType>) {
+      const auto& name = ::paddle::dialect::DenseTensorArrayType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SparseCooTensorType>) {
+      const auto& name = ::paddle::dialect::SparseCooTensorType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SparseCsrTensorType>) {
+      const auto& name = ::paddle::dialect::SparseCsrTensorType::name();
+      return std::string("self.") + name + "()";
+    }
+
     std::string operator()(AdtTypeId<UnclassifiedType>) {
       std::stringstream ss;
       ss << "self.UnclassifiedType(";
@@ -1254,8 +1299,8 @@ struct PirToPyCodeConverterHelper {
     ss << "self." << ConvertOpUniqueName(op) << " = self.Op("
        << std::quoted(op->name()) << ", " << id << ", "
        << "input_types=" << input_types_str
-       << ", output_types=" << output_types_str << ", attrs=dict("
-       << attrs_as_args << ")";
+       << ", output_types=" << output_types_str << ", attrs={" << attrs_as_args
+       << "}";
     if (!block_signature.empty()) {
       ss << ", " << block_signature;
     }

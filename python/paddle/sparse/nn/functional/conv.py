@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, Sequence
+
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
@@ -22,20 +26,32 @@ from paddle.utils import convert_to_list
 
 from ...binary import add
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayout2D,
+        DataLayout3D,
+        Size2,
+        Size3,
+        Size4,
+        Size6,
+    )
+    from paddle.nn.functional.common import _PaddingSizeMode
+
 
 def _conv3d(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    subm=False,
-    key=None,
-    data_format="NDHWC",
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size3 = 1,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+    dilation: Size3 = 1,
+    groups: Literal[1] = 1,
+    subm: bool = False,
+    key: str | None = None,
+    data_format: Literal["NDHWC"] = "NDHWC",
+    name: str | None = None,
+) -> Tensor:
     assert groups == 1, "Currently, only support groups=1"
 
     dims = 3
@@ -109,18 +125,18 @@ def _conv3d(
 
 
 def _conv2d(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    subm=False,
-    key=None,
-    data_format="NHWC",
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size2 = 1,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+    dilation: Size2 = 1,
+    groups: Literal[1] = 1,
+    subm: bool = False,
+    key: str | None = None,
+    data_format: Literal["NHWC"] = "NHWC",
+    name: str | None = None,
+) -> Tensor:
     assert groups == 1, "Currently, only support groups=1"
 
     dims = 2
@@ -194,18 +210,18 @@ def _conv2d(
 
 
 def _conv3d_igemm(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    subm=False,
-    key=None,
-    data_format="NDHWC",
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size3 = 1,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+    dilation: Size3 = 1,
+    groups: Literal[1] = 1,
+    subm: Literal[True] = True,
+    key: str | None = None,
+    data_format: Literal["NDHWC"] = "NDHWC",
+    name: str | None = None,
+) -> Tensor:
     assert groups == 1, "Currently, only support groups=1"
     assert subm is True, "Currently, only support subm=True for implicit gemm"
 
@@ -278,18 +294,18 @@ def _conv3d_igemm(
 
 
 def _conv2d_igemm(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    subm=False,
-    key=None,
-    data_format="NHWC",
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size2 = 1,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+    dilation: Size2 = 1,
+    groups: Literal[1] = 1,
+    subm: Literal[True] = True,
+    key: str | None = None,
+    data_format: Literal["NHWC"] = "NHWC",
+    name: str | None = None,
+) -> Tensor:
     assert groups == 1, "Currently, only support groups=1"
     assert subm is True, "Currently, only support subm=True for implicit gemm"
 
@@ -362,16 +378,16 @@ def _conv2d_igemm(
 
 
 def conv3d(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    data_format="NDHWC",
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size3 = 1,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+    dilation: Size3 = 1,
+    groups: Literal[1] = 1,
+    data_format: DataLayout3D = "NDHWC",
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The sparse convolution3d functional calculates the output based on the input, filter
@@ -402,7 +418,7 @@ def conv3d(
         weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        bias (Tensor|None, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
@@ -429,7 +445,7 @@ def conv3d(
             will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
             The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
             `[batch_size, input_depth, input_height, input_width, input_channels]`.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -468,17 +484,17 @@ def conv3d(
 
 
 def subm_conv3d(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    data_format="NDHWC",
-    key=None,
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size3 = 1,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+    dilation: Size3 = 1,
+    groups: Literal[1] = 1,
+    data_format: DataLayout3D = "NDHWC",
+    key: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The sparse submanifold convolution3d functional calculates the output based on the input, filter
@@ -509,7 +525,7 @@ def subm_conv3d(
         weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        bias (Tensor|None, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
@@ -536,11 +552,11 @@ def subm_conv3d(
             will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
             The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
             `[batch_size, input_depth, input_height, input_width, input_channels]`.
-        key(str, optional): the key is used to save or use the same rulebook,
+        key(str|None, optional): the key is used to save or use the same rulebook,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -580,17 +596,17 @@ def subm_conv3d(
 
 
 def subm_conv3d_igemm(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    data_format="NDHWC",
-    key=None,
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size3 = 1,
+    padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+    dilation: Size3 = 1,
+    groups: Literal[1] = 1,
+    data_format: DataLayout3D = "NDHWC",
+    key: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The sparse submanifold convolution3d functional calculates the output based on the input, filter
@@ -621,7 +637,7 @@ def subm_conv3d_igemm(
         weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        bias (Tensor|None, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
@@ -648,11 +664,11 @@ def subm_conv3d_igemm(
             will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
             The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
             `[batch_size, input_depth, input_height, input_width, input_channels]`.
-        key(str, optional): the key is used to save or use the same rulebook,
+        key(str|None, optional): the key is used to save or use the same rulebook,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -692,16 +708,16 @@ def subm_conv3d_igemm(
 
 
 def conv2d(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    data_format="NHWC",
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size2 = 1,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+    dilation: Size2 = 1,
+    groups: Literal[1] = 1,
+    data_format: DataLayout2D = "NHWC",
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The sparse convolution2d functional calculates the output based on the input, filter
@@ -732,7 +748,7 @@ def conv2d(
         weight (Tensor): The convolution kernel, a Tensor with shape [kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        bias (Tensor|None, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
@@ -757,7 +773,7 @@ def conv2d(
             will be consistent with that of the input. An optional string from: `"NHWC"`.
             The default is `"NHWC"`. When it is `"NHWC"`, the data is stored in the order of:
             `[batch_size, input_height, input_width, input_channels]`.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -796,17 +812,17 @@ def conv2d(
 
 
 def subm_conv2d(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    data_format="NHWC",
-    key=None,
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size2 = 1,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+    dilation: Size2 = 1,
+    groups: Literal[1] = 1,
+    data_format: DataLayout2D = "NHWC",
+    key: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The sparse submanifold convolution2d functional calculates the output based on the input, filter
@@ -837,7 +853,7 @@ def subm_conv2d(
         weight (Tensor): The convolution kernel, a Tensor with shape [kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        bias (Tensor|None, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
@@ -862,11 +878,11 @@ def subm_conv2d(
             will be consistent with that of the input. An optional string from: `"NHWC"`.
             The default is `"NHWC"`. When it is `"NHWC"`, the data is stored in the order of:
             `[batch_size, input_height, input_width, input_channels]`.
-        key(str, optional): the key is used to save or use the same rulebook,
+        key(str|None, optional): the key is used to save or use the same rulebook,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -905,17 +921,17 @@ def subm_conv2d(
 
 
 def subm_conv2d_igemm(
-    x,
-    weight,
-    bias=None,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=1,
-    data_format="NHWC",
-    key=None,
-    name=None,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size2 = 1,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+    dilation: Size2 = 1,
+    groups: Literal[1] = 1,
+    data_format: DataLayout2D = "NHWC",
+    key: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The sparse submanifold convolution2d functional calculates the output based on the input, filter
@@ -946,7 +962,7 @@ def subm_conv2d_igemm(
         weight (Tensor): The convolution kernel, a Tensor with shape [kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        bias (Tensor|None, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
@@ -971,11 +987,11 @@ def subm_conv2d_igemm(
             will be consistent with that of the input. An optional string from: `"NHWC"`.
             The default is `"NHWC"`. When it is `"NHWC"`, the data is stored in the order of:
             `[batch_size, input_height, input_width, input_channels]`.
-        key(str, optional): the key is used to save or use the same rulebook,
+        key(str|None, optional): the key is used to save or use the same rulebook,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 

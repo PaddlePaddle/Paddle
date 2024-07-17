@@ -619,12 +619,8 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
-            return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, Value):
-            return str(var)
         elif isinstance(var, Value):
             return str(var)
         else:
@@ -739,11 +735,7 @@ def _as_lodtensor(data, place, dtype=None):
         assert (
             dtype is not None
         ), 'The dtype should be given when feed data is not np.ndarray'
-        dtype = (
-            convert_dtype(dtype)
-            if isinstance(dtype, core.VarDesc.VarType)
-            else dtype
-        )
+        dtype = convert_dtype(dtype)
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
@@ -1149,20 +1141,6 @@ class _ExecutorCache:
                 _add_single_pir_fetch_op(
                     value.block.program, value, fetch_var_name + str(i), i
                 )
-            # map_program_fetch = OrderedDict()
-            # for job_type in plan.job_types():
-            #     map_program_fetch[job_type] = []
-            # for value in fetch_list:
-            #     assert value.block.program in map_program_fetch, "The value to fetch is not belong to any program."
-            #     map_program_fetch[value.block.program].append(value)
-            # print("==== map_program_fetch ====")
-            # print(map_program_fetch)
-            # for sub_program, value_list in map_program_fetch.items():
-            #     print("==== value_list ====")
-            #     print(value_list)
-            #     _add_pir_fetch_ops(
-            #         sub_program, fetch_list=value_list, fetch_var_name=fetch_var_name
-            #     )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,

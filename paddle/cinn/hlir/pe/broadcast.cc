@@ -35,8 +35,8 @@ using cinn::common::make_zero;
 using ir::Tensor;
 using lang::Compute;
 
-void GetBroadcastShape(const std::vector<Expr>& shape1,
-                       const std::vector<Expr>& shape2,
+void GetBroadcastShape(const Tensor& a,
+                       const Tensor& b,
                        std::vector<Expr>* common_shape,
                        std::vector<bool>* broadcast_flag1,
                        std::vector<bool>* broadcast_flag2,
@@ -46,8 +46,13 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
   CHECK(broadcast_flag1);
   CHECK(broadcast_flag2);
 
-  std::vector<Expr> shape1_new = shape1;
-  std::vector<Expr> shape2_new = shape2;
+  const auto& shape1 = a->shape;
+  const auto& shape2 = b->shape;
+
+  std::vector<Expr> shape1_new = a->shape;
+  std::vector<Expr> shape2_new = b->shape;
+  const auto& a_sym_shape = a->sym_shape;
+  const auto& b_sym_shape = b->sym_shape;
 
   if (axis.defined()) {
     int axis_val = axis.as_int32();
@@ -106,7 +111,8 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
     // traverse from right to left to get the output shape and broadcast flag
     auto* var1 = shape1_new[size1 - i].As<ir::_Var_>();
     auto* var2 = shape2_new[size2 - i].As<ir::_Var_>();
-    if (MathEqual(shape1_new[size1 - i], shape2_new[size2 - i])) {
+    if (MathEqual(shape1_new[size1 - i], shape2_new[size2 - i]) ||
+        (a_sym_shape[size1 - i]->sym_dim == b_sym_shape[size1 - i]->sym_dim)) {
       common_shape->insert(common_shape->begin(), shape1_new[size1 - i]);
       // broadcast flags are recorded in a reverse order
       broadcast_flag1->emplace_back(true);
@@ -175,37 +181,6 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
   }
 }
 
-void GetBroadcastOutShape(const std::vector<int>& input_shape1,
-                          const std::vector<int>& input_shape2,
-                          std::vector<int>* common_shape,
-                          int axis) {
-  std::vector<Expr> shape1;
-  std::vector<Expr> shape2;
-  auto fn_expr = [](const std::vector<int>& input_shape,
-                    std::vector<Expr>* shape) {
-    for (int i = 0; i < input_shape.size(); i++) {
-      shape->push_back(Expr(input_shape[i]));
-    }
-  };
-  fn_expr(input_shape1, &shape1);
-  fn_expr(input_shape2, &shape2);
-  std::vector<bool> broadcast_flags1;
-  std::vector<bool> broadcast_flags2;
-  int axis_offset = 0;
-  std::vector<Expr> out_shape;
-  GetBroadcastShape(shape1,
-                    shape2,
-                    &out_shape,
-                    &broadcast_flags1,
-                    &broadcast_flags2,
-                    &axis_offset,
-                    Expr(axis));
-  CHECK(common_shape);
-  for (auto& shape : out_shape) {
-    common_shape->push_back(shape.as_int32());
-  }
-}
-
 void GetBroadcastIndice(const std::vector<Expr>& indice,
                         const Tensor& tensor_a,
                         const Tensor& tensor_b,
@@ -257,8 +232,8 @@ Tensor Broadcast(const FuncOp& op,
   // the counts of left-shift of tensor b so as to right alignment
   int axis_offset = 0;
 
-  GetBroadcastShape(a->shape,
-                    b->shape,
+  GetBroadcastShape(a,
+                    b,
                     &common_shape,
                     &broadcast_flags1,
                     &broadcast_flags2,

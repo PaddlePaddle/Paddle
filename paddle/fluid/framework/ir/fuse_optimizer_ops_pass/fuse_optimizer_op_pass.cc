@@ -293,9 +293,9 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
       kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
   bool has_op_kernel = !kernel_key_map.empty() ? true : false;
   for (auto &kernel : kernel_key_map) {
-    if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
+    if (phi::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
       support_gpu = true;
-    } else if (platform::is_cpu_place(
+    } else if (phi::is_cpu_place(
                    phi::TransToPhiPlace(kernel.first.backend()))) {
       support_cpu = true;
     }
@@ -308,9 +308,9 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
     if (it != all_kernels.end()) {
       has_op_kernel = true;
       for (auto &kernel_pair : it->second) {
-        if (platform::is_cpu_place(kernel_pair.first.place_)) {
+        if (phi::is_cpu_place(kernel_pair.first.place_)) {
           support_cpu = true;
-        } else if (platform::is_gpu_place(kernel_pair.first.place_)) {
+        } else if (phi::is_gpu_place(kernel_pair.first.place_)) {
           support_gpu = true;
         }
       }
