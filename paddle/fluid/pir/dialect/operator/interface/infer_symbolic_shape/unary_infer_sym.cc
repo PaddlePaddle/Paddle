@@ -685,7 +685,7 @@ bool ReshapeOpInferSymbolicShape(
     // replace '0' with original shape
     for (size_t i = 0; i < target_shape.size(); i++) {
       if (i < original_shape.size() && IsZero(target_shape.at(i))) {
-        target_shape.at(i) = original_shape.at(i).dyn_cast<int64_t>();
+        target_shape.at(i) = original_shape.at(i);
       }
     }
 
