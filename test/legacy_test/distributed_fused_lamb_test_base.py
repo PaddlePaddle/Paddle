@@ -271,7 +271,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
         _clip_by_global_norm_using_mp_type(True)
         if (
-            os.environ.get("FLAGS_dynamic_static_unified_comm", "false").lower()
+            os.environ.get("FLAGS_dynamic_static_unified_comm", "true").lower()
             == "true"
         ):
             paddle.distributed.collective._init_parallel_env("nccl")
