@@ -686,8 +686,8 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         planner->UseAddTo() ? static_cast<int32_t>(1) : static_cast<int32_t>(0);
     cublasLtHandle_t cublaslt_handle = ctx.cublaslt_handle();
 
-    size_t workspace_size = static_cast<size_t>(16) * 1024 * 1024;
-    phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
+    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    phi::Allocator::AllocationPtr workspace = nullptr;
 
     PADDLE_ENFORCE_NOT_NULL(
         planner,
@@ -711,6 +711,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
     } else {
+      workspace = GetWorkspace(ctx, workspace_size);
       if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune() &&
           (!desc->is_cached)) {
         SearchBestAlgo(ctx,
