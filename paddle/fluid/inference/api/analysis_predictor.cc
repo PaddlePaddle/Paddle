@@ -2750,19 +2750,21 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
 
 #ifdef PADDLE_WITH_XPU
   if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
-     //   Clear the output_tensor's l3_block, that does not participate in L3CacheAutotune
-     static std::once_flag output_l3block_clear;
-     std::call_once(output_l3block_clear, [&]() {
-       VLOG(4) << "Clear the output_tensor's l3_block, that does not participate in L3CacheAutotune.";
-       auto output_names = GetOutputNames();
-       int output_size = 0;
-       paddle::PaddlePlace place;
-       for (auto &name : output_names) {
-         auto output_ptr =
-             GetOutputTensor(name)->data<float>(&place, &output_size);
-         infer_xpu_ctx->ClearL3Block(output_ptr);
-       }
-     });
+    //   Clear the output_tensor's l3_block, that does not participate in
+    //   L3CacheAutotune
+    static std::once_flag output_l3block_clear;
+    std::call_once(output_l3block_clear, [&]() {
+      VLOG(4) << "Clear the output_tensor's l3_block, that does not "
+                 "participate in L3CacheAutotune.";
+      auto output_names = GetOutputNames();
+      int output_size = 0;
+      paddle::PaddlePlace place;
+      for (auto &name : output_names) {
+        auto output_ptr =
+            GetOutputTensor(name)->data<float>(&place, &output_size);
+        infer_xpu_ctx->ClearL3Block(output_ptr);
+      }
+    });
 
     infer_xpu_ctx->L3CacheAutotune();
   }
