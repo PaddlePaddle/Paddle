@@ -103,14 +103,14 @@ def flatten_dense_tensors(
 
     for param in parameters:
         assert param.trainable, "param must be trainable..."
-        size = np.prod(param.shape) * align[dtype]
+        size = np.prod(param.shape) * align[dtype.value]
         remaining = size % alignment[get_current_device_type()]
         ali = (
             0
             if remaining == 0
             else alignment[get_current_device_type()] - remaining
         )
-        align_ = ali // align[dtype]
+        align_ = ali // align[dtype.value]
         _param2offset[param.name] = _buffer_size
         _buffer_size += np.prod(param.shape) + align_
         _param2align[param.name] = align_
