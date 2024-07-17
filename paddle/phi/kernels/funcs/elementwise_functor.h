@@ -541,9 +541,14 @@ struct MinGradXYFunctor {
                                                    const InT dout) {
     phi::Array<OutT, 2> outs;
     // dx = dout * (x < y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
     // dy = dout * (x >= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    if (x == y) {
+      outs[0] = static_cast<OutT>(dout * InT(0.5f));
+      outs[1] = static_cast<OutT>(dout * InT(0.5f));
+    } else {
+      outs[0] = static_cast<OutT>(dout * (static_cast<InT>(x < y)));
+      outs[1] = static_cast<OutT>(dout * (static_cast<InT>(x > y)));
+    }
     return outs;
   }
 };
