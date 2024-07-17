@@ -632,7 +632,7 @@ def monkey_patch_value():
         """
         Value don't have 'register_hook' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warning here and return None.
+        So we give a error here.
         """
         pass
 
