@@ -21,11 +21,6 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed import ParallelEnv
-from paddle.distributed.auto_parallel.static.utils import (
-    is_backward_op,
-    is_forward_op,
-    is_optimize_op,
-)
 from paddle.distributed.fleet import auto
 
 sys.path.append("../legacy_test")
@@ -109,7 +104,7 @@ class TestZBVPPPass(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_vpp._strategy.pipeline.enable is True
-        
+
         # pp2 zbvpp training
         engine_zbvpp = self.get_engine(True)
         history_zbvpp = engine_zbvpp.fit(
@@ -136,7 +131,7 @@ class TestZBVPPPass(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_zbvpp._strategy.pipeline.enable is True
-        
+
         if paddle.distributed.get_rank() == 1:
             losses_vpp = np.array(history_vpp.history["loss"])
             history_zbvpp = np.array(history_zbvpp.history["loss"])
