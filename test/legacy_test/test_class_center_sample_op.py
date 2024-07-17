@@ -90,7 +90,7 @@ class TestClassCenterSampleOp(OpTest):
         self.fix_seed = True
 
     def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
     def setUp(self):
         self.with_new_comm()
