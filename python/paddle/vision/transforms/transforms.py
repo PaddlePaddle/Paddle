@@ -689,7 +689,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
                 lambda: paddle.static.nn.cond(
                     in_ratio > self.ratio[1],
                     lambda: [
-                        paddle.round(height * self.ratio[1]),
+                        paddle.round(height * self.ratio[1]).astype("int32"),
                         height.astype("int32"),
                     ],
                     lambda: [width.astype("int32"), height.astype("int32")],
