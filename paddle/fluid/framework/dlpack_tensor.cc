@@ -15,7 +15,8 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/visit_place.h"
 
 namespace paddle {
 namespace framework {
@@ -165,7 +166,7 @@ DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
   // init device, DLDevice type with device_type and device_id
   auto place = src.place();
   pdDLMTensor->tensor.dl_tensor.device =
-      paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
+      phi::VisitPlace(place, internal::DLDeviceVisitor());
 
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
@@ -181,7 +182,7 @@ DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes)
 
   // init device, DLDevice type with device_type and device_id
   auto place = tensor.place();
-  t_.device = paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
+  t_.device = phi::VisitPlace(place, internal::DLDeviceVisitor());
 
   // init dtype
   t_.dtype = internal::GetDLDataTypeFromTypeIndex(

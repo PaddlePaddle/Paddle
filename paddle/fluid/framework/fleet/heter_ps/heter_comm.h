@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #ifdef PADDLE_WITH_HETERPS
 

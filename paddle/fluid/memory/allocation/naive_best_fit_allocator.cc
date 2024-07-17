@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/visit_place.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -614,20 +615,19 @@ size_t Usage::operator()(const phi::GPUPinnedPlace &cuda_pinned) const {
 namespace allocation {
 
 phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
+  void *ptr = phi::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   return tmp_alloc;
 }
 
 void NaiveBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
-  paddle::platform::VisitPlace(
-      allocation->place(),
-      legacy::FreeVisitor(allocation->ptr(), allocation->size()));
+  phi::VisitPlace(allocation->place(),
+                  legacy::FreeVisitor(allocation->ptr(), allocation->size()));
   delete allocation;
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const phi::Place &place) {
-  return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
+  return phi::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
 }  // namespace allocation

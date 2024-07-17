@@ -17,9 +17,9 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_memory_alignment.h"
+#include "paddle/phi/common/place.h"
 
 PD_DEFINE_bool(skip_fused_all_reduce_check, false, "");  // NOLINT
 COMMON_DECLARE_bool(allreduce_record_one_event);

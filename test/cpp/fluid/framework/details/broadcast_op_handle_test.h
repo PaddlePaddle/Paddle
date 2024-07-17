@@ -47,7 +47,7 @@ struct TestBroadcastOpHandle {
   OpHandleBase* op_handle_;
   std::vector<VarHandleBase*> vars_;
   std::vector<std::unique_ptr<ir::Node>> nodes_;
-  std::vector<p::Place> place_list_;
+  std::vector<phi::Place> place_list_;
   DeviceType use_device_;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
@@ -103,7 +103,7 @@ struct TestBroadcastOpHandle {
         exit(0);
       }
       for (int i = 0; i < count; ++i) {
-        auto p = p::CUDAPlace(i);
+        auto p = phi::GPUPlace(i);
         place_list_.push_back(p);
         ctxs_.emplace_back(new phi::GPUContext(p));
       }
@@ -114,7 +114,7 @@ struct TestBroadcastOpHandle {
     } else {
       int count = 8;
       for (int i = 0; i < count; ++i) {
-        auto p = p::CPUPlace();
+        auto p = phi::CPUPlace();
         place_list_.push_back(p);
         ctxs_.emplace_back(new phi::CPUContext(p));
       }
@@ -282,7 +282,7 @@ struct TestBroadcastOpHandle {
               selected_rows.rows()[k]));
     }
 
-    p::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float* ct = result_tensor.data<float>();
@@ -296,7 +296,7 @@ struct TestBroadcastOpHandle {
                       const std::vector<float>& send_vec,
                       const f::LoD& lod,
                       framework::Scope* scope) {
-    p::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     auto var = scope->FindVar(varname);
     PADDLE_ENFORCE_NOT_NULL(
         var,

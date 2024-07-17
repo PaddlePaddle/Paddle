@@ -21,7 +21,7 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {

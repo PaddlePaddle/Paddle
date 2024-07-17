@@ -17,8 +17,8 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle::framework::details {
 

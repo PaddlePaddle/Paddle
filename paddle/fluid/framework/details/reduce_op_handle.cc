@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/place.h"
 PADDLE_DEFINE_EXPORTED_bool(
     cpu_deterministic,
     false,

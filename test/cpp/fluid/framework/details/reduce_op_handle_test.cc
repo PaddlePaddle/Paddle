@@ -37,7 +37,7 @@ struct TestReduceOpHandle {
   std::vector<Scope *> param_scopes_;
   OpHandleBase *op_handle_;
   std::vector<VarHandleBase *> vars_;
-  std::vector<p::Place> gpu_list_;
+  std::vector<phi::Place> gpu_list_;
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -67,7 +67,7 @@ struct TestReduceOpHandle {
         exit(0);
       }
       for (int i = 0; i < count; ++i) {
-        auto p = p::CUDAPlace(i);
+        auto p = phi::GPUPlace(i);
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new phi::GPUContext(p));
       }
@@ -78,7 +78,7 @@ struct TestReduceOpHandle {
     } else {
       int count = 8;
       for (int i = 0; i < count; ++i) {
-        auto p = p::CPUPlace();
+        auto p = phi::CPUPlace();
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new phi::CPUContext(p));
       }
@@ -201,7 +201,7 @@ struct TestReduceOpHandle {
 
     WaitAll();
 
-    p::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
 
     auto &out_select_rows = out_var->Get<phi::SelectedRows>();
     auto rt = out_select_rows.value();
@@ -271,7 +271,7 @@ struct TestReduceOpHandle {
 
     WaitAll();
 
-    p::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
 
     auto &rt = out_var->Get<phi::DenseTensor>();
 
