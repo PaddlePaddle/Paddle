@@ -653,6 +653,15 @@
     data_type : input
   backward: broadcast_tensors_grad
 
+# - op : c_allgather
+#   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
+#   output : Tensor(out)
+#   infer_meta :
+#     func : AllGatherInferMeta
+#     param: [x, nranks]
+#   kernel :
+#     func : c_allgather
+
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
   output : Tensor(out)
@@ -660,7 +669,9 @@
     func : AllGatherInferMeta
     param: [x, nranks]
   kernel :
-    func : c_allgather
+    func : all_gather
+    param: [x, nranks]
+
 
 - op : c_allreduce_max
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
