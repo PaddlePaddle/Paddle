@@ -43,14 +43,17 @@ def apply_pass(use_zbvpp=False, enable_send_recv_overlap=False):
         pipeline.enable = True
         pipeline.schedule_mode = "ZBVPP"
         pipeline.accumulate_steps = 2
-        pipeline.vpp_degree = 2
+        pipeline.vpp_degree = 3
         pipeline.vpp_seg_method = "TransformerDecoderLayer"
         pipeline.enable_send_recv_overlap = enable_send_recv_overlap
     else:
-        gradient_merge = strategy.gradient_merge
-        gradient_merge.enable = True
-        gradient_merge.k_steps = 2
-        gradient_merge.avg = True
+        pipeline = strategy.pipeline
+        pipeline.enable = True
+        pipeline.schedule_mode = "VPP"
+        pipeline.accumulate_steps = 2
+        pipeline.vpp_degree = 3
+        pipeline.vpp_seg_method = "TransformerDecoderLayer"
+        pipeline.enable_send_recv_overlap = enable_send_recv_overlap
 
     return strategy
 
@@ -62,8 +65,8 @@ def reset_prog():
 
 class TestZBVPPPass(unittest.TestCase):
     def setUp(self):
-        self.rtol = 1e-5
-        self.atol = 1e-8
+        self.rtol = 1e-2
+        self.atol = 1e-3
         self.batch_size = 2
         self.batch_num = 10
         self.clip_norm = 0.2
@@ -84,13 +87,29 @@ class TestZBVPPPass(unittest.TestCase):
 
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("pp", num_hidden_layers=4)
+        model, loss = generate_model("pp", num_hidden_layers=6)
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
         return engine
 
+    def check_results(self, ref_losses, check_losses):
+        np.testing.assert_allclose(
+            ref_losses,
+            check_losses,
+            rtol=self.rtol,
+            atol=self.atol,
+            err_msg=f'pass {__class__} has wrong results!, \nu={ref_losses}\nv={check_losses}\ndiff={ref_losses - check_losses}',
+        )
+
     def test_pp_pass(self):
+        # pp2 vpp training
+        engine_vpp = self.get_engine(False)
+        history_vpp = engine_vpp.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine_vpp._strategy.pipeline.enable is True
+        
         # pp2 zbvpp training
         engine_zbvpp = self.get_engine(True)
         history_zbvpp = engine_zbvpp.fit(
@@ -98,51 +117,30 @@ class TestZBVPPPass(unittest.TestCase):
         )
         assert engine_zbvpp._strategy.pipeline.enable is True
 
-        fw_chunk_ids = []
-        bw_chunk_ids = []
-        for op in engine_zbvpp.main_program.global_block().ops:
-            if is_optimize_op(op):
-                break
-
-            dist_op = engine_zbvpp.dist_context.get_dist_op_for_program(op)
-            if is_forward_op(op):
-                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
-            if is_backward_op(op):
-                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
-
-        if paddle.distributed.get_rank() == 0:
-            self.assertEqual(sum(fw_chunk_ids), 43)
-            self.assertEqual(sum(bw_chunk_ids), 60)
-        else:
-            self.assertEqual(sum(fw_chunk_ids), 32)
-            self.assertEqual(sum(bw_chunk_ids), 50)
+        if paddle.distributed.get_rank() == 1:
+            losses_vpp = np.array(history_vpp.history["loss"])
+            history_zbvpp = np.array(history_zbvpp.history["loss"])
+            self.check_results(losses_vpp[0], history_zbvpp[0])
 
     def test_pp_pass_enable_send_recv_overlap(self):
+        # pp2 vpp training
+        engine_vpp = self.get_engine(False, enable_send_recv_overlap=True)
+        history_vpp = engine_vpp.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine_vpp._strategy.pipeline.enable is True
+
         # pp2 zbvpp training
         engine_zbvpp = self.get_engine(True, enable_send_recv_overlap=True)
         history_zbvpp = engine_zbvpp.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_zbvpp._strategy.pipeline.enable is True
-
-        fw_chunk_ids = []
-        bw_chunk_ids = []
-        for op in engine_zbvpp.main_program.global_block().ops:
-            if is_optimize_op(op):
-                break
-
-            dist_op = engine_zbvpp.dist_context.get_dist_op_for_program(op)
-            if is_forward_op(op):
-                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
-            if is_backward_op(op):
-                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
-
-        if paddle.distributed.get_rank() == 0:
-            self.assertEqual(sum(fw_chunk_ids), 43)
-            self.assertEqual(sum(bw_chunk_ids), 60)
-        else:
-            self.assertEqual(sum(fw_chunk_ids), 32)
-            self.assertEqual(sum(bw_chunk_ids), 50)
+        
+        if paddle.distributed.get_rank() == 1:
+            losses_vpp = np.array(history_vpp.history["loss"])
+            history_zbvpp = np.array(history_zbvpp.history["loss"])
+            self.check_results(losses_vpp[0], history_zbvpp[0])
 
 
 if __name__ == "__main__":
