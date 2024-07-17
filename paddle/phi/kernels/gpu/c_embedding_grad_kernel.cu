@@ -27,7 +27,7 @@ PD_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
-static constexpr int kNumCUDAThreads = 512;
+static constexpr int kNumCUDAThreads = 1024;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {
