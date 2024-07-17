@@ -81,7 +81,7 @@ class TestFusedAttentionOp(OpTest):
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
 
     def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
     def config(self):
         self.x_type = np.float32
