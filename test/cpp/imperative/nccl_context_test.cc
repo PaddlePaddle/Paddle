@@ -53,7 +53,7 @@ TEST(BcastNCCLId, Run) {
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(nrings);
   for (int i = 0; i < nrings; ++i) {
-    platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
+    phi::dynload::ncclGetUniqueId(&nccl_ids[i]);
   }
 
   std::thread t(BcastNCCLId, 0, &nccl_ids);
@@ -61,7 +61,7 @@ TEST(BcastNCCLId, Run) {
   std::vector<ncclUniqueId> recv_nccl_ids;
   recv_nccl_ids.resize(nrings);
   for (int i = 0; i < nrings; ++i) {
-    platform::dynload::ncclGetUniqueId(&recv_nccl_ids[i]);
+    phi::dynload::ncclGetUniqueId(&recv_nccl_ids[i]);
   }
   BcastNCCLId(1, &recv_nccl_ids);
 
