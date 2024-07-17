@@ -21,7 +21,10 @@ namespace runtime {
 namespace hip {
 
 HIPModule::HIPModule(const std::string& data) : data_(data) {
-  CHECK(!data.empty());
+  PADDLE_ENFORCE_EQ(
+      data.empty(),
+      false,
+      ::common::errors::PreconditionNotMet("HIP Module Error: data is empty."));
 
   hipGetDeviceCount(&num_devices_);
   CHECK_GT(num_devices_, 0) << "No available devices";

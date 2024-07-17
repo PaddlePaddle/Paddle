@@ -105,7 +105,9 @@ std::string Compiler::CompileWithHiprtc(const std::string& code,
     log.resize(log_size);
     HIPRTC_CHECK(hiprtcGetProgramLog(prog, &log[0]));
     PADDLE_ENFORCE_EQ(
-        compile_res, HIPRTC_SUCCESS, ::common::errors::External(log));
+        compile_res,
+        HIPRTC_SUCCESS,
+        ::common::errors::External("HIPRTC Error in Paddle CINN: %s", log));
   }
 
   size_t size;
@@ -136,10 +138,10 @@ std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
   std::string dir = "./source";
   // create the folder to store sycl temporary files
   if (access(dir.c_str(), F_OK) == -1) {
-    PADDLE_ENFORCE_NE(
-        mkdir(dir.c_str(), 7),
-        -1,
-        ::common::errors::PreconditionNotMet("Fail to mkdir " + dir));
+    PADDLE_ENFORCE_NE(mkdir(dir.c_str(), 7),
+                      -1,
+                      ::common::errors::PreconditionNotMet(
+                          "Fail to mkdir %s in Hipcc compile.", dir));
   }
   prefix_name_ = dir + "/" + common::UniqName("hip_tmp");
 

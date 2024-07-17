@@ -380,9 +380,10 @@ void CodeGenHIP_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     }
   } else {
     std::stringstream ss;
-    ss << "CUDA device codegen not support memory " << buffer->name << ", type "
+    ss << "HIP device codegen not support memory " << buffer->name << ", type "
        << buffer->memory_type;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(phi::errors::InvalidArgument("HIP codegen error in CINN: %s",
+                                              ss.str()));
   }
 }
 
