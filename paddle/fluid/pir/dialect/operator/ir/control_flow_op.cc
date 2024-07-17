@@ -642,8 +642,26 @@ void InitBlockArgSymbolicShape(const pir::Value &origin_input,
   origin_input_shape_or_data.Match(
       [&](const symbol::TensorShapeOrDataDimExprs &impl) {
         infer_context->SetSymbolForValueByStaticShape(block_arg);
-        const auto &origin_data = origin_input_shape_or_data.data();
-        if (origin_data) {
+        const auto &origin_data = impl.data();
+        const DenseTensorType &type_info =
+            block_arg.type().dyn_cast<DenseTensorType>();
+        bool need_to_set_data = [&]() {
+          if (!origin_data.has_value()) {
+            return false;
+          }
+          if (!type_info.dtype().isa<pir::Int32Type>() &&
+              !type_info.dtype().isa<pir::Int64Type>()) {
+            return false;
+          }
+          if (common::contain_unknown_dim(type_info.dims())) {
+            return false;
+          }
+          if (common::product(type_info.dims()) > 9) {
+            return false;
+          }
+          return true;
+        }();
+        if (need_to_set_data) {
           const auto &block_arg_shape =
               infer_context->GetShapeOrDataForValue(block_arg).shape();
           std::vector<symbol::DimExpr> block_arg_data;

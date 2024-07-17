@@ -2132,6 +2132,13 @@ bool ArrayToTensorOp::InferSymbolicShape(
   } else {
     infer_context->SetShapeOrDataForValue(out(), UseConcatInfer());
   }
+
+  std::vector<symbol::DimExpr> out_index_shape{
+      symbol::DimExpr{infer_context->GetNextSymName()}};
+  infer_context->SetShapeOrDataForValue(
+      out_index(),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(out_index_shape)));
   return true;
 }
 
