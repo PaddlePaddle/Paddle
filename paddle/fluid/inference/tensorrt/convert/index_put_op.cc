@@ -86,8 +86,13 @@ class IndexPutOpConverter : public OpConverter {
     indices_slice_layer->setInput(1, *start_tensor);
     indices_slice_layer->setInput(2, *input_shape_tensor);
     indices_slice_layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(8500)
+    indices_slice_layer->setMode(nvinfer1::SampleMode::kCLAMP);
+#else
     indices_slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
+#endif
     indices_slice_layer->setName("indices_slice_layer");
+
     auto* indices_tensor_new =
         Cast(indices_slice_layer->getOutput(0), nvinfer1::DataType::kBOOL);
 
@@ -98,7 +103,11 @@ class IndexPutOpConverter : public OpConverter {
     value_slice_layer->setInput(1, *start_tensor);
     value_slice_layer->setInput(2, *input_shape_tensor);
     value_slice_layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(8500)
+    value_slice_layer->setMode(nvinfer1::SampleMode::kCLAMP);
+#else
     value_slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
+#endif
     auto* value_tensor_new = value_slice_layer->getOutput(0);
 
     auto layer = TRT_ENGINE_ADD_LAYER(

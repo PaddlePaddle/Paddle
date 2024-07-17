@@ -2816,12 +2816,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << op_type << " op only support bool indices in tensorrt.";
         return false;
       }
-      // if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
-      //   VLOG(3) << op_type
-      //           << " op does not support input's dim is 1 or 0 in tensorrt "
-      //              "static shape mode.";
-      //   return false;
-      // }
     }
 
     if (op_type == "temporal_shift") {
