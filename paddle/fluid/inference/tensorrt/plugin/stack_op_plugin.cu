@@ -104,16 +104,16 @@ bool StackPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input of stack plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      phi::errors::InvalidArgument("The pos(%d) should be less than the "
+                                   "num(%d) of the input and the output.",
+                                   pos,
+                                   nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
@@ -141,9 +141,7 @@ nvinfer1::DataType StackPluginDynamic::getOutputDataType(
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      index,
-      0,
-      platform::errors::InvalidArgument("The index should be equal to 0"));
+      index, 0, phi::errors::InvalidArgument("The index should be equal to 0"));
   return input_types[0];
 }
 
@@ -175,7 +173,7 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   for (int i = axis_ + 1; i < out_num_dims; ++i) {
     PADDLE_ENFORCE_GT(out_dims.d[i],
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input dimensions should be greater than 0"));
     base_unit *= out_dims.d[i];
   }
@@ -184,7 +182,7 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   for (int i = 0; i < axis_; ++i) {
     PADDLE_ENFORCE_GT(out_dims.d[i],
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input dimensions should be greater than 0"));
     lead_unit *= out_dims.d[i];
   }
@@ -192,7 +190,7 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   PADDLE_ENFORCE_EQ(
       out_dims.d[axis_],
       num_stack_,
-      platform::errors::InvalidArgument("number of stack axis should be same"));
+      phi::errors::InvalidArgument("number of stack axis should be same"));
 
   cudaMemcpyAsync(workspace,
                   reinterpret_cast<const void* const>(inputs),
@@ -224,8 +222,8 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         base_unit);
   } else {
     PADDLE_THROW(
-        platform::errors::Fatal("The Stack TRT Plugin's input type only "
-                                "support float or half currently."));
+        phi::errors::Fatal("The Stack TRT Plugin's input type only "
+                           "support float or half currently."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
@@ -260,9 +258,8 @@ nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
     } else if (name == "with_fp16") {
       with_fp16 = static_cast<const bool*>(fc->fields[i].data)[0];
     } else {
-      PADDLE_THROW(platform::errors::Fatal("Meet an unknown plugin field '" +
-                                           name +
-                                           "' when creating stack op plugin."));
+      PADDLE_THROW(phi::errors::Fatal("Meet an unknown plugin field '" + name +
+                                      "' when creating stack op plugin."));
     }
   }
   return new StackPluginDynamic(axis, num_stack, with_fp16);

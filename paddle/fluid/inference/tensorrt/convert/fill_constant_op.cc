@@ -44,7 +44,7 @@ class FillConstantOpConverter : public OpConverter {
         auto shape_nbDims = shapes_tensor->getDimensions().nbDims;
         PADDLE_ENFORCE_EQ(shape_nbDims,
                           1,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "ShapeTensor nbDims must be 1, but received %d.",
                               shape_nbDims));
         tensor_rank = shapes_tensor->getDimensions().d[0];
