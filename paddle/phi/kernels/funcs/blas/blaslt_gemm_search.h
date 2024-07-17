@@ -36,8 +36,7 @@ namespace cublaslt_internal {
 
 const std::array<int, 9> split_k_candidates = {2, 3, 4, 5, 6, 8, 12, 16, 32};
 
-struct CublasLtAlgoSelectorParam {
-  cublasLtMatmulAlgo_t algo;
+struct CublasLtAlgoConfig {
   int m;
   int n;
   int k;
@@ -48,9 +47,12 @@ struct CublasLtAlgoSelectorParam {
   int split_k_val;
   int reduction_scheme;
   int stages;
-  void* workspace;
-  size_t workspace_size;
-  float time;
+};
+
+struct CublasLtAlgoSelectorParam {
+  float time{0.0};
+  cublasLtMatmulAlgo_t algo;
+  CublasLtAlgoConfig algo_config;
 };
 
 inline bool compare_algo_time(const CublasLtAlgoSelectorParam& param_a,
@@ -61,7 +63,7 @@ inline bool compare_algo_time(const CublasLtAlgoSelectorParam& param_a,
 class CublasLtAlgoCache {
  public:
   static CublasLtAlgoCache& Instance() {
-    static CublasLtAlgoCache instance(100);
+    static CublasLtAlgoCache instance(100 /*search_times*/);
     return instance;
   }
 
@@ -97,6 +99,11 @@ class CublasLtAlgoCache {
       param.time = std::numeric_limits<float>::max();
       return;
     }
+    size_t workspace_size = heuristic_result.workspaceSize;
+    auto workspace = phi::memory_utils::Alloc(
+        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        workspace_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event, stream));
     int repeats = search_times_;
@@ -115,8 +122,8 @@ class CublasLtAlgoCache {
                                        c,
                                        c_desc,
                                        &param.algo,
-                                       param.workspace,
-                                       param.workspace_size,
+                                       workspace->ptr(),
+                                       workspace_size,
                                        stream);
       if (status != CUBLAS_STATUS_SUCCESS) {
         param.time = std::numeric_limits<float>::max();
@@ -174,13 +181,11 @@ class CublasLtAlgoCache {
     HashMatrixLayoutDesc(bias_desc, &seed, hash_fn);
     HashMatrixLayoutDesc(c_desc, &seed, hash_fn);
 
-    cublasLtMatmulAlgo_t ret;
     {
       std::lock_guard<std::mutex> lock(cache_mutex_);
-      auto it = map_.find(seed);
-      if (it != map_.end()) {
+      if (algo_caches_.count(seed)) {
         VLOG(3) << "CublasLtAlgoSelect Found in cache";
-        return &(it->second);
+        return &algo_caches_[seed];
       } else {
         // if we have cache but not found algo, and we don't want to search,
         // here return nullptr
@@ -194,7 +199,6 @@ class CublasLtAlgoCache {
     // Get Ids
     // https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulAlgoGetIds
     cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
-    // std::vector<int> algo_ids(requested_algo_count_);
     int algo_ids[requested_algo_count_];  // NOLINT
 
     int num_algo_ids;
@@ -395,27 +399,19 @@ class CublasLtAlgoCache {
                                                                 &algo,
                                                                 &heurResult);
                       if (status == CUBLAS_STATUS_SUCCESS) {
-                        size_t temp_storage_bytes = heurResult.workspaceSize;
-                        auto d_temp_storage = phi::memory_utils::Alloc(
-                            phi::GPUPlace(
-                                phi::backends::gpu::GetCurrentDeviceId()),
-                            temp_storage_bytes);
-
-                        CublasLtAlgoSelectorParam algo_select_params;
-                        algo_select_params.algo = algo;
-                        algo_select_params.m = m;
-                        algo_select_params.n = n;
-                        algo_select_params.k = k;
-                        algo_select_params.algo_id = algo_ids[idx];
-                        algo_select_params.tile = tiles[tile_id];
-                        algo_select_params.swizzle = k;
-                        algo_select_params.custom_option = custom_option;
-                        algo_select_params.split_k_val = split_k_val;
-                        algo_select_params.reduction_scheme = reduction_scheme;
-                        algo_select_params.stages = stages[stage_id];
-                        algo_select_params.workspace_size = temp_storage_bytes;
-                        algo_select_params.workspace = d_temp_storage->ptr();
-                        params.emplace_back(algo_select_params);
+                        CublasLtAlgoSelectorParam param;
+                        param.algo = algo;
+                        param.algo_config.m = m;
+                        param.algo_config.n = n;
+                        param.algo_config.k = k;
+                        param.algo_config.algo_id = algo_ids[idx];
+                        param.algo_config.tile = tiles[tile_id];
+                        param.algo_config.swizzle = k;
+                        param.algo_config.custom_option = custom_option;
+                        param.algo_config.split_k_val = split_k_val;
+                        param.algo_config.reduction_scheme = reduction_scheme;
+                        param.algo_config.stages = stages[stage_id];
+                        params.emplace_back(param);
                         step++;
                       }
                     }  // end if
@@ -433,25 +429,19 @@ class CublasLtAlgoCache {
                                                             &algo,
                                                             &heurResult);
                   if (status == CUBLAS_STATUS_SUCCESS) {
-                    size_t temp_storage_bytes = heurResult.workspaceSize;
-                    auto d_temp_storage = phi::memory_utils::Alloc(
-                        phi::GPUPlace(backends::gpu::GetCurrentDeviceId()),
-                        temp_storage_bytes);
-                    CublasLtAlgoSelectorParam algo_select_params;
-                    algo_select_params.algo = algo;
-                    algo_select_params.m = m;
-                    algo_select_params.n = n;
-                    algo_select_params.k = k;
-                    algo_select_params.algo_id = algo_ids[idx];
-                    algo_select_params.tile = tiles[tile_id];
-                    algo_select_params.swizzle = k;
-                    algo_select_params.custom_option = custom_option;
-                    algo_select_params.split_k_val = split_k_val;
-                    algo_select_params.reduction_scheme = reduction_scheme;
-                    algo_select_params.stages = stages[stage_id];
-                    algo_select_params.workspace_size = temp_storage_bytes;
-                    algo_select_params.workspace = d_temp_storage->ptr();
-                    params.emplace_back(algo_select_params);
+                    CublasLtAlgoSelectorParam param;
+                    param.algo = algo;
+                    param.algo_config.m = m;
+                    param.algo_config.n = n;
+                    param.algo_config.k = k;
+                    param.algo_config.algo_id = algo_ids[idx];
+                    param.algo_config.tile = tiles[tile_id];
+                    param.algo_config.swizzle = k;
+                    param.algo_config.custom_option = custom_option;
+                    param.algo_config.split_k_val = split_k_val;
+                    param.algo_config.reduction_scheme = reduction_scheme;
+                    param.algo_config.stages = stages[stage_id];
+                    params.emplace_back(param);
                     step++;
                   }
                 }
@@ -496,7 +486,10 @@ class CublasLtAlgoCache {
     std::sort(params.begin(), params.end(), compare_algo_time);
 
     size_t res_id = 0;
-    while (params[res_id].time == 0) res_id++;
+    while (params[res_id].time == 0.0) {
+      res_id++;
+      if (res_id >= params.size()) break;
+    }
 
     if (res_id >= params.size()) {
       VLOG(3) << "No algo can be used";
@@ -505,27 +498,25 @@ class CublasLtAlgoCache {
 
     VLOG(3) << "algo selected";
 
-    ret = params[res_id].algo;
     std::lock_guard<std::mutex> lock(cache_mutex_);
-    auto& algo_in_map = map_[seed];
-    algo_in_map = ret;
-    return &algo_in_map;
+    algo_caches_[seed] = params[res_id].algo;
+    return &algo_caches_[seed];
   }
 
-  // Serialize map_ to cache file
-  void serialize_algo_cache_file() {
+  // Serialize algo_caches_ to cache file
+  void SerializeAlgoCachesToFile() {
     if (search_times_ > 0) {
       int dev;
       cudaGetDevice(&dev);
       if (dev == 0) {
         std::ofstream outfile;
-        outfile.open(config_filename_, std::ios::out | std::ios::trunc);
+        outfile.open(algo_caches_file_, std::ios::out | std::ios::trunc);
         outfile << dynload::cublasLtGetCudartVersion() << std::endl;
 
-        for (const auto& p : map_) {
-          outfile << p.first << " ";
-          for (size_t i : p.second.data) {
-            outfile << i << " ";
+        for (const auto& [seed, algo] : algo_caches_) {
+          outfile << seed << " ";
+          for (size_t value : algo.data) {
+            outfile << value << " ";
           }
           outfile << std::endl;
         }
@@ -533,14 +524,14 @@ class CublasLtAlgoCache {
       }
     }
   }
-  ~CublasLtAlgoCache() { serialize_algo_cache_file(); }
+  ~CublasLtAlgoCache() { SerializeAlgoCachesToFile(); }
 
  private:
   explicit CublasLtAlgoCache(int search_times)
       : search_times_(search_times), has_config_file_(true) {
-    // Init map_ from cache file
+    // Init algo_caches_ from cache file
     std::ifstream infile;
-    infile.open(config_filename_);
+    infile.open(algo_caches_file_);
     if (!infile.is_open()) {
       has_config_file_ = false;
       VLOG(3) << "No CublasLtAlgoCache file found";
@@ -553,7 +544,7 @@ class CublasLtAlgoCache {
     VLOG(1) << "cublaslt_version " << cublaslt_version;
 
     if (dynload::cublasLtGetCudartVersion() != cublaslt_version) {
-      LOG(INFO) << config_filename_
+      LOG(INFO) << algo_caches_file_
                 << " is not compatible with current cublaslt_version "
                 << real_cublaslt_version;
       return;
@@ -565,14 +556,15 @@ class CublasLtAlgoCache {
           algo_data[7];
 
       for (int i = 0; i < 8; ++i) {
-        map_[seed].data[i] = algo_data[i];
+        algo_caches_[seed].data[i] = algo_data[i];
       }
     }
     infile.close();
   }
 
-  std::string config_filename_{"./paddle_cublaslt_cache"};
-  std::unordered_map<int64_t, cublasLtMatmulAlgo_t> map_;
+  std::string algo_caches_file_{"./cublaslt_algo_caches_from_paddle"};
+  std::unordered_map<int64_t, cublasLtMatmulAlgo_t> algo_caches_;
+  std::vector<CublasLtAlgoConfig> search_configs_;
   int search_times_;
   static constexpr int requested_algo_count_ = 100;
   std::mutex cache_mutex_;
