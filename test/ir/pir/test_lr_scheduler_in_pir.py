@@ -69,9 +69,11 @@ class TestReduceOnPlateauDecay(unittest.TestCase):
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.ReduceOnPlateau(learning_rate=0.5).step("test")
 
-        places = [paddle.CPUPlace()]
+        places = []
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
+        else:
+            places.append(paddle.CPUPlace())
 
         for place in places:
             for m, n in zip(

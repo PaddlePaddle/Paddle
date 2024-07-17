@@ -71,9 +71,12 @@ class TestTensorChecker(unittest.TestCase):
             skipped_op_list=["elementwise_div"],
             debug_step=[0, 3],
         )
-        places = ['cpu']
+        places = []
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
+        else:
+            places.append('cpu')
+            
         # check seed
         self.assertEqual(checker_config.initial_seed, 102)
         self.assertEqual(checker_config.seed, 102)
