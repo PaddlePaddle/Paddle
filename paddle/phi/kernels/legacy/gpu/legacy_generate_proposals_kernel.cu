@@ -169,7 +169,7 @@ void CUDAGenerateProposalsKernel(const Context &dev_ctx,
   scores_swap.Resize({num, h_score, w_score, c_score});
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  phi::funcs::Transpose<DeviceContext, T, 4> trans;
+  phi::funcs::Transpose<Context, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, *scores, &scores_swap, axis);
