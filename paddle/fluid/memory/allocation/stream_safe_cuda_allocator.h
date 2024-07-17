@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -82,7 +82,7 @@ class StreamSafeCUDAAllocator
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<platform::Place, std::vector<StreamSafeCUDAAllocator *>>
+  static std::map<phi::Place, std::vector<StreamSafeCUDAAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

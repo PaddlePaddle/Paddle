@@ -171,21 +171,21 @@ class PreparedOp {
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
   static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
                             const NameVarMap<VariableWrapper>& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
   static PreparedOp Prepare(const NameVarMap<egr::EagerVariable>& ins,
                             const NameVarMap<egr::EagerVariable>& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 

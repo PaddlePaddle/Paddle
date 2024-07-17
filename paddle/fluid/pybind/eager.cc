@@ -165,7 +165,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
       true,
-      paddle::platform::errors::Unavailable(
+      phi::errors::Unavailable(
           "Calling InitTensorWithNumpyValue of Eager Tensor without "
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
@@ -173,40 +173,40 @@ void InitTensorWithNumpyValue(TensorObject* self,
 
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
     phi::backends::xpu::SetXPUDeviceId(place.device);
     VLOG(4) << "CurrentDeviceId: "
             << phi::backends::xpu::GetXPUCurrentDeviceId() << " from "
             << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
     VLOG(4) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_cuda_pinned_place(place)) {
+  } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
     VLOG(4) << "CurrentDeviceId: "
             << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
             << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
     SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
@@ -221,7 +221,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
       true,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Calling InitStringTensorWithNumpyValue of Eager StringTensor "
           "without "
           "EmptyStringTensorInitializer is "
@@ -231,7 +231,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
       static_cast<phi::StringTensor*>(self->tensor.impl().get());
   phi::Place place = impl_ptr->place();
   auto array = obj.cast<py::array>();
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     SetStringTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -249,7 +249,7 @@ void InitDistTensorWithTensor(TensorObject* self,
 #ifdef PADDLE_WITH_DISTRIBUTE
   PADDLE_ENFORCE_EQ(src.is_dense_tensor(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "DistTensor can only initialize by DenseTensor"));
   self->tensor.set_name(name);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
@@ -301,7 +301,7 @@ void InitDistTensorWithTensor(TensorObject* self,
 #ifdef PADDLE_WITH_DISTRIBUTE
   PADDLE_ENFORCE_EQ(local_tensor.is_dense_tensor(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "DistTensor can only initialize by DenseTensor"));
   self->tensor.set_name(name);
   auto global_ddims = common::make_ddim(global_dims);
@@ -902,7 +902,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   PADDLE_ENFORCE_EQ(
       flag_,
       true,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Could not parse args and kwargs successfully, "
           "please check your input first and make"
           "sure you are on the right way. "
@@ -912,7 +912,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
   PADDLE_ENFORCE_NOT_NULL(
       self,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Calling __init__ of Eager Tensor without __new__ is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it."));
@@ -967,28 +967,28 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_dims,
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL dims is "
                 "forbidden. Please check your code and make sure you new a "
                 "dims before calling this constructor."));
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_name,
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL name is "
                 "forbidden. Please check your code and make sure you new a "
                 "name before calling this constructor."));
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_dtype,
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL dtype is "
                 "forbidden. Please check your code and make sure you new a "
                 "dtype before calling this constructor."));
 
         PADDLE_ENFORCE_NOT_NULL(
             kw_persistable,
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Calling __init__ of Eager Tensor with NULL persistable is "
                 "forbidden. Please check your code and make sure you new a "
                 "persistable before calling this constructor."));
@@ -1299,7 +1299,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
   PADDLE_ENFORCE_EQ(flag_,
                     true,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Could not parse args and kwargs successfully, "
                         "please check your input first and make"
                         "sure you are on the right way. "
@@ -1308,7 +1308,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
   PADDLE_ENFORCE_NOT_NULL(
       self,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Calling __init__ of Eager Tensor without __new__ is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it."));

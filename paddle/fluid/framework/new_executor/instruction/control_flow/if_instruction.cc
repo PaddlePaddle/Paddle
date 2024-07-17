@@ -45,7 +45,7 @@ namespace paddle {
 namespace framework {
 
 IfInstruction::IfInstruction(size_t id,
-                             const platform::Place& place,
+                             const phi::Place& place,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)
@@ -219,11 +219,11 @@ void IfInstruction::Run() {
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {
     auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
-    if (paddle::platform::is_cpu_place(cond_tensor.place())) {
+    if (phi::is_cpu_place(cond_tensor.place())) {
       cond = cond_tensor.data<bool>()[0];
     } else {
-      // when platform::is_gpu_place(cond.place()) or
-      // platform::is_xpu_place(cond.place()) is true
+      // when phi::is_gpu_place(cond.place()) or
+      // phi::is_xpu_place(cond.place()) is true
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       DeviceContext().Wait();
@@ -232,7 +232,7 @@ void IfInstruction::Run() {
           cond_tensor, phi::CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "This version of PaddlePaddle does NOT support GPU/XPU but got "
           "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
           "WITH_XPU option."));

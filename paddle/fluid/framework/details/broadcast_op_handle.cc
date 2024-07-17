@@ -68,7 +68,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 
   InitOutputValue(in_var_handle, out_var_handles);
 
-  if (platform::is_cpu_place(in_tensor.place())) {
+  if (phi::is_cpu_place(in_tensor.place())) {
     WaitInputVarGenerated();
     for (auto *out_var_handle : out_var_handles) {
       if (out_var_handle->IsTheSameVar(in_var_handle)) {
@@ -85,7 +85,7 @@ void BroadcastOpHandle::BroadcastOneVar(
             &VariableVisitor::GetMutableTensor(out_var));
       });
     }
-  } else if (platform::is_gpu_place(in_tensor.place())) {
+  } else if (phi::is_gpu_place(in_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     VarHandle *out_handle = nullptr;
     int root_id = in_tensor.place().device;  // NOLINT
@@ -249,8 +249,8 @@ void BroadcastOpHandle::InitOutputValue(
         out_var,
         platform::errors::NotFound("Variable %s is not found in scopes.",
                                    out_var_handle->name()));
-    if (platform::is_gpu_place(in_tensor.place())) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p),
+    if (phi::is_gpu_place(in_tensor.place())) {
+      PADDLE_ENFORCE_EQ(phi::is_gpu_place(t_out_p),
                         true,
                         platform::errors::PreconditionNotMet(
                             "Places of input and output must be all on GPU."));

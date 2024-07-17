@@ -98,7 +98,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
     auto* block = weight_only_linear->Op()->Block();
     auto* scope = param_scope();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
     auto permute_weight = [&](const std::string& input_name,
                               const std::string& scale_name,
