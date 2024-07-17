@@ -91,6 +91,8 @@ using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
+using paddle::dialect::SparseCooTensorType;
+using paddle::dialect::SparseCsrTensorType;
 using paddle::dialect::WhileOp;
 using pir::TuplePopOp;
 
@@ -983,6 +985,12 @@ phi::DataType GetTensorDtype(Type type) {
   }
   if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
     return dialect::TransToPhiDataType(dense_tensor_type.dtype());
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(sparse_coo_tensor_type.dtype());
+  } else if (auto sparse_csr_tensor_type =
+                 type.dyn_cast<SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(sparse_csr_tensor_type.dtype());
   } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
     return dialect::TransToPhiDataType(select_rows.dtype());
   } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
@@ -990,7 +998,8 @@ phi::DataType GetTensorDtype(Type type) {
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DenseTensorArrayType."));
+        "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
+        "SparseCsrTensorType."));
   }
 }
 phi::DataType GetValueDtype(Value value) {
@@ -1006,6 +1015,12 @@ const phi::DDim &GetTensorDims(Type type) {
     return dense_type.dims();
   } else if (auto select_rows_type = type.dyn_cast<SelectedRowsType>()) {
     return select_rows_type.dims();
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    return sparse_coo_tensor_type.dims();
+  } else if (auto sparse_csr_tensr_type =
+                 type.dyn_cast<SparseCsrTensorType>()) {
+    return sparse_csr_tensr_type.dims();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get shape for dense and selsect rows type."));
@@ -1206,6 +1221,10 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",
            [](Value self) { return self.type().isa<SelectedRowsType>(); })
+      .def("is_sparse_coo_tensor_type",
+           [](Value self) { return self.type().isa<SparseCooTensorType>(); })
+      .def("is_sparse_csr_tensor_type",
+           [](Value self) { return self.type().isa<SparseCsrTensorType>(); })
       .def("is_dense_tensor_array_type",
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("is_dist_dense_tensor_type",

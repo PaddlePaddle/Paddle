@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, in_dynamic_mode
-from paddle.base.framework import core, dygraph_only
+from paddle import _C_ops
+from paddle.base.framework import core, dygraph_only, in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 
 from .unary import cast
@@ -270,7 +270,7 @@ def add(x, y, name=None):
     if y.dtype != x.dtype:
         y = cast(y, None, x.dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_add(x, y)
     else:
         op_type = 'sparse_add'

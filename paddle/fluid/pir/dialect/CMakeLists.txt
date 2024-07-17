@@ -187,7 +187,7 @@ set(python_c_header_file_tmp ${python_c_header_file}.tmp)
 set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 
 set(trimmed_op_yaml_files
-    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
+    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml},${pir_op_fwd_sparse_yaml},${pir_op_bfd_sparse_yaml}
 )
 
 execute_process(
