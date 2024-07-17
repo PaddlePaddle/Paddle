@@ -168,7 +168,7 @@ class InferenceEngine:
             if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
                 self.re_do_d2s = True
                 print(
-                    f"{self.d2s_input_names[i]}'s rank is changed from {len(d2s_input_shapes[i])} to {len(input_tensor_lists[i].shape)}, need re do jit.save."
+                    f"{self.d2s_input_names[i]}'s rank is changed from {len(d2s_input_shapes[i])} to {len(input_tensor_lists[i].shape)}, need re do jit.save"
                 )
                 d2s_input_shapes[i] = input_tensor_lists[i].shape
                 continue
@@ -179,7 +179,7 @@ class InferenceEngine:
                 ):
                     self.re_do_d2s = True
                     print(
-                        f"{self.d2s_input_names[i]}'s shape is changed from {d2s_input_shapes[i]} to {input_tensor_lists[i].shape}, need re do jit.save."
+                        f"{self.d2s_input_names[i]}'s shape is changed from {d2s_input_shapes[i]} to {input_tensor_lists[i].shape}, need re do jit.save"
                     )
                     d2s_input_shapes[i][j] = -1
             sys.stdout.flush()
@@ -277,7 +277,7 @@ class InferenceEngine:
                 )
                 f.write(line)
         print(
-            f"the {func.__name__} function is sucessfully saved to {self.save_path}.pdmodel."
+            f"the {func.__name__} function is sucessfully saved to {self.save_path}.pdmodel"
         )
         sys.stdout.flush()
 
