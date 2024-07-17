@@ -86,13 +86,14 @@ struct BroadcastConfig {
   FastDivMod divmoders[phi::DDim::kMaxRank];
   uint32_t strides[phi::DDim::kMaxRank];
   int rank{0};
+  int in_numel{0};
 
   // BroadcastConfig should be defined on host used on device.
   BroadcastConfig() {}
 
   BroadcastConfig(const std::vector<int64_t>& out_dims,
                   const std::vector<int64_t>& in_dims,
-                  int dim_size) {
+                  int dim_size, int in_size) {
     for (int i = 0; i < dim_size; ++i) {
       divmoders[i] = FastDivMod(out_dims[i]);
     }
@@ -107,6 +108,7 @@ struct BroadcastConfig {
                        : strides[i];
     }
     rank = dim_size;
+    in_numel = in_size;
   }
 };
 
@@ -856,6 +858,23 @@ __device__ __forceinline__ void ReadDataBc(
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
   uint32_t index_src = 0;
 
+  using VecType = phi::kps::details::VectorType<T, NX>;
+  const VecType *__restrict__ vec_src = reinterpret_cast<const VecType *>(src);
+  uint32_t index_src0;
+  uint32_t idx_diff;
+  bool vecRead = false;
+
+  if (config.in_numel == 1) {
+    T temp = src[0];
+#pragma unroll
+    for (uint32_t nx = 0; nx < NX; ++nx) {
+      std::get<Index>(dst[nx]) = temp;
+    }
+    return;
+  }
+
+  T vec_temp[4];
+  VecType *__restrict__ vec_temp_ptr = reinterpret_cast<VecType *>(vec_temp);
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
     uint32_t index_output = thread_offset + nx;
@@ -872,7 +891,17 @@ __device__ __forceinline__ void ReadDataBc(
       index_output = fast_divmoder.val[0];
       index_src += fast_divmoder.val[1] * config.strides[i];
     }
-    std::get<Index>(dst[nx]) = src[index_src];
+
+    if (nx == 0 && index_src + NX <= config.in_numel) {
+      vecRead = true;
+      index_src0 = index_src / NX;
+      *vec_temp_ptr = vec_src[index_src0];
+      index_src0 *= NX;
+    }
+    idx_diff = index_src - index_src0;
+    T tmp = vec_temp[idx_diff & (NX - 1)];
+    std::get<Index>(dst[nx]) =
+        (idx_diff < NX && vecRead) ? tmp : src[index_src];
   }
 }
 
