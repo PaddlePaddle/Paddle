@@ -94,18 +94,20 @@ TEST(ConfigSearcher, TestSRReducePipeline) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Define the search space bounds and sampling probabilities.
-  constexpr int spatial_left_bound = 32;
-  constexpr int spatial_right_bound = 32;
-  constexpr int reduce_left_bound = 32;
-  constexpr int reduce_right_bound = 32;
+  constexpr int spatial_left_bound = 2;
+  constexpr int spatial_right_bound =
+      2;  // for easy test, set to 2. for the whole test, set to 4096
+  constexpr int reduce_left_bound = 2;
+  constexpr int reduce_right_bound =
+      2;  // for easy test : set to 2. for the whole test, set to 4096
   constexpr bool is_spatial_dynamic = true;
-  constexpr bool is_reduce_dynamic = false;
+  constexpr bool is_reduce_dynamic = true;
   // now each has the same weight
   constexpr double s_w = 0.05;
   constexpr double r_w = 0.05;
   constexpr double sampling_prob = 1.0;
-  constexpr int kMaxSamplingTimes = 1000;
-  constexpr int kRepeats = 80;
+  constexpr int kMaxSamplingTimes = 600;
+  constexpr int kRepeats = 10;
 
   // Define the initial grid size for the spatial and reduction dimensions
   int s_bucket_increasing_width = 0, r_bucket_increasing_width = 0;
@@ -199,11 +201,17 @@ TEST(ConfigSearcher, TestSRReducePipeline) {
           });
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] == 1 || candidate[2] == 2 ||
-                   candidate[2] == 4 ||
-                   candidate[2] >= 8 && candidate[2] < 32 &&
-                       candidate[2] % 8 == 0 ||
-                   candidate[2] >= 32 && candidate[2] % 32 == 0;
+            return candidate[2] == 1 || candidate[2] == 2;
+          });
+      constraints.emplace_back(
+          [](const cinn::ir::search::CandidateType& candidate) -> bool {
+            return candidate[2] <= candidate[1];
+          });
+      constraints.emplace_back(
+          [](const cinn::ir::search::CandidateType& candidate) -> bool {
+            return candidate[0] <= 4 ||
+                   candidate[0] <= 8 && candidate[0] % 2 == 0 ||
+                   candidate[0] % 4 == 0;
           });
 
       // Step 4: Construct searcher and search.
@@ -226,6 +234,9 @@ TEST(ConfigSearcher, TestSRReducePipeline) {
       LOG(INFO) << "min score = " << search_res.first;
       LOG(INFO) << "best candidate: "
                 << cinn::utils::Join<int64_t>(search_res.second, ", ");
+      if (r_dimension_lower * s_dimension_lower >= (2048 * 1024)) {
+        sleep(5);
+      }
     }
   }
 }
