@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from typing import Generator
 
     from paddle import Tensor, dtype
-    from python.paddle.nn.layer.layers import Layer
+    from paddle.nn.layer.layers import Layer
 
     _CustomList: TypeAlias = Union[list, tuple, set]
     _LayerList: TypeAlias = Union[
