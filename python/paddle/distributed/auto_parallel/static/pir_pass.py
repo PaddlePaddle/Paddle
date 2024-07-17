@@ -231,15 +231,20 @@ def remove_other_rank_op_pass(dist_program):
             op.erase()
 
 
-# pruning value not belong to cur rank
+# Pruning value not belong to cur rank
 # especially used for check_finite_and_unscale
 # and update_loss_scaling op in amp
+# For example, w0 on mesh0, w1 on mesh1, before pass, the ops is:
+#  [w0_g, w1_g], is_finite = check_finite_and_scale([w0_g, w1_g], loss_scaling)
+# after pass, on mesh0, the op is:
+#  [w0_g], is_finite = check_finite_and_scale([w0_g], loss_scaling)
+# Note that here we do not set the op_dist_attr, since it is not used
+# afterwards.
 def remove_other_rank_input_output_pass(dist_program):
     cur_rank = paddle.distributed.get_rank()
     for op in dist_program.global_block().ops[::-1]:
         if op.name() not in amp_ops:
             continue
-        print(op, flush=1)
         new_vars = []
         combine_op = op.operand_source(0).get_defining_op()
         for inner_operand in op.operand_source(0).get_defining_op().operands():
@@ -248,13 +253,14 @@ def remove_other_rank_input_output_pass(dist_program):
                 in inner_operand.source().dist_attr().process_mesh.process_ids
             ):
                 new_vars.append(inner_operand.source())
-                print(cur_rank, inner_operand, flush=1)
                 continue
         result = op.operand_source(0).get_defining_op().result(0)
         paddle.pir.set_insertion_point_after(combine_op)
         res = paddle._C_ops.builtin_combine(new_vars)
         result.replace_all_uses_with(res)
         combine_op.erase()
+        # since it is inplace op, set type of output as the same as input
+        op.result(0).set_type(res.type())
 
 
 # Note: this is the pass in the dense program

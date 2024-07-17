@@ -24,7 +24,6 @@ import numpy as np
 import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
-from paddle.amp.auto_cast import amp_global_state
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
 from paddle.framework import (
@@ -660,9 +659,8 @@ class Engine:
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
-                if self._strategy.amp.enable:
-                    amp_global_state().amp_dtype = self._strategy.amp.dtype
-                    with static.program_guard(dist_program, startup_program):
+                with static.program_guard(dist_program, startup_program):
+                    if self._strategy.amp.enable:
                         amp_lists = paddle.static.amp.decorator.AutoMixedPrecisionLists(
                             custom_white_list=self._strategy.amp.custom_white_list,
                             custom_black_list=self._strategy.amp.custom_black_list,
@@ -681,7 +679,7 @@ class Engine:
                             use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
                             use_amp_guard=self._strategy.amp.use_fp16_guard,
                             use_master_grad=self._strategy.amp.use_dynamic_loss_scaling,
-                            use_promote=self._strategy.amp.use_dynamic_loss_scaling,
+                            use_promote=self._strategy.amp.use_promote,
                         )
                         # bfloat16 needs no scaler
                         scaler = paddle.amp.GradScaler(
@@ -694,24 +692,28 @@ class Engine:
                             enable=self._strategy.amp.enable
                             and self._strategy.amp.dtype != 'bfloat16',
                         )
-                        scaled = scaler.scale(loss)
+                        with paddle.amp.auto_cast(enable=False):
+                            scaled = scaler.scale(loss)
                         scaler.minimize(self._optimizer, scaled)
                         # print('after minimize', dist_program, flush=1)
-                        # re-run apply_mix2dist_pass to dist accumulator.
-                        apply_mix2dist_pass(dist_program)
-                else:
-                    params_grads = paddle.autograd.ir_backward.append_backward(
-                        loss
-                    )
-                    self._optimizer._apply_optimize(
-                        loss, startup_program, params_grads=params_grads
-                    )
-                    # self._optimizer.minimize(loss, startup_program=startup_program)
+
+                    else:
+                        params_grads = (
+                            paddle.autograd.ir_backward.append_backward(loss)
+                        )
+                        self._optimizer._apply_optimize(
+                            loss, startup_program, params_grads=params_grads
+                        )
+                        # self._optimizer.minimize(loss, startup_program=startup_program)
 
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
                 )
+
+        # re-run apply_mix2dist_pass to dist accumulator.
+        apply_mix2dist_pass(dist_program)
+        print('program', startup_program, dist_program, flush=1)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
@@ -781,10 +783,16 @@ class Engine:
         self._pir_dist_main_progs[mode] = dist_program
 
     def _prepare_program(self, mode, init_parameters=True):
-        # Do the build process
-        self._build(mode)
-        # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
+            with paddle.amp.auto_cast(
+                enable=self._strategy.amp.enable,
+                custom_white_list=self._strategy.amp.custom_white_list,
+                custom_black_list=self._strategy.amp.custom_black_list,
+                level=self._strategy.amp.level,
+                dtype=self._strategy.amp.dtype,
+                use_promote=self._strategy.amp.use_promote,
+            ):
+                self._build(mode)
             self._parallel_pir(mode)
             # Init comm
             self._init_comm()
@@ -792,6 +800,10 @@ class Engine:
             self._initialize(mode, init_parameters)
             self._has_prepared[mode] = True
             return
+
+        # legacy program
+        # Do the build process
+        self._build(mode)
         # Do the planning process
         self._plan(mode)
         # Do the parallel process
@@ -1161,6 +1173,7 @@ class Engine:
                         var_name = op.str_attr("output_name")
                     else:
                         continue
+                    print('op', op, flush=1)
                     scope_var = global_scope().find_var(var_name)
                     if scope_var and scope_var.get_tensor()._is_initialized():
                         param = op.operand_source(0)
@@ -1177,9 +1190,15 @@ class Engine:
                             src_value = op.operand_source(0)
                             assert src_value.shape == global_shape
                             initial_op = src_value.get_defining_op()
-                            assert initial_op.name() == "pd_op.full"
-                            initial_op.set_int_array_attr("shape", local_shape)
-                            src_value.set_type(name_map_value[var_name].type())
+                            if initial_op.name() == "pd_op.full":
+                                initial_op.set_int_array_attr(
+                                    "shape", local_shape
+                                )
+                                src_value.set_type(
+                                    name_map_value[var_name].type()
+                                )
+                            # initial_op.name() == "pd_op.cast": # master_weight
+
                 for del_op in del_ops:
                     del_op.erase()
                 self._executor.run(startup_prog)

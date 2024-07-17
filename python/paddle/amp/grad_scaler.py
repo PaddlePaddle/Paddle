@@ -217,6 +217,7 @@ class AmpScaler:
                 var = var.astype('float32')
             if not self._use_dynamic_loss_scaling:
                 return var
+            print("====", var, self._scale, flush=1)
             return var * self._scale
 
         # NOTE(lizhiyu): We hack here to avoid changing the `dist_attr` of `self._scale` of 'no-calculation-rank'

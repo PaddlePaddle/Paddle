@@ -40,6 +40,7 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """
 
     if in_dynamic_or_pir_mode():
+        print('check_finite_and_unscale_', x, flush=1)
         x, found_inf = _C_ops.check_finite_and_unscale_(x, scale)
         return x, found_inf
 

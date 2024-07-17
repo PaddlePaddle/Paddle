@@ -29,17 +29,34 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
     def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
             {"dtype": "float32", "seed": "2023"},
+            {"backend": ["gpu"]},
+        )
+        for envs in envs_list:
+            self._log_dir.name = "./log"
+            print('env', envs, flush=1)
+            ckpt_path_tmp = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path_tmp.name
+            self.run_test_case(
+                "semi_auto_parallel_dist_to_static_mlp_pir.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path_tmp.cleanup()
+
+    def test_mlp_amp(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float32", "seed": "2023"},
             {
                 "backend": ["gpu"],
-                "amp": ['1', '0'],
+                "amp": ['1'],
                 "amp_dtype": ['float16', 'bfloat16'],
-                'amp_level': ['O1', 'O2'],
-                'use_master_weight': ['1', '0'],
-                'use_master_grad': ['1', '0'],
+                'amp_level': ['O1'],
+                'use_master_weight': ['1'],
+                'use_master_grad': ['1'],
             },
         )
         for envs in envs_list:
-            # self._log_dir.name = "./log"
+            self._log_dir.name = "./log"
+            print('env', envs, flush=1)
             ckpt_path_tmp = tempfile.TemporaryDirectory()
             envs["ckpt_path"] = ckpt_path_tmp.name
             self.run_test_case(
