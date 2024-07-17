@@ -1400,14 +1400,14 @@ class TestPIRConv3DAPI_Error(unittest.TestCase):
             # ValueError: filter num
             def run_8():
                 paddle.nn.Conv3D(
-                    in_channels=x_NCDHW_in_channel,
+                    in_channels=x_NDHWC_in_channel,
                     out_channels=0,
                     kernel_size=0,
                     stride=0,
                     padding=0,
                     dilation=0,
                     groups=1,
-                    data_format="NCDHW",
+                    data_format="NDHWC",
                 )(x)
 
             self.assertRaises(AssertionError, run_8)
