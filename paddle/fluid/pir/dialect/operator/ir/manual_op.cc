@@ -3031,19 +3031,15 @@ bool ExpandOp::InferSymbolicShape(
       const auto &dims_list =
           expand_shape_shape_or_data
               .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-      for (const auto &shape_data : dims_list) {
-        const auto &dim_expr = shape_data.data().has_value()
-                                   ? shape_data.data().value()[0]
-                                   : shape_data.shape()[0];
-        dims.emplace_back(dim_expr);
+      if (dims_list.size() == 1) {
+        dims = dims_list.at(0).data().value();
+      } else {
+        for (const auto &shape_data : dims_list) {
+          dims.emplace_back(shape_data.data()->at(0));
+        }
       }
     } else {
-      dims = expand_shape_shape_or_data.data().has_value()
-                 ? expand_shape_shape_or_data.data().value()
-                 : expand_shape_shape_or_data.shape();
-    }
-    if (dims.empty()) {
-      dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
+      dims = expand_shape_shape_or_data.data().value();
     }
     return dims;
   }();
