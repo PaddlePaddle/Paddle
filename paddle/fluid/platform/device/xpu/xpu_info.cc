@@ -176,7 +176,7 @@ class RecordedXPUMallocHelper {
   void Free(void* ptr, size_t size) {
     XPUDeviceGuard guard(dev_id_);
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetByPlace(XPUPlace(dev_id_));
+    auto* dev_ctx = pool.GetByPlace(phi::XPUPlace(dev_id_));
     dev_ctx->Wait();
     xpu_free(ptr);
     cur_size_.fetch_sub(size);
