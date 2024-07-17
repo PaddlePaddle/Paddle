@@ -26,6 +26,7 @@
 namespace paddle {
 namespace platform {
 
+template <typename T>
 using complex = phi::dtype::complex<T>;
 
 TEST(complex, conversion_cpu) {

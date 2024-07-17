@@ -30,6 +30,8 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle {
 namespace platform {
+
+template <typename T>
 using complex = phi::dtype::complex<T>;
 
 TEST(complex, conversion_on_gpu) {
