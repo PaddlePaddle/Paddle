@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 
+COMMON_DECLARE_string(cublaslt_device_best_config);
+
 namespace phi {
 namespace funcs {
 namespace cublaslt_internal {
@@ -187,6 +189,93 @@ class CublasLtAlgoCache {
         VLOG(3) << "CublasLtAlgoSelect Found in cache";
         return &algo_caches_[seed];
       } else {
+        if (search_configs_.empty()) {
+          FILE* fp;
+          std::string config_file_path = FLAGS_cublaslt_device_best_config;
+          fp = fopen(config_file_path.c_str(), "r");
+
+          if (fp) {
+            size_t workspace_size;
+            float time;
+            while (1) {
+              CublasLtAlgoConfig search_config;
+              fscanf(fp,
+                     "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%ld,%f",
+                     &search_config.m,
+                     &search_config.k,
+                     &search_config.n,
+                     &search_config.algo_id,
+                     &search_config.swizzle,
+                     &search_config.custom_option,
+                     &search_config.tile,
+                     &search_config.split_k_val,
+                     &search_config.reduction_scheme,
+                     &search_config.stages,
+                     &workspace_size,
+                     &time);
+              if (feof(fp)) break;
+              search_configs_.push_back(search_config);
+            }
+            VLOG(3) << "Loaded " << search_configs_.size() << " configs";
+          }
+        }
+        if (!search_configs_.empty()) {
+          for (const auto& search_config : search_configs_) {
+            if (search_config.n == n && search_config.k == k &&
+                m <= search_config.m) {
+              cublasLtMatmulAlgo_t algo;
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoInit(handle,
+                                                  compute_type,
+                                                  scale_type,
+                                                  b_type,
+                                                  a_type,
+                                                  c_type,
+                                                  c_type,
+                                                  search_config.algo_id,
+                                                  &algo));
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                      &algo,
+                      CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
+                      &search_config.custom_option,
+                      sizeof(search_config.custom_option)));
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                      &algo,
+                      CUBLASLT_ALGO_CONFIG_TILE_ID,
+                      &search_config.tile,
+                      sizeof(search_config.tile)));
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                      &algo,
+                      CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
+                      &search_config.split_k_val,
+                      sizeof(search_config.split_k_val)));
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                      &algo,
+                      CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING,
+                      &search_config.swizzle,
+                      sizeof(search_config.swizzle)));
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                      &algo,
+                      CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
+                      &search_config.reduction_scheme,
+                      sizeof(search_config.reduction_scheme)));
+              PADDLE_ENFORCE_GPU_SUCCESS(
+                  dynload::cublasLtMatmulAlgoConfigSetAttribute(
+                      &algo,
+                      CUBLASLT_ALGO_CONFIG_STAGES_ID,
+                      &search_config.stages,
+                      sizeof(search_config.stages)));
+              algo_caches_[seed] = algo;
+              return &algo_caches_[seed];
+            }
+          }
+        }
+
         // if we have cache but not found algo, and we don't want to search,
         // here return nullptr
         if (search_times_ <= 0) {
