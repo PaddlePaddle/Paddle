@@ -376,53 +376,12 @@ void GenerateProposalsKernel(const Context& ctx,
   rpn_roi_probs->Resize(common::make_ddim({num_proposals, 1}));
 }
 
-template <typename T, typename Context>
-void LegacyGenerateProposalsKernel(const Context& ctx,
-                                   const DenseTensor& scores,
-                                   const DenseTensor& bbox_deltas,
-                                   const DenseTensor& im_shape,
-                                   const DenseTensor& anchors,
-                                   const DenseTensor& variances,
-                                   int pre_nms_top_n,
-                                   int post_nms_top_n,
-                                   float nms_thresh,
-                                   float min_size,
-                                   float eta,
-                                   DenseTensor* rpn_rois,
-                                   DenseTensor* rpn_roi_probs,
-                                   DenseTensor* rpn_rois_num) {
-  GenerateProposalsKernel<T, Context>(ctx,
-                                      scores,
-                                      bbox_deltas,
-                                      im_shape,
-                                      anchors,
-                                      variances,
-                                      pre_nms_top_n,
-                                      post_nms_top_n,
-                                      nms_thresh,
-                                      min_size,
-                                      eta,
-                                      true,
-                                      rpn_rois,
-                                      rpn_roi_probs,
-                                      rpn_rois_num);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(generate_proposals,
                    CPU,
                    ALL_LAYOUT,
                    phi::GenerateProposalsKernel,
-                   float,
-                   double) {
-  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
-}
-
-PD_REGISTER_KERNEL(legacy_generate_proposals,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LegacyGenerateProposalsKernel,
                    float,
                    double) {
   kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
