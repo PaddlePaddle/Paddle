@@ -370,16 +370,14 @@ class InferenceEngine:
                 config.set_trt_dynamic_shape_info(
                     min_input_shape, max_input_shape, opt_input_shape
                 )
-                config.enable_tensorrt_engine(
-                    workspace_size=1 << 30,
-                    max_batch_size=1,
-                    min_subgraph_size=3,
-                    precision_mode=get_inference_precision(
-                        self.trt_precision_mode
-                    ),
-                    use_static=self.trt_use_static,
-                    use_calib_mode=False,
-                )
+            config.enable_tensorrt_engine(
+                workspace_size=1 << 30,
+                max_batch_size=1,
+                min_subgraph_size=3,
+                precision_mode=get_inference_precision(self.trt_precision_mode),
+                use_static=self.trt_use_static,
+                use_calib_mode=False,
+            )
 
         if self.predictor is not None:
             self.predictor = None
