@@ -92,7 +92,7 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
     }
     return pir::VectorType::get(ctx, vec_target_type);
   }
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
 }
 
