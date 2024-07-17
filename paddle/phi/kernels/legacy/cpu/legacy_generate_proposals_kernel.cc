@@ -159,8 +159,8 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   int64_t h_bbox = bbox_dim[2];
   int64_t w_bbox = bbox_dim[3];
 
-  rpn_rois->mutable_data<T>({bbox_deltas->numel() / 4, 4}, context.GetPlace());
-  rpn_roi_probs->mutable_data<T>({scores->numel(), 1}, context.GetPlace());
+  rpn_rois->mutable_data<T>({bbox_deltas->numel() / 4, 4}, dev_ctx.GetPlace());
+  rpn_roi_probs->mutable_data<T>({scores->numel(), 1}, dev_ctx.GetPlace());
 
   phi::DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
@@ -191,17 +191,17 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     scores_slice.Resize({h_score * w_score * c_score, 1});
 
     std::pair<phi::DenseTensor, phi::DenseTensor> tensor_pair =
-        ProposalForOneImage<>(dev_ctx,
-                              im_info_slice,
-                              anchors,
-                              variances,
-                              bbox_deltas_slice,
-                              scores_slice,
-                              pre_nms_top_n,
-                              post_nms_top_n,
-                              nms_thresh,
-                              min_size,
-                              eta);
+        ProposalForOneImage<T>(dev_ctx,
+                               im_info_slice,
+                               anchors,
+                               variances,
+                               bbox_deltas_slice,
+                               scores_slice,
+                               pre_nms_top_n,
+                               post_nms_top_n,
+                               nms_thresh,
+                               min_size,
+                               eta);
     phi::DenseTensor &proposals = tensor_pair.first;
     phi::DenseTensor &scores = tensor_pair.second;
 
