@@ -19,12 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/fp8_e4m3fn.h"
-#include "paddle/fluid/platform/fp8_e5m2.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
@@ -37,7 +37,7 @@ template <typename T>
 struct IsComplex : public std::false_type {};
 
 template <typename T>
-struct IsComplex<platform::complex<T>> : public std::true_type {};
+struct IsComplex<phi::dtype::complex<T>> : public std::true_type {};
 
 template <typename T>
 struct DataTypeTrait {};
@@ -53,24 +53,22 @@ struct DataTypeTrait<void> {
 #define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
   callback(cpp_type, ::paddle::framework::proto::VarType::proto_type);
 
-#define _ForEachDataType_(callback)                                \
-  _ForEachDataTypeHelper_(callback, float, FP32);                  \
-  _ForEachDataTypeHelper_(callback, ::phi::dtype::float16, FP16);  \
-  _ForEachDataTypeHelper_(callback, ::phi::dtype::bfloat16, BF16); \
-  _ForEachDataTypeHelper_(callback, double, FP64);                 \
-  _ForEachDataTypeHelper_(callback, int, INT32);                   \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64);               \
-  _ForEachDataTypeHelper_(callback, bool, BOOL);                   \
-  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);               \
-  _ForEachDataTypeHelper_(callback, int16_t, INT16);               \
-  _ForEachDataTypeHelper_(callback, int8_t, INT8);                 \
-  _ForEachDataTypeHelper_(                                         \
-      callback, ::paddle::platform::complex<float>, COMPLEX64);    \
-  _ForEachDataTypeHelper_(                                         \
-      callback, ::paddle::platform::complex<double>, COMPLEX128);  \
-  _ForEachDataTypeHelper_(                                         \
-      callback, ::paddle::platform::float8_e4m3fn, FP8_E4M3FN);    \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::float8_e5m2, FP8_E5M2);
+#define _ForEachDataType_(callback)                                           \
+  _ForEachDataTypeHelper_(callback, float, FP32);                             \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::float16, FP16);             \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::bfloat16, BF16);            \
+  _ForEachDataTypeHelper_(callback, double, FP64);                            \
+  _ForEachDataTypeHelper_(callback, int, INT32);                              \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                          \
+  _ForEachDataTypeHelper_(callback, bool, BOOL);                              \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                          \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16);                          \
+  _ForEachDataTypeHelper_(callback, int8_t, INT8);                            \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<float>, COMPLEX64); \
+  _ForEachDataTypeHelper_(                                                    \
+      callback, ::phi::dtype::complex<double>, COMPLEX128);                   \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::float8_e4m3fn, FP8_E4M3FN); \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::float8_e5m2, FP8_E5M2);
 
 #define _ForEachIntDataType_(callback)               \
   _ForEachDataTypeHelper_(callback, int, INT32);     \
@@ -79,15 +77,13 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int16_t, INT16); \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);
 
-#define _ForEachDataTypeSmall_(callback)                        \
-  _ForEachDataTypeHelper_(callback, float, FP32);               \
-  _ForEachDataTypeHelper_(callback, double, FP64);              \
-  _ForEachDataTypeHelper_(callback, int, INT32);                \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64);            \
-  _ForEachDataTypeHelper_(                                      \
-      callback, ::paddle::platform::complex<float>, COMPLEX64); \
-  _ForEachDataTypeHelper_(                                      \
-      callback, ::paddle::platform::complex<double>, COMPLEX128);
+#define _ForEachDataTypeSmall_(callback)                                      \
+  _ForEachDataTypeHelper_(callback, float, FP32);                             \
+  _ForEachDataTypeHelper_(callback, double, FP64);                            \
+  _ForEachDataTypeHelper_(callback, int, INT32);                              \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                          \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<float>, COMPLEX64); \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<double>, COMPLEX128);
 
 #define _ForEachDataTypeNormal_(callback)                         \
   _ForEachDataTypeHelper_(callback, float, FP32);                 \
@@ -103,20 +99,18 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int64_t, INT64);
 
 // It's only for DataParallel in HIP, bf16 not support in HIP.
-#define _ForEachDataTypeForHIP_(callback)                         \
-  _ForEachDataTypeHelper_(callback, float, FP32);                 \
-  _ForEachDataTypeHelper_(callback, ::phi::dtype::float16, FP16); \
-  _ForEachDataTypeHelper_(callback, double, FP64);                \
-  _ForEachDataTypeHelper_(callback, int, INT32);                  \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64);              \
-  _ForEachDataTypeHelper_(callback, bool, BOOL);                  \
-  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);              \
-  _ForEachDataTypeHelper_(callback, int16_t, INT16);              \
-  _ForEachDataTypeHelper_(callback, int8_t, INT8);                \
-  _ForEachDataTypeHelper_(                                        \
-      callback, ::paddle::platform::complex<float>, COMPLEX64);   \
-  _ForEachDataTypeHelper_(                                        \
-      callback, ::paddle::platform::complex<double>, COMPLEX128);
+#define _ForEachDataTypeForHIP_(callback)                                     \
+  _ForEachDataTypeHelper_(callback, float, FP32);                             \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::float16, FP16);             \
+  _ForEachDataTypeHelper_(callback, double, FP64);                            \
+  _ForEachDataTypeHelper_(callback, int, INT32);                              \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                          \
+  _ForEachDataTypeHelper_(callback, bool, BOOL);                              \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                          \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16);                          \
+  _ForEachDataTypeHelper_(callback, int8_t, INT8);                            \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<float>, COMPLEX64); \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<double>, COMPLEX128);
 
 #define DefineDataTypeTrait(cpp_type, proto_type)                           \
   template <>                                                               \

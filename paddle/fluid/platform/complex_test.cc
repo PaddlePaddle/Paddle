@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/common/complex.h"
 
 #include <complex>
 
@@ -25,6 +25,8 @@
 
 namespace paddle {
 namespace platform {
+
+using complex = phi::dtype::complex<T>;
 
 TEST(complex, conversion_cpu) {
   // *********** complex<float> *************

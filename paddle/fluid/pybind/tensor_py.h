@@ -45,10 +45,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/fp8_e4m3fn.h"
-#include "paddle/fluid/platform/fp8_e5m2.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
@@ -180,9 +180,9 @@ struct npy_format_descriptor<phi::dtype::bfloat16> {
   static constexpr auto name = _("bfloat16");
 };
 
-// we register paddle::platform::complex<float> as numpy.complex64.
+// we register phi::dtype::complex<float> as numpy.complex64.
 template <>
-struct npy_format_descriptor<paddle::platform::complex<float>> {
+struct npy_format_descriptor<phi::dtype::complex<float>> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX64);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -200,7 +200,7 @@ struct npy_format_descriptor<paddle::platform::complex<float>> {
 };
 
 template <>
-struct npy_format_descriptor<paddle::platform::complex<double>> {
+struct npy_format_descriptor<phi::dtype::complex<double>> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX128);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -218,7 +218,7 @@ struct npy_format_descriptor<paddle::platform::complex<double>> {
 };
 
 template <>
-struct npy_format_descriptor<paddle::platform::float8_e4m3fn> {
+struct npy_format_descriptor<phi::dtype::float8_e4m3fn> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E4M3FN_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -232,7 +232,7 @@ struct npy_format_descriptor<paddle::platform::float8_e4m3fn> {
 };
 
 template <>
-struct npy_format_descriptor<paddle::platform::float8_e5m2> {
+struct npy_format_descriptor<phi::dtype::float8_e5m2> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E5M2_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -294,8 +294,8 @@ struct ValidDTypeToPyArrayChecker {
 
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::bfloat16);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<float>);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<double>);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::complex<float>);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::complex<double>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
@@ -304,8 +304,8 @@ DECLARE_VALID_DTYPE_TO_PY_ARRAY(int16_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float8_e4m3fn);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float8_e5m2);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e4m3fn);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e5m2);
 
 inline std::string TensorDTypeToPyDTypeStr(
     framework::proto::VarType::Type type) {
@@ -316,9 +316,9 @@ inline std::string TensorDTypeToPyDTypeStr(
     } else if (std::is_same<T, phi::dtype::bfloat16>::value) {              \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
       return "H";                                                           \
-    } else if (std::is_same<T, platform::complex<float>>::value) {          \
+    } else if (std::is_same<T, phi::dtype::complex<float>>::value) {        \
       return "F";                                                           \
-    } else if (std::is_same<T, platform::complex<double>>::value) {         \
+    } else if (std::is_same<T, phi::dtype::complex<double>>::value) {       \
       return "D";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
@@ -546,13 +546,11 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
     SetTensorFromPyArrayT<phi::dtype::float16, P>(
         self, array, place, zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
-                 array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex<float>, P>(
+  } else if (py::isinstance<py::array_t<phi::dtype::complex<float>>>(array)) {
+    SetTensorFromPyArrayT<phi::dtype::complex<float>, P>(
         self, array, place, zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex<double>>>(
-                 array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
+  } else if (py::isinstance<py::array_t<phi::dtype::complex<double>>>(array)) {
+    SetTensorFromPyArrayT<phi::dtype::complex<double>, P>(
         self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
@@ -924,9 +922,9 @@ inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
     case framework::proto::VarType::BF16:
       return _sliceAndConcat<phi::dtype::bfloat16>(self, obj, dim);
     case framework::proto::VarType::COMPLEX64:
-      return _sliceAndConcat<paddle::platform::complex<float>>(self, obj, dim);
+      return _sliceAndConcat<phi::dtype::complex<float>>(self, obj, dim);
     case framework::proto::VarType::COMPLEX128:
-      return _sliceAndConcat<paddle::platform::complex<double>>(self, obj, dim);
+      return _sliceAndConcat<phi::dtype::complex<double>>(self, obj, dim);
     case framework::proto::VarType::FP32:
       return _sliceAndConcat<float>(self, obj, dim);
     case framework::proto::VarType::FP64:
