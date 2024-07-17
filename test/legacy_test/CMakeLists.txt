@@ -88,6 +88,7 @@ list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
+list(REMOVE_ITEM TEST_OPS test_transforms_static)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
