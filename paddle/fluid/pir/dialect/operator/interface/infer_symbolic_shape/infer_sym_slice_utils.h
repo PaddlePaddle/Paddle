@@ -53,17 +53,22 @@ inline void CheckAndUpdateSliceAttrs(
     int64_t axis = axes.at(i);
     int64_t start_i = 0;
     if (starts.at(i).isa<int64_t>()) {
-      starts.at(i) =
-          (starts.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
-              ? in_dims.at(axis)
-              : starts.at(i);
+      if (in_dims.at(axis).isa<int64_t>()) {
+        starts.at(i) =
+            (starts.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
+                ? in_dims.at(axis)
+                : starts.at(i);
+      }
       start_i = starts.at(i).Get<int64_t>();
     }
     int64_t end_i = 0;
     if (ends.at(i).isa<int64_t>()) {
-      ends.at(i) = (ends.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
-                       ? in_dims.at(axis)
-                       : ends.at(i);
+      if (in_dims.at(axis).isa<int64_t>()) {
+        ends.at(i) =
+            (ends.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
+                ? in_dims.at(axis)
+                : ends.at(i);
+      }
       end_i = ends.at(i).Get<int64_t>();
     }
 
