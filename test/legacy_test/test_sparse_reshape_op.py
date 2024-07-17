@@ -145,9 +145,11 @@ class TestReshape(unittest.TestCase):
         self.check_result([6, 2, 3], [-1, 1, 3], 'csr')
 
 
-devices = ['cpu']
+devices = []
 if paddle.device.get_device() != "cpu":
     devices.append(paddle.device.get_device())
+else:
+    devices.append('cpu')
 
 class TestSparseReshapeStatic(unittest.TestCase):
     """
@@ -167,22 +169,25 @@ class TestSparseReshapeStatic(unittest.TestCase):
         for device in devices:
             paddle.device.set_device(device)
             mask = paddle.randint(0, 2, x_shape)
+            n = 0
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, x_shape)
+                n += 1
+                if n > 10000:
+                    mask[0] = 1
+                    break
             origin_data = (
                 paddle.rand(x_shape, dtype='float32') + 1
             ) * mask.astype('float32')
-            sparse_data = origin_data.detach().to_sparse_coo(
-                sparse_dim=len(x_shape)
+            indices_data, values_data = (
+                origin_data.detach().to_sparse_coo(sparse_dim=len(x_shape)).indices(), 
+                origin_data.detach().to_sparse_coo(sparse_dim=len(x_shape)).values()
             )
-            indices_data = sparse_data.indices()
-            values_data = sparse_data.values()
 
             dense_x = origin_data
             dense_x.stop_gradient = False
             dense_out = paddle.reshape(dense_x, new_shape)
 
-            
             paddle.enable_static()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
