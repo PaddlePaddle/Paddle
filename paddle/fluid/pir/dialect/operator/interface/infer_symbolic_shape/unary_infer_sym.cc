@@ -771,8 +771,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   pir::Value operand_ends = op->operand_source(2);
   pir::Value res = op->result(0);
 
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      infer_context->GetShapeOrDataForValue(operand_source);
   const symbol::ShapeOrDataDimExprs &starts_shape_data =
       infer_context->GetShapeOrDataForValue(operand_starts);
   const symbol::ShapeOrDataDimExprs &ends_shape_data =
@@ -791,12 +789,13 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   infer_context->SetShapeOrDataForValue(
       res,
-      slice_utils::SliceRawInferSymbolicShape(operand_shape_or_data,
+      slice_utils::SliceRawInferSymbolicShape(operand_source,
                                               starts,
                                               ends,
                                               axes_vec,
                                               infer_flags,
-                                              decrease_axis));
+                                              decrease_axis,
+                                              infer_context));
 
   return true;
 }
