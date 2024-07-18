@@ -51,7 +51,9 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.jit.to_static(my_layer, backend="inference")
+        my_static_layer = paddle.jit.paddle_inference_decorator(
+            my_layer, backend="inference"
+        )
         result1 = my_layer(x).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
@@ -67,7 +69,7 @@ class TestToStaticInfenrenceTensorRTModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.jit.to_static(
+        my_static_layer = paddle.jit.paddle_inference_decorator(
             my_layer, backend="inference", with_trt=True
         )
         result1 = my_layer(x).numpy()
@@ -88,7 +90,9 @@ class TestToStaticInfenrenceFunc(Dy2StTestBase):
         result_x0 = my_layer(x).numpy()
         result_y0 = my_layer(y).numpy()
 
-        my_layer.func = paddle.jit.to_static(my_layer.func, backend="inference")
+        my_layer.func = paddle.jit.paddle_inference_decorator(
+            my_layer.func, backend="inference"
+        )
 
         result_x1 = my_layer(x).numpy()
         result_y1 = my_layer(y).numpy()

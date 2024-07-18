@@ -16,9 +16,11 @@
 from .api import ignore_module, load, not_to_static, save, to_static
 from .dy2static.logging_utils import set_code_level, set_verbosity
 from .dy2static.program_translator import enable_to_static
+from .inference import paddle_inference_decorator
 from .translated_layer import TranslatedLayer
 
 __all__ = [
+    'paddle_inference_decorator',
     'save',
     'load',
     'to_static',
