@@ -160,9 +160,9 @@ def init_communicator(
     if rank == 0 and wait_port:
         wait_server_ready(other_endpoints)
     if core.is_compiled_with_cuda():
-        use_new_comm = paddle.get_flags(
+        use_new_comm = paddle.get_flags("FLAGS_dynamic_static_unified_comm")[
             "FLAGS_dynamic_static_unified_comm"
-        )["FLAGS_dynamic_static_unified_comm"]
+        ]
         if use_new_comm:
             _init_parallel_env("nccl")
         else:
