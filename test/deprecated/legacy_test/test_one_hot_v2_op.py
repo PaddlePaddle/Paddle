@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -247,7 +248,10 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[-1, 4],
                     dtype="float32",
                 )
-                label.desc.set_need_check_feed(False)
+                if in_pir_mode():
+                    pass
+                else:
+                    label.desc.need_check_feed(False)
                 one_hot_label = paddle.nn.functional.one_hot(
                     x=label, num_classes=4
                 )
