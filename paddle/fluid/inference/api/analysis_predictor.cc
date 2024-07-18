@@ -2760,8 +2760,8 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
       int output_size = 0;
       paddle::PaddlePlace place;
       for (auto &name : output_names) {
-        auto output_ptr =
-            GetOutputTensor(name)->data<float>(&place, &output_size);
+        void *output_ptr =
+            GetOutputTensor(name)->data<void *>(&place, &output_size);
         infer_xpu_ctx->ClearL3Block(output_ptr);
       }
     });
