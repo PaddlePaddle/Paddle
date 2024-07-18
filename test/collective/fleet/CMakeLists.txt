@@ -473,21 +473,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
                                                                         "200")
-  if(WITH_COVERAGE)
-    bash_test_modules(
-      test_parallel_dygraph_tensor_parallel_with_pir
-      START_BASH
-      ../../legacy_test/dist_test.sh
-      TIMEOUT
-      "200"
-      LABELS
-      "RUN_TYPE=DIST"
-      ENVS
-      "FLAGS_enable_pir_api=1;PADDLE_DIST_UT_PORT=21244;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_parallel_dygraph_tensor_parallel_with_pir
-                         PROPERTIES TIMEOUT "200")
-  endif()
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(

@@ -42,7 +42,6 @@ test_fleet_meta_optimizer_base,LINUX;WIN32,,,,test_runner.py,2,,http_proxy=;http
 test_fleet_raw_program_meta_optimizer,,GPU;XPU,,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_sharding_parallel,,,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_tensor_parallel,,,200,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_parallel_dygraph_tensor_parallel_with_pir,,,200,DIST,../../legacy_test/dist_test.sh,2,,FLAGS_enable_pir_api=1;http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_COVERAGE
 test_parallel_dygraph_sep_parallel,,,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_group_sharded_api_for_eager,,,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_distributed_strategy,LINUX;WIN32,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
