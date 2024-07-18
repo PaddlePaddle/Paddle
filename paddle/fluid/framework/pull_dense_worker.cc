@@ -96,11 +96,10 @@ void PullDenseWorker::CreatePinVar() {
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       phi::DenseTensor* pin_tensor = ptr->GetMutable<phi::DenseTensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      pin_tensor->mutable_data<float>(tensor->dims(),
-                                      platform::CUDAPinnedPlace());
+      pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_XPU
-      pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
+      pin_tensor->mutable_data<float>(tensor->dims(), phi::CPUPlace());
 #endif
     }
   }
@@ -144,7 +143,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         memory::Copy(places_[i],
                      w,
-                     platform::CUDAPinnedPlace(),
+                     phi::GPUPinnedPlace(),
                      pin_w,
                      sizeof(float) * tensor->numel(),
                      copy_streams_[i]);
@@ -152,7 +151,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 #ifdef PADDLE_WITH_XPU
         memory::Copy(places_[i],
                      w,
-                     platform::CPUPlace(),
+                     phi::CPUPlace(),
                      pin_w,
                      sizeof(float) * tensor->numel());
 #endif

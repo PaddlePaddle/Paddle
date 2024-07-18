@@ -23,7 +23,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -33,7 +32,6 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
@@ -45,7 +43,6 @@ using cinn::common::CINNValuePack;
 
 std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
                                 const cinn::common::Target &target,
-                                poly::StageMap stages,
                                 const int &axis,
                                 const bool &is_ascend,
                                 const std::string &name) {
@@ -65,6 +62,9 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
       },
       [&](common::NVGPUArch) {
         find_func_name.assign("cinn_nvgpu_next_smallest_int32");
+      },
+      [&](common::HygonDCUArchHIP) {
+        find_func_name.assign("cinn_hip_next_smallest_int32");
       });
   if (is_ascend) {
     index_func_name =
@@ -124,13 +124,11 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
         return idx;
       },
       name);
-  stages->InsertLazily(positions);
   return {res, positions};
 }
 
 std::vector<ir::Tensor> Sort(const ir::Tensor &A,
                              const cinn::common::Target &target,
-                             poly::StageMap stages,
                              const int &axis,
                              const bool &is_ascend,
                              const std::string &name) {
@@ -138,8 +136,7 @@ std::vector<ir::Tensor> Sort(const ir::Tensor &A,
   if (pos_axis < 0) {
     pos_axis += A->shape.size();
   }
-  auto sort_index =
-      ArgSort(A, target, stages, pos_axis, is_ascend, name + "_index");
+  auto sort_index = ArgSort(A, target, pos_axis, is_ascend, name + "_index");
   auto res = Compute(
       A->shape,
       [=](const std::vector<Expr> &indices) {
@@ -148,7 +145,6 @@ std::vector<ir::Tensor> Sort(const ir::Tensor &A,
         return A(A_indices);
       },
       name);
-  stages->InsertLazily(sort_index.at(0));
   return {res, sort_index.at(0), sort_index.at(1)};
 }
 
@@ -179,20 +175,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out =
-            Sort(tensor_A, target, stages, axis, is_ascend, tensor_name);
-        stages->InsertLazily(out[0]);
+            Sort(tensor_A, target, axis, is_ascend, tensor_name);
+
         std::vector<CINNValue> res{
             CINNValue(out[0]), CINNValue(out[1]), CINNValue(out[2])};
         CHECK(!out_type.empty())
             << "Output type of Sort is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
+
         *ret = CINNValuePack{res};
       });
 
@@ -262,21 +257,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({tensor_A});
+
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     CHECK_EQ(pack_args.size(), 3U);
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();
-    auto out = ArgSort(tensor_A, target, stages, axis, is_ascend, tensor_name);
+    auto out = ArgSort(tensor_A, target, axis, is_ascend, tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out.at(0));
-    stages->InsertLazily(out.at(1));
     res.push_back(CINNValue(out.at(0)));
     res.push_back(CINNValue(out.at(1)));
     CHECK(!out_type.empty())
         << "Output type of ArgSort is empty! Please check.\n";
-    res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
@@ -319,113 +311,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
   return strategy;
 }
 
-std::vector<std::vector<int>> InferShapeForSort(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1UL)
-      << "The input's shape size should be 1! Please check again.";
-  int axis = 0;
-  for (auto &iter : attrs) {
-    if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
-      break;
-    }
-  }
-  if (inputs_shape[0].empty()) {
-    // 0D Tensor
-    CHECK(axis == 0 || axis == -1)
-        << "Axis must be 0 or -1 if input tensor is 0-dim";
-  } else {
-    if (axis < 0) {
-      axis += inputs_shape[0].size();
-    }
-    CHECK_GT(inputs_shape[0].size(), axis)
-        << "The input's dim should be greater than axis! ";
-  }
-
-  std::vector<std::vector<int>> res{inputs_shape[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForSort(const std::vector<Type> &inputs_type,
-                                    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 1UL)
-      << "The input's type size should be 1! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
-std::vector<std::vector<int>> InferShapeForArgSort(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1UL)
-      << "The input's shape size should be 1! Please check again.";
-  int axis = 0;
-  for (auto &iter : attrs) {
-    if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
-      break;
-    }
-  }
-  if (inputs_shape[0].empty()) {
-    // 0D Tensor
-    CHECK(axis == 0 || axis == -1)
-        << "Axis must be 0 or -1 if input tensor is 0-dim";
-  } else {
-    if (axis < 0) {
-      axis += inputs_shape[0].size();
-    }
-    CHECK_GT(inputs_shape[0].size(), axis)
-        << "The input's dim should be greater than axis! ";
-  }
-  std::vector<std::vector<int>> res{inputs_shape[0], inputs_shape[0]};
-
-  return res;
-}
-
-std::vector<Type> InferDtypeForArgSort(const std::vector<Type> &inputs_type,
-                                       const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 1UL)
-      << "The input's type size should be 1! Please check again.";
-  return {Int(32), Int(32)};
-}
-
-std::vector<std::vector<int>> InferShapeForTopK(
-    const std::vector<std::vector<int>> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1UL)
-      << "The input's shape size should be 1! Please check again.";
-  auto res = inputs_shape;
-  auto k_it = attrs.find("k");
-  CHECK(k_it != attrs.end()) << "The attr k of topk does not exist.";
-  int k = absl::get<int>(k_it->second);
-  auto axis_it = attrs.find("axis");
-  CHECK(axis_it != attrs.end()) << "The attr axis of topk does not exist.";
-  int axis = absl::get<int>(axis_it->second);
-
-  if (inputs_shape[0].empty()) {
-    // 0D Tensor
-    CHECK(axis == 0 || axis == -1)
-        << "Axis must be 0 or -1 if input tensor is 0-dim";
-  } else {
-    if (axis < 0) {
-      axis += inputs_shape[0].size();
-    }
-    CHECK_GE(axis, 0);
-    CHECK_LT(axis, res[0].size());
-    res[0][axis] = std::min(res[0][axis], k);
-  }
-  return {res[0], res[0]};
-}
-
-std::vector<Type> InferDtypeForTopK(const std::vector<Type> &inputs_type,
-                                    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 1UL)
-      << "The input's type size should be 1! Please check again.";
-  std::vector<Type> res{inputs_type[0], Int(64)};
-  return res;
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -438,8 +323,6 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSort)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSort))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForSort))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
@@ -450,10 +333,6 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_num_outputs(2)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForArgSort)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForArgSort))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForArgSort))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
@@ -464,8 +343,6 @@ CINN_REGISTER_HELPER(sort_ops) {
           "dimension..")
       .set_num_inputs(1)
       .set_num_outputs(2)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForTopK))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForTopK))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

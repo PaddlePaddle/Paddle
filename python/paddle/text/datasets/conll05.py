@@ -256,9 +256,7 @@ class Conll05st(Dataset):
                                     lbl_seq.append('B-' + cur_tag)
                                     is_in_bracket = True
                                 else:
-                                    raise RuntimeError(
-                                        'Unexpected label: %s' % l
-                                    )
+                                    raise RuntimeError(f'Unexpected label: {l}')
 
                             self.sentences.append(sentences)
                             self.predicates.append(verb_list[i])

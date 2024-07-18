@@ -127,7 +127,7 @@ def _is_gpu_float16_supported():
     Judge whether current gpu support float16 amp.
     """
     prop = paddle.device.cuda.get_device_capability()
-    return prop[0] >= 7
+    return prop[0] >= 7 or paddle.is_compiled_with_rocm()
 
 
 def _is_gpu_bfloat16_supported():
@@ -140,7 +140,7 @@ def _is_gpu_bfloat16_supported():
         cuda_version_check = int(cuda_version.split('.')[0]) >= 11
     else:
         cuda_version_check = False
-    return prop[0] >= 8 and cuda_version_check
+    return prop[0] >= 8 and cuda_version_check or paddle.is_compiled_with_rocm()
 
 
 def _is_xpu_float16_supported():
@@ -516,27 +516,26 @@ def amp_guard(
             or tracer._expected_place.is_custom_place()
         ):
             warnings.warn(
-                'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
-                % tracer._expected_place
+                f'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is {tracer._expected_place}, so it makes no effect.'
             )
             enable = False
         if enable:
             # For xpu:
             if tracer._expected_place.is_xpu_place():
                 if (dtype == 'float16') and not _is_xpu_float16_supported():
-                    xpu_verion = core.get_xpu_device_version(
-                        tracer._expected_place.get_device_id()
+                    xpu_version = core.get_xpu_device_version(
+                        _current_expected_place().get_device_id()
                     )
                     warnings.warn(
-                        '%d does not support float16 amp.' % xpu_verion
+                        f'{core.XPUVersion(xpu_version)} does not support float16 amp.'
                     )
                     enable = False
                 elif (dtype == 'bfloat16') and not _is_xpu_bfloat16_supported():
-                    xpu_verion = core.get_xpu_device_version(
-                        tracer._expected_place.get_device_id()
+                    xpu_version = core.get_xpu_device_version(
+                        _current_expected_place().get_device_id()
                     )
                     warnings.warn(
-                        '%d does not support bfloat16 amp.' % xpu_verion
+                        f'{core.XPUVersion(xpu_version)} does not support bfloat16 amp.'
                     )
                     enable = False
             # For custom device:
@@ -873,8 +872,7 @@ def amp_decorate(
     if save_dtype is not None:
         if save_dtype not in ['float16', 'bfloat16', 'float32', 'float64']:
             raise ValueError(
-                "save_dtype can only be float16 float32 or float64, but your input save_dtype is %s."
-                % save_dtype
+                f"save_dtype can only be float16 float32 or float64, but your input save_dtype is {save_dtype}."
             )
         for idx in range(len(models)):
             for layer in models[idx].sublayers(include_self=True):

@@ -35,7 +35,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
 #if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_RCCL)
-  place_ = platform::CUDAPlace(place_id);
+  place_ = phi::GPUPlace(place_id);
 #endif
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(
       trainer_desc.device_worker_name());
@@ -70,7 +70,7 @@ void PipelineTrainer::InitDumpEnv() {
 
 void PipelineTrainer::CopyParameters(int microbatch_id,
                                      const ProgramDesc& program,
-                                     const platform::Place& place) {
+                                     const phi::Place& place) {
   auto& global_block = program.Block(0);
 
   for (auto& var : global_block.AllVars()) {
@@ -89,7 +89,7 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
 }
 
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                     const platform::Place& place) {
+                                     const phi::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
       platform::errors::InvalidArgument("root_scope_ can not be nullptr"));

@@ -203,11 +203,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Construct a new AnalysisConfig from a combined model.
   ///
-  /// \param[in] prog_file model file path of the combined model.
-  /// \param[in] params_file params file path of the combined model.
+  /// \param[in] prog_file_or_model_dir model file path of the combined model or
+  /// the directory path containing the model. \param[in]
+  /// params_file_or_model_prefix params file path of the combined model or the
+  /// model prefix.
   ///
-  explicit AnalysisConfig(const std::string& prog_file,
-                          const std::string& params_file);
+  explicit AnalysisConfig(const std::string& prog_file_or_model_dir,
+                          const std::string& params_file_or_model_prefix);
   ///
   /// \brief Precision of inference.
   ///
@@ -229,11 +231,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Set the combined model with two specific paths for program and
   /// parameters.
   ///
-  /// \param prog_file_path model file path of the combined model.
-  /// \param params_file_path params file path of the combined model.
+  /// \param prog_file_path_or_model_dir_path model file path of the combined
+  /// model or the directory path containing the model. \param
+  /// params_file_path_or_model_prefix params file path of the combined model or
+  /// the model prefix.
   ///
-  void SetModel(const std::string& prog_file_path,
-                const std::string& params_file_path);
+  void SetModel(const std::string& prog_file_path_or_model_dir_path,
+                const std::string& params_file_path_or_model_prefix);
   ///
   /// \brief Set the model file path of a combined model.
   ///
@@ -889,18 +893,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void UseOptimizedModel(bool x = true) { use_optimized_model_ = x; }
 
-  void EnableDlnne(
-      int min_subgraph_size = 3,
-      int max_batch_size = 1,
-      bool use_static_batch = false,
-      std::string weight_share_mode = "0",
-      std::unordered_set<std::string> disable_nodes_by_outputs = {},
-      std::map<std::string, std::vector<int64_t>> input_dict = {},
-      bool use_calib_mode = false,
-      Precision precision_mode = Precision::kFloat32);
-
-  bool dlnne_enabled() const { return use_dlnne_; }
-
   ///
   /// \brief Control whether to debug IR graph analysis phase.
   /// This will generate DOT files for visualizing the computation graph after
@@ -1132,7 +1124,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// stream to the thread, and this behavior may be changed in the future.
   ///
   void EnableGpuMultiStream();
-  void PartiallyRelease();
 
   ///
   /// \brief Print the summary of config.
@@ -1187,6 +1178,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableCustomPasses(const std::vector<std::string>& passes,
                           bool custom_pass_only = false);
+
+  void DeletePass(const std::vector<std::string>& passes);
 
   ///
   /// \brief Set pir Optimization level.
@@ -1298,17 +1291,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool collect_shape_range_info_{false};
   std::string shape_range_info_path_;
 
-  // dlnne related.
-  bool use_dlnne_{false};
-  int dlnne_min_subgraph_size_{3};
-  int dlnne_max_batchsize_{1};
-  std::unordered_set<std::string> dlnne_disable_nodes_by_outputs_;
-  bool dlnne_use_static_batch_{true};
-  std::string dlnne_weight_share_mode_;
-  std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict_{};
-  bool dlnne_use_calib_mode_{false};
-  Precision dlnne_precision_mode_{Precision::kFloat32};
-
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool trt_engine_memory_sharing_{true};
@@ -1419,6 +1401,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool custom_pass_only_{false};
   int pm_opt_level_{2};
   std::vector<std::string> ir_debug_passes_;
+  std::vector<std::string> deleted_passes_;
 };
 
 }  // namespace paddle

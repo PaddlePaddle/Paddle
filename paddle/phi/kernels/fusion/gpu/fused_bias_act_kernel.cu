@@ -21,7 +21,6 @@ COMMON_DECLARE_bool(use_fast_math);
 namespace phi {
 namespace fusion {
 
-#ifndef PADDLE_WITH_HIP
 template <typename T,
           typename Functor,
           int VecSize,
@@ -432,7 +431,6 @@ void DispatchWithDtype(const Context &dev_ctx,
                        float quant_min_bound,
                        DenseTensor *out,
                        UnusedVersion) {}
-#endif
 
 template <typename T, typename Context>
 void FusedBiasActKernel(const Context &dev_ctx,
@@ -451,7 +449,6 @@ void FusedBiasActKernel(const Context &dev_ctx,
 #ifndef PADDLE_WITH_HIP
   int cols = x.dims()[x.dims().size() - 1];
   int rows = x.numel() / cols;
-
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
       DispatchWithDtype<phi::dtype::bfloat16, Context>(

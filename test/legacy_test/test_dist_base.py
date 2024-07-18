@@ -1674,9 +1674,9 @@ class TestDistBase(unittest.TestCase):
 
         if check_error_log:
             required_envs["GLOG_vmodule"] = (
-                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,"
+                "alloc_continuous_space_op=10,"
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10,"
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10,"
+                "gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10,"
                 "grpc_server=10,request_handler_impl=10,section_worker=10"
             )
             required_envs["GLOG_logtostderr"] = "1"
@@ -1697,22 +1697,13 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         log_name="",
     ):
-        if self._dygraph and (self._gloo_mode or self._nccl2_mode):
-            self.check_with_place_func(
-                model_file=model_file,
-                delta=delta,
-                check_error_log=check_error_log,
-                need_envs=need_envs,
-                log_name=log_name,
-            )
-        else:
-            self.check_with_place_func(
-                model_file=model_file,
-                delta=delta,
-                check_error_log=check_error_log,
-                need_envs=need_envs,
-                log_name=log_name,
-            )
+        self.check_with_place_func(
+            model_file=model_file,
+            delta=delta,
+            check_error_log=check_error_log,
+            need_envs=need_envs,
+            log_name=log_name,
+        )
 
     def check_with_place_func(
         self,

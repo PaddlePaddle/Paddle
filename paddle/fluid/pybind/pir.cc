@@ -40,6 +40,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -96,9 +97,9 @@ using paddle::dialect::SparseCsrTensorType;
 using paddle::dialect::WhileOp;
 using pir::TuplePopOp;
 
+using paddle::dialect::IntArrayAttribute;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
-
 using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
@@ -282,31 +283,47 @@ bool HasValueName(const Value &value) {
   }
 }
 
-std::string GetValueName(Value value) {
+std::optional<std::string> GetValueInputName(Value value) {
+  std::optional<std::string> name;
   if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    return param_op.param_name();
+    name = param_op.param_name();
   } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<StrAttribute>("name").AsString();
+    name = data_op.attribute<StrAttribute>("name").AsString();
   } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
     if (block_arg.is_kwarg()) {
-      return block_arg.keyword();
+      name = block_arg.keyword();
     } else {
-      return "arg_" + std::to_string(block_arg.index());
+      name = "arg_" + std::to_string(block_arg.index());
     }
-  } else if (IsUsedByShadowOutput(value)) {
+  }
+  return name;
+}
+
+std::optional<std::string> GetValueOutputName(Value value) {
+  std::optional<std::string> name;
+  if (IsUsedByShadowOutput(value)) {
     for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
       if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-        return iter->owner()->attribute<StrAttribute>("output_name").AsString();
+        name = iter->owner()->attribute<StrAttribute>("output_name").AsString();
+        break;
       }
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value which is "
-        "shadowoutput "));
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value that "
-        "is persistable"));
   }
+  return name;
+}
+
+std::string GetValueName(Value value) {
+  std::optional<std::string> input_name = GetValueInputName(value);
+  if (input_name.has_value()) return input_name.value();
+
+  VLOG(5) << "GetValueInputName(value) return empty, try to "
+             "GetValueOutputName(value).";
+  std::optional<std::string> output_name = GetValueOutputName(value);
+  if (output_name.has_value()) return output_name.value();
+
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Currently, we can only get name of Value from "
+      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
 }
 
 py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
@@ -549,7 +566,11 @@ void BindProgram(py::module *m) {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
                }
              }
-           });
+           })
+      .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
+      });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -669,10 +690,15 @@ void BindBlock(py::module *m) {
              }
              return param_list;
            })
-      .def("refresh_stopgradient", [](Block &self) {
-        for (auto &op : self) {
-          RefreshOpStopgradients(&op);
-        }
+      .def("refresh_stopgradient",
+           [](Block &self) {
+             for (auto &op : self) {
+               RefreshOpStopgradients(&op);
+             }
+           })
+      .def("_sync_with_cpp", [](const Block &self) {
+        // It's not need _sync_with_cpp in pir, but it's necessary in old static
+        // graph. Add empyt function to avoid python call error.
       });
 }
 
@@ -765,6 +791,14 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name,
                  pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
+      .def("set_int_array_attr",
+           [](Operation &self,
+              std::string &attr_name,
+              const std::vector<int64_t> &val) {
+             auto attr = IntArrayAttribute::get(pir::IrContext::Instance(),
+                                                phi::IntArray(val));
+             self.set_attribute(attr_name, attr);
            })
       .def("attrs",
            [](Operation &self) -> py::dict {
@@ -1113,7 +1147,8 @@ pir::Value apply(Value self, py::object func) {
           return py::cast<py::none>(Py_None);                                \
         }                                                                    \
         auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
-        py::object obj = py::object(py::handle(py_data), true);              \
+        py::object obj =                                                     \
+            py::reinterpret_borrow<py::object>(py::handle(py_data));         \
         return obj;                                                          \
       },                                                                     \
       [](Value self, py::object obj) {                                       \
@@ -1168,6 +1203,20 @@ void BindValue(py::module *m) {
           [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly("has_name",
                              [](Value self) { return HasValueName(self); })
+      // Return all Maybe names of given Value, for example:
+      // DataOp("var_1") -> %0 -> shadow_output("output_2")
+      // Return ["var_1", "output_2"]
+      .def_property_readonly(
+          "_names",
+          [](Value self) -> py::list {
+            py::list all_names;
+            std::optional<std::string> input_name = GetValueInputName(self);
+            if (input_name.has_value()) all_names.append(input_name.value());
+
+            std::optional<std::string> output_name = GetValueOutputName(self);
+            if (output_name.has_value()) all_names.append(output_name.value());
+            return all_names;
+          })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1287,20 +1336,20 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
-      .def("dist_attr",
-           [](Value self) -> py::object {
-             auto type = self.type();
-             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
-      .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+      .def("update_dist_attr",
+           [](Value &self, TensorDistAttribute dist_attr) {
+             self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+           })
+      .def_property_readonly("process_mesh", [](Value &self) -> py::object {
+        auto type = self.type();
+        if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+          return py::cast(
+              dist_type.tensor_dist_attr().process_mesh_attr().process_mesh());
+        } else {
+          return py::cast<py::none>(Py_None);
+        }
       });
 }
 
@@ -1346,14 +1395,6 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
-      .def("dist_attr",
-           [](Type self) -> py::object {
-             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
-               return py::cast(dist_type.tensor_dist_attr());
-             } else {
-               return py::cast<py::none>(Py_None);
-             }
-           })
       .def_property(
           "_local_shape",
           [](Type self) {
@@ -1372,6 +1413,13 @@ void BindType(py::module *m) {
            [](Type self) -> py::object {
              if (auto vec_type = self.dyn_cast<VectorType>()) {
                return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_dist_type",
+           [](Type &self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type);
              }
              return py::cast<py::none>(Py_None);
            })
@@ -2432,8 +2480,7 @@ void InferSymbolicShapePass(
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (pir::shape::HasDynamicShape(program) &&
-      FLAGS_pir_apply_shape_optimization_pass) {
+  if (FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
@@ -2569,6 +2616,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                }
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
+                   LOG(ERROR)
+                       << "expect[" << i << "]: " << expect.at(i) << " actual["
+                       << i << "]: " << actual.at(i) << " .";
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2600,6 +2650,21 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
         return pir::ShapeAnalysisManager::Instance().Get(program);
       },
       return_value_policy::reference);
+  m->def("all_ops_defined_symbol_infer",
+         [](const pir::Program *program) -> bool {
+           // check that all ops have defined the InferSymbolicShapeInterface
+           bool flag = true;
+           for (pir::Operation &op : *(program->block())) {
+             pir::InferSymbolicShapeInterface infer_interface =
+                 op.dyn_cast<pir::InferSymbolicShapeInterface>();
+             if (!infer_interface) {
+               LOG(ERROR) << "The op: " << op.name()
+                          << " does not implement InferSymbolicShapeInterface.";
+               flag = false;
+             }
+           }
+           return flag;
+         });
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>

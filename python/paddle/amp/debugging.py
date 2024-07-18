@@ -88,7 +88,7 @@ def check_layer_numerics(func):
             ...         return x @ self._w + self._b
             ...
             >>> dtype = 'float32'
-            >>> x = paddle.rand([10, 2, 2], dtype=dtype)
+            >>> x = paddle.rand([10, 2, 2], dtype=dtype) # type: ignore[arg-type]
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)
@@ -287,12 +287,6 @@ class TensorCheckerConfig:
                 "AMP Debugging TensorCheckerConfig: FLAGS_cudnn_deterministic is ",
                 flag,
             )
-
-        paddle.set_flags({"FLAGS_cpu_deterministic": flag})
-        print(
-            "AMP Debugging TensorCheckerConfig: FLAGS_cpu_deterministic is ",
-            flag,
-        )
 
     def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})

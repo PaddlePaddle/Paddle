@@ -23,6 +23,15 @@ inline static double trapezoidArea(double X1, double X2, double Y1, double Y2) {
   return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
 }
 
+inline static size_t compute_max_bytes(int64_t *dest,
+                                       const long *src,  // NOLINT
+                                       const int num_thresholds,
+                                       const int slide_steps) {
+  return reinterpret_cast<const char *>(src + (num_thresholds + 1) *
+                                                  (slide_steps + 1)) -
+         reinterpret_cast<const char *>(dest);
+}
+
 template <typename T>
 void statAuc(const DenseTensor &label,
              const DenseTensor &predict,
@@ -167,7 +176,22 @@ void AucKernel(const Context &dev_ctx,
       is_fake_data = true;
     }
   }
+  size_t required_bytes =
+      ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
+      sizeof(int64_t);
   if (stat_pos_in_tensor != stat_pos_out) {
+    size_t max_bytes = compute_max_bytes(
+        origin_stat_pos,
+        reinterpret_cast<const long *>(pos_in_data),  // NOLINT
+        num_thresholds,
+        slide_steps);
+    PADDLE_ENFORCE_LE(required_bytes,
+                      max_bytes,
+                      phi::errors::PreconditionNotMet(
+                          "The number of bytes to be copied %d must be less "
+                          "than or equal to the maximum number of bytes %d. ",
+                          required_bytes,
+                          max_bytes));
     memcpy(
         origin_stat_pos,
         pos_in_data,
@@ -175,6 +199,18 @@ void AucKernel(const Context &dev_ctx,
             sizeof(int64_t));
   }
   if (stat_neg_in_tensor != stat_neg_out) {
+    size_t max_bytes = compute_max_bytes(
+        origin_stat_neg,
+        reinterpret_cast<const long *>(neg_in_data),  // NOLINT
+        num_thresholds,
+        slide_steps);
+    PADDLE_ENFORCE_LE(required_bytes,
+                      max_bytes,
+                      phi::errors::PreconditionNotMet(
+                          "The number of bytes to be copied %d must be less "
+                          "than or equal to the maximum number of bytes %d. ",
+                          required_bytes,
+                          max_bytes));
     memcpy(
         origin_stat_neg,
         neg_in_data,

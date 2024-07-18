@@ -66,7 +66,7 @@ __global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
 template <typename T>
 __global__ void ClipAndQuantKernel(const T *in,
                                    const T *scale,
-                                   const int bin_cnt,
+                                   const int qmax,
                                    const int round_type,
                                    const int n,
                                    T *out) {
@@ -77,22 +77,32 @@ __global__ void ClipAndQuantKernel(const T *in,
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
   ComputeDataType inv_s = inverse(s);
-  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+  ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
-      x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = qmax_t * inv_s * x;
+      if (qmax_t == static_cast<ComputeDataType>(448)) {
+        x = float8_e4m3fn(x);
+      } else if (qmax_t == static_cast<ComputeDataType>(57344)) {
+        x = float8_e5m2(x);
+      } else {
+        x = roundWithTiesToEven(x);
+      }
+      ComputeDataType max_bound = qmax_t;
+      ComputeDataType min_bound = -qmax_t - static_cast<ComputeDataType>(1);
+      if (qmax_t == static_cast<ComputeDataType>(448) ||
+          qmax_t == static_cast<ComputeDataType>(57344)) {
+        min_bound = -qmax_t;
+      }
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out[i] = static_cast<T>(x);
     } else {
       ComputeDataType v = x > s ? s : x;
       v = v < -s ? -s : v;
-      v = bin_cnt_t * inv_s * v;
+      v = qmax_t * inv_s * v;
       out[i] = static_cast<T>(round(v));
     }
   }
@@ -196,7 +206,7 @@ template <typename Context, typename T>
 void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
                                                      const DenseTensor &in,
                                                      const DenseTensor &scale,
-                                                     const int bin_cnt,
+                                                     const int qmax,
                                                      const int round_type,
                                                      DenseTensor *out) {
   int num = in.numel();
@@ -208,7 +218,7 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
   T *out_data = ctx.template Alloc<T>(out);
 
   ClipAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
-      in_data, scale_data, bin_cnt, round_type, num, out_data);
+      in_data, scale_data, qmax, round_type, num, out_data);
 }
 
 template <typename Context, typename T>
@@ -360,7 +370,7 @@ void FindChannelAbsMaxFunctor<Context, T>::operator()(
 template <typename T>
 __global__ void ChannelClipAndQuantKernelQuantAxis0(const T *in,
                                                     const T *scale,
-                                                    const int bin_cnt,
+                                                    const int qmax,
                                                     const int round_type,
                                                     const int64_t n,
                                                     const int c,
@@ -375,22 +385,32 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T *in,
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[blockIdx.x]);
   ComputeDataType inv_s = inverse(s);
-  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+  ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in_c[i]);
     if (round_type == 0) {
-      x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = qmax_t * inv_s * x;
+      if (qmax_t == static_cast<ComputeDataType>(448)) {
+        x = float8_e4m3fn(x);
+      } else if (qmax_t == static_cast<ComputeDataType>(57344)) {
+        x = float8_e5m2(x);
+      } else {
+        x = roundWithTiesToEven(x);
+      }
+      ComputeDataType max_bound = qmax_t;
+      ComputeDataType min_bound = -qmax_t - static_cast<ComputeDataType>(1);
+      if (qmax_t == static_cast<ComputeDataType>(448) ||
+          qmax_t == static_cast<ComputeDataType>(57344)) {
+        min_bound = -qmax_t;
+      }
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out_c[i] = static_cast<T>(x);
     } else {
       ComputeDataType v = x > s ? s : x;
       v = v < -s ? -s : v;
-      v = bin_cnt_t * inv_s * v;
+      v = qmax_t * inv_s * v;
       out_c[i] = static_cast<T>(round(v));
     }
   }
@@ -400,7 +420,7 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T *in,
 template <typename T>
 __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
                                                     const T *scale,
-                                                    const int bin_cnt,
+                                                    const int qmax,
                                                     const int round_type,
                                                     const int64_t n,
                                                     const int nScale,
@@ -408,24 +428,34 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
                                                     T *out) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   using ComputeDataType = typename QuantizeDataType<T>::type;
-  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+  ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType s =
         static_cast<ComputeDataType>(scale[(i / quant_stride) % nScale]);
     ComputeDataType inv_s = inverse(s);
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
-      x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = qmax_t * inv_s * x;
+      if (qmax_t == static_cast<ComputeDataType>(448)) {
+        x = float8_e4m3fn(x);
+      } else if (qmax_t == static_cast<ComputeDataType>(57344)) {
+        x = float8_e5m2(x);
+      } else {
+        x = roundWithTiesToEven(x);
+      }
+      ComputeDataType max_bound = qmax_t;
+      ComputeDataType min_bound = -qmax_t - static_cast<ComputeDataType>(1);
+      if (qmax_t == static_cast<ComputeDataType>(448) ||
+          qmax_t == static_cast<ComputeDataType>(57344)) {
+        min_bound = -qmax_t;
+      }
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out[i] = static_cast<T>(x);
     } else {
       ComputeDataType v = x > s ? s : x;
       v = v < -s ? -s : v;
-      v = bin_cnt_t * inv_s * v;
+      v = qmax_t * inv_s * v;
       out[i] = static_cast<T>(round(v));
     }
   }
@@ -436,7 +466,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
     const Context &ctx,
     const DenseTensor &in,
     const DenseTensor &scale,
-    const int bin_cnt,
+    const int qmax,
     const int round_type,
     const int quant_axis,
     DenseTensor *out) {
@@ -450,7 +480,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
     int grid = in_dims[0];
     int block = 1024;
     ChannelClipAndQuantKernelQuantAxis0<T><<<grid, block, 0, ctx.stream()>>>(
-        in_data, scale_data, bin_cnt, round_type, num, in_dims[0], out_data);
+        in_data, scale_data, qmax, round_type, num, in_dims[0], out_data);
   } else {
     int quant_stride = 1;
     for (int i = quant_axis + 1; i < in_dims.size(); i++) {
@@ -468,7 +498,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
     ChannelClipAndQuantKernelQuantAxisN<T>
         <<<grid_size, block_size>>>(in_data,
                                     scale_data,
-                                    bin_cnt,
+                                    qmax,
                                     round_type,
                                     num,
                                     in_dims[quant_axis],

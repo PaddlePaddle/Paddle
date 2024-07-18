@@ -54,7 +54,7 @@ void validate(const std::string& op_type,
   PADDLE_ENFORCE_GE(
       supports_tensor_formats.count(tensor_format),
       0,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "custorm op [%s] has unsupported tensor format: [%s], "
           "now only support: [LINEAR, CHW32, CHW2, HWC8, CHW4, DHWC8(TensorRT "
           "7.2 and after), HWC16(TensorRT 8.0 and after)].",
@@ -66,7 +66,7 @@ void validate(const std::string& op_type,
     PADDLE_ENFORCE_GE(
         supports_formats_tmp.count(tensor_format),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "custorm op [%s]: float32 only supports [LINEAR, CHW32], "
             "but got tensor format: [%s], ",
             op_type,
@@ -83,7 +83,7 @@ void validate(const std::string& op_type,
 #endif
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "custorm op [%s]: float16 only supports [LINEAR, "
                           "CHW2, HWC8, CHW4, DHWC8(TensorRT 7.2 and after), "
                           "HWC16(TensorRT 8.0 and after)], "
@@ -97,7 +97,7 @@ void validate(const std::string& op_type,
     PADDLE_ENFORCE_GE(
         supports_formats_tmp.count(tensor_format),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "custorm op [%s]: int8 only supports [LINEAR, CHW32, CHW4], "
             "but got tensor format: [%s], ",
             op_type,
@@ -107,7 +107,7 @@ void validate(const std::string& op_type,
     std::unordered_set<std::string> supports_formats_tmp = {"LINEAR"};
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "custorm op [%s]: int32 only supports [LINEAR], "
                           "but got tensor format: [%s], ",
                           op_type,
@@ -469,7 +469,7 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                  void* const* outputs,
                                  void* workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
-  platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  phi::GPUPlace place(platform::GetCurrentDeviceId());
   // TODO(inference): custom generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](GenerateCustomGenericPluginDataType proto_type,

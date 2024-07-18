@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using bfloat16 = paddle::platform::bfloat16;
+using bfloat16 = phi::dtype::bfloat16;
 
 TEST(bfloat16, conversion_cpu) {
   // Conversion from float
@@ -129,8 +129,8 @@ TEST(bfloat16, floating) {
   PADDLE_ENFORCE_EQ(
       std::is_floating_point<bfloat16>::value,
       true,
-      platform::errors::Fatal("std::is_floating_point with bfloat16 data type "
-                              "should be equal to true but it is not"));
+      phi::errors::Fatal("std::is_floating_point with bfloat16 data type "
+                         "should be equal to true but it is not"));
 }
 
 TEST(bfloat16, print) {

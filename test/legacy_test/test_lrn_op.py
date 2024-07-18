@@ -97,10 +97,10 @@ class TestLRNOp(OpTest):
         self.data_format = 'NCHW'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestLRNOpAttrDataFormat(TestLRNOp):

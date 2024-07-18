@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/as_strided_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -24,6 +27,11 @@ void AsStridedKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& stride,
                      int64_t offset,
                      DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   auto meta = out->meta();
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));

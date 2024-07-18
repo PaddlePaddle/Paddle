@@ -36,6 +36,7 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
+  "fusion/fp8_gemm/fp8_gemm_with_cublasLt/*.cu"
   "fusion/gpu/*.cu")
 
 file(
@@ -231,6 +232,7 @@ if(WITH_ROCM)
     kernel_gpu
     "gpu/affine_grid_grad_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
+    "gpu/calc_reduced_attn_kernel.cu"
     "gpu/cholesky_solve_kernel.cu"
     "gpu/eigh_kernel.cu"
     "gpu/eigvalsh_kernel.cu"

@@ -18,8 +18,7 @@
 
 #include "paddle/fluid/jit/engine/base_engine.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
     const std::string &name) const {
@@ -46,5 +45,4 @@ std::shared_ptr<CompilationUnit> CompilationUnit::Clone(void *stream) {
   return x;
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

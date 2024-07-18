@@ -238,22 +238,21 @@ def img_conv_group(
     conv_batchnorm_drop_rate = __extend_list__(conv_batchnorm_drop_rate)
 
     for i in range(len(conv_num_filter)):
-        local_conv_act = conv_act
-        if conv_with_batchnorm[i]:
-            local_conv_act = None
-
-        tmp = paddle.static.nn.conv2d(
-            input=tmp,
-            num_filters=conv_num_filter[i],
-            filter_size=conv_filter_size[i],
+        conv_layer = paddle.nn.Conv2D(
+            in_channels=tmp.shape[1],
+            out_channels=conv_num_filter[i],
+            kernel_size=conv_filter_size[i],
             padding=conv_padding[i],
-            param_attr=param_attr[i],
-            act=local_conv_act,
-            use_cudnn=use_cudnn,
+            weight_attr=param_attr[i],
         )
+        tmp = conv_layer(tmp)
 
         if conv_with_batchnorm[i]:
-            tmp = paddle.static.nn.batch_norm(input=tmp, act=conv_act)
+            bn_layer = paddle.nn.BatchNorm(
+                num_channels=conv_num_filter[i], act=conv_act
+            )
+            tmp = bn_layer(tmp)
+
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
                 tmp = paddle.nn.functional.dropout(x=tmp, p=drop_rate)

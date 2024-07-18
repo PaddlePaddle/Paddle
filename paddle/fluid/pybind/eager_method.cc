@@ -76,7 +76,7 @@ namespace paddle::pybind {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
-                                     const paddle::platform::Place& place,
+                                     const phi::Place& place,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
@@ -88,7 +88,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
     PADDLE_ENFORCE_EQ(
         tensor.initialized(),
         true,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "We can only support initialized tensor in slice, however we got "
             "uninitialized tensor %s, please check your code.",
             tensor.name()));
@@ -154,8 +154,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   EAGER_TRY
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -174,8 +174,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto tensor_dims = self->tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
-  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+  Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+  Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (self->tensor.is_dense_tensor()) {
@@ -225,11 +225,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   phi::DenseTensor cpu_tensor;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -356,7 +356,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #endif
 #if defined(PADDLE_WITH_XPU)
   } else if (self->tensor.is_xpu()) {
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -468,8 +468,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
     VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
                "numpy array.";
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[phi::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -562,8 +562,8 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
 }
 
 static void IncreaseTensorReferenceCountUntilCopyComplete(
-    const paddle::Tensor& tensor, const platform::Place& place) {
-  auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
+    const paddle::Tensor& tensor, const phi::Place& place) {
+  auto place_ = phi::is_gpu_place(place) ? place : tensor.place();
 
   auto tracer = egr::Controller::Instance().GetCurrentTracer();
   auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
@@ -738,7 +738,7 @@ static PyObject* tensor_method_clone(TensorObject* self,
     PADDLE_ENFORCE_EQ(
         self->tensor.initialized(),
         true,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "We can only support initialized tensor in clone, however we got "
             "uninitialized tensor %s, please check your code.",
             self->tensor.name()));
@@ -861,11 +861,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
-    PADDLE_ENFORCE(grad != nullptr,
-                   paddle::platform::errors::Fatal(
-                       "Detected nullptr grad"
-                       "Please check if you have manually cleared"
-                       "the grad inside autograd_meta"));
+    PADDLE_ENFORCE(
+        grad != nullptr,
+        phi::errors::Fatal("Detected nullptr grad"
+                           "Please check if you have manually cleared"
+                           "the grad inside autograd_meta"));
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     grad = meta->MutableGrad();
@@ -892,7 +892,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         }
         if (set_to_zero) {
           auto* dev_ctx =
-              platform::DeviceContextPool::Instance().Get(grad_t->place());
+              phi::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
           if (is_leaf) {
             std::static_pointer_cast<egr::GradNodeAccumulation>(
@@ -923,11 +923,11 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-    PADDLE_ENFORCE(grad != nullptr,
-                   paddle::platform::errors::Fatal(
-                       "Detected nullptr grad"
-                       "Please check if you have manually cleared"
-                       "the grad inside autograd_meta"));
+    PADDLE_ENFORCE(
+        grad != nullptr,
+        phi::errors::Fatal("Detected nullptr grad"
+                           "Please check if you have manually cleared"
+                           "the grad inside autograd_meta"));
     if (grad->initialized()) {
       if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
         phi::DenseTensor* t = nullptr;
@@ -937,7 +937,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
           t = static_cast<phi::distributed::DistTensor*>(grad->impl().get())
                   ->unsafe_mutable_value();
         }
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
         grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
@@ -957,7 +957,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
                   meta->MutableGrad()->impl().get())
                   ->unsafe_mutable_value();
         }
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        auto* dev_ctx = phi::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
         meta->MutableGrad()->set_impl(
@@ -1034,6 +1034,50 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
           "Tensor %s is not contiguous, cannot call share_buffer_to on it.",
           self->tensor.name()));
     }
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
+  }
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__unsafe_share_buffer_to(TensorObject* self,
+                                                PyObject* args,
+                                                PyObject* kwargs) {
+  EAGER_TRY
+  paddle::Tensor* dst_ptr =
+      &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
+  if (!self->tensor.initialized()) {
+    if (self->tensor.numel() == 0) {
+      // Do nothing for 0-size Tensor
+      Py_RETURN_NONE;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized! please initialize "
+          "src tensor before share_buffer_with to other.",
+          self->tensor.name()));
+    }
+  }
+  if (self->tensor.is_dist_tensor()) {
+    auto* src_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::distributed::DistTensor>());
+    }
+    auto dst_tensor =
+        static_cast<phi::distributed::DistTensor*>(dst_ptr->impl().get())
+            ->unsafe_mutable_value();
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
+  } else {
+    auto* src_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     if (!dst_ptr->defined()) {
       dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
     }
@@ -1304,16 +1348,15 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
 static PyObject* tensor_method__get_tensor_from_selected_rows(
     TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
-                 paddle::platform::errors::Fatal(
-                     "this method is only effective for SelectedRows."));
+  PADDLE_ENFORCE(
+      self->tensor.is_selected_rows(),
+      phi::errors::Fatal("this method is only effective for SelectedRows."));
 
   auto* selected_rows =
       static_cast<phi::SelectedRows*>(self->tensor.impl().get());
 
-  PADDLE_ENFORCE(
-      selected_rows->initialized(),
-      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+  PADDLE_ENFORCE(selected_rows->initialized(),
+                 phi::errors::Fatal("SelectedRows must be initialized."));
 
   auto* dense_tensor =
       static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
@@ -1468,7 +1511,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     PADDLE_ENFORCE(
         dist_tensor->initialized(),
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "The input dist tensor can't be uninitialized for we don't "
             "know the correct mesh to be reshard."));
     const auto& placements = dist_tensor->placements();
@@ -1570,8 +1613,8 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   if (tensor.dtype() == proto_type) {                                        \
     auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];    /* NOLINT */  \
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank]; /* NOLINT */  \
+    Py_intptr_t py_dims[phi::DDim::kMaxRank];    /* NOLINT */                \
+    Py_intptr_t py_strides[phi::DDim::kMaxRank]; /* NOLINT */                \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
@@ -1868,6 +1911,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           }
           grad_node->SetGradInMeta(self->tensor, 0);
         }
+      } else {
+        self->tensor.set_autograd_meta(
+            transed_sub_tensor.mutable_autograd_meta());
       }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
@@ -2027,11 +2073,10 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
       platform::errors::InvalidArgument(
           "Cannot register backward hook on a Tensor that stop "
           "gradient."));
-  PADDLE_ENFORCE(
-      grad_node.get() != nullptr,
-      paddle::platform::errors::Fatal("Detected nullptr grad_node,"
-                                      "Leaf tensor should have had grad_node "
-                                      "with type: GradNodeAccumulation."));
+  PADDLE_ENFORCE(grad_node.get() != nullptr,
+                 phi::errors::Fatal("Detected nullptr grad_node,"
+                                    "Leaf tensor should have had grad_node "
+                                    "with type: GradNodeAccumulation."));
   PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
 
   auto accumulation_grad_node =
@@ -2118,11 +2163,10 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(
-      self->tensor.defined() &&
-          (self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor()),
-      paddle::platform::errors::Fatal("Function _use_gpudnn is only effective "
-                                      "for DenseTensor and DistTensor."));
+  PADDLE_ENFORCE(self->tensor.defined() && (self->tensor.is_dense_tensor() ||
+                                            self->tensor.is_dist_tensor()),
+                 phi::errors::Fatal("Function _use_gpudnn is only effective "
+                                    "for DenseTensor and DistTensor."));
 
   bool use_gpudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
 
@@ -2203,7 +2247,7 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
   PADDLE_ENFORCE_EQ(
       egr::IsVariableCompatTensor(self->tensor),
       true,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "this method is only effective for VariableCompatTensor"));
   using Vocab = paddle::framework::Vocab;
   auto* var_tensor =
@@ -2243,11 +2287,10 @@ static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(
-      self->tensor.is_sparse_coo_tensor() ||
-          self->tensor.is_sparse_csr_tensor(),
-      paddle::platform::errors::Fatal("this method is only effective for "
-                                      "SparseCooTensor or SparseCsrTensor"));
+  PADDLE_ENFORCE(self->tensor.is_sparse_coo_tensor() ||
+                     self->tensor.is_sparse_csr_tensor(),
+                 phi::errors::Fatal("this method is only effective for "
+                                    "SparseCooTensor or SparseCsrTensor"));
   if (self->tensor.is_sparse_coo_tensor()) {
     auto sparse_coo_tensor =
         std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
@@ -2293,9 +2336,9 @@ static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.is_sparse_coo_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "this method is only effective for SparseCooTensor"));
+  PADDLE_ENFORCE(
+      self->tensor.is_sparse_coo_tensor(),
+      phi::errors::Fatal("this method is only effective for SparseCooTensor"));
   auto sparse_coo_tensor =
       std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
   paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(
@@ -2336,11 +2379,10 @@ static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(
-      self->tensor.is_sparse_coo_tensor() ||
-          self->tensor.is_sparse_csr_tensor(),
-      paddle::platform::errors::Fatal("this method is only effective for "
-                                      "SparseCooTensor or SparseCsrTensor"));
+  PADDLE_ENFORCE(self->tensor.is_sparse_coo_tensor() ||
+                     self->tensor.is_sparse_csr_tensor(),
+                 phi::errors::Fatal("this method is only effective for "
+                                    "SparseCooTensor or SparseCsrTensor"));
   if (self->tensor.is_sparse_coo_tensor()) {
     auto sparse_coo_tensor =
         std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
@@ -2390,9 +2432,9 @@ static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.is_sparse_csr_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "this method is only effective for SparseCsrTensor"));
+  PADDLE_ENFORCE(
+      self->tensor.is_sparse_csr_tensor(),
+      phi::errors::Fatal("this method is only effective for SparseCsrTensor"));
   auto sparse_csr_tensor =
       std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
   paddle::Tensor tensor(
@@ -2434,9 +2476,9 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.is_sparse_csr_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "this method is only effective for SparseCsrTensor"));
+  PADDLE_ENFORCE(
+      self->tensor.is_sparse_csr_tensor(),
+      phi::errors::Fatal("this method is only effective for SparseCsrTensor"));
   auto sparse_csr_tensor =
       std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
   paddle::Tensor tensor(
@@ -2796,9 +2838,9 @@ static PyObject* tensor_method_get_rows(TensorObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
-                 paddle::platform::errors::Fatal(
-                     "this method is only effective for SelectedRows"));
+  PADDLE_ENFORCE(
+      self->tensor.is_selected_rows(),
+      phi::errors::Fatal("this method is only effective for SelectedRows"));
   auto selected_rows =
       std::dynamic_pointer_cast<phi::SelectedRows>(self->tensor.impl());
   return ToPyObject(selected_rows->rows());
@@ -2830,7 +2872,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self,
                                              PyObject* kwargs) {
   EAGER_TRY
 #ifndef _WIN32
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()),
+  PADDLE_ENFORCE_EQ(phi::is_cpu_place(self->tensor.place()),
                     true,
                     platform::errors::InvalidArgument(
                         "Sharing memory only support CPU Tensor currently"));
@@ -2848,9 +2890,9 @@ static PyObject* tensor_method__share_memory(TensorObject* self,
   const std::string& ipc_name = shared_writer_holder->ipc_name();
   memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
   // 4. copy data & reset holder
-  memory::Copy(platform::CPUPlace(),
+  memory::Copy(phi::CPUPlace(),
                shared_writer_holder->ptr(),
-               platform::CPUPlace(),
+               phi::CPUPlace(),
                data_ptr,
                data_size);
   t->ResetHolder(shared_writer_holder);
@@ -2925,7 +2967,7 @@ static PyObject* tensor__grad_value(TensorObject* self,
             ->unsafe_mutable_value();
     return ToPyObject(grad_tensor);
   } else {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "This method is only supported for DenseTensor and DistTensor."));
     RETURN_PY_NONE
   }
@@ -3196,7 +3238,7 @@ static PyObject* tensor_method__uva(TensorObject* self,
       platform::errors::InvalidArgument(
           "Unified virtual addressing only support "
           "DenseTensor and DistTensor currently."));
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()),
+  PADDLE_ENFORCE_EQ(phi::is_cpu_place(self->tensor.place()),
                     true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
@@ -3286,6 +3328,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_share_buffer_to",
      (PyCFunction)(void (*)())tensor__share_buffer_to,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_unsafe_share_buffer_to",
+     (PyCFunction)(void (*)())tensor__unsafe_share_buffer_to,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_is_shared_buffer_with",

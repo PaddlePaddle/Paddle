@@ -43,7 +43,7 @@ void SerializeToStream(std::ostream& os,
 
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx = nullptr;
   auto place = selected_rows.place();
   dev_ctx = pool.Get(place);
@@ -51,9 +51,9 @@ void SerializeToStream(std::ostream& os,
 }
 
 void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx = nullptr;
-  dev_ctx = pool.Get(platform::CPUPlace());
+  dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(is, selected_rows, *dev_ctx);
 }
 

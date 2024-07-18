@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
+from typing import (
+    Iterator,
+    Sequence,
+    Sized,
+)
 
 import numpy as np
 
@@ -20,7 +27,7 @@ from .dataset import IterableDataset
 from .sampler import RandomSampler, Sampler, SequenceSampler
 
 
-class BatchSampler(Sampler):
+class BatchSampler(Sampler[Sequence[int]]):
     """
     A base implement of batch sampler used by `paddle.io.DataLoader`
     which yield mini-batch indices(a list/tuple with length as
@@ -63,7 +70,7 @@ class BatchSampler(Sampler):
 
             >>> np.random.seed(2023)
             >>> # init with dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -98,14 +105,19 @@ class BatchSampler(Sampler):
             [53, 17, 22, 86, 52, 3, 92, 33]
     """
 
+    sampler: Sampler[int]
+    batch_size: int
+    shuffle: bool
+    drop_last: bool
+
     def __init__(
         self,
-        dataset=None,
-        sampler=None,
-        shuffle=False,
-        batch_size=1,
-        drop_last=False,
-    ):
+        dataset: Sized | None = None,
+        sampler: Sampler | None = None,
+        shuffle: bool = False,
+        batch_size: int = 1,
+        drop_last: bool = False,
+    ) -> None:
         if dataset is None:
             assert (
                 sampler is not None
@@ -131,38 +143,47 @@ class BatchSampler(Sampler):
         assert (
             isinstance(batch_size, int) and batch_size > 0
         ), f"batch_size should be a positive integer, but got {batch_size}"
-        self.batch_size = batch_size
+        self.batch_size = batch_size  # per_device_batch_size or mini_batch_size
         self.shuffle = shuffle
         assert isinstance(
             drop_last, bool
         ), f"drop_last should be a boolean value, but got {type(drop_last)}"
         self.drop_last = drop_last
 
-    def __iter__(self):
+        # TODO(dev): consider to make it as public argument, acc_steps is only used
+        # in auto-parallel
+        self._acc_steps = 1
+
+    def __iter__(self) -> Iterator[list[int]]:
+        local_batch_size = self.batch_size * self._acc_steps
         batch_indices = []
         for idx in self.sampler:
             batch_indices.append(idx)
-            if len(batch_indices) == self.batch_size:
+            if len(batch_indices) == local_batch_size:
                 yield batch_indices
                 batch_indices = []
         if not self.drop_last and len(batch_indices) > 0:
             yield batch_indices
 
-    def __len__(self):
+    def __len__(self) -> int:
+        local_batch_size = self.batch_size * self._acc_steps
         num_samples = len(self.sampler)
-        num_samples += int(not self.drop_last) * (self.batch_size - 1)
-        return num_samples // self.batch_size
+        num_samples += int(not self.drop_last) * (local_batch_size - 1)
+        return num_samples // local_batch_size
 
 
-class _InfiniteIterableSampler:
-    def __init__(self, dataset, batch_size=1):
+class _InfiniteIterableSampler(Sampler[Sequence[None]]):
+    dataset: IterableDataset
+    batch_size: int
+
+    def __init__(self, dataset: IterableDataset, batch_size: int = 1) -> None:
         assert isinstance(
             dataset, IterableDataset
         ), "dataset should be an instance of paddle.io.IterableDataset"
         self.dataset = dataset
         self.batch_size = batch_size
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[list[None]]:
         while True:
             yield [None] * self.batch_size
 
@@ -205,7 +226,7 @@ class DistributedBatchSampler(BatchSampler):
             >>> from paddle.io import Dataset, DistributedBatchSampler
 
             >>> # init with dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -225,15 +246,24 @@ class DistributedBatchSampler(BatchSampler):
             ...     break
     """
 
+    dataset: Sized
+    batch_size: int
+    drop_last: bool
+    nranks: int
+    epoch: int
+    local_rank: int
+    num_samples: int
+    total_size: int
+
     def __init__(
         self,
-        dataset,
-        batch_size,
-        num_replicas=None,
-        rank=None,
-        shuffle=False,
-        drop_last=False,
-    ):
+        dataset: Sized,
+        batch_size: int,
+        num_replicas: int | None = None,
+        rank: int | None = None,
+        shuffle: bool = False,
+        drop_last: bool = False,
+    ) -> None:
         self.dataset = dataset
 
         assert (
@@ -269,7 +299,12 @@ class DistributedBatchSampler(BatchSampler):
         self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
 
-    def __iter__(self):
+        # TODO(dev): consider to make it as public argument, acc_steps is only used
+        # in auto-parallel
+        self._acc_steps = 1
+
+    def __iter__(self) -> Iterator[list[int]]:
+        local_batch_size = self.batch_size * self._acc_steps
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
         # add extra samples to make it evenly divisible
@@ -308,6 +343,7 @@ class DistributedBatchSampler(BatchSampler):
                     * last_local_batch_size
                 ]
             )
+
             return subsampled_indices
 
         if self.nranks > 1:
@@ -319,18 +355,19 @@ class DistributedBatchSampler(BatchSampler):
         batch_indices = []
         for idx in _sample_iter:
             batch_indices.append(idx)
-            if len(batch_indices) == self.batch_size:
+            if len(batch_indices) == local_batch_size:
                 yield batch_indices
                 batch_indices = []
         if not self.drop_last and len(batch_indices) > 0:
             yield batch_indices
 
-    def __len__(self):
+    def __len__(self) -> int:
+        local_batch_size = self.batch_size * self._acc_steps
         num_samples = self.num_samples
-        num_samples += int(not self.drop_last) * (self.batch_size - 1)
-        return num_samples // self.batch_size
+        num_samples += int(not self.drop_last) * (local_batch_size - 1)
+        return num_samples // local_batch_size
 
-    def set_epoch(self, epoch):
+    def set_epoch(self, epoch: int) -> None:
         """
         Sets the epoch number. When :attr:`shuffle=True`, this number is used
         as seeds of random numbers. By default, users may not set this, all
@@ -349,7 +386,7 @@ class DistributedBatchSampler(BatchSampler):
                 >>> from paddle.io import Dataset, DistributedBatchSampler
 
                 >>> # init with dataset
-                >>> class RandomDataset(Dataset):
+                >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...

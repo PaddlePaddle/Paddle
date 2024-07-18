@@ -78,7 +78,7 @@ void BoxWrapper::CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim) {
                         expand_embed_dim));
 }
 
-void BoxWrapper::PullSparse(const paddle::platform::Place& place,
+void BoxWrapper::PullSparse(const phi::Place& place,
                             const std::vector<const uint64_t*>& keys,
                             const std::vector<float*>& values,
                             const std::vector<int64_t>& slot_lengths,
@@ -115,7 +115,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
 #undef EMBEDX_CASE
 }
 
-void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
+void BoxWrapper::PushSparseGrad(const phi::Place& place,
                                 const std::vector<const uint64_t*>& keys,
                                 const std::vector<const float*>& grad_values,
                                 const std::vector<int64_t>& slot_lengths,

@@ -1,40 +1,12 @@
-if(WITH_PSCORE)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
-  )
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-  endif()
-  set_source_files_properties(
-    reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-endif()
-
 set(op_handle_srcs
     nan_inf_utils_detail.cc
-    all_reduce_op_handle.cc
-    fused_all_reduce_op_handle.cc
-    grad_merge_all_reduce_op_handle.cc
-    reduce_op_handle.cc
-    broadcast_op_handle.cc
-    fused_broadcast_op_handle.cc
     var_handle.cc
     op_handle_base.cc
     scale_loss_grad_op_handle.cc
-    fetch_op_handle.cc
-    fetch_async_op_handle.cc
     share_tensor_buffer_functor.cc
     computation_op_handle.cc
     share_tensor_buffer_op_handle.cc
-    rpc_op_handle.cc
-    fetch_barrier_op_handle.cc
-    multi_devices_helper.cc
-    variable_visitor.cc
-    gather_op_handle.cc
     eager_deletion_op_handle.cc)
-
-if(WITH_DGC)
-  set(op_handle_srcs ${op_handle_srcs} sparse_all_reduce_op_handle.cc)
-endif()
 
 set(op_handle_deps
     pass
@@ -78,28 +50,19 @@ add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
 set(IR_PASS_DEPS
     graph_viz_pass
     multi_devices_graph_pass
-    multi_devices_graph_print_pass
-    multi_devices_graph_check_pass
     fuse_elewise_add_act_pass
     fuse_bn_act_pass
     fuse_bn_add_act_pass
     multi_batch_merge_pass
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
-    sequential_execution_pass
-    all_reduce_deps_pass
-    add_reader_dependency_pass
-    modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass
-    fuse_all_reduce_op_pass
-    backward_optimizer_op_deps_pass
     fuse_adam_op_pass
     fuse_sgd_op_pass
     fuse_momentum_op_pass
     sync_batch_norm_pass
     runtime_context_cache_pass
     graph_to_program_pass
-    fix_op_run_order_pass
     fuse_gemm_epilogue_pass
     fused_attention_pass
     fuse_adamw_op_pass

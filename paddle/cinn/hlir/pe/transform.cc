@@ -24,7 +24,6 @@
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
@@ -356,32 +355,6 @@ std::vector<Tensor> Matmul(const Tensor& A,
   } else {
     return {temp};
   }
-}
-
-ir::Tensor Reshape(const ir::Tensor& A,
-                   const std::vector<int>& new_shape,
-                   poly::StageMap stages,
-                   const std::string& name) {
-  std::vector<Expr> new_expr_shape;
-  std::vector<Expr> A_expr_shape = A->shape;
-  int input_total_size = 1;
-  int output_total_size = 1;
-  for (auto& i : A_expr_shape) {
-    CHECK(i.is_constant()) << "Input tensor's shape should be constant value.";
-    input_total_size *= static_cast<int>(i.get_constant());
-  }
-  for (auto& i : new_shape) {
-    output_total_size *= i;
-    new_expr_shape.push_back(Expr(i));
-  }
-  PADDLE_ENFORCE_EQ(
-      input_total_size,
-      output_total_size,
-      phi::errors::InvalidArgument(
-          "In op reshape, the input tensor and output tensor's total size "
-          "should be equal, please check!"));
-  auto out = Identity(A->Reshape(new_expr_shape, stages), name).front();
-  return out;
 }
 
 std::vector<ir::Tensor> Split(
@@ -776,11 +749,10 @@ std::vector<Tensor> MulBaseCallImpl(common::ARMArch,
   LOG(FATAL) << "NotImplemented.";
 }
 
-std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
-                                    const Tensor& A,
-                                    const Tensor& B,
-                                    const std::string& name,
-                                    const cinn::common::Target& target) {
+std::vector<Tensor> MulBaseCallImplNvHygon(const Tensor& A,
+                                           const Tensor& B,
+                                           const std::string& name,
+                                           const cinn::common::Target& target) {
   std::vector<Expr> output_shape;
   PADDLE_ENFORCE_EQ(
       A->shape.size(),
@@ -820,6 +792,22 @@ std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
         return lang::ReduceSum(A(A_indice) * B(B_indice), {reduce_k});
       },
       name)};
+}
+
+std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
+  MulBaseCallImplNvHygon(A, B, name, target);
+}
+
+std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchHIP,
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
+  MulBaseCallImplNvHygon(A, B, name, target);
 }
 
 std::vector<Tensor> MulBaseCall(const Tensor& A,
@@ -1543,7 +1531,10 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
         PADDLE_THROW(phi::errors::Fatal(
             "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
       },
-      [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); });
+      [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); },
+      [&](common::HygonDCUArchHIP) {
+        extern_fun_name.assign("cinn_hip_find_int");
+      });
 
   auto pos_axis = axis;
   if (pos_axis < 0) pos_axis += input->shape.size();
@@ -1574,73 +1565,84 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  CHECK(std::holds_alternative<common::NVGPUArch>(target.arch))
-      << "Op IndexAdd only support NVGPU now ! Please Check.\n";
+  auto ScatterAddNvHygon = [&] {
+    PADDLE_ENFORCE_EQ(
+        index->type(),
+        cinn::common::Int(32),
+        phi::errors::InvalidArgument("index's type should be int32"));
+    PADDLE_ENFORCE_EQ(index->shape.size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The dimension of param [index] of IndexAdd "
+                          "should be 1 ! Please Check."));
+    PADDLE_ENFORCE_EQ(
+        input->type(),
+        updates->type(),
+        phi::errors::InvalidArgument("The data types for input and updates "
+                                     "should be identical ! Please Check."));
 
-  PADDLE_ENFORCE_EQ(
-      index->type(),
-      cinn::common::Int(32),
-      phi::errors::InvalidArgument("index's type should be int32"));
-  PADDLE_ENFORCE_EQ(
-      index->shape.size(),
-      1,
-      phi::errors::InvalidArgument("The dimension of param [index] of IndexAdd "
-                                   "should be 1 ! Please Check."));
-  PADDLE_ENFORCE_EQ(
-      input->type(),
-      updates->type(),
-      phi::errors::InvalidArgument("The data types for input and updates "
-                                   "should be identical ! Please Check."));
+    auto pos_axis = axis;
+    if (pos_axis < 0) pos_axis += input->shape.size();
+    PADDLE_ENFORCE_EQ(pos_axis >= 0 && pos_axis < input->shape.size(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Param [axis] of IndexAdd should satisfy 0 <= axis < "
+                          "input.shape ! Please Check.\n"));
 
-  auto pos_axis = axis;
-  if (pos_axis < 0) pos_axis += input->shape.size();
-  CHECK(pos_axis >= 0 && pos_axis < input->shape.size())
-      << "Param [axis] of IndexAdd should satisfy 0 <= axis < input.shape ! "
-         "Please Check.\n";
-
-  // compute each dimension's stride, it is used for indice2offset.
-  // for shape=[1,2,3,4], strides=[2*3*4,3*4,4*1,1]=[24, 12, 4, 1]
-  std::vector<int> strides(updates->shape.size(), 1);
-  for (int i = updates->shape.size() - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * updates->shape[i + 1].as_int32();
-  }
-
-  // compute multi-dimension index(without axis's) to scalar offset,
-  // offset = offset + indice[i] * strides[i];
-  auto indice2offset = [&](const std::vector<Expr>& indice) -> Expr {
-    Expr offset(0);
-    for (int i = 0; i < pos_axis; ++i) {
-      offset = offset + indice[i] * Expr(strides[i]);
+    // compute each dimension's stride, it is used for indice2offset.
+    // for shape=[1,2,3,4], strides=[2*3*4,3*4,4*1,1]=[24, 12, 4, 1]
+    std::vector<int> strides(updates->shape.size(), 1);
+    for (int i = updates->shape.size() - 2; i >= 0; --i) {
+      strides[i] = strides[i + 1] * updates->shape[i + 1].as_int32();
     }
-    for (int i = pos_axis + 1; i < updates->shape.size(); ++i) {
-      offset = offset + indice[i] * Expr(strides[i]);
-    }
-    return offset;
+
+    // compute multi-dimension index(without axis's) to scalar offset,
+    // offset = offset + indice[i] * strides[i];
+    auto indice2offset = [&](const std::vector<Expr>& indice) -> Expr {
+      Expr offset(0);
+      for (int i = 0; i < pos_axis; ++i) {
+        offset = offset + indice[i] * Expr(strides[i]);
+      }
+      for (int i = pos_axis + 1; i < updates->shape.size(); ++i) {
+        offset = offset + indice[i] * Expr(strides[i]);
+      }
+      return offset;
+    };
+
+    const std::string& extern_func_name =
+        GetExternFuncName(target, input->type(), "index_add");
+
+    // assume shape=[1,2,3], axis=1, `cinn_cuda_index_add` extern function do
+    // following compute: out[i][j][k] = input[i][j][k] for l in
+    // range(index.size()):
+    //   if index[l] == j:
+    //      out[i][j][k] += update[i][l][k]
+    auto output = Compute(
+        input->shape,
+        [=](const std::vector<Expr>& indice) {
+          return lang::CallExtern(extern_func_name,
+                                  {input(indice),
+                                   indice[pos_axis],
+                                   updates,
+                                   indice2offset(indice),
+                                   Expr(strides[pos_axis]),
+                                   index,
+                                   index->shape[0]});
+        },
+        UniqName(output_name));
+
+    return output;
   };
 
-  const std::string& extern_func_name =
-      GetExternFuncName(target, input->type(), "index_add");
-
-  // assume shape=[1,2,3], axis=1, `cinn_cuda_index_add` extern function do
-  // following compute: out[i][j][k] = input[i][j][k] for l in
-  // range(index.size()):
-  //   if index[l] == j:
-  //      out[i][j][k] += update[i][l][k]
-  auto output = Compute(
-      input->shape,
-      [=](const std::vector<Expr>& indice) {
-        return lang::CallExtern(extern_func_name,
-                                {input(indice),
-                                 indice[pos_axis],
-                                 updates,
-                                 indice2offset(indice),
-                                 Expr(strides[pos_axis]),
-                                 index,
-                                 index->shape[0]});
+  return target.arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>)
+          -> ir::Tensor {
+        PADDLE_THROW(
+            phi::errors::InvalidArgument("Op IndexAdd only support NVGPU and "
+                                         "HygonDCU now ! Please Check.\n"));
       },
-      UniqName(output_name));
-
-  return output;
+      [&](common::NVGPUArch) { return ScatterAddNvHygon(); },
+      [&](common::HygonDCUArchHIP) { return ScatterAddNvHygon(); });
 }
 
 }  // namespace pe

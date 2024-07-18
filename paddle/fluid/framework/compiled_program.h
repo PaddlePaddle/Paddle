@@ -45,7 +45,7 @@ class CompiledProgram {
   DISABLE_COPY_AND_ASSIGN(CompiledProgram);
 
  public:
-  TEST_API explicit CompiledProgram(const std::vector<platform::Place> &places,
+  TEST_API explicit CompiledProgram(const std::vector<phi::Place> &places,
                                     const std::vector<std::string> &bcast_vars,
                                     const std::string &loss_var_name,
                                     Scope *scope,
@@ -65,6 +65,10 @@ class CompiledProgram {
 
   void InitProgramPrivateMemberInfo(const BuildStrategy &build_strategy,
                                     size_t device_count);
+
+  void InitReaderQueueDeviceCount(ir::Graph *graph,
+                                  const Scope &scope,
+                                  size_t dev_cnt);
 
   void CreateLocalScopes(Scope *global_scope,
                          const std::vector<Scope *> &local_scopes,

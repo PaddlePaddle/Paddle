@@ -183,8 +183,7 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
                                              {});
 
   buffer_share_op->SetDeviceContext(
-      op->GetPlace(),
-      platform::DeviceContextPool::Instance().Get(op->GetPlace()));
+      op->GetPlace(), phi::DeviceContextPool::Instance().Get(op->GetPlace()));
 
   // Inputs of `buffer_share_op` should be all inputs of `op`
   for (auto *in_var : op->Inputs()) {
@@ -238,7 +237,6 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
  *  - it is the first version var. Otherwise, the var may be overwritten
  *    in the second batch, which results in wrong calculation result.
  *    It is critical especially when
- *    ExecutionStrategy::num_iteration_per_drop_scope_ > 1.
  *  - it has not reused other var's memory. It is not necessary to do memory
  *    reuse twice for the same var.
  *  - it is not a persistable var.

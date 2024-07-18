@@ -512,8 +512,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
         ele_add_in_grad_2, ele_add_in_grad_2, fused_feedforward_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         ele_add_bias_grad_2, ele_add_bias_grad_2, fused_feedforward_pattern);
-
-    auto record = (*dropout_nodes_map)[matmul_w_1];
+    auto record = (*dropout_nodes_map)[matmul_w_1];  // NOLINT
     if (use_dropout_1) {
       GET_IR_NODE_FROM_SUBGRAPH(
           dropout_op_grad_1, dropout_op_grad_1, fused_feedforward_pattern);
