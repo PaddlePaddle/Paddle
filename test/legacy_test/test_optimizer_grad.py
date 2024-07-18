@@ -230,42 +230,43 @@ class TestOptimizer(unittest.TestCase):
                         )
                         self._init_param_attr()
 
-                        main_program = base.Program()
-                        init_program = base.Program()
-                        with base.program_guard(main_program, init_program):
-                            # reset optimizer._accumulators to avoid duplicate name in loop.
-                            self.optimizer._accumulators = defaultdict(
-                                lambda: {}
-                            )
-                            test_net = self.NetClass(
-                                self.optimizer, param_lr, y_no_grad
-                            )
-                            (
-                                fetch_list,
-                                decorated_optimizer,
-                            ) = test_net.build_net(cond_i, use_bf16)
-                            if use_bf16:
-                                self.optimizer = decorated_optimizer
-
-                            exe = base.Executor(place)
-                            exe.run(init_program)
-                            if use_bf16:
-                                self.optimizer.amp_init(exe.place)
-
-                            # Train 2 steps to check validity
-                            for batch_i in range(2):
-                                res = exe.run(
-                                    main_program, fetch_list=fetch_list
+                        with paddle.pir_utils.OldIrGuard():
+                            main_program = base.Program()
+                            init_program = base.Program()
+                            with base.program_guard(main_program, init_program):
+                                # reset optimizer._accumulators to avoid duplicate name in loop.
+                                self.optimizer._accumulators = defaultdict(
+                                    lambda: {}
                                 )
-                                gt_grads = test_net._calc_gradient(cond_i)
-                                gt_params = self._apply_optimize(
-                                    test_net, gt_grads
+                                test_net = self.NetClass(
+                                    self.optimizer, param_lr, y_no_grad
                                 )
-                                param_grads = gt_params + gt_grads
-                                for i in range(len(res)):
-                                    np.testing.assert_allclose(
-                                        res[i], param_grads[i]
+                                (
+                                    fetch_list,
+                                    decorated_optimizer,
+                                ) = test_net.build_net(cond_i, use_bf16)
+                                if use_bf16:
+                                    self.optimizer = decorated_optimizer
+
+                                exe = base.Executor(place)
+                                exe.run(init_program)
+                                if use_bf16:
+                                    self.optimizer.amp_init(exe.place)
+
+                                # Train 2 steps to check validity
+                                for batch_i in range(2):
+                                    res = exe.run(
+                                        main_program, fetch_list=fetch_list
                                     )
+                                    gt_grads = test_net._calc_gradient(cond_i)
+                                    gt_params = self._apply_optimize(
+                                        test_net, gt_grads
+                                    )
+                                    param_grads = gt_params + gt_grads
+                                    for i in range(len(res)):
+                                        np.testing.assert_allclose(
+                                            res[i], param_grads[i]
+                                        )
 
 
 @unittest.skipIf(

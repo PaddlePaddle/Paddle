@@ -65,12 +65,13 @@ class TestNumberCountAPI(unittest.TestCase):
 
     def test_api_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('x', self.x.shape, dtype="int64")
-            out = utils._number_count(x, self.upper_num)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': self.x}, fetch_list=[out])
-            assert np.allclose(res, self.out)
+        with paddle.pir_utils.OldIrGuard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', self.x.shape, dtype="int64")
+                out = utils._number_count(x, self.upper_num)
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'x': self.x}, fetch_list=[out])
+                assert np.allclose(res, self.out)
 
     def test_api_dygraph(self):
         paddle.disable_static()
