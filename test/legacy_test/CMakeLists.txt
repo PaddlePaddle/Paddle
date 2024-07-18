@@ -48,6 +48,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
@@ -148,6 +149,14 @@ endif()
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
+endif()
+
+if(WIN32)
+  py_test_modules(test_fetch_lod_tensor_array MODULES
+                  test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
+else()
+  py_test_modules(test_fetch_lod_tensor_array MODULES
+                  test_fetch_lod_tensor_array)
 endif()
 
 if(WIN32)
@@ -1059,6 +1068,7 @@ set(STATIC_BUILD_TESTS
     test_eigh_op
     test_matmul_v2_op
     test_paddle_save_load_binary
+    test_fetch_lod_tensor_array
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
