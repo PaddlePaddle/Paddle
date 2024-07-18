@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import numpy as np
 import logging
+import os
 import sys
+
+import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -24,84 +25,32 @@ if parent_dir not in sys.path:
 
 import tensorrt as trt
 from register import converter_registry
+
 from paddle.base.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+from converter_utils import (
+    append_ones,
+    broadcast,
+    get_axes_for_reduce_op,
+    get_dynamic_dims,
+    has_dynamic_shape,
+)
 
-
-def get_trt_tensor(
-    network, input_val, name, dtype=None
-) -> trt.tensorrt.ITensor:
-    if isinstance(input_val, (torch.Tensor, int, float)):
-        return create_constant(network, input_val, name, dtype)
-    elif not isinstance(input_val, trt.tensorrt.ITensor):
-        raise RuntimeError(
-            f"Received input {input_val} of name {name} that "
-            "is not part of the TensorRT region!"
-        )
-    else:
-        return input_val
-
-
-def has_dynamic_shape(shape):
-    return any(s == -1 for s in shape)
-
-
-def append_ones(network, input, name, num_prepend_ones):
-    layer = network.add_shuffle(input)
-
-    if has_dynamic_shape(input.shape):
-        input_shape_layer = network.add_shape(input)
-        input_shape_layer.name = f"{name}_broadcast_orig_shape"
-        prepend_shape_layer = network.add_constant(
-            (num_prepend_ones,), np.ones((num_prepend_ones,), dtype=np.int32)
-        )
-        prepend_shape_layer.name = f"{name}_broadcast_prepend_ones"
-        reshape_dim_layer = network.add_concatenation(
-            [prepend_shape_layer.get_output(0), input_shape_layer.get_output(0)]
-        )
-        reshape_dim_layer.axis = 0
-        reshape_dim_layer.name = f"{name}_broadcast_final_shape"
-        layer.set_input(1, reshape_dim_layer.get_output(0))
-    else:
-        layer.reshape_dims = (1,) * num_prepend_ones + tuple(input.shape)
-
-    layer.name = name
-    return layer.get_output(0)
-
-
-def broadcast(network, a, b, a_name, b_name, preset_diff=0):
-    a_shape = tuple(a.shape)
-    b_shape = tuple(b.shape)
-
-    diff = len(a_shape) - len(b_shape) - preset_diff
-    if diff > 0:
-        b = append_ones(network, b, f"{b_name}_broadcast", diff)
-    elif diff < 0:
-        a = append_ones(network, a, f"{a_name}_broadcast", -diff)
-
-    return a, b
-
-
-def get_axes_for_reduce_op(
-    dim,
-    has_implicit_batch_dimension=False,
-):
-    if isinstance(dim, int):
-        dim = (dim,)
-
-    if has_implicit_batch_dimension:
-        assert (
-            0 not in dim
-        ), "Can't reduce over batch dimension when it's implicit."
-
-    axes = 0
-    for d in dim:
-        axes |= 1 << (d - (1 if has_implicit_batch_dimension else 0))
-
-    return axes
+# def get_trt_tensor(
+#     network, input_val, name, dtype=None
+# ) -> trt.tensorrt.ITensor:
+#     if isinstance(input_val, (torch.Tensor, int, float)):
+#         return create_constant(network, input_val, name, dtype)
+#     elif not isinstance(input_val, trt.tensorrt.ITensor):
+#         raise RuntimeError(
+#             f"Received input {input_val} of name {name} that "
+#             "is not part of the TensorRT region!"
+#         )
+#     else:
+#         return input_val
 
 
 @converter_registry.register("pd_op.add", trt_version="8.x")
@@ -179,7 +128,7 @@ def reshape_converter(network, paddle_op, inputs):
         reshape_dims = (
             paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
         )
-        layer.reshape_dims = tuple(reshape_dims)
+        shuffle_layer.reshape_dims = tuple(reshape_dims)
     except Exception:
         shuffle_layer.set_input(1, shape_tensor)
 
@@ -303,6 +252,12 @@ def pool2d_converter(network, paddle_op, inputs):
     pooling_type = paddle_op.attrs().get("pooling_type", "max")
     padding = paddle_op.attrs().get("paddings", [0, 0])
     stride = paddle_op.attrs().get("strides", [1, 1])
+    ceil_mode = paddle_op.attrs().get("ceil_mode", False)
+    exclusive = paddle_op.attrs().get("exclusive")
+    adaptive = paddle_op.attrs().get("adaptive")
+    padding_algorithm = paddle_op.attrs().get("padding_algorithm")
+
+    input_shape = input_tensor.shape
 
     # TODO attention for these codes
     if not paddle_op.attrs().get("kernel_size") and len(inputs) == 2:
@@ -318,6 +273,9 @@ def pool2d_converter(network, paddle_op, inputs):
     else:
         kernel_size = paddle_op.attrs().get("kernel_size")
 
+    if len(stride) == 0 or stride[0] is None:
+        stride = kernel_size
+
     if pooling_type == "max":
         pooling_type = trt.PoolingType.MAX
     elif pooling_type == "avg":
@@ -325,11 +283,35 @@ def pool2d_converter(network, paddle_op, inputs):
     else:
         raise ValueError(f"Unsupported pooling type: {pooling_type}")
 
-    pool_layer = network.add_pooling_nd(
-        input_tensor, pooling_type, window_size=kernel_size
-    )
-    pool_layer.stride_nd = stride
-    pool_layer.padding_nd = padding
+    if padding_algorithm == "VALID":
+        padding = [0, 0]
+
+    if adaptive:
+        output_size = kernel_size
+        stride = tuple(input_shape[-2 + i] // output_size[i] for i in range(2))
+        kernel_size = tuple(
+            input_shape[-2 + i] - (output_size[i] - 1) * stride[i]
+            for i in range(2)
+        )
+
+        pool_layer = network.add_pooling_nd(
+            input_tensor, pooling_type, window_size=kernel_size
+        )
+        pool_layer.stride_nd = stride
+        if pooling_type == "max":
+            pool_layer.padding_nd = padding
+    else:
+        pool_layer = network.add_pooling(
+            input_tensor, pooling_type, window_size=kernel_size
+        )
+        pool_layer.stride = stride
+        pool_layer.padding = padding
+        if exclusive:
+            pool_layer.average_count_excludes_padding = True
+        else:
+            pool_layer.average_count_excludes_padding = False
+        if ceil_mode:
+            pool_layer.padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
 
     return pool_layer
 
@@ -340,12 +322,136 @@ def batch_norm_converter(network, paddle_op, inputs):
     input_tensor, mean, variance, scale, bias = inputs
 
     scale_shape = paddle_op.operands()[3].source().shape
+
     power = np.ones(scale_shape, dtype='float32')
     power = trt.Weights(power)
+    input_tensor_shape = paddle_op.operands()[0].source().shape
+    if has_dynamic_shape(input_tensor_shape):
+        assert (
+            input_tensor.shape[1] != -1
+        ), "Channel dim can't be dynamic for batch norm."
+    # For BatchNorm1d ,reshape 1d to 2d
+    output_shape = input_tensor_shape
 
+    if not network.has_implicit_batch_dimension and len(input_tensor_shape) < 4:
+        assert (
+            len(get_dynamic_dims(input_tensor.shape)) <= 1
+        ), "BatchNorm1D with more than one dynamic dims is not currently supported."
+        reshape_layer = network.add_shuffle(input_tensor)
+        if len(input_tensor_shape) == 2:
+            reshape_layer.reshape_dims = (
+                input_tensor_shape[0],
+                input_tensor_shape[1],
+                1,
+                1,
+            )
+        else:  # len(input_tensor_shape) ==3
+            reshape_layer.reshape_dims = (
+                input_tensor_shape[0],
+                input_tensor_shape[1],
+                input_tensor_shape[2],
+                1,
+            )
+        input_tensor = reshape_layer.get_output(0)
     # (self: tensorrt.tensorrt.INetworkDefinition, input: tensorrt.tensorrt.ITensor, mode: tensorrt.tensorrt.ScaleMode, shift: tensorrt.tensorrt.Weights = None, scale: tensorrt.tensorrt.Weights = None, power: tensorrt.tensorrt.Weights = None) -> tensorrt.tensorrt.IScaleLayer
     batch_norm_layer = network.add_scale(
         input_tensor, trt.ScaleMode.CHANNEL, bias, scale, power
     )
+    # For BatchNorm1d,reshape output back to 1d
+    if not network.has_implicit_batch_dimension and len(output_shape) < 4:
+        reshape_output_layer = network.add_shuffle(
+            batch_norm_layer.get_output(0)
+        )
+        reshape_output_layer.reshape_dims = tuple(output_shape)
+        batch_norm_layer = reshape_output_layer
 
     return batch_norm_layer
+
+
+# @converter_registry.register("pd_op.flatten", trt_version="8.x")
+# def flatten_converter(network, paddle_op, inputs):
+#     input_val = inputs[0]
+#     input_val_shape = paddle_op.operands()[0].source().shape
+#     num_dims = len(input_val_shape) + (
+#         1 if network.has_implicit_batch_dimension else 0
+#     )
+
+#     start_axis = paddle_op.attrs().get("start_axis")
+#     end_axis = paddle_op.attrs().get("stop_axis")
+#     if network.has_implicit_batch_dimension:
+#         assert (
+#             start_axis != 0
+#         ), "Can't flatten batch dimension when it's implicit."
+#         start_axis -= 1
+#         end_axis -= 1
+
+#     flatten_layer = network.add_shuffle(input_val)
+#     # If there're dynamic shapes then we need to use shape layers
+#     # to figure out the final shape after flatten. We first slice
+#     # the input shape to three parts:
+#     #   1. dimensions before start_axis
+#     #   2. dimensions between start_axis and end_axis
+#     #   3. dimensions after end_axis
+#     # Part 1 and 3 might not exist if start_axis is 0 or end_axis is
+#     # last dim. Then we do a reduced multiplication over part 2 to
+#     # get flattened dim. Finally, we concatenate the three parts to
+#     # get the final shape.
+#     if has_dynamic_shape(input_val_shape):
+#         input_shape_layer = network.add_shape(input_val)
+#         final_shapes = []
+
+#         # Shapes before start_axis
+#         if start_axis > 0:
+#             predix_shape_layer = network.add_slice(
+#                 input_shape_layer.get_output(0),
+#                 start=(0,),
+#                 shape=(start_axis,),
+#                 stride=(1,),
+#             )
+#             final_shapes.append(prefix_shape_layer.get_output(0))
+
+#         flatten_shape_layer = network.add_slice(
+#             input_shape_layer.get_output(0),
+#             start=(start_axis,),
+#             shape=(end_axis - start_axis + 1,),
+#             stride=(1,),
+#         )
+#         flatten_shape_layer = network.add_reduce(
+#             flatten_shape_layer.get_output(0),
+#             trt_ReduceOperation.PROD,
+#             axes=get_axes_for_reduce_op(0, False),
+#             keep_dims=True,
+#         )
+#         final_shapes.append(flatten_shape_layer.get_output(0))
+
+#         # Shapes after start_axis
+#         if end_axis < len(input_val_shape) - 1:
+#             suffix_shape_layer = network.add_slice(
+#                 input_shape_layer.get_output(0),
+#                 start=(end_axis + 1,),
+#                 shape=(len(input_val_shape) - end_axis - 1,),
+#                 stride=(1,),
+#             )
+#             final_shapes.append(suffix_shape_layer.get_output(0))
+
+#         final_shape_layer = network.add_concatenation(final_shapes)
+#         final_shape_layer.axis = 0
+#         flatten_layer.set_input(1, final_shape_layer.get_output(0))
+#     else:
+#         final_shape = []
+#         flatten_dim = 1
+#         for i, s in enumerate(input_val_shape):
+#             if i >= start_axis and i <= end_axis:
+#                 flatten_dim *= s
+#             elif i == end_axis + 1:
+#                 final_shape.append(flatten_dim)
+#                 final_shape.append(s)
+#             else:
+#                 final_shape.append(s)
+
+#         if end_axis == len(input_val_shape) - 1:
+#             final_shape.append(flatten_dim)
+
+#         flatten_layer.reshape_dims = tuple(final_shape)
+
+#     return flatten_layer

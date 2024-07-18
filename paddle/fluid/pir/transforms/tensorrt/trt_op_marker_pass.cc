@@ -118,10 +118,10 @@ class Pool2dOpPattern
                   auto attr_value =
                       full_int_array_op->attribute<pir::ArrayAttribute>(
                           "value");
-                  std::vector<int32_t> kernel_size;
+                  std::vector<int64_t> kernel_size;
                   for (const auto &attr : attr_value.AsVector()) {
                     kernel_size.push_back(
-                        attr.dyn_cast<pir::Int32Attribute>().data());
+                        attr.dyn_cast<pir::Int64Attribute>().data());
                   }
                   for (size_t i = 0; i < kernel_size.size(); ++i) {
                     if (kernel_size[i] <= paddings[i]) {
@@ -174,6 +174,7 @@ class Conv2dOpPattern
       }
     }
 #endif
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }

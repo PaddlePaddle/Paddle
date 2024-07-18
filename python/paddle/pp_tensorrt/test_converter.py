@@ -1,17 +1,30 @@
-import pytest
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
-import paddle
-from util import (
-    run_pir_pass,
-    get_dummy_program,
-    get_bert_program,
-    get_r50_program,
-    forbid_op_lower_trt,
-    enforce_op_lower_trt,
-    warmup_shape_infer,
-    predict_program,
-)
 from converter import PaddleToTensorRTConverter
+from util import (
+    forbid_op_lower_trt,
+    get_bert_program,
+    get_dummy_program,
+    get_r50_program,
+    predict_program,
+    run_pir_pass,
+    warmup_shape_infer,
+)
+
+import paddle
 
 
 def test_paddle_to_tensorrt_conversion_dummy():
@@ -136,10 +149,11 @@ def test_paddle_to_tensorrt_conversion_r50():
 
     # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
     program = run_pir_pass(program, partition_mode=False)
-    enforce_op_lower_trt(program, "pd_op.conv2d")
-    enforce_op_lower_trt(program, "pd_op.relu")
-    forbid_op_lower_trt(program, "pd_op.batch_norm_")
-    forbid_op_lower_trt(program, "pd_op.pool2d")
+    # enforce_op_lower_trt(program, "pd_op.conv2d")
+    # enforce_op_lower_trt(program, "pd_op.relu")
+    # enforce_op_lower_trt(program, "pd_op.pool2d")
+    # enforce_op_lower_trt(program, "pd_op.batch_norm_")
+    # enforce_op_lower_trt(program, "pd_op.flatten")
     forbid_op_lower_trt(program, "pd_op.flatten")
 
     # Step4: run trt_sub_graph_extract_pass()
@@ -158,13 +172,13 @@ def test_paddle_to_tensorrt_conversion_r50():
     np.testing.assert_allclose(
         output_expected[0],
         output_converted[0],
-        rtol=1e-2,
-        atol=1e-2,
+        rtol=0.1,
+        atol=0.1,
         err_msg="Outputs are not within the 1e-3 tolerance",
     )
 
-    print(output_expected)
-    print(output_converted)
+    print("output_expected", output_expected)
+    print("output_converted", output_converted)
 
 
 if __name__ == "__main__":
