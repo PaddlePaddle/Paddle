@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -25,6 +26,8 @@ using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 using cinn::dialect::ir::details::CompileGroupAsOpAttribute;
 using cinn::dialect::ir::details::GetBlockOutsideInput;
+
+PD_DECLARE_bool(cinn_bc_branch_optimize);
 
 namespace {
 std::vector<pir::Value> GetOpOuputValues(const pir::Operation* op) {
@@ -438,7 +441,7 @@ void SimplyConditionBlock(
 
 namespace cinn::dialect::ir::details {
 
-std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
+std::optional<std::shared_ptr<BroadcastTree>> ConstructBroadcastTree(
     const cinn::common::BroadcastLeaf& leaves) {
   VLOG(6) << "before constructed. broadcast-leaf: \n"
           << ToTxtString(cinn::common::BroadcastTree(leaves));
@@ -446,7 +449,11 @@ std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
   auto broadcast_tree = std::make_shared<cinn::common::BroadcastTree>(
       cinn::common::ConstructBroadcastTree(cinn::common::BroadcastLeaf(leaves),
                                            &num_of_leaves));
-  VLOG(4) << "num of broadcast tree leaves:" << num_of_leaves;
+  if (num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
+    LOG(WARNING) << "the number of leaf nodes in broadcast tree exceeds "
+                    "limit.";
+    return std::nullopt;
+  }
   VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree);
   return broadcast_tree;
 }
@@ -478,13 +485,24 @@ GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group) {
   return group_dim_expr_info;
 }
 
-bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group) {
-  GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
-  const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
-  return NeedBroadcastWithCF(leaves);
+std::optional<std::shared_ptr<BroadcastTree>> GetBroadcastTreeForOptimize(
+    const OpLoweringGroupPtr& group) {
+  if (!FLAGS_cinn_bc_branch_optimize) return std::nullopt;
+
+  const common::BroadcastLeaf leaves = [&]() {
+    // NOTE(dev): Need UpdateShapeOrDataExprs firstly and the logic
+    // will be migated into BucketLower later.
+    UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
+    GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
+    return group_dim_expr_info.all_value_dim_exprs;
+  }();
+
+  if (!ContainBroadcastShape(leaves)) return std::nullopt;
+
+  return ConstructBroadcastTree(leaves);
 }
 
-bool NeedBroadcastWithCF(const cinn::common::BroadcastLeaf& leaves) {
+bool ContainBroadcastShape(const cinn::common::BroadcastLeaf& leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = cinn::common::GetFirstCstrBroadcastable(leaves);
   return broadcastable_condition.has_value();
