@@ -83,7 +83,9 @@ int GetVectorizedSize(const T* pointer) {
       if (address % vec8 == 0) {
         return std::min(4, valid_vec_size);
     */
-  if (address % vec4 == 0) {
+  if (address % vec8 == 0) {
+    return std::min(8, valid_vec_size);
+  } else if (address % vec4 == 0) {
     return std::min(4, valid_vec_size);
   } else if (address % vec2 == 0) {
     return std::min(2, valid_vec_size);
@@ -107,7 +109,9 @@ static int GetVectorizedSize(const DenseTensor* tensor) {
   // can begin with :
   // if (address % (element_size * 8) == 0) {
   //   return std::min(8, valid_vec_size);
-  if (address % (element_size * 4) == 0) {
+  if (address % (element_size * 8) == 0) {
+    return std::min(8, valid_vec_size);
+  } else if (address % (element_size * 4) == 0) {
     return std::min(4, valid_vec_size);
   } else if (address % (element_size * 2) == 0) {
     return std::min(2, valid_vec_size);

@@ -567,7 +567,7 @@ static int GetVectorizedSizeForTensors(
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
-  int vec_size = 4;
+  int vec_size = 8;
   for (size_t i = 0; i < ins.size(); ++i) {
     vec_size = std::min(vec_size, phi::GetVectorizedSize(ins[i]));
   }
@@ -784,6 +784,10 @@ ElementwiseKernelForDifferentVecSize(
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
   switch (vec_size) {
+    case VecSizeXL:
+      LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeXL>(
+          ctx, ins, outs, func);
+      break;
     case VecSizeL:
       LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           ctx, ins, outs, func);

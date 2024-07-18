@@ -552,6 +552,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
+    case VecSizeXL:
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           ctx, classifier, func);
