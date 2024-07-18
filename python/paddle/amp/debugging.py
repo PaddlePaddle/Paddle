@@ -434,7 +434,7 @@ def _get_operator_stats_flag() -> Any:
     return flags["FLAGS_low_precision_op_list"]
 
 
-def _print_operator_stats(op_count_dict: dict[str, str | list[int]]) -> str:
+def _print_operator_stats(op_count_dict: dict[str, str | list[int]]) -> None:
     """
     Parse and print the stats of operators, mainly including the calls of
     dtypes such as different fp32, fp16, bf16 and others.
