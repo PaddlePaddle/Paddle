@@ -2759,9 +2759,24 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
       auto output_names = GetOutputNames();
       int output_size = 0;
       paddle::PaddlePlace place;
+      auto type_maps = GetOutputTypes();
       for (auto &name : output_names) {
-        void *output_ptr =
-            GetOutputTensor(name)->data<void>(&place, &output_size);
+        auto output_type = type_maps[name];
+        void *output_ptr = nullptr;
+        if (output_type == paddle_infer::DataType::FLOAT32) {
+          output_ptr = GetOutputTensor(name)->data<float>(&place, &output_size);
+        } else if (output_type == paddle_infer::DataType::FLOAT16 ||
+                   output_type == paddle_infer::DataType::BFLOAT16) {
+          output_ptr =
+              GetOutputTensor(name)->data<float16>(&place, &output_size);
+        } else if (output_type == paddle_infer::DataType::INT8 ||
+                   output_type == paddle_infer::DataType::UINT8) {
+          output_ptr =
+              GetOutputTensor(name)->data<uint8_t>(&place, &output_size);
+        } else if (output_type == paddle_infer::DataType::FLOAT64) {
+          output_ptr =
+              GetOutputTensor(name)->data<double>(&place, &output_size);
+        }
         infer_xpu_ctx->ClearL3Block(output_ptr);
       }
     });
