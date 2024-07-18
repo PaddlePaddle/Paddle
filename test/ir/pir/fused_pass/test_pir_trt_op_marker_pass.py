@@ -248,7 +248,7 @@ class TestFlattenConCatTRTPattern(PassTest):
                     x = paddle.static.data(
                         name='x', shape=x_shape, dtype='float32'
                     )
-                    flatten = paddle.nn.Flatten(start_axis=0, stop_axis=2)
+                    flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
                     flatten_out = flatten(
                         paddle.transpose(x, perm=[0, 3, 1, 2])
                     )
@@ -358,16 +358,21 @@ class TestIndexSelectTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[3, 4], dtype='int32')
-                index = paddle.static.data(
-                    name='index', shape=[3], dtype='int32'
+                image_shape = paddle.static.data(
+                    name='x', shape=[1, 128, 1, 1], dtype='float32'
                 )
-                index_select_out = paddle.index_select(x, index)
-                out = paddle.assign(index_select_out)
+                x = paddle.arange(
+                    end=image_shape[0]
+                    * image_shape[1]
+                    * image_shape[2]
+                    * image_shape[3]
+                )
+                img = paddle.reshape(x, image_shape)
+                flatten_out = paddle.nn.flatten(start_axis=1, stop_axis=3)
+                out = paddle.assign(flatten_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x": np.random.random([3, 4]).astype("int32"),
-                    "index": np.random.random([3]).astype("int32"),
+                    "x": np.random.random([2, 3, 4, 4]).astype("int32"),
                 }
 
                 self.fetch_list = [out]
