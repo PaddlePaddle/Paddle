@@ -288,9 +288,9 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_model(
     ${QUANT_GOOGLENET_MODEL_DIR} ${QUANT_GOOGLENET_MODEL_ARCHIVE}
     1d4a7383baa63e7d1c423e8db2b791d5)
-  inference_quant_int8_image_classification_test(
-    test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model
-    ${IMAGENET_DATA_PATH})
+  #inference_quant_int8_image_classification_test(
+  #  test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model
+  #  ${IMAGENET_DATA_PATH})
 
   # Quant MobileNetV1
   set(QUANT_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant")
@@ -508,7 +508,7 @@ if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                      120)
   set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
+  #set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
 endif()

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/seed_kernel_impl.h"
 
-#include "paddle/phi/common/complex.h"
-
-namespace paddle {
-namespace platform {
-template <typename T>
-using complex = phi::dtype::complex<T>;
-
-using namespace phi::dtype;  // NOLINT
-
-}  // namespace platform
-}  // namespace paddle
+PD_REGISTER_KERNEL(seed, CPU, ALL_LAYOUT, phi::CPUSeedKernel, int) {}

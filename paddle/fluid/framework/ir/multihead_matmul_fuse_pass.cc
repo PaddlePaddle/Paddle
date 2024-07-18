@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle::framework {
 class Scope;
@@ -908,7 +908,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
       QKVWeightsProcess<float>(
           wq_tensor, wk_tensor, wv_tensor, bq_tensor, bk_tensor, bv_tensor);
     } else if (wq_tensor->dtype() == phi::DataType::FLOAT16) {
-      QKVWeightsProcess<platform::float16>(
+      QKVWeightsProcess<phi::dtype::float16>(
           wq_tensor, wk_tensor, wv_tensor, bq_tensor, bk_tensor, bv_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(

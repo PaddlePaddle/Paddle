@@ -33,13 +33,13 @@ static __global__ void FillInf(float* buf) {
   buf[2] = 0.2;
 }
 
-static __global__ void FillNAN(platform::float16* buf) {
+static __global__ void FillNAN(phi::dtype::float16* buf) {
   buf[0] = 0.0;
   buf[1] = 0.1;
   buf[2].x = 0x7fff;
 }
 
-static __global__ void FillInf(platform::float16* buf) {
+static __global__ void FillInf(phi::dtype::float16* buf) {
   buf[0] = 0.0;
   buf[1].x = 0x7c00;
   buf[2] = 0.5;
@@ -51,7 +51,7 @@ static __global__ void FillFinite(float* buf) {
   buf[2] = 0.2;
 }
 
-static __global__ void FillFinite(platform::float16* buf) {
+static __global__ void FillFinite(phi::dtype::float16* buf) {
   buf[0] = 0.0;
   buf[1] = 0.1;
   buf[2] = 0.2;
@@ -74,8 +74,8 @@ TEST(TensorContainsNAN, GPU) {
   }
   {
     phi::DenseTensor tensor;
-    paddle::platform::float16* buf =
-        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
+    phi::dtype::float16* buf =
+        tensor.mutable_data<phi::dtype::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
@@ -103,8 +103,8 @@ TEST(TensorContainsInf, GPU) {
   }
   {
     phi::DenseTensor tensor;
-    paddle::platform::float16* buf =
-        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
+    phi::dtype::float16* buf =
+        tensor.mutable_data<phi::dtype::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
@@ -117,7 +117,7 @@ TEST(TensorContainsInf, GPU) {
 
 TEST(TensorIsfinite, GPU) {
   phi::GPUPlace gpu(0);
-  using paddle::platform::float16;
+  using phi::dtype::float16;
   auto& pool = phi::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   // contains inf
@@ -217,8 +217,8 @@ TEST(TensorContainsInf, GPUWithoutWait) {
   }
   {
     phi::DenseTensor tensor, out;
-    paddle::platform::float16* buf =
-        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
+    phi::dtype::float16* buf =
+        tensor.mutable_data<phi::dtype::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
@@ -256,8 +256,8 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
   }
   {
     phi::DenseTensor tensor, out;
-    paddle::platform::float16* buf =
-        tensor.mutable_data<paddle::platform::float16>({3}, gpu);
+    phi::dtype::float16* buf =
+        tensor.mutable_data<phi::dtype::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
