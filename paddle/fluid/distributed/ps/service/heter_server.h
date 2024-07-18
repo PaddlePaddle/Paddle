@@ -80,14 +80,14 @@ class ServiceHandlerBase {
   virtual ~ServiceHandlerBase() {}
 
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
-  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
+  void SetDevCtx(const phi::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   virtual int Handle(const MultiVarMsg* request,
                      MultiVarMsg* response,
                      brpc::Controller* cntl) = 0;
 
  protected:
-  const platform::DeviceContext* dev_ctx_;
+  const phi::DeviceContext* dev_ctx_;
   const framework::Scope* scope_;
 };
 

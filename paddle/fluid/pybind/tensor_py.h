@@ -146,10 +146,10 @@ static py::array_t<T> CastNumpyArray(const py::object &array) {
 }
 
 // Note: Since float16 is not a builtin type in C++, we register
-// paddle::platform::float16 as numpy.float16.
+// phi::dtype::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
 template <>
-struct npy_format_descriptor<paddle::platform::float16> {
+struct npy_format_descriptor<phi::dtype::float16> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT16_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -164,9 +164,9 @@ struct npy_format_descriptor<paddle::platform::float16> {
 };
 
 // Note: Since bfloat16 is not a builtin type in C++ and in numpy,
-// we register paddle::platform::bfloat16 as numpy.uint16.
+// we register phi::dtype::bfloat16 as numpy.uint16.
 template <>
-struct npy_format_descriptor<paddle::platform::bfloat16> {
+struct npy_format_descriptor<phi::dtype::bfloat16> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_UINT16_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -292,8 +292,8 @@ struct ValidDTypeToPyArrayChecker {
     static constexpr bool kValue = true;      \
   }
 
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::bfloat16);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float16);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::bfloat16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<float>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<double>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
@@ -311,9 +311,9 @@ inline std::string TensorDTypeToPyDTypeStr(
     framework::proto::VarType::Type type) {
 #define TENSOR_DTYPE_TO_PY_DTYPE(T, proto_type)                             \
   if (type == proto_type) {                                                 \
-    if (std::is_same<T, platform::float16>::value) {                        \
+    if (std::is_same<T, phi::dtype::float16>::value) {                      \
       return "e";                                                           \
-    } else if (std::is_same<T, platform::bfloat16>::value) {                \
+    } else if (std::is_same<T, phi::dtype::bfloat16>::value) {              \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
       return "H";                                                           \
     } else if (std::is_same<T, platform::complex<float>>::value) {          \
@@ -543,8 +543,8 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
     SetTensorFromPyArrayT<int16_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
     SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::float16, P>(
+  } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
+    SetTensorFromPyArrayT<phi::dtype::float16, P>(
         self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
                  array)) {
@@ -557,7 +557,7 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
     // uint16 is used for casting bfloat16
-    SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(
+    SetTensorFromPyArrayT<phi::dtype::bfloat16, P>(
         self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
@@ -920,9 +920,9 @@ inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
   auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
-      return _sliceAndConcat<paddle::platform::float16>(self, obj, dim);
+      return _sliceAndConcat<phi::dtype::float16>(self, obj, dim);
     case framework::proto::VarType::BF16:
-      return _sliceAndConcat<paddle::platform::bfloat16>(self, obj, dim);
+      return _sliceAndConcat<phi::dtype::bfloat16>(self, obj, dim);
     case framework::proto::VarType::COMPLEX64:
       return _sliceAndConcat<paddle::platform::complex<float>>(self, obj, dim);
     case framework::proto::VarType::COMPLEX128:

@@ -19,8 +19,8 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {

@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/float16.h"
 
-using float16 = paddle::platform::float16;
+using float16 = phi::dtype::float16;
 using Scope = paddle::framework::Scope;
 using OpDesc = paddle::framework::OpDesc;
 using Graph = paddle::framework::ir::Graph;

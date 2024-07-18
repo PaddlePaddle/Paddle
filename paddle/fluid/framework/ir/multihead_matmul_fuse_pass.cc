@@ -908,7 +908,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
       QKVWeightsProcess<float>(
           wq_tensor, wk_tensor, wv_tensor, bq_tensor, bk_tensor, bv_tensor);
     } else if (wq_tensor->dtype() == phi::DataType::FLOAT16) {
-      QKVWeightsProcess<platform::float16>(
+      QKVWeightsProcess<phi::dtype::float16>(
           wq_tensor, wk_tensor, wv_tensor, bq_tensor, bk_tensor, bv_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
