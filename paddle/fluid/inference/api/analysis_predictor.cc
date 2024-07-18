@@ -912,6 +912,10 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     // set attr
     for (const auto &pass : pass_pm.passes()) {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+      pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+      if (pass->name() == "auto_mixed_precision_pass") {
+        pass->Set("__mixed_precision_mode__", new phi::DataType(paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+      }
       if (pass->name() == "matmul_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_fuse_pass") {
@@ -2200,7 +2204,7 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->AppendPass("is_test_pass");
         pass_builder->AppendPass("constant_folding_pass");
       }
-      pass_builder->AppendPass("auto_mixed_precision_pass");
+      // pass_builder->AppendPass("auto_mixed_precision_pass");
       if (!config_.new_ir_enabled()) {
         pass_builder->AppendPass("inplace_op_var_pass");
       }

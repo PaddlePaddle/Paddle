@@ -50,6 +50,7 @@
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
@@ -677,3 +678,5 @@ std::unique_ptr<Pass> CreateAutoMixedPrecisionPass() {
 }
 
 }  // namespace pir
+
+REGISTER_IR_PASS(auto_mixed_precision_pass, AutoMixedPrecisionPass);
