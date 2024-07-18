@@ -2761,7 +2761,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
       paddle::PaddlePlace place;
       for (auto &name : output_names) {
         void *output_ptr =
-            GetOutputTensor(name)->data<void *>(&place, &output_size);
+            GetOutputTensor(name)->data<void>(&place, &output_size);
         infer_xpu_ctx->ClearL3Block(output_ptr);
       }
     });
