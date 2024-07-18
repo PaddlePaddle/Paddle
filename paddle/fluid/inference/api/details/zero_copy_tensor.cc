@@ -31,7 +31,7 @@
 
 namespace paddle_infer {
 
-using float16 = paddle::platform::float16;
+using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
 void Tensor::Reshape(const std::vector<int> &shape) {

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
 #include <glog/logging.h>
+#include <sys/stat.h>
 
 #include <fstream>
 #if !defined(_WIN32)
@@ -34,7 +34,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/utils/string/printf.h"
 
@@ -429,6 +429,16 @@ static bool IsFileExists(const std::string &path) {
   bool exists = file.is_open();
   file.close();
   return exists;
+}
+
+static bool IsDirectory(const std::string &path) {
+  struct stat info;
+  if (stat(path.c_str(), &info) != 0) {
+    return false;
+  } else if (info.st_mode & S_IFDIR) {
+    return true;
+  }
+  return false;
 }
 
 void RegisterAllCustomOperator(bool use_pir);

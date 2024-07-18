@@ -335,7 +335,7 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasDouble) {
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasFp16) {
-  BaseTest<platform::float16>(true);
+  BaseTest<phi::dtype::float16>(true);
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsUpscaleInTrain) {
@@ -378,8 +378,8 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutLargeShape) {
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutFp16MLperf) {
   const int rows = 512;
   const int cols = 1024;
-  TestFusedLayernormResidualDropoutBias<platform::float16> test(
+  TestFusedLayernormResidualDropoutBias<phi::dtype::float16> test(
       rows, cols, 0, 0, 0.00001f, false, false, false);
   test.Run();
-  test.CheckOut(static_cast<platform::float16>(1e-2));
+  test.CheckOut(static_cast<phi::dtype::float16>(1e-2));
 }

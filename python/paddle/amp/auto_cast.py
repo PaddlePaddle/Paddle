@@ -191,7 +191,7 @@ def _is_gpu_float16_supported() -> bool:
     Judge whether current gpu support float16 amp.
     """
     prop = paddle.device.cuda.get_device_capability()
-    return prop[0] >= 7
+    return prop[0] >= 7 or paddle.is_compiled_with_rocm()
 
 
 def _is_gpu_bfloat16_supported() -> bool:
@@ -204,7 +204,7 @@ def _is_gpu_bfloat16_supported() -> bool:
         cuda_version_check = int(cuda_version.split('.')[0]) >= 11
     else:
         cuda_version_check = False
-    return prop[0] >= 8 and cuda_version_check
+    return prop[0] >= 8 and cuda_version_check or paddle.is_compiled_with_rocm()
 
 
 def _is_xpu_float16_supported() -> bool:
