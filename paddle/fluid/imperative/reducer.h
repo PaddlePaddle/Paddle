@@ -30,7 +30,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -72,8 +72,8 @@ struct DivNRanksForAllReduce {
   template <typename T>
   void apply() const {
     T* data = in_->mutable_data<T>(ctx_.GetPlace());
-    platform::ForRange<Dex> for_range(static_cast<const Dex&>(ctx_),
-                                      static_cast<size_t>(in_->numel()));
+    phi::funcs::ForRange<Dex> for_range(static_cast<const Dex&>(ctx_),
+                                        static_cast<size_t>(in_->numel()));
     DivNRanksFunctor<T> functor(nranks_, data);
     for_range(functor);
   }
