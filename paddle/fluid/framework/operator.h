@@ -584,7 +584,7 @@ class ExecutionContext : public phi::KernelContext {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const inline phi::GPUContext& cuda_device_context() const {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(device_context_.GetPlace()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));

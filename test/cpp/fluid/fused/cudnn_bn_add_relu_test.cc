@@ -908,7 +908,7 @@ TEST(CudnnBNAddReluFp16, BNAdd) {
   bool has_shortcut = false;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
   for (auto fuse_add : {false, true}) {
-    CudnnBNAddReluTester<paddle::platform::float16> test(
+    CudnnBNAddReluTester<phi::dtype::float16> test(
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
   }
@@ -923,7 +923,7 @@ TEST(CudnnBNAddReluFp16, BNAddRelu) {
   bool has_shortcut = false;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
   for (auto fuse_add : {false, true}) {
-    CudnnBNAddReluTester<paddle::platform::float16> test(
+    CudnnBNAddReluTester<phi::dtype::float16> test(
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
     if (fuse_add) {
@@ -941,7 +941,7 @@ TEST(CudnnBNAddReluFp16, HasShortcut) {
   bool fuse_add = false;
   bool has_shortcut = true;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
-  CudnnBNAddReluTester<paddle::platform::float16> test(
+  CudnnBNAddReluTester<phi::dtype::float16> test(
       batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
   test.CheckForward(5e-3);
 }

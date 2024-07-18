@@ -58,10 +58,10 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
                          "But received %d, and it's shape is [%s].",
                          mask.numel(),
                          mask.dims()));
-  if (platform::is_cpu_place(mask.place())) {
+  if (phi::is_cpu_place(mask.place())) {
     return mask.data<int>()[0];
   }
-  // when platform::is_gpu_place(mask.place()) is true
+  // when phi::is_gpu_place(mask.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
