@@ -55,7 +55,7 @@ DEFINE_GENERAL_PATTERN(Reshape, paddle::dialect::ReshapeOp)
 DEFINE_GENERAL_PATTERN(Dropout, paddle::dialect::DropoutOp)
 DEFINE_GENERAL_PATTERN(Bmm, paddle::dialect::BmmOp)
 DEFINE_GENERAL_PATTERN(Concat, paddle::dialect::ConcatOp)
-DEFINE_GENERAL_PATTERN(Flatten, paddle::dialect::FlattenOp)
+
 DEFINE_GENERAL_PATTERN(Fused_gemm_epilogue,
                        paddle::dialect::FusedGemmEpilogueOp)
 DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
@@ -751,6 +751,55 @@ class IndexSelectOpPattern
   }
 };
 
+class FlattenOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FlattenOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FlattenOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FlattenOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    if (!op->HasAttribute("start_axis") && !op->HasAttribute("stop_axis")) {
+      VLOG(3) << "flatten op must has start_axis and stop_axis attributes";
+      return false;
+    }
+    int start_axis = op->attribute<pir::Int32Attribute>("start_axis").data();
+    int stop_axis = op->attribute<pir::Int32Attribute>("stop_axis").data();
+
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+    int dims = x_shape.size();
+    if (dims == 0) {
+      VLOG(3) << "Flatten op does not support input's dim is 0 in tensorrt "
+                 "static shape mode.";
+    }
+    if (start_axis < 0) {
+      start_axis += dims;
+    }
+
+    if (start_axis == 0) {
+      VLOG(3) << "TRT flatten_contiguous_range not support the "
+                 "batch-dimension being changed";
+      return false;
+    }
+    if (stop_axis < 0) {
+      stop_axis += dims;
+    }
+    for (int i = start_axis; i <= stop_axis; ++i) {
+      if (x_shape[i] < 0) {
+        VLOG(3) << "On TRT static shape,flatten_contiguous_range input dim "
+                   "should be > 0";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -770,7 +819,6 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Dropout)
     ADD_PATTERN(Bmm)
     ADD_PATTERN(Concat)
-    ADD_PATTERN(Flatten)
     ADD_PATTERN(Full)
     ADD_PATTERN(Fused_gemm_epilogue)
     ADD_PATTERN(Add)
@@ -797,6 +845,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
     ps.Add(std::make_unique<SliceOpPattern>(context));
     ps.Add(std::make_unique<IndexSelectOpPattern>(context));
+    ps.Add(std::make_unique<FlattenOpPattern>(context));
     return ps;
   }
 };
