@@ -245,6 +245,42 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
             pass
 
 
+class TestBatchSamplerWithIterableSampler(TestBatchSampler):
+    def init_batch_sampler(self):
+        dataset = RandomDataset(1000, 10)
+        sampler = []
+        for i in range(len(dataset)):
+            sampler.append(dataset[i])
+        bs = BatchSampler(
+            sampler=sampler,
+            batch_size=self.batch_size,
+            drop_last=self.drop_last,
+        )
+        return bs
+
+
+class TestBatchSamplerWithIterableSamplerDropLast(
+    TestBatchSamplerWithIterableSampler
+):
+    def setUp(self):
+        self.num_samples = 1000
+        self.num_classes = 10
+        self.batch_size = 32
+        self.shuffle = False
+        self.drop_last = True
+
+
+class TestBatchSamplerWithIterableSamplerShuffle(
+    TestBatchSamplerWithIterableSampler
+):
+    def setUp(self):
+        self.num_samples = 1000
+        self.num_classes = 10
+        self.batch_size = 32
+        self.shuffle = True
+        self.drop_last = True
+
+
 class TestWeightedRandomSampler(unittest.TestCase):
     def init_probs(self, total, pos):
         pos_probs = np.random.random((pos,)).astype('float32')
