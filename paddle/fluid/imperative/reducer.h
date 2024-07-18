@@ -63,10 +63,10 @@ template <typename Dex>
 struct DivNRanksForAllReduce {
   phi::DenseTensor* in_;
   int64_t nranks_;
-  const platform::DeviceContext& ctx_;
+  const phi::DeviceContext& ctx_;
   DivNRanksForAllReduce(phi::DenseTensor* in,
                         int64_t nranks,
-                        const platform::DeviceContext& ctx)
+                        const phi::DeviceContext& ctx)
       : in_(in), nranks_(nranks), ctx_(ctx) {}
 
   template <typename T>
@@ -105,17 +105,17 @@ class Group {
   framework::proto::VarType::Type dtype_;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::DeviceContext& context);
+  void ConcatTensors(const phi::DeviceContext& context);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::DeviceContext& context);
+  void SplitTensors(const phi::DeviceContext& context);
 
   // use it in CUDA
   void DivNRanks(phi::DenseTensor* tensor,
                  int64_t nranks,
-                 const platform::DeviceContext& context);
+                 const phi::DeviceContext& context);
 
-  void DivNRanks(const platform::DeviceContext& context, int64_t nranks);
+  void DivNRanks(const phi::DeviceContext& context, int64_t nranks);
 
   friend std::ostream& operator<<(std::ostream&, const Group&);
 };
