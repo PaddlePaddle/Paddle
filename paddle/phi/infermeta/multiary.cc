@@ -2269,11 +2269,10 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   for (int i = 0; i < x_dims.size(); i++) {
     x_shapes.push_back(x_dims[i]);
   }
-  auto token_num = x.numel() / dim;
 
   if (config.is_runtime) {
     PADDLE_ENFORCE_GT(
-        token_num,
+        x.numel() / dim,
         0,
         phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
