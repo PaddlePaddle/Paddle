@@ -247,10 +247,7 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
 
 class TestBatchSamplerWithIterableSampler(TestBatchSampler):
     def init_batch_sampler(self):
-        dataset = RandomDataset(1000, 10)
-        sampler = []
-        for i in range(len(dataset)):
-            sampler.append(dataset[i])
+        sampler = range(1000)
         bs = BatchSampler(
             sampler=sampler,
             batch_size=self.batch_size,
