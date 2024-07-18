@@ -30,8 +30,6 @@ template <typename T>
 struct Masked_multihead_attention_params {
   float *qk_sum_max_split_seq;
   float *split_out;
-  // output buffer, [B, 1(seq_len), num_head * dim_head]
-  T *out;
   // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
   const T *qkv;
   // bias, [3, num_head, dim_head]
@@ -658,7 +656,6 @@ __global__ void masked_multihead_attention_kernel(
 #endif
 }
 
-// post_process_kernel only works with seq of 102400 length or less
 template <typename T, int Dh, int Dh_MAX, typename StoreFunc>
 __global__ void post_process_kernel(Masked_multihead_attention_params<T> params,
                                     StoreFunc store_func) {
@@ -1116,7 +1113,6 @@ void DispatchWithDtype(const Context &dev_ctx,
     dev_ctx.template Alloc<float>(&split_out,
                                   split_out.numel() * sizeof(float));
     params.split_out = split_out.data<float>();
-    params.out = out->data<T>();
 
     if (out_shift) {
       DispatchFMHA<T, true>(dev_ctx,
