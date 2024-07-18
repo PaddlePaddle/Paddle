@@ -21,7 +21,7 @@ namespace platform {
 CustomDeviceStreamResourcePool::CustomDeviceStreamResourcePool(
     const paddle::Place& place) {
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
       phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
@@ -74,7 +74,7 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
     const paddle::Place& place) {
   auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
       phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
@@ -119,7 +119,7 @@ std::shared_ptr<CustomDeviceStreamObject> CustomDeviceStreamResourcePool::New(
 CustomDeviceEventResourcePool::CustomDeviceEventResourcePool(
     const paddle::Place& place) {
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
       phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
@@ -172,7 +172,7 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
     const phi::Place& place) {
   auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
       phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));

@@ -31,7 +31,7 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(reader_queue_speed_test_mode);
@@ -182,7 +182,7 @@ class MultiDeviceFeedReader {
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
                 reader, p, 2, pin_memory_));
       } else {
-        if (platform::is_gpu_place(p)) {
+        if (phi::is_gpu_place(p)) {
           PADDLE_THROW(platform::errors::PermissionDenied(
               "Place cannot be CUDAPlace when use_double_buffer is False"));
         }
