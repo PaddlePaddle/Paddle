@@ -55,8 +55,20 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        x = paddle.static.nn.conv2d_transpose(x, **self.attrs)
-        self.fetch_list = [x.name]
+        mapping = {
+            "padding": "padding",
+            "stride": "stride",
+            "dilation": "dilation",
+            "bias_attr": "bias_attr",
+            "num_filters": "output_channels",
+            "filter_size": "kernel_size",
+            "groups": "groups",
+        }
+        attrs = {mapping[k]: v for k, v in self.attrs.items()}
+        x = paddle.nn.Conv2DTranspose(
+            in_channels=x.shape[1], data_format='NCHW', **attrs
+        )(x)
+        self.fetch_list = [x]
 
     def run_model(self, exec_mode):
         self.run_op_test(exec_mode)
@@ -173,7 +185,7 @@ class TestCase12(TestBase):
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
         x = paddle.nn.functional.conv2d_transpose(x, weight, **self.attrs)
-        self.fetch_list = [x.name]
+        self.fetch_list = [x]
 
 
 if __name__ == "__main__":
