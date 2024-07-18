@@ -20,8 +20,8 @@
 #include <thread>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace distributed {
