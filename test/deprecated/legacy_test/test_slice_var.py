@@ -22,14 +22,15 @@ from paddle.distributed.transpiler.distribute_transpiler import slice_variable
 class TestSliceVar(unittest.TestCase):
     def check_slice_output(self, shapes, expected_sizes, min_size):
         var_list = []
-        program = base.Program()
-        for shape in shapes:
-            var = program.global_block().create_var(
-                name=str(random.randint(10000, 99999)),
-                persistable=True,
-                shape=shape,
-            )
-            var_list.append(var)
+        with paddle.pir_utils.OldIrGuard():
+            program = base.Program()
+            for shape in shapes:
+                var = program.global_block().create_var(
+                    name=str(random.randint(10000, 99999)),
+                    persistable=True,
+                    shape=shape,
+                )
+                var_list.append(var)
         blocks = slice_variable(var_list, 10, min_size)
         all_sizes = []
         for s in expected_sizes:
