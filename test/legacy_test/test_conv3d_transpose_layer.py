@@ -116,7 +116,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     weight_attr=weight_attr,
                     bias_attr=bias_attr,
                     data_format=self.data_format,
-                )(x_var)
+                )(x_var, self.output_size)
         feed_dict = {"input": self.input}
         exe = base.Executor(place)
         exe.run(start)
