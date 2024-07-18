@@ -43,7 +43,6 @@ _int_dtype_ = [
 ]
 
 
-
 @dygraph_only
 def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
