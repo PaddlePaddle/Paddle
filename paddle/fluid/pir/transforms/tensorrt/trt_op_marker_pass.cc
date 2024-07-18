@@ -699,6 +699,7 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
+
     if (!op->HasAttribute("axes")) {
       VLOG(3)
           << "The necessary attribute of the slice operator axes are missing.";
@@ -718,6 +719,31 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     if (axes.size() != inputs_shape.size()) {
       VLOG(3) << "The shape of attributes of the slice operator axes "
                  "and starts are not equal.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class IndexSelectOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::IndexSelectOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::IndexSelectOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::IndexSelectOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8200)
+    VLOG(3) << "index_select op is only supported by tensorrt8.2 above ";
+    return false;
+#endif
+    pir::Value x = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    if (!(x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
+      VLOG(3) << "Index select op Index input data type must be int32 or int64";
       return false;
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -770,6 +796,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
     ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
     ps.Add(std::make_unique<SliceOpPattern>(context));
+    ps.Add(std::make_unique<IndexSelectOpPattern>(context));
     return ps;
   }
 };
