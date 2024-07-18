@@ -2752,23 +2752,26 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
     //   Clear the output_tensor's l3_block, that does not participate in
     //   L3CacheAutotune
-    static std::once_flag output_l3block_clear;
-    std::call_once(output_l3block_clear, [&]() {
-      VLOG(4) << "Clear the output_tensor's l3_block, that does not "
-                 "participate in L3CacheAutotune.";
-      auto output_names = GetOutputNames();
-      int output_size = 0;
-      paddle::PaddlePlace place;
-      auto type_maps = GetOutputTypes();
-      for (auto &name : output_names) {
-        auto output_type = type_maps[name];
-        void *output_ptr = nullptr;
-        if (output_type == paddle_infer::DataType::FLOAT32) {
-          output_ptr = GetOutputTensor(name)->data<float>(&place, &output_size);
+    if (config_.xpu_config_.l3_autotune_size > 0) {
+      static std::once_flag output_l3block_clear;
+      std::call_once(output_l3block_clear, [&]() {
+        VLOG(4) << "Clear the output_tensor's l3_block, that does not "
+                   "participate in L3CacheAutotune.";
+        auto output_names = GetOutputNames();
+        int output_size = 0;
+        paddle::PaddlePlace place;
+        auto type_maps = GetOutputTypes();
+        for (auto &name : output_names) {
+          auto output_type = type_maps[name];
+          void *output_ptr = nullptr;
+          if (output_type == paddle_infer::DataType::FLOAT32) {
+            output_ptr =
+                GetOutputTensor(name)->data<float>(&place, &output_size);
+          }
+          infer_xpu_ctx->ClearL3Block(output_ptr);
         }
-        infer_xpu_ctx->ClearL3Block(output_ptr);
-      }
-    });
+      });
+    }
 
     infer_xpu_ctx->L3CacheAutotune();
   }
