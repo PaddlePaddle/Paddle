@@ -49,7 +49,6 @@ T* CreateForSaveCombineOp(int x,
   return expect;
 }
 
-template <typename Place>
 phi::DenseTensor* GeneratePlaceholderBeforeLoad(
     const std::string& out_var_name, paddle::framework::Scope* scope) {
   auto load_var = scope->Var(out_var_name);
