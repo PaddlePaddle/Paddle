@@ -196,8 +196,7 @@ void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
       "Unimplemented inter-broadcast for CPU now."));
 }
 
-paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *GLOOParallelContext::GetDeviceContext(int ring_id) {
   // return the CPUContext
   return device_.get();
 }

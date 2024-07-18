@@ -33,7 +33,7 @@ TaskLoop* TaskLoopThread::StartLoop() {
   PADDLE_ENFORCE_EQ(
       start_,
       false,
-      platform::errors::PreconditionNotMet("thread is already running."));
+      phi::errors::PreconditionNotMet("thread is already running."));
   start_ = true;
   thread_ = std::thread([this]() { Loop(); });
 
