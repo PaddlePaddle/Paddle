@@ -20,7 +20,7 @@
 
 namespace phi {
 
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
 struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
   bool return_softmax;
   DenseTensor* softmax;
@@ -55,7 +55,7 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                                  const DenseTensor& k,
                                  const DenseTensor& softmax_lse,
                                  DenseTensor* reduced_scores) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(q.dims().size(),
                     4,
                     phi::errors::InvalidArgument(

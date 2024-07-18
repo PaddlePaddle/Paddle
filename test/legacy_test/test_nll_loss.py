@@ -1229,15 +1229,20 @@ class TestNLLLossOp2DNoReduce(OpTest):
 
 class TestNLLLossName(unittest.TestCase):
     def test_name(self):
-        place = paddle.CPUPlace()
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.program_guard(prog, startup_prog):
-            x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
-            label = paddle.static.data(name='label', shape=[10], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
-            res = nll_loss(x, label)
-            self.assertTrue(res.name.startswith('nll_loss'))
+        with paddle.pir_utils.OldIrGuard():
+            place = paddle.CPUPlace()
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                x = paddle.static.data(
+                    name='x', shape=[10, 10], dtype='float64'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[10], dtype='int64'
+                )
+                nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
+                res = nll_loss(x, label)
+                self.assertTrue(res.name.startswith('nll_loss'))
 
 
 class TestNLLLossInvalidArgs(unittest.TestCase):
