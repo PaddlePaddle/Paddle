@@ -157,7 +157,7 @@ void TransDataType(const phi::DenseTensor& in,
 #if defined(PADDLE_WITH_XPU)
   switch (src_type) {
     case proto::VarType::FP16:
-      XPUTransDataType<platform::float16>(in, out, dst_type, ctx);
+      XPUTransDataType<phi::dtype::float16>(in, out, dst_type, ctx);
       break;
     case proto::VarType::FP32:
       XPUTransDataType<float>(in, out, dst_type, ctx);
@@ -185,11 +185,11 @@ void TransDataType(const phi::DenseTensor& in,
   switch (src_type) {
     case proto::VarType::FP16:
       framework::VisitDataType(dst_type,
-                               CastDataType<platform::float16>(in, out, ctx));
+                               CastDataType<phi::dtype::float16>(in, out, ctx));
       break;
     case proto::VarType::BF16:
-      framework::VisitDataType(dst_type,
-                               CastDataType<platform::bfloat16>(in, out, ctx));
+      framework::VisitDataType(
+          dst_type, CastDataType<phi::dtype::bfloat16>(in, out, ctx));
       break;
     case proto::VarType::FP8_E4M3FN:
       framework::VisitDataType(

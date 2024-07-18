@@ -175,6 +175,7 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
 class CreateArrayOp : public pir::Op<CreateArrayOp,
                                      OpYamlInfoInterface,
                                      InferMetaInterface,
+                                     InferSymbolicShapeInterface,
                                      paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
@@ -191,6 +192,7 @@ class CreateArrayOp : public pir::Op<CreateArrayOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
@@ -219,6 +221,7 @@ class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
 class ArrayLengthOp : public pir::Op<ArrayLengthOp,
                                      OpYamlInfoInterface,
                                      InferMetaInterface,
+                                     InferSymbolicShapeInterface,
                                      paddle::dialect::ForwardOnlyTrait> {
  public:
   using Op::Op;
@@ -236,6 +239,7 @@ class ArrayLengthOp : public pir::Op<ArrayLengthOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class ArrayReadOp : public pir::Op<ArrayReadOp,
@@ -277,6 +281,7 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
                                      paddle::dialect::VjpInterface,
                                      InferMetaInterface,
+                                     InferSymbolicShapeInterface,
                                      InplaceTrait,
                                      paddle::dialect::ForwardOnlyTrait> {
  public:
@@ -299,6 +304,7 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
   static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
@@ -310,7 +316,8 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
 class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
                                        OpYamlInfoInterface,
                                        paddle::dialect::VjpInterface,
-                                       InferMetaInterface> {
+                                       InferMetaInterface,
+                                       InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_to_tensor"; }
@@ -330,6 +337,7 @@ class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
   static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,

@@ -752,6 +752,15 @@
   optional : sequence_length, dropout_state_out
   intermediate : reserve
 
+- op : row_conv
+  args: (Tensor x, Tensor filter)
+  output: Tensor (out)
+  infer_meta:
+    func: RowConvInferMeta
+  kernel:
+    func: row_conv
+  backward: row_conv_grad
+
 - op : sequence_expand
   args: (Tensor x, Tensor y, int ref_level = -1)
   output: Tensor (out)
