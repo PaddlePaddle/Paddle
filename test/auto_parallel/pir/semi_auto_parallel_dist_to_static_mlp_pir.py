@@ -241,7 +241,6 @@ class TestSimpleNetForSemiAutoParallel:
         # we should get the average loss first.
         paddle.disable_static()
         pd_partial_loss = paddle.to_tensor(dy2static_losses)
-        print('pd_partial_loss', pd_partial_loss, flush=1)
         pd_loss_list = []
         dist.all_gather(pd_loss_list, pd_partial_loss)
         np_dy2static_loss_list = [loss.numpy() for loss in pd_loss_list]
@@ -282,11 +281,8 @@ class TestSimpleNetForSemiAutoParallel:
 
     def run_test_case(self):
         self.test_mp_demo_net()
-        print('mp done', flush=1)
         self.test_pp_demo_net()
-        print('pp done', flush=1)
         self.test_dp_demo_net()
-        print('dp done', flush=1)
 
 
 if __name__ == '__main__':

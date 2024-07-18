@@ -692,8 +692,7 @@ class Engine:
                             enable=self._strategy.amp.enable
                             and self._strategy.amp.dtype != 'bfloat16',
                         )
-                        with paddle.amp.auto_cast(enable=False):
-                            scaled = scaler.scale(loss)
+                        scaled = scaler.scale(loss)
                         scaler.minimize(self._optimizer, scaled)
                         # print('after minimize', dist_program, flush=1)
 
@@ -713,7 +712,7 @@ class Engine:
 
         # re-run apply_mix2dist_pass to dist accumulator.
         apply_mix2dist_pass(dist_program)
-        print('program', startup_program, dist_program, flush=1)
+        # print('program', startup_program, dist_program, flush=1)
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
@@ -1173,7 +1172,6 @@ class Engine:
                         var_name = op.str_attr("output_name")
                     else:
                         continue
-                    print('op', op, flush=1)
                     scope_var = global_scope().find_var(var_name)
                     if scope_var and scope_var.get_tensor()._is_initialized():
                         param = op.operand_source(0)

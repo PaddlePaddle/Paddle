@@ -140,6 +140,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
             "pd_op.relu_grad",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
+            "pd_op.cast",
             "pd_op.subtract_grad",
             "pd_op.square_grad",
             "pd_op.mean_grad",

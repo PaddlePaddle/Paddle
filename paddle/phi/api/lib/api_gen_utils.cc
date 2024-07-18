@@ -677,10 +677,8 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   // TODO(GhostScreaming): Inplace outputs are initialized, just set their
   // dist_attr.
   if (out->size() == out_size) {
-    VLOG(3) << "Outputs are inplace vector Tensors, create a new distTensor, "
-            << "share the internal dense tensor with original out, "
-            << "and set the corresponding dist_attr to "
-            << "avoid changing the inplaced input";
+    VLOG(3) << "Outputs are inplace vector Tensors, SKIP set dist_attr for out "
+            << "to avoid changing the inplaced input";
     for (size_t i = 0; i < out_size; ++i) {
       results[i] =
           static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());

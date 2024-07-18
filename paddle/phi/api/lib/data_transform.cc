@@ -668,7 +668,6 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 static bool ReshardIsNeededWithPartial(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
-  VLOG(4) << in_dist_attr << " " << out_dist_attr;
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
           in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping() ||
           in_dist_attr.partial_status() != out_dist_attr.partial_status());
@@ -854,7 +853,6 @@ void SetInplaceOutputCorrectDistAttr(
     std::vector<Tensor>& tensors,  // NOLINT
     const std::vector<phi::distributed::TensorDistAttr>& dist_attr,
     bool use_general_spmd_rule) {
-  VLOG(4) << "SetInplaceOutputCorrectDistAttr";
   for (size_t i = 0; i < tensors.size(); i++) {
     auto tensor_in = tensors[i].impl();
     if (tensor_in) {
@@ -900,7 +898,6 @@ void SetInplaceOutputCorrectDistAttr(
       true,
       phi::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
-  VLOG(4) << "SetInplaceOutputCorrectDistAttr";
   SetInplaceOutputCorrectDistAttr(
       dev_ctx, tensors, paddle::get<1>(dist_attr), use_general_spmd_rule);
 }

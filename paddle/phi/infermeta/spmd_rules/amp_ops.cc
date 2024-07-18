@@ -31,9 +31,7 @@ SpmdInfo CheckFiniteAndUnscaleSpmd(const std::vector<DistMetaTensor>& xs,
   auto offset = 0;
   for (auto& x : xs) {
     auto dist_attr = x.dist_attr();
-    VLOG(4) << x.dist_attr() << " " << dist_attr;
     dist_attr.clean_partial_status();
-    VLOG(4) << x.dist_attr() << " " << dist_attr;
     xs_attrs.emplace_back(dist_attr);
     auto dims_mapping = dist_attr.dims_mapping();
     auto mesh = dist_attr.process_mesh();
