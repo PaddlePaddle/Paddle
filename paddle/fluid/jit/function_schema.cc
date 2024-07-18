@@ -15,7 +15,9 @@
 #include "paddle/fluid/jit/function_schema.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/program.h"
 
 #include "paddle/fluid/jit/function_utils.h"
 namespace paddle::jit {
@@ -51,10 +53,37 @@ void FunctionSchema::AddOutputArg(const std::string& name) {
   output_args.emplace_back(name, true);
 }
 
+/* base function info*/
+BaseFunctionInfo::BaseFunctionInfo(const std::string& func_name,
+                                   const std::vector<std::string>& param_names)
+    : func_name_(func_name), param_names_(param_names) {}
+const std::string& BaseFunctionInfo::FunctionName() const { return func_name_; }
+
+const std::vector<std::string>& BaseFunctionInfo::ParamNames() const {
+  return param_names_;
+}
+
+const std::vector<std::string> BaseFunctionInfo::InputArgNames() const {
+  return schema_.InputArgNames();
+}
+
+const std::vector<std::string> BaseFunctionInfo::OutputArgNames() const {
+  return schema_.OutputArgNames();
+}
+
+const std::string& BaseFunctionInfo::ProgramFilePath() const {
+  return prog_file_path_;
+}
+
+void BaseFunctionInfo::SetProgramFilePath(const std::string& path) {
+  prog_file_path_ = path;
+}
+
+/* FunctionInfo */
 FunctionInfo::FunctionInfo(const std::string& func_name,
                            const std::vector<std::string>& param_names,
                            const framework::ProgramDesc& program_desc)
-    : func_name_(func_name), param_names_(param_names) {
+    : BaseFunctionInfo(func_name, param_names) {
   program_desc_.reset(new framework::ProgramDesc(program_desc));
   // Parse FunctionSchema
   for (auto& in_name : program_desc_->GetFeedTargetNames()) {
@@ -65,34 +94,32 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
   }
 }
 
-const std::string& FunctionInfo::FunctionName() const { return func_name_; }
-
 const framework::ProgramDesc& FunctionInfo::ProgramDesc() const {
   return *program_desc_.get();  // NOLINT
-}
-
-const std::vector<std::string>& FunctionInfo::ParamNames() const {
-  return param_names_;
-}
-
-const std::vector<std::string> FunctionInfo::InputArgNames() const {
-  return schema_.InputArgNames();
-}
-
-const std::vector<std::string> FunctionInfo::OutputArgNames() const {
-  return schema_.OutputArgNames();
-}
-
-const std::string& FunctionInfo::ProgramFilePath() const {
-  return prog_file_path_;
-}
-
-void FunctionInfo::SetProgramFilePath(const std::string& path) {
-  prog_file_path_ = path;
 }
 
 void FunctionInfo::RemoveDescFeedFetch() {
   utils::RemoveFeedFetch(program_desc_.get());
 }
 
+/* pirFunctionInfo*/
+PirFunctionInfo::PirFunctionInfo(const std::string& func_name,
+                                 const std::vector<std::string>& param_names,
+                                 pir::Program* program)
+    : BaseFunctionInfo(func_name, param_names) {
+  program_ = program;
+  // Parse FunctionSchema
+  for (auto& in_name : GetFeedTargetNames(program_)) {
+    schema_.AddInputArg(in_name);
+  }
+  for (auto& out_name : GetFetchTargetNames(program_)) {
+    schema_.AddOutputArg(out_name);
+  }
+}
+
+pir::Program* PirFunctionInfo::Program() const {
+  return program_;  // NOLINT
+}
+
+void PirFunctionInfo::RemoveFeedFetch() { utils::RemoveFeedFetch(program_); }
 }  // namespace paddle::jit

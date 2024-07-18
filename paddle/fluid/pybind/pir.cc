@@ -62,7 +62,6 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/parser/ir_parser.h"
-#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
@@ -126,6 +125,38 @@ COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
+std::vector<std::string> GetFeedTargetNames(pir::Program *prog) {
+  std::vector<std::string> feed_target;
+  for (auto &op : *(prog->block())) {
+    if (op.isa<paddle::dialect::DataOp>()) {
+      auto name = op.attribute<StrAttribute>("name").AsString();
+      feed_target.push_back(name);
+      continue;
+    } else if (op.isa<paddle::dialect::FeedOp>()) {
+      auto name = op.attribute<StrAttribute>("name").AsString();
+      feed_target.push_back(name);
+      continue;
+    }
+  }
+  return feed_target;
+}
+
+std::vector<std::string> GetFetchTargetNames(pir::Program *prog) {
+  std::vector<std::string> fetch_target;
+  for (auto &op : *(prog->block())) {
+    if (op.isa<paddle::dialect::FetchOp>()) {
+      auto name = op.attribute<StrAttribute>("name").AsString();
+      fetch_target.push_back(name);
+      continue;
+    } else if (op.isa<pir::ShadowOutputOp>()) {
+      auto name = op.attribute<StrAttribute>("output_name").AsString();
+      fetch_target.push_back(name);
+      continue;
+    }
+  }
+  return fetch_target;
+}
+
 namespace pybind {
 
 PyTypeObject *g_ir_value_pytype = nullptr;

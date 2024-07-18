@@ -37,7 +37,7 @@ using FunctionInfoMap =
 
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
-  const auto& pdmodel_paths = utils::PdmodelFilePaths(path);
+  const auto& pdmodel_paths = utils::ModelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
   FunctionInfoMap info_map;
