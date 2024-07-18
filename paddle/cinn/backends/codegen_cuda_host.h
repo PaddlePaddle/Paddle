@@ -43,13 +43,24 @@ class CodeGenCUDA_Host : public CodeGenHost {
   }
 
   llvm::Value *Visit(const ir::Call *op) override {
-    if (op->name == runtime::intrinsic::call_cuda_kernel) {
-      return LowerGPUKernelCall(op);
-    } else if (op->name == runtime::intrinsic::call_hip_kernel) {
-      return LowerGPUKernelCall(op);
-    } else {
-      return CodeGenHost::Visit(op);
-    }
+    return common::DefaultDeviceTarget().arch.Match(
+        [&](common::UnknownArch) { return CodeGenHost::Visit(op); },
+        [&](common::X86Arch) { return CodeGenHost::Visit(op); },
+        [&](common::ARMArch) { return CodeGenHost::Visit(op); },
+        [&](common::NVGPUArch) {
+          if (op->name == runtime::intrinsic::call_cuda_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
+        },
+        [&](common::HygonDCUArchHIP) {
+          if (op->name == runtime::intrinsic::call_hip_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
+        });
   }
 
  private:

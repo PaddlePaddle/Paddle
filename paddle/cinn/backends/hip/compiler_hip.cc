@@ -76,13 +76,13 @@ std::string Compiler::CompileWithHiprtc(const std::string& code,
   compile_options.push_back("-std=c++17");
 
   // prepare include headers
-  auto hip_headers = FindHIPIncludePaths();
-  auto cinn_headers = FindCINNRuntimeIncludePaths();
+  std::vector<std::string> hip_headers = FindHIPIncludePaths();
+  std::vector<std::string> cinn_headers = FindCINNRuntimeIncludePaths();
   std::vector<std::string> include_paths;
-  for (auto& header : hip_headers) {
+  for (const auto& header : hip_headers) {
     include_paths.push_back("--include-path=" + header);
   }
-  for (auto& header : cinn_headers) {
+  for (const auto& header : cinn_headers) {
     include_paths.push_back("--include-path=" + header);
   }
   compile_options.insert(
@@ -125,9 +125,9 @@ std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
   // device arch
   options += std::string(" --offload-arch=") + GetDeviceArch();
 
-  auto include_dir = FindCINNRuntimeIncludePaths();
+  std::vector<std::string> include_dir = FindCINNRuntimeIncludePaths();
   std::string include_dir_str = "";
-  for (auto dir : include_dir) {
+  for (const auto& dir : include_dir) {
     if (include_dir_str.empty()) {
       include_dir_str = dir;
     } else {
@@ -145,7 +145,7 @@ std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
   }
   prefix_name_ = dir + "/" + common::UniqName("hip_tmp");
 
-  auto hip_c_file = prefix_name_ + ".cc";
+  std::string hip_c_file = prefix_name_ + ".cc";
   std::ofstream ofs(hip_c_file, std::ios::out);
   PADDLE_ENFORCE_EQ(ofs.is_open(),
                     true,
