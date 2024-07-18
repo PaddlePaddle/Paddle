@@ -1228,7 +1228,7 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
   }
   constexpr int max_dim = 512;
   if (!cudnn_available || !last_dim ||
-      (softmax_dim >= max_dim && sizeof(T) <= 4)) {
+      (softmax_dim <= max_dim && sizeof(T) <= 4)) {
     return false;
   } else {
     return true;
@@ -1252,11 +1252,6 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
-      if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
-        LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
-            dev_ctx, out_data, x.data<T>(), N, dim);
-        return;
-      }
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
@@ -1306,7 +1301,12 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim_log2);
       }
     } else {
-      LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
+      if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
+        LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
+            dev_ctx, out_data, x.data<T>(), N, dim);
+      } else {
+        LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
+      }
     }
   } else {
     LaunchNormalSoftmaxForward<T, LogMode>(
