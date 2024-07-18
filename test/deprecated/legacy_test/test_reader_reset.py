@@ -42,55 +42,56 @@ class TestReaderReset(unittest.TestCase):
         self.prepare_data()
 
     def main(self, with_double_buffer):
-        main_prog = base.Program()
-        startup_prog = base.Program()
+        with paddle.pir_utils.OldIrGuard():
+            main_prog = base.Program()
+            startup_prog = base.Program()
 
-        with base.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[-1] + self.ins_shape, dtype='float32'
+            with base.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[-1] + self.ins_shape, dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                )
+                data_reader_handle = base.io.PyReader(
+                    feed_list=[image, label],
+                    capacity=16,
+                    iterable=False,
+                    use_double_buffer=with_double_buffer,
+                )
+                fetch_list = [image.name, label.name]
+
+            place = base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(startup_prog)
+
+            data_reader_handle.decorate_sample_list_generator(
+                paddle.batch(self.prepare_data(), batch_size=self.batch_size)
             )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
-            data_reader_handle = base.io.PyReader(
-                feed_list=[image, label],
-                capacity=16,
-                iterable=False,
-                use_double_buffer=with_double_buffer,
-            )
-            fetch_list = [image.name, label.name]
 
-        place = base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(startup_prog)
+            train_cp = compiler.CompiledProgram(main_prog)
 
-        data_reader_handle.decorate_sample_list_generator(
-            paddle.batch(self.prepare_data(), batch_size=self.batch_size)
-        )
+            batch_id = 0
+            pass_count = 0
+            while pass_count < self.test_pass_num:
+                data_reader_handle.start()
+                try:
+                    while True:
+                        data_val, label_val = exe.run(
+                            train_cp, fetch_list=fetch_list, return_numpy=True
+                        )
+                        ins_num = data_val.shape[0]
+                        broadcasted_label = np.ones(
+                            (ins_num,) + tuple(self.ins_shape)
+                        ) * label_val.reshape((ins_num, 1))
+                        self.assertEqual(data_val.all(), broadcasted_label.all())
+                        batch_id += 1
+                except base.core.EOFException:
+                    data_reader_handle.reset()
+                    pass_count += 1
+                    self.assertEqual(pass_count * self.batch_num, batch_id)
 
-        train_cp = compiler.CompiledProgram(main_prog)
-
-        batch_id = 0
-        pass_count = 0
-        while pass_count < self.test_pass_num:
-            data_reader_handle.start()
-            try:
-                while True:
-                    data_val, label_val = exe.run(
-                        train_cp, fetch_list=fetch_list, return_numpy=True
-                    )
-                    ins_num = data_val.shape[0]
-                    broadcasted_label = np.ones(
-                        (ins_num,) + tuple(self.ins_shape)
-                    ) * label_val.reshape((ins_num, 1))
-                    self.assertEqual(data_val.all(), broadcasted_label.all())
-                    batch_id += 1
-            except base.core.EOFException:
-                data_reader_handle.reset()
-                pass_count += 1
-                self.assertEqual(pass_count * self.batch_num, batch_id)
-
-        self.assertEqual(pass_count, self.test_pass_num)
+            self.assertEqual(pass_count, self.test_pass_num)
 
     def test_all(self):
         self.main(with_double_buffer=False)

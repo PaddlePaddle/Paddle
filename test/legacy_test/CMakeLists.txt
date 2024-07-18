@@ -878,6 +878,7 @@ set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
