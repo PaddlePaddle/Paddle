@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
@@ -197,6 +197,9 @@ limitations under the License. */
 #ifdef PADDLE_CUDA_FP16
 namespace paddle {
 namespace platform {
+
+using float16 = phi::dtype::float16;
+using namespace phi::dtype;  // NOLINT
 
 #if defined(PADDLE_WITH_HIP)
 ARITHMETIC_KERNEL(Add, +)
