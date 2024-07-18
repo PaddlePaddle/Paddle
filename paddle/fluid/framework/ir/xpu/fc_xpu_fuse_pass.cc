@@ -689,7 +689,7 @@ void FcXPUFusePass::CreateFusionOutputs(
         GetScaleValueForNode(var_quant_scales, fc_out_var_node);
     phi::DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
     out_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, output_scale);
@@ -751,7 +751,7 @@ void FcXPUFusePass::CreateFusionInputs(
     input_max_tensor->set_type(phi::DataType::FLOAT32);
     input_max_tensor->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     std::vector<float> input_scales(max_ptr_size, input_scale);
     memcpy(cpu_ctx->Alloc<float>(input_max_tensor),
            input_scales.data(),
@@ -862,7 +862,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       weight_tensor->set_type(phi::DataType::INT8);
       weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       auto* new_weight_data = cpu_ctx->Alloc<int8_t>(weight_tensor);
       memcpy(new_weight_data,
              weight_data.data(),
