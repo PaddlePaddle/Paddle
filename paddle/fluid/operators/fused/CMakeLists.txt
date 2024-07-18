@@ -13,10 +13,9 @@ register_operators(
   fused_multi_transformer_op
   fused_multi_transformer_int8_op
   fused_gemm_epilogue_op
-  resnet_basic_block_op)
+  fused_gate_attention_op)
 
 if(WITH_XPU)
-  op_library(resnet_basic_block_op)
   op_library(fused_gemm_epilogue_op)
   op_library(fused_attention_op)
   op_library(fused_feedforward_op)
@@ -30,6 +29,7 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   # HIP not support cudnnTransformTensor
   # HIP not support cudnnConvolutionBiasActivationForward
+  op_library(fused_gate_attention_op)
   # fused_bn_add_activation
   # HIP not support bn act fuse in MIOPEN
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))

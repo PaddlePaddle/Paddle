@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -167,7 +167,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   auto place = place_;
 
   auto *dev_ctx = static_cast<platform::CustomDeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   platform::XCCLComm *comm =
       platform::XCCLCommContext::Instance(place.GetDeviceType())
           .Get(ring_id, place);
@@ -232,7 +232,7 @@ void XCCLParallelContext::WaitCompute(int ring_id) {
                         compute_events_.size()));
 
   auto compute_stream = static_cast<phi::CustomContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->GetStream();
   auto comm_stream = platform::XCCLCommContext::Instance(place_.GetDeviceType())
                          .Get(ring_id, place_)
@@ -258,7 +258,7 @@ void XCCLParallelContext::WaitComm(int ring_id) {
                         comm_events_.size()));
 
   auto compute_stream = static_cast<phi::CustomContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->GetStream();
   auto comm_stream = platform::XCCLCommContext::Instance(place_.GetDeviceType())
                          .Get(ring_id, place_)
@@ -272,7 +272,7 @@ void XCCLParallelContext::WaitComm(int ring_id) {
 
 void XCCLParallelContext::SynchronizeCompute() {
   auto *compute_dev_ctx = static_cast<phi::CustomContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
+      phi::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }
 

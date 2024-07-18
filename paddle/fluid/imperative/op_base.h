@@ -25,7 +25,7 @@
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace imperative {
@@ -162,9 +162,9 @@ class OpBase {
 
   void SetId(size_t id) { id_ = id; }
 
-  const platform::Place& place() const { return place_; }
+  const phi::Place& place() const { return place_; }
 
-  void SetPlace(const platform::Place& place) { place_ = place; }
+  void SetPlace(const phi::Place& place) { place_ = place; }
 
   void EnforceHasInOut() const {
     PADDLE_ENFORCE_NE(
@@ -191,20 +191,20 @@ class OpBase {
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place);
+                  const phi::Place& place);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place);
+                  const phi::Place& place);
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<egr::EagerVariable>& ins,
                   const NameVarMap<egr::EagerVariable>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place);
+                  const phi::Place& place);
 
   bool HasVoidFunctionPostHook() const {
     return !void_function_post_hooks_.empty();

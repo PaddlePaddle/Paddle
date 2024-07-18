@@ -1,0 +1,29 @@
+op_patches:
+  - op_name : pd_op.data
+    actions:
+      - action : modify_output_attr
+        object : stop_gradient
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::BoolAttribute
+            default: "false"
+  - op_name : builtin.parameter
+    actions :
+      - action : modify_attr
+        object : parameter_name
+        type : pir::StrAttribute
+        default : "fc_0"
+
+  # - op_name : builtin.parameter
+  #   actions :
+  #     - action : add_attr
+  #       object : new_attribute
+  #       type : pir::StrAttribute
+  #       default : "new.attribute"
+
+  # - op_name : pd_op.fetch
+  #   actions :
+  #     - action : delete_attr
+  #       object : col
+
+attr_pathes:

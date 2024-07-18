@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/common/place.h"
 
 PD_DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 
@@ -238,7 +238,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     PADDLE_ENFORCE_EQ(
         inputs[i].data.length(),
         input.numel() * phi::SizeOf(input.dtype()),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
 
     if (phi::is_cpu_place(place_)) {
@@ -253,8 +253,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place_));
       auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place,

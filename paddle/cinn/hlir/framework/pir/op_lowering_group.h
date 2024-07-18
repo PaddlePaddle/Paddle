@@ -77,6 +77,17 @@ class OpLoweringGroup {
     is_broadcast_leaf_ = is_broadcast_leaf;
   }
 
+  enum class BranchType { LHS_EQ_RHS, LHS_EQ_ONE, RHS_EQ_ONE };
+  using BroadcastCond =
+      std::pair<symbol::Broadcastable<symbol::DimExpr>, BranchType>;
+  const std::vector<BroadcastCond>& GetBroadcastConditions() {
+    return broadcast_conditions_;
+  }
+  void SetBroadcastConditions(
+      const std::vector<BroadcastCond>& broadcast_conditions) {
+    broadcast_conditions_ = broadcast_conditions;
+  }
+
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
   std::vector<::pir::Operation*>& mut_ops() { return ops_; }
   void SetOps(const std::vector<::pir::Operation*>& new_ops) { ops_ = new_ops; }
@@ -205,6 +216,7 @@ class OpLoweringGroup {
   // from local and global ShapeAnalysis. It will be removed after
   // refactoring logic of OpLoweringGroup.
   bool is_broadcast_leaf_{false};
+  std::vector<BroadcastCond> broadcast_conditions_;
 
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;

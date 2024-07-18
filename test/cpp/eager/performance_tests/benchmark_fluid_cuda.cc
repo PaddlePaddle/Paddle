@@ -55,8 +55,7 @@ TEST(Benchmark, FluidScaleCUDA) {
     x_tensor->Resize(common::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
     paddle::memory::Copy(place,
@@ -67,18 +66,17 @@ TEST(Benchmark, FluidScaleCUDA) {
                          stream);
 
     if (mode == "Accuracy") {
-      benchmark_fluid_scale(
-          X, platform::Place(place), true /* accuracy_check */);
+      benchmark_fluid_scale(X, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "WarmUp") {
-      benchmark_fluid_scale(X, platform::Place(place));
+      benchmark_fluid_scale(X, phi::Place(place));
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_scale_cuda.out");
 #endif
-      benchmark_fluid_scale(X, platform::Place(place));
+      benchmark_fluid_scale(X, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -89,7 +87,7 @@ TEST(Benchmark, FluidScaleCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -109,8 +107,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
     std::vector<float> y_src_data(4, 2.0);
     std::vector<int64_t> dims = {2, 2};
 
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -136,17 +133,17 @@ TEST(Benchmark, FluidMatmulCUDA) {
 
     if (mode == "Accuracy") {
       benchmark_fluid_matmul(
-          X, Y, platform::Place(place), true /* accuracy_check */);
+          X, Y, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "WarmUp") {
-      benchmark_fluid_matmul(X, Y, platform::Place(place));
+      benchmark_fluid_matmul(X, Y, phi::Place(place));
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_matmul_cuda.out");
 #endif
-      benchmark_fluid_matmul(X, Y, platform::Place(place));
+      benchmark_fluid_matmul(X, Y, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -157,7 +154,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -168,8 +165,7 @@ TEST(Benchmark, FluidMLPCUDA) {
   eager_test::InitEnv(place);
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -230,17 +226,17 @@ TEST(Benchmark, FluidMLPCUDA) {
 
     if (mode == "Accuracy") {
       benchmark_fluid_mlp(
-          X, Ws, Bs, platform::Place(place), true /* accuracy_check */);
+          X, Ws, Bs, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "WarmUp") {
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
+      benchmark_fluid_mlp(X, Ws, Bs, phi::Place(place));
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_mlp_cuda.out");
 #endif
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
+      benchmark_fluid_mlp(X, Ws, Bs, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -252,7 +248,7 @@ TEST(Benchmark, FluidMLPCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

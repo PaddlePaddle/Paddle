@@ -57,7 +57,6 @@
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
@@ -228,7 +227,7 @@ phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
     case AnalysisConfig::Precision::kInt8:
       return phi::DataType::INT8;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Paddle Inference not support precision. We now only support "
           "Float32, Half, Bfloat16 and Int8"));
       return phi::DataType::FLOAT32;
@@ -249,7 +248,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     case paddle_infer::PlaceType::kCUSTOM:
       return phi::Backend::CUSTOM;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU "
           "and CPU."));
       return phi::Backend::CPU;
@@ -283,16 +282,16 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
   if (!has_zero_dim) {
     PADDLE_ENFORCE_NOT_NULL(
         input_ptr,
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "Cannot convert to LoDTensor because LoDTensor creation failed."));
     PADDLE_ENFORCE_NOT_NULL(
         pt.data.data(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor is illegal."));
     PADDLE_ENFORCE_EQ(
         pt.data.length(),
         t->numel() * phi::SizeOf(t->dtype()),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
   }
 
@@ -307,7 +306,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     std::memcpy(
         static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Not compile with WITH_IPU, should not reach here."));
 #endif
   } else if (phi::is_gpu_place(place)) {
@@ -316,7 +315,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
@@ -326,8 +325,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                  pt.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with CUDA, should not reach here."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Not compile with CUDA, should not reach here."));
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
@@ -338,13 +337,12 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                  pt.data.data(),
                  pt.data.length());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Not compile with XPU, should not reach here."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Not compile with XPU, should not reach here."));
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = place;
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -355,11 +353,11 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                  pt.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Not compile with CUSTOM_DEVICE, should not reach here."));
 #endif
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
         "now."));
   }
@@ -446,6 +444,15 @@ bool AnalysisPredictor::Init(
   std::string model_path = config_.prog_file();
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
+  if (load_pir_model_) {
+    PADDLE_ENFORCE_EQ(
+        FLAGS_enable_pir_api || (config_.use_pir_ && config_.use_new_executor_),
+        true,
+        platform::errors::InvalidArgument(
+            "Models with a .json suffix can only run in PIR mode. Please set "
+            "export FLAGS_enable_pir_api=True or "
+            "config.EnableNewExecutor(true)) and config.EnableNewIR(true)"));
+  }
 
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
@@ -516,10 +523,9 @@ bool AnalysisPredictor::Init(
     }
     // NOTE: If the external_stream equals to global_device_contexts's stream,
     // then fallback.
-    auto global_stream =
-        static_cast<phi::GPUContext *>(
-            platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
+    auto global_stream = static_cast<phi::GPUContext *>(
+                             phi::DeviceContextPool::Instance().Get(place_))
+                             ->stream();
     if (predictor_stream_ != global_stream) {
       InitResourceManager(predictor_stream_);
       InitDeviceContexts();
@@ -534,7 +540,7 @@ bool AnalysisPredictor::Init(
     }
     if (predictor_stream_ == nullptr) {
       auto *global_context = static_cast<phi::XPUContext *>(
-          platform::DeviceContextPool::Instance().Get(place_));
+          phi::DeviceContextPool::Instance().Get(place_));
       predictor_stream_ = global_context->stream();
     }
     InitDeviceContexts();
@@ -733,8 +739,7 @@ void *AnalysisPredictor::GetExecStream() const {
     if (private_context_) {
       return predictor_stream_;
     } else {
-      paddle::platform::DeviceContextPool &pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
           ->stream();
     }
@@ -745,8 +750,7 @@ void *AnalysisPredictor::GetExecStream() const {
     if (private_context_) {
       return predictor_stream_;
     } else {
-      paddle::platform::DeviceContextPool &pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
           ->stream();
     }
@@ -754,8 +758,7 @@ void *AnalysisPredictor::GetExecStream() const {
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (place_.GetType() == phi::AllocationType::CUSTOM) {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     return reinterpret_cast<const phi::CustomContext *>(pool.Get(place_))
         ->stream();
   }
@@ -768,8 +771,7 @@ const void *AnalysisPredictor::GetDeviceContexts() const {
   if (private_context_) {
     return &device_contexts_;
   } else {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     const auto &dev_ctxs = pool.device_contexts();
     return &dev_ctxs;
   }
@@ -1031,7 +1033,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      if (load_pir_model_ && for_save) {
+      if (!load_pir_model_ && for_save) {
         sub_scope_->Var(data_name);
       }
       idx2feeds_[feed_idx] = data_name;
@@ -1622,12 +1624,12 @@ void AnalysisPredictor::MkldnnPostReset() {
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
-          (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
+          (&phi::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
       auto shape_blob_size =
           static_cast<phi::OneDNNContext *>(
-              (&platform::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
+              (&phi::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetShapeBlobSize();
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
@@ -1715,7 +1717,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    phi::DeviceContextPool::SetDeviceContexts(&device_contexts_);
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
   }
@@ -1753,7 +1755,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   if (config_.use_xpu_) {
     PADDLE_ENFORCE(
         private_context_,
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "Must use private context if run predictor on xpu place."));
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
@@ -1801,7 +1803,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+    phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
@@ -1872,12 +1874,12 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
   for (const auto &input : inputs) {
     PADDLE_ENFORCE_EQ(input.defined(),
                       true,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input Tensor expected to be defined."));
     PADDLE_ENFORCE_EQ(
         input.is_dense_tensor(),
         true,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input Tensor expected to be type of dense tensor."));
   }
 
@@ -2523,7 +2525,7 @@ AnalysisPredictor::GetInputTypes() {
     } else if (dtype == paddle::framework::proto::VarType::BOOL) {
       input_type[name] = paddle_infer::DataType::BOOL;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when get input dtype ", dtype));
     }
   }
@@ -2578,7 +2580,7 @@ AnalysisPredictor::GetOutputTypes() {
     } else if (dtype == paddle::framework::proto::VarType::INT8) {
       output_type[name] = paddle_infer::DataType::INT8;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when get output dtype ", dtype));
     }
   }
@@ -2679,7 +2681,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    phi::DeviceContextPool::SetDeviceContexts(&device_contexts_);
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
   }
@@ -2719,7 +2721,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   if (config_.use_xpu_) {
     PADDLE_ENFORCE(
         private_context_,
-        paddle::platform::errors::Fatal(
+        phi::errors::Fatal(
             "Must use private context if run predictor on xpu place."));
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
@@ -2760,7 +2762,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
   if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+    phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
@@ -2825,8 +2827,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
   auto hook = [&](const std::string &op_type,
                   const std::string &input_name,
                   const paddle::Tensor &input_tensor) -> void {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto *dev_ctx = pool.Get(place_);
@@ -3785,7 +3786,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) : preds_() {
   PADDLE_ENFORCE_GE(
       size,
       1UL,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
   Config copy_config(config);
@@ -3804,7 +3805,7 @@ Predictor *PredictorPool::Retrieve(size_t idx) {
   PADDLE_ENFORCE_LT(
       idx,
       preds_.size() + 1,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "There are (%d) predictors in the pool, but the idx is (%d)",
           idx,
           preds_.size() + 1));
@@ -3872,8 +3873,7 @@ void InternalUtils::DisableTensorRtHalfOps(
 void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
   paddle::gpuStreamSynchronize(dev_ctx->stream());
 #endif

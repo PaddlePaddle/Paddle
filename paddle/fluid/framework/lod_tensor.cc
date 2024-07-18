@@ -233,7 +233,7 @@ void SerializeToStream(std::ostream &os,
 }
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx = nullptr;
   auto place = tensor.place();
   dev_ctx = pool.Get(place);
@@ -241,7 +241,7 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
 }
 
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx = nullptr;
   dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
@@ -337,7 +337,7 @@ LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
 }
 
 std::vector<phi::DenseTensor> SplitLoDTensor(
-    const phi::DenseTensor &src, const std::vector<platform::Place> places) {
+    const phi::DenseTensor &src, const std::vector<phi::Place> places) {
   PADDLE_ENFORCE_GT(places.size(),
                     0,
                     platform::errors::InvalidArgument(

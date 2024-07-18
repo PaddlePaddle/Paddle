@@ -63,7 +63,7 @@ class TEST_API Executor {
   explicit Executor(const platform::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+  explicit Executor(const phi::Place& place);
 
   ~Executor();
   /*

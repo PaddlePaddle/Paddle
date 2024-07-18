@@ -56,13 +56,13 @@ void Operation1::VerifySig() const {
   auto &attributes = this->attributes();
   if (attributes.count("op1_attr1") == 0 ||
       !attributes.at("op1_attr1").isa<pir::StrAttribute>()) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Type of attribute: parameter_name is not right."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op1_attr2") == 0 ||
       !attributes.at("op1_attr2").isa<pir::StrAttribute>()) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Type of attribute: parameter_name is not right."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Type of attribute: parameter_name is not right."));
   }
 }
 
