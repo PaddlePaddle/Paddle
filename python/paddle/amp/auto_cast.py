@@ -19,9 +19,13 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Sequence,
+    ContextManager,
+    List,
+    Literal,
+    Protocol,
     TypeVar,
     Union,
+    overload,
 )
 
 from typing_extensions import ParamSpec, TypeAlias
@@ -36,10 +40,7 @@ from paddle.base.framework import (
     in_pir_mode,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
-    DygraphShardingOptimizer,
-    DygraphShardingOptimizerV2,
-)
+from paddle.nn import Layer
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
 from .amp_lists import black_list, white_list
@@ -48,9 +49,10 @@ if TYPE_CHECKING:
     from typing import Generator
 
     from paddle import Tensor, dtype
-    from paddle.nn.layer.layers import Layer
+    from paddle.nn.layer.layers import _StateDict
+    from paddle.static import Operator, Program
 
-    _CustomList: TypeAlias = Union[list, tuple, set]
+    _CustomList: TypeAlias = Union[list[str], tuple[str, ...], set[str]]
     _LayerList: TypeAlias = Union[
         paddle.nn.BatchNorm,
         paddle.nn.BatchNorm1D,
@@ -62,13 +64,30 @@ if TYPE_CHECKING:
         paddle.nn.InstanceNorm2D,
         paddle.nn.InstanceNorm3D,
     ]
-    _OptimizerBase: TypeAlias = Union[
-        paddle.optimizer.Optimizer,
-        DygraphShardingOptimizer,
-        DygraphShardingOptimizerV2,
-    ]
-    _OptimizerList: TypeAlias = Union[_OptimizerBase, Sequence[_OptimizerBase]]
 
+
+class _OptimizerBase(Protocol):
+    def minimize(
+        self,
+        loss: Tensor,
+        startup_program: Program | None = None,
+        parameters: list[Tensor] | list[str] | None = None,
+        no_grad_set: set[Tensor] | set[str] | None = None,
+    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
+        ...
+
+    def step(self) -> None:
+        ...
+
+    def set_state_dict(self, state_dict: dict[str, Tensor]) -> None:
+        ...
+
+    def clear_grad(self, set_to_zero: bool = True) -> None:
+        ...
+
+
+_ModelsT = TypeVar("_ModelsT", Layer, List[Layer])
+_OptimizersT = TypeVar("_OptimizersT", _OptimizerBase, List[_OptimizerBase])
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 AMP_RELATED_FLAGS = [
@@ -117,8 +136,8 @@ def amp_global_state() -> AMPGlobalState:
 def _update_list(
     custom_white_list: _CustomList,
     custom_black_list: _CustomList,
-    level: AMP_LEVEL = 'O1',
-    dtype: dtype = 'float16',
+    level: str = 'O1',
+    dtype: str = 'float16',
 ) -> tuple[set[str], set[str]]:
     """
     Update black and white list according to users' custom list.
@@ -221,7 +240,7 @@ def _is_custom_device_bfloat16_supported() -> bool:
     return place.get_device_type() == 'npu'
 
 
-def need_keep_fp32(layer: _LayerList, dtype: dtype) -> bool:
+def need_keep_fp32(layer: _LayerList, dtype: str) -> bool:
     need_keep_fp32 = False
     # Highest priority. Because all the layers except BN will use bfloat16 params in bfloat16 training,
     # here we provide a option to keep fp32 param.
@@ -258,7 +277,8 @@ def need_keep_fp32(layer: _LayerList, dtype: dtype) -> bool:
 
 
 def set_excluded_layers(
-    models: Layer | list[Layer], excluded_layers: Layer | list[Layer]
+    models: Layer | list[Layer],
+    excluded_layers: Layer | list[Layer] | list[type[Layer]],
 ) -> None:
     excluded_layers_instances = []
     excluded_layers_types = []
@@ -295,11 +315,11 @@ def set_excluded_layers(
 
 
 def _pir_apply(
-    self,
+    self: Layer,
     func: Callable[_InputT, _RetT],
-    dtype: dtype,
+    dtype: str,
     include_sublayers: bool = True,
-):
+) -> None:
     if include_sublayers:
         for layer in self.children():
             _pir_apply(layer, func, dtype, include_sublayers)
@@ -315,7 +335,7 @@ def _pir_apply(
     self._dtype = dtype
 
 
-def _pir_transform(t: Tensor, dtype: dtype) -> None:
+def _pir_transform(t: Tensor, dtype: str) -> None:
     main = paddle.static.default_main_program()
     startup = paddle.static.default_startup_program()
     with paddle.static.program_guard(startup):
@@ -352,9 +372,9 @@ def _pir_transform(t: Tensor, dtype: dtype) -> None:
 
 
 def _pir_to_impl(
-    self, dtype: dtype, include_sublayers: bool, floating_only: bool
-) -> None:
-    def transform(t: Tensor, dtype: dtype) -> Tensor | None:
+    self: Layer, dtype: str, include_sublayers: bool, floating_only: bool
+) -> Layer:
+    def transform(t: Tensor, dtype: str) -> Tensor | None:
         if floating_only and (not paddle.is_floating_point(t)):
             return t
         return _pir_transform(t, dtype)
@@ -369,9 +389,9 @@ def _pir_to_impl(
 
 def amp_initialize(
     models: Layer | list[Layer],
-    dtype: dtype,
-    excluded_layers: Layer | list[Layer],
-) -> Layer | list[Any]:
+    dtype: str,
+    excluded_layers: Layer | list[Layer] | list[type[Layer]],
+) -> list[Layer]:
     set_excluded_layers(models, excluded_layers)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
@@ -401,7 +421,7 @@ def amp_initialize(
     return models
 
 
-def check_models(models: Layer | list[Layer]) -> None:
+def check_models(models: list[Layer]) -> None:
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
@@ -413,7 +433,12 @@ def check_models(models: Layer | list[Layer]) -> None:
             )
 
 
-def _is_valid_optimizer(optimizer: _OptimizerList) -> bool:
+def _is_valid_optimizer(optimizer: _OptimizersT) -> bool:
+    from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
+        DygraphShardingOptimizer,
+        DygraphShardingOptimizerV2,
+    )
+
     return isinstance(
         optimizer,
         (
@@ -424,7 +449,7 @@ def _is_valid_optimizer(optimizer: _OptimizerList) -> bool:
     )
 
 
-def check_optimizers(optimizers: _OptimizerList) -> None:
+def check_optimizers(optimizers: _OptimizersT) -> None:
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
@@ -437,8 +462,8 @@ def amp_guard(
     enable: bool = True,
     custom_white_list: _CustomList | None = None,
     custom_black_list: _CustomList | None = None,
-    level: AMP_LEVEL = 'O1',
-    dtype: dtype = 'float16',
+    level: str = 'O1',
+    dtype: str = 'float16',
     use_promote: bool = True,
 ) -> Generator[None, None, None]:
     """
@@ -716,12 +741,10 @@ def amp_guard(
 
 
 class StateDictHook:
-    _save_dtype: dtype
-
-    def __init__(self, save_dtype: dtype) -> None:
+    def __init__(self, save_dtype: str) -> None:
         self._save_dtype = save_dtype
 
-    def __call__(self, state_dict: dict[Any, Any]) -> None:
+    def __call__(self, state_dict: _StateDict) -> None:
         for key in state_dict:
             param = state_dict[key]
             if paddle.is_floating_point(param):
@@ -731,8 +754,13 @@ class StateDictHook:
 
 
 def _set_multi_precision(
-    optimizer: _OptimizerList, multi_precision: bool
+    optimizer: _OptimizersT, multi_precision: bool
 ) -> None:
+    from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
+        DygraphShardingOptimizer,
+        DygraphShardingOptimizerV2,
+    )
+
     optimizer = (
         optimizer._inner_opt
         if isinstance(
@@ -744,17 +772,45 @@ def _set_multi_precision(
         optimizer._multi_precision = multi_precision
 
 
+@overload
+def amp_decorate(
+    models: _ModelsT,
+    optimizers: _OptimizersT = ...,
+    level: str = ...,
+    dtype: str = ...,
+    master_weight: bool | None = ...,
+    save_dtype: str | None = ...,
+    master_grad: bool = ...,
+    excluded_layers: Layer | list[Layer] | list[type[Layer]] | None = ...,
+) -> tuple[_ModelsT, _OptimizersT]:
+    ...
+
+
+@overload
+def amp_decorate(
+    models: _ModelsT,
+    optimizers: Literal[None] = ...,
+    level: str = ...,
+    dtype: str = ...,
+    master_weight: bool | None = ...,
+    save_dtype: str | None = ...,
+    master_grad: bool = ...,
+    excluded_layers: Layer | list[Layer] | list[type[Layer]] | None = ...,
+) -> _ModelsT:
+    ...
+
+
 @dygraph_only
 def amp_decorate(
-    models: Layer | list[Layer],
-    optimizers: _OptimizerList | None = None,
-    level: AMP_LEVEL = 'O1',
-    dtype: dtype = 'float16',
+    models: _ModelsT,
+    optimizers: _OptimizersT | None = None,
+    level: str = 'O1',
+    dtype: str = 'float16',
     master_weight: bool | None = None,
-    save_dtype: dtype | None = None,
+    save_dtype: str | None = None,
     master_grad: bool = False,
-    excluded_layers: Layer | list[Layer] | None = None,
-) -> None:
+    excluded_layers: Layer | list[Layer] | list[type[Layer]] | None = None,
+) -> tuple[_ModelsT, _OptimizersT] | _ModelsT:
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
     When level is O2(pure fp16), the decorate will cast all parameters of models to FP16, except BatchNorm, InstanceNorm and LayerNorm.
@@ -763,7 +819,7 @@ def amp_decorate(
 
     Args:
         models(Layer|list of Layer, optional): The defined models by user, models must be either a single model or a list of models. Default is None.
-        optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
+        optimizers(Optimizer|list of Optimizer|None, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure fp16/bf16, the decorator will cast all parameters of models to FP16/BF16, except BatchNorm, InstanceNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
@@ -957,10 +1013,10 @@ def auto_cast(
     enable: bool = True,
     custom_white_list: _CustomList | None = None,
     custom_black_list: _CustomList | None = None,
-    level: AMP_LEVEL = 'O1',
-    dtype: dtype = 'float16',
+    level: str = 'O1',
+    dtype: str = 'float16',
     use_promote: bool = True,
-) -> None:
+) -> ContextManager:
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
@@ -1037,16 +1093,44 @@ def auto_cast(
     )
 
 
+@overload
 def decorate(
-    models: Layer | list[Layer],
-    optimizers: _OptimizerList | None = None,
-    level: AMP_LEVEL = 'O1',
-    dtype: dtype = 'float16',
+    models: _ModelsT,
+    optimizers: _OptimizersT = ...,
+    level: str = ...,
+    dtype: str = ...,
+    master_weight: bool | None = ...,
+    save_dtype: str | None = ...,
+    master_grad: bool = ...,
+    excluded_layers: Layer | list[Layer] | list[type[Layer]] | None = ...,
+) -> tuple[_ModelsT, _OptimizersT]:
+    ...
+
+
+@overload
+def decorate(
+    models: _ModelsT,
+    optimizers: Literal[None] = ...,
+    level: str = ...,
+    dtype: str = ...,
+    master_weight: bool | None = ...,
+    save_dtype: str | None = ...,
+    master_grad: bool = ...,
+    excluded_layers: Layer | list[Layer] | list[type[Layer]] | None = ...,
+) -> _ModelsT:
+    ...
+
+
+def decorate(
+    models: _ModelsT,
+    optimizers: _OptimizersT | None = None,
+    level: str = 'O1',
+    dtype: str = 'float16',
     master_weight: bool | None = None,
     save_dtype: dtype | None = None,
     master_grad: bool = False,
     excluded_layers: Layer | list[Layer] | None = None,
-) -> None:
+) -> tuple[_ModelsT, _OptimizersT] | _ModelsT:
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
     When level is O2(pure float16/bfloat16), the decorate will cast all parameters of models to float16/bfloat16, except BatchNorm, InstanceNorm and LayerNorm.
