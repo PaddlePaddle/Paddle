@@ -363,7 +363,7 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
                             left_ew_sub_y_dims.size()));
       auto tensor_type = left_ew_sub_y_t.dtype();
       if (tensor_type == phi::DataType::FLOAT16) {
-        auto* sub_t_fp16_ptr = left_ew_sub_y_t.data<platform::float16>();
+        auto* sub_t_fp16_ptr = left_ew_sub_y_t.data<phi::dtype::float16>();
         offset_ = static_cast<float>(sub_t_fp16_ptr[0]);
       } else if (tensor_type == phi::DataType::FLOAT32) {
         auto* sub_t_fp32_ptr = left_ew_sub_y_t.data<float>();

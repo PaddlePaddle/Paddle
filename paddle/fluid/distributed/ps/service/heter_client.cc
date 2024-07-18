@@ -26,8 +26,7 @@ std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
 std::mutex HeterClient::mtx_;
 std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
 
-int GetMicroId(const platform::DeviceContext& ctx,
-               const framework::Scope* scope) {
+int GetMicroId(const phi::DeviceContext& ctx, const framework::Scope* scope) {
   framework::Variable* var = scope->FindVar("microbatch_id");
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
@@ -113,7 +112,7 @@ void HeterClient::CreateClient2XpuConnection() {
 }
 
 void HeterClient::SendAndRecvAsync(
-    const platform::DeviceContext& ctx,
+    const phi::DeviceContext& ctx,
     const framework::Scope& scope,
     const std::string& message_name,
     const std::vector<std::string>& send_var_name,
@@ -122,7 +121,7 @@ void HeterClient::SendAndRecvAsync(
   platform::RecordEvent record_event("HeterClient->SendAndRecvAsync",
                                      platform::TracerEventType::Communication,
                                      1);
-  const platform::DeviceContext* p_ctx = &ctx;
+  const phi::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
   const std::vector<std::string> send_var_name_val = send_var_name;
   const std::vector<std::string> recv_var_name_val = recv_var_name;
@@ -213,7 +212,7 @@ std::future<int32_t> HeterClient::SendCmd(
   return fut;
 }
 
-int HeterClient::Send(const platform::DeviceContext& ctx,
+int HeterClient::Send(const phi::DeviceContext& ctx,
                       const framework::Scope& scope,
                       const std::string& message_name,
                       const std::vector<std::string>& send_var_names) {
@@ -324,7 +323,7 @@ int HeterClient::Send(int group_id,
   return 0;
 }
 
-int HeterClient::Recv(const platform::DeviceContext& ctx,
+int HeterClient::Recv(const phi::DeviceContext& ctx,
                       framework::Scope& recv_scope,  // NOLINT
                       const std::string& message_name,
                       const std::vector<std::string>& recv_var_names) {

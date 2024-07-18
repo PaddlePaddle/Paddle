@@ -132,7 +132,7 @@ class HeterClient {
 
   void CreateClient2XpuConnection();
 
-  void SendAndRecvAsync(const platform::DeviceContext& ctx,
+  void SendAndRecvAsync(const phi::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& message_name,
                         const std::vector<std::string>& send_var_name,
@@ -145,7 +145,7 @@ class HeterClient {
            void* data_ptr,
            int64_t data_size);
 
-  int Send(const platform::DeviceContext& ctx,
+  int Send(const phi::DeviceContext& ctx,
            const framework::Scope& scope,
            const std::string& message_name,
            const std::vector<std::string>& send_var_names);
@@ -155,7 +155,7 @@ class HeterClient {
            void* data_ptr,
            int64_t data_size);
 
-  int Recv(const platform::DeviceContext& ctx,
+  int Recv(const phi::DeviceContext& ctx,
            framework::Scope& recv_scope,  // NOLINT
            const std::string& message_name,
            const std::vector<std::string>& recv_var_names);

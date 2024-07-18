@@ -157,7 +157,7 @@ class PreparedOp {
              const framework::OperatorWithKernel::OpKernelFunc& func,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
-             platform::DeviceContext* dev_ctx);
+             phi::DeviceContext* dev_ctx);
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
@@ -166,7 +166,7 @@ class PreparedOp {
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
              const phi::Kernel& phi_kernel,
-             platform::DeviceContext* dev_ctx);
+             phi::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -213,7 +213,7 @@ class PreparedOp {
   const framework::RuntimeContext& ctx_;
   phi::KernelKey kernel_key_;
   framework::OperatorWithKernel::OpKernelFunc func_;
-  platform::DeviceContext* dev_ctx_;
+  phi::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
@@ -252,7 +252,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                                   const NameVarMap<VarType>& outs,
                                   const framework::AttributeMap& attrs,
                                   const framework::AttributeMap& default_attrs,
-                                  platform::DeviceContext* dev_ctx,
+                                  phi::DeviceContext* dev_ctx,
                                   phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
