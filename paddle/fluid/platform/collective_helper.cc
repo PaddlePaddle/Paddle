@@ -171,7 +171,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
           << ", rind_id: " << ring_id;
   ncclComm_t comms[kDevices];  // NOLINT
   {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
     for (int i = 0; i < kDevices; i++) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipSetDevice(i));
@@ -182,7 +182,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
           comms + i, kDevices * ntrainers, *nccl_id, train_id * kDevices + i);
       VLOG(1) << "ncclCommInitRank: " << i;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
     VLOG(1) << "nccl group end success";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),

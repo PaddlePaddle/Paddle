@@ -80,8 +80,8 @@ namespace platform {
 class CublasHandleHolder {
  public:
   CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetStream(handle_, stream));
 #if CUDA_VERSION >= 9000
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
       PADDLE_RETRY_CUDA_SUCCESS(
@@ -98,7 +98,7 @@ class CublasHandleHolder {
   const cublasHandle_t& GetCublasHandle() const { return handle_; }
 
   ~CublasHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasDestroy(handle_));
   }
 
   inline void Call(const std::function<void(blasHandle_t)>& callback) const {
@@ -116,12 +116,12 @@ class CublasHandleHolder {
 class CublasLtHandleHolder {
  public:
   CublasLtHandleHolder() {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtCreate(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasLtCreate(&handle_));
   }
   const cublasLtHandle_t& GetCublasLtHandle() const { return handle_; }
 
   ~CublasLtHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtDestroy(handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasLtDestroy(handle_));
   }
 
   inline void Call(const std::function<void(blasLtHandle_t)>& callback) const {
