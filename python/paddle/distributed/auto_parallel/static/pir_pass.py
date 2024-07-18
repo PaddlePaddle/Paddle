@@ -89,8 +89,9 @@ def apply_partition_pass(program):
             paddle.pir.set_insertion_point(op)
             reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
             operand.set_source(reshard_var)
-            insert_pos = paddle.pir.get_current_insertion_point()
-            insert_pos.prev().op_role = ref_op_role
+            if ref_op_role is not None:
+                insert_pos = paddle.pir.get_current_insertion_point()
+                insert_pos.prev().op_role = ref_op_role
 
             result = op.result(out_idx)
             result_attr = op.dist_attr.result(out_idx).as_tensor_dist_attr()
@@ -109,8 +110,9 @@ def apply_partition_pass(program):
             )
             reshard_var_1.get_defining_op().op_role = ref_op_role
             paddle.assign(reshard_var_1, prev_var)
-            insert_pos = paddle.pir.get_current_insertion_point()
-            insert_pos.prev().op_role = ref_op_role
+            if ref_op_role is not None:
+                insert_pos = paddle.pir.get_current_insertion_point()
+                insert_pos.prev().op_role = ref_op_role
 
             if old_dist_attr == result.dist_attr():
                 continue
@@ -142,8 +144,9 @@ def apply_partition_pass(program):
                 var.replace_all_uses_with(reshard_var)
                 reshard_var.get_defining_op().operand(0).set_source(var)
                 ref_op_role = op.op_role
-                insert_pos = paddle.pir.get_current_insertion_point()
-                insert_pos.prev().op_role = ref_op_role
+                if ref_op_role is not None:
+                    insert_pos = paddle.pir.get_current_insertion_point()
+                    insert_pos.prev().op_role = ref_op_role
 
 
 def fold_reshard_pass(dist_program):
@@ -206,17 +209,18 @@ def apply_reshard_pass(dist_program):
             insert_index = dist_program.global_block().ops.index(
                 insert_pos.get_operation()
             )
-            op_offset = 1
-            while (
-                dist_program.global_block()
-                .ops[insert_index - op_offset]
-                .op_role
-                is None
-            ):
-                dist_program.global_block().ops[
-                    insert_index - op_offset
-                ].op_role = ref_op_role
-                op_offset += 1
+            if ref_op_role is not None:
+                op_offset = 1
+                while (
+                    dist_program.global_block()
+                    .ops[insert_index - op_offset]
+                    .op_role
+                    is None
+                ):
+                    dist_program.global_block().ops[
+                        insert_index - op_offset
+                    ].op_role = ref_op_role
+                    op_offset += 1
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
             if op.result(0).use_empty():
