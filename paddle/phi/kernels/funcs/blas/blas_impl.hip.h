@@ -749,9 +749,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // TODO(zhiqiu): 80 has the same meaning for rocm and cuda?
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
-      80,
+      53,
       phi::errors::InvalidArgument(
-          "rocblas bf16 gemm requires GPU compute capability >= 80,"
+          "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
 
@@ -1005,9 +1005,9 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
       transB ? rocblas_operation_none : rocblas_operation_transpose;
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
-      80,
+      53,
       phi::errors::InvalidArgument(
-          "rocblas bf16 gemm requires GPU compute capability >= 80,"
+          "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
 

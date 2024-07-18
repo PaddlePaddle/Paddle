@@ -384,7 +384,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
   // Only GPUs with Compute Capability >= 80 support bfloat16
 #ifdef PADDLE_WITH_HIP
-    return false;
+    return true;
 #else
     return platform::GetGPUComputeCapability(place.device) >= 80;
 #endif
