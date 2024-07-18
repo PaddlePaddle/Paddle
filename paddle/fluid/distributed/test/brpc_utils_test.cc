@@ -28,7 +28,7 @@ namespace platform = paddle::platform;
 
 void CreateVarsOnScope(framework::Scope* scope,
                        phi::Place* place,
-                       const platform::DeviceContext& ctx) {
+                       const phi::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
   auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
