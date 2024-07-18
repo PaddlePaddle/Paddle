@@ -231,7 +231,7 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
   module_symbols_ = std::forward<RuntimeSymbols>(module_symbols);
   auto *session = &jit_->getExecutionSession();
   for (const auto &sym : module_symbols_.All()) {
-    VLOG(0) << "Add symbol: {" << sym.first << ":" << sym.second << "}";
+    VLOG(3) << "Add symbol: {" << sym.first << ":" << sym.second << "}";
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
         {{session->intern(sym.first),
           {llvm::pointerToJITTargetAddress(sym.second),
@@ -276,5 +276,7 @@ void ExecutionEngine::RegisterGlobalRuntimeSymbols() {
 template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module);
 template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module);
 template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenSwitchHost>(
+    const ir::Module &module);
 
 }  // namespace cinn::backends
