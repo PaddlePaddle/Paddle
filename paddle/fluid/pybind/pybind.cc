@@ -1937,32 +1937,31 @@ All parameter, weight, gradient are variables in Paddle.
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
 
-  py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
+  py::class_<phi::DeviceContext>(m, "DeviceContext")
+      .def_static("create",
+                  [](phi::CPUPlace &place) -> phi::DeviceContext * {
+                    auto *context = new phi::CPUContext();
+                    context->SetAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(place)
+                            .get());
+                    context->SetHostAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::CPUPlace())
+                            .get());
+                    context->SetZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(place)
+                            .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(phi::CPUPlace())
+                            .get());
+                    return context;
+                  })
       .def_static(
           "create",
-          [](phi::CPUPlace &place) -> paddle::platform::DeviceContext * {
-            auto *context = new phi::CPUContext();
-            context->SetAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(place)
-                    .get());
-            context->SetHostAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::CPUPlace())
-                    .get());
-            context->SetZeroAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(place)
-                    .get());
-            context->SetHostZeroAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(phi::CPUPlace())
-                    .get());
-            return context;
-          })
-      .def_static(
-          "create",
-          [](phi::XPUPlace &place) -> paddle::platform::DeviceContext * {
+          [](phi::XPUPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use XPUPlace in CPU/GPU version, "
@@ -1988,21 +1987,20 @@ All parameter, weight, gradient are variables in Paddle.
             return context;
 #endif
           })
-      .def_static(
-          "create",
-          [](phi::CustomPlace &place) -> paddle::platform::DeviceContext * {
+      .def_static("create",
+                  [](phi::CustomPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use CustomPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with "
-                "CustomDevice support."));
+                    PADDLE_THROW(platform::errors::PermissionDenied(
+                        "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                        "Please recompile or reinstall Paddle with "
+                        "CustomDevice support."));
 #else
             return new paddle::platform::CustomDeviceContext(place);
 #endif
-          })
+                  })
       .def_static(
           "create",
-          [](phi::GPUPlace &place) -> paddle::platform::DeviceContext * {
+          [](phi::GPUPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPlace in CPU only version, "
@@ -2034,8 +2032,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
           })
       .def_static(
-          "create",
-          [](phi::GPUPinnedPlace &place) -> paddle::platform::DeviceContext * {
+          "create", [](phi::GPUPinnedPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPinnedPlace in CPU only version, "

@@ -317,7 +317,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
 #define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)       \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {     \
-    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);          \
+    phi::DeviceContext* dev_ctx = pool.Get(place);                       \
     phi::funcs::SelectedRowsAddToTensor<dev_ctx_type, cpp_type> functor; \
     functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                     \
             src_selected_rows,                                           \
@@ -438,7 +438,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)             \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
-    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);      \
+    phi::DeviceContext* dev_ctx = pool.Get(place);                   \
     phi::funcs::scatter::MergeAdd<dev_ctx_type, cpp_type> merge_add; \
     merge_add(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),               \
               src_selected_rows,                                     \
