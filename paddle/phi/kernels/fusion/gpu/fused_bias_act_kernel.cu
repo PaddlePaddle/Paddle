@@ -446,7 +446,6 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
-#ifndef PADDLE_WITH_HIP
   int cols = x.dims()[x.dims().size() - 1];
   int rows = x.numel() / cols;
   if (x.dtype() == phi::DataType::INT32) {
@@ -527,7 +526,6 @@ void FusedBiasActKernel(const Context &dev_ctx,
         out,
         typename DispatchDtypeTrait<T>::FuncVersion{});
   }
-#endif
 }
 
 }  // namespace fusion
