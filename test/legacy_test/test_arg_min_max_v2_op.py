@@ -286,9 +286,10 @@ def create_test_case(op_type):
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
         def test_case(self):
-            for place in self.places:
-                self.run_static(place)
-                self.run_dygraph(place)
+            with paddle.pir_utils.OldIrGuard():
+                for place in self.places:
+                    self.run_static(place)
+                    self.run_dygraph(place)
 
     cls_name = f"ArgMaxMinTestCase_{op_type}"
     ArgMaxMinTestCase.__name__ = cls_name
@@ -301,94 +302,97 @@ for op_type in ['argmin', 'argmax']:
 
 class TestArgMinMaxOpError(unittest.TestCase):
     def test_errors(self):
-        paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.pir_utils.OldIrGuard():
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
 
-            def test_argmax_x_type():
-                x1 = [1, 2, 3]
-                output = paddle.argmax(x=x1)
+                def test_argmax_x_type():
+                    x1 = [1, 2, 3]
+                    output = paddle.argmax(x=x1)
 
-            self.assertRaises(TypeError, test_argmax_x_type)
+                self.assertRaises(TypeError, test_argmax_x_type)
 
-            def test_argmin_x_type():
-                x2 = [1, 2, 3]
-                output = paddle.argmin(x=x2)
+                def test_argmin_x_type():
+                    x2 = [1, 2, 3]
+                    output = paddle.argmin(x=x2)
 
-            self.assertRaises(TypeError, test_argmin_x_type)
+                self.assertRaises(TypeError, test_argmin_x_type)
 
-            def test_argmax_attr_type():
-                data = paddle.static.data(
-                    name="test_argmax", shape=[10], dtype="float32"
-                )
-                output = paddle.argmax(x=data, dtype="float32")
+                def test_argmax_attr_type():
+                    data = paddle.static.data(
+                        name="test_argmax", shape=[10], dtype="float32"
+                    )
+                    output = paddle.argmax(x=data, dtype="float32")
 
-            self.assertRaises(TypeError, test_argmax_attr_type)
+                self.assertRaises(TypeError, test_argmax_attr_type)
 
-            def test_argmin_attr_type():
-                data = paddle.static.data(
-                    name="test_argmax", shape=[10], dtype="float32"
-                )
-                output = paddle.argmin(x=data, dtype="float32")
+                def test_argmin_attr_type():
+                    data = paddle.static.data(
+                        name="test_argmax", shape=[10], dtype="float32"
+                    )
+                    output = paddle.argmin(x=data, dtype="float32")
 
-            self.assertRaises(TypeError, test_argmin_attr_type)
+                self.assertRaises(TypeError, test_argmin_attr_type)
 
-            def test_argmax_axis_type():
-                data = paddle.static.data(
-                    name="test_argmax", shape=[10], dtype="float32"
-                )
-                output = paddle.argmax(x=data, axis=1.2)
+                def test_argmax_axis_type():
+                    data = paddle.static.data(
+                        name="test_argmax", shape=[10], dtype="float32"
+                    )
+                    output = paddle.argmax(x=data, axis=1.2)
 
-            self.assertRaises(TypeError, test_argmax_axis_type)
+                self.assertRaises(TypeError, test_argmax_axis_type)
 
-            def test_argmin_axis_type():
-                data = paddle.static.data(
-                    name="test_argmin", shape=[10], dtype="float32"
-                )
-                output = paddle.argmin(x=data, axis=1.2)
+                def test_argmin_axis_type():
+                    data = paddle.static.data(
+                        name="test_argmin", shape=[10], dtype="float32"
+                    )
+                    output = paddle.argmin(x=data, axis=1.2)
 
-            self.assertRaises(TypeError, test_argmin_axis_type)
+                self.assertRaises(TypeError, test_argmin_axis_type)
 
-            def test_argmax_dtype_type():
-                data = paddle.static.data(
-                    name="test_argmax", shape=[10], dtype="float32"
-                )
-                output = paddle.argmax(x=data, dtype=None)
+                def test_argmax_dtype_type():
+                    data = paddle.static.data(
+                        name="test_argmax", shape=[10], dtype="float32"
+                    )
+                    output = paddle.argmax(x=data, dtype=None)
 
-            self.assertRaises(ValueError, test_argmax_dtype_type)
+                self.assertRaises(ValueError, test_argmax_dtype_type)
 
-            def test_argmin_dtype_type():
-                data = paddle.static.data(
-                    name="test_argmin", shape=[10], dtype="float32"
-                )
-                output = paddle.argmin(x=data, dtype=None)
+                def test_argmin_dtype_type():
+                    data = paddle.static.data(
+                        name="test_argmin", shape=[10], dtype="float32"
+                    )
+                    output = paddle.argmin(x=data, dtype=None)
 
-            self.assertRaises(ValueError, test_argmin_dtype_type)
+                self.assertRaises(ValueError, test_argmin_dtype_type)
 
 
 class TestArgMaxOpFp16(unittest.TestCase):
     def test_fp16(self):
-        x_np = np.random.random((10, 16)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
-            out = paddle.argmax(x)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': x_np}, fetch_list=[out])
+        with paddle.pir_utils.OldIrGuard():
+            x_np = np.random.random((10, 16)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+                out = paddle.argmax(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    exe.run(paddle.static.default_startup_program())
+                    out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 class TestArgMinOpFp16(unittest.TestCase):
     def test_fp16(self):
-        x_np = np.random.random((10, 16)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
-            out = paddle.argmin(x)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': x_np}, fetch_list=[out])
+        with paddle.pir_utils.OldIrGuard():
+            x_np = np.random.random((10, 16)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+                out = paddle.argmin(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    exe.run(paddle.static.default_startup_program())
+                    out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 if __name__ == '__main__':

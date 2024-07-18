@@ -130,48 +130,50 @@ class TestAllcloseDygraph(unittest.TestCase):
 
 class TestAllcloseError(unittest.TestCase):
     def test_input_dtype(self):
-        def test_x_dtype():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(name='x', shape=[10, 10], dtype='int32')
-                y = paddle.static.data(
-                    name='y', shape=[10, 10], dtype='float64'
-                )
-                result = paddle.allclose(x, y)
+        with paddle.pir_utils.OldIrGuard():
+            def test_x_dtype():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(name='x', shape=[10, 10], dtype='int32')
+                    y = paddle.static.data(
+                        name='y', shape=[10, 10], dtype='float64'
+                    )
+                    result = paddle.allclose(x, y)
 
-        self.assertRaises(TypeError, test_x_dtype)
+            self.assertRaises(TypeError, test_x_dtype)
 
-        def test_y_dtype():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(
-                    name='x', shape=[10, 10], dtype='float64'
-                )
-                y = paddle.static.data(name='y', shape=[10, 10], dtype='int32')
-                result = paddle.allclose(x, y)
+            def test_y_dtype():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name='x', shape=[10, 10], dtype='float64'
+                    )
+                    y = paddle.static.data(name='y', shape=[10, 10], dtype='int32')
+                    result = paddle.allclose(x, y)
 
-        self.assertRaises(TypeError, test_y_dtype)
+            self.assertRaises(TypeError, test_y_dtype)
 
     def test_attr(self):
-        x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
-        y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
+        with paddle.pir_utils.OldIrGuard():
+            x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
+            y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
 
-        def test_rtol():
-            result = paddle.allclose(x, y, rtol=True)
+            def test_rtol():
+                result = paddle.allclose(x, y, rtol=True)
 
-        self.assertRaises(TypeError, test_rtol)
+            self.assertRaises(TypeError, test_rtol)
 
-        def test_atol():
-            result = paddle.allclose(x, y, rtol=True)
+            def test_atol():
+                result = paddle.allclose(x, y, rtol=True)
 
-        self.assertRaises(TypeError, test_atol)
+            self.assertRaises(TypeError, test_atol)
 
-        def test_equal_nan():
-            result = paddle.allclose(x, y, equal_nan=1)
+            def test_equal_nan():
+                result = paddle.allclose(x, y, equal_nan=1)
 
-        self.assertRaises(TypeError, test_equal_nan)
+            self.assertRaises(TypeError, test_equal_nan)
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
