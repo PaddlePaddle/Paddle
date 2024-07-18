@@ -23,9 +23,6 @@ from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
-from paddle.distributed.auto_parallel.static.dist_tensor import (
-    DistributedTensor,
-)
 from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
@@ -1484,13 +1481,6 @@ class PipelineMemoryEstimator:
             else dist_op.get_serial_output(var_name)
         )
 
-        process_mesh = dist_op.dist_attr.process_mesh
-        dims_mapping = (
-            dist_op.dist_attr.get_input_dims_mapping(var_name)
-            if is_input
-            else dist_op.dist_attr.get_output_dims_mapping(var_name)
-        )
-
         if var_name not in var_info:
             var_info.setdefault(
                 var_name, {"size": 0, "count": 1, "persistable": False}
@@ -1498,36 +1488,16 @@ class PipelineMemoryEstimator:
             if var.persistable:
                 var_info[var_name]["persistable"] = True
                 return
-            var_size = self._get_local_var_size(var, dims_mapping, process_mesh)
+            var_size = self._get_var_size(var)
             var_info[var_name]["size"] = var_size
-            var_info[var_name]["process_mesh"] = process_mesh
-            var_info[var_name]["dims_mapping"] = dims_mapping
         else:
             var_info[var_name]["count"] += 1
-            if var_info[var_name]["persistable"]:
-                return
 
-            if (
-                process_mesh != var_info[var_name]["process_mesh"]
-                or dims_mapping != var_info[var_name]["dims_mapping"]
-            ):
-                var_info[var_name]["size"] = self._get_local_var_size(
-                    var, dims_mapping, process_mesh
-                )
-                var_info[var_name]["process_mesh"] = process_mesh
-                var_info[var_name]["dims_mapping"] = dims_mapping
-
-    def _get_local_var_size(self, var, dims_mapping, process_mesh):
+    def _get_var_size(self, var):
         var_shape = [1 if dim == -1 else dim for dim in var.shape]
-        local_sizes = DistributedTensor.get_local_sizes(
-            var_shape,
-            dims_mapping,
-            process_mesh.shape,
-            process_mesh.process_ids,
-        )
-        return self._calculate_bytes(local_sizes, var.dtype)
+        return self._calculate_bytes(var_shape, var.dtype)
 
-    def _calculate_bytes(self, sizes, dtype):
+    def _calculate_bytes(self, var_shape, dtype):
         dtype_to_size = {
             paddle.float64: 8,
             paddle.int64: 8,
@@ -1540,7 +1510,9 @@ class PipelineMemoryEstimator:
             paddle.uint8: 1,
         }
 
-        total_count = reduce(lambda x, y: x * y, sizes, 1) if sizes else 0
+        total_count = (
+            reduce(lambda x, y: x * y, var_shape, 1) if var_shape else 0
+        )
         dtype_factor = dtype_to_size.get(dtype, 4)
 
         return total_count * dtype_factor
