@@ -41,7 +41,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -473,10 +473,9 @@ class BuddyAllocatorList {
 
 BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
   VLOG(10) << "GetBuddyAllocator place = " << place;
-  if (platform::is_custom_place(place)) {
-    return BuddyAllocatorList::Instance(
-               platform::PlaceHelper::GetDeviceType(place))
-        ->Get(platform::PlaceHelper::GetDeviceId(place));
+  if (phi::is_custom_place(place)) {
+    return BuddyAllocatorList::Instance(phi::PlaceHelper::GetDeviceType(place))
+        ->Get(phi::PlaceHelper::GetDeviceId(place));
   } else {
     PADDLE_THROW(
         platform::errors::InvalidArgument("place must be CustomPlace"));

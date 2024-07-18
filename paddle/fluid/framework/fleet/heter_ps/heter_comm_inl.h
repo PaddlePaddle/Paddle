@@ -273,7 +273,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
   PADDLE_ENFORCE_LT(
       dev_id,
       device_num_,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "dev id %d more than device num %d", dev_id, device_num_));
 #if defined(PADDLE_WITH_CUDA)
   platform::CUDADeviceGuard guard(resource_->dev_id(dev_id));

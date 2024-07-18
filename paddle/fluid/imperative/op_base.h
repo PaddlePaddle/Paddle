@@ -25,7 +25,7 @@
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace imperative {

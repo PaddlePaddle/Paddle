@@ -697,7 +697,7 @@ class OpConverter {
                                       nvinfer1::Dims shape,
                                       const std::string& weight_name = "") {
     if (!(std::is_same<T, float>::value ||
-          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, phi::dtype::float16>::value ||
           std::is_same<T, int32_t>::value)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
@@ -734,7 +734,7 @@ class OpConverter {
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
     if (!(std::is_same<T, float>::value ||
-          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, phi::dtype::float16>::value ||
           std::is_same<T, int32_t>::value)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported data type (%s) for TensorRT AddConstantLayer, only "

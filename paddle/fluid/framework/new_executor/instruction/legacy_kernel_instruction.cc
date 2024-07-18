@@ -163,6 +163,11 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 
   VLOG(6) << "finish process kernel context";
 
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, value_exec_info_, this);
+  }
+
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -184,6 +189,9 @@ void LegacyKernelInstruction::Run() {
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  }
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
   }
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));

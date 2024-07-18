@@ -64,5 +64,10 @@ void InsertInplacedExternalInputsToOuts(
 
 bool GetCondData(const phi::DenseTensor& cond);
 
+void HandleForInplaceOp(pir::Operation* op,
+                        const ValueExecutionInfo* value_exe_info,
+                        InstructionBase* instr);
+
+void ShareVarBuffer(const Variable* src_var, Variable* dst_var);
 }  // namespace framework
 }  // namespace paddle

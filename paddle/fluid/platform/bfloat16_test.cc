@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using bfloat16 = paddle::platform::bfloat16;
+using bfloat16 = phi::dtype::bfloat16;
 
 TEST(bfloat16, conversion_cpu) {
   // Conversion from float
