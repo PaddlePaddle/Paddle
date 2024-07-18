@@ -1498,8 +1498,8 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   // create lod tensor
   std::shared_ptr<framework::Scope> scope;
   scope.reset(new framework::Scope());
-  auto place = platform::CPUPlace();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto place = phi::CPUPlace();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(place);
 
   framework::Variable *var = scope->Var(var_name);

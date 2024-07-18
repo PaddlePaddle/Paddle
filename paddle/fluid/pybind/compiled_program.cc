@@ -80,7 +80,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -111,6 +110,7 @@
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -336,33 +336,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
 
                         >>> build_strategy = static.BuildStrategy()
                         >>> build_strategy.debug_graphviz_path = "./graph"
-          )DOC")
-      .def_property(
-          "remove_unnecessary_lock",
-          [](const BuildStrategy &self) {
-            return self.remove_unnecessary_lock_;
-          },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.remove_unnecessary_lock_ = b;
-          },
-          R"DOC((bool, optional): If set True, some locks in GPU ops would be
-                released and CompiledProgram would run faster. Default is True.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.remove_unnecessary_lock = True
           )DOC")
       .def_property(
           "num_trainers",
@@ -945,7 +918,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
 
-  cp.def(py::init<const std::vector<platform::Place> &,
+  cp.def(py::init<const std::vector<phi::Place> &,
                   const std::vector<std::string> &,
                   const std::string &,
                   Scope *,

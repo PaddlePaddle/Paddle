@@ -64,6 +64,30 @@ inline void UpdatePaddingAndDilation(
 }  // namespace
 namespace paddle::dialect {
 
+bool AllcloseOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    y_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(X) and Input(Y) must have the same "
+                        "dimension size. but got %d vs %d",
+                        x_shape.size(),
+                        y_shape.size()));
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
+  return true;
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =
@@ -390,7 +414,25 @@ bool MaskedSelectOpInferSymbolicShape(
     out_dims.push_back(out_shape);
     return out_dims;
   }();
-  // TODO(fty1777): Add constrains between the shapes of x and mask
+  // Add constrains between the shapes of x and mask
+  const std::vector<symbol::DimExpr> &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &mask_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  size_t ndims_x = x_shape.size();
+  size_t ndims_mask = mask_shape.size();
+  if (ndims_x >= ndims_mask) {
+    size_t diff = ndims_x - ndims_mask;
+    for (size_t i = 0; i < ndims_mask; i++) {
+      infer_context->AddBroadcastableCstr(x_shape[i + diff], mask_shape[i]);
+    }
+  } else {
+    size_t diff = ndims_mask - ndims_x;
+    for (size_t i = 0; i < ndims_x; i++) {
+      infer_context->AddBroadcastableCstr(x_shape[i], mask_shape[i + diff]);
+    }
+  }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   return true;

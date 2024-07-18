@@ -20,7 +20,7 @@
 template <typename Place, typename T>
 int SaveLoadOpTest(Place place, int dim_1, int dim_2) {
   // use cpu place for ground truth
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   std::vector<T> ground_truth_cpu(dim_1 * dim_2);
   for (int i = 0; i < dim_1 * dim_2; i++) {
     ground_truth_cpu[i] = static_cast<T>(i);
@@ -93,31 +93,27 @@ int SaveLoadOpTest(Place place, int dim_1, int dim_2) {
 }
 
 TEST(SaveLoadOp, XPU) {
-  paddle::platform::XPUPlace xpu_place(0);
-  paddle::platform::CPUPlace cpu_place;
+  phi::XPUPlace xpu_place(0);
+  phi::CPUPlace cpu_place;
   int r = 0;
 
-  r = SaveLoadOpTest<paddle::platform::XPUPlace, float>(xpu_place, 3, 10);
+  r = SaveLoadOpTest<phi::XPUPlace, float>(xpu_place, 3, 10);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<paddle::platform::CPUPlace, float>(cpu_place, 3, 10);
-  EXPECT_EQ(r, 0);
-
-  r = SaveLoadOpTest<paddle::platform::XPUPlace, int>(xpu_place, 2, 128);
-  EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<paddle::platform::CPUPlace, int>(cpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::CPUPlace, float>(cpu_place, 3, 10);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadOpTest<paddle::platform::XPUPlace, paddle::platform::float16>(
-      xpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::XPUPlace, int>(xpu_place, 2, 128);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<paddle::platform::CPUPlace, paddle::platform::float16>(
-      cpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::CPUPlace, int>(cpu_place, 2, 128);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadOpTest<paddle::platform::XPUPlace, paddle::platform::bfloat16>(
-      xpu_place, 4, 32);
+  r = SaveLoadOpTest<phi::XPUPlace, phi::dtype::float16>(xpu_place, 2, 128);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<paddle::platform::CPUPlace, paddle::platform::bfloat16>(
-      cpu_place, 4, 32);
+  r = SaveLoadOpTest<phi::CPUPlace, phi::dtype::float16>(cpu_place, 2, 128);
+  EXPECT_EQ(r, 0);
+
+  r = SaveLoadOpTest<phi::XPUPlace, phi::dtype::bfloat16>(xpu_place, 4, 32);
+  EXPECT_EQ(r, 0);
+  r = SaveLoadOpTest<phi::CPUPlace, phi::dtype::bfloat16>(cpu_place, 4, 32);
   EXPECT_EQ(r, 0);
 }

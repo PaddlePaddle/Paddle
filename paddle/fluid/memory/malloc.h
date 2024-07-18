@@ -17,8 +17,8 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/stream.h"
 
@@ -29,18 +29,18 @@ using allocation::AllocationPtr;
 using allocation::Allocator;
 using phi::Allocation;
 
-extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                                size_t size);
 
-TEST_API extern AllocationPtr Alloc(const platform::Place& place, size_t size);
+TEST_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
-extern uint64_t Release(const platform::Place& place);
+extern uint64_t Release(const phi::Place& place);
 
-extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::Place& place,
+extern AllocationPtr Alloc(const phi::Place& place,
                            size_t size,
                            const phi::Stream& stream);
 

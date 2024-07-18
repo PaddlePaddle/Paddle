@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace inference {

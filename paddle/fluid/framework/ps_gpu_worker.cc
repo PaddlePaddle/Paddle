@@ -113,7 +113,7 @@ void PSGPUWorker::BindingDataFeedMemory() {
 
 void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
@@ -210,7 +210,7 @@ PSGPUWorker::~PSGPUWorker() {
 
 int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
                                     const Scope& scope,
-                                    const platform::Place& place) {
+                                    const phi::Place& place) {
   if (shape_check_flag_.load()) {
     // before op run
     InferShapeCheckData check_data;
