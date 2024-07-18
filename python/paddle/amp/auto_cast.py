@@ -66,13 +66,13 @@ if TYPE_CHECKING:
     ]
 
 
-class _OptimizerBase(Protocol):
+class _OptimizerLike(Protocol):
     def minimize(
         self,
         loss: Tensor,
-        startup_program: Program | None = None,
-        parameters: list[Tensor] | list[str] | None = None,
-        no_grad_set: set[Tensor] | set[str] | None = None,
+        startup_program: Program,
+        parameters: list[Tensor],
+        no_grad_set: set[Tensor],
     ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         ...
 
@@ -82,12 +82,12 @@ class _OptimizerBase(Protocol):
     def set_state_dict(self, state_dict: dict[str, Tensor]) -> None:
         ...
 
-    def clear_grad(self, set_to_zero: bool = True) -> None:
+    def clear_grad(self, set_to_zero: bool) -> None:
         ...
 
 
 _ModelsT = TypeVar("_ModelsT", Layer, List[Layer])
-_OptimizersT = TypeVar("_OptimizersT", _OptimizerBase, List[_OptimizerBase])
+_OptimizersT = TypeVar("_OptimizersT", _OptimizerLike, List[_OptimizerLike])
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 AMP_RELATED_FLAGS = [
