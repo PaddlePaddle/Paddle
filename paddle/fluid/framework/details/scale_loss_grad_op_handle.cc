@@ -57,9 +57,9 @@ struct ScaleLossGradFunctor {
   template <typename OutT>
   void apply() const {
     auto *out_data = out_->mutable_data<OutT>(place_);
-    if (platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       *out_data = static_cast<OutT>(coeff_);
-    } else if (platform::is_xpu_place(place_)) {
+    } else if (phi::is_xpu_place(place_)) {
 #if defined(PADDLE_WITH_XPU)
       OutT cast_coeff = static_cast<OutT>(coeff_);
       memory::Copy(place_,

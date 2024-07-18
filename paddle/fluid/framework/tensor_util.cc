@@ -79,23 +79,22 @@ void TensorCopyImpl(const TENSOR& src,
   auto size = src.numel() * phi::SizeOf(src.dtype());
 #endif
 
-  if (platform::is_cpu_place(src_place) &&
-      platform::is_cpu_place(dst_place)) {  // NOLINT
+  if (phi::is_cpu_place(src_place) && phi::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_custom_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
-  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
-             platform::is_custom_place(dst_place)) {
+  } else if (phi::is_cpu_place(src_place) &&  // NOLINT
+             phi::is_custom_place(dst_place)) {
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
-  } else if (platform::is_custom_place(src_place) &&  // NOLINT
-             platform::is_custom_place(dst_place)) {
+  } else if (phi::is_custom_place(src_place) &&  // NOLINT
+             phi::is_custom_place(dst_place)) {
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data async from " << src_place << " to "
               << dst_place;
@@ -107,14 +106,12 @@ void TensorCopyImpl(const TENSOR& src,
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_xpu_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (platform::is_cpu_place(src_place) &&
-             platform::is_xpu_place(dst_place)) {
+  } else if (phi::is_cpu_place(src_place) && phi::is_xpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (platform::is_xpu_place(src_place) &&
-             platform::is_xpu_place(dst_place)) {
+  } else if (phi::is_xpu_place(src_place) && phi::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data async from " << src_place << " to "
               << dst_place;
@@ -127,25 +124,25 @@ void TensorCopyImpl(const TENSOR& src,
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-           platform::is_cuda_pinned_place(dst_place)) {
+  else if (phi::is_cuda_pinned_place(src_place) &&  // NOLINT
+           phi::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_cuda_pinned_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_cuda_pinned_place(dst_place)) {
+  else if (phi::is_cpu_place(src_place) &&  // NOLINT
+           phi::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_gpu_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_cpu_place = dst_place;
     auto ctx_place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx_place),
+        phi::is_gpu_place(ctx_place),
         true,
         platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
@@ -161,13 +158,13 @@ void TensorCopyImpl(const TENSOR& src,
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_gpu_place(dst_place)) {
+  else if (phi::is_cpu_place(src_place) &&  // NOLINT
+           phi::is_gpu_place(dst_place)) {
     auto src_cpu_place = src_place;
     auto dst_gpu_place = dst_place;
     auto ctx_place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx_place),
+        phi::is_gpu_place(ctx_place),
         true,
         platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
@@ -183,13 +180,13 @@ void TensorCopyImpl(const TENSOR& src,
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   }
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_cuda_pinned_place(dst_place)) {
+  else if (phi::is_gpu_place(src_place) &&  // NOLINT
+           phi::is_cuda_pinned_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_cuda_pinned_place = dst_place;
     auto ctx_place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx_place),
+        phi::is_gpu_place(ctx_place),
         true,
         platform::errors::PreconditionNotMet(
             "Device context place mismatch. When copying phi::DenseTensor "
@@ -208,13 +205,13 @@ void TensorCopyImpl(const TENSOR& src,
     memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   }
-  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-           platform::is_gpu_place(dst_place)) {
+  else if (phi::is_cuda_pinned_place(src_place) &&  // NOLINT
+           phi::is_gpu_place(dst_place)) {
     auto src_cuda_pinned_place = src_place;
     auto dst_gpu_place = dst_place;
     auto ctx_place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx_place),
+        phi::is_gpu_place(ctx_place),
         true,
         platform::errors::PreconditionNotMet(
             "Device context place mismatch. When copying phi::DenseTensor "
@@ -233,28 +230,28 @@ void TensorCopyImpl(const TENSOR& src,
     memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   }
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_gpu_place(dst_place)) {
+  else if (phi::is_gpu_place(src_place) &&  // NOLINT
+           phi::is_gpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_gpu_place = dst_place;
     auto ctx_place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx_place),
+        phi::is_gpu_place(ctx_place),
         true,
         platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-    if (platform::is_same_place(src_place, dst_place)) {
+    if (phi::is_same_place(src_place, dst_place)) {
       memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
     } else {
-      if (platform::is_same_place(ctx_place, src_place)) {
+      if (phi::is_same_place(ctx_place, src_place)) {
         memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-        platform::DeviceContextPool::Instance().Get(src.place())->Wait();
-      } else if (platform::is_same_place(ctx_place, dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src.place())->Wait();
+        phi::DeviceContextPool::Instance().Get(src.place())->Wait();
+      } else if (phi::is_same_place(ctx_place, dst_place)) {
+        phi::DeviceContextPool::Instance().Get(src.place())->Wait();
         memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {
@@ -274,10 +271,9 @@ template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
                     const phi::Place& dst_place,
                     TENSOR* dst) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx = nullptr;
-  if (platform::is_gpu_place(dst_place) ||
-      platform::is_custom_place(dst_place)) {
+  if (phi::is_gpu_place(dst_place) || phi::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
     dev_ctx = pool.Get(src.place());
@@ -327,21 +323,20 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
   auto size = src.numel() * phi::SizeOf(src.dtype());
-  if (platform::is_cpu_place(src_place) &&
-      platform::is_cpu_place(dst_place)) {  // NOLINT
+  if (phi::is_cpu_place(src_place) && phi::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {     /* custom_device -> cpu*/
+  else if (phi::is_custom_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {     /* custom_device -> cpu*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }                                                // NOLINT
-  else if (platform::is_cpu_place(src_place) &&    // NOLINT
-           platform::is_custom_place(dst_place)) { /* cpu -> custom_device*/
+  }                                           // NOLINT
+  else if (phi::is_cpu_place(src_place) &&    // NOLINT
+           phi::is_custom_place(dst_place)) { /* cpu -> custom_device*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }                                                 // NOLINT
-  else if (platform::is_custom_place(src_place) &&  // NOLINT
-           platform::is_custom_place(
+  }                                            // NOLINT
+  else if (phi::is_custom_place(src_place) &&  // NOLINT
+           phi::is_custom_place(
                dst_place)) { /* custom_device -> custom_device*/
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
@@ -352,16 +347,16 @@ void TensorCopySync(const phi::DenseTensor& src,
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_xpu_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }                                              // NOLINT
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_xpu_place(dst_place)) {
+  }                                         // NOLINT
+  else if (phi::is_cpu_place(src_place) &&  // NOLINT
+           phi::is_xpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }                                              // NOLINT
-  else if (platform::is_xpu_place(src_place) &&  // NOLINT
-           platform::is_xpu_place(dst_place)) {
+  }                                         // NOLINT
+  else if (phi::is_xpu_place(src_place) &&  // NOLINT
+           phi::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data async from " << src_place << " to "
               << dst_place;
@@ -371,7 +366,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     phi::XPUPlace xpu_dst_place = dst_place;
     phi::XPUPlace xpu_src_place = src_place;
     if (xpu_dst_place.device == xpu_src_place.device) {
-      auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
+      auto xpu_ctx = phi::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();
     }
   }       // NOLINT
@@ -381,42 +376,42 @@ void TensorCopySync(const phi::DenseTensor& src,
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-           platform::is_cuda_pinned_place(dst_place)) {
+  else if (phi::is_cuda_pinned_place(src_place) &&  // NOLINT
+           phi::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_cuda_pinned_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_cuda_pinned_place(dst_place)) {
+  else if (phi::is_cpu_place(src_place) &&  // NOLINT
+           phi::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_cuda_pinned_place(dst_place)) {
+  else if (phi::is_gpu_place(src_place) &&  // NOLINT
+           phi::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_gpu_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_cpu_place = dst_place;
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_gpu_place(dst_place)) {
+  else if (phi::is_cpu_place(src_place) &&  // NOLINT
+           phi::is_gpu_place(dst_place)) {
     auto src_cpu_place = src_place;
     auto dst_gpu_place = dst_place;
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   }
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_gpu_place(dst_place)) {
+  else if (phi::is_gpu_place(src_place) &&  // NOLINT
+           phi::is_gpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_gpu_place = dst_place;
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   }
-  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-           platform::is_gpu_place(dst_place)) {
+  else if (phi::is_cuda_pinned_place(src_place) &&  // NOLINT
+           phi::is_gpu_place(dst_place)) {
     auto src_pinned_place = src_place;
     auto dst_gpu_place = dst_place;
     memory::Copy(
@@ -428,16 +423,16 @@ void TensorCopySync(const phi::DenseTensor& src,
   }
 #endif
 #ifdef PADDLE_WITH_IPU
-  else if (platform::is_ipu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  else if (phi::is_ipu_place(src_place) &&  // NOLINT
+           phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_ipu_place(dst_place)) {
+  else if (phi::is_cpu_place(src_place) &&  // NOLINT
+           phi::is_ipu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-  else if (platform::is_ipu_place(src_place) &&  // NOLINT
-           platform::is_ipu_place(dst_place)) {
+  else if (phi::is_ipu_place(src_place) &&  // NOLINT
+           phi::is_ipu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
               << dst_place;
@@ -491,7 +486,7 @@ void TensorToStream(std::ostream& os,
                       (std::numeric_limits<std::streamsize>::max)(),
                       platform::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
-    if (platform::is_gpu_place(contiguous_tensor.place())) {
+    if (phi::is_gpu_place(contiguous_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
@@ -515,7 +510,7 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
-    } else if (platform::is_xpu_place(contiguous_tensor.place())) {
+    } else if (phi::is_xpu_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_XPU
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
@@ -539,7 +534,7 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
-    } else if (platform::is_custom_place(contiguous_tensor.place())) {
+    } else if (phi::is_custom_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
@@ -623,9 +618,9 @@ void TensorFromStream(std::istream& is,
     void* buf = nullptr;
     phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
-    if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
-        platform::is_xpu_place(dev_ctx.GetPlace()) ||
-        platform::is_custom_place(dev_ctx.GetPlace())) {
+    if (phi::is_gpu_place(dev_ctx.GetPlace()) ||
+        phi::is_xpu_place(dev_ctx.GetPlace()) ||
+        phi::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
@@ -636,14 +631,14 @@ void TensorFromStream(std::istream& is,
       is.read(static_cast<char*>(buf), size);  // NOLINT
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-      if (platform::is_custom_place(dev_ctx.GetPlace())) {
+      if (phi::is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
-      if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+      if (phi::is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
-      } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
+      } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       }
@@ -696,9 +691,9 @@ void TensorFromStream(std::istream& is,
     void* buf = nullptr;
     phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
-    if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
-        platform::is_xpu_place(dev_ctx.GetPlace()) ||
-        platform::is_custom_place(dev_ctx.GetPlace())) {
+    if (phi::is_gpu_place(dev_ctx.GetPlace()) ||
+        phi::is_xpu_place(dev_ctx.GetPlace()) ||
+        phi::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
@@ -709,14 +704,14 @@ void TensorFromStream(std::istream& is,
       is.read(static_cast<char*>(buf), size);  // NOLINT
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-      if (platform::is_custom_place(dev_ctx.GetPlace())) {
+      if (phi::is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
-      if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+      if (phi::is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
-      } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
+      } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       } else {
@@ -759,10 +754,10 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::float16>(dst_place));
+            dst->mutable_data<phi::dtype::float16>(dst_place));
       if (type.code == kDLBfloat)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::bfloat16>(dst_place));
+            dst->mutable_data<phi::dtype::bfloat16>(dst_place));
       PADDLE_THROW(platform::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -828,7 +823,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
     phi::GPUPlace dst_place = phi::GPUPlace(dl_tensor.device.device_id);
     phi::GPUPlace src_place = phi::GPUPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
+    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
     memory::Copy(dst_place,
                  dst_ptr,
                  src_place,
@@ -866,7 +861,7 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
     phi::GPUPlace dst_place = phi::GPUPlace(src->dl_tensor.device.device_id);
     phi::GPUPlace src_place = phi::GPUPlace(src->dl_tensor.device.device_id);
     void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
+    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
     // Fix copy by share allocation.
     memory::Copy(dst_place,
                  dst_ptr,
@@ -990,13 +985,12 @@ TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
 
   DenseTensor tensor;
   tensor.Resize(t.dims());
-  if (paddle::platform::is_cpu_place(t.place())) {
+  if (phi::is_cpu_place(t.place())) {
     tensor.ShareDataWith(t);
   } else {
     phi::CPUPlace place;
     paddle::framework::TensorCopy(t, place, &tensor);
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
   }

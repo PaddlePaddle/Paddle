@@ -263,7 +263,7 @@ void DataFeed::AssignFeedVar(const Scope& scope) {
 }
 
 void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
-  if (platform::is_cpu_place(this->place_)) {
+  if (phi::is_cpu_place(this->place_)) {
     memcpy(dst, src, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
@@ -2720,7 +2720,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
   }
   this->finish_start_ = true;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
+  CHECK(phi::is_gpu_place(this->place_));
   for (int i = 0; i < pack_thread_num_ + 1; i++) {
     auto pack = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
     pack_vec_.push_back(pack);
@@ -2895,7 +2895,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(this->place_));
+      phi::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
     if (scope_feed_vec_.size() > 0) {
       if (scope_feed_vec_.begin()->second[j] == nullptr) {
