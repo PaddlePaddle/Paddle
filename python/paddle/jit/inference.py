@@ -389,9 +389,50 @@ class InferenceEngine:
 
 
 def paddle_inference_decorator(function=None, **kwargs):
-    used_as_at_decorator = False
-    if function is None:
-        used_as_at_decorator = True
+    """
+    Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to predictor based on
+    the static model in the disk.
+    This function return a callable function, user can use it to inference just like dynamic function.
+    Args:
+        function (callable): Callable dynamic graph function. It must be a member function of paddle.nn.Layer.
+        If it used as a decorator, the decorated function will be parsed as this parameter.
+
+        kwargs: Support keys including `property`, set `property` to True if the function
+            is python property.
+
+    Returns:
+        Tensor(s): the decorated function can be sued for inference.
+
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> from paddle.jit import paddle_inference_decorator
+            >>> class ExampleLayer(paddle.nn.Layer):
+            ...     def __init__(self, hidd):
+            ...         super().__init__()
+            ...         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=False)
+            ...     def forward(self, x):
+            ...         for i in range(10):
+            ...             x = paddle.nn.functional.softmax(x,-1)
+            ...         x = x.cast("float32")
+            ...         x = self.func(x)
+            ...         return x
+            ...     def func(self, x):
+            ...         x = x + x
+            ...         return self.fn(x)
+
+            >>> batch = 4096
+            >>> hidd = 1024
+            >>> dtype = "bfloat16"
+            >>> x = paddle.rand([batch, hidd], dtype=dtype)
+            >>> mylayer = ExampleLayer(hidd)
+            >>> dynamic_result = mylayer(x)
+            >>> mylayer = paddle.jit.to_static(mylayer, backend='inference')
+            >>> decorator_result = mylayer(x)
+
+    """
+
+    used_as_at_decorator = function is None
 
     def decorator(func=None):
         if isinstance(func, paddle.nn.Layer):
