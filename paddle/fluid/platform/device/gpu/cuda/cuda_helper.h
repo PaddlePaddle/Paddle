@@ -85,11 +85,11 @@ class CublasHandleHolder {
 #if CUDA_VERSION >= 9000
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
       PADDLE_RETRY_CUDA_SUCCESS(
-          dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
+          phi::dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
 #if CUDA_VERSION >= 11000
     } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
       PADDLE_RETRY_CUDA_SUCCESS(
-          dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+          phi::dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
 #endif  // CUDA_VERSION >= 11000
     }
 #endif  // CUDA_VERSION >= 9000

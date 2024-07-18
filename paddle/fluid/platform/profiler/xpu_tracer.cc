@@ -162,7 +162,7 @@ void XPUTracer::CollectTraceData(TraceEventCollector* collector) {
   XPTI_CALL(phi::dynload::xptiActivityFlushAll());
   baidu::xpu::xpti::XPTIEvent* record = nullptr;
   while (true) {
-    XPTIResult status = dynload::xptiActivityGetNextRecord(&record);
+    XPTIResult status = phi::dynload::xptiActivityGetNextRecord(&record);
     if (status == XPTI_SUCCESS) {
       record->PrintForDebug();
       switch (record->type) {
